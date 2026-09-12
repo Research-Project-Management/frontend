@@ -13,26 +13,26 @@ import {
 import Topbar from '../components/Topbar';
 import InspectorPanel from '../components/Panel';
 import BatchBar from '../components/table/BatchBar';
-import { Button } from '@/shared/components/ui/button';
-import { Checkbox } from '@/shared/components/ui/checkbox';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Button } from "@/shared/components/ui";
+import { Checkbox } from "@/shared/components/ui";
+import { Skeleton } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
+} from "@/shared/components/ui";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from '@/shared/components/ui/context-menu';
+} from "@/shared/components/ui";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from '@/shared/components/ui/tooltip';
+} from "@/shared/components/ui";
 import {
   Dialog,
   DialogContent,
@@ -40,12 +40,12 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/shared/components/ui/dialog';
+} from "@/shared/components/ui";
 import { useLibrary } from '../hooks/use-library';
 import { useTrash, useItemTable, type SortField } from '../hooks/use-items';
 import { normalizeAuthors, formatCreatorCompact } from '../utils/library.util';
-import { cn } from '@/shared/lib/utils';
-import type { CatalogItem } from '../types/library.types';
+import { cn } from "@/shared/lib/utils";
+import type { Item } from '../types/library.types';
 
 export default function TrashPage() {
   const { state, actions } = useLibrary();
@@ -60,7 +60,7 @@ export default function TrashPage() {
 
   const [search, setSearch] = useState('');
   const [emptyTrashDialogOpen, setEmptyTrashDialogOpen] = useState(false);
-  const [singlePurgeTarget, setSinglePurgeTarget] = useState<CatalogItem | null>(null);
+  const [singlePurgeTarget, setSinglePurgeTarget] = useState<Item | null>(null);
 
   const {
     trashItems,
@@ -75,7 +75,11 @@ export default function TrashPage() {
   const filteredTrashItems = search.trim()
     ? trashItems.filter((item) =>
         item.title?.toLowerCase().includes(search.toLowerCase()) ||
-        item.authors?.some((a) => a.toLowerCase().includes(search.toLowerCase())),
+        item.authors?.some((a: unknown) =>
+          (typeof a === 'string' ? a : (a as { name?: string; fullName?: string })?.name || (a as { fullName?: string })?.fullName || '')
+            .toLowerCase()
+            .includes(search.toLowerCase()),
+        ),
       )
     : trashItems;
 
@@ -96,7 +100,7 @@ export default function TrashPage() {
     initialSortOrder: 'desc',
   });
 
-  const handleSelectItem = (item: CatalogItem) => {
+  const handleSelectItem = (item: Item) => {
     const itemId = item.id;
     if (selectedItemId === itemId) {
       setSelectedItemId(null);
@@ -105,7 +109,7 @@ export default function TrashPage() {
     }
   };
 
-  const handleRowClick = (e: React.MouseEvent, item: CatalogItem) => {
+  const handleRowClick = (e: React.MouseEvent, item: Item) => {
     if ((e.target as HTMLElement).closest('input[type="checkbox"], button, [role="menuitem"]')) {
       return;
     }
@@ -353,14 +357,14 @@ export default function TrashPage() {
                                   <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
                                     <DropdownMenuItem
                                       onClick={() => handleRestoreItem(paper.id)}
-                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                      className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
                                       <RotateCcw className="size-3.5 text-foreground shrink-0" />
                                       <span>Restore to Library</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => setSinglePurgeTarget(paper)}
-                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                      className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
                                       <Trash2 className="size-3.5 text-foreground shrink-0" />
                                       <span>Delete Permanently</span>
@@ -371,7 +375,7 @@ export default function TrashPage() {
                             </td>
                           </tr>
                         </ContextMenuTrigger>
-                        <ContextMenuContent className="w-48 text-xs font-sans">
+                        <ContextMenuContent className="w-48 text-12 font-sans">
                           <ContextMenuItem onClick={() => handleRestoreItem(paper.id)} className="gap-2 cursor-pointer text-foreground">
                             <RotateCcw className="size-3.5 text-foreground shrink-0" />
                             <span>Restore to Library</span>

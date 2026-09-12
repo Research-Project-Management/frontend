@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/shared/lib/api";
 import type {
   ZoteroConnection,
   ZoteroBinding,
@@ -30,8 +30,8 @@ export const zoteroKeys = {
     [...zoteroKeys.all, 'storageQuota', workspaceId, bindingId] as const,
 };
 
-const getBasePath = (workspaceId: string) =>
-  `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/integrations/zotero`;
+const getBasePath = (_workspaceId?: string) =>
+  `/api/v1/library/integrations/zotero`;
 
 export async function createZoteroConnection(
   workspaceId: string,

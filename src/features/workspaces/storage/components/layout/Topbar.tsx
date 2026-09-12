@@ -1,11 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 import { HardDrive, Search, Plus, Upload, FolderUp, FolderPlus, Columns3, AlignJustify, ListFilter, ChevronRight } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Popover, PopoverTrigger, PopoverContent } from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
 import { useTopbar } from '../../hooks/use-topbar';
 import CreateFolderModal from '../modal/CreateFolderModal';
 import RenameModal from '../modal/RenameModal';
@@ -26,7 +26,6 @@ interface TopbarProps {
   onBreadcrumbNavigate?: (folderId: string | null) => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
-  workspaceId?: string;
   projectId?: string;
   parentId?: string | null;
   children?: React.ReactNode;
@@ -40,7 +39,6 @@ export default function Topbar({
   onBreadcrumbNavigate,
   searchQuery = "",
   onSearchChange,
-  workspaceId,
   projectId,
   parentId,
   children,
@@ -61,14 +59,14 @@ export default function Topbar({
     folderInputRef,
     fileInputRef,
     duplicatePrompt,
-  } = useTopbar({ searchQuery, onSearchChange, workspaceId, parentId });
+  } = useTopbar({ searchQuery, onSearchChange, projectId, parentId });
 
   const { view, setView } = useViewStore();
 
   return (
     <header
       className={cn(
-        'flex items-center justify-between border-b border-border bg-background/80 px-4 h-12 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none',
+        'flex items-center justify-between border-b border-border bg-background/80 px-4 h-11 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none',
         className
       )}
       style={{ paddingLeft: 'max(1rem, var(--header-offset, 0px))' }}
@@ -175,8 +173,8 @@ export default function Topbar({
                         />
                       )}
                       <span className="relative z-10 flex">
-                        {v === 'grid' && <Columns3 className="size-4 shrink-0" strokeWidth={2.5} />}
-                        {v === 'list' && <AlignJustify className="size-4 shrink-0" strokeWidth={2.5} />}
+                        {v === 'grid' && <Columns3 className="size-4 shrink-0" strokeWidth={1.75} />}
+                        {v === 'list' && <AlignJustify className="size-4 shrink-0" strokeWidth={1.75} />}
                       </span>
                     </button>
                   </TooltipTrigger>
@@ -201,7 +199,7 @@ export default function Topbar({
           <PopoverContent
             align="end"
             onCloseAutoFocus={(e) => e.preventDefault()}
-            className="w-48 p-1 rounded-md border border-border bg-popover shadow-sm"
+            className="w-48 p-1 rounded-md border border-border bg-popover "
           >
             <button
               onClick={handleUploadFile}
@@ -248,11 +246,9 @@ export default function Topbar({
         onChange={handleFolderSelect}
       />
 
-      {workspaceId && (
-        <CreateFolderModal workspaceId={workspaceId} parentId={parentId} />
-      )}
+      <CreateFolderModal projectId={projectId} parentId={parentId} />
       <RenameModal />
-      <MoveModal workspaceId={workspaceId} />
+      <MoveModal projectId={projectId} />
       <DuplicateModal
         isOpen={duplicatePrompt !== null}
         filename={duplicatePrompt?.file.name ?? ""}

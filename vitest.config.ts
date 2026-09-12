@@ -17,7 +17,7 @@ export default defineConfig({
     setupFiles: ['./tests/unit/setup.ts'],
     include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
     passWithNoTests: true,
-    pool: 'threads',
+    pool: 'forks',
     testTimeout: 30000,
     fileParallelism: false,
     coverage: {

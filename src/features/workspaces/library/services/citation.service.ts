@@ -1,5 +1,5 @@
-import { apiGet, apiPost } from '@/shared/lib/api';
-import { logger } from '@/shared/lib/logger';
+import { apiGet, apiPost } from "@/shared/lib/api";
+import { logger } from "@/shared/lib/utils";
 import type { FormattedCitation, CslStyle, ReferenceData } from '../types/library.types';
 import { cleanDoi } from '../utils/author-doi.util';
 
@@ -7,33 +7,14 @@ export type { ReferenceData };
 
 export async function fetchReferenceByDoi(
   doi: string,
-  workspaceId?: string,
+  _scopeId?: string,
 ): Promise<ReferenceData | null> {
   const normalizedDoi = cleanDoi(doi);
   if (!normalizedDoi) {
     throw new Error('Invalid DOI provided');
   }
 
-  let resolvedWorkspaceId = workspaceId;
-  if (!resolvedWorkspaceId && typeof window !== 'undefined') {
-    const workspacePathMatch = window.location.pathname.match(
-      /^\/([0-9a-fA-F-]{36}|[a-zA-Z0-9_-]+)/,
-    );
-    if (
-      workspacePathMatch &&
-      workspacePathMatch[1] &&
-      !['login', 'signup', 'auth', 'settings', 'api'].includes(workspacePathMatch[1])
-    ) {
-      resolvedWorkspaceId = workspacePathMatch[1];
-    }
-  }
-
-  const resolveUrl =
-    resolvedWorkspaceId &&
-    resolvedWorkspaceId !== '_' &&
-    resolvedWorkspaceId !== 'global'
-      ? `/api/v1/workspaces/${encodeURIComponent(resolvedWorkspaceId)}/library/citation/resolve`
-      : `/api/v1/library/citation/resolve`;
+  const resolveUrl = `/api/v1/library/citation/resolve`;
 
   try {
     const referenceResponse = await apiPost<{
@@ -46,10 +27,11 @@ export async function fetchReferenceByDoi(
       { doi: normalizedDoi },
       { silent: true },
     );
-    if ('found' in referenceResponse && referenceResponse.found === false) return null;
-    if ('metadata' in referenceResponse && referenceResponse.metadata) return referenceResponse.metadata;
-    if ('work' in referenceResponse && referenceResponse.work) return referenceResponse.work;
-    if ('data' in referenceResponse && referenceResponse.data) return referenceResponse.data;
+    const res = referenceResponse as any;
+    if (res?.found === false) return null;
+    if (res?.metadata) return res.metadata as ReferenceData;
+    if (res?.work) return res.work as ReferenceData;
+    if (res?.data) return res.data as ReferenceData;
     return referenceResponse as ReferenceData;
   } catch (error: any) {
     if (error?.statusCode === 404 || error?.response?.status === 404) {
@@ -57,12 +39,7 @@ export async function fetchReferenceByDoi(
     }
     // Fallback: GET by encoded DOI
     try {
-      const doiUrl =
-        resolvedWorkspaceId &&
-        resolvedWorkspaceId !== '_' &&
-        resolvedWorkspaceId !== 'global'
-          ? `/api/v1/workspaces/${encodeURIComponent(resolvedWorkspaceId)}/library/citation/doi/${encodeURIComponent(normalizedDoi)}`
-          : `/api/v1/library/citation/doi/${encodeURIComponent(normalizedDoi)}`;
+      const doiUrl = `/api/v1/library/citation/doi/${encodeURIComponent(normalizedDoi)}`;
       const fallback = await apiGet<{
         work?: ReferenceData;
         data?: ReferenceData;
@@ -72,10 +49,11 @@ export async function fetchReferenceByDoi(
         doiUrl,
         { silent: true },
       );
-      if ('found' in fallback && fallback.found === false) return null;
-      if ('metadata' in fallback && fallback.metadata) return fallback.metadata;
-      if ('work' in fallback && fallback.work) return fallback.work;
-      if ('data' in fallback && fallback.data) return fallback.data;
+      const fb = fallback as any;
+      if (fb?.found === false) return null;
+      if (fb?.metadata) return fb.metadata as ReferenceData;
+      if (fb?.work) return fb.work as ReferenceData;
+      if (fb?.data) return fb.data as ReferenceData;
       return fallback as ReferenceData;
     } catch (fallbackError: any) {
       if (
@@ -172,38 +150,19 @@ export const CitationService = {
 
   /**
    * Get all available CSL citation styles
-   * Backed by GET /citation/styles
+   * Backed by GET /api/v1/library/citation/styles
    */
-  getStyles: (workspaceId: string) =>
+  getStyles: (_scopeId?: string) =>
     apiGet<{ styles: Array<{ id: string; name: string; shortName?: string }> }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/citation/styles`,
+      `/api/v1/library/citation/styles`,
     ),
 
   /**
    * Multi-source Academic Query Resolver (DOI, arXiv, PubMed PMID, URL, Title)
    */
-  resolve: async (query: string, workspaceId?: string) => {
+  resolve: async (query: string, _scopeId?: string) => {
     try {
-      let resolvedWorkspaceIdentifier = workspaceId;
-      if (!resolvedWorkspaceIdentifier && typeof window !== 'undefined') {
-        const workspacePathMatch = window.location.pathname.match(
-          /^\/([0-9a-fA-F-]{36}|[a-zA-Z0-9_-]+)/,
-        );
-        if (
-          workspacePathMatch &&
-          workspacePathMatch[1] &&
-          !['login', 'signup', 'auth', 'settings', 'api'].includes(workspacePathMatch[1])
-        ) {
-          resolvedWorkspaceIdentifier = workspacePathMatch[1];
-        }
-      }
-
-      const resolveUrl =
-        resolvedWorkspaceIdentifier &&
-        resolvedWorkspaceIdentifier !== '_' &&
-        resolvedWorkspaceIdentifier !== 'global'
-          ? `/api/v1/workspaces/${encodeURIComponent(resolvedWorkspaceIdentifier)}/library/citation/resolve`
-          : `/api/v1/library/citation/resolve`;
+      const resolveUrl = `/api/v1/library/citation/resolve`;
       const resolutionResponse = await apiPost<{
         query?: string;
         queryType?: string;
@@ -264,13 +223,13 @@ export const CitationService = {
    * Format Item metadata into CSL Citation (APA, IEEE, Nature, Harvard, Chicago, MLA, Vancouver)
    */
   formatCitation: (
-    workspaceId: string,
+    _scopeId: string | undefined,
     itemId: string,
     style: CslStyle = 'apa',
     index: number = 1,
   ) =>
     apiGet<FormattedCitation>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/citation/items/${encodeURIComponent(itemId)}/citation`,
+      `/api/v1/library/citation/items/${encodeURIComponent(itemId)}/citation`,
       { params: { style, index } },
     ),
 
@@ -279,7 +238,7 @@ export const CitationService = {
    * Backed by POST /citation/batch-items
    */
   batchFormat: (
-    workspaceId: string,
+    _scopeId: string | undefined,
     itemIds: string[],
     style: CslStyle = 'apa',
   ) =>
@@ -288,12 +247,27 @@ export const CitationService = {
       total: number;
       citations: Array<{ paperId: string; citation: FormattedCitation }>;
     }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/citation/batch-items`,
+      `/api/v1/library/citation/batch-items`,
       {
         itemIds,
         paperIds: itemIds,
         style,
       },
+    ),
+
+  /**
+   * Format raw item metadata into citation string without requiring item persistence
+   * Backed by POST /citation/format
+   */
+  formatRawItem: (
+    _scopeId: string | undefined,
+    item: Record<string, any>,
+    styleId: string = 'apa-7th',
+    index: number = 1,
+  ) =>
+    apiPost<FormattedCitation>(
+      `/api/v1/library/citation/format`,
+      { item, styleId, index },
     ),
 };
 
@@ -302,4 +276,6 @@ export const ReferenceService = CitationService;
 export const formatCslCitation = CitationService.formatCitation;
 export const batchFormatCslCitations = CitationService.batchFormat;
 export const resolveAcademicQuery = CitationService.resolve;
+export const formatRawCitation = CitationService.formatRawItem;
+
 

@@ -13,7 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
+} from "@/shared/components/ui";
 import type { Quicklink } from '../types/home.types';
 
 const getDisplayTitle = (title: string, url: string) => {
@@ -34,10 +34,8 @@ const getQuicklinkIcon = (url: string, title?: string) => {
   return Globe;
 };
 
-// --- Main Component ---
 export default function Quicklinks() {
-  const { workspaceId } = useParams() as { workspaceId: string };
-  const { state, actions } = useQuicklinks(workspaceId);
+  const { state, actions } = useQuicklinks();
   const { links, isLoaded } = state;
   const { addQuicklink, updateQuicklink, removeQuicklink } = actions;
   const [modalOpen, setModalOpen] = useState(false);

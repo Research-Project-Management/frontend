@@ -8,7 +8,6 @@ import type { Project } from '../../types/project.types';
 import type { ProjectFilterCriteria } from '../../utils/projects-page.util';
 
 export type ArchiveTopbarProps = {
-  workspaceId: string;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   totalCount?: number;
@@ -21,7 +20,6 @@ export type ArchiveTopbarProps = {
 };
 
 export function ArchiveTopbar({
-  workspaceId,
   searchQuery,
   onSearchChange,
   totalCount = 0,
@@ -35,7 +33,7 @@ export function ArchiveTopbar({
 
   return (
     <header
-      className="flex items-center justify-between px-4 h-12 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-20 shrink-0 select-none min-w-0"
+      className="flex items-center justify-between px-4 h-11 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-20 shrink-0 select-none min-w-0"
       style={{ paddingLeft: 'max(1rem, var(--header-offset, 0px))' }}
     >
       {/* Left: Icon & Title */}

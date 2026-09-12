@@ -11,7 +11,6 @@ import { useAuth } from './use-auth';
 import { loginUser } from '../services/auth.service';
 import { authKeys } from '../constants/auth.keys';
 import { loginSchema, type LoginSchema } from '../schemas/auth.schema';
-import { fetchAllWorkspaces } from '@/features/workspaces/shell/services/workspace.service';
 import { env } from '@/config/env';
 
 /**
@@ -46,18 +45,8 @@ export const useLogin = () => {
         return;
       }
 
-      // Determine routing based on existing workspaces
-      fetchAllWorkspaces()
-        .then((res) => {
-          if (res?.workspaces && res.workspaces.length > 0) {
-            router.push(`/${res.workspaces[0].url}`);
-          } else {
-            router.push('/create-workspace');
-          }
-        })
-        .catch(() => {
-          router.push('/create-workspace');
-        });
+      // Direct routing to /home
+      router.push('/home');
     },
     onError: (err: unknown) => {
       const message =
@@ -91,26 +80,16 @@ export const useLogin = () => {
         typeof window !== 'undefined'
           ? new URLSearchParams(window.location.search)
           : null;
+      if (params?.get('force') === 'true') {
+        return;
+      }
       const redirect = params?.get('redirect');
       if (redirect && redirect.startsWith('/')) {
         router.replace(redirect);
         return;
       }
 
-      fetchAllWorkspaces()
-        .then((data) => {
-          if (!isMounted) return;
-          if (data?.workspaces && data.workspaces.length > 0) {
-            router.replace(`/${data.workspaces[0].url}`);
-          } else {
-            router.replace('/create-workspace');
-          }
-        })
-        .catch(() => {
-          if (isMounted) {
-            router.replace('/create-workspace');
-          }
-        });
+      router.replace('/home');
     }
     return () => {
       isMounted = false;

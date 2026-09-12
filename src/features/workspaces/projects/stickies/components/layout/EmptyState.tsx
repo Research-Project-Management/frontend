@@ -1,11 +1,11 @@
-import { Layers2 } from "lucide-react";
+import { StickiesIcon } from "@/shared/components/ui";
 
 interface EmptyStateProps {
   searchQuery: string;
 }
 
 const copy = {
-  Icon: Layers2,
+  Icon: StickiesIcon,
   emptyFiltered: "No stickies match your filters",
   empty: "No stickies yet",
   cta: 'Click "Add Sticky" to get started',

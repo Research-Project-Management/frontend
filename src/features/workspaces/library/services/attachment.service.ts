@@ -1,27 +1,6 @@
-import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
-
-export interface AttachmentRevisionDto {
-  id: string;
-  attachmentId: string;
-  revisionNumber: number;
-  fileHash: string;
-  sizeBytes: number;
-  url: string;
-  comment?: string;
-  createdAt: string;
-}
-
-export interface AttachmentDto {
-  id: string;
-  catalogItemId: string;
-  filename: string;
-  url: string;
-  mimeType: string;
-  size: number;
-  fileHash?: string;
-  uploadedAt: string;
-  revisions?: AttachmentRevisionDto[];
-}
+import { apiGet, apiPost, apiDelete } from "@/shared/lib/api";
+import type { AttachmentDto, AttachmentRevisionDto } from "../types/library.types";
+export type { AttachmentDto, AttachmentRevisionDto };
 
 export interface AddRevisionDto {
   fileId: string;
@@ -29,85 +8,106 @@ export interface AddRevisionDto {
   comment?: string;
 }
 
-export async function getAttachments(workspaceId: string, itemId: string): Promise<AttachmentDto[]> {
+export async function getAttachments(_scopeId: string, itemId: string): Promise<AttachmentDto[]> {
   const response = await apiGet<{ attachments: AttachmentDto[] }>(
-    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/attachments`,
+    `/api/v1/library/items/${encodeURIComponent(itemId)}/attachments`,
   );
   return response.attachments || [];
 }
 
 /**
  * Get a single attachment by ID.
- * Backed by GET /api/v1/workspaces/:workspaceId/library/attachments/:attachmentId
+ * Backed by GET /api/v1/library/attachments/:attachmentId
  */
 export async function getAttachment(
-  workspaceId: string,
+  _scopeId: string,
   attachmentId: string,
 ): Promise<AttachmentDto> {
   const response = await apiGet<{ attachment: AttachmentDto }>(
-    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}`,
+    `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}`,
   );
   return (response as any).attachment ?? response;
 }
 
 export async function getAttachmentRevisions(
-  workspaceId: string,
+  _scopeId: string,
   attachmentId: string,
 ): Promise<AttachmentRevisionDto[]> {
   const response = await apiGet<{ revisions: AttachmentRevisionDto[] }>(
-    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/revisions`,
+    `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/revisions`,
   );
   return response.revisions || [];
 }
 
 /**
  * Upload a new file revision for an existing attachment.
- * Backed by POST /api/v1/workspaces/:workspaceId/library/attachments/:attachmentId/revisions
+ * Backed by POST /api/v1/library/attachments/:attachmentId/revisions
  */
 export async function addRevision(
-  workspaceId: string,
+  _scopeId: string,
   attachmentId: string,
   dto: AddRevisionDto,
 ): Promise<AttachmentRevisionDto> {
   const response = await apiPost<{ revision: AttachmentRevisionDto }>(
-    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/revisions`,
+    `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/revisions`,
     dto,
   );
   return (response as any).revision ?? response;
 }
 
 export async function deleteAttachment(
-  workspaceId: string,
+  _scopeId: string,
   attachmentId: string,
 ): Promise<boolean> {
   const response = await apiDelete<{ success: boolean }>(
-    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}`,
+    `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}`,
   );
   return response.success;
 }
 
 export async function captureSnapshot(
-  workspaceId: string,
+  _scopeId: string,
   itemId: string,
   url?: string,
 ): Promise<AttachmentDto> {
   const response = await apiPost<{ attachment: AttachmentDto } | AttachmentDto>(
-    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/attachments/snapshot`,
+    `/api/v1/library/items/${encodeURIComponent(itemId)}/attachments/snapshot`,
     url ? { url } : {},
   );
-  return (response as any).attachment ?? response;
+  return (response as { attachment?: AttachmentDto }).attachment ?? (response as AttachmentDto);
 }
 
 export async function createAttachment(
-  workspaceId: string,
+  _scopeId: string,
   itemId: string,
-  data: any,
-): Promise<any> {
-  const response = await apiPost<any>(
-    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/attachments`,
+  data: Record<string, unknown>,
+): Promise<AttachmentDto> {
+  const response = await apiPost<{ attachment?: AttachmentDto } | AttachmentDto>(
+    `/api/v1/library/items/${encodeURIComponent(itemId)}/attachments`,
     data,
   );
-  return response;
+  return (response as { attachment?: AttachmentDto }).attachment ?? (response as AttachmentDto);
+}
+
+export async function setPrimaryAttachment(
+  _scopeId: string,
+  itemId: string,
+  attachmentId: string,
+): Promise<{ success: boolean }> {
+  return apiPost(
+    `/api/v1/library/items/${encodeURIComponent(itemId)}/attachments/${encodeURIComponent(attachmentId)}/set-primary`,
+    {},
+  );
+}
+
+export function getFileContentUrl(_scopeId: string, fileId: string): string {
+  return `/api/v1/library/files/${encodeURIComponent(fileId)}/content`;
+}
+
+export async function fetchFileContent(_scopeId: string, fileId: string): Promise<Blob> {
+  return apiGet<Blob>(
+    `/api/v1/library/files/${encodeURIComponent(fileId)}/content`,
+  );
 }
 
 export const AttachmentsService = {
@@ -117,6 +117,10 @@ export const AttachmentsService = {
   addRevision,
   deleteAttachment,
   createAttachment,
+  setPrimaryAttachment,
+  getFileContentUrl,
+  fetchFileContent,
+  streamFileContent: fetchFileContent,
   addAttachment: createAttachment,
   captureSnapshot,
   // Ergonomic aliases
@@ -126,7 +130,7 @@ export const AttachmentsService = {
   delete: deleteAttachment,
   add: createAttachment,
   create: createAttachment,
+  setPrimary: setPrimaryAttachment,
 };
-
 
 export const AttachmentService = AttachmentsService;

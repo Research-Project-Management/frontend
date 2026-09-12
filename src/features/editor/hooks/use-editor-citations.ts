@@ -1,8 +1,8 @@
-﻿'use client';
+'use client';
 
 import { useMemo, useCallback } from 'react';
 import { useViewItems } from '@/features/workspaces/library/hooks/use-items';
-import type { CatalogItem } from '@/features/workspaces/library/types/library.types';
+import type { Item } from '@/features/workspaces/library/types/library.types';
 import {
   extractCitationKeys,
   formatCitationSnippet,
@@ -10,14 +10,14 @@ import {
 } from '../utils/citation.util';
 
 export interface UseEditorCitationsOptions {
-  workspaceId: string;
+  projectId?: string;
   content?: string;
   enabled?: boolean;
 }
 
 export interface UseEditorCitationsResult {
-  libraryItems: CatalogItem[];
-  citedItems: CatalogItem[];
+  libraryItems: Item[];
+  citedItems: Item[];
   missingKeys: string[];
   documentKeys: string[];
   isLoading: boolean;
@@ -26,17 +26,17 @@ export interface UseEditorCitationsResult {
     key: string,
     style?: 'latex-cite' | 'latex-citep' | 'latex-citet' | 'markdown-bracket' | 'markdown-inline',
   ) => string;
-  getAuthorSummary: (item: CatalogItem) => string;
-  searchLibrary: (query: string) => CatalogItem[];
+  getAuthorSummary: (item: Item) => string;
+  searchLibrary: (query: string) => Item[];
 }
 
 export function useEditorCitations({
-  workspaceId,
+  projectId,
   content = '',
   enabled = true,
 }: UseEditorCitationsOptions): UseEditorCitationsResult {
-  const { data, isLoading, isError } = useViewItems(workspaceId, 'all');
-  const libraryItems: CatalogItem[] = useMemo(() => data?.items ?? [], [data?.items]);
+  const { data, isLoading, isError } = useViewItems(projectId || 'me', 'all');
+  const libraryItems: Item[] = useMemo(() => data?.items ?? [], [data?.items]);
 
   const documentKeys = useMemo(() => {
     if (!content || !enabled) return [];
@@ -44,7 +44,7 @@ export function useEditorCitations({
   }, [content, enabled]);
 
   const itemKeyMap = useMemo(() => {
-    const map = new Map<string, CatalogItem>();
+    const map = new Map<string, Item>();
     for (const item of libraryItems) {
       if (item.citationKey) {
         map.set(item.citationKey.toLowerCase(), item);
@@ -54,7 +54,7 @@ export function useEditorCitations({
   }, [libraryItems]);
 
   const { citedItems, missingKeys } = useMemo(() => {
-    const cited: CatalogItem[] = [];
+    const cited: Item[] = [];
     const missing: string[] = [];
     const seenItemIds = new Set<string>();
 
@@ -74,7 +74,7 @@ export function useEditorCitations({
   }, [documentKeys, itemKeyMap]);
 
   const searchLibrary = useCallback(
-    (query: string): CatalogItem[] => {
+    (query: string): Item[] => {
       const q = query.trim().toLowerCase();
       if (!q) return libraryItems;
 

@@ -1,20 +1,31 @@
-import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/shared/lib/api";
 import type { ReaderNote, CreateNoteDto, UpdateNoteDto } from '../types/reader.types';
 
 export type CreateNoteDTO = CreateNoteDto;
 export type UpdateNoteDTO = UpdateNoteDto & { expectedVersion?: number };
 
 /**
- * NotesService corresponding to backend NotesService (backend/src/modules/library/notes/notes.service.ts)
+ * NotesService corresponding to backend NotesController (/api/v1/library/notes)
  */
 export const NotesService = {
   /**
-   * List notes for a workspace, optionally filtered by itemId
+   * List notes, optionally filtered by itemId
    */
-  list: async (workspaceId: string, itemId?: string): Promise<ReaderNote[]> => {
-    const query = itemId ? `?itemId=${encodeURIComponent(itemId)}` : '';
+  list: async (_scopeId?: string, itemId?: string): Promise<ReaderNote[]> => {
+    const url = itemId
+      ? `/api/v1/library/notes/items/${encodeURIComponent(itemId)}`
+      : `/api/v1/library/notes`;
+    const raw = await apiGet<any>(url);
+    if (Array.isArray(raw)) return raw;
+    return raw?.data || raw?.notes || [];
+  },
+
+  /**
+   * List notes specifically for an item
+   */
+  listByItem: async (_scopeId: string | undefined, itemId: string): Promise<ReaderNote[]> => {
     const raw = await apiGet<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes${query}`,
+      `/api/v1/library/notes/items/${encodeURIComponent(itemId)}`,
     );
     if (Array.isArray(raw)) return raw;
     return raw?.data || raw?.notes || [];
@@ -23,9 +34,9 @@ export const NotesService = {
   /**
    * Get single note by id
    */
-  get: async (workspaceId: string, id: string): Promise<ReaderNote> => {
+  get: async (_scopeId: string | undefined, id: string): Promise<ReaderNote> => {
     const raw = await apiGet<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes/${encodeURIComponent(id)}`,
+      `/api/v1/library/notes/${encodeURIComponent(id)}`,
     );
     return raw?.data || raw?.note || raw;
   },
@@ -33,9 +44,9 @@ export const NotesService = {
   /**
    * Create a new Note
    */
-  create: async (workspaceId: string, dto: CreateNoteDTO): Promise<ReaderNote> => {
+  create: async (_scopeId: string | undefined, dto: CreateNoteDTO): Promise<ReaderNote> => {
     const raw = await apiPost<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes`,
+      `/api/v1/library/notes`,
       dto,
     );
     return raw?.data || raw?.note || raw;
@@ -45,13 +56,13 @@ export const NotesService = {
    * Update an existing Note
    */
   update: async (
-    workspaceId: string,
+    _scopeId: string | undefined,
     id: string,
     version: number,
     dto: UpdateNoteDTO,
   ): Promise<ReaderNote> => {
     const raw = await apiPatch<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes/${encodeURIComponent(id)}`,
+      `/api/v1/library/notes/${encodeURIComponent(id)}`,
       {
         ...dto,
         expectedVersion: version,
@@ -64,13 +75,13 @@ export const NotesService = {
    * Delete a note
    */
   delete: async (
-    workspaceId: string,
+    _scopeId: string | undefined,
     id: string,
     version?: number,
   ): Promise<{ deleted: boolean }> => {
     const query = version !== undefined ? `?expectedVersion=${encodeURIComponent(String(version))}` : '';
     const raw = await apiDelete<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes/${encodeURIComponent(id)}${query}`,
+      `/api/v1/library/notes/${encodeURIComponent(id)}${query}`,
     );
     if (raw && typeof raw === 'object' && 'deleted' in raw) {
       return { deleted: Boolean(raw.deleted) };

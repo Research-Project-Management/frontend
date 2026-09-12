@@ -1,8 +1,7 @@
 'use client';
 
-import { useRef, useEffect, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { motion, useInView } from 'framer-motion';
 import {
@@ -18,7 +17,7 @@ import {
 
 import Navbar from '../components/navbar';
 import Footer from '../components/footer';
-import { fetchAllWorkspaces } from '@/features/workspaces/shell/services/workspace.service';
+import { hasAuthToken } from '@/shared/lib/token-storage';
 
 // ─── Animation variants ────────────────────────────────────────────────────────
 
@@ -95,31 +94,8 @@ export default function LandingPage() {
   const statsReveal = useScrollReveal();
   const ctaReveal = useScrollReveal();
 
-  const router = useRouter();
-  const { user, isLoading } = useAuth();
-
-  useEffect(() => {
-    let isMounted = true;
-    if (!isLoading && user) {
-      fetchAllWorkspaces()
-        .then((data) => {
-          if (!isMounted) return;
-          if (data?.workspaces && data.workspaces.length > 0) {
-            router.replace(`/${data.workspaces[0].url}`);
-          } else {
-            router.replace('/create-workspace');
-          }
-        })
-        .catch(() => {
-          if (isMounted) {
-            router.replace('/create-workspace');
-          }
-        });
-    }
-    return () => {
-      isMounted = false;
-    };
-  }, [isLoading, user, router]);
+  const { user } = useAuth();
+  const isAuthenticated = Boolean(user || (typeof window !== 'undefined' && hasAuthToken()));
 
   return (
     <div className='min-h-screen flex flex-col bg-background'>
@@ -172,15 +148,15 @@ export default function LandingPage() {
               className='flex flex-col sm:flex-row gap-3 justify-center pt-2'
             >
               <Link
-                href='/login'
-                className='group flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
+                href={isAuthenticated ? '/home' : '/register'}
+                className='group flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer shrink-0'
               >
                 Start for free
                 <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 shrink-0' aria-hidden='true' />
               </Link>
               <Link
-                href='/login'
-                className='flex h-9 items-center justify-center rounded-md border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
+                href={isAuthenticated ? '/home' : '/login'}
+                className='flex h-9 items-center justify-center rounded-md border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer shrink-0'
               >
                 Sign in
               </Link>
@@ -293,8 +269,8 @@ export default function LandingPage() {
             className='grid lg:grid-cols-3 gap-12'
           >
             <StepCard
-              title='Create a workspace'
-              description='Set up your research workspace in seconds. Invite your team and organize projects by topic, deadline, or department.'
+              title='Create a project'
+              description='Organize your research by topic, deadline, or paper. Invite team members, advisors, and reviewers directly to your project.'
             />
             <StepCard
               title='Write and collaborate'
@@ -358,13 +334,13 @@ export default function LandingPage() {
               Ready to start?
             </h2>
             <p className='text-lg text-muted-foreground'>
-              Create your workspace in under a minute. Free forever for small
+              Start your research project in under a minute. Free forever for small
               teams.
             </p>
             <div className='flex flex-col sm:flex-row gap-3 justify-center pt-2'>
               <Link
-                href='/login'
-                className='group flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
+                href={isAuthenticated ? '/home' : '/register'}
+                className='group flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer shrink-0'
               >
                 Get started
                 <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 shrink-0' aria-hidden='true' />

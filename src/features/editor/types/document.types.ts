@@ -8,7 +8,6 @@ export type Brand<T, B> = T & { readonly [brand]: B };
 
 export type PageId = Brand<string, 'PageId'>;
 export type ProjectId = Brand<string, 'ProjectId'>;
-export type WorkspaceId = Brand<string, 'WorkspaceId'>;
 export type FileId = Brand<string, 'FileId'>;
 
 export type DocumentContent =
@@ -21,8 +20,6 @@ export type DocumentContent =
 
 // ── Page ────────────────────────────────────────────────────────────────────────
 
-// ── Page ────────────────────────────────────────────────────────────────────────
-
 export type Page = {
   id: string;
   title: string;
@@ -30,7 +27,7 @@ export type Page = {
   status: "draft" | "published" | "archived";
   projectId:
     | string
-    | { id: string; name: string; workspaceId?: string | { id: string; url: string } };
+    | { id: string; name: string };
   author: {
     id: string;
     name: string;
@@ -117,3 +114,7 @@ export type PageComment = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type Comment = PageComment;
+export type DocumentComment = PageComment;
+

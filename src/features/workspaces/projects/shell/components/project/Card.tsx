@@ -13,9 +13,10 @@ import {
   Archive,
   Share2,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
-import { cn } from '@/shared/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
+import { ProjectAvatar } from "@/shared/components/ui";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import { useFavorites } from '../../hooks/use-favorites';
 import { useArchiveProject } from '../../hooks/use-project';
 import {
@@ -27,23 +28,22 @@ import type { Project } from '../../types/project.types';
 
 export type CardProps = {
   project: Project;
-  workspaceId: string;
   onArchive?: (projectId: string) => void;
 };
 
-export function Card({ project, workspaceId, onArchive }: CardProps) {
+export function Card({ project, onArchive }: CardProps) {
   const projectId = project.id || '';
   const projectKey = (project as any).key || project.identifier || getProjectKey(project.name);
   const isPrivate = isProjectPrivate(project);
 
-  const { isFavorite, toggleFavorite } = useFavorites(workspaceId);
+  const { isFavorite, toggleFavorite } = useFavorites();
   const favorited = isFavorite(projectId);
 
   const archiveProjectMutation = useArchiveProject();
 
   // Find lead from members or creator
   const leadMember = project.members?.find(
-    (m: any) => m.role === 'manager' || m.role === 'lead' || m.role === 'owner' || m.role === 'admin'
+    (m: any) => m.role === 'owner' || m.role === 'lead'
   );
   const leadUser =
     leadMember?.user ||
@@ -58,7 +58,7 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
     e.preventDefault();
     e.stopPropagation();
     if (typeof window !== 'undefined') {
-      const url = `${window.location.origin}/${workspaceId}/projects/${projectId}/overview`;
+      const url = `${window.location.origin}/projects/${projectId}/work-items`;
       navigator.clipboard.writeText(url);
     }
   };
@@ -122,8 +122,8 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer font-medium">
                 <Link
-                  href={`/${workspaceId}/projects/${projectId}/settings`}
-                  className="flex items-center gap-2 w-full"
+                  href={`/projects/${projectId}/settings`}
+                  className="flex items-center gap-2 w-full shrink-0"
                 >
                   <Settings className="size-3.5 shrink-0" />
                   <span>Settings</span>
@@ -142,14 +142,8 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
       </div>
 
       {/* Avatar Icon Badge (overlapping banner bottom) */}
-      <div className="absolute top-16 left-4 size-10 rounded-lg bg-background border border-border flex items-center justify-center text-xl shrink-0">
-        {project.avatar ? (
-          <span>{project.avatar}</span>
-        ) : (
-          <span className="text-sm font-semibold text-foreground">
-            {project.name ? project.name.charAt(0).toUpperCase() : 'P'}
-          </span>
-        )}
+      <div className="absolute top-16 left-4 size-10 rounded-lg bg-background border border-border flex items-center justify-center shrink-0 overflow-hidden shadow-xs">
+        <ProjectAvatar avatar={project.avatar} name={project.name} size="lg" />
       </div>
 
       {/* Card Body */}
@@ -157,8 +151,8 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
         <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <Link
-              href={`/${workspaceId}/projects/${projectId}/overview`}
-              className="text-sm font-semibold text-foreground tracking-tight truncate block hover:underline"
+              href={`/projects/${projectId}/work-items`}
+              className="text-sm font-semibold text-foreground tracking-tight truncate block hover:underline shrink-0"
             >
               {project.name}
             </Link>

@@ -1,83 +1,32 @@
-export interface ProjectMemberUser {
-  id: string;
-  name: string;
-  email?: string;
-  avatar?: string;
-}
+import { z } from 'zod';
+import {
+  ProjectRoleEnum,
+  ProjectMemberUserSchema,
+  ProjectMemberSchema,
+  ProjectSettingsSchema,
+  ProjectSchema,
+  CreateProjectInputSchema,
+  UpdateProjectInputSchema,
+  ProjectDetailResponseSchema,
+  ProjectListResponseSchema,
+} from '../schemas/project.schema';
 
-export interface ProjectMember {
-  id?: string;
-  user?: ProjectMemberUser;
-  userId?: string | ProjectMemberUser;
-  role: string;
-  joinedAt: string;
-}
+export type ProjectRole = z.infer<typeof ProjectRoleEnum>;
+export type ProjectMemberUser = z.infer<typeof ProjectMemberUserSchema>;
+export type ProjectMember = z.infer<typeof ProjectMemberSchema>;
+export type ProjectSettings = z.infer<typeof ProjectSettingsSchema>;
+export type Project = z.infer<typeof ProjectSchema>;
+export type CreateProjectInput = z.infer<typeof CreateProjectInputSchema>;
+export type UpdateProjectInput = z.infer<typeof UpdateProjectInputSchema>;
+export type ProjectDetailResponse = z.infer<typeof ProjectDetailResponseSchema>;
+export type ProjectListResponse = z.infer<typeof ProjectListResponseSchema>;
 
-export interface Workspace {
+export interface WorkspaceSummary {
   id: string;
   name: string;
   slug?: string;
+  url?: string;
 }
 
-export interface ProjectSettings {
-  parallelCycles?: boolean;
-  isPrivate?: boolean;
-  [key: string]: any;
-}
+export type Workspace = WorkspaceSummary;
 
-export interface Project {
-  id: string;
-  name: string;
-  description: string;
-  identifier?: string;
-  key?: string;
-  avatar?: string | null;
-  cover?: string | null;
-  isActive?: boolean;
-  isArchived?: boolean;
-  isFavorite?: boolean;
-  favoritedBy?: string[];
-  isPrivate?: boolean;
-  timezone?: string;
-  modules: string[];
-  workspace?: string;
-  workspaceId?: string | Workspace;
-  members: ProjectMember[];
-  createdBy?: {
-    id: string;
-    name: string;
-    email?: string;
-    avatar?: string;
-  };
-  settings?: ProjectSettings;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateProjectInput {
-  name: string;
-  avatar?: string;
-  cover?: string | null;
-  description?: string;
-  identifier?: string;
-  isPrivate?: boolean;
-  timezone?: string;
-  modules?: string[];
-}
-
-export interface UpdateProjectInput {
-  projectId: string;
-  name?: string;
-  description?: string;
-  avatar?: string | null;
-  cover?: string | null;
-  identifier?: string;
-  isPrivate?: boolean;
-  timezone?: string;
-  isArchived?: boolean;
-  isFavorite?: boolean;
-  modules?: string[];
-  subscriberIds?: string[];
-}
-
-export type { ProjectRole } from '@/features/workspaces/shell/types/iam.types';

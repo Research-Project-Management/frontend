@@ -7,7 +7,7 @@ import {
   BookMarked,
 } from "lucide-react";
 import React, { useEffect, useState, useCallback } from "react";
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 
 import SearchTab from "./search/SearchTab";
@@ -17,7 +17,7 @@ import ReviewTab from "./review/ReviewTab";
 import HistoryTab from "./history/HistoryTab";
 import CitationTab from "./citation/CitationTab";
 import { EditorEventBus } from "@/features/editor/utils/editor.util";
-import { logger } from "@/shared/lib/logger";
+import { logger } from "@/shared/lib/utils";
 
 const sideBarItems = [
   { name: "Files", icon: FileText },
@@ -114,7 +114,7 @@ export default function SideBar({
   return (
     <div className="flex h-full w-full overflow-hidden bg-card">
       {/* Icon strip */}
-      <ul className="flex h-full w-13 shrink-0 flex-col items-center gap-1 border-r border-border bg-card px-1.5 py-2">
+      <ul className="flex h-full w-12 shrink-0 flex-col items-center gap-1 border-r border-border bg-card px-1 py-2">
         {sideBarItems.map((item) => {
           const isOpen = activePanel === item.name;
           return (
@@ -138,12 +138,12 @@ export default function SideBar({
                         src={item.imageSrc}
                         alt={item.name}
                         className={cn(
-                          "size-4 transition-all hover:grayscale-0 hover:opacity-100",
+                          "size-4 shrink-0 transition-all hover:grayscale-0 hover:opacity-100",
                           isOpen ? "grayscale-0 opacity-100" : "grayscale opacity-60",
                         )}
                       />
                     ) : (
-                      <item.icon className="size-4" strokeWidth={1.8} />
+                      <item.icon className="size-4 shrink-0" strokeWidth={1.75} />
                     )}
                   </button>
                 </TooltipTrigger>

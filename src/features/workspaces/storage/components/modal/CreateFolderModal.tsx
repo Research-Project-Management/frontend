@@ -9,11 +9,11 @@ import { createFolderSchema, type CreateFolderInput } from "@/features/workspace
 import { SingleInputModal } from "./SingleInputModal";
 
 type CreateFolderModalProps = {
-  workspaceId: string;
+  projectId?: string;
   parentId?: string | null;
 };
 
-export default function CreateFolderModal({ workspaceId, parentId }: CreateFolderModalProps) {
+export default function CreateFolderModal({ projectId, parentId }: CreateFolderModalProps) {
   const [open, setOpen] = useState(false);
   const createFolderMutation = useCreateFolder();
 
@@ -27,7 +27,7 @@ export default function CreateFolderModal({ workspaceId, parentId }: CreateFolde
     resolver: zodResolver(createFolderSchema),
     defaultValues: {
       name: "",
-      workspaceId,
+      projectId,
       parentId: parentId || null,
     },
   });
@@ -38,14 +38,14 @@ export default function CreateFolderModal({ workspaceId, parentId }: CreateFolde
     const handleOpen = () => {
       reset({
         name: "",
-        workspaceId,
+        projectId,
         parentId: parentId || null,
       });
       setOpen(true);
     };
     window.addEventListener('open-create-folder', handleOpen);
     return () => window.removeEventListener('open-create-folder', handleOpen);
-  }, [workspaceId, parentId, reset]);
+  }, [projectId, parentId, reset]);
 
   const onFormSubmit = async (data: CreateFolderInput) => {
     try {

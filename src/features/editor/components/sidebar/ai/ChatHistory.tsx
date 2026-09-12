@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/shared/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog';
-import { Input } from '@/shared/components/ui/input';
+import { Button } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
 import {
   Search,
   MessageSquare,
@@ -51,7 +51,7 @@ function groupChats(chats: ChatSession[]): Record<string, ChatSession[]> {
 export interface ChatHistoryProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  workspaceId?: string | null;
+  projectId?: string | null;
   pageId?: string | null;
   activeChatId?: string | null;
   onSelectChat?: (chat: ChatSession) => void;
@@ -63,7 +63,7 @@ export interface ChatHistoryProps {
 export function ChatHistory({
   open,
   onOpenChange,
-  workspaceId,
+  projectId,
   pageId,
   activeChatId,
   onSelectChat,
@@ -80,17 +80,16 @@ export function ChatHistory({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const fetchChats = useCallback(async () => {
-    if (!workspaceId) return;
     setLoading(true);
     try {
-      const data = await listChatSessions(workspaceId);
+      const data = await listChatSessions(projectId || undefined);
       setChats(data);
     } catch (err) {
       console.error('Failed to load chat sessions:', err);
     } finally {
       setLoading(false);
     }
-  }, [workspaceId]);
+  }, [projectId]);
 
   useEffect(() => {
     if (open) {

@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   CheckCircle2,
@@ -21,6 +21,7 @@ import {
   createCommentSchema,
   createReplySchema,
   type CreateCommentInput,
+  type CreateReplyInput,
 } from "@/features/editor/schemas/comment.schema";
 import {
   usePageComments,
@@ -35,6 +36,7 @@ import { usePageStore } from "@/features/editor/store/page.store";
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useActionsStore } from '@/features/editor/store/actions.store';
 import { cn } from "@/shared/lib/utils";
+import { Form } from "@/shared/components/ui";
 
 
 type Filter = "all" | "open" | "resolved";
@@ -69,7 +71,7 @@ function Avatar({
     <div
       className={`size-${size} rounded-full bg-primary/10 flex items-center justify-center shrink-0`}
     >
-      <User className={`size-${Math.round(size * 0.55)} text-primary`} />
+      <User className={`size-${Math.round(size * 0.55)} text-primary shrink-0`} />
     </div>
   );
 }
@@ -87,7 +89,13 @@ function CommentCard({
   onNavigate?: (line: number) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [replyText, setReplyText] = useState("");
+
+  const replyForm = useForm<CreateReplyInput>({
+    resolver: zodResolver(createReplySchema),
+    defaultValues: {
+      content: "",
+    },
+  });
 
   const updateMutation = useUpdateComment();
   const deleteMutation = useDeleteComment();
@@ -97,7 +105,7 @@ function CommentCard({
   const isAuthor = currentUserId === comment.author.id;
   const isResolved = comment.status === "resolved";
   const hasReplies = comment.replies.length > 0;
-  const lineEnd = (comment as any).lineEnd;
+  const lineEnd = comment.lineEnd;
 
   const handleToggleStatus = () => {
     updateMutation.mutate({
@@ -111,12 +119,10 @@ function CommentCard({
     deleteMutation.mutate({ pageId, commentId: comment.id });
   };
 
-  const handleSendReply = () => {
-    const text = replyText.trim();
-    if (!text) return;
+  const handleSendReply = (data: CreateReplyInput) => {
     addReplyMutation.mutate(
-      { pageId, commentId: comment.id, content: text },
-      { onSuccess: () => setReplyText("") },
+      { pageId, commentId: comment.id, content: data.content },
+      { onSuccess: () => replyForm.reset() },
     );
   };
 
@@ -231,7 +237,7 @@ function CommentCard({
       {/* Replies section */}
       {expanded && (
         <div className="ml-5 border-l border-border pl-3 pr-3 pb-2.5 bg-muted">
-          {comment.replies.map((reply: any) => (
+          {comment.replies.map((reply: CommentReply) => (
             <ReplyRow
               key={reply.id}
               reply={reply}
@@ -240,28 +246,35 @@ function CommentCard({
               isPending={deleteReplyMutation.isPending}
             />
           ))}
-          <div className="flex items-center gap-1.5 mt-2">
-            <input
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              onKeyDown={(e) =>
-                e.key === "Enter" && !e.shiftKey && handleSendReply()
-              }
-              placeholder="Reply…"
-              className="flex-1 min-w-0 text-xs bg-background border border-border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50"
-            />
-            <button
-              onClick={handleSendReply}
-              disabled={!replyText.trim() || addReplyMutation.isPending}
-              className="p-1 rounded text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 shrink-0"
+          <Form {...replyForm}>
+            <form
+              onSubmit={replyForm.handleSubmit(handleSendReply)}
+              className="flex items-center gap-1.5 mt-2"
             >
-              {addReplyMutation.isPending ? (
-                <Loader2 className="size-3.5 animate-spin shrink-0" />
-              ) : (
-                <Send className="size-3.5 shrink-0" />
-              )}
-            </button>
-          </div>
+              <input
+                {...replyForm.register("content")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    replyForm.handleSubmit(handleSendReply)();
+                  }
+                }}
+                placeholder="Reply…"
+                className="flex-1 min-w-0 text-xs bg-background border border-border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50"
+              />
+              <button
+                type="submit"
+                disabled={addReplyMutation.isPending || replyForm.formState.isSubmitting}
+                className="p-1 rounded text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 shrink-0 cursor-pointer"
+              >
+                {addReplyMutation.isPending ? (
+                  <Loader2 className="size-3.5 animate-spin shrink-0" />
+                ) : (
+                  <Send className="size-3.5 shrink-0" />
+                )}
+              </button>
+            </form>
+          </Form>
         </div>
       )}
     </li>
@@ -318,14 +331,7 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
   const [filter, setFilter] = useState<Filter>("open");
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    watch,
-    formState: { isSubmitting },
-  } = useForm<CreateCommentInput>({
+  const form = useForm<CreateCommentInput>({
     resolver: zodResolver(createCommentSchema),
     defaultValues: {
       content: "",
@@ -334,8 +340,17 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
     },
   });
 
-  const lineStartVal = watch("line");
-  const lineEndVal = watch("lineEnd");
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    control,
+    formState: { isSubmitting },
+  } = form;
+
+  const lineStartVal = useWatch({ control, name: "line" });
+  const lineEndVal = useWatch({ control, name: "lineEnd" });
 
   const { data: comments = [], isLoading } = usePageComments(pageId ?? null);
   const createMutation = useCreateComment();
@@ -426,75 +441,77 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
 
       {/* ── Add comment form (React Hook Form + Zod) ── */}
       {showAddForm && (
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="border-b border-border px-3 py-3 bg-muted">
-            <div className="flex items-center gap-1.5 mb-2">
-              <span className="text-xs font-semibold text-muted-foreground">
-                New comment
-              </span>
-              {(lineStartVal || lineEndVal) && (
-                <span className="text-xs font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                  L{lineStartVal}
-                  {lineEndVal && lineEndVal !== lineStartVal
-                    ? `–${lineEndVal}`
-                    : ""}
+        <Form {...form}>
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className="border-b border-border px-3 py-3 bg-muted">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-xs font-semibold text-muted-foreground">
+                  New comment
                 </span>
-              )}
-            </div>
-
-            <textarea
-              autoFocus
-              {...register("content")}
-              placeholder="Describe your feedback…"
-              rows={3}
-              className="w-full text-xs bg-background border border-border rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-primary/50 mb-2"
-            />
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span className="shrink-0">Lines:</span>
-                <input
-                  type="number"
-                  {...register("line", { valueAsNumber: true })}
-                  placeholder="start"
-                  className="w-14 text-xs bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary/50"
-                />
-                <span>–</span>
-                <input
-                  type="number"
-                  {...register("lineEnd", { valueAsNumber: true })}
-                  placeholder="end"
-                  className="w-14 text-xs bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary/50"
-                />
+                {(lineStartVal || lineEndVal) && (
+                  <span className="text-xs font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                    L{lineStartVal}
+                    {lineEndVal && lineEndVal !== lineStartVal
+                      ? `–${lineEndVal}`
+                      : ""}
+                  </span>
+                )}
               </div>
 
-              <div className="flex gap-1.5 ml-auto">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddForm(false);
-                    reset();
-                  }}
-                  className="text-xs px-2 py-1 rounded text-muted-foreground hover:bg-muted transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending || isSubmitting}
-                  className="text-xs px-2.5 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1"
-                >
-                  {createMutation.isPending ? (
-                    <Loader2 className="size-3 animate-spin shrink-0" />
-                  ) : (
-                    <Send className="size-3 shrink-0" />
-                  )}
-                  Post
-                </button>
+              <textarea
+                autoFocus
+                {...register("content")}
+                placeholder="Describe your feedback…"
+                rows={3}
+                className="w-full text-xs bg-background border border-border rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-primary/50 mb-2"
+              />
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <span className="shrink-0">Lines:</span>
+                  <input
+                    type="number"
+                    {...register("line", { valueAsNumber: true })}
+                    placeholder="start"
+                    className="w-14 text-xs bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  />
+                  <span>–</span>
+                  <input
+                    type="number"
+                    {...register("lineEnd", { valueAsNumber: true })}
+                    placeholder="end"
+                    className="w-14 text-xs bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  />
+                </div>
+
+                <div className="flex gap-1.5 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddForm(false);
+                      reset();
+                    }}
+                    className="text-xs px-2 py-1 rounded text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={createMutation.isPending || isSubmitting}
+                    className="text-xs px-2.5 py-1 rounded bg-primary text-primary-foreground hover:bg-primary-hover transition-colors disabled:opacity-50 flex items-center gap-1 cursor-pointer"
+                  >
+                    {createMutation.isPending ? (
+                      <Loader2 className="size-3 animate-spin shrink-0" />
+                    ) : (
+                      <Send className="size-3 shrink-0" />
+                    )}
+                    Post
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </form>
+          </form>
+        </Form>
       )}
 
       {/* ── Filter bar ── */}

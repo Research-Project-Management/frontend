@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, Plus, Edit3, Trash2, FileText, Check, X, Tag } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
+import { Loader2, Plus, Edit3, Trash2, FileText, Check, X, Tag, Bold, Italic, Quote, Sigma, AtSign } from 'lucide-react';
+import { Button, Form } from "@/shared/components/ui";
+import { renderMarkdown } from '@/features/workspaces/ai/utils/render-markdown';
 import { useNotes } from '../../hooks/use-notes';
 import { noteFormSchema } from '../../schemas/reader.schema';
+import { generateCitationKey } from '../../utils/reader.util';
 import type { ReaderDocument, Note, NoteFormData } from '../../types/reader.types';
 
 interface NotesPanelProps {
@@ -30,21 +32,19 @@ interface DisplayNote {
 function NoteEditForm({
   initialContent,
   initialTitle,
+  citationKey,
   isSaving,
   onSave,
   onCancel,
 }: {
   initialContent: string;
   initialTitle?: string;
+  citationKey?: string;
   isSaving: boolean;
   onSave: (data: NoteFormData) => Promise<void>;
   onCancel: () => void;
 }) {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<NoteFormData>({
+  const form = useForm<NoteFormData>({
     resolver: zodResolver(noteFormSchema),
     defaultValues: {
       contentMd: initialContent,
@@ -52,38 +52,98 @@ function NoteEditForm({
     },
   });
 
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    getValues,
+    formState: { errors },
+  } = form;
+
+  const insertSnippet = (before: string, after: string = '') => {
+    const cur = getValues('contentMd') || '';
+    setValue('contentMd', `${cur}${before}${after}`, { shouldValidate: true, shouldDirty: true });
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSave)} className="space-y-2 rounded-sm border border-border p-2">
-      <textarea
-        {...register('contentMd')}
-        aria-label="Note content"
-        className="w-full resize-none bg-transparent text-xs leading-relaxed outline-none focus:ring-0 text-foreground"
-        rows={3}
-        autoFocus
-      />
-      {errors.contentMd && (
-        <p className="text-11 text-destructive">{errors.contentMd.message}</p>
-      )}
-      <div className="flex justify-end gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-6 text-xs px-2 cursor-pointer rounded-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
-          onClick={onCancel}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          size="sm"
-          className="h-6 text-xs px-2.5 font-medium cursor-pointer rounded-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
-          disabled={isSaving}
-        >
-          {isSaving ? <Loader2 className="size-3 animate-spin shrink-0" /> : 'Save'}
-        </Button>
-      </div>
-    </form>
+    <Form {...form}>
+      <form onSubmit={handleSubmit(onSave)} className="space-y-2 rounded-sm border border-border p-2 bg-muted/20">
+        <div className="flex items-center gap-1 border-b border-border/50 pb-1 text-muted-foreground">
+          <button
+            type="button"
+            onClick={() => insertSnippet('**', '**')}
+            className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer"
+            title="Bold"
+          >
+            <Bold className="size-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => insertSnippet('*', '*')}
+            className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer"
+            title="Italic"
+          >
+            <Italic className="size-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => insertSnippet('\n> ', '\n')}
+            className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer"
+            title="Quote"
+          >
+            <Quote className="size-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => insertSnippet('$', '$')}
+            className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer"
+            title="LaTeX Math"
+          >
+            <Sigma className="size-3" />
+          </button>
+          {citationKey && (
+            <button
+              type="button"
+              onClick={() => insertSnippet(`@${citationKey} `)}
+              className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer flex items-center gap-0.5"
+              title={`Cite: @${citationKey}`}
+            >
+              <AtSign className="size-3" />
+            </button>
+          )}
+        </div>
+
+        <textarea
+          {...register('contentMd')}
+          aria-label="Note content"
+          className="w-full resize-none bg-transparent text-xs leading-relaxed outline-none focus:ring-0 text-foreground"
+          rows={3}
+          autoFocus
+        />
+        {errors.contentMd && (
+          <p className="text-11 text-destructive">{errors.contentMd.message}</p>
+        )}
+        <div className="flex justify-end gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 text-xs px-2 cursor-pointer rounded-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            size="sm"
+            className="h-6 text-xs px-2.5 font-medium cursor-pointer rounded-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+            disabled={isSaving}
+          >
+            {isSaving ? <Loader2 className="size-3 animate-spin shrink-0" /> : 'Save'}
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }
 
@@ -107,14 +167,7 @@ export default function NotesPanel({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const {
-    register: registerNewNote,
-    handleSubmit: handleSubmitNewNote,
-    reset: resetNewNote,
-    setValue: setNewNoteValue,
-    watch: watchNewNote,
-    formState: { errors: newNoteErrors },
-  } = useForm<NoteFormData>({
+  const newNoteForm = useForm<NoteFormData>({
     resolver: zodResolver(noteFormSchema),
     defaultValues: {
       contentMd: '',
@@ -123,7 +176,23 @@ export default function NotesPanel({
     },
   });
 
-  const currentNewNoteContent = watchNewNote('contentMd');
+  const {
+    register: registerNewNote,
+    handleSubmit: handleSubmitNewNote,
+    reset: resetNewNote,
+    setValue: setNewNoteValue,
+    getValues: getNewNoteValues,
+    control: newNoteControl,
+    formState: { errors: newNoteErrors },
+  } = newNoteForm;
+
+  const citationKey = generateCitationKey(paper);
+  const currentNewNoteContent = useWatch({ control: newNoteControl, name: 'contentMd' }) ?? '';
+
+  const insertNewSnippet = (before: string, after: string = '') => {
+    const cur = getNewNoteValues('contentMd') || '';
+    setNewNoteValue('contentMd', `${cur}${before}${after}`, { shouldValidate: true, shouldDirty: true });
+  };
 
   useEffect(() => {
     resetNewNote();
@@ -133,12 +202,14 @@ export default function NotesPanel({
 
   useEffect(() => {
     if (pendingText) {
-      const current = watchNewNote('contentMd') || '';
-      const quote = `> "${pendingText.trim()}"\n\n`;
-      setNewNoteValue('contentMd', current ? `${current}\n\n${quote}` : quote, { shouldValidate: true });
+      const current = getNewNoteValues('contentMd') || '';
+      const formatted = pendingText.trim().startsWith('>')
+        ? `${pendingText.trim()}\n\n`
+        : `> "${pendingText.trim()}"\n\n`;
+      setNewNoteValue('contentMd', current ? `${current}\n\n${formatted}` : formatted, { shouldValidate: true, shouldDirty: true });
       if (onClearPendingText) onClearPendingText();
     }
-  }, [pendingText, onClearPendingText, setNewNoteValue, watchNewNote]);
+  }, [pendingText, onClearPendingText, setNewNoteValue, getNewNoteValues]);
 
   const displayNotes: DisplayNote[] = React.useMemo(() => {
     const list: DisplayNote[] = (canonicalNotes || []).map((cnNote: Note) => ({
@@ -249,36 +320,82 @@ export default function NotesPanel({
   return (
     <div className="flex h-full flex-col bg-background min-h-0">
       <div className="p-3 border-b border-border bg-background shrink-0">
-        <form
-          onSubmit={handleSubmitNewNote(handleAddNote)}
-          className="rounded-sm border border-border bg-background focus-within:ring-1 focus-within:ring-ring p-2"
-        >
-          <textarea
-            {...registerNewNote('contentMd')}
-            aria-label="New note content"
-            placeholder="Write a note or observation..."
-            rows={2}
-            className="w-full resize-none bg-transparent text-xs leading-relaxed outline-none placeholder:text-muted-foreground/50 text-foreground"
-          />
-          {newNoteErrors.contentMd && (
-            <p className="text-11 text-destructive mt-0.5">{newNoteErrors.contentMd.message}</p>
-          )}
-          <div className="flex justify-end pt-1">
-            <Button
-              type="submit"
-              size="sm"
-              disabled={!currentNewNoteContent?.trim() || isBusy}
-              className="h-6 text-xs px-2.5 font-medium cursor-pointer rounded-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
-            >
-              {isCreating ? (
-                <Loader2 className="size-3 animate-spin mr-1 shrink-0" />
-              ) : (
-                <Plus className="size-3 mr-1 shrink-0" />
+        <Form {...newNoteForm}>
+          <form
+            onSubmit={handleSubmitNewNote(handleAddNote)}
+            className="rounded-sm border border-border bg-background focus-within:ring-1 focus-within:ring-ring p-2 space-y-1.5"
+          >
+            <div className="flex items-center gap-1 border-b border-border/50 pb-1 text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => insertNewSnippet('**', '**')}
+                className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer"
+                title="Bold"
+              >
+                <Bold className="size-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => insertNewSnippet('*', '*')}
+                className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer"
+                title="Italic"
+              >
+                <Italic className="size-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => insertNewSnippet('\n> ', '\n')}
+                className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer"
+                title="Quote"
+              >
+                <Quote className="size-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => insertNewSnippet('$', '$')}
+                className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer"
+                title="LaTeX Math"
+              >
+                <Sigma className="size-3" />
+              </button>
+              {citationKey && (
+                <button
+                  type="button"
+                  onClick={() => insertNewSnippet(`@${citationKey} `)}
+                  className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer flex items-center gap-0.5"
+                  title={`Cite: @${citationKey}`}
+                >
+                  <AtSign className="size-3" />
+                </button>
               )}
-              Add note
-            </Button>
-          </div>
-        </form>
+            </div>
+            <textarea
+              {...registerNewNote('contentMd')}
+              aria-label="New note content"
+              placeholder="Write a note (Markdown & LaTeX $...$ supported)..."
+              rows={2}
+              className="w-full resize-none bg-transparent text-xs leading-relaxed outline-none placeholder:text-muted-foreground/50 text-foreground"
+            />
+            {newNoteErrors.contentMd && (
+              <p className="text-11 text-destructive mt-0.5">{newNoteErrors.contentMd.message}</p>
+            )}
+            <div className="flex justify-end pt-1">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={!currentNewNoteContent?.trim() || isBusy}
+                className="h-6 text-xs px-2.5 font-medium cursor-pointer rounded-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+              >
+                {isCreating ? (
+                  <Loader2 className="size-3 animate-spin mr-1 shrink-0" />
+                ) : (
+                  <Plus className="size-3 mr-1 shrink-0" />
+                )}
+                Add note
+              </Button>
+            </div>
+          </form>
+        </Form>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
@@ -312,6 +429,7 @@ export default function NotesPanel({
                     <NoteEditForm
                       initialContent={note.content}
                       initialTitle={note.title}
+                      citationKey={citationKey}
                       isSaving={isUpdating}
                       onSave={handleSaveEdit}
                       onCancel={() => setEditingId(null)}
@@ -319,9 +437,9 @@ export default function NotesPanel({
                   ) : (
                     <div className="space-y-1">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="whitespace-pre-wrap text-xs leading-relaxed text-foreground select-text flex-1">
-                          {note.content}
-                        </p>
+                        <div className="text-xs leading-relaxed text-foreground select-text flex-1 overflow-hidden space-y-1">
+                          {renderMarkdown(note.content)}
+                        </div>
                         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity shrink-0">
                           {isDeletingNote ? (
                             <div className="flex items-center gap-1 rounded border border-destructive/20 bg-destructive/10 p-0.5">

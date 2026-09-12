@@ -33,33 +33,44 @@ export const AVAILABLE_LABEL_COLORS = [
 export const DEFAULT_LABEL_COLOR = "#3b82f6";
 
 export const CycleLabelService = {
-  list: async (workspaceId: string, type: string = "cycle", projectId?: string): Promise<CycleLabel[]> => {
-    const res = await apiGet<{ labels?: CycleLabel[] } | CycleLabel[]>(`/api/workspace/${workspaceId}/labels`, {
-      params: { type, ...(projectId ? { projectId } : {}) },
+  list: async (_workspaceId?: string, type: string = "cycle", projectId?: string): Promise<CycleLabel[]> => {
+    if (projectId) {
+      const res = await apiGet<{ labels?: CycleLabel[] } | CycleLabel[]>(`/api/projects/${projectId}/labels`);
+      if (Array.isArray(res)) return res;
+      return (res as any)?.labels || (res as any)?.data || [];
+    }
+    const res = await apiGet<{ labels?: CycleLabel[] } | CycleLabel[]>(`/api/labels`, {
+      params: { type },
     });
     if (Array.isArray(res)) return res;
     return (res as any)?.labels || (res as any)?.data || [];
   },
 
   create: ({
-    workspaceId,
+    workspaceId: _workspaceId,
     name,
     color = DEFAULT_LABEL_COLOR,
     type = "cycle",
     projectId,
   }: {
-    workspaceId: string;
+    workspaceId?: string;
     name: string;
     color?: string;
     type?: string;
     projectId?: string;
-  }) =>
-    apiPost<{ label?: CycleLabel; tag?: CycleLabel }>(`/api/workspace/${workspaceId}/labels`, {
+  }) => {
+    if (projectId) {
+      return apiPost<{ label?: CycleLabel; tag?: CycleLabel }>(`/api/projects/${projectId}/labels`, {
+        name,
+        color,
+      });
+    }
+    return apiPost<{ label?: CycleLabel; tag?: CycleLabel }>(`/api/labels`, {
       name,
       color,
       type,
-      projectId,
-    }),
+    });
+  },
 
   update: ({
     labelId,

@@ -1,20 +1,18 @@
 'use client';
 
 import React from 'react';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Skeleton } from "@/shared/components/ui";
 import ListView, { type StorageViewProps } from '../views/ListView';
 import GridView from '../views/GridView';
 import { useViewStore } from '../../store/use-view-store';
 
 export interface StorageViewContainerProps {
   isLoading: boolean;
-  workspaceId?: string | null;
   viewProps: StorageViewProps;
 }
 
 export function StorageViewContainer({
   isLoading,
-  workspaceId,
   viewProps,
 }: StorageViewContainerProps) {
   const { view } = useViewStore();
@@ -30,8 +28,6 @@ export function StorageViewContainer({
             ))}
           </div>
         </div>
-      ) : !workspaceId ? (
-        <div className="p-6 text-muted-foreground">Workspace not found</div>
       ) : view === 'list' ? (
         <ListView {...viewProps} />
       ) : (

@@ -1,6 +1,6 @@
 export type FileType = "folder" | "document" | "image" | "video" | "audio" | "archive" | "other";
 
-export type StorageLevel = "workspace" | "project";
+export type StorageLevel = "personal" | "project";
 
 export type StorageItem = {
     id: string;
@@ -65,7 +65,7 @@ export type StorageUsageResponse = {
 };
 
 export type UploadFileParams = {
-    workspaceId: string;
+    projectId?: string;
     parentId?: string | null;
     pageId?: string | null;
     metaData?: Record<string, any>;
@@ -73,7 +73,7 @@ export type UploadFileParams = {
 };
 
 export type CreateFileRecordParams = {
-    workspaceId: string;
+    projectId?: string;
     filename: string;
     size: number;
     mimeType: string;
@@ -84,7 +84,7 @@ export type CreateFileRecordParams = {
 };
 
 export type CreateFolderParams = {
-    workspaceId: string;
+    projectId?: string;
     parentId?: string | null;
     pageId?: string | null;
 };

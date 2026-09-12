@@ -1,4 +1,4 @@
-import { ConfirmDeleteModal, ConfirmDeleteModalProps } from '@/shared/components/modals/ConfirmDeleteModal';
+import { ConfirmDeleteModal, ConfirmDeleteModalProps } from "@/shared/components/ui";
 
 export type DeleteModalProps = ConfirmDeleteModalProps;
 export const DeleteModal = ConfirmDeleteModal;

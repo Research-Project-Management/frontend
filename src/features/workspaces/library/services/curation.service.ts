@@ -1,6 +1,6 @@
-import { apiGet, apiPost } from '@/shared/lib/api';
+import { apiGet, apiPost } from "@/shared/lib/api";
 import type {
-  CatalogItem,
+  Item,
   DuplicateGroup,
   LibraryIntegrityReport,
 } from '../types/library.types';
@@ -21,9 +21,9 @@ export interface RawDuplicateCluster {
 }
 
 export const QualityService = {
-  getDuplicates: async (workspaceId: string) => {
+  getDuplicates: async (_workspaceId?: string) => {
     const res = await apiGet<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/curation/duplicates`,
+      `/api/v1/library/curation/duplicates`,
     );
 
     const clusters: RawDuplicateCluster[] = Array.isArray(res)
@@ -55,7 +55,7 @@ export const QualityService = {
   },
 
   mergePapers: (
-    workspaceId: string,
+    _workspaceId: string,
     masterPaperId: string,
     sourcePaperIds: string[],
     fieldSelections?: Record<string, any>,
@@ -63,15 +63,15 @@ export const QualityService = {
     apiPost<{
       success: boolean;
       data: {
-        masterPaper: CatalogItem;
+        masterPaper: Item;
         mergedCount: number;
         softDeletedPaperIds: string[];
       };
-      masterPaper?: CatalogItem;
+      masterPaper?: Item;
       mergedCount?: number;
       softDeletedPaperIds?: string[];
     }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/curation/merge`,
+      `/api/v1/library/curation/merge`,
       {
         primaryItemId: masterPaperId,
         duplicateItemIds: sourcePaperIds,
@@ -80,10 +80,10 @@ export const QualityService = {
     ),
 
   getIntegrityReport: async (
-    workspaceId: string,
+    _workspaceId?: string,
   ): Promise<LibraryIntegrityReport> => {
     const res = await apiGet<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/curation/integrity`,
+      `/api/v1/library/curation/integrity`,
     );
     return res?.data || res;
   },

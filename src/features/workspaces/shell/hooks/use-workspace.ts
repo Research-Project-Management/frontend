@@ -1,85 +1,85 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'next/navigation';
+import { useMemo } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import {
   workspaceKeys,
-  fetchWorkspaceById,
-  fetchAllWorkspaces,
+  DEFAULT_WORKSPACE,
+  createWorkspace,
   updateWorkspaceById,
   deleteWorkspaceById,
 } from '../services/workspace.service';
-import type { WorkspaceListResponse, WorkspaceDetailResponse, WorkspacePatch } from '../services/workspace.service';
-import type { Workspace } from '@/features/setup/types/workspace.types';
-
-
-
-// ── useWorkspace ──────────────────────────────────────────────────────────────
-// Reads current workspaceId from URL params automatically.
-
-export const useWorkspace = (explicitWorkspaceId?: string) => {
-  const params = useParams<{ workspaceId?: string }>();
-  const workspaceId = explicitWorkspaceId || params?.workspaceId;
-  const { data, isLoading, isError } = useQuery({
-    queryKey: workspaceKeys.detail(workspaceId!),
-    queryFn: ({ signal }) => fetchWorkspaceById(workspaceId!, signal),
-    enabled: !!workspaceId,
-  });
-
-  const pData = data as any;
-  const workspace = pData?.workspace ?? pData?.data?.workspace ?? (pData?.id ? pData : undefined);
-
-  return {
-    workspace: workspace as Workspace | undefined,
-    yourRole: pData?.yourRole,
-    isLoading,
-    isError,
-  };
-};
+import type {
+  CreateWorkspaceBody,
+  WorkspacePatch,
+} from '../services/workspace.service';
+import type { Workspace } from '../types/workspace.types';
 
 // ── useWorkspaces ─────────────────────────────────────────────────────────────
+// Returns the active user's personal laboratory workspace context.
 
 export const useWorkspaces = () => {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: workspaceKeys.all,
-    queryFn: ({ signal }) => fetchAllWorkspaces(signal),
-    staleTime: 1000 * 60 * 5,
-    select: (data: WorkspaceListResponse) => {
-      const workspaces = data?.workspaces ?? [];
-      const unique = Array.from(
-        new Map(workspaces.map((w: Workspace) => [w.id, w])).values(),
-      );
-      return { workspaces: unique };
+  const { user, isLoading } = useAuth();
 
-    },
-  });
+  const activeWorkspace: Workspace = useMemo(() => {
+    if (!user) return DEFAULT_WORKSPACE;
+    return {
+      id: user.id || 'flux',
+      name: user.name || 'Flux',
+      slug: 'flux',
+      url: 'flux',
+      avatar: user.avatar || '',
+      plan: 'free',
+      createdAt: (user as any)?.createdAt || new Date().toISOString(),
+      updatedAt: (user as any)?.updatedAt || new Date().toISOString(),
+    };
+  }, [user]);
+
+  const workspaces = useMemo(() => [activeWorkspace], [activeWorkspace]);
+  const data = useMemo(() => ({ workspaces }), [workspaces]);
 
   return {
-    workspaces: data?.workspaces ?? [],
+    workspaces,
     data,
-    isLoading,
-    isError,
+    isLoading: isLoading && !user,
+    isError: false,
   };
 };
 
-// ── useWorkspaceById (explicit ID — for non-param contexts) ───────────────────
+// ── useWorkspace ──────────────────────────────────────────────────────────────
+// Decoupled from URL params; seamlessly resolves the user's workspace context.
 
-export const useWorkspaceById = (workspaceUrl: string) => {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: workspaceKeys.detail(workspaceUrl),
-    queryFn: ({ signal }) => fetchWorkspaceById(workspaceUrl, signal),
-    enabled: !!workspaceUrl,
-  });
+export const useWorkspace = (_explicitWorkspaceId?: string) => {
+  const { workspaces, isLoading } = useWorkspaces();
+  const workspace = workspaces[0] || DEFAULT_WORKSPACE;
 
   return {
-    workspace: data?.workspace ?? undefined,
-    yourRole: data?.yourRole,
+    workspace,
+    yourRole: 'owner',
     isLoading,
-    isError,
+    isError: false,
   };
+};
+
+// ── useWorkspaceById (explicit ID — for backward compatibility) ───────────────
+
+export const useWorkspaceById = (_workspaceUrl?: string) => {
+  return useWorkspace(_workspaceUrl);
 };
 
 // ── Mutations ─────────────────────────────────────────────────────────────────
+
+export const useCreateWorkspace = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateWorkspaceBody) => createWorkspace(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auth', 'session'] });
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
+    },
+  });
+};
 
 export const useUpdateWorkspace = () => {
   const queryClient = useQueryClient();
@@ -91,74 +91,18 @@ export const useUpdateWorkspace = () => {
       id: string;
       data: WorkspacePatch;
     }) => updateWorkspaceById(id, data),
-    onMutate: async ({ id, data }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.all });
-      
-      const previousWorkspaces = queryClient.getQueryData<WorkspaceListResponse>(workspaceKeys.all);
-      
-      if (previousWorkspaces) {
-        queryClient.setQueryData<WorkspaceListResponse>(workspaceKeys.all, {
-          ...previousWorkspaces,
-          workspaces: previousWorkspaces.workspaces.map((w: Workspace) =>
-            w.id === id ? { ...w, ...(data as any) } : w
-          ),
-
-        });
-      }
-
-      return { previousWorkspaces };
-    },
-    onSuccess: (data) => {
-      if (data.workspace) {
-        if (data.workspace.id) {
-          queryClient.setQueryData<WorkspaceDetailResponse>(
-            workspaceKeys.detail(data.workspace.id),
-            data
-          );
-        }
-        if (data.workspace.url) {
-          queryClient.setQueryData<WorkspaceDetailResponse>(
-            workspaceKeys.detail(data.workspace.url),
-            data
-          );
-        }
-      }
-    },
-    onError: (_err, _vars, context) => handleWorkspaceRollback(queryClient, context),
-    onSettled: () => {
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auth', 'session'] });
       queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
     },
   });
 };
 
-const handleWorkspaceRollback = (
-  queryClient: any,
-  context?: { previousWorkspaces?: WorkspaceListResponse },
-) => {
-  if (context?.previousWorkspaces) {
-    queryClient.setQueryData(workspaceKeys.all, context.previousWorkspaces);
-  }
-};
-
 export const useDeleteWorkspace = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: deleteWorkspaceById,
-    onMutate: async (workspaceId: string) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.all });
-      const previousWorkspaces = queryClient.getQueryData<WorkspaceListResponse>(workspaceKeys.all);
-
-      if (previousWorkspaces) {
-        queryClient.setQueryData<WorkspaceListResponse>(workspaceKeys.all, {
-          ...previousWorkspaces,
-          workspaces: previousWorkspaces.workspaces.filter((w: Workspace) => w.id !== workspaceId),
-        });
-      }
-
-      return { previousWorkspaces };
-    },
-    onError: (_err, _id, context) => handleWorkspaceRollback(queryClient, context),
-    onSettled: () => {
+    mutationFn: (workspaceId: string) => deleteWorkspaceById(workspaceId),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
     },
   });

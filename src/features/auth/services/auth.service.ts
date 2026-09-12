@@ -6,8 +6,8 @@ import {
   removeAuthToken,
   getAuthToken,
   getRefreshToken,
-} from '@/shared/lib/api';
-import { fixMojibake } from '@/shared/utils/format';
+} from "@/shared/lib/api";
+import { fixMojibake } from "@/shared/lib/utils";
 import type {
   AuthUser,
   LoginPayload,
@@ -21,19 +21,23 @@ import type {
  * Authenticates user credentials, stores access/refresh tokens, and returns user profile.
  */
 export const loginUser = async (payload: LoginPayload): Promise<AuthUser> => {
-  const data = await apiPost<AuthUser & {
+  const res = await apiPost<{
+    user?: AuthUser;
     accessToken?: string;
     token?: string;
     refreshToken?: string;
-  }>('/auth/login', payload);
+  } & Partial<AuthUser>>('/auth/login', payload);
 
-  if (data.accessToken || data.token) {
-    setTokens(data.accessToken || data.token!, data.refreshToken || '');
+  const accessToken = res.accessToken || res.token;
+  if (accessToken) {
+    setTokens(accessToken, res.refreshToken || '');
   }
-  if (data.name) {
-    data.name = fixMojibake(data.name);
+
+  const user: AuthUser = (res.user || res) as AuthUser;
+  if (user?.name) {
+    user.name = fixMojibake(user.name);
   }
-  return data;
+  return user;
 };
 
 /**
@@ -44,15 +48,18 @@ export const getUser = async (): Promise<AuthUser | null> => {
   if (!token) return null;
 
   try {
-    const data = await apiGet<{ user: AuthUser }>('/auth/user');
-    if (data?.user) {
-      if (data.user.name) {
-        data.user.name = fixMojibake(data.user.name);
+    const data = await apiGet<{ user?: AuthUser } & Partial<AuthUser>>('/auth/user');
+    const user = data?.user || (data?.id ? (data as AuthUser) : null);
+    if (user) {
+      if (user.name) {
+        user.name = fixMojibake(user.name);
       }
-      return data.user;
+      return user;
     }
+    removeAuthToken();
     return null;
   } catch (err: unknown) {
+    removeAuthToken();
     return null;
   }
 };

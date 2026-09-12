@@ -121,6 +121,88 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  async redirects() {
+    const excludedPrefixes =
+      'api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites|login|register|forgot-password|reset-password|pages';
+    return [
+      {
+        source: `/:workspaceId((?!${excludedPrefixes}).+)/projects/:projectId/:path*`,
+        destination: '/projects/:projectId/:path*',
+        permanent: false,
+      },
+      {
+        source: `/:workspaceId((?!${excludedPrefixes}).+)/projects/:projectId`,
+        destination: '/projects/:projectId',
+        permanent: false,
+      },
+      {
+        source: `/:workspaceId((?!${excludedPrefixes}).+)/projects`,
+        destination: '/projects',
+        permanent: false,
+      },
+      {
+        source: `/:workspaceId((?!${excludedPrefixes}).+)/library/:path*`,
+        destination: '/library/:path*',
+        permanent: false,
+      },
+      {
+        source: `/:workspaceId((?!${excludedPrefixes}).+)/library`,
+        destination: '/library',
+        permanent: false,
+      },
+      {
+        source: `/:workspaceId((?!${excludedPrefixes}).+)/storage/:path*`,
+        destination: '/storage/:path*',
+        permanent: false,
+      },
+      {
+        source: `/:workspaceId((?!${excludedPrefixes}).+)/storage`,
+        destination: '/storage',
+        permanent: false,
+      },
+      {
+        source: `/:workspaceId((?!${excludedPrefixes}).+)/settings/:path*`,
+        destination: '/settings/:path*',
+        permanent: false,
+      },
+      {
+        source: `/:workspaceId((?!${excludedPrefixes}).+)/settings`,
+        destination: '/settings',
+        permanent: false,
+      },
+      {
+        source: `/:workspaceId((?!${excludedPrefixes}).+)/stickies`,
+        destination: '/stickies',
+        permanent: false,
+      },
+      {
+        source: `/:workspaceId((?!${excludedPrefixes}).+)/your-work`,
+        destination: '/your-work',
+        permanent: false,
+      },
+      {
+        source: `/:workspaceId((?!${excludedPrefixes}).+)/ai/:path*`,
+        destination: '/ai/:path*',
+        permanent: false,
+      },
+      {
+        source: `/:workspaceId((?!${excludedPrefixes}).+)/ai`,
+        destination: '/ai',
+        permanent: false,
+      },
+      {
+        source: `/:workspaceId((?!${excludedPrefixes}).+)/editor/:path*`,
+        destination: '/editor/:path*',
+        permanent: false,
+      },
+      {
+        source: '/ws',
+        destination: '/projects',
+        permanent: false,
+      },
+    ];
+  },
+
   async rewrites() {
     const rawBackendUrl =
       process.env.INTERNAL_API_URL ||

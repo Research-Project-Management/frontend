@@ -50,14 +50,12 @@ export type AnnotationId = Brand<string, 'AnnotationId'>;
 export type NoteId = Brand<string, 'NoteId'>;
 export type CollectionId = Brand<string, 'CollectionId'>;
 export type AttachmentId = Brand<string, 'AttachmentId'>;
-export type WorkspaceId = Brand<string, 'WorkspaceId'>;
 
 export const toDocumentId = (id: string): DocumentId => id as DocumentId;
 export const toAnnotationId = (id: string): AnnotationId => id as AnnotationId;
 export const toNoteId = (id: string): NoteId => id as NoteId;
 export const toCollectionId = (id: string): CollectionId => id as CollectionId;
 export const toAttachmentId = (id: string): AttachmentId => id as AttachmentId;
-export const toWorkspaceId = (id: string): WorkspaceId => id as WorkspaceId;
 
 export type AnnotationRect = z.infer<typeof annotationRectSchema>;
 export type AnnotationType = z.infer<typeof annotationTypeSchema>;
@@ -146,7 +144,6 @@ export interface ReaderState {
   selectionContext: string | null;
 }
 
-export type CatalogItem = ReaderDocument;
 export type Collection = ReaderCollection;
 export type Note = ReaderNote;
 export type PdfAnnotation = ReaderAnnotation;

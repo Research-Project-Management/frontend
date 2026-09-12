@@ -224,3 +224,73 @@ export function downloadBibTeXFile(paper: ReaderDocument, filename?: string): vo
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+export function convertToRIS(paper: ReaderDocument): string {
+  const itemType = (paper.itemType || '').toLowerCase();
+  let type = 'JOUR';
+  if (itemType.includes('book')) type = 'BOOK';
+  else if (itemType.includes('conf') || itemType.includes('proc')) type = 'CONF';
+  else if (itemType.includes('thesis')) type = 'THES';
+  else if (itemType.includes('report')) type = 'RPRT';
+
+  const lines: string[] = [`TY  - ${type}`];
+  if (paper.title) lines.push(`TI  - ${paper.title}`);
+
+  const authors = normalizeAuthors(paper.authors, paper.creators);
+  for (const a of authors) {
+    lines.push(`AU  - ${a}`);
+  }
+
+  const journal = paper.journal || paper.publicationTitle;
+  if (journal) lines.push(`JO  - ${journal}`);
+  if (paper.year) lines.push(`PY  - ${paper.year}`);
+  if (paper.volume) lines.push(`VL  - ${paper.volume}`);
+  if (paper.issue) lines.push(`IS  - ${paper.issue}`);
+  if (paper.pages) {
+    const parts = String(paper.pages).split(/[-–]/);
+    if (parts[0]) lines.push(`SP  - ${parts[0].trim()}`);
+    if (parts[1]) lines.push(`EP  - ${parts[1].trim()}`);
+  }
+  if (paper.publisher) lines.push(`PB  - ${paper.publisher}`);
+  const doi = cleanDoi(paper.doi);
+  if (doi) lines.push(`DO  - ${doi}`);
+  if (paper.url) lines.push(`UR  - ${paper.url}`);
+  if (paper.abstract) lines.push(`AB  - ${paper.abstract}`);
+  lines.push('ER  - ');
+
+  return lines.join('\n');
+}
+
+export function downloadRISFile(paper: ReaderDocument, filename?: string): void {
+  const content = convertToRIS(paper);
+  const name = filename || `${generateCitationKey(paper)}.ris`;
+  const blob = new Blob([content], { type: 'application/x-research-info-systems;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export function formatInTextCitation(paper: ReaderDocument, pageNumber?: number): string {
+  const authors = normalizeAuthors(paper.authors, paper.creators);
+  let authorStr = 'Unknown';
+  if (authors.length === 1) {
+    const parts = authors[0]!.trim().split(/\s+/);
+    authorStr = parts[parts.length - 1] || authors[0]!;
+  } else if (authors.length === 2) {
+    const p1 = authors[0]!.trim().split(/\s+/);
+    const p2 = authors[1]!.trim().split(/\s+/);
+    authorStr = `${p1[p1.length - 1]} & ${p2[p2.length - 1]}`;
+  } else if (authors.length > 2) {
+    const p1 = authors[0]!.trim().split(/\s+/);
+    authorStr = `${p1[p1.length - 1]} et al.`;
+  }
+  const yearStr = paper.year ? String(paper.year) : 'n.d.';
+  const pageStr = pageNumber ? `, p. ${pageNumber}` : '';
+  return `(${authorStr}, ${yearStr}${pageStr})`;
+}
+

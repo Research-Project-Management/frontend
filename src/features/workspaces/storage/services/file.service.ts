@@ -5,7 +5,7 @@
 
 import { apiGet, apiPost, apiPut, apiDelete, getAuthToken } from "@/shared/lib/api";
 import { API_BASE_URL } from '@/config/env';
-import { generateThumbnail } from '@/shared/utils/file';
+import { generateThumbnail } from "@/shared/lib/file-client";
 import type { StorageItem, StorageResponse, UploadFileParams, CreateFileRecordParams, CreateFolderParams } from '@/features/workspaces/storage/types/storage.types';
 
 export interface FileQueryParams {
@@ -14,8 +14,6 @@ export interface FileQueryParams {
   sortBy?: string;
   types?: string[] | string;
   type?: string;
-  projectIds?: string[] | string;
-  projectId?: string;
   limit?: number;
   page?: number;
 }
@@ -44,13 +42,6 @@ export function buildQueryString(params?: FileQueryParams | string | null): stri
   if (params.type && params.type !== 'all') {
     searchParams.set('type', params.type);
   }
-  if (params.projectIds) {
-    const projStr = Array.isArray(params.projectIds) ? params.projectIds.join(',') : params.projectIds;
-    if (projStr) searchParams.set('projectIds', projStr);
-  }
-  if (params.projectId && params.projectId !== 'all') {
-    searchParams.set('projectId', params.projectId);
-  }
   if (params.limit !== undefined) {
     searchParams.set('limit', String(params.limit));
   }
@@ -62,32 +53,64 @@ export function buildQueryString(params?: FileQueryParams | string | null): stri
   return qs ? `?${qs}` : '';
 }
 
-// ── Read Operations (Workspace-level) ────────────────────────────────────────
+function resolveQueryParams(
+  scopeIdOrParams?: string | FileQueryParams | null,
+  params?: FileQueryParams | string | null,
+): FileQueryParams | string | null | undefined {
+  if (typeof scopeIdOrParams === 'object') return scopeIdOrParams;
+  if (params !== undefined) return params;
+  return scopeIdOrParams;
+}
 
-export const getAllFiles = (workspaceId: string, params?: FileQueryParams | string | null) => {
-  return apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}${buildQueryString(params)}`);
+// ── Read Operations ──────────────────────────────────────────────────────────
+
+export const getAllFiles = (
+  scopeIdOrParams?: string | FileQueryParams | null,
+  params?: FileQueryParams | string | null,
+) => {
+  return apiGet<StorageResponse>(`/api/files/my-files${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`);
 };
 
-export const getHomeFiles = (workspaceId: string, params?: FileQueryParams) =>
-  apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/home${buildQueryString(params)}`);
+export const getHomeFiles = (
+  scopeIdOrParams?: string | FileQueryParams | null,
+  params?: FileQueryParams | string | null,
+) => {
+  return apiGet<StorageResponse>(`/api/files/my-files${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`);
+};
 
-export const getMyFiles = (workspaceId: string, params?: FileQueryParams) =>
-  apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/my-files${buildQueryString(params)}`);
+export const getMyFiles = (
+  scopeIdOrParams?: string | FileQueryParams | null,
+  params?: FileQueryParams | string | null,
+) => {
+  return apiGet<StorageResponse>(`/api/files/my-files${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`);
+};
 
-export const getStarredFiles = (workspaceId: string, params?: FileQueryParams) =>
-  apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/starred${buildQueryString(params)}`);
+export const getStarredFiles = (
+  scopeIdOrParams?: string | FileQueryParams | null,
+  params?: FileQueryParams | string | null,
+) => {
+  return apiGet<StorageResponse>(`/api/files/starred${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`);
+};
 
-export const getSharedFiles = (workspaceId: string, params?: FileQueryParams) =>
-  apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/shared${buildQueryString(params)}`);
+export const getSharedFiles = (
+  scopeIdOrParams?: string | FileQueryParams | null,
+  params?: FileQueryParams | string | null,
+) => {
+  return apiGet<StorageResponse>(`/api/files/shared${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`);
+};
 
-export const getTrashedFiles = (workspaceId: string, params?: FileQueryParams) =>
-  apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/trash${buildQueryString(params)}`);
+export const getTrashedFiles = (
+  scopeIdOrParams?: string | FileQueryParams | null,
+  params?: FileQueryParams | string | null,
+) => {
+  return apiGet<StorageResponse>(`/api/files/trash${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`);
+};
 
-export const getStorageUsage = (workspaceId: string) =>
-    apiGet<{ totalBytes: number }>(`/api/files/workspace/${workspaceId}/usage`);
+export const getStorageUsage = (_scopeId?: string) => {
+  return apiGet<{ totalBytes: number }>(`/api/files/usage`);
+};
 
 interface UploadBlobOptions {
-    workspaceId?: string;
     projectId?: string;
     pageId?: string;
     onProgress?: (progress: number) => void;
@@ -99,7 +122,6 @@ const uploadBlobWithPresigned = async (
     options?: UploadBlobOptions | ((progress: number) => void)
 ): Promise<{ url: string; path: string }> => {
     const onProgress = typeof options === 'function' ? options : options?.onProgress;
-    const workspaceId = typeof options === 'object' ? options?.workspaceId : undefined;
     const projectId = typeof options === 'object' ? options?.projectId : undefined;
     const pageId = typeof options === 'object' ? options?.pageId : undefined;
 
@@ -107,7 +129,6 @@ const uploadBlobWithPresigned = async (
         const presignRes = await apiPost<{ signedUrl: string; path: string; url: string }>("/api/files/presign", {
             filename: fileName,
             mimeType: blob.type || "application/octet-stream",
-            workspaceId,
             projectId,
             pageId,
         });
@@ -204,7 +225,7 @@ export const uploadFile = async (
     file: File,
     params: UploadFileParams
 ) => {
-    const storagePrefix = `workspace/${params.workspaceId}`;
+    const storagePrefix = 'user';
     const timestamp = Date.now();
     const fileName = `${storagePrefix}/${timestamp}-${file.name}`;
     
@@ -213,7 +234,7 @@ export const uploadFile = async (
         : undefined;
 
     const { url: uploadPath } = await uploadBlobWithPresigned(file, fileName, {
-        workspaceId: params.workspaceId,
+        pageId: params.pageId || undefined,
         onProgress: onMainFileProgress,
     });
     const uploadUrl = uploadPath.startsWith("http") ? uploadPath : `${API_BASE_URL}${uploadPath}`;
@@ -222,16 +243,15 @@ export const uploadFile = async (
     if (file.type.startsWith("image/")) {
         const thumbnailBlob = await generateThumbnail(file);
         if (thumbnailBlob) {
-            const thumbName = `workspace/${params.workspaceId}/${Date.now()}-thumb.jpg`;
+            const thumbName = `${storagePrefix}/${Date.now()}-thumb.jpg`;
             const { url: thumbPath } = await uploadBlobWithPresigned(thumbnailBlob, thumbName, {
-                workspaceId: params.workspaceId,
+                pageId: params.pageId || undefined,
             });
             thumbnailUrl = thumbPath.startsWith("http") ? thumbPath : `${API_BASE_URL}${thumbPath}`;
         }
     }
 
     await createFileRecord({
-        workspaceId: params.workspaceId,
         filename: file.name,
         size: file.size,
         mimeType: file.type,
@@ -244,14 +264,14 @@ export const uploadFile = async (
     if (params.onProgress) params.onProgress(100);
 };
 
-export const uploadGenericFile = async (file: File, workspaceId: string): Promise<string> => {
-    const fileName = `avatars/${workspaceId}-${Date.now()}`;
-    const { url: uploadPath } = await uploadBlobWithPresigned(file, fileName, { workspaceId });
+export const uploadGenericFile = async (file: File, scopePrefix: string = 'flux'): Promise<string> => {
+    const fileName = `avatars/${scopePrefix || 'flux'}-${Date.now()}`;
+    const { url: uploadPath } = await uploadBlobWithPresigned(file, fileName);
     return uploadPath.startsWith("http") ? uploadPath : `${API_BASE_URL}${uploadPath}`;
 };
 
 export const createFileRecord = (params: CreateFileRecordParams) => {
-    return apiPost(`/api/files/workspace/${params.workspaceId}/upload`, {
+    return apiPost(`/api/files/upload`, {
         filename: params.filename,
         size: params.size,
         mimeType: params.mimeType,
@@ -262,8 +282,8 @@ export const createFileRecord = (params: CreateFileRecordParams) => {
     });
 };
 
-export const createFolder = (name: string, params: CreateFolderParams) => {
-    return apiPost(`/api/files/workspace/${params.workspaceId}/folder`, {
+export const createFolder = (name: string, params: CreateFolderParams = {}) => {
+    return apiPost(`/api/files/folder`, {
         name,
         parentId: params.parentId ?? null,
         ...(params.pageId ? { pageId: params.pageId } : {}),
@@ -271,15 +291,11 @@ export const createFolder = (name: string, params: CreateFolderParams) => {
 };
 
 export const checkDuplicateFile = (
-    workspaceId: string,
-    filename: string,
+    scopeId?: string,
+    filename?: string,
     parentId: string | null = null,
 ) => {
-    if (!workspaceId) {
-        throw new Error("workspaceId is required for workspace storage actions");
-    }
-
-    return getAllFiles(workspaceId, parentId).then((data: any) => {
+    return getAllFiles(scopeId, parentId).then((data: any) => {
         const files: StorageItem[] = data?.files || [];
         const existingFile = files.find(
             (item) => !item.isFolder && item.filename === filename,
@@ -358,4 +374,34 @@ export const batchStarItems = (ids: string[], starred: boolean) =>
 
 export const getFolderPath = (folderId: string) =>
     apiGet<{ path: { id: string; name: string }[] }>(`/api/files/folder/${folderId}/path`);
+
+export interface StorageQuotaResponse {
+  scope: 'personal' | 'project';
+  projectId?: string;
+  projectIdentifier?: string;
+  projectName?: string;
+  owner?: {
+    id: string;
+    name: string;
+    email: string;
+    avatar?: string | null;
+  };
+  totalBytes: number;
+  usedBytes: number;
+  projectBytes?: number;
+  limitBytes: number;
+  usedFormatted: string;
+  projectFormatted?: string;
+  limitFormatted: string;
+  percentage: number;
+  note?: string;
+}
+
+export const getStorageQuota = (scope?: { projectId?: string }): Promise<StorageQuotaResponse> => {
+  const path = scope?.projectId
+    ? `/api/v1/storage/files/projects/${encodeURIComponent(scope.projectId)}/usage`
+    : '/api/v1/storage/files/usage';
+  return apiGet<StorageQuotaResponse>(path);
+};
+
 

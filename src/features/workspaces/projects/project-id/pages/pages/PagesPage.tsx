@@ -12,8 +12,7 @@ import { ListView } from '../components/views/ListView';
 import type { PagesViewMode } from '../types/page.types';
 
 export default function PagesPage({ projectId: propProjectId }: { projectId?: string } = {}) {
-  const params = useParams() as { workspaceId: string; projectId?: string };
-  const workspaceId = params.workspaceId;
+  const params = useParams() as { projectId?: string };
   const projectId = propProjectId || params.projectId || '';
   const router = useRouter();
   const [viewMode, setViewMode] = useState<PagesViewMode>('grid');
@@ -38,15 +37,10 @@ export default function PagesPage({ projectId: propProjectId }: { projectId?: st
       });
       setIsCreateModalOpen(false);
       setTitle('');
-      const mainFileStr = data.mainFile
-        ? typeof data.mainFile === 'object' && data.mainFile !== null && 'id' in data.mainFile
-          ? (data.mainFile.id as string)
-          : (data.mainFile as string)
-        : null;
-      const fileQuery = mainFileStr ? `?file=${mainFileStr}` : '';
-      router.push(
-        `/${workspaceId}/projects/${projectId}/pages/${data.page.id}${fileQuery}`,
-      );
+      const mainFileId = data.mainFileId || (typeof data.mainFile === 'string' ? data.mainFile : (data.mainFile as any)?.id);
+      const queryStr = mainFileId ? `?file=${mainFileId}` : '';
+      const targetUrl = `/projects/${projectId}/pages/${data.page.id}${queryStr}`;
+      router.push(targetUrl);
     } catch (error) {
       console.error(error);
     }
@@ -64,9 +58,9 @@ export default function PagesPage({ projectId: propProjectId }: { projectId?: st
         {!isLoading && pages.length === 0 ? (
           <EmptyState onCreateClick={() => setIsCreateModalOpen(true)} />
         ) : viewMode === 'grid' ? (
-          <GridView pages={pages} workspaceId={workspaceId} />
+          <GridView pages={pages} workspaceId="" />
         ) : (
-          <ListView pages={pages} workspaceId={workspaceId} />
+          <ListView pages={pages} workspaceId="" />
         )}
       </div>
 

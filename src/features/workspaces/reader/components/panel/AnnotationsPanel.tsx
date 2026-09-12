@@ -14,28 +14,33 @@ import {
   FileText,
   RotateCcw,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { cn } from '@/shared/lib/utils';
+import { Button, Form } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import { useAnnotations } from '../../hooks/use-annotations';
 import { annotationFormSchema } from '../../schemas/reader.schema';
-import { PdfAnnotationEngine } from '../../utils/reader.util';
 import type { ReaderDocument, ReaderAnnotation, AnnotationFormData } from '../../types/reader.types';
 
-interface AnnotationsPanelProps {
+export interface AnnotationsPanelProps {
   paper: ReaderDocument;
   workspaceId: string;
   attachmentId?: string;
   onNavigateToPage?: (pageNumber: number) => void;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onSelectAll?: () => void;
+  onClearSelection?: () => void;
 }
 
 const COLOR_FILTERS = [
   { id: 'all', label: 'All', color: '' },
-  { id: 'yellow', label: 'Yellow', color: '#eab308' },
-  { id: 'emerald', label: 'Green', color: '#10b981' },
-  { id: 'sky', label: 'Blue', color: '#0ea5e9' },
-  { id: 'purple', label: 'Purple', color: '#a855f7' },
-  { id: 'rose', label: 'Pink', color: '#f43f5e' },
-  { id: 'amber', label: 'Orange', color: '#f97316' },
+  { id: 'yellow', label: 'Yellow', color: '#ffd400' },
+  { id: 'red', label: 'Red', color: '#ff6666' },
+  { id: 'green', label: 'Green', color: '#5fb236' },
+  { id: 'blue', label: 'Blue', color: '#2ea8e5' },
+  { id: 'purple', label: 'Purple', color: '#a28ae5' },
+  { id: 'magenta', label: 'Magenta', color: '#e56eee' },
+  { id: 'orange', label: 'Orange', color: '#f19837' },
+  { id: 'gray', label: 'Gray', color: '#aaaaaa' },
 ] as const;
 
 function AnnotationEditForm({
@@ -53,7 +58,7 @@ function AnnotationEditForm({
   onSave: (data: AnnotationFormData) => Promise<void>;
   onCancel: () => void;
 }) {
-  const { register, handleSubmit } = useForm<AnnotationFormData>({
+  const form = useForm<AnnotationFormData>({
     resolver: zodResolver(annotationFormSchema),
     defaultValues: {
       quoteText: initialQuote || '',
@@ -62,55 +67,58 @@ function AnnotationEditForm({
     },
   });
 
+  const { register, handleSubmit } = form;
+
   return (
-    <form onSubmit={handleSubmit(onSave)} className="space-y-2 rounded-md border border-border p-2">
-      <input
-        {...register('quoteText')}
-        aria-label="Quote text"
-        placeholder="Quote text..."
-        className="w-full bg-transparent text-xs outline-none text-foreground"
-      />
-      <textarea
-        {...register('comment')}
-        aria-label="Comment"
-        placeholder="Comment..."
-        rows={2}
-        className="w-full resize-none bg-transparent text-xs outline-none text-foreground leading-relaxed"
-      />
-      <div className="flex justify-end gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-6 text-xs px-2 cursor-pointer rounded-md focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
-          onClick={onCancel}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          size="sm"
-          className="h-6 text-xs px-2.5 font-medium cursor-pointer rounded-md focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
-          disabled={isSaving}
-        >
-          {isSaving ? <Loader2 className="size-3 animate-spin shrink-0" /> : 'Save'}
-        </Button>
-      </div>
-    </form>
+    <Form {...form}>
+      <form onSubmit={handleSubmit(onSave)} className="space-y-2 rounded border border-border p-2 bg-muted/20">
+        <input
+          {...register('quoteText')}
+          aria-label="Quote text"
+          placeholder="Quote text..."
+          className="w-full bg-transparent text-12 font-medium outline-none text-foreground"
+        />
+        <textarea
+          {...register('comment')}
+          aria-label="Comment"
+          placeholder="Add a note/comment..."
+          rows={2}
+          className="w-full resize-none bg-transparent text-12 outline-none text-foreground leading-relaxed"
+        />
+        <div className="flex justify-end gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 text-11 px-2 cursor-pointer rounded"
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            size="sm"
+            className="h-6 text-11 px-2.5 font-medium cursor-pointer rounded"
+            disabled={isSaving}
+          >
+            {isSaving ? <Loader2 className="size-3 animate-spin shrink-0" /> : 'Save'}
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }
 
-export default function AnnotationsPanel({
+export function AnnotationsPanel({
   paper,
   workspaceId,
   attachmentId,
   onNavigateToPage,
+  selectedIds = new Set(),
+  onToggleSelect,
 }: AnnotationsPanelProps) {
   const effectiveAttachmentId =
-    attachmentId ||
-    paper.attachments?.[0]?.id ||
-    paper.primaryFile?.fileId ||
-    undefined;
+    attachmentId || paper.attachments?.[0]?.id || paper.primaryFile?.fileId;
 
   const {
     annotations,
@@ -118,34 +126,45 @@ export default function AnnotationsPanel({
     updateAnnotation,
     deleteAnnotation,
     extractNotes,
-    isExtracting,
     isUpdating,
+    isExtracting,
   } = useAnnotations(workspaceId, effectiveAttachmentId);
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedColor, setSelectedColor] = useState<string>('all');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const filteredAnnotations = useMemo(() => {
-    return PdfAnnotationEngine.filterAnnotations(
-      annotations || [],
-      searchQuery,
-      selectedColor,
-    );
+    return annotations.filter((a) => {
+      const matchSearch =
+        !searchQuery.trim() ||
+        (a.quoteText && a.quoteText.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (a.comment && a.comment.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchColor =
+        selectedColor === 'all' ||
+        (a.color && a.color.toLowerCase() === selectedColor.toLowerCase()) ||
+        (selectedColor === 'yellow' && (!a.color || a.color.toLowerCase() === 'yellow' || a.color === '#ffd400'));
+
+      return matchSearch && matchColor;
+    });
   }, [annotations, searchQuery, selectedColor]);
 
-  const handleSaveEdit = async (annotation: ReaderAnnotation, data: AnnotationFormData) => {
+  const handleSaveEdit = async (
+    annotation: ReaderAnnotation,
+    data: AnnotationFormData,
+  ) => {
     if (!effectiveAttachmentId) return;
     try {
-      await updateAnnotation(annotation.id, annotation.version ?? 1, {
-        quoteText: data.quoteText?.trim() || undefined,
-        comment: data.comment?.trim() || undefined,
+      await updateAnnotation(annotation.id, annotation.version, {
+        comment: data.comment?.trim(),
+        quoteText: data.quoteText?.trim(),
         color: data.color || annotation.color,
       });
       setEditingId(null);
     } catch {
-      // Handled in useAnnotations hook
+      // Handled in hook
     }
   };
 
@@ -155,7 +174,7 @@ export default function AnnotationsPanel({
       await deleteAnnotation(annotation.id, annotation.version);
       setDeletingId(null);
     } catch {
-      // Handled in useAnnotations hook
+      // Handled in hook
     }
   };
 
@@ -165,68 +184,51 @@ export default function AnnotationsPanel({
     }
   };
 
-  const resetFilters = () => {
-    setSearchQuery('');
-    setSelectedColor('all');
-  };
-
   return (
-    <div className="flex h-full flex-col bg-background min-h-0">
-      {/* Header Toolbar: Count & Extract Notes Action */}
-      <div className="flex h-10 shrink-0 items-center justify-between border-b border-border/60 px-3">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-11 font-medium text-foreground">
-            {annotations.length} {annotations.length === 1 ? 'Annotation' : 'Annotations'}
-          </span>
-          {(searchQuery || selectedColor !== 'all') && (
-            <span className="text-10 text-muted-foreground font-mono">
-              ({filteredAnnotations.length} shown)
-            </span>
-          )}
-        </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => extractNotes(paper.id)}
-          disabled={isExtracting || annotations.length === 0}
-          className="h-6 gap-1 px-2 text-11 font-medium cursor-pointer rounded-md focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
-          title="Extract all highlights into a Markdown Note"
-        >
-          {isExtracting ? (
-            <Loader2 className="size-3 animate-spin shrink-0" />
-          ) : (
-            <FileText className="size-3 text-muted-foreground shrink-0" />
-          )}
-          <span>Extract Notes</span>
-        </Button>
-      </div>
-
+    <div className="flex h-full flex-col bg-background min-h-0 select-none">
       {/* Filter & Search Bar */}
-      {annotations && annotations.length > 0 && (
-        <div className="space-y-1.5 border-b border-border/40 px-3 py-2 bg-muted/20">
-          <div className="relative flex items-center">
-            <Search className="absolute left-2 size-3.5 text-muted-foreground pointer-events-none shrink-0" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search quotes or comments..."
-              className="h-7 w-full rounded-md border border-border bg-background pl-7 pr-7 text-xs text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
-            />
-            {searchQuery ? (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-1.5 flex size-4 items-center justify-center rounded-sm text-muted-foreground hover:bg-muted cursor-pointer"
-                title="Clear search"
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            ) : null}
+      {annotations.length > 0 && (
+        <div className="space-y-1.5 border-b border-border px-3 py-2 bg-muted/20">
+          <div className="flex items-center gap-1.5">
+            <div className="relative flex-1 flex items-center">
+              <Search className="absolute left-2 size-3 text-muted-foreground pointer-events-none shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search highlights..."
+                className="h-6 w-full rounded border border-border bg-background pl-6 pr-6 text-11 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-1.5 flex size-3.5 items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <X className="size-2.5" />
+                </button>
+              )}
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => extractNotes(paper.id)}
+              disabled={isExtracting || annotations.length === 0}
+              className="h-6 gap-1 px-2 text-11 font-medium rounded shrink-0 cursor-pointer"
+              title="Extract all highlights into a Literature Note"
+            >
+              {isExtracting ? (
+                <Loader2 className="size-3 animate-spin shrink-0" />
+              ) : (
+                <FileText className="size-3 text-muted-foreground shrink-0" />
+              )}
+              <span>Add to Notes</span>
+            </Button>
           </div>
 
-          <div className="flex items-center gap-1 overflow-x-auto py-0.5 no-scrollbar">
+          {/* Color Dots */}
+          <div className="flex items-center gap-1 overflow-x-auto py-0.5">
             {COLOR_FILTERS.map((filter) => {
               const active = selectedColor === filter.id;
               return (
@@ -235,18 +237,18 @@ export default function AnnotationsPanel({
                   type="button"
                   onClick={() => setSelectedColor(filter.id)}
                   className={cn(
-                    'inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-10 font-medium transition-colors cursor-pointer shrink-0',
+                    'inline-flex h-4 items-center gap-1 rounded px-1.5 text-10 font-medium transition-colors shrink-0',
                     active
-                      ? 'bg-primary text-primary-foreground font-semibold'
-                      : 'bg-muted text-muted-foreground hover:bg-muted',
+                      ? 'bg-foreground text-background font-semibold'
+                      : 'bg-muted text-muted-foreground hover:text-foreground',
                   )}
                 >
-                  {filter.color ? (
+                  {filter.color && (
                     <span
-                      className="size-2 rounded-full shrink-0"
+                      className="size-1.5 rounded-full shrink-0"
                       style={{ backgroundColor: filter.color }}
                     />
-                  ) : null}
+                  )}
                   <span>{filter.label}</span>
                 </button>
               );
@@ -256,48 +258,50 @@ export default function AnnotationsPanel({
       )}
 
       {/* Main List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
+      <div className="flex-1 overflow-y-auto p-2 space-y-1.5 min-h-0">
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
-            <Loader2 className="size-5 animate-spin text-muted-foreground shrink-0" />
+            <Loader2 className="size-4 animate-spin text-muted-foreground" />
           </div>
         ) : !annotations || annotations.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-center px-4 py-8">
-            <div className="flex size-9 items-center justify-center rounded-md border border-border bg-muted">
-              <Highlighter className="size-4 text-muted-foreground shrink-0" />
-            </div>
-            <p className="mt-2 text-xs font-medium text-foreground">No annotations</p>
-            <p className="mt-1 max-w-[200px] text-11 leading-relaxed text-muted-foreground">
-              Select text in the document and click &ldquo;Highlight&rdquo; to create annotations.
+          <div className="flex h-full flex-col items-center justify-center text-center p-6">
+            <Highlighter className="size-6 text-muted-foreground/40 mb-2" />
+            <p className="text-12 font-medium text-foreground">No highlights yet</p>
+            <p className="mt-1 text-11 text-muted-foreground max-w-[200px] leading-relaxed">
+              Select any text in the PDF to highlight and add notes.
             </p>
           </div>
         ) : filteredAnnotations.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-center px-4 py-8 gap-2">
-            <p className="text-xs font-medium text-foreground">No matching annotations</p>
-            <p className="text-11 text-muted-foreground max-w-[220px]">
-              No annotations matched your search or color filter criteria.
-            </p>
+          <div className="flex h-full flex-col items-center justify-center text-center p-6 gap-2">
+            <p className="text-12 text-muted-foreground">No matching highlights</p>
             <Button
               variant="outline"
               size="sm"
-              onClick={resetFilters}
-              className="mt-1 h-6 gap-1 px-2.5 text-11 font-medium rounded-md cursor-pointer"
+              onClick={() => { setSearchQuery(''); setSelectedColor('all'); }}
+              className="h-6 text-11 gap-1"
             >
-              <RotateCcw className="size-3 text-muted-foreground shrink-0" />
-              <span>Reset filters</span>
+              <RotateCcw className="size-2.5" />
+              Reset filters
             </Button>
           </div>
         ) : (
-          <div className="divide-y divide-border/40">
+          <div className="space-y-1.5">
             {filteredAnnotations.map((annotation) => {
               const isEditing = editingId === annotation.id;
               const isDeletingCurrent = deletingId === annotation.id;
-              const safeBorderColor = /^#[0-9a-f]{3,6}$/i.test(annotation.color || '')
-                ? annotation.color
-                : 'var(--primary)';
+              const isSelected = selectedIds.has(annotation.id);
+              const safeColor = annotation.color || '#ffd400';
 
               return (
-                <div key={annotation.id} className="group py-2.5 first:pt-0 last:pb-0">
+                <div
+                  key={annotation.id}
+                  className={cn(
+                    "group rounded border p-2 text-12 transition-colors relative",
+                    isSelected
+                      ? "border-primary/60 bg-primary/5"
+                      : "border-border/60 hover:border-border bg-background"
+                  )}
+                >
                   {isEditing ? (
                     <AnnotationEditForm
                       initialQuote={annotation.quoteText}
@@ -308,51 +312,47 @@ export default function AnnotationsPanel({
                       onCancel={() => setEditingId(null)}
                     />
                   ) : (
-                    <div className="space-y-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-1 flex-1 min-w-0">
-                          {annotation.quoteText && (
-                            <button
-                              type="button"
-                              onClick={() => handleJumpToPage(annotation.pageIndex)}
-                              className="text-left w-full group/quote cursor-pointer"
-                              title={`Jump to page ${(annotation.pageIndex ?? 0) + 1}`}
-                            >
-                              <p
-                                className="text-xs text-foreground italic border-l-2 pl-2 select-text group-hover/quote:opacity-80 transition-opacity leading-relaxed"
-                                style={{ borderColor: safeBorderColor }}
-                              >
-                                &ldquo;{annotation.quoteText}&rdquo;
-                              </p>
-                            </button>
+                    <div className="space-y-1.5">
+                      {/* Top row: Checkbox, Page tag, actions */}
+                      <div className="flex items-center justify-between gap-1 text-11">
+                        <div className="flex items-center gap-1.5">
+                          {onToggleSelect && (
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => onToggleSelect(annotation.id)}
+                              aria-label="Select annotation"
+                              className="size-3.5 rounded border-border text-primary focus:ring-0 cursor-pointer"
+                            />
                           )}
-                          {annotation.comment && (
-                            <p className="text-xs text-muted-foreground pl-2 select-text leading-relaxed">
-                              {annotation.comment}
-                            </p>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleJumpToPage(annotation.pageIndex)}
+                            className="font-mono text-muted-foreground hover:text-foreground"
+                          >
+                            P. {(annotation.pageIndex ?? 0) + 1}
+                          </button>
                         </div>
 
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity shrink-0">
+                        {/* Hover actions */}
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                           {isDeletingCurrent ? (
-                            <div className="flex items-center gap-1 rounded-md border border-destructive/20 bg-destructive/10 p-0.5">
+                            <div className="flex items-center gap-1">
                               <button
                                 type="button"
                                 onClick={() => handleDelete(annotation)}
-                                title="Confirm delete"
                                 aria-label="Confirm delete"
-                                className="flex size-5 items-center justify-center rounded-md text-destructive hover:bg-destructive/20 focus-visible:ring-1 focus-visible:ring-destructive focus-visible:outline-none transition-colors cursor-pointer"
+                                className="size-5 rounded text-destructive hover:bg-destructive/10 flex items-center justify-center"
                               >
-                                <Check className="size-3.5 shrink-0" />
+                                <Check className="size-3" />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setDeletingId(null)}
-                                title="Cancel"
                                 aria-label="Cancel"
-                                className="flex size-5 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer"
+                                className="size-5 rounded text-muted-foreground hover:bg-muted flex items-center justify-center"
                               >
-                                <X className="size-3.5 shrink-0" />
+                                <X className="size-3" />
                               </button>
                             </div>
                           ) : (
@@ -360,36 +360,46 @@ export default function AnnotationsPanel({
                               <button
                                 type="button"
                                 onClick={() => setEditingId(annotation.id)}
-                                className="flex size-6 items-center justify-center rounded-md text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer hover:bg-muted"
-                                title="Edit annotation"
                                 aria-label="Edit annotation"
+                                className="size-5 rounded text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center"
                               >
-                                <Edit3 className="size-3.5 shrink-0" />
+                                <Edit3 className="size-3" />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setDeletingId(annotation.id)}
-                                className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-destructive focus-visible:outline-none transition-colors cursor-pointer"
-                                title="Delete annotation"
                                 aria-label="Delete annotation"
+                                className="size-5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center"
                               >
-                                <Trash2 className="size-3.5 shrink-0" />
+                                <Trash2 className="size-3" />
                               </button>
                             </>
                           )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 pl-2 text-10 text-muted-foreground font-mono">
+                      {/* Quote Text */}
+                      {annotation.quoteText && (
                         <button
                           type="button"
                           onClick={() => handleJumpToPage(annotation.pageIndex)}
-                          className="inline-flex items-center gap-1 rounded px-1 -ml-1 text-10 text-muted-foreground font-mono hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
-                          title={`Jump to page ${(annotation.pageIndex ?? 0) + 1}`}
+                          className="text-left w-full cursor-pointer select-text"
                         >
-                          <span>p.{(annotation.pageIndex ?? 0) + 1}</span>
+                          <p
+                            className="text-12 leading-snug text-foreground border-l-2 pl-2 italic"
+                            style={{ borderColor: safeColor }}
+                          >
+                            &ldquo;{annotation.quoteText}&rdquo;
+                          </p>
                         </button>
-                      </div>
+                      )}
+
+                      {/* Comment */}
+                      {annotation.comment && (
+                        <p className="text-11 text-muted-foreground pl-2 leading-relaxed select-text">
+                          {annotation.comment}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -402,3 +412,4 @@ export default function AnnotationsPanel({
   );
 }
 
+export default AnnotationsPanel;

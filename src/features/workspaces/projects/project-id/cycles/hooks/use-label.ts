@@ -17,17 +17,17 @@ export const cycleLabelKeys = {
 
 // ── Query Options ────────────────────────────────────────────────────────────
 
-export const cycleLabelsQueryOptions = (workspaceId: string, type: string = "cycle", projectId?: string) =>
+export const cycleLabelsQueryOptions = (workspaceId?: string, type: string = "cycle", projectId?: string) =>
   queryOptions({
-    queryKey: cycleLabelKeys.list(workspaceId, type, projectId),
-    queryFn: () => CycleLabelService.list(workspaceId, type, projectId),
-    enabled: !!workspaceId,
+    queryKey: cycleLabelKeys.list(workspaceId || 'me', type, projectId),
+    queryFn: () => CycleLabelService.list(workspaceId || 'me', type, projectId),
+    enabled: Boolean(workspaceId || projectId),
     staleTime: 0,
   });
 
 // ── Query Hooks ───────────────────────────────────────────────────────────────
 
-export const useLabelsQuery = (workspaceId: string, type: string = "cycle", projectId?: string) =>
+export const useLabelsQuery = (workspaceId?: string, type: string = "cycle", projectId?: string) =>
   useQuery(cycleLabelsQueryOptions(workspaceId, type, projectId));
 
 // ── Mutation Hooks ───────────────────────────────────────────────────────────

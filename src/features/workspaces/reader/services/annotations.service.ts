@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete, apiPut } from "@/shared/lib/api";
 import type {
   ReaderAnnotation,
   AnnotationType,
@@ -7,6 +7,8 @@ import type {
 export interface CreateAnnotationDTO {
   type?: AnnotationType;
   pageIndex: number;
+  y?: number;
+  x?: number;
   color?: string;
   quoteText?: string;
   comment?: string;
@@ -19,6 +21,30 @@ export interface UpdateAnnotationDTO {
   comment?: string;
   rectCoords?: unknown;
   expectedVersion?: number;
+}
+
+export interface UpsertBatchItem {
+  id?: string;
+  type?: AnnotationType;
+  pageIndex: number;
+  y?: number;
+  x?: number;
+  color?: string;
+  quoteText?: string;
+  comment?: string;
+  rectCoords?: unknown;
+  expectedVersion?: number;
+}
+
+export interface BatchAnnotationsDTO {
+  upserts: UpsertBatchItem[];
+  deletes: string[];
+}
+
+export interface BatchAnnotationsResponse {
+  created: ReaderAnnotation[];
+  updated: ReaderAnnotation[];
+  deleted: string[];
 }
 
 type AnnotationsListResponse =
@@ -42,21 +68,25 @@ type ExtractNotesResponse = {
 };
 
 /**
- * AnnotationsService corresponding to backend AnnotationsService (backend/src/modules/library/annotations/annotations.service.ts)
+ * AnnotationsService connected to backend AnnotationsController (/api/v1/library/attachments/:attachmentId/annotations)
  */
 export const AnnotationsService = {
   /**
-   * Get all PDF annotations for an attachment
+   * Get all PDF annotations for an attachment (sorted by position page -> Y -> X)
    */
   getByAttachment: async (
-    workspaceId: string,
+    _scopeId: string | undefined,
     attachmentId: string,
     pageIndex?: number,
+    type?: string,
   ): Promise<ReaderAnnotation[]> => {
-    const query =
-      pageIndex !== undefined ? `?pageIndex=${encodeURIComponent(pageIndex)}` : '';
+    const params = new URLSearchParams();
+    if (pageIndex !== undefined) params.set('pageIndex', String(pageIndex));
+    if (type !== undefined) params.set('type', type);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+
     const raw = await apiGet<AnnotationsListResponse>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/annotations${query}`,
+      `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/annotations${qs}`,
     );
     if (Array.isArray(raw)) return raw;
     if (raw && typeof raw === 'object') {
@@ -69,12 +99,12 @@ export const AnnotationsService = {
    * Create a new PDF annotation attached to an attachment
    */
   create: async (
-    workspaceId: string,
+    _scopeId: string | undefined,
     attachmentId: string,
     dto: CreateAnnotationDTO,
   ): Promise<ReaderAnnotation> => {
     const raw = await apiPost<AnnotationSingleResponse>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/annotations`,
+      `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/annotations`,
       dto,
     );
     if (raw && typeof raw === 'object') {
@@ -86,20 +116,23 @@ export const AnnotationsService = {
   },
 
   /**
-   * Update an annotation comment, color, or text
+   * Update an annotation comment, color, or text (with optimistic locking)
    */
   update: async (
-    workspaceId: string,
+    _scopeId: string | undefined,
     attachmentId: string,
     annotationId: string,
     expectedVersion: number | undefined,
     dto: UpdateAnnotationDTO,
   ): Promise<ReaderAnnotation> => {
     const raw = await apiPatch<AnnotationSingleResponse>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
+      `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
       {
         ...dto,
-        expectedVersion,
+        expectedVersion: expectedVersion ?? 1,
+      },
+      {
+        headers: expectedVersion ? { 'If-Match': String(expectedVersion) } : undefined,
       },
     );
     if (raw && typeof raw === 'object') {
@@ -111,10 +144,10 @@ export const AnnotationsService = {
   },
 
   /**
-   * Delete a PDF annotation
+   * Delete a PDF annotation (soft delete)
    */
   delete: async (
-    workspaceId: string,
+    _scopeId: string | undefined,
     attachmentId: string,
     annotationId: string,
     expectedVersion?: number,
@@ -124,7 +157,7 @@ export const AnnotationsService = {
         ? `?expectedVersion=${encodeURIComponent(String(expectedVersion))}`
         : '';
     const raw = await apiDelete<DeleteAnnotationResponse>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}${versionQuery}`,
+      `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}${versionQuery}`,
     );
     if (raw && typeof raw === 'object') {
       if (typeof raw.deleted === 'boolean') {
@@ -138,14 +171,29 @@ export const AnnotationsService = {
   },
 
   /**
+   * Batch upsert & delete annotations in a single transaction (used by Systembar)
+   */
+  batch: async (
+    _scopeId: string | undefined,
+    attachmentId: string,
+    dto: BatchAnnotationsDTO,
+  ): Promise<BatchAnnotationsResponse> => {
+    const raw = await apiPut<BatchAnnotationsResponse>(
+      `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/annotations/batch`,
+      dto,
+    );
+    return raw;
+  },
+
+  /**
    * Synthesize & extract literature notes from highlighted passages in document
    */
   extractNotes: async (
-    workspaceId: string,
+    _scopeId: string | undefined,
     itemId: string,
   ): Promise<{ success: boolean; totalExtracted: number }> => {
     const raw = await apiPost<ExtractNotesResponse>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/extract-notes`,
+      `/api/v1/library/notes/items/${encodeURIComponent(itemId)}/from-annotations`,
       {},
     );
     if (raw && typeof raw === 'object') {
@@ -163,4 +211,3 @@ export const AnnotationsService = {
     return { success: true, totalExtracted: 0 };
   },
 };
-

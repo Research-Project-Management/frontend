@@ -4,7 +4,7 @@ import { type Sticky } from '@/features/workspaces/projects/stickies/types/stick
 import { STICKY_COLOR_MAP } from '@/features/workspaces/projects/stickies/types/sticky.types';
 import Content from "./Content";
 import Toolbar from "./Toolbar";
-import React, { useState, useEffect, useRef, memo } from "react";
+import React, { useState, memo } from "react";
 import type { Editor } from "@tiptap/react";
 import { GripVertical } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
@@ -29,26 +29,7 @@ const Card = memo(
   }: CardProps) {
     const colorConfig = STICKY_COLOR_MAP[sticky.color];
     const [editor, setEditor] = useState<Editor | null>(null);
-    const [localTitle, setLocalTitle] = useState(sticky.title || "");
     const [activeModal, setActiveModal] = useState<string | null>(null);
-    const titleFocusedRef = useRef(false);
-
-    useEffect(() => {
-      if (titleFocusedRef.current) return;
-      if (sticky.title !== undefined) {
-        setLocalTitle(sticky.title);
-      }
-    }, [sticky.title]);
-
-    useEffect(() => {
-      if (!titleFocusedRef.current) return;
-      const timer = setTimeout(() => {
-        if (localTitle !== sticky.title) {
-          onUpdate(sticky.id, { title: localTitle });
-        }
-      }, 800);
-      return () => clearTimeout(timer);
-    }, [localTitle, sticky.id, sticky.title, onUpdate]);
 
     const topAccentStyle = {
       backgroundColor: colorConfig.bg,
@@ -67,7 +48,7 @@ const Card = memo(
         {/* Top accent bar + drag handle */}
         <div
           tabIndex={0}
-          className="h-10 flex items-center justify-between px-4 cursor-grab active:cursor-grabbing active:outline-0 select-none bg-muted border-b border-border focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          className="h-10 flex items-center justify-between px-4 cursor-grab active:cursor-grabbing active:outline-0 select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
           style={topAccentStyle}
           aria-label="Drag to move sticky"
           aria-roledescription="draggable card handle"
@@ -79,25 +60,6 @@ const Card = memo(
             </div>
           </div>
           <GripVertical className="h-3.5 w-3.5 opacity-30 shrink-0" />
-        </div>
-
-        {/* Title */}
-        <div className="px-4 pt-4 pb-0">
-          <input
-            type="text"
-            value={localTitle}
-            onChange={(e) => setLocalTitle(e.target.value)}
-            onFocus={() => {
-              titleFocusedRef.current = true;
-            }}
-            onBlur={() => {
-              titleFocusedRef.current = false;
-              if (localTitle !== sticky.title) onUpdate(sticky.id, { title: localTitle });
-            }}
-            placeholder="Title…"
-            aria-label="Sticky title"
-            className="w-full bg-transparent border-0 outline-none resize-none text-sm font-semibold tracking-tight placeholder:text-current/40 placeholder:font-normal text-inherit"
-          />
         </div>
 
         {/* Content */}

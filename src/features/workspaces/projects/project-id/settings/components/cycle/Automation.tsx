@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { RefreshCcw } from 'lucide-react';
-import { Switch } from '@/shared/components/ui/switch';
+import { Switch } from "@/shared/components/ui";
 
 interface AutomationProps {
   autoAdvance: boolean;
@@ -16,7 +16,7 @@ export function Automation({
   disabled,
 }: AutomationProps) {
   return (
-    <div className="rounded-lg border border-border bg-card/40 overflow-hidden">
+    <div className="rounded-md border border-border bg-card overflow-hidden">
       <div className="px-6 py-4 border-b border-border">
         <h3 className="text-sm font-semibold text-foreground">
           Cycle automation
@@ -28,8 +28,8 @@ export function Automation({
 
       <div className="px-6 py-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="size-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-            <RefreshCcw className="size-4 text-muted-foreground shrink-0" />
+          <div className="size-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+            <RefreshCcw className="size-4 text-foreground shrink-0" />
           </div>
           <div className="min-w-0">
             <div className="text-xs font-semibold text-foreground">

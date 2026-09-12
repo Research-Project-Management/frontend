@@ -7,7 +7,7 @@
  *  - Item management (rename, move, delete)
  */
 
-import { apiGet, apiPost, apiPut, apiDelete, getAuthToken } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPut, apiDelete, getAuthToken } from "@/shared/lib/api";
 import { API_BASE_URL } from '@/config/env';
 
 export interface EditorStorageItem {

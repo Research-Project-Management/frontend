@@ -1,5 +1,5 @@
-import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
-import type { Label, CreateLabelInput, UpdateLabelInput } from "../types/label.types";
+import { apiGet } from "@/shared/lib/api";
+import type { Label } from "../types/work-item.types";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -38,36 +38,30 @@ export const AVAILABLE_LABEL_COLORS = [
 
 export const DEFAULT_LABEL_COLOR = "#4bce97";
 
-// ── Pure Label API Service ───────────────────────────────────────────────────
+// ── Pure Label Query API Service (Work-items only queries labels, CRUD belongs to Settings) ──
 
 export const LabelService = {
-  list: async (workspaceId: string, type?: string, projectId?: string): Promise<Label[]> => {
+  getProjectLabels: async (projectId: string): Promise<Label[]> => {
+    const data = await apiGet<{ labels?: Label[] }>(`/api/projects/${projectId}/labels`);
+    return data.labels ?? [];
+  },
+
+  list: async (workspaceId?: string, type?: string, projectId?: string): Promise<Label[]> => {
+    const effectiveProjectId = projectId || (workspaceId && workspaceId !== 'me' ? workspaceId : undefined);
+    if (effectiveProjectId) {
+      return LabelService.getProjectLabels(effectiveProjectId);
+    }
     const params = new URLSearchParams();
     if (type) params.append("type", type);
-    if (projectId) params.append("projectId", projectId);
 
     const queryStr = params.toString() ? `?${params.toString()}` : "";
-    const data = await apiGet<any>(`/api/workspace/${workspaceId}/labels${queryStr}`);
+    const data = await apiGet<any>(`/api/labels${queryStr}`);
     if (Array.isArray(data)) return data;
     if (Array.isArray(data?.labels)) return data.labels;
     if (Array.isArray(data?.data)) return data.data;
     return [];
   },
-
-  create: ({ workspaceId, ...payload }: CreateLabelInput) => {
-    const { projectId, ...cleanPayload } = payload as any;
-    return apiPost<{ label?: Label; tag?: Label }>(`/api/workspace/${workspaceId}/labels`, cleanPayload);
-  },
-
-  update: ({ labelId, ...payload }: UpdateLabelInput & { projectId?: string }) => {
-    const { projectId, ...cleanPayload } = payload as any;
-    return apiPut<{ label?: Label; tag?: Label }>(`/api/labels/${labelId}`, cleanPayload);
-  },
-
-  delete: (labelId: string) =>
-    apiDelete(`/api/labels/${labelId}`),
 };
 
-// ── Backward-compatible Function Aliases ─────────────────────────────────────
-
 export const fetchLabels = LabelService.list;
+

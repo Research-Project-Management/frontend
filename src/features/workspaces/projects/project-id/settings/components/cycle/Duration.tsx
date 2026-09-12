@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 
 const DURATION_OPTIONS = [
   { value: 1, label: '1 week' },
@@ -19,7 +19,7 @@ interface DurationProps {
 
 export function Duration({ value, onChange, disabled }: DurationProps) {
   return (
-    <div className="rounded-lg border border-border bg-card/40 overflow-hidden">
+    <div className="rounded-md border border-border bg-card overflow-hidden">
       <div className="px-6 py-4 border-b border-border">
         <h3 className="text-sm font-semibold text-foreground">
           Default cycle duration

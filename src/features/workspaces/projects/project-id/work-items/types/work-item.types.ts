@@ -1,72 +1,155 @@
 import { z } from "zod";
 import {
-  workItemPrioritySchema,
-  taskPrioritySchema,
-  taskIssueTypeSchema,
-  taskRelationTypeSchema,
-  taskRelationSchema,
-  workItemRecurrenceSchema,
-  taskRecurrenceSchema,
-  workItemReminderSchema,
-  taskReminderSchema,
-  checklistItemSchema,
-  checklistSchema,
-  checklistItemInputSchema,
-  checklistInputSchema,
+  prioritySchema,
+  relationTypeSchema,
+  relationSchema,
+  stateGroupSchema,
+  userMinimalSchema,
+  cycleMinimalSchema,
+  parentItemMinimalSchema,
+  parentTaskMinimalSchema,
+  subItemSchema,
+  subtaskItemSchema,
+  attachPageSchema,
+  attachPaperSchema,
+  attachFileSchema,
+  attachLinkSchema,
+  attachmentsSchema,
+  attachmentSchema,
+  attachPageInputSchema,
+  attachPaperInputSchema,
+  attachFileInputSchema,
+  attachLinkInputSchema,
+  itemSchema,
   workItemSchema,
   taskSchema,
+  createItemSchema,
+  createWorkItemSchema,
+  createTaskSchema,
+  updateItemSchema,
+  updateWorkItemSchema,
+  updateTaskSchema,
+  itemMutationInputSchema,
   workItemMutationInputSchema,
   taskMutationInputSchema,
-  columnSchema,
-  workItemAttachmentSchema,
-  taskAttachmentSchema,
+  reorderItemSchema,
+  reorderWorkItemSchema,
+  reorderTaskSchema,
+  bulkUpdateItemSchema,
+  bulkUpdateWorkItemSchema,
+  bulkUpdateTaskSchema,
+  bulkDeleteItemSchema,
+  createSubItemSchema,
+  createSubtaskSchema,
+  stateSchema,
+  stateFormSchema,
+  columnFormSchema,
+  filtersSchema,
 } from "../schemas/work-item.schema";
 
-// ── Branded Identifier Types (Matt Pocock Pattern) ──────────────────────────
+// ── 1. Branded Identifier Types (Matt Pocock Pattern) ─────────────────────────
 
 declare const __brand: unique symbol;
 export type Brand<B> = { readonly [__brand]: B };
 
-export type WorkItemId = string & Brand<'WorkItemId'>;
-export type TaskId = WorkItemId;
+export type ItemId = string & Brand<'ItemId'>;
+export type WorkItemId = ItemId;
+export type TaskId = ItemId;
 export type ColumnId = string & Brand<'ColumnId'>;
 export type ProjectId = string & Brand<'ProjectId'>;
 export type CycleId = string & Brand<'CycleId'>;
 
-// ── Domain Types (Inferred from Zod) ─────────────────────────────────────────
+// ── 2. Domain Types Inferred from Zod Schemas ───────────────────────────────
 
-export type Priority = z.infer<typeof workItemPrioritySchema>;
+export type Priority = z.infer<typeof prioritySchema>;
+export type ItemPriority = Priority;
 export type WorkItemPriority = Priority;
 export type TaskPriority = Priority;
 
-export type TaskIssueType = z.infer<typeof taskIssueTypeSchema>;
-export type WorkItemIssueType = TaskIssueType;
+export type RelationType = z.infer<typeof relationTypeSchema>;
+export type ItemRelationType = RelationType;
+export type WorkItemRelationType = RelationType;
+export type TaskRelationType = RelationType;
 
-export type TaskRelationType = z.infer<typeof taskRelationTypeSchema>;
-export type WorkItemRelationType = TaskRelationType;
+export type Relation = z.infer<typeof relationSchema>;
+export type ItemRelation = Relation;
+export type WorkItemRelation = Relation;
+export type TaskRelation = Relation;
 
-export type TaskRelation = z.infer<typeof taskRelationSchema>;
-export type WorkItemRelation = TaskRelation;
+export type Attachment = z.infer<typeof attachmentSchema>;
+export type ItemAttachment = Attachment;
+export type TaskAttachment = Attachment;
+export type WorkItemAttachment = Attachment;
 
-export type WorkItemRecurrence = z.infer<typeof workItemRecurrenceSchema>;
-export type TaskRecurrence = WorkItemRecurrence;
+export type AttachPageItem = z.infer<typeof attachPageSchema>;
+export type AttachPaperItem = z.infer<typeof attachPaperSchema>;
+export type AttachFileItem = z.infer<typeof attachFileSchema>;
+export type AttachLinkItem = z.infer<typeof attachLinkSchema>;
+export type Attachments = z.infer<typeof attachmentsSchema>;
+export type ItemAttachments = Attachments;
+export type WorkItemAttachments = Attachments;
 
-export type WorkItemReminder = z.infer<typeof workItemReminderSchema>;
-export type TaskReminder = WorkItemReminder;
+export type UserMinimal = z.infer<typeof userMinimalSchema>;
+export type CycleMinimal = z.infer<typeof cycleMinimalSchema>;
+export type ParentItemMinimal = z.infer<typeof parentItemMinimalSchema>;
+export type ParentWorkItemMinimal = ParentItemMinimal;
+export type ParentTaskMinimal = ParentItemMinimal;
 
-export type ChecklistItem = z.infer<typeof checklistItemSchema>;
-export type Checklist = z.infer<typeof checklistSchema>;
-export type ChecklistItemInput = z.infer<typeof checklistItemInputSchema>;
-export type ChecklistInput = z.infer<typeof checklistInputSchema>;
-export type WorkItemAttachment = z.infer<typeof workItemAttachmentSchema>;
-export type TaskAttachment = WorkItemAttachment;
-export type WorkItem = z.infer<typeof workItemSchema>;
-export type Task = WorkItem;
-export type WorkItemMutationInput = z.infer<typeof workItemMutationInputSchema>;
-export type TaskMutationInput = WorkItemMutationInput;
-export type Column = z.infer<typeof columnSchema>;
+export type SubItem = z.infer<typeof subItemSchema>;
+export type SubItemMinimal = SubItem;
+export type SubtaskItem = SubItem;
+export type SubtaskMinimal = SubItem;
 
-// ── Local Domain Entities (Self-contained, no cross-module imports) ──────────
+export type Item = z.infer<typeof itemSchema>;
+export type WorkItem = Item;
+export type Task = Item;
+
+export type CreateItemInput = z.infer<typeof createItemSchema>;
+export type CreateWorkItemInput = CreateItemInput;
+export type CreateTaskInput = CreateItemInput;
+
+export type UpdateItemInput = z.infer<typeof updateItemSchema>;
+export type UpdateWorkItemInput = UpdateItemInput;
+export type UpdateTaskInput = UpdateItemInput;
+
+export type ItemMutationInput = z.infer<typeof itemMutationInputSchema>;
+export type WorkItemMutationInput = ItemMutationInput;
+export type TaskMutationInput = ItemMutationInput;
+
+export type ReorderItemInput = z.infer<typeof reorderItemSchema>;
+export type ReorderWorkItemInput = ReorderItemInput;
+export type ReorderTaskInput = ReorderItemInput;
+
+export type BulkUpdateItemInput = z.infer<typeof bulkUpdateItemSchema>;
+export type BulkUpdateWorkItemInput = BulkUpdateItemInput;
+export type BulkUpdateTaskInput = BulkUpdateItemInput;
+
+export type BulkDeleteItemInput = z.infer<typeof bulkDeleteItemSchema>;
+export type BulkDeleteWorkItemInput = BulkDeleteItemInput;
+export type BulkDeleteTaskInput = BulkDeleteItemInput;
+
+export type CreateSubItemInput = z.infer<typeof createSubItemSchema>;
+export type CreateSubtaskInput = CreateSubItemInput;
+
+export type AttachPageInput = z.infer<typeof attachPageInputSchema>;
+export type AttachPaperInput = z.infer<typeof attachPaperInputSchema>;
+export type AttachFileInput = z.infer<typeof attachFileInputSchema>;
+export type AttachLinkInput = z.infer<typeof attachLinkInputSchema>;
+
+export type State = z.infer<typeof stateSchema>;
+export type Column = State;
+export type ColumnType = Column;
+export type WorkItemState = State;
+export type WorkItemStateSchema = State;
+
+export type StateGroup = z.infer<typeof stateGroupSchema>;
+export type StateForm = z.infer<typeof stateFormSchema>;
+export type ColumnForm = z.infer<typeof columnFormSchema>;
+
+export type Filters = z.infer<typeof filtersSchema>;
+export type WorkItemFilters = Filters;
+
+// ── 3. Domain Entities ───────────────────────────────────────────────────────
 
 export type CycleMilestone = {
   id: string;
@@ -90,41 +173,57 @@ export type Cycle = {
 };
 
 export type ProjectMember = {
-  userId: string;
-  role: string;
+  id?: string;
+  userId?: string;
+  role?: string;
   name?: string;
   avatar?: string;
+  user?: {
+    id?: string;
+    name?: string;
+    avatar?: string;
+  };
 };
 
 export type Project = {
   id: string;
   name: string;
   description?: string;
-  avatar?: string;
-  color?: string;
+  avatar?: string | null;
+  color?: string | null;
   status?: string;
   workspaceId?: string;
   members?: ProjectMember[];
+  emoji?: string | null;
+  icon?: string | null;
+  [key: string]: unknown;
 };
 
-export type WorkItemActivityLog = {
+export type ActivityLog = {
   id: string;
+  itemId?: string;
   taskId?: string;
   workItemId?: string;
   action?: string;
+  message?: string;
   type?: string;
   user?: {
     id?: string;
     name?: string;
     avatar?: string;
   } | null;
-  author?: string;
+  author?: {
+    id?: string;
+    name?: string;
+    avatar?: string;
+  } | string | null;
   authorInitials?: string;
   avatarUrl?: string | null;
   content?: string;
   timestamp?: string;
   createdAt?: number | string;
   kind?: "comment" | "system" | "activity";
+  reactions?: Record<string, string[]> | Array<{ emoji?: string } | string> | null;
   reactionEmoji?: string;
   metadata?: Record<string, unknown>;
   permissions?: {
@@ -132,73 +231,69 @@ export type WorkItemActivityLog = {
     canDelete: boolean;
   };
 };
-export type TaskActivityLog = WorkItemActivityLog;
+export type ItemActivityLog = ActivityLog;
+export type TaskActivityLog = ActivityLog;
+export type WorkItemActivityLog = ActivityLog;
 
-export type ProjectWorkItemsData = {
-  tasks: WorkItem[];
+export type ProjectItemsData = {
+  items?: Item[];
+  workItems?: Item[];
+  tasks: Item[];
   columns: Column[];
-  projectName: string;
-  cycles: Cycle[];
+  states?: Column[];
+  projectName?: string;
+  cycles?: Cycle[];
 };
-export type ProjectTasksData = ProjectWorkItemsData;
+export type ProjectWorkItemsData = ProjectItemsData;
+export type ProjectTasksData = ProjectItemsData;
 
-// ── UI States & Discriminated Unions ─────────────────────────────────────────
+export interface WorkItemCardHandlers {
+  onEditCard: (card: any) => void;
+  onDeleteCard: (card: any) => void;
+  onDuplicateCard: (card: any) => void;
+  onJoinCard: (card: any) => void;
+  onLeaveCard: (card: any) => void;
+  onRemoveFromCycle?: (card: any) => void;
+  onMoveCard: (taskId: string, newColumnId: string, laneData?: any) => void;
+}
 
-export type WorkItemViewMode = "board" | "list" | "calendar" | "table" | "split";
-export type TaskViewMode = WorkItemViewMode;
-export type TaskDetailDisplayMode = "side-peek" | "center" | "fullscreen";
+export interface BaseWorkItemViewProps {
+  columns?: Column[];
+  displayOptions?: DisplayOptions;
+  currentUserId?: string | null;
+  currentUserAvatar?: string;
+  isReadOnly?: boolean;
+  members?: ProjectMember[] | any[];
+  cycles?: Cycle[];
+  selectedIds?: string[];
+  selectedTaskIds?: string[];
+  onToggleSelect?: (id: string) => void;
+  onToggleSelectTask?: (id: string) => void;
+  onSelectAll?: (ids: string[]) => void;
+  onSelectAllTasks?: (ids: string[]) => void;
+}
 
-export type WorkItemModalState =
+// ── 4. UI Modes & States ─────────────────────────────────────────────────────
+
+export type ViewMode = "board" | "list" | "calendar" | "table" | "timeline" | "split";
+export type ItemViewMode = ViewMode;
+export type TaskViewMode = ViewMode;
+export type WorkItemViewMode = ViewMode;
+export type ItemDetailDisplayMode = "side-peek" | "center" | "fullscreen";
+export type TaskDetailDisplayMode = ItemDetailDisplayMode;
+
+export type ModalState =
   | { mode: "idle" }
   | { mode: "create"; columnId?: string; title?: string }
-  | { mode: "edit"; task: WorkItem }
-  | { mode: "delete"; task: WorkItem }
-  | { mode: "transfer"; task: WorkItem }
+  | { mode: "edit"; item: Item; task?: Item; workItem?: Item }
+  | { mode: "delete"; item: Item; task?: Item; workItem?: Item }
+  | { mode: "transfer"; item: Item; task?: Item; workItem?: Item }
   | { mode: "add-existing" };
-export type TaskModalState = WorkItemModalState;
+export type ItemModalState = ModalState;
+export type TaskModalState = ModalState;
+export type WorkItemModalState = ModalState;
 
-// ── Issue Type Configurations (Plane.so Style) ──────────────────────────────
-
-export const ISSUE_TYPE_CONFIG: Record<
-  TaskIssueType,
-  { label: string; iconName: string; color: string; bgLight: string; badgeClass: string }
-> = {
-  task: {
-    label: "Task",
-    iconName: "CheckSquare",
-    color: "#3B82F6",
-    bgLight: "rgba(59, 130, 246, 0.12)",
-    badgeClass: "text-blue-500 bg-blue-500/10 border-blue-500/20",
-  },
-  bug: {
-    label: "Bug",
-    iconName: "Bug",
-    color: "#EF4444",
-    bgLight: "rgba(239, 68, 68, 0.12)",
-    badgeClass: "text-red-500 bg-red-500/10 border-red-500/20",
-  },
-  feature: {
-    label: "Feature",
-    iconName: "Sparkles",
-    color: "#8B5CF6",
-    bgLight: "rgba(139, 92, 246, 0.12)",
-    badgeClass: "text-purple-500 bg-purple-500/10 border-purple-500/20",
-  },
-  improvement: {
-    label: "Improvement",
-    iconName: "TrendingUp",
-    color: "#10B981",
-    bgLight: "rgba(16, 185, 129, 0.12)",
-    badgeClass: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
-  },
-  epic: {
-    label: "Epic",
-    iconName: "Zap",
-    color: "#F59E0B",
-    bgLight: "rgba(245, 158, 11, 0.12)",
-    badgeClass: "text-amber-500 bg-amber-500/10 border-amber-500/20",
-  },
-};
+// ── 5. Standard Domain Configurations ────────────────────────────────────────
 
 export const RELATION_TYPE_CONFIG: Record<
   TaskRelationType,
@@ -222,18 +317,138 @@ export const RELATION_TYPE_CONFIG: Record<
   duplicate_of: {
     label: "Duplicate of",
     description: "This issue is a duplicate of the other issue",
-    badgeColor: "text-slate-500 bg-slate-500/10 border-slate-500/20",
+    badgeColor: "text-muted-foreground bg-muted border-border",
   },
 };
 
-export const STORY_POINT_OPTIONS = [1, 2, 3, 5, 8, 13, 21] as const;
+export const STATE_GROUPS: readonly StateGroup[] = [
+  "backlog",
+  "unstarted",
+  "started",
+  "completed",
+  "cancelled",
+] as const;
 
-// ── Column Helpers ───────────────────────────────────────────────────────────
+export const STATE_GROUP_CONFIG: Record<
+  StateGroup,
+  { label: string; defaultColor: string; description: string }
+> = {
+  backlog: {
+    label: "Backlog",
+    defaultColor: "#8A9093",
+    description: "Unprioritized items awaiting scheduling",
+  },
+  unstarted: {
+    label: "To Do",
+    defaultColor: "#525866",
+    description: "Prioritized items ready for the active cycle",
+  },
+  started: {
+    label: "In Progress",
+    defaultColor: "#F59E0B",
+    description: "Items actively being worked on",
+  },
+  completed: {
+    label: "Done",
+    defaultColor: "#10B981",
+    description: "Finished and accepted items",
+  },
+  cancelled: {
+    label: "Cancelled",
+    defaultColor: "#EF4444",
+    description: "Abandoned, duplicate, or rejected items",
+  },
+};
 
-export function resolveWorkItemColumnId(column?: Pick<Column, "id"> | null): string {
-  return column?.id ?? "";
-}
-export const resolveTaskColumnId = resolveWorkItemColumnId;
+export const DEFAULT_STATES: State[] = [
+  {
+    id: "backlog",
+    name: "Backlog",
+    title: "Backlog",
+    group: "backlog",
+    color: "#8A9093",
+    accentColor: "#8A9093",
+    sequence: 1000,
+    isDefault: true,
+    description: "Items awaiting prioritization and scheduling",
+  },
+  {
+    id: "todo",
+    name: "To Do",
+    title: "To Do",
+    group: "unstarted",
+    color: "#525866",
+    accentColor: "#525866",
+    sequence: 2000,
+    isDefault: false,
+    description: "Items ready to be worked on in the current cycle",
+  },
+  {
+    id: "in_progress",
+    name: "In Progress",
+    title: "In Progress",
+    group: "started",
+    color: "#F59E0B",
+    accentColor: "#F59E0B",
+    sequence: 3000,
+    isDefault: false,
+    description: "Items actively being worked on by assignees",
+  },
+  {
+    id: "done",
+    name: "Done",
+    title: "Done",
+    group: "completed",
+    color: "#10B981",
+    accentColor: "#10B981",
+    sequence: 4000,
+    isDefault: false,
+    description: "Items completed and accepted",
+  },
+  {
+    id: "cancelled",
+    name: "Cancelled",
+    title: "Cancelled",
+    group: "cancelled",
+    color: "#EF4444",
+    accentColor: "#EF4444",
+    sequence: 5000,
+    isDefault: false,
+    description: "Items abandoned, duplicate, or rejected",
+  },
+];
+export const DEFAULT_WORK_ITEM_STATES = DEFAULT_STATES;
+
+export const DEFAULT_STATE_COLORS: Record<string, string> = {
+  backlog: "#8A9093",
+  todo: "#525866",
+  unstarted: "#525866",
+  in_progress: "#F59E0B",
+  started: "#F59E0B",
+  done: "#10B981",
+  completed: "#10B981",
+  cancelled: "#EF4444",
+};
+
+export const FIXED_COLUMNS: Column[] = [
+  { id: "backlog", name: "Backlog", title: "Backlog", accentColor: "#8A9093", color: "#8A9093", group: "backlog", sequence: 1000, isDefault: true },
+  { id: "todo", name: "To Do", title: "To Do", accentColor: "#525866", color: "#525866", group: "unstarted", sequence: 2000, isDefault: false },
+  { id: "doing", name: "In Progress", title: "In Progress", accentColor: "#F59E0B", color: "#F59E0B", group: "started", sequence: 3000, isDefault: false },
+  { id: "done", name: "Done", title: "Done", accentColor: "#10B981", color: "#10B981", group: "completed", sequence: 4000, isDefault: false },
+  { id: "cancelled", name: "Cancelled", title: "Cancelled", accentColor: "#EF4444", color: "#EF4444", group: "cancelled", sequence: 5000, isDefault: false },
+];
+export const FIXED_TASK_COLUMNS = FIXED_COLUMNS;
+export const FIXED_WORK_ITEM_COLUMNS = FIXED_COLUMNS;
+
+export const DEFAULT_COLUMN_COLORS: Record<string, string> = {
+  backlog: "#8A9093",
+  todo: "#525866",
+  doing: "#F59E0B",
+  done: "#10B981",
+  cancelled: "#EF4444",
+};
+export const DEFAULT_TASK_COLUMN_COLORS = DEFAULT_COLUMN_COLORS;
+export const DEFAULT_WORK_ITEM_COLUMN_COLORS = DEFAULT_COLUMN_COLORS;
 
 export const PRIORITY_CONFIG = {
   urgent: { label: "Urgent", color: "red" },
@@ -243,28 +458,133 @@ export const PRIORITY_CONFIG = {
   none: { label: "None", color: "transparent" },
 } as const satisfies Record<Priority, { label: string; color: string }>;
 
-export const FIXED_WORK_ITEM_COLUMNS: Column[] = [
-  { id: "backlog", title: "Backlog", accentColor: "#6366F1" },
-  { id: "todo", title: "To Do", accentColor: "#0EA5E9" },
-  { id: "doing", title: "Doing", accentColor: "#F59E0B" },
-  { id: "review", title: "Review", accentColor: "#EAB308" },
-  { id: "done", title: "Done", accentColor: "#22C55E" },
-];
-export const DEFAULT_TASK_COLUMNS = FIXED_WORK_ITEM_COLUMNS;
-export const FIXED_TASK_COLUMNS = FIXED_WORK_ITEM_COLUMNS;
+// ── 6. Display Options & Filter Configurations ───────────────────────────────
 
-export const DEFAULT_WORK_ITEM_COLUMN_COLORS: Record<string, string> = {
-  backlog: "#6366F1",
-  todo: "#0EA5E9",
-  doing: "#F59E0B",
-  in_progress: "#F59E0B",
-  review: "#EAB308",
-  done: "#22C55E",
-  cancelled: "#94A3B8",
-};
-export const DEFAULT_TASK_COLUMN_COLORS = DEFAULT_WORK_ITEM_COLUMN_COLORS;
+export type DisplayPropertyKey =
+  | 'id'
+  | 'assignee'
+  | 'startDate'
+  | 'dueDate'
+  | 'labels'
+  | 'priority'
+  | 'state'
+  | 'subtaskCount'
+  | 'subWorkItemCount'
+  | 'attachmentCount'
+  | 'link'
+  | 'dependencies'
+  | 'attach'
+  | 'cycle';
 
-export function resolveWorkItemColumnColor(columnId: string, accentColor?: string): string {
-  return accentColor || DEFAULT_WORK_ITEM_COLUMN_COLORS[columnId] || "#6B7280";
+export type GroupByOption =
+  | 'state'
+  | 'priority'
+  | 'cycle'
+  | 'attach'
+  | 'labels'
+  | 'assignee'
+  | 'createdBy'
+  | 'none';
+
+export type SubGroupByOption =
+  | 'priority'
+  | 'cycle'
+  | 'attach'
+  | 'labels'
+  | 'assignee'
+  | 'createdBy'
+  | 'none';
+
+export type OrderByOption =
+  | 'manual'
+  | 'title'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'startDate'
+  | 'dueDate'
+  | 'priority';
+
+export type OrderDirection = 'asc' | 'desc';
+
+export interface DisplayOptions {
+  properties: Record<DisplayPropertyKey, boolean>;
+  groupBy: GroupByOption;
+  subGroupBy: SubGroupByOption;
+  orderBy: OrderByOption;
+  orderDirection: OrderDirection;
+  showEmptyGroups: boolean;
+  showSubtasks: boolean;
+  showSubWorkItems?: boolean;
 }
-export const resolveTaskColumnColor = resolveWorkItemColumnColor;
+export type WorkItemDisplayOptions = DisplayOptions;
+
+export const DEFAULT_DISPLAY_OPTIONS: DisplayOptions = {
+  properties: {
+    id: true,
+    assignee: true,
+    startDate: false,
+    dueDate: false,
+    labels: true,
+    priority: true,
+    state: true,
+    subtaskCount: false,
+    subWorkItemCount: false,
+    attachmentCount: false,
+    link: false,
+    dependencies: true,
+    attach: false,
+    cycle: false,
+  },
+  groupBy: 'state',
+  subGroupBy: 'none',
+  orderBy: 'manual',
+  orderDirection: 'asc',
+  showEmptyGroups: true,
+  showSubtasks: true,
+  showSubWorkItems: true,
+};
+export const DEFAULT_WORK_ITEM_DISPLAY_OPTIONS = DEFAULT_DISPLAY_OPTIONS;
+
+export type DueDateFilterOption = 'all' | 'overdue' | 'this_week' | 'no_date';
+
+export const DEFAULT_FILTERS: Filters = {
+  search: '',
+  state: [],
+  state_group: [],
+  priority: [],
+  assignees: [],
+  mentions: [],
+  created_by: [],
+  labels: [],
+  cycle: [],
+  attach: [],
+  items: [],
+  work_items: [],
+  tasks: [],
+  parent: [],
+  due_date: [],
+  start_date: [],
+  created_at: [],
+  updated_at: [],
+  subscribers: [],
+};
+export const DEFAULT_WORK_ITEM_FILTERS = DEFAULT_FILTERS;
+
+// ── Work Item Label Types (Entity only - No CRUD in work-items) ─────────────
+
+export interface Label {
+  id: string;
+  name: string;
+  color?: string;
+  description?: string | null;
+  projectId?: string;
+  parentId?: string | null;
+  sortOrder?: number;
+  type?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type WorkItemLabel = Label;
+export type TaskLabel = Label;
+

@@ -18,9 +18,10 @@ import {
   type DragEvent,
 } from 'react';
 import { useParams } from 'next/navigation';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/components/ui";
 import { useChatMode } from '../../hooks/use-chat-mode';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import {
   uploadDocument,
   fetchDocumentContent,
@@ -53,7 +54,8 @@ function getFileIcon(name: string) {
 }
 
 export function Panel() {
-  const { workspaceId } = useParams<{ workspaceId?: string }>();
+  const { workspace } = useWorkspace();
+  const workspaceId = workspace?.id || 'flux';
   const {
     sources,
     addSource,
@@ -71,8 +73,6 @@ export function Panel() {
 
   const handleUpload = useCallback(
     async (file: File) => {
-      if (!workspaceId) return;
-
       const tempId = `temp-${Date.now()}-${Math.random()}`;
       setUploading((prev) => [
         ...prev,
@@ -80,7 +80,7 @@ export function Panel() {
       ]);
 
       try {
-        const res = await uploadDocument(workspaceId, file);
+        const res = await uploadDocument(workspaceId || 'me', file);
         addSource(res.id, res.name);
       } catch {
         setUploading((prev) =>

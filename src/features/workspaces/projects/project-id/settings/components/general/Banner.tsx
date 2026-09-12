@@ -62,70 +62,9 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { IconPicker } from './IconPicker';
+import { Avatar } from "@/shared/components/ui";
+import { IconPicker, ProjectAvatar } from "@/shared/components/ui";
 import { CoverModal } from './CoverModal';
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  search: Search,
-  home: Home,
-  settings: Settings,
-  check: Check,
-  'check-circle': CheckCircle,
-  heart: Heart,
-  plus: Plus,
-  trash: Trash2,
-  'arrow-left': ArrowLeft,
-  star: Star,
-  'log-out': LogOut,
-  'plus-circle': PlusCircle,
-  'x-circle': XCircle,
-  'chevron-down': ChevronDown,
-  'more-vertical': MoreVertical,
-  'check-square': CheckSquare,
-  'external-link': ExternalLink,
-  refresh: RefreshCw,
-  'arrow-right': ArrowRight,
-  circle: Circle,
-  'more-horizontal': MoreHorizontal,
-  grid: LayoutGrid,
-  target: Target,
-  download: Download,
-  minus: Minus,
-  zap: Zap,
-  'arrow-up': ArrowUp,
-  'align-left': AlignLeft,
-  key: Key,
-  folder: Folder,
-  'file-text': FileText,
-  bookmark: Bookmark,
-  calendar: Calendar,
-  clock: Clock,
-  compass: Compass,
-  cpu: Cpu,
-  database: Database,
-  flame: Flame,
-  globe: Globe,
-  hash: Hash,
-  layers: Layers,
-  link: LinkIcon,
-  lock: Lock,
-  mail: Mail,
-  'map-pin': MapPin,
-  message: MessageSquare,
-  moon: Moon,
-  package: Package,
-  paperclip: Paperclip,
-  radio: Radio,
-  send: Send,
-  share: Share2,
-  shield: Shield,
-  sun: Sun,
-  tag: Tag,
-  terminal: Terminal,
-  user: User,
-  users: Users,
-};
 
 interface GeneralBannerProps {
   name: string;
@@ -137,39 +76,6 @@ interface GeneralBannerProps {
   onSelectAvatar: (value: string) => void;
   onSelectCover: (coverUrl: string) => void;
   onUploadCustomCover: (file: File) => Promise<void>;
-}
-
-function renderAvatarContent(avatar: string | null, name: string) {
-  if (!avatar) {
-    return (
-      <AvatarFallback className="rounded-lg text-xl bg-muted text-foreground font-semibold">
-        {name ? name.charAt(0).toUpperCase() : 'P'}
-      </AvatarFallback>
-    );
-  }
-
-  // Check if it's a vector icon: "icon:name:color"
-  if (avatar.startsWith('icon:')) {
-    const [, iconName, color] = avatar.split(':');
-    const IconComp = ICON_MAP[iconName] || Settings;
-    return (
-      <div className="size-full flex items-center justify-center bg-card rounded-lg">
-        <IconComp className="size-7 shrink-0" style={{ color: color || 'var(--primary)' }} />
-      </div>
-    );
-  }
-
-  // Check if it's a web URL image
-  if (avatar.startsWith('http') || avatar.startsWith('/') || avatar.startsWith('data:')) {
-    return <AvatarImage src={avatar} className="object-cover" />;
-  }
-
-  // Otherwise it's an emoji string (e.g. "👌", "🚀")
-  return (
-    <div className="size-full flex items-center justify-center bg-card rounded-lg text-2xl select-none">
-      {avatar}
-    </div>
-  );
 }
 
 export function GeneralBanner({
@@ -187,7 +93,7 @@ export function GeneralBanner({
   const networkLabel = isPrivate ? 'Private' : 'Public';
 
   return (
-    <div className="relative w-full rounded-lg border border-border overflow-hidden bg-muted h-44 sm:h-52 flex flex-col justify-end p-5 ">
+    <div className="relative w-full rounded-md border border-border overflow-hidden bg-muted h-44 sm:h-52 flex flex-col justify-end p-5 ">
       {/* Background Cover Image or Default Gradient */}
       {cover ? (
         <img
@@ -212,9 +118,9 @@ export function GeneralBanner({
               className="cursor-pointer group relative block shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary"
               title="Change emoji or icon"
             >
-              <Avatar className="size-14 rounded-lg border-2 border-border bg-background ">
-                {renderAvatarContent(avatar, name)}
-              </Avatar>
+              <div className="size-14 rounded-lg border-2 border-border bg-background flex items-center justify-center overflow-hidden">
+                <ProjectAvatar avatar={avatar} name={name} size="2xl" />
+              </div>
               <div className="absolute inset-0 rounded-lg bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs text-white font-medium">
                 Edit
               </div>

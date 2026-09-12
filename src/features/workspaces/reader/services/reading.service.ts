@@ -1,33 +1,37 @@
-import { apiGet, apiPatch, apiPost } from '@/shared/lib/api';
+import { apiGet, apiPatch, apiPost } from "@/shared/lib/api";
 import type { DocumentReadingState } from '../types/reader.types';
 
 export type ItemStateData = DocumentReadingState;
 
+export interface UpdateReadingStatePayload {
+  readStatus?: 'unread' | 'reading' | 'completed';
+  rating?: number;
+  currentPage?: number;
+  scrollPosition?: Record<string, unknown> | Array<unknown> | null;
+}
+
 /**
- * ReadingService corresponding to backend ReadingService (backend/src/modules/library/reading/reading.service.ts)
+ * ReadingService communicating with backend StateController (/api/v1/library/items/:itemId/state)
  */
 export const ReadingService = {
-  getState: (workspaceId: string, itemId: string) =>
-    apiGet<{ success: boolean; data: ItemStateData }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/state`,
+  getState: (_scopeId: string | undefined, itemId: string) =>
+    apiGet<ItemStateData>(
+      `/api/v1/library/items/${encodeURIComponent(itemId)}/state`,
     ),
 
   updateState: (
-    workspaceId: string,
+    _scopeId: string | undefined,
     itemId: string,
-    data: {
-      readStatus?: 'unread' | 'reading' | 'completed';
-      rating?: number;
-    },
+    data: UpdateReadingStatePayload,
   ) =>
-    apiPatch<{ success: boolean; data: ItemStateData }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/state`,
+    apiPatch<ItemStateData>(
+      `/api/v1/library/items/${encodeURIComponent(itemId)}/state`,
       data,
     ),
 
-  markAsRead: (workspaceId: string, itemId: string) =>
-    apiPost<{ success: boolean; data: ItemStateData }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/state/read`,
+  markAsRead: (_scopeId: string | undefined, itemId: string) =>
+    apiPost<ItemStateData>(
+      `/api/v1/library/items/${encodeURIComponent(itemId)}/state/read`,
       {},
     ),
 };

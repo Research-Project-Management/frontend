@@ -7,19 +7,18 @@ import { useRecentItems } from '../hooks/use-home';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/shared/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/shared/components/ui";
 import { ChevronDown } from "lucide-react";
 import type { RecentItemUser } from '../types/home.types';
 
 export default function Recent() {
-  const { workspaceId } = useParams() as { workspaceId: string };
   const { data: items = [], isLoading } = useRecentItems();
 
   const filterAction = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background text-xs font-medium text-foreground transition-colors cursor-pointer">
+        <button type="button" className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background text-xs font-medium text-foreground transition-colors cursor-pointer">
           All
           <ChevronDown className="size-3.5 text-foreground shrink-0" />
         </button>
@@ -48,12 +47,12 @@ export default function Recent() {
           {items.map((item) => {
             const linkTo =
               item.type === 'project'
-                ? `/${workspaceId}/projects/${item.id}/overview`
+                ? `/projects/${item.id}/work-items`
                 : item.type === 'page' && item.project
-                  ? `/${workspaceId}/projects/${item.project.id}/pages/${item.id}`
+                  ? `/projects/${item.project.id}/pages/${item.id}`
                   : item.type === 'file' && item.project
-                    ? `/${workspaceId}/projects/${item.project.id}/storage`
-                    : `/${workspaceId}/storage`;
+                    ? `/projects/${item.project.id}/storage`
+                    : `/storage`;
 
             const Icon =
               item.type === 'project'
@@ -76,11 +75,11 @@ export default function Recent() {
                 
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <span className='text-11 font-medium text-muted-foreground shrink-0 min-w-12 truncate'>
-                    {item.project?.identifier || item.project?.name?.substring(0, 6) || (typeof workspaceId === 'string' ? workspaceId.substring(0, 6) : '')}
+                    {item.project?.identifier || item.project?.name?.substring(0, 6) || ''}
                   </span>
                   <Link
                     href={linkTo}
-                    className='text-13 font-medium text-foreground truncate transition-colors before:absolute before:inset-0'
+                    className='text-13 font-medium text-foreground truncate transition-colors before:absolute before:inset-0 shrink-0'
                   >
                     {item.title || item.name}
                   </Link>

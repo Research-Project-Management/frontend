@@ -22,25 +22,22 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/shared/components/ui/dialog';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { cn } from '@/shared/lib/utils';
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { getAllFiles as getWorkspaceFiles, createFolder as createWorkspaceFolder } from '@/features/workspaces/storage/services/file.service';
-import { getAllFiles as getProjectFiles, createFolder as createProjectFolder } from '@/features/workspaces/projects/project-id/storage/services/file.service';
 import { useMoveItem } from '@/features/workspaces/storage/hooks/use-storage';
 import { useStorageSelectionStore } from '@/features/workspaces/storage/store/use-selection-store';
 
 export type OpenMoveModalDetail = {
   item?: StorageItem;
   items?: StorageItem[];
-  workspaceId?: string;
   projectId?: string;
 };
 
 interface MoveModalProps {
-  workspaceId?: string;
   projectId?: string;
 }
 
@@ -49,15 +46,14 @@ interface BreadcrumbStep {
   name: string;
 }
 
-export default function MoveModal({ workspaceId: propWorkspaceId, projectId: propProjectId }: MoveModalProps) {
-  const params = useParams() as { workspaceId?: string; projectId?: string };
+export default function MoveModal({ projectId: propProjectId }: MoveModalProps) {
+  const params = useParams() as { projectId?: string; id?: string };
   const queryClient = useQueryClient();
   const { clearSelection } = useStorageSelectionStore();
 
   const [open, setOpen] = useState(false);
   const [itemsToMove, setItemsToMove] = useState<StorageItem[]>([]);
-  const [scopeWorkspaceId, setScopeWorkspaceId] = useState<string | undefined>(propWorkspaceId || params.workspaceId);
-  const [scopeProjectId, setScopeProjectId] = useState<string | undefined>(propProjectId || params.projectId);
+  const [scopeProjectId, setScopeProjectId] = useState<string | undefined>(propProjectId || params.projectId || params.id);
 
   // Navigation state
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -76,8 +72,7 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
 
   const { mutateAsync: moveItemMutation, isPending: isMoving } = useMoveItem();
 
-  const isProject = !!scopeProjectId;
-  const targetScopeId = isProject ? scopeProjectId : scopeWorkspaceId;
+  const targetScopeId = scopeProjectId || propProjectId || params.projectId;
 
   // Listen for open event
   useEffect(() => {
@@ -87,8 +82,7 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
       if (targetItems.length === 0) return;
 
       setItemsToMove(targetItems);
-      setScopeWorkspaceId(detail.workspaceId || propWorkspaceId || params.workspaceId);
-      setScopeProjectId(detail.projectId || propProjectId || params.projectId);
+      setScopeProjectId(detail.projectId || propProjectId || params.projectId || params.id);
 
       // Start at root
       setCurrentFolderId(null);
@@ -102,19 +96,15 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
 
     window.addEventListener('open-move-modal', handleOpen as EventListener);
     return () => window.removeEventListener('open-move-modal', handleOpen as EventListener);
-  }, [propWorkspaceId, propProjectId, params.workspaceId, params.projectId]);
+  }, [propProjectId, params.projectId, params.id]);
 
   // Fetch subfolders in the current folder being browsed
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['storage-move-modal-folders', isProject ? 'project' : 'workspace', targetScopeId, currentFolderId],
+    queryKey: ['storage-move-modal-folders', currentFolderId],
     queryFn: async () => {
-      if (!targetScopeId) return { files: [] };
-      if (isProject) {
-        return getProjectFiles(targetScopeId, currentFolderId);
-      }
-      return getWorkspaceFiles(targetScopeId, currentFolderId);
+      return getWorkspaceFiles(undefined, currentFolderId);
     },
-    enabled: open && !!targetScopeId,
+    enabled: open,
   });
 
   const availableFolders = useMemo(() => {
@@ -160,20 +150,12 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
 
   // Create folder inside current level
   const handleCreateFolder = async () => {
-    if (!newFolderName.trim() || !targetScopeId) return;
+    if (!newFolderName.trim()) return;
     setIsCreating(true);
     try {
-      if (isProject) {
-        await createProjectFolder(newFolderName.trim(), {
-          projectId: targetScopeId,
-          parentId: currentFolderId,
-        });
-      } else {
-        await createWorkspaceFolder(newFolderName.trim(), {
-          workspaceId: targetScopeId,
-          parentId: currentFolderId,
-        });
-      }
+      await createWorkspaceFolder(newFolderName.trim(), {
+        parentId: currentFolderId,
+      });
       toast.success(`Created folder "${newFolderName.trim()}"`);
       setNewFolderName('');
       setIsCreatingFolder(false);
@@ -227,7 +209,7 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-lg p-0 gap-0 overflow-hidden bg-popover text-popover-foreground border border-border rounded-lg shadow-sm"
+        className="sm:max-w-lg p-0 gap-0 overflow-hidden bg-popover text-popover-foreground border border-border rounded-lg "
       >
         <DialogHeader className="px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2">
@@ -255,7 +237,7 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
                 className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer mr-1"
                 title="Go back"
               >
-                <ArrowLeft className="size-3.5" />
+                <ArrowLeft className="size-3.5 shrink-0" />
               </button>
             )}
             <HardDrive className="size-3.5 text-muted-foreground shrink-0" />
@@ -289,7 +271,7 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
             onClick={() => setIsCreatingFolder((prev) => !prev)}
             className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
           >
-            <FolderPlus className="size-3.5" />
+            <FolderPlus className="size-3.5 shrink-0" />
             <span>New folder</span>
           </Button>
         </div>
@@ -321,7 +303,7 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
               disabled={!newFolderName.trim() || isCreating}
               className="h-8 px-3 text-xs cursor-pointer"
             >
-              {isCreating ? <Loader2 className="size-3 animate-spin" /> : 'Create'}
+              {isCreating ? <Loader2 className="size-3 animate-spin shrink-0" /> : 'Create'}
             </Button>
             <Button
               type="button"
@@ -371,7 +353,7 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
 
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
-              <Loader2 className="size-5 animate-spin text-primary" />
+              <Loader2 className="size-5 animate-spin text-primary shrink-0" />
               <span className="text-xs">Loading folders…</span>
             </div>
           ) : availableFolders.length === 0 ? (
@@ -478,7 +460,7 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
             >
               {isMoving ? (
                 <>
-                  <Loader2 className="size-3.5 animate-spin mr-1.5" />
+                  <Loader2 className="size-3.5 animate-spin mr-1.5 shrink-0" />
                   Moving…
                 </>
               ) : isCurrentLocation ? (

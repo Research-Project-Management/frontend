@@ -1,19 +1,27 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Search, Loader2, Check } from 'lucide-react';
-import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
-import { Button } from '@/shared/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
-import { Input } from '@/shared/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
-import { cn } from '@/shared/lib/utils';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Loader2, Check, UserPlus } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
+import { apiGet } from "@/shared/lib/api";
 import type { ProjectRole } from '../../types/member.types';
+
+interface CandidateUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string | null;
+}
 
 interface AddMemberDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  workspace: any;
+  workspace?: any;
   existingMemberIds: Set<string>;
   onAdd: (userIds: string[], role: ProjectRole) => Promise<void>;
   isLoading?: boolean;
@@ -30,21 +38,85 @@ export function AddMemberDialog({
   const [search, setSearch] = useState('');
   const [selectedRole, setSelectedRole] = useState<ProjectRole>('contributor');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [searchedUsers, setSearchedUsers] = useState<CandidateUser[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const workspaceMembers = (workspace?.members as any[]) || [];
+  // Reset states on dialog close/open
+  useEffect(() => {
+    if (!open) {
+      setSearch('');
+      setSelectedUserIds([]);
+      setSearchedUsers([]);
+      setIsSearching(false);
+    }
+  }, [open]);
 
-  const available = workspaceMembers.filter((m) => {
-    const u = m.user || {};
-    const memberUserId = u.id || m.userId;
-    if (!memberUserId || existingMemberIds.has(memberUserId)) return false;
+  // Asynchronous user search against /api/users/search
+  useEffect(() => {
+    const trimmed = search.trim();
+    if (trimmed.length < 2) {
+      setSearchedUsers([]);
+      setIsSearching(false);
+      return;
+    }
 
-    const q = search.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      (u.name || '').toLowerCase().includes(q) ||
-      (u.email || '').toLowerCase().includes(q)
-    );
-  });
+    setIsSearching(true);
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        const queryParams = new URLSearchParams({ query: trimmed });
+        if (workspace?.id) {
+          queryParams.set('workspaceId', workspace.id);
+        }
+        const res = await apiGet<any>(`/api/users/search?${queryParams.toString()}`);
+        const rawUsers = Array.isArray(res) ? res : res?.users || [];
+        const mapped: CandidateUser[] = rawUsers.map((u: any) => ({
+          id: u.id,
+          name: u.name || 'User',
+          email: u.email || '',
+          avatar: u.avatar || null,
+        }));
+        setSearchedUsers(mapped);
+      } catch {
+        setSearchedUsers([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [search, workspace?.id]);
+
+  // Fallback candidates from workspace.members if present and search is empty
+  const fallbackMembers: CandidateUser[] = React.useMemo(() => {
+    const list = (workspace?.members as any[]) || [];
+    return list
+      .map((m) => {
+        const u = m.user || {};
+        return {
+          id: u.id || m.userId,
+          name: u.name || 'User',
+          email: u.email || '',
+          avatar: u.avatar || null,
+        };
+      })
+      .filter((u) => u.id && !existingMemberIds.has(u.id));
+  }, [workspace?.members, existingMemberIds]);
+
+  const displayedUsers = React.useMemo(() => {
+    if (search.trim().length >= 2) {
+      return searchedUsers.filter((u) => !existingMemberIds.has(u.id));
+    }
+    return fallbackMembers;
+  }, [search, searchedUsers, fallbackMembers, existingMemberIds]);
 
   const toggleUser = (userId: string) => {
     setSelectedUserIds((prev) =>
@@ -70,7 +142,7 @@ export function AddMemberDialog({
               Add members to project
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground mt-1">
-              Select members from your workspace to add to this project.
+              Search researchers by name or email to invite them to this project.
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -80,11 +152,14 @@ export function AddMemberDialog({
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0" />
               <Input
-                placeholder="Search workspace members..."
+                placeholder="Search by name or email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-8 h-8 text-xs border-border focus:ring-0 focus:outline-none"
               />
+              {isSearching && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground animate-spin shrink-0" />
+              )}
             </div>
 
             <Select
@@ -95,9 +170,6 @@ export function AddMemberDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin" className="text-xs">
-                  Admin
-                </SelectItem>
                 <SelectItem value="contributor" className="text-xs">
                   Contributor
                 </SelectItem>
@@ -111,27 +183,30 @@ export function AddMemberDialog({
             </Select>
           </div>
 
-          <div className="max-h-56 overflow-y-auto border border-border rounded-lg divide-y divide-border/60 bg-muted">
-            {available.length === 0 ? (
+          <div className="max-h-56 overflow-y-auto border border-border rounded-lg divide-y divide-border/60 bg-muted/40">
+            {search.trim().length < 2 && displayedUsers.length === 0 ? (
+              <div className="p-8 text-center text-xs text-muted-foreground flex flex-col items-center gap-2">
+                <UserPlus className="size-6 text-muted-foreground/60 shrink-0" />
+                <p>Type at least 2 characters to search for researchers.</p>
+              </div>
+            ) : displayedUsers.length === 0 ? (
               <div className="p-8 text-center text-xs text-muted-foreground">
-                {search
-                  ? `No workspace members found matching "${search}"`
-                  : 'All workspace members are already in this project.'}
+                {isSearching
+                  ? 'Searching users...'
+                  : `No users found matching "${search}"`}
               </div>
             ) : (
-              available.map((m) => {
-                const u = m.user || {};
-                const memberUserId = u.id || m.userId;
-                const isSelected = selectedUserIds.includes(memberUserId);
+              displayedUsers.map((u) => {
+                const isSelected = selectedUserIds.includes(u.id);
 
                 return (
                   <button
-                    key={memberUserId}
+                    key={u.id}
                     type="button"
-                    onClick={() => toggleUser(memberUserId)}
+                    onClick={() => toggleUser(u.id)}
                     className={cn(
                       'w-full flex items-center justify-between p-2.5 transition-colors cursor-pointer text-left',
-                      isSelected ? 'bg-muted font-medium' : 'hover:bg-muted'
+                      isSelected ? 'bg-muted font-medium' : 'hover:bg-muted/70'
                     )}
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -184,7 +259,7 @@ export function AddMemberDialog({
             size="sm"
             onClick={handleConfirm}
             disabled={selectedUserIds.length === 0 || isLoading}
-            className="h-8 text-xs font-medium px-4 bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-none"
+            className="h-8 text-xs font-medium px-4 bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-none"
           >
             {isLoading && <Loader2 className="mr-1.5 size-3 animate-spin shrink-0" />}
             <span>Add {selectedUserIds.length > 0 ? `(${selectedUserIds.length})` : ''}</span>

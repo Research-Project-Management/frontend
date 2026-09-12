@@ -7,8 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/shared/components/ui/dialog';
-import { Button } from '@/shared/components/ui/button';
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
 import {
   Loader2,
   CheckCircle2,
@@ -22,7 +22,7 @@ import {
   FileText,
 } from 'lucide-react';
 import type { ProcessModalState } from '../../hooks/use-ingest-progress';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 
 interface ProcessModalProps {
   state: ProcessModalState;
@@ -109,7 +109,7 @@ export default function ProcessModal({
     <Dialog open={state.isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md p-0 overflow-hidden rounded-lg border border-border bg-card">
         {/* Header Bar */}
-        <div className="flex items-center justify-between border-b border-border px-5 py-3.5 bg-muted/30">
+        <div className="flex items-center justify-between border-b border-border px-5 py-3.5 bg-background">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
               {isRunning ? (
@@ -279,7 +279,7 @@ export default function ProcessModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3 bg-muted/20">
+        <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3 bg-background">
           {isRunning ? (
             <Button
               variant="outline"

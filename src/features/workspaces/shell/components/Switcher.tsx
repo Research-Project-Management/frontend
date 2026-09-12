@@ -1,19 +1,67 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronUp, PlusCircle, LogOut, Check, Settings, UserPlus, Mails } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import {
+  ChevronDown,
+  ChevronUp,
+  PlusCircle,
+  LogOut,
+  Check,
+  Settings,
+  UserPlus,
+  Mail,
+  Copy,
+  CheckCheck,
+} from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  Button,
+  Input,
+  Label,
+} from '@/shared/components/ui';
+import { resolveFileUrl } from '@/shared/lib/file-client';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
-import { resolveFileUrl } from '@/shared/utils/url';
+import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
+import { CreateProjectModal } from '@/features/workspaces/projects/shell/components/project/CreateProjectModal';
+import { ProjectAvatar } from '@/shared/components/icon-picker/ProjectAvatar';
+import type { Workspace } from '../types/workspace.types';
 
-import type { Workspace } from '@/features/setup/types/workspace.types';
+export interface DisplayProjectItem {
+  id: string;
+  name: string;
+  identifier?: string;
+  avatar?: string | null;
+  role?: string;
+  membersCount?: number;
+  plan?: string;
+}
+
+const FALLBACK_PROJECTS: DisplayProjectItem[] = [
+  { id: 'proj-tieptuc', name: 'tieptuc', identifier: 'TIEPTUC', role: 'Owner', membersCount: 1, plan: 'Free' },
+  { id: 'proj-7-8cais', name: '7-8cais', identifier: '7-8CAIS', role: 'Owner', membersCount: 1, plan: 'Free' },
+  { id: 'proj-my-workspace', name: 'my-worksapce', identifier: 'MYWS', role: 'Owner', membersCount: 2, plan: 'Free' },
+  { id: 'proj-tam20', name: 'tam20', identifier: 'TAM20', role: 'Owner', membersCount: 1, plan: 'Free' },
+  { id: 'proj-tanthanh2', name: 'tanthanh2', identifier: 'TT2', role: 'Owner', membersCount: 1, plan: 'Free' },
+];
+
+const STORAGE_KEY_ACTIVE_PROJECT = 'flux_active_project_id';
 
 interface SwitcherProps {
-  currentItem: Workspace | null;
-  items: Workspace[];
-  activeId: string;
+  currentItem?: Workspace | null;
+  items?: Workspace[];
+  activeId?: string;
 }
 
 export default function Switcher({
@@ -21,177 +69,402 @@ export default function Switcher({
   items,
   activeId,
 }: SwitcherProps) {
-  const { user, logout } = useAuth();
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
+  const params = useParams<{ projectId?: string }>();
+  const { user, logout } = useAuth();
+  const { projects = [] } = useProjects();
 
-  if (!currentItem) return null;
+  const [isOpen, setIsOpen] = useState(false);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [isProjectInvitesOpen, setIsProjectInvitesOpen] = useState(false);
+
+  // Invite states
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [isCopied, setIsCopied] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+
+  // Active Project ID state from localStorage
+  const [storedActiveId, setStoredActiveId] = useState<string>('');
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_ACTIVE_PROJECT);
+      if (stored) {
+        setStoredActiveId(stored);
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  // Map API projects into unified display items
+  const combinedProjects = useMemo<DisplayProjectItem[]>(() => {
+    if (projects && projects.length > 0) {
+      const nonArchived = projects.filter((p) => !p.isArchived);
+      return nonArchived.map((p) => ({
+        id: p.id,
+        name: p.name,
+        identifier: p.identifier,
+        avatar: p.avatar,
+        role: 'Owner',
+        membersCount: p.members?.length || 1,
+        plan: 'Free',
+      }));
+    }
+    return FALLBACK_PROJECTS;
+  }, [projects]);
+
+  // Determine current active project
+  const activeProjectId = params?.projectId;
+  const activeProject = useMemo<DisplayProjectItem>(() => {
+    if (activeProjectId) {
+      const found = combinedProjects.find(
+        (p) => p.id === activeProjectId || p.identifier === activeProjectId
+      );
+      if (found) return found;
+    }
+    if (storedActiveId) {
+      const found = combinedProjects.find((p) => p.id === storedActiveId);
+      if (found) return found;
+    }
+    return combinedProjects[0] || FALLBACK_PROJECTS[0];
+  }, [combinedProjects, activeProjectId, storedActiveId]);
+
+  const otherProjects = useMemo(() => {
+    return combinedProjects.filter((p) => p.id !== activeProject.id);
+  }, [combinedProjects, activeProject]);
+
+  const handleSelectProject = (proj: DisplayProjectItem) => {
+    setStoredActiveId(proj.id);
+    try {
+      localStorage.setItem(STORAGE_KEY_ACTIVE_PROJECT, proj.id);
+    } catch {}
+    setIsOpen(false);
+    router.push(`/projects/${proj.id}`);
+  };
+
+  const handleCopyInviteLink = () => {
+    const link = typeof window !== 'undefined' ? `${window.location.origin}/invite/${activeProject.identifier || activeProject.id}` : '';
+    navigator.clipboard.writeText(link);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenuTrigger
-        aria-label={`Current Item: ${currentItem.name}`}
-        className='group flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors hover:bg-muted data-[state=open]:bg-muted'
-      >
-        <Avatar className='size-5.5 rounded-md font-semibold'>
-          {currentItem.avatar ? (
-            <AvatarImage
-              src={resolveFileUrl(currentItem.avatar) || undefined}
-              alt={String(currentItem.name)}
-              referrerPolicy="no-referrer"
-            />
-          ) : null}
-          <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-11 font-semibold">
-            {String(currentItem.name).substring(0, 1).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <span className='max-w-[140px] truncate text-13 font-semibold tracking-tight text-foreground sm:max-w-[180px]'>
-          {currentItem.name}
-        </span>
-        {isOpen ? (
-          <ChevronUp className='size-3.5 text-foreground transition-colors shrink-0' strokeWidth={2} />
-        ) : (
-          <ChevronDown className='size-3.5 text-foreground transition-colors shrink-0' strokeWidth={2} />
-        )}
-      </DropdownMenuTrigger>
+    <>
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+        <DropdownMenuTrigger
+          aria-label={`Project: ${activeProject.name}`}
+          className='group flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors hover:bg-muted data-[state=open]:bg-muted'
+        >
+          {/* Project Avatar */}
+          <Avatar className='size-5.5 rounded-md shrink-0 font-semibold'>
+            {activeProject.avatar ? (
+              <AvatarImage
+                src={resolveFileUrl(activeProject.avatar) || undefined}
+                alt={activeProject.name}
+              />
+            ) : null}
+            <AvatarFallback className='rounded-md bg-[#006797] text-white text-[11px] font-semibold'>
+              {String(activeProject.name).substring(0, 1).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
 
-      <DropdownMenuContent
-        align='start'
-        onCloseAutoFocus={(e) => e.preventDefault()}
-        className='w-80 p-0 rounded-md overflow-hidden bg-popover border border-border shadow-none'
-        sideOffset={8}
-      >
-        {/* User email header */}
-        <div className='px-4 pt-3.5 pb-2.5 text-xs font-medium text-muted-foreground bg-background select-none truncate'>
-          {user?.email || 'user@example.com'}
-        </div>
+          {/* Project Name */}
+          <span className='max-w-[150px] truncate text-13 font-semibold tracking-tight text-foreground'>
+            {activeProject.name}
+          </span>
 
-        {/* Current active workspace */}
-        <div className='bg-secondary px-4 py-3.5 border-b border-border'>
-          <div className='flex items-center justify-between'>
-            <div className='flex items-center gap-3 min-w-0'>
-              <Avatar className='size-9 rounded-md font-medium shrink-0'>
-                {currentItem.avatar ? (
-                  <AvatarImage
-                    src={resolveFileUrl(currentItem.avatar) || undefined}
-                    alt={String(currentItem.name)}
-                    referrerPolicy="no-referrer"
-                  />
-                ) : null}
-                <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-xs font-medium">
-                  {String(currentItem.name).substring(0, 1).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className='flex flex-col min-w-0'>
-                <span className='text-sm font-semibold text-foreground tracking-tight truncate'>{currentItem.name}</span>
-                <span className='text-xs text-muted-foreground mt-0.5 truncate'>
-                  Owner • {currentItem.members?.length || 1} Members
+          {isOpen ? (
+            <ChevronUp className='size-3.5 text-muted-foreground transition-colors shrink-0' strokeWidth={1.5} />
+          ) : (
+            <ChevronDown className='size-3.5 text-muted-foreground transition-colors shrink-0' strokeWidth={1.5} />
+          )}
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent
+          align='start'
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          className='w-[310px] p-0 rounded-lg overflow-hidden bg-popover border border-border shadow-md select-none'
+          sideOffset={8}
+        >
+          {/* User Email Header */}
+          <div className='px-4 pt-3.5 pb-2.5 text-xs font-normal text-muted-foreground bg-background truncate'>
+            {user?.email || 'thanhngo.26102006@gmail.com'}
+          </div>
+
+          {/* Current Active Project Card */}
+          <div className='bg-[#f4f4f5] dark:bg-muted/70 px-4 py-3.5 border-b border-border/60'>
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-3 min-w-0'>
+                <Avatar className='size-9 rounded-md shrink-0 font-medium'>
+                  {activeProject.avatar ? (
+                    <AvatarImage
+                      src={resolveFileUrl(activeProject.avatar) || undefined}
+                      alt={activeProject.name}
+                    />
+                  ) : null}
+                  <AvatarFallback className='rounded-md bg-[#006797] text-white text-sm font-semibold'>
+                    {String(activeProject.name).substring(0, 1).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className='text-sm font-semibold text-foreground tracking-tight truncate'>
+                  {activeProject.name}
                 </span>
               </div>
+              <Check className='size-4 text-foreground shrink-0' strokeWidth={2.5} />
             </div>
-            <Check className='size-4 text-foreground shrink-0' />
+
+            {/* Settings & Invite Members Buttons */}
+            <div className='flex items-center gap-2 mt-3.5'>
+              <button
+                type='button'
+                onClick={() => {
+                  setIsOpen(false);
+                  if (activeProject.id && !activeProject.id.startsWith('proj-')) {
+                    router.push(`/projects/${activeProject.id}/settings`);
+                  } else {
+                    router.push('/settings');
+                  }
+                }}
+                className='h-8 flex-1 px-2.5 bg-background hover:bg-neutral-100 dark:hover:bg-neutral-800 font-medium text-xs rounded-md border border-border text-foreground transition-colors cursor-pointer flex items-center justify-center gap-1.5 outline-none shadow-none'
+              >
+                <Settings className='size-3.5 text-foreground shrink-0' />
+                <span>Settings</span>
+              </button>
+              <button
+                type='button'
+                onClick={() => {
+                  setIsOpen(false);
+                  if (activeProject.id && !activeProject.id.startsWith('proj-')) {
+                    router.push(`/projects/${activeProject.id}/settings/members`);
+                  } else {
+                    setIsInviteOpen(true);
+                  }
+                }}
+                className='h-8 flex-1 px-2.5 bg-background hover:bg-neutral-100 dark:hover:bg-neutral-800 font-medium text-xs rounded-md border border-border text-foreground transition-colors cursor-pointer flex items-center justify-center gap-1.5 outline-none shadow-none'
+              >
+                <UserPlus className='size-3.5 text-foreground shrink-0' />
+                <span>Invite members</span>
+              </button>
+            </div>
           </div>
 
-          <div className='flex items-center gap-2 mt-3.5'>
-            <button
-              type='button'
-              className='h-8 flex-1 px-2.5 bg-background font-medium shadow-none text-12 rounded-md border border-border text-foreground cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap outline-none'
-              onClick={() => {
-                setIsOpen(false);
-                router.push(`/${activeId}/settings`);
-              }}
-            >
-              <Settings className='size-3.5 text-foreground shrink-0' />
-              <span>Settings</span>
-            </button>
-            <button
-              type='button'
-              className='h-8 flex-1 px-2.5 bg-background font-medium shadow-none text-12 rounded-md border border-border text-foreground cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap outline-none'
-              onClick={() => {
-                setIsOpen(false);
-                router.push(`/${activeId}/settings/members`);
-              }}
-            >
-              <UserPlus className='size-3.5 text-foreground shrink-0' />
-              <span>Invite members</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Other workspaces */}
-        {items.filter((item: Workspace) => item.id !== currentItem.id).length > 0 && (
-          <div className='max-h-[200px] overflow-y-auto bg-background flex flex-col border-b border-border'>
-            {items
-              .filter((item: Workspace) => item.id !== currentItem.id)
-              .map((item: Workspace) => (
-                <DropdownMenuItem
-                  key={item.id}
-                  onClick={() => {
-                    setIsOpen(false);
-                    router.push(`/${item.url}`);
-                  }}
-                  className='w-full px-4 py-2.5 justify-between cursor-pointer rounded-none hover:bg-muted focus:bg-muted'
+          {/* Other Projects List */}
+          {otherProjects.length > 0 && (
+            <div className='max-h-[220px] overflow-y-auto bg-background flex flex-col border-b border-border/60 py-1'>
+              {otherProjects.map((proj) => (
+                <button
+                  key={proj.id}
+                  type='button'
+                  onClick={() => handleSelectProject(proj)}
+                  className='w-full px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-muted/60 transition-colors text-left outline-none'
                 >
                   <div className='flex items-center gap-3 min-w-0'>
-                    <Avatar className='size-7 rounded-md font-medium shrink-0'>
-                      {item.avatar ? (
+                    <Avatar className='size-8 rounded-md shrink-0 font-medium'>
+                      {proj.avatar ? (
                         <AvatarImage
-                          src={resolveFileUrl(item.avatar) || undefined}
-                          alt={String(item.name)}
-                          referrerPolicy="no-referrer"
+                          src={resolveFileUrl(proj.avatar) || undefined}
+                          alt={proj.name}
                         />
                       ) : null}
-                      <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-xs font-medium">
-                        {String(item.name).substring(0, 1).toUpperCase()}
+                      <AvatarFallback className='rounded-md bg-[#006797] text-white text-xs font-semibold'>
+                        {String(proj.name).substring(0, 1).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className='flex flex-col min-w-0'>
-                      <span className='text-sm text-foreground font-medium truncate'>{item.name}</span>
+                      <span className='text-sm font-medium text-foreground truncate'>{proj.name}</span>
                       <span className='text-xs text-muted-foreground truncate'>
-                        {item.members?.length || 1} Member
+                        {proj.membersCount || 1} {proj.membersCount === 1 ? 'Member' : 'Members'}
                       </span>
                     </div>
                   </div>
-                </DropdownMenuItem>
+                  <span className='text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-md border border-border/40 shrink-0'>
+                    {proj.plan || 'Free'}
+                  </span>
+                </button>
               ))}
+            </div>
+          )}
+
+          {/* Footer Actions */}
+          <div className='p-1.5 bg-background space-y-0.5'>
+            <button
+              type='button'
+              onClick={() => {
+                setIsOpen(false);
+                setIsCreateProjectOpen(true);
+              }}
+              className='flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer text-sm font-medium text-foreground hover:bg-muted/60 transition-colors w-full text-left outline-none'
+            >
+              <PlusCircle className='size-4 text-foreground shrink-0' />
+              <span>Create project</span>
+            </button>
+
+            <button
+              type='button'
+              onClick={() => {
+                setIsOpen(false);
+                setIsProjectInvitesOpen(true);
+              }}
+              className='flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer text-sm font-medium text-foreground hover:bg-muted/60 transition-colors w-full text-left outline-none'
+            >
+              <Mail className='size-4 text-foreground shrink-0' />
+              <span>Project invites</span>
+            </button>
+
+            <button
+              type='button'
+              onClick={() => {
+                setIsOpen(false);
+                logout();
+              }}
+              className='flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors w-full text-left outline-none'
+            >
+              <LogOut className='size-4 text-destructive shrink-0' />
+              <span className='text-destructive'>Sign out</span>
+            </button>
           </div>
-        )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-        <div className="p-2 bg-background space-y-1">
-          <DropdownMenuItem
-            onClick={() => {
-              setIsOpen(false);
-              router.push('/create-workspace');
-            }}
-            className='px-3 py-2 cursor-pointer rounded-md gap-3'
-          >
-            <PlusCircle />
-            <span>Create workspace</span>
-          </DropdownMenuItem>
+      {/* ── Create Project Modal ─────────────────────────────────── */}
+      <CreateProjectModal
+        open={isCreateProjectOpen}
+        onOpenChange={setIsCreateProjectOpen}
+        onSuccess={(newProj) => {
+          setIsCreateProjectOpen(false);
+          if (newProj?.id) {
+            router.push(`/projects/${newProj.id}`);
+          }
+        }}
+      />
 
-          <DropdownMenuItem
-            onClick={() => {
-              setIsOpen(false);
-              router.push('/workspace-invites');
-            }}
-            className='px-3 py-2 cursor-pointer rounded-md gap-3'
-          >
-            <Mails />
-            <span>Workspace invites</span>
-          </DropdownMenuItem>
+      {/* ── Invite Members Modal (Fallback / Direct Share) ─────────── */}
+      <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
+        <DialogContent className='sm:max-w-[440px]'>
+          <DialogHeader>
+            <DialogTitle>Invite members to {activeProject.name}</DialogTitle>
+            <DialogDescription>
+              Invite collaborators to join your project.
+            </DialogDescription>
+          </DialogHeader>
+          <div className='space-y-4 pt-2'>
+            <div className='space-y-2'>
+              <Label htmlFor='invite-email'>Email address</Label>
+              <div className='flex gap-2'>
+                <Input
+                  id='invite-email'
+                  type='email'
+                  placeholder='colleague@example.com'
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  autoFocus
+                />
+                <Button
+                  type='button'
+                  disabled={!inviteEmail.trim() || !inviteEmail.includes('@')}
+                  onClick={() => {
+                    setInviteEmail('');
+                    setIsInviteOpen(false);
+                  }}
+                >
+                  Send invite
+                </Button>
+              </div>
+            </div>
 
-          <DropdownMenuItem
-            onClick={() => {
-              setIsOpen(false);
-              logout();
-            }}
-            className='px-3 py-2 cursor-pointer rounded-md gap-3'
-          >
-            <LogOut />
-            <span>Sign out</span>
-          </DropdownMenuItem>
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <div className='relative my-2'>
+              <div className='absolute inset-0 flex items-center'>
+                <span className='w-full border-t border-border' />
+              </div>
+              <div className='relative flex justify-center text-xs uppercase'>
+                <span className='bg-background px-2 text-muted-foreground'>Or share link</span>
+              </div>
+            </div>
+
+            <div className='flex items-center gap-2'>
+              <Input
+                readOnly
+                value={typeof window !== 'undefined' ? `${window.location.origin}/invite/${activeProject.identifier || activeProject.id}` : ''}
+                className='text-xs font-mono bg-muted/50'
+              />
+              <Button
+                type='button'
+                variant='outline'
+                size='icon'
+                onClick={handleCopyInviteLink}
+                className='shrink-0'
+                title='Copy link'
+              >
+                {isCopied ? <CheckCheck className='size-4 text-green-600' /> : <Copy className='size-4' />}
+              </Button>
+            </div>
+          </div>
+          <DialogFooter className='pt-2'>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => setIsInviteOpen(false)}
+            >
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Project Invites Modal ─────────────────────────────────── */}
+      <Dialog open={isProjectInvitesOpen} onOpenChange={setIsProjectInvitesOpen}>
+        <DialogContent className='sm:max-w-[420px]'>
+          <DialogHeader>
+            <DialogTitle>Project invites</DialogTitle>
+            <DialogDescription>
+              View pending invitations or join a project with an invite code.
+            </DialogDescription>
+          </DialogHeader>
+          <div className='space-y-4 pt-2'>
+            <div className='rounded-md border border-dashed border-border p-4 text-center text-sm text-muted-foreground'>
+              <Mail className='size-8 mx-auto mb-2 text-muted-foreground/60' />
+              <p>No pending project invitations</p>
+              <p className='text-xs text-muted-foreground/80 mt-1'>
+                When you are invited to a project, it will appear here.
+              </p>
+            </div>
+
+            <div className='space-y-2 pt-2'>
+              <Label htmlFor='project-join-code'>Join with invite code</Label>
+              <div className='flex gap-2'>
+                <Input
+                  id='project-join-code'
+                  placeholder='Enter project code...'
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value)}
+                />
+                <Button
+                  type='button'
+                  disabled={!joinCode.trim()}
+                  onClick={() => {
+                    setJoinCode('');
+                    setIsProjectInvitesOpen(false);
+                  }}
+                >
+                  Join
+                </Button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className='pt-2'>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => setIsProjectInvitesOpen(false)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -14,8 +14,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/shared/components/ui/dialog';
-import { cn } from '@/shared/lib/utils';
+} from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 
 export const TEX_EXTS = new Set([
   '.tex',
@@ -157,7 +157,7 @@ export function UploadConflictDialog({
                 (p) => p.conflict === 'duplicate' && !p.resolution,
               )
             }
-            className="h-8 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-8 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {pendingUploads.some(
               (p) => p.conflict === 'duplicate' && !p.resolution,

@@ -9,11 +9,11 @@ import {
   ListFilter,
   Check,
 } from 'lucide-react';
-import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
-import { Button } from '@/shared/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { cn } from '@/shared/lib/utils';
+import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import type { Project } from '../../types/project.types';
 import {
   countActiveCriteria,
@@ -65,11 +65,7 @@ export function ProjectFilterPopover({
 
     for (const p of projects) {
       const leadMember = p.members?.find(
-        (m: any) =>
-          m.role === 'manager' ||
-          m.role === 'lead' ||
-          m.role === 'owner' ||
-          m.role === 'admin'
+        (m: any) => m.role === 'owner' || m.role === 'lead'
       );
       const user =
         leadMember?.user ||
@@ -192,7 +188,7 @@ export function ProjectFilterPopover({
                 )}
                 aria-label="Filter"
               >
-                <ListFilter className="size-4 text-foreground shrink-0" strokeWidth={2.5} />
+                <ListFilter className="size-4 text-foreground shrink-0" strokeWidth={1.75} />
               </Button>
             </PopoverTrigger>
           </TooltipTrigger>
@@ -245,7 +241,7 @@ export function ProjectFilterPopover({
               <span>Access</span>
               <ChevronDown
                 className={cn(
-                  'size-3.5 text-muted-foreground transition-transform duration-200',
+                  'size-3.5 text-muted-foreground transition-transform duration-200 shrink-0',
                   accessOpen ? '' : '-rotate-90'
                 )}
               />
@@ -287,7 +283,7 @@ export function ProjectFilterPopover({
                 <span>Lead</span>
                 <ChevronDown
                   className={cn(
-                    'size-3.5 text-muted-foreground transition-transform duration-200',
+                    'size-3.5 text-muted-foreground transition-transform duration-200 shrink-0',
                     leadOpen ? '' : '-rotate-90'
                   )}
                 />
@@ -333,7 +329,7 @@ export function ProjectFilterPopover({
                 <span>Members</span>
                 <ChevronDown
                   className={cn(
-                    'size-3.5 text-muted-foreground transition-transform duration-200',
+                    'size-3.5 text-muted-foreground transition-transform duration-200 shrink-0',
                     membersOpen ? '' : '-rotate-90'
                   )}
                 />
@@ -378,7 +374,7 @@ export function ProjectFilterPopover({
               <span>Created date</span>
               <ChevronDown
                 className={cn(
-                  'size-3.5 text-muted-foreground transition-transform duration-200',
+                  'size-3.5 text-muted-foreground transition-transform duration-200 shrink-0',
                   dateOpen ? '' : '-rotate-90'
                 )}
               />

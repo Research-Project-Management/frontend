@@ -14,7 +14,7 @@ import {
   Square,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/shared/components/ui/button';
+import { Button } from "@/shared/components/ui";
 import { DeleteModal } from '../modal/DeleteModal';
 import { useStorageSelectionStore } from '../../store/use-selection-store';
 import {
@@ -23,8 +23,8 @@ import {
   useBatchPermanentDeleteItems,
   useBatchStarItems,
 } from '../../hooks/use-storage';
-import { downloadFileUrl } from '@/shared/utils/file';
-import { resolveFileUrl } from '@/shared/utils/url';
+import { downloadFileUrl } from "@/shared/lib/file-client";
+import { resolveFileUrl } from "@/shared/lib/file-client";
 import type { StorageItem } from '../../types/storage.types';
 
 export interface BulkActionBarProps {
@@ -141,7 +141,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 30, scale: 0.95 }}
           transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[calc(100vw-2rem)] flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-popover border border-border shadow-md text-popover-foreground text-xs select-none overflow-x-auto"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[calc(100vw-2rem)] flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-popover border border-border text-popover-foreground text-xs select-none overflow-x-auto"
         >
           {/* Select all checkbox toggle */}
           <button

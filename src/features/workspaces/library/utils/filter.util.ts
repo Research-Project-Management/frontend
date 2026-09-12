@@ -1,4 +1,4 @@
-import type { CatalogItem } from '../types/library.types';
+import type { Item } from '../types/library.types';
 import { normalizeAuthors, cleanDoi } from './author-doi.util';
 import { getDuplicateIds } from './duplicates.util';
 
@@ -19,7 +19,7 @@ export interface SortOptions {
   direction: 'asc' | 'desc';
 }
 
-export function isPaperInCollection(paper: CatalogItem, collectionId: string): boolean {
+export function isPaperInCollection(paper: Item, collectionId: string): boolean {
   if (!collectionId) return true;
   if (paper.collectionId === collectionId) return true;
 
@@ -34,7 +34,7 @@ export function isPaperInCollection(paper: CatalogItem, collectionId: string): b
 }
 
 export class LibraryFilterEngine {
-  static filterBySearch(items: CatalogItem[], query: string): CatalogItem[] {
+  static filterBySearch(items: Item[], query: string): Item[] {
     if (!query || !query.trim()) return items;
     const q = query.toLowerCase().trim();
 
@@ -55,7 +55,7 @@ export class LibraryFilterEngine {
     });
   }
 
-  static filter(items: CatalogItem[], options: LibraryFilterOptions): CatalogItem[] {
+  static filter(items: Item[], options: LibraryFilterOptions): Item[] {
     const { searchQuery, collectionId, selectedTags, fromYear, toYear, itemType, hasAttachment } = options;
 
     let result = items;
@@ -105,7 +105,7 @@ export class LibraryFilterEngine {
     });
   }
 
-  static sort(items: CatalogItem[], options: SortOptions): CatalogItem[] {
+  static sort(items: Item[], options: SortOptions): Item[] {
     const { field, direction } = options;
     const modifier = direction === 'desc' ? -1 : 1;
 
@@ -132,7 +132,7 @@ export class LibraryFilterEngine {
     });
   }
 
-  static isDuplicate(paperA: CatalogItem, paperB: CatalogItem): boolean {
+  static isDuplicate(paperA: Item, paperB: Item): boolean {
     if (paperA.id && paperB.id && paperA.id === paperB.id) return false;
 
     if (paperA.doi && paperB.doi) {
@@ -150,8 +150,8 @@ export class LibraryFilterEngine {
     return false;
   }
 
-  static findDuplicates(items: CatalogItem[]): Array<{ original: CatalogItem; duplicates: CatalogItem[] }> {
-    const results: Array<{ original: CatalogItem; duplicates: CatalogItem[] }> = [];
+  static findDuplicates(items: Item[]): Array<{ original: Item; duplicates: Item[] }> {
+    const results: Array<{ original: Item; duplicates: Item[] }> = [];
     const visited = new Set<string>();
 
     for (let i = 0; i < items.length; i++) {
@@ -159,7 +159,7 @@ export class LibraryFilterEngine {
       const currentId = current.id;
       if (visited.has(currentId)) continue;
 
-      const dupes: CatalogItem[] = [];
+      const dupes: Item[] = [];
       for (let j = i + 1; j < items.length; j++) {
         const other = items[j];
         const otherId = other.id;
@@ -185,11 +185,11 @@ export class LibraryFilterEngine {
 }
 
 export function filterItems(
-  items: CatalogItem[],
+  items: Item[],
   query: string = '',
   collectionId: string | null = null,
   activeTag: string | null = null
-): CatalogItem[] {
+): Item[] {
   return LibraryFilterEngine.filter(items, {
     searchQuery: query,
     collectionId,
@@ -200,10 +200,11 @@ export function filterItems(
 export const filterPapers = filterItems;
 
 export interface FilterItemsOptions {
-  items: CatalogItem[];
+  items: Item[];
   searchQuery?: string;
   activeFilter?: string | null;
   activeTag?: string | null;
+  activeTags?: string[];
   activeCollectionId?: string | null;
   collectionIds?: Set<string>;
   duplicateItemIds?: Set<string>;
@@ -234,10 +235,11 @@ export function sortFilterItems({
   searchQuery = '',
   activeFilter = null,
   activeTag = null,
+  activeTags = [],
   activeCollectionId = null,
   collectionIds,
   duplicateItemIds = new Set<string>(),
-}: FilterItemsOptions): CatalogItem[] {
+}: FilterItemsOptions): Item[] {
   let result = items;
 
   if (activeFilter === 'trash') {
@@ -273,10 +275,28 @@ export function sortFilterItems({
     result = result.filter((item) => !item.collectionId);
   } else if (activeFilter === 'duplicates') {
     result = result.filter((item) => duplicateItemIds.has(item.id));
+  } else if (activeFilter === 'retracted') {
+    result = result.filter((item) => Boolean(item.isRetracted));
+  } else if (activeFilter === 'my-publications' || activeFilter === 'publications') {
+    result = result.filter((item) => Boolean(item.isMyPublication));
   }
 
-  if (activeTag) {
-    result = result.filter((item) => item.labels?.includes(activeTag));
+  const effectiveTags =
+    activeTags && activeTags.length > 0
+      ? activeTags
+      : activeTag
+      ? activeTag.split(',').map((t) => t.trim()).filter(Boolean)
+      : [];
+
+  if (effectiveTags.length > 0) {
+    result = result.filter((item) => {
+      const p = item as { tags?: unknown[]; labels?: unknown[]; keywords?: unknown[] };
+      const rawTags = (item.labels || p.tags || p.keywords || []) as Array<string | { name?: string }>;
+      const itemTags = rawTags.map((t) =>
+        (typeof t === 'string' ? t.toLowerCase() : t?.name?.toLowerCase() || '')
+      );
+      return effectiveTags.every((t) => itemTags.includes(t.toLowerCase()));
+    });
   }
 
   if (searchQuery.trim()) {
@@ -300,11 +320,11 @@ export function isExpiredTrash(deletedAt?: string | null): boolean {
   return getDaysUntilPurge(deletedAt) === 0;
 }
 
-export function filterTrash(items: CatalogItem[]): CatalogItem[] {
+export function filterTrash(items: Item[]): Item[] {
   return items.filter((p) => Boolean(p.deletedAt || (p as { isTrash?: boolean }).isTrash));
 }
 
-export function isUnfiled(item: CatalogItem): boolean {
+export function isUnfiled(item: Item): boolean {
   if (item.deletedAt || (item as { isTrash?: boolean }).isTrash) return false;
   if (item.collectionId) return false;
   const p = item as { collections?: unknown[]; collectionIds?: unknown[] };
@@ -313,15 +333,15 @@ export function isUnfiled(item: CatalogItem): boolean {
   return true;
 }
 
-export function filterUnfiled(items: CatalogItem[]): CatalogItem[] {
+export function filterUnfiled(items: Item[]): Item[] {
   return items.filter(isUnfiled);
 }
 
-export function groupByTime(items: CatalogItem[]): {
-  today: CatalogItem[];
-  yesterday: CatalogItem[];
-  thisWeek: CatalogItem[];
-  earlier: CatalogItem[];
+export function groupByTime(items: Item[]): {
+  today: Item[];
+  yesterday: Item[];
+  thisWeek: Item[];
+  earlier: Item[];
 } {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -329,13 +349,13 @@ export function groupByTime(items: CatalogItem[]): {
   const weekStart = todayStart - 6 * 86400000;
 
   const result = {
-    today: [] as CatalogItem[],
-    yesterday: [] as CatalogItem[],
-    thisWeek: [] as CatalogItem[],
-    earlier: [] as CatalogItem[],
+    today: [] as Item[],
+    yesterday: [] as Item[],
+    thisWeek: [] as Item[],
+    earlier: [] as Item[],
   };
 
-  const getTimestamp = (item: CatalogItem) => {
+  const getTimestamp = (item: Item) => {
     const p = item as { accessedAt?: string; lastOpenedAt?: string; updatedAt?: string; createdAt?: string };
     return new Date(p.accessedAt || p.lastOpenedAt || p.updatedAt || p.createdAt || 0).getTime();
   };

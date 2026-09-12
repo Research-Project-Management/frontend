@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Switch } from '@/shared/components/ui/switch';
-import { cn } from '@/shared/lib/utils';
+import { Switch } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import type { ModuleDef } from '../../types/module.types';
 
 interface ItemProps {
@@ -18,20 +18,18 @@ export function Item({ mod, active, disabled, onToggle }: ItemProps) {
   return (
     <div
       className={cn(
-        'flex items-center justify-between gap-4 rounded-lg border p-4 transition-colors',
+        'flex items-center justify-between gap-4 rounded-md border p-4 transition-colors',
         active
           ? 'border-border bg-card'
-          : 'border-transparent bg-muted',
+          : 'border-border bg-card/60 opacity-60',
         mod.locked && 'opacity-70',
       )}
     >
       <div className="flex items-center gap-3 min-w-0">
         <div
           className={cn(
-            'flex size-9 shrink-0 items-center justify-center rounded-md',
-            active
-              ? 'bg-muted text-foreground'
-              : 'bg-muted text-muted-foreground',
+            'flex size-9 shrink-0 items-center justify-center rounded-md bg-muted',
+            active ? 'text-foreground' : 'text-muted-foreground',
           )}
         >
           <Icon className="size-4 shrink-0" />

@@ -23,7 +23,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-} from '@/shared/components/ui/dropdown-menu';
+} from "@/shared/components/ui";
 import dynamic from 'next/dynamic';
 import InfoSection from './panel/InfoSection';
 import AbstractSection from './panel/AbstractSection';
@@ -38,7 +38,7 @@ const AttachmentsSection = dynamic(() => import('./panel/AttachmentsSection'), {
 });
 import CreateCollectionModal from './modals/CreateCollectionModal';
 import { useItems as usePapers } from '../hooks/use-items';
-import { CatalogItemService } from '../services/catalog.service';
+import { ItemService } from '../services/item.service';
 import { useCollections } from '../hooks/use-collections';
 import { useAttachments } from '../hooks/use-attachments';
 import { useNotes } from '../hooks/use-notes';
@@ -46,19 +46,19 @@ import { useRelations } from '../hooks/use-relations';
 import { useLibrarySidebarStore, type InspectorSectionId } from '../store/sidebar.store';
 import { normalizeNotes, normalizeTags, convertToBibTeX, getPaperFileUrl } from '../utils/library.util';
 import { ALL_ITEM_TYPES_FLAT } from '../schemas/item-type.schema';
-import { cn } from '@/shared/lib/utils';
-import { useUpload } from '@/shared/hooks/use-upload';
+import { cn } from "@/shared/lib/utils";
+import { uploadLibraryFile } from '../services/upload.service';
 import { toast } from 'sonner';
-import { copyToClipboard } from '@/shared/lib/clipboard';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { apiPost, apiDelete } from '@/shared/lib/api';
+import { copyToClipboard } from "@/shared/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
+import { apiPost, apiDelete } from "@/shared/lib/api";
 import { useQueryClient } from '@tanstack/react-query';
 import DeleteModal, { type DeleteModalConfig } from './modals/DeleteModal';
-import type { CatalogItem, Collection } from '../types/library.types';
+import type { Item, Collection, CollectionInput } from '../types/library.types';
 
 export interface InspectorPanelProps {
-  paper?: CatalogItem | null;
-  item?: CatalogItem | null;
+  paper?: Item | null;
+  item?: Item | null;
   collection?: Collection | null;
   workspaceId: string;
   onClose?: () => void;
@@ -102,7 +102,7 @@ interface InspectorSectionHeaderProps {
   count?: number;
   isOpen: boolean;
   hasAdd?: boolean;
-  paper: CatalogItem | null;
+  paper: Item | null;
   onToggle: (id: SectionId) => void;
   onAdd?: (id: SectionId, e: React.MouseEvent) => void;
   customAddAction?: React.ReactNode;
@@ -241,8 +241,8 @@ export default function InspectorPanel({
 }: InspectorPanelProps) {
   const incomingPaper = propPaper || propItem || null;
   const activeWorkspaceId = incomingPaper?.workspaceId || workspaceId || '';
-  const [paper, setPaper] = useState<CatalogItem | null>(incomingPaper);
-  const latestPaperRef = useRef<CatalogItem | null>(incomingPaper);
+  const [paper, setPaper] = useState<Item | null>(incomingPaper);
+  const latestPaperRef = useRef<Item | null>(incomingPaper);
   const updateQueueRef = useRef<Promise<void>>(Promise.resolve());
   const paperService = usePapers({ workspaceId: activeWorkspaceId });
   const collectionsState = useCollections(activeWorkspaceId);
@@ -273,7 +273,6 @@ export default function InspectorPanel({
   const attachFileInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
-  const { uploadFile, uploadFileDetailed } = useUpload();
   const verifiedPaperId = isPaperVerified ? paper?.id || '' : '';
   const { add: addAttachment } = useAttachments(activeWorkspaceId, verifiedPaperId);
 
@@ -302,7 +301,7 @@ export default function InspectorPanel({
 
     setIsPaperVerified(false);
     let cancelled = false;
-    void CatalogItemService.getById(activeWorkspaceId, incomingPaper.id)
+    void ItemService.getById(activeWorkspaceId, incomingPaper.id)
       .then((response) => {
         if (cancelled) return;
         const latest = response;
@@ -410,9 +409,7 @@ export default function InspectorPanel({
 
     try {
       setIsUploadingAttachment(true);
-      const { url: fileUrl, fileId } = await uploadFileDetailed(file, {
-        prefix: `${workspaceId}/library`,
-      });
+      const { url: fileUrl, fileId } = await uploadLibraryFile(activeWorkspaceId, file);
 
       await addAttachment({
         filename: file.name,
@@ -430,7 +427,7 @@ export default function InspectorPanel({
         });
       }
 
-      queryClient.invalidateQueries({ queryKey: ['catalog-items'] });
+      queryClient.invalidateQueries({ queryKey: ['items'] });
       queryClient.invalidateQueries({ queryKey: ['attachments', paper.id] });
     } catch {
       // Toast notifications handled inside addAttachment mutation hook
@@ -481,7 +478,7 @@ export default function InspectorPanel({
     }
   };
 
-  const handleUpdatePaper = (data: Partial<CatalogItem>) => {
+  const handleUpdatePaper = (data: Partial<Item>) => {
     const requestedItemId = latestPaperRef.current?.id;
     if (!requestedItemId) return;
 
@@ -520,7 +517,7 @@ export default function InspectorPanel({
         if (!currentPaper?.id || currentPaper.id !== requestedItemId || !activeWorkspaceId) return;
 
         try {
-          const response = await CatalogItemService.getById(activeWorkspaceId, currentPaper.id);
+          const response = await ItemService.getById(activeWorkspaceId, currentPaper.id);
           const latest = response;
           if (!latest?.id) return;
           latestPaperRef.current = latest;
@@ -534,7 +531,7 @@ export default function InspectorPanel({
   };
 
 
-  const handleCreateCollectionSubmit = async (data: any) => {
+  const handleCreateCollectionSubmit = async (data: CollectionInput) => {
     if (!collectionsState) return;
     try {
       const rawParent = data.parentId ?? data.parent ?? null;
@@ -547,7 +544,8 @@ export default function InspectorPanel({
         parentId: cleanParentId,
       });
       setIsCreateCollectionOpen(false);
-      const newColId = (res as any)?.collection?.id || (res as any)?.id;
+      const resData = res as unknown as { collection?: { id?: string }; id?: string };
+      const newColId = resData?.collection?.id || resData?.id;
       if (paper?.id && newColId) {
         handleUpdatePaper({ collectionId: newColId });
       }
@@ -572,7 +570,7 @@ export default function InspectorPanel({
     if (!paper) return 0;
     const paperUrl = getPaperFileUrl(paper);
     const rawAttachments = Array.isArray(paper.attachments) ? paper.attachments : [];
-    const otherAtts = rawAttachments.filter((att: any) => {
+    const otherAtts = rawAttachments.filter((att: Record<string, unknown>) => {
       const attUrl = att.fileUrl || att.url;
       if (paperUrl && attUrl && attUrl === paperUrl) return false;
       if (att.attachmentType === 'primary_pdf' || att.type === 'primary_pdf') return false;
@@ -595,7 +593,7 @@ export default function InspectorPanel({
 
   const itemTypeLabel = useMemo(() => {
     if (!paper?.itemType) return 'Journal Article';
-    const found = (ALL_ITEM_TYPES_FLAT as any[]).find((t: any) => t.value === paper.itemType);
+    const found = ALL_ITEM_TYPES_FLAT.find((t) => t.value === paper.itemType);
     return found?.label || paper.itemType;
   }, [paper?.itemType]);
 
@@ -666,7 +664,7 @@ export default function InspectorPanel({
             </div>
 
             {paper ? (
-              <header className="h-12 px-3 border-b border-border bg-background flex items-center justify-between gap-2 shrink-0 select-none">
+              <header className="h-11 px-3 border-b border-border bg-background flex items-center justify-between gap-2 shrink-0 select-none">
                 {/* Paper Title at the top */}
                 <div className="flex-1 min-w-0">
                   <InspectorTitleInput
@@ -684,8 +682,8 @@ export default function InspectorPanel({
                 </button>
               </header>
             ) : (
-              /* Clean h-12 Header when no paper is selected */
-              <header className="h-12 px-3 border-b border-border bg-background flex items-center justify-end shrink-0 select-none">
+              /* Clean h-11 Header when no paper is selected */
+              <header className="h-11 px-3 border-b border-border bg-background flex items-center justify-end shrink-0 select-none">
                 <button
                   type="button"
                   onClick={() => setIsInspectorOpen(false)}
@@ -970,8 +968,8 @@ export default function InspectorPanel({
         aria-label="Inspector panel bar"
         className="w-10 shrink-0 h-full border-l border-border bg-background hidden sm:flex flex-col items-center z-20 select-none"
       >
-        {/* Top: Toggle Panel Button Container - EXACTLY h-12 with line cách biên p-1 */}
-        <div className="h-12 w-full flex flex-col items-center justify-between shrink-0">
+        {/* Top: Toggle Panel Button Container - EXACTLY h-11 with line cách biên p-1 */}
+        <div className="h-11 w-full flex flex-col items-center justify-between shrink-0">
           <div className="flex-1 flex items-center justify-center w-full">
             <button
               type="button"

@@ -1,12 +1,11 @@
 'use client';
 
 import { useCard } from '@/features/workspaces/projects/stickies/hooks/use-card';
-import { useSticky } from '@/features/workspaces/projects/stickies/hooks/use-sticky';
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import Card from '../components/card/Card';
 import { type Sticky } from '@/features/workspaces/projects/stickies/types/sticky.types';
-import { useParams } from "next/navigation";
-import { Loader2, Layers2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { StickiesIcon } from "@/shared/components/ui";
 import {
   DndContext,
   DragOverlay,
@@ -25,7 +24,7 @@ import EmptyState from '../components/layout/EmptyState';
 
 const copy = {
   title: "Stickies",
-  Icon: Layers2,
+  Icon: StickiesIcon,
   loading: "Loading stickies...",
   emptyFiltered: "No stickies match your filters",
   empty: "No stickies yet",
@@ -34,35 +33,16 @@ const copy = {
 };
 
 export default function StickyPage() {
-  const { workspaceId } = useParams() as { workspaceId: string };
   const [searchQuery, setSearchQuery] = useState("");
-  const [projectFilter, setProjectFilter] = useState<string[]>([]);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  const hasFilter = searchQuery.length > 0 || projectFilter.length > 0;
-
-  // Single query when unfiltered; conditional background query only when filter is active to keep project options list complete
-  const allStickiesQuery = useSticky(workspaceId, "", undefined, {
-    enabled: hasFilter,
-  });
-
   const { state, actions } = useCard({
     search: searchQuery,
-    projectId: projectFilter.join(','),
   });
-
-  const availableProjectIds = useMemo(() => {
-    const dataSource: Sticky[] = hasFilter
-      ? ((allStickiesQuery.query.data || []) as Sticky[])
-      : (state.items as Sticky[]);
-    return Array.from(
-      new Set(dataSource.map((s: Sticky) => s.projectId).filter((id): id is string => Boolean(id))),
-    );
-  }, [hasFilter, allStickiesQuery.query.data, state.items]);
 
   if (state.status.isLoading) {
     return (
@@ -88,9 +68,6 @@ export default function StickyPage() {
         onAddSticky={actions.add}
         isAddingSticky={state.status.isAdding}
         addLabel={copy.addLabel}
-        projectFilter={projectFilter}
-        onProjectFilterChange={setProjectFilter}
-        availableProjectIds={availableProjectIds}
       />
 
       <main className="flex-1 overflow-auto p-5">

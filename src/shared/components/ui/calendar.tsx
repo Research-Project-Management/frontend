@@ -152,7 +152,7 @@ function Calendar({
           if (orientation === "right") {
             return (
               <ChevronRightIcon
-                className={cn("size-4", className)}
+                className={cn("size-4 shrink-0", className)}
                 {...props}
               />
             )

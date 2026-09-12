@@ -1,4 +1,4 @@
-import { apiRawFetch } from '@/shared/lib/api';
+import { apiRawFetch } from "@/shared/lib/api";
 import type { CopilotCitation, StreamPaperOptions } from '../types/reader.types';
 
 export type { StreamPaperOptions };

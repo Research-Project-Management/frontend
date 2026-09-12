@@ -31,7 +31,7 @@ import {
 import type { PageEvent } from "@/features/editor/types/document.types";
 import { usePageStore } from "@/features/editor/store/page.store";
 import { cn } from "@/shared/lib/utils";
-import { Input } from '@/shared/components/ui/input';
+import { Input, Form } from "@/shared/components/ui";
 
 type View = "file" | "project";
 
@@ -124,17 +124,19 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
   });
   const { restoreToEvent: restoreProjectMutation } = useHistoryActions();
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { isSubmitting },
-  } = useForm<CreateSnapshotInput>({
+  const form = useForm<CreateSnapshotInput>({
     resolver: zodResolver(createSnapshotSchema),
     defaultValues: {
       label: "",
     },
   });
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting },
+  } = form;
 
   const onSaveSnapshot = (data: CreateSnapshotInput) => {
     if (!activeFileId) return;
@@ -242,26 +244,28 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
       {view === "file" && (
         <>
           <div className="border-b border-border px-3 py-3">
-            <form onSubmit={handleSubmit(onSaveSnapshot)} className="flex gap-1.5 w-full">
-              <Input
-                {...register("label")}
-                placeholder="Label (optional)"
-                className="h-8 flex-1 rounded-md text-xs"
-              />
-              <button
-                type="submit"
-                disabled={saveMutation.isPending || isSubmitting}
-                title="Save current file as a snapshot"
-                className="flex h-8 shrink-0 items-center gap-1 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
-              >
-                {saveMutation.isPending ? (
-                  <Loader2 className="size-3.5 animate-spin shrink-0" />
-                ) : (
-                  <Save className="size-3.5 shrink-0" />
-                )}
-                Save
-              </button>
-            </form>
+            <Form {...form}>
+              <form onSubmit={handleSubmit(onSaveSnapshot)} className="flex gap-1.5 w-full">
+                <Input
+                  {...register("label")}
+                  placeholder="Label (optional)"
+                  className="h-8 flex-1 rounded-md text-xs"
+                />
+                <button
+                  type="submit"
+                  disabled={saveMutation.isPending || isSubmitting}
+                  title="Save current file as a snapshot"
+                  className="flex h-8 shrink-0 items-center gap-1 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-60 cursor-pointer"
+                >
+                  {saveMutation.isPending ? (
+                    <Loader2 className="size-3.5 animate-spin shrink-0" />
+                  ) : (
+                    <Save className="size-3.5 shrink-0" />
+                  )}
+                  Save
+                </button>
+              </form>
+            </Form>
           </div>
 
           <div className="flex-1 overflow-y-auto py-1">

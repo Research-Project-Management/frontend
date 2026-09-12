@@ -4,21 +4,23 @@
  */
 export const storageKeys = {
   all: ['storage'] as const,
-  workspace: (workspaceId: string) => [...storageKeys.all, 'workspace', workspaceId] as const,
-  workspaceHomeFiles: (workspaceId: string, parentId?: string | null) =>
-    [...storageKeys.workspace(workspaceId), 'home', parentId ?? 'root'] as const,
-  workspaceFiles: (workspaceId: string, parentId?: string | null) =>
-    [...storageKeys.workspace(workspaceId), 'files', parentId ?? 'root'] as const,
-  workspaceMyFiles: (workspaceId: string) =>
-    [...storageKeys.workspace(workspaceId), 'my-files'] as const,
-  workspaceShared: (workspaceId: string) =>
-    [...storageKeys.workspace(workspaceId), 'shared'] as const,
-  workspaceStarred: (workspaceId: string) =>
-    [...storageKeys.workspace(workspaceId), 'starred'] as const,
-  workspaceTrashed: (workspaceId: string) =>
-    [...storageKeys.workspace(workspaceId), 'trashed'] as const,
-  workspaceUsage: (workspaceId: string) =>
-    [...storageKeys.workspace(workspaceId), 'usage'] as const,
+  scoped: (scopeId?: string) => [...storageKeys.all, 'scoped', scopeId || 'me'] as const,
+  workspaceHomeFiles: (scopeId?: string, parentId?: string | null) =>
+    [...storageKeys.scoped(scopeId), 'home', parentId ?? 'root'] as const,
+  workspaceFiles: (scopeId?: string, parentId?: string | null) =>
+    [...storageKeys.scoped(scopeId), 'files', parentId ?? 'root'] as const,
+  workspaceMyFiles: (scopeId?: string) =>
+    [...storageKeys.scoped(scopeId), 'my-files'] as const,
+  workspaceShared: (scopeId?: string) =>
+    [...storageKeys.scoped(scopeId), 'shared'] as const,
+  workspaceStarred: (scopeId?: string) =>
+    [...storageKeys.scoped(scopeId), 'starred'] as const,
+  workspaceTrashed: (scopeId?: string) =>
+    [...storageKeys.scoped(scopeId), 'trashed'] as const,
+  workspaceUsage: (scopeId?: string) =>
+    [...storageKeys.scoped(scopeId), 'usage'] as const,
+  quota: (projectId?: string) =>
+    [...storageKeys.all, 'quota', projectId || 'me'] as const,
 
   project: (projectId: string) => [...storageKeys.all, 'project', projectId] as const,
   projectHomeFiles: (projectId: string, parentId?: string | null) =>

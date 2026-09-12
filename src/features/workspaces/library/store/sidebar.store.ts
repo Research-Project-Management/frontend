@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { LibraryScope } from '../types/core.types';
 
 export type InspectorSectionId =
   | 'info'
@@ -11,6 +12,8 @@ export type InspectorSectionId =
   | 'cite';
 
 interface LibrarySidebarStore {
+  activeScope: LibraryScope;
+  setActiveScope: (scope: LibraryScope) => void;
   isOpen: boolean;
   width: number;
   inspectorWidth: number;
@@ -27,8 +30,15 @@ interface LibrarySidebarStore {
 }
 
 export const useLibrarySidebarStore = create<LibrarySidebarStore>((set) => ({
+  activeScope: {
+    type: 'personal',
+    id: 'user',
+    name: 'My Library',
+    role: 'owner',
+  },
+  setActiveScope: (activeScope) => set({ activeScope }),
   isOpen: true,
-  width: 220,
+  width: 240,
   inspectorWidth: 360,
   isInspectorOpen: false,
   activeInspectorTab: 'info',

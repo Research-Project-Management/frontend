@@ -17,6 +17,9 @@ export const CycleService = {
   delete: ({ cycleId }: { cycleId: string; projectId?: string }) =>
     apiDelete<void>(`/api/cycles/${cycleId}`),
 
+  restore: (cycleId: string) =>
+    apiPost<{ cycle?: Cycle }>(`/api/cycles/${cycleId}/restore`),
+
   complete: ({
     cycleId,
     action,
@@ -30,4 +33,19 @@ export const CycleService = {
       `/api/cycles/${cycleId}/complete`,
       { action, targetCycleId },
     ),
+
+  getBurndown: (cycleId: string) =>
+    apiGet<unknown>(`/api/cycles/${cycleId}/burndown`),
+
+  getVelocity: (cycleId: string) =>
+    apiGet<unknown>(`/api/cycles/${cycleId}/velocity`),
+
+  getProgress: (cycleId: string) =>
+    apiGet<unknown>(`/api/cycles/${cycleId}/progress`),
+
+  addTasksBatch: (cycleId: string, taskIds: string[]) =>
+    apiPost<{ message: string; count: number }>(`/api/cycles/${cycleId}/work-items/batch`, { taskIds }),
+
+  autoTransition: (projectId: string) =>
+    apiPost<{ startedCycle: Cycle | null; completedCycle: Cycle | null }>(`/api/projects/${projectId}/cycles/auto-transition`),
 };

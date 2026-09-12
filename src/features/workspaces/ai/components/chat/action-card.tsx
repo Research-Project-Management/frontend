@@ -123,7 +123,7 @@ export function ActionCardsGroup({
         <ChevronDown
           className={`size-3.5 text-muted-foreground/60 transition-transform ${
             collapsed ? '-rotate-90' : ''
-          }`}
+          } shrink-0`}
         />
       </button>
 

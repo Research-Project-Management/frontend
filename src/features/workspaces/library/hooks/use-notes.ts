@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -7,19 +7,19 @@ import type { Note } from '../types/library.types';
 export const noteKeys = {
   all: ['notes'] as const,
   lists: () => [...noteKeys.all, 'list'] as const,
-  list: (workspaceId: string, itemId?: string) =>
-    [...noteKeys.lists(), workspaceId, itemId || 'all'] as const,
-  detail: (workspaceId: string, id: string) =>
-    [...noteKeys.all, 'detail', workspaceId, id] as const,
+  list: (workspaceId?: string, itemId?: string) =>
+    [...noteKeys.lists(), workspaceId || 'default', itemId || 'all'] as const,
+  detail: (workspaceId?: string, id?: string) =>
+    [...noteKeys.all, 'detail', workspaceId || 'default', id] as const,
 };
 
-export function useNotes(workspaceId: string, itemId?: string) {
+export function useNotes(workspaceId?: string, itemId?: string) {
   const queryClient = useQueryClient();
 
   const notesQuery = useQuery({
     queryKey: noteKeys.list(workspaceId, itemId),
     queryFn: () => NoteService.list(workspaceId, itemId),
-    enabled: Boolean(workspaceId),
+    enabled: true,
   });
 
   const createMutation = useMutation({

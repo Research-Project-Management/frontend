@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useChangePassword } from '../hooks/use-security';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
@@ -18,7 +18,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/shared/components/ui/form';
+} from "@/shared/components/ui";
 
 export default function SecurityTab() {
   const { user } = useAuth();

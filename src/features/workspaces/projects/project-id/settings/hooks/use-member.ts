@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   useProjectDetails,
@@ -12,7 +11,7 @@ import {
 } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { getErrorMessage } from '@/shared/utils/error.util';
+import { getErrorMessage } from "@/shared/lib/utils";
 import type { ProjectMemberItem, ProjectRole } from '../types/member.types';
 import {
   normalizeProjectMembers,
@@ -21,11 +20,10 @@ import {
 } from '../utils/member.util';
 
 export function useMembers(projectId: string) {
-  const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
   const { user: currentUser } = useAuth();
 
   const { data: projectData, isLoading: isProjectLoading, isError } = useProjectDetails(projectId);
-  const { workspace, yourRole: workspaceRole, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl);
+  const { workspace, yourRole: workspaceRole, isLoading: isWorkspaceLoading } = useWorkspace();
 
   const project = useMemo(() => {
     return (projectData as any)?.project || projectData || null;
@@ -49,21 +47,12 @@ export function useMembers(projectId: string) {
     return normalizeProjectMembers(project.members as any[], project.createdAt);
   }, [project]);
 
-  // Project settings (lead, assignee, subscribers)
+  // Project settings (default assignee)
   const projectSettings = useMemo(() => {
     return project?.settings || {};
   }, [project]);
 
-  const leadId = projectSettings.leadId || null;
   const defaultAssigneeId = projectSettings.defaultAssigneeId || null;
-  const subscriberIds: string[] = useMemo(() => {
-    return projectSettings.subscriberIds || [];
-  }, [projectSettings]);
-
-  const leadMember = useMemo(() => {
-    return members.find((m) => m.userId === leadId) || null;
-  }, [members, leadId]);
-
   const defaultAssigneeMember = useMemo(() => {
     return members.find((m) => m.userId === defaultAssigneeId) || null;
   }, [members, defaultAssigneeId]);
@@ -90,31 +79,11 @@ export function useMembers(projectId: string) {
     [projectId, projectSettings, updateProjectMutation],
   );
 
-  const setLead = useCallback(
-    (userId: string | null) => {
-      updateSettings({ leadId: userId });
-    },
-    [updateSettings],
-  );
-
   const setDefaultAssignee = useCallback(
     (userId: string | null) => {
       updateSettings({ defaultAssigneeId: userId });
     },
     [updateSettings],
-  );
-
-  const toggleSubscriber = useCallback(
-    (userId: string) => {
-      const current = new Set(subscriberIds);
-      if (current.has(userId)) {
-        current.delete(userId);
-      } else {
-        current.add(userId);
-      }
-      updateSettings({ subscriberIds: Array.from(current) });
-    },
-    [subscriberIds, updateSettings],
   );
 
   const addMembers = useCallback(
@@ -180,13 +149,13 @@ export function useMembers(projectId: string) {
   }, []);
 
   // Permissions
-  const isOwnerOrAdmin = useMemo(() => {
+  const isOwner = useMemo(() => {
     const creatorId = project?.createdById || (project?.createdBy as any)?.id;
     const currentUserId = currentUser?.id;
     if (creatorId && currentUserId && creatorId === currentUserId) return true;
-    if (workspaceRole === 'owner' || workspaceRole === 'admin') return true;
+    if (workspaceRole === 'owner') return true;
     const myMember = members.find((m) => m.userId === currentUserId);
-    if (myMember?.role === 'owner' || myMember?.role === 'admin') return true;
+    if (myMember?.role === 'owner') return true;
     return false;
   }, [project, currentUser, workspaceRole, members]);
 
@@ -198,12 +167,10 @@ export function useMembers(projectId: string) {
       workspace,
       workspaceRole,
       currentUser,
-      isOwnerOrAdmin,
-      leadId,
-      leadMember,
+      isOwner,
+      isOwnerOrAdmin: isOwner,
       defaultAssigneeId,
       defaultAssigneeMember,
-      subscriberIds,
       search,
       roleFilter,
       sortField,
@@ -215,9 +182,7 @@ export function useMembers(projectId: string) {
       isRemoving: removeMutation.isPending,
     },
     actions: {
-      setLead,
       setDefaultAssignee,
-      toggleSubscriber,
       addMembers,
       updateRole,
       removeMember,

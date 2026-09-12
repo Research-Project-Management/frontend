@@ -6,8 +6,8 @@ import { RelationService } from '../services/relation.service';
 
 // ── Query Keys ────────────────────────────────────────────────────────────────
 export const relationKeys = {
-  all: (workspaceId: string, itemId: string) =>
-    ['relations', workspaceId, itemId] as const,
+  all: (scopeId?: string, itemId?: string) =>
+    ['relations', scopeId || 'global', itemId] as const,
 };
 
 // ── useRelations ──────────────────────────────────────────────────────────────
@@ -15,15 +15,16 @@ export const relationKeys = {
  * Fetch and mutate item relations (related items).
  * Backed by GET /items/:id/relations, POST /items/:id/relations, DELETE /items/:id/relations/:targetId
  */
-export function useRelations(workspaceId: string, itemId: string) {
+export function useRelations(scopeId?: string, itemId?: string) {
   const queryClient = useQueryClient();
+  const effectiveItemId = itemId || scopeId || '';
 
   const relationsQuery = useQuery({
-    queryKey: relationKeys.all(workspaceId, itemId),
-    queryFn: () => RelationService.getRelated(workspaceId, itemId),
-    enabled: Boolean(workspaceId && itemId),
+    queryKey: relationKeys.all(scopeId, effectiveItemId),
+    queryFn: () => RelationService.getRelated(scopeId || '', effectiveItemId),
+    enabled: Boolean(effectiveItemId),
     select: (data) => ({
-      items: data.relatedItems || data.relatedPapers || [],
+      items: data.relatedItems || (data as any).relatedPapers || [],
       total: data.total || 0,
     }),
   });
@@ -35,10 +36,10 @@ export function useRelations(workspaceId: string, itemId: string) {
     }: {
       targetItemId: string;
       relationType?: string;
-    }) => RelationService.link(workspaceId, itemId, targetItemId, relationType),
+    }) => RelationService.link(scopeId || '', effectiveItemId, targetItemId, relationType),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: relationKeys.all(workspaceId, itemId),
+        queryKey: relationKeys.all(scopeId, effectiveItemId),
       });
       toast.success('Item linked', { id: 'relation-mutation' });
     },
@@ -52,10 +53,10 @@ export function useRelations(workspaceId: string, itemId: string) {
 
   const unlinkMutation = useMutation({
     mutationFn: ({ targetItemId }: { targetItemId: string }) =>
-      RelationService.unlink(workspaceId, itemId, targetItemId),
+      RelationService.unlink(scopeId || '', effectiveItemId, targetItemId),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: relationKeys.all(workspaceId, itemId),
+        queryKey: relationKeys.all(scopeId, effectiveItemId),
       });
       toast.success('Item unlinked', { id: 'relation-mutation' });
     },

@@ -7,7 +7,7 @@
  *  - LaTeX Compilation Proxy (`/api/latex/compile`, `/api/pages/:rootId/sync-incremental`)
  */
 
-import { apiGet, apiPost, apiPut, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
 import type {
   Page,
   PageFile,
@@ -270,24 +270,14 @@ export type CrossrefWork = {
   extra?: string;
 };
 
-export async function fetchLookupDoi(doi: string, workspaceId?: string) {
+export async function fetchLookupDoi(doi: string) {
   const cleanDoi = encodeURIComponent(doi);
-  if (workspaceId) {
-    return apiGet<{ work: CrossrefWork }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/citation/doi/${cleanDoi}`
-    );
-  }
-  return apiGet<{ work: CrossrefWork }>(`/api/library/references/doi/${cleanDoi}`);
+  return apiGet<{ work: CrossrefWork }>(`/api/v1/library/references/doi/${cleanDoi}`);
 }
 
-export async function fetchSearchCrossref(query: string, rows = 1, workspaceId?: string) {
+export async function fetchSearchCrossref(query: string, rows = 1) {
   const cleanQuery = encodeURIComponent(query);
-  if (workspaceId) {
-    return apiGet<{ works: CrossrefWork[]; totalResults: number }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/citation/crossref/search?query=${cleanQuery}&rows=${rows}`
-    );
-  }
   return apiGet<{ works: CrossrefWork[]; totalResults: number }>(
-    `/api/library/references/crossref/search?query=${cleanQuery}&rows=${rows}`
+    `/api/v1/library/references/crossref/search?query=${cleanQuery}&rows=${rows}`
   );
 }

@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { getErrorMessage } from '@/shared/utils/error.util';
+import { getErrorMessage } from "@/shared/lib/utils";
 import {
   NotesService,
   type CreateNoteDTO,
@@ -12,19 +12,19 @@ import type { ReaderNote } from '../types/reader.types';
 
 export const readerNoteKeys = {
   all: ['reader', 'notes'] as const,
-  list: (workspaceId: string, itemId?: string) =>
-    [...readerNoteKeys.all, workspaceId, itemId || 'all'] as const,
-  detail: (workspaceId: string, id: string) =>
-    [...readerNoteKeys.all, 'detail', workspaceId, id] as const,
+  list: (workspaceId?: string, itemId?: string) =>
+    [...readerNoteKeys.all, workspaceId || 'default', itemId || 'all'] as const,
+  detail: (workspaceId?: string, id?: string) =>
+    [...readerNoteKeys.all, 'detail', workspaceId || 'default', id] as const,
 };
 
-export function useNotes(workspaceId: string, itemId?: string) {
+export function useNotes(workspaceId?: string, itemId?: string) {
   const queryClient = useQueryClient();
 
   const notesQuery = useQuery({
     queryKey: readerNoteKeys.list(workspaceId, itemId),
     queryFn: () => NotesService.list(workspaceId, itemId),
-    enabled: Boolean(workspaceId),
+    enabled: true,
   });
 
   const createMutation = useMutation({

@@ -13,9 +13,9 @@ import {
   ChevronDown,
   Layers,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { cn } from '@/shared/lib/utils';
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import type {
   DocumentFulltext,
   DocumentSection,
@@ -401,11 +401,11 @@ export default function DocumentNavDrawer({
                       </button>
 
                       {isExpanded ? (
-                        <div className="mt-2 overflow-x-auto border border-border rounded-sm bg-muted text-11">
+                        <div className="mt-2 overflow-x-auto border border-border rounded-sm bg-card text-11">
                           <table className="w-full border-collapse text-left">
                             {tab.headers && tab.headers.length > 0 ? (
                               <thead>
-                                <tr className="border-b border-border bg-muted">
+                                <tr className="border-b border-border bg-background">
                                   {tab.headers.map((h, idx) => (
                                     <th key={idx} className="p-1.5 font-semibold text-foreground">
                                       {h}

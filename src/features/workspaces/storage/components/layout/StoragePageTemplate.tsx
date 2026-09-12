@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { StorageViewContainer } from './StorageViewContainer';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import { downloadFileUrl } from '@/shared/utils/file';
+import { downloadFileUrl } from "@/shared/lib/file-client";
 import { BulkActionBar } from '../actions/BulkActionBar';
 import Topbar from './Topbar';
 import type { FileQueryParams } from '@/features/workspaces/storage/services/file.service';
@@ -13,7 +13,7 @@ import { useStorageQueryParams } from '../../hooks/use-storage-query-params';
 export interface StoragePageTemplateProps {
   title: string;
   icon: LucideIcon;
-  useFilesHook: (workspaceId: string, params: FileQueryParams) => {
+  useFilesHook: (scopeId: string | undefined, params?: FileQueryParams) => {
     data?: { pages: Array<{ files?: StorageItem[] }> };
     isLoading: boolean;
     hasNextPage?: boolean;
@@ -36,8 +36,7 @@ export function StoragePageTemplate({
   isTrash = false,
 }: StoragePageTemplateProps) {
   const {
-    workspaceId,
-    isWorkspaceLoading,
+    projectId,
     searchQuery,
     setSearchQuery,
     setSelectedItem,
@@ -45,7 +44,7 @@ export function StoragePageTemplate({
   } = useStorageQueryParams();
 
   const { data, isLoading: isFilesLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useFilesHook(
-    workspaceId,
+    projectId,
     queryParams,
   );
 
@@ -58,10 +57,6 @@ export function StoragePageTemplate({
     }
   };
 
-  const handleFolderClick = (_folder: StorageItem) => {
-    // Navigate inside folder if needed
-  };
-
   const files = useMemo(
     () => (data?.pages.flatMap((page) => page.files || []) || []) as StorageItem[],
     [data?.pages],
@@ -69,13 +64,13 @@ export function StoragePageTemplate({
 
   const viewProps = {
     items: files,
+    isReadOnly: isTrash,
     hasMore: hasNextPage,
     isFetchingNextPage,
     onLoadMore: fetchNextPage,
-    onFolderClick: handleFolderClick,
-    onToggleStar: onToggleStar ? (id: string) => { void onToggleStar(id); } : undefined,
-    onDelete: (id: string) => { if (onDelete) void onDelete(id); },
-    onRestore: onRestore ? (id: string) => { void onRestore(id); } : undefined,
+    onToggleStar: onToggleStar ? async (fileId: string) => { await onToggleStar(fileId); } : undefined,
+    onDelete: onDelete ? async (fileId: string) => { await onDelete(fileId); } : async () => {},
+    onRestore: onRestore ? async (fileId: string) => { await onRestore(fileId); } : undefined,
     onDownload: handleDownload,
     onFileClick: (item: StorageItem) => setSelectedItem(item),
     isTrash,
@@ -86,13 +81,11 @@ export function StoragePageTemplate({
       <Topbar
         title={title}
         icon={Icon}
-        workspaceId={workspaceId}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
       <StorageViewContainer
-        isLoading={isWorkspaceLoading || (isFilesLoading && !data)}
-        workspaceId={workspaceId}
+        isLoading={isFilesLoading && !data}
         viewProps={viewProps}
       />
       <BulkActionBar items={files} isTrash={isTrash} />

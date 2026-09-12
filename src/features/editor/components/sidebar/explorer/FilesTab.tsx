@@ -9,7 +9,7 @@ import React, {
 import { useParams, useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTabsStore } from "@/features/editor/store/tabs.store";
-import { logger } from "@/shared/lib/logger";
+import { logger } from "@/shared/lib/utils";
 import { useEditorStorage } from '@/features/editor/hooks/use-storage';
 import {
   AlertTriangle,
@@ -35,9 +35,14 @@ import {
   Braces,
   ListTree,
 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
+import {
+  createFileSchema,
+  createFolderSchema,
+  renameItemSchema,
+} from "@/features/editor/schemas/document.schema";
 import { usePageStore, type AssetInfo } from "@/features/editor/store/page.store";
 import {
   pageQuery,
@@ -244,9 +249,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
 
 
-  // Derive workspaceId from parentPage.project.workspace for uploads
-  const workspaceId: string =
-    (parentPage?.projectId as any)?.workspaceId?.id ?? "";
 
   const { data: files, isLoading } = useQuery({
     ...filesQuery(parentPageId ?? ""),
@@ -473,9 +475,10 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
   const handleCreateFile = () => {
     const title = sanitizeTitle(newFileName);
-    if (!parentPageId || !title) return;
+    const parsed = createFileSchema.safeParse({ title });
+    if (!parentPageId || !parsed.success) return;
     createFileMutation.mutate(
-      { parentPageId, title },
+      { parentPageId, title: parsed.data.title },
       {
         onSuccess: (file: any) => {
           setIsCreatingFile(false);
@@ -488,14 +491,14 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
   const handleCreateFolder = () => {
     const name = newFolderName.trim();
-    if (!parentPageId || !projectId || !name) return;
+    const parsed = createFolderSchema.safeParse({ name });
+    if (!parentPageId || !projectId || !parsed.success) return;
     createFolder.mutate(
-      { name, projectId, workspaceId, pageId: parentPageId },
+      { name: parsed.data.name, projectId, pageId: parentPageId },
       {
         onSuccess: () => {
           setIsCreatingFolder(false);
           setNewFolderName("");
-
         },
       },
     );
@@ -508,14 +511,15 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
   const handleCommitRename = (fileId: string) => {
     const title = sanitizeTitle(renameValue);
-    if (!title) {
+    const parsed = renameItemSchema.safeParse({ name: title });
+    if (!parsed.success) {
       setRenamingId(null);
       return;
     }
     // Look up the current title so backend can rename the file in the compiler.
     const oldTitle = files?.find((f: any) => f.id === fileId)?.title ?? "";
     updateTitleMutation.mutate(
-      { pageId: fileId, title, oldTitle },
+      { pageId: fileId, title: parsed.data.name, oldTitle },
       { onSuccess: () => setRenamingId(null) },
     );
   };
@@ -635,7 +639,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           await uploadFile.mutateAsync({
             file: renamedFile,
             projectId,
-            workspaceId,
             pageId: parentPageId,
           });
         } catch (err) {
@@ -670,7 +673,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             const created = await createFolder.mutateAsync({
               name: folderName,
               projectId,
-              workspaceId,
               parentId: parentId ?? undefined,
               pageId: parentPageId,
             });
@@ -734,7 +736,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 await uploadFile.mutateAsync({
                   file: fileToUpload,
                   projectId,
-                  workspaceId,
                   pageId: parentPageId,
                   parentId: parentId ?? undefined,
                 });
@@ -928,15 +929,15 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           };
           reader.readAsText(file);
         } else {
-          // Binary asset GÇö upload to R2
+          // Binary asset – upload to R2
           uploadFile.mutate(
-            { file, projectId: tabProjectId, workspaceId, pageId: parentPageId, parentId: folderId },
+            { file, projectId: tabProjectId, pageId: parentPageId, parentId: folderId },
             { onSettled: settle },
           );
         }
       });
     },
-    [parentPageId, workspaceId, uploadFile, createFileMutation, parentPage],
+    [parentPageId, uploadFile, createFileMutation, parentPage],
   );
 
 

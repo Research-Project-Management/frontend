@@ -1,137 +1,187 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useForm, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { getErrorMessage } from '@/shared/utils/error.util';
-import { useProjectDetails, useUpdateProject, useDeleteProject } from '@/features/workspaces/projects/shell/hooks/use-project';
+import { getErrorMessage } from "@/shared/lib/utils";
+import {
+  useProjectDetails,
+  useUpdateProject,
+  useDeleteProject,
+  useArchiveProject,
+  useRestoreProject,
+} from '@/features/workspaces/projects/shell/hooks/use-project';
 import { uploadGenericFile } from '@/features/workspaces/storage/services/file.service';
+import { projectGeneralSchema, type ProjectGeneralFormValues } from '../schemas/general.schema';
 
-export function useGeneral(projectId: string, workspaceId: string) {
+export function useGeneral(projectId: string, workspaceId?: string) {
   const router = useRouter();
   const { data: projectData, isLoading, isError } = useProjectDetails(projectId);
   const updateMutation = useUpdateProject();
   const deleteMutation = useDeleteProject();
+  const archiveMutation = useArchiveProject();
+  const restoreMutation = useRestoreProject();
 
   const project = (projectData as any)?.project || projectData;
 
-  // Local form state
-  const [name, setName] = useState('');
-  const [identifier, setIdentifier] = useState('');
-  const [description, setDescription] = useState('');
-  const [avatar, setAvatar] = useState<string | null>(null);
-  const [cover, setCover] = useState<string | null>(null);
-  const [isPrivate, setIsPrivate] = useState(false);
-  const [timezone, setTimezone] = useState('Asia/Ho_Chi_Minh');
   const [isUploading, setIsUploading] = useState(false);
+
+  const form = useForm<ProjectGeneralFormValues>({
+    resolver: zodResolver(projectGeneralSchema),
+    defaultValues: {
+      name: '',
+      identifier: '',
+      description: '',
+      isPrivate: false,
+      avatar: null,
+      cover: null,
+    },
+    mode: 'onTouched',
+  });
+
+  const { reset, setValue, control, register, handleSubmit, formState } = form;
 
   // Sync from server
   useEffect(() => {
     if (project) {
       const settings = (project.settings as any) || {};
-      setName(project.name || '');
-      setIdentifier(project.identifier || settings.identifier || project.key || '');
-      setDescription(project.description || '');
-      setAvatar(project.avatar || null);
-      setCover(project.cover || settings.cover || null);
-      setIsPrivate(project.isPrivate ?? settings.isPrivate ?? false);
-      setTimezone(project.timezone || settings.timezone || 'Asia/Ho_Chi_Minh');
+      reset({
+        name: project.name || '',
+        identifier: project.identifier || settings.identifier || project.key || '',
+        description: project.description || '',
+        avatar: project.avatar || null,
+        cover: project.cover || project.coverImage || settings.cover || null,
+        isPrivate: project.isPrivate ?? settings.isPrivate ?? false,
+      });
     }
-  }, [project]);
+  }, [project, reset]);
 
-  const hasChanges = useMemo(() => {
-    if (!project) return false;
-    const settings = (project.settings as any) || {};
-    return (
-      name !== (project.name || '') ||
-      identifier !== (project.identifier || settings.identifier || project.key || '') ||
-      description !== (project.description || '') ||
-      avatar !== (project.avatar || null) ||
-      cover !== (project.cover || settings.cover || null) ||
-      isPrivate !== (project.isPrivate ?? settings.isPrivate ?? false) ||
-      timezone !== (project.timezone || settings.timezone || 'Asia/Ho_Chi_Minh')
-    );
-  }, [project, name, identifier, description, avatar, cover, isPrivate, timezone]);
+  // Reactive field values via useWatch (Rule sub-usewatch-over-watch)
+  const name = useWatch({ control, name: 'name' }) ?? '';
+  const identifier = useWatch({ control, name: 'identifier' }) ?? '';
+  const description = useWatch({ control, name: 'description' }) ?? '';
+  const isPrivate = useWatch({ control, name: 'isPrivate' }) ?? false;
+  const avatar = useWatch({ control, name: 'avatar' }) ?? null;
+  const cover = useWatch({ control, name: 'cover' }) ?? null;
+
+  const onValidSave = useCallback(
+    (values: ProjectGeneralFormValues) => {
+      const existingSettings = (project?.settings as any) || {};
+      const newSettings = {
+        ...existingSettings,
+        identifier: values.identifier.toUpperCase(),
+        cover: values.cover,
+        isPrivate: values.isPrivate,
+      };
+
+      updateMutation.mutate(
+        {
+          projectId,
+          name: values.name,
+          identifier: values.identifier.toUpperCase(),
+          cover: values.cover || undefined,
+          coverImage: values.cover || undefined,
+          description: values.description,
+          avatar: values.avatar || undefined,
+          settings: newSettings,
+        } as any,
+        {
+          onSuccess: () => {
+            toast.success('Project details updated');
+            reset(values);
+          },
+          onError: (err: any) => toast.error(err?.message || 'Failed to update project'),
+        },
+      );
+    },
+    [projectId, project, updateMutation, reset]
+  );
 
   const save = useCallback(() => {
-    const existingSettings = (project?.settings as any) || {};
-    const newSettings = {
-      ...existingSettings,
-      identifier,
-      cover,
-      isPrivate,
-      timezone,
-    };
+    handleSubmit(onValidSave)();
+  }, [handleSubmit, onValidSave]);
 
-    updateMutation.mutate(
-      {
-        projectId,
-        name,
-        description,
-        avatar: avatar || undefined,
-        settings: newSettings,
-      } as any,
-      {
-        onSuccess: () => toast.success('Project details updated'),
-        onError: (err: any) => toast.error(err?.message || 'Failed to update project'),
-      },
-    );
-  }, [projectId, project, name, description, avatar, cover, identifier, isPrivate, timezone, updateMutation]);
+  const setName = useCallback(
+    (val: string) => setValue('name', val, { shouldDirty: true, shouldValidate: true }),
+    [setValue]
+  );
 
-  const handleSelectAvatar = useCallback((val: string) => {
-    setAvatar(val);
-  }, []);
+  const setIdentifier = useCallback(
+    (val: string) => setValue('identifier', val, { shouldDirty: true, shouldValidate: true }),
+    [setValue]
+  );
 
-  const handleSelectCover = useCallback((coverUrl: string) => {
-    setCover(coverUrl);
-  }, []);
+  const setDescription = useCallback(
+    (val: string) => setValue('description', val, { shouldDirty: true, shouldValidate: true }),
+    [setValue]
+  );
 
-  const handleUploadCustomCover = useCallback(async (file: File) => {
-    try {
-      setIsUploading(true);
-      const url = await uploadGenericFile(file, workspaceId);
-      setCover(url);
-      toast.success('Cover uploaded');
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err) || 'Failed to upload cover');
-    } finally {
-      setIsUploading(false);
-    }
-  }, [workspaceId]);
+  const setIsPrivate = useCallback(
+    (val: boolean) => setValue('isPrivate', val, { shouldDirty: true, shouldValidate: true }),
+    [setValue]
+  );
+
+  const handleSelectAvatar = useCallback(
+    (val: string) => setValue('avatar', val, { shouldDirty: true }),
+    [setValue]
+  );
+
+  const handleSelectCover = useCallback(
+    (coverUrl: string) => setValue('cover', coverUrl, { shouldDirty: true }),
+    [setValue]
+  );
+
+  const handleUploadCustomCover = useCallback(
+    async (file: File) => {
+      try {
+        setIsUploading(true);
+        const url = await uploadGenericFile(file, workspaceId);
+        setValue('cover', url, { shouldDirty: true });
+        toast.success('Cover uploaded');
+      } catch (err: unknown) {
+        toast.error(getErrorMessage(err) || 'Failed to upload cover');
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [workspaceId, setValue]
+  );
+
+  const isArchived = Boolean(
+    project?.isActive === false || project?.isArchived || (project?.settings as any)?.isArchived
+  );
 
   const toggleArchive = useCallback(() => {
-    const existingSettings = (project?.settings as any) || {};
-    const nextArchived = !existingSettings.isArchived && !project?.isArchived;
-    const newSettings = {
-      ...existingSettings,
-      isArchived: nextArchived,
-    };
-    updateMutation.mutate(
-      { projectId, settings: newSettings } as any,
-      {
-        onSuccess: () => {
-          toast.success(nextArchived ? 'Project archived' : 'Project restored');
-        },
-        onError: (err: unknown) => toast.error(getErrorMessage(err) || 'Failed to update archive status'),
-      },
-    );
-  }, [projectId, project, updateMutation]);
+    if (isArchived) {
+      restoreMutation.mutate({ projectId });
+    } else {
+      archiveMutation.mutate({ projectId });
+    }
+  }, [projectId, isArchived, restoreMutation, archiveMutation]);
 
   const deleteProj = useCallback(() => {
     deleteMutation.mutate(
       { projectId },
       {
         onSuccess: () => {
-          router.push(`/${workspaceId}/projects`);
+          router.push('/projects');
         },
       },
     );
-  }, [projectId, workspaceId, deleteMutation, router]);
+  }, [projectId, deleteMutation, router]);
 
   return {
     project,
     isLoading,
     isError,
+    // React Hook Form instance & bindings
+    form,
+    control,
+    register,
+    handleSubmit,
+    errors: formState.errors,
     // Fields
     name,
     setName,
@@ -143,12 +193,10 @@ export function useGeneral(projectId: string, workspaceId: string) {
     cover,
     isPrivate,
     setIsPrivate,
-    timezone,
-    setTimezone,
-    isArchived: Boolean(project?.isArchived || (project?.settings as any)?.isArchived),
+    isArchived,
     createdAt: project?.createdAt,
     // Actions
-    hasChanges,
+    hasChanges: formState.isDirty,
     save,
     isSaving: updateMutation.isPending,
     isUploading,
@@ -157,6 +205,6 @@ export function useGeneral(projectId: string, workspaceId: string) {
     handleUploadCustomCover,
     toggleArchive,
     deleteProj,
-    isDeleting: deleteMutation.isPending,
+    isDeleting: deleteMutation.isPending || archiveMutation.isPending || restoreMutation.isPending,
   };
 }

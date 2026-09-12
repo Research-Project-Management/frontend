@@ -1,7 +1,7 @@
 import type { PdfMetadata, CrossrefWork } from '../types/preview.types';
 import { extractDoiFromText, parseXmpMetadata, mergeCrossrefMetadata } from '../utils/preview.utils';
-import { apiGet, apiPost } from '@/shared/lib/api';
-import { logger } from '@/shared/lib/logger';
+import { apiGet, apiPost } from "@/shared/lib/api";
+import { logger } from "@/shared/lib/utils";
 import { getFileArrayBuffer } from './file.service';
 
 async function getPdfjs() {
@@ -186,25 +186,25 @@ export const previewServices = {
   },
 
   async getCrossrefByDoi(doi: string) {
-    return apiGet<{ work: CrossrefWork }>(`/api/library/references/doi/${encodeURIComponent(doi)}`);
+    return apiGet<{ work: CrossrefWork }>(`/api/v1/library/references/doi/${encodeURIComponent(doi)}`);
   },
 
   async getCrossrefSearch(query: string, rows = 1) {
     return apiGet<{ works: CrossrefWork[]; totalResults: number }>(
-      `/api/library/references/crossref/search?query=${encodeURIComponent(query)}&rows=${rows}`
+      `/api/v1/library/references/crossref/search?query=${encodeURIComponent(query)}&rows=${rows}`
     );
   },
 
-  async getCollections(workspaceId: string) {
+  async getCollections(_scopeId?: string) {
     return apiGet<{ collections: Array<{ id: string; name: string; color?: string; icon?: string }> }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/collections`
+      `/api/v1/library/collections`
     );
   },
 
-  async ingestPaper(workspaceId: string, data: Record<string, unknown>) {
+  async ingestPaper(_scopeId?: string, data?: Record<string, unknown>) {
     return apiPost<{ message?: string; paper?: unknown; item?: unknown }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion`,
-      data
+      `/api/v1/library/ingestion/submit`,
+      data || {}
     );
   },
 };

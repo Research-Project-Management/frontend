@@ -31,23 +31,6 @@ function matchSingleType(item: StorageItem, type: StorageTypeFilter): boolean {
   }
 }
 
-function matchSingleProject(item: StorageItem, projectId: string): boolean {
-  if (projectId === 'all') return true;
-  if (projectId === 'workspace-only') {
-    return (
-      !item.linkedTo?.entityId &&
-      item.linkedTo?.entityType !== 'Project' &&
-      !item.project?.id &&
-      !item.metaData?.projectId
-    );
-  }
-  return (
-    item.linkedTo?.entityId === projectId ||
-    item.project?.id === projectId ||
-    item.metaData?.projectId === projectId
-  );
-}
-
 export function applyStorageFilters(
   items: StorageItem[] = [],
   options: StorageFilterOptions = {}
@@ -75,20 +58,7 @@ export function applyStorageFilters(
     );
   }
 
-  // 3. Project Filter (Support multi-select or single-select)
-  const projects = options.selectedProjects && options.selectedProjects.length > 0
-    ? options.selectedProjects
-    : options.projectFilter && options.projectFilter !== 'all'
-    ? [options.projectFilter]
-    : [];
-
-  if (projects.length > 0) {
-    result = result.filter((item) =>
-      projects.some((pId) => matchSingleProject(item, pId))
-    );
-  }
-
-  // 4. Sorting
+  // 3. Sorting
   const sortBy = options.sortBy || 'date-desc';
   result.sort((a, b) => {
     switch (sortBy) {

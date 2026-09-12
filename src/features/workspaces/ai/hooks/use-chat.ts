@@ -12,16 +12,17 @@ import {
 } from '../services/chat.service';
 import { buildResponseWidgetsFromActions } from '../components/chat/response-widgets';
 import { useChatMode } from './use-chat-mode';
-import { CatalogItemService } from '@/features/workspaces/library/services/catalog.service';
+import { ItemService } from '@/features/workspaces/library/services/item.service';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 
 export function useChat() {
-  const { chatId, workspaceId } = useParams() as { chatId?: string; workspaceId: string };
+  const { chatId } = useParams() as { chatId?: string };
   const searchParams = useSearchParams();
   const initialQ = searchParams.get('q') || undefined;
   const initialProject = searchParams.get('project') || undefined;
   const router = useRouter();
-  const { workspace } = useWorkspace(workspaceId!);
+  const { workspace } = useWorkspace();
+  const workspaceId = workspace?.id || 'flux';
   const {
     enabledDocumentIds,
     fluxDataEnabled,
@@ -187,15 +188,12 @@ export function useChat() {
 
   // Preload collection if present
   useEffect(() => {
-    const resolvedWorkspaceId = workspace?.id;
-    if (!resolvedWorkspaceId) return;
-
     // Check query params if collection specified
     const collectionId = searchParams.get('collectionId');
     if (!collectionId || preloadedCollectionRef.current === collectionId) return;
 
     preloadedCollectionRef.current = collectionId;
-    CatalogItemService.getByCollection(resolvedWorkspaceId, collectionId)
+    ItemService.getByCollection('me', collectionId)
       .then((res: any) => {
         const papers: any[] = Array.isArray(res) ? res : res?.papers || [];
         const indexedPapers = papers.filter(
@@ -209,7 +207,7 @@ export function useChat() {
         }
       })
       .catch(() => toast.error('Failed to load collection for AI chat'));
-  }, [addSource, searchParams, setFluxDataEnabled, workspace?.id]);
+  }, [addSource, searchParams, setFluxDataEnabled]);
 
   // Send message implementation
   const sendMessage = useCallback(
@@ -236,7 +234,6 @@ export function useChat() {
         for await (const chunk of streamChatResponse(newMessages, {
           signal: controller.signal,
           projectId,
-          workspaceId,
           chatId: chatId ?? undefined,
           documentIds:
             fluxDataEnabled && enabledDocumentIds.length > 0
@@ -287,11 +284,10 @@ export function useChat() {
             console.error('Failed to save messages:', err);
             setSaveError(true);
           }
-        } else if (workspaceId) {
+        } else {
           const title = text.trim().slice(0, 60) || 'New Chat';
           try {
             const session = await createChatSession({
-              workspaceId,
               title,
               projectId,
               messages: [userMsg, assistantMsg],
@@ -301,7 +297,7 @@ export function useChat() {
                   : undefined,
             });
             setSessionTitle(title);
-            router.push(`/${workspaceId}/ai/${session.id}`);
+            router.push(`/ai/${session.id}`);
           } catch (err) {
             console.error('Failed to create session:', err);
             setSaveError(true);
@@ -332,7 +328,6 @@ export function useChat() {
     [
       isStreaming,
       chatId,
-      workspaceId,
       router,
       enabledDocumentIds,
       fluxDataEnabled,

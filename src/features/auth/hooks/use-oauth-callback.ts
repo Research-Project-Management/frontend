@@ -6,9 +6,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { authKeys } from '../constants/auth.keys';
 import type { AuthUser } from '../types/auth.types';
-import { fetchAllWorkspaces } from '@/features/workspaces/shell/services/workspace.service';
-import { apiPost, setAuthToken } from '@/shared/lib/api';
-import { getErrorMessage } from '@/shared/utils/error.util';
+import { apiPost, setAuthToken } from "@/shared/lib/api";
+import { getErrorMessage } from "@/shared/lib/utils";
 
 interface OAuthExchangeResponse {
   accessToken: string;
@@ -70,17 +69,8 @@ export const useOAuthCallback = () => {
           window.history.replaceState({}, document.title, '/auth/callback');
         }
 
-        // 4. Fetch workspaces to route user accurately
-        try {
-          const workspaceData = await fetchAllWorkspaces();
-          if (workspaceData.workspaces && workspaceData.workspaces.length > 0) {
-            router.replace(`/${workspaceData.workspaces[0].url}`);
-          } else {
-            router.replace('/create-workspace');
-          }
-        } catch {
-          router.replace('/create-workspace');
-        }
+        // 4. Route user to /home (default post-auth destination)
+        router.replace('/home');
       } catch (err: unknown) {
         toast.error(getErrorMessage(err));
         router.replace('/login');

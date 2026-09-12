@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Loader2, Search, X } from 'lucide-react';
 import { useSticky } from '@/features/workspaces/projects/stickies/hooks/use-sticky';
@@ -11,11 +10,10 @@ import { STICKY_COLOR_CYCLE } from '@/features/workspaces/projects/stickies/type
 import { stripHtml, isStickyEmpty } from '@/features/workspaces/projects/stickies/utils/sticky.utils';
 
 export default function Stickies() {
-  const { workspaceId } = useParams() as { workspaceId: string };
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { query, mutations } = useSticky(workspaceId, "", undefined);
+  const { query, mutations } = useSticky();
   const notes = useMemo(() => (query.data || []) as Sticky[], [query.data]);
   const isLoading = query.isLoading;
   const isCreating = mutations.create.isPending;
@@ -33,7 +31,7 @@ export default function Stickies() {
   const hasMore = filteredNotes.length > 3;
 
   const handleAdd = () => {
-    if (!workspaceId || mutations.create.isPending) return;
+    if (mutations.create.isPending) return;
     if (notes.some(isStickyEmpty)) return;
 
     const lastColor = notes[0]?.color;
@@ -41,7 +39,6 @@ export default function Stickies() {
     const color = STICKY_COLOR_CYCLE[idx === -1 ? 0 : (idx + 1) % STICKY_COLOR_CYCLE.length];
 
     mutations.create.mutate({
-      workspaceId,
       content: '<p></p>',
       color,
       title: '',
@@ -145,8 +142,8 @@ export default function Stickies() {
           {hasMore && (
             <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background via-background/90 to-transparent flex items-end justify-center pb-2">
               <Link
-                href={`/${workspaceId}/stickies`}
-                className="text-sm font-medium text-primary hover:underline transition-colors"
+                href="/stickies"
+                className="text-sm font-medium text-primary hover:underline transition-colors shrink-0"
               >
                 Show all
               </Link>

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from '@/shared/components/ui/menubar';
+import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from "@/shared/components/ui";
 import { usePageStore } from '@/features/editor/store/page.store';
 import { useCompileStore } from '@/features/editor/store/compile.store';
 import { getExportFilename } from '@/features/editor/utils/topbar.util';
@@ -55,7 +55,7 @@ export default function FileMenu() {
           <MenubarShortcut>Ctrl+D</MenubarShortcut>
         </MenubarItem>
         <MenubarSeparator />
-        <MenubarItem onClick={() => router.push('/ws')}>
+        <MenubarItem onClick={() => router.push('/projects')}>
           Close Project
         </MenubarItem>
       </MenubarContent>

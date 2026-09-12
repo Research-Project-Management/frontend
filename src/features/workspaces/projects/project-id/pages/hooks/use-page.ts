@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
 import { PageService } from '../services/page.service';
 import type { CreatePageInput } from '../types/page.types';
 import { toast } from 'sonner';
@@ -16,6 +16,9 @@ export const projectPagesQueryOptions = (projectId: string, status?: string, sea
     queryFn: () => PageService.getProjectPages(projectId, status, search),
     enabled: !!projectId,
   });
+
+export const useProjectPages = (projectId: string, status?: string, search?: string) =>
+  useQuery(projectPagesQueryOptions(projectId, status, search));
 
 export const usePageActions = () => {
   const queryClient = useQueryClient();

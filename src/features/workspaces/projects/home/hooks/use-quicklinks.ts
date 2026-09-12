@@ -3,14 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Quicklink } from '../types/home.types';
 
-export function useQuicklinks(workspaceId: string) {
+export function useQuicklinks(scopeId: string = 'default') {
   const [links, setLinks] = useState<Quicklink[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const storageKey = `flux-quicklinks-${workspaceId}`;
+  const storageKey = `flux-quicklinks-${scopeId || 'default'}`;
 
   useEffect(() => {
-    if (!workspaceId) return;
     try {
       const raw = localStorage.getItem(storageKey);
       if (raw) {
@@ -24,7 +23,7 @@ export function useQuicklinks(workspaceId: string) {
     } finally {
       setIsLoaded(true);
     }
-  }, [workspaceId, storageKey]);
+  }, [scopeId, storageKey]);
 
   const addQuicklink = useCallback(
     (data: { url: string; title?: string }) => {

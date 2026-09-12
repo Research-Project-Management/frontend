@@ -5,8 +5,8 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
-import { useUpload } from '@/shared/hooks/use-upload';
-import { useCatalogItems, catalogItemKeys } from './use-items';
+import { uploadLibraryFile } from '../services/upload.service';
+import { useItems, itemKeys } from './use-items';
 import {
   formatCslCitation,
 } from '../services/citation.service';
@@ -14,13 +14,16 @@ import { IngestionService } from '../services/ingestion.service';
 import { useIngestProgress } from './use-ingest-progress';
 import { useUnifiedIngest } from './use-ingest';
 import { useCollections } from './use-collections';
+import { useSavedSearchResults } from './use-saved-searches';
 import { useAsyncJobStatus } from './use-ingest';
+import { useLibrarySidebarStore } from '../store/sidebar.store';
 import {
   getDescendantIds,
   getDuplicateIds,
   sortFilterItems,
 } from '../utils/filter.util';
 import type {
+  Item,
   Paper,
   CollectionInput,
   CslStyle,
@@ -69,7 +72,7 @@ export const libraryKeys = {
 
 /**
  * Invalidates all item-related queries for a workspace (and optionally a collection).
- * Use after any mutation that modifies the item catalog.
+ * Use after any mutation that modifies the library items.
  */
 function invalidateLibraryItems(
   queryClient: ReturnType<typeof import('@tanstack/react-query').useQueryClient>,
@@ -77,14 +80,14 @@ function invalidateLibraryItems(
   workspaceSlug: string | undefined,
   collectionId: string | undefined | null,
 ): void {
-  queryClient.invalidateQueries({ queryKey: catalogItemKeys.all(workspaceId) });
+  queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
   if (workspaceSlug && workspaceSlug !== workspaceId) {
-    queryClient.invalidateQueries({ queryKey: catalogItemKeys.all(workspaceSlug) });
+    queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceSlug) });
   }
   if (collectionId) {
-    queryClient.invalidateQueries({ queryKey: catalogItemKeys.byCollection(workspaceId, collectionId) });
+    queryClient.invalidateQueries({ queryKey: itemKeys.byCollection(workspaceId, collectionId) });
     if (workspaceSlug && workspaceSlug !== workspaceId) {
-      queryClient.invalidateQueries({ queryKey: catalogItemKeys.byCollection(workspaceSlug, collectionId) });
+      queryClient.invalidateQueries({ queryKey: itemKeys.byCollection(workspaceSlug, collectionId) });
     }
   }
 }
@@ -96,25 +99,24 @@ function invalidateLibraryItems(
 async function uploadFilesWithConcurrency(
   files: File[],
   concurrencyLimit: number,
-  onUploadItem: (file: File, completedCount: number) => Promise<void>,
-): Promise<{ successCount: number; lastErrorMessage: string }> {
-  let successCount = 0;
+  uploadWorker: (file: File, count: number) => Promise<void>,
+): Promise<{ successCount: number; lastErrorMessage: string | null }> {
   let completedCount = 0;
-  let lastErrorMessage = '';
-  let cursor = 0;
+  let successCount = 0;
+  let lastErrorMessage: string | null = null;
+  const pool = [...files];
 
   const workers = Array.from(
     { length: Math.min(concurrencyLimit, files.length) },
     async () => {
-      while (cursor < files.length) {
-        const index = cursor++;
-        const file = files[index];
+      while (pool.length > 0) {
+        const file = pool.shift();
+        if (!file) break;
         try {
-          await onUploadItem(file, completedCount + 1);
+          await uploadWorker(file, completedCount + 1);
           successCount++;
         } catch (err: any) {
-          lastErrorMessage = err?.message || `Failed to upload ${file.name}`;
-          console.error(`Upload error for ${file.name}:`, err);
+          lastErrorMessage = err?.message || 'File upload error';
         } finally {
           completedCount++;
         }
@@ -134,23 +136,34 @@ export function useLibrary() {
   const collectionId = params.collectionId;
   const router = useRouter();
   const searchParams = useSearchParams();
-  const activeTag = searchParams.get('tag');
+  const activeTags = useMemo(() => {
+    const raw = searchParams.getAll('tag');
+    if (!raw.length) return [];
+    return raw
+      .flatMap((t: string) => t.split(','))
+      .map((t: string) => decodeURIComponent(t.trim()))
+      .filter(Boolean);
+  }, [searchParams]);
+  const activeTag = activeTags.length > 0 ? activeTags.join(',') : searchParams.get('tag');
   const activeFilter = searchParams.get('filter');
 
-  const { workspace } = useWorkspace(workspaceSlug!);
+  const { workspace } = useWorkspace(workspaceSlug);
   const workspaceId = workspace?.id || workspaceSlug || '';
   const queryClient = useQueryClient();
 
+  // Active Library Scope (Personal vs Project)
+  const { activeScope } = useLibrarySidebarStore();
+  const effectiveScopeId = activeScope.type === 'project' ? activeScope.id : 'user';
+
   // Data Layer Services
-  const itemsHook = useCatalogItems({ workspaceId, collectionId: '' });
+  const itemsHook = useItems({ scopeId: effectiveScopeId, collectionId: '' });
   const allPapers = useMemo(
     () => itemsHook.state.allPapers ?? [],
     [itemsHook.state.allPapers],
   );
   const isPapersLoading = itemsHook.state.isLoadingAll;
-  const collectionService = useCollections(workspaceId);
+  const collectionService = useCollections(effectiveScopeId);
   const collections = collectionService.state.collections;
-  const { uploadFile, uploadFileDetailed } = useUpload();
   const { ingest: ingestUnified } = useUnifiedIngest(workspaceId);
   const ingestProgress = useIngestProgress(workspaceId);
 
@@ -176,23 +189,50 @@ export function useLibrary() {
     [allPapers],
   );
 
-  const filteredPapers = useMemo(
-    () =>
-      sortFilterItems({
-        items: allPapers,
-        searchQuery,
-        activeFilter,
-        activeTag,
-        activeCollectionId: collectionId,
-        collectionIds: descendantIds,
-        duplicateItemIds: duplicateIds,
-      }),
-    [allPapers, searchQuery, activeFilter, activeTag, collectionId, descendantIds, duplicateIds],
+  const savedSearchId = searchParams.get('savedSearchId');
+  const isSavedSearchActive = activeFilter === 'saved-search' && Boolean(savedSearchId);
+  const savedSearchResults = useSavedSearchResults(
+    workspaceId,
+    isSavedSearchActive ? savedSearchId : null,
   );
 
+  const filteredPapers = useMemo(() => {
+    if (isSavedSearchActive && savedSearchResults.data?.items) {
+      const items = savedSearchResults.data.items;
+      if (!searchQuery.trim()) return items;
+      const q = searchQuery.toLowerCase();
+      return items.filter(
+        (it: Item) =>
+          it.title?.toLowerCase().includes(q) ||
+          it.publicationTitle?.toLowerCase().includes(q),
+      );
+    }
+    return sortFilterItems({
+      items: allPapers,
+      searchQuery,
+      activeFilter,
+      activeTag,
+      activeTags,
+      activeCollectionId: collectionId,
+      collectionIds: descendantIds,
+      duplicateItemIds: duplicateIds,
+    });
+  }, [
+    isSavedSearchActive,
+    savedSearchResults.data?.items,
+    allPapers,
+    searchQuery,
+    activeFilter,
+    activeTag,
+    activeTags,
+    collectionId,
+    descendantIds,
+    duplicateIds,
+  ]);
+
   const selectedPaper = useMemo(
-    () => allPapers.find((paper: Paper) => paper.id === selectedPaperId) || null,
-    [allPapers, selectedPaperId],
+    () => (isSavedSearchActive ? savedSearchResults.data?.items ?? allPapers : allPapers).find((paper: Paper) => paper.id === selectedPaperId) || null,
+    [isSavedSearchActive, savedSearchResults.data?.items, allPapers, selectedPaperId],
   );
 
   const selectedCollection = useMemo(
@@ -253,10 +293,7 @@ export function useLibrary() {
       if (otherFiles.length === 1) {
         const file = otherFiles[0];
         try {
-          const { fileId } = await uploadFileDetailed(file, {
-            prefix: `${workspaceId}/library`,
-            allowedTypes: ['application/pdf'],
-          });
+          const { fileId } = await uploadLibraryFile(workspaceId, file);
           if (fileId) {
             const res = await IngestionService.submit(workspaceId, {
               kind: 'FILE',
@@ -282,15 +319,12 @@ export function useLibrary() {
         const { successCount, lastErrorMessage } = await uploadFilesWithConcurrency(
           otherFiles,
           3,
-          async (file, count) => {
+          async (file: File, count: number) => {
             toast.loading(`Uploading document ${count} of ${otherFiles.length}...`, {
               id: loadingToastId,
             });
 
-            const { fileId } = await uploadFileDetailed(file, {
-              prefix: `${workspaceId}/library`,
-              allowedTypes: ['application/pdf'],
-            });
+            const { fileId } = await uploadLibraryFile(workspaceId, file);
 
             if (!fileId) {
               throw new Error(`Upload succeeded but no fileId returned for ${file.name}`);
@@ -320,7 +354,7 @@ export function useLibrary() {
         }
       }
     },
-    [uploadFileDetailed, ingestUnified, workspaceId, workspaceSlug, collectionId, queryClient, ingestProgress],
+    [ingestUnified, workspaceId, workspaceSlug, collectionId, queryClient, ingestProgress],
   );
 
   const handleDirectFolderUpload = useCallback(
@@ -333,16 +367,13 @@ export function useLibrary() {
       const { successCount, lastErrorMessage } = await uploadFilesWithConcurrency(
         files,
         3,
-        async (file, count) => {
+        async (file: File, count: number) => {
           toast.loading(
             `Importing from "${folderName}": ${count} of ${files.length}...`,
             { id: loadingToastId },
           );
 
-          const uploadRes = await uploadFileDetailed(file, {
-            prefix: `${workspaceId}/library`,
-            allowedTypes: ['application/pdf'],
-          });
+          const uploadRes = await uploadLibraryFile(workspaceId, file);
 
           if (!uploadRes?.fileId) {
             throw new Error(`Upload failed for ${file.name}`);
@@ -371,7 +402,7 @@ export function useLibrary() {
         });
       }
     },
-    [uploadFileDetailed, ingestUnified, workspaceId, workspaceSlug, collectionId, queryClient],
+    [ingestUnified, workspaceId, workspaceSlug, collectionId, queryClient],
   );
 
   const handleAddLinkSubmit = useCallback(
@@ -570,6 +601,8 @@ export function useLibrary() {
 
   return {
     state: {
+      activeScope,
+      effectiveScopeId,
       workspaceId,
       workspaceSlug,
       items: allPapers,
@@ -577,6 +610,7 @@ export function useLibrary() {
       collections,
       isLoading: isPapersLoading,
       search: searchQuery,
+      activeTags,
       activeTag,
       activeFilter,
       selectedItemId: selectedPaperId,
@@ -594,6 +628,8 @@ export function useLibrary() {
       isAddingPaper: itemsHook.state.isAdding,
       isCreatingCollection: collectionService.state.isCreating,
       ingestProgressModal: ingestProgress.modalState,
+      activeSavedSearch: savedSearchResults.data?.savedSearch ?? null,
+      isSavedSearchActive,
     },
     actions: {
       setSearch: setSearchQuery,
@@ -627,15 +663,15 @@ export { useCollections } from './use-collections';
 export { useAsyncJobStatus } from './use-ingest';
 
 export function useCslCitation(
-  workspaceId: string,
-  paperId: string,
+  workspaceId?: string,
+  paperId?: string,
   style: CslStyle = 'apa',
   index: number = 1,
 ) {
   return useQuery({
-    queryKey: libraryKeys.citationItem(workspaceId, paperId, style, index),
-    queryFn: () => formatCslCitation(workspaceId, paperId, style, index),
-    enabled: Boolean(workspaceId && paperId),
+    queryKey: libraryKeys.citationItem(workspaceId || 'default', paperId || 'none', style, index),
+    queryFn: () => formatCslCitation(workspaceId, paperId || '', style, index),
+    enabled: Boolean(paperId),
     staleTime: 1000 * 60 * 30,
   });
 }

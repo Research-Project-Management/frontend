@@ -1,76 +1,126 @@
-import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '@/shared/lib/api';
-import type { Workspace } from '@/features/setup/types/workspace.types';
+import { apiGet, apiPut } from "@/shared/lib/api";
+import type {
+  Workspace,
+  WorkspaceListResponse,
+  WorkspaceDetailResponse,
+  CreateWorkspaceBody,
+  WorkspacePatch,
+  DeleteWorkspaceResult,
+} from '../types/workspace.types';
 
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export type WorkspaceListResponse = {
-  workspaces: Workspace[];
+export type {
+  Workspace,
+  WorkspaceListResponse,
+  WorkspaceDetailResponse,
+  CreateWorkspaceBody,
+  WorkspacePatch,
+  DeleteWorkspaceResult,
 };
 
-export type WorkspaceDetailResponse = {
-  workspace: Workspace;
-  yourRole?: string;
-};
-
-export type CreateWorkspaceBody = {
-  name: string;
-  url: string;
-  size?: string;
-  companySize?: string;
-  avatar?: string | null;
-};
-
-
-export type WorkspacePatch = Partial<{
-  name: string;
-  avatar: string | null;
-  companySize: string;
-  timezone: string;
-  url: string;
-}>;
-
-export type DeleteWorkspaceResult = {
-  workspaceId: string;
-  alreadyDeleted: boolean;
-};
-
-// ── Query Keys ────────────────────────────────────────────────────────────────
+// ── Query Keys Factory ────────────────────────────────────────────────────────
 
 export const workspaceKeys = {
-  all: ['workspaces'] as const,
+  all: ['user-workspace-context'] as const,
   lists: () => [...workspaceKeys.all, 'list'] as const,
   list: (filters?: Record<string, unknown>) => [...workspaceKeys.lists(), filters] as const,
   details: () => [...workspaceKeys.all, 'detail'] as const,
   detail: (idOrUrl: string) => [...workspaceKeys.details(), idOrUrl] as const,
-  members: (workspaceId: string) => [...workspaceKeys.detail(workspaceId), 'members'] as const,
 };
 
-// ── Services ──────────────────────────────────────────────────────────────────
+export const DEFAULT_WORKSPACE: Workspace = {
+  id: 'flux',
+  name: 'Flux',
+  slug: 'flux',
+  url: 'flux',
+  avatar: '',
+  plan: 'free',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
 
-export const fetchAllWorkspaces = (signal?: AbortSignal) =>
-  apiGet<WorkspaceListResponse>('/api/workspace', { signal });
+// ── Pure User-Centric Adaptation Layer ────────────────────────────────────────
+// Workspaces are decoupled from business logic; users operate in their personal workbench.
 
-export const fetchWorkspaceById = (workspaceId: string, signal?: AbortSignal) =>
-  apiGet<WorkspaceDetailResponse>(`/api/workspace/${workspaceId}`, { signal });
-
-export const createWorkspace = (data: CreateWorkspaceBody) =>
-  apiPost<WorkspaceDetailResponse>('/api/workspace', data);
-
-export const updateWorkspaceById = (workspaceId: string, data: WorkspacePatch) =>
-  apiPut<WorkspaceDetailResponse>(`/api/workspace/${workspaceId}`, data);
-
-export const deleteWorkspaceById = async (
-  workspaceId: string,
-): Promise<DeleteWorkspaceResult> => {
+export const fetchAllWorkspaces = async (signal?: AbortSignal): Promise<WorkspaceListResponse> => {
   try {
-    await apiDelete(`/api/workspace/${workspaceId}`);
-    return { workspaceId, alreadyDeleted: false };
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) {
-      return { workspaceId, alreadyDeleted: true };
-    }
-    throw error;
+    const res = await apiGet<{ user?: any }>('/api/users/me', { signal });
+    const user = res?.user;
+    if (!user) return { workspaces: [DEFAULT_WORKSPACE] };
+    const userWorkspace: Workspace = {
+      id: user.id || 'flux',
+      name: user.name || 'Flux',
+      slug: 'flux',
+      url: 'flux',
+      avatar: user.avatar || '',
+      plan: 'free',
+      createdAt: user.createdAt || new Date().toISOString(),
+      updatedAt: user.updatedAt || new Date().toISOString(),
+    } as Workspace;
+    return { workspaces: [userWorkspace] };
+  } catch {
+    return { workspaces: [DEFAULT_WORKSPACE] };
   }
 };
 
+export const fetchWorkspaceById = async (
+  _id?: string,
+  signal?: AbortSignal,
+): Promise<WorkspaceDetailResponse> => {
+  try {
+    const res = await apiGet<{ user?: any }>('/api/users/me', { signal });
+    const user = res?.user;
+    if (!user) return { workspace: DEFAULT_WORKSPACE, yourRole: 'owner' };
+    const userWorkspace: Workspace = {
+      id: user?.id || 'flux',
+      name: user?.name || 'Flux',
+      slug: 'flux',
+      url: 'flux',
+      avatar: user?.avatar || '',
+      plan: 'free',
+      createdAt: user?.createdAt || new Date().toISOString(),
+      updatedAt: user?.updatedAt || new Date().toISOString(),
+    } as Workspace;
+    return { workspace: userWorkspace, yourRole: 'owner' };
+  } catch {
+    return {
+      workspace: DEFAULT_WORKSPACE,
+      yourRole: 'owner',
+    };
+  }
+};
+
+export const createWorkspace = async (_data: CreateWorkspaceBody): Promise<WorkspaceDetailResponse> => {
+  return fetchWorkspaceById('flux');
+};
+
+export const updateWorkspaceById = async (
+  _id: string,
+  data: WorkspacePatch,
+): Promise<WorkspaceDetailResponse> => {
+  try {
+    await apiPut('/api/users/settings', {
+      name: (data as any).name,
+      avatar: (data as any).avatar,
+      settings: data,
+    });
+  } catch {
+    // Graceful fallback
+  }
+  return fetchWorkspaceById('flux');
+};
+
+export const deleteWorkspaceById = async (
+  id: string,
+): Promise<DeleteWorkspaceResult> => {
+  return { workspaceId: id, alreadyDeleted: true };
+};
+
+// ── Structured Service Object ─────────────────────────────────────────────────
+
+export const WorkspaceService = {
+  getAll: fetchAllWorkspaces,
+  getById: fetchWorkspaceById,
+  create: createWorkspace,
+  update: updateWorkspaceById,
+  delete: deleteWorkspaceById,
+};

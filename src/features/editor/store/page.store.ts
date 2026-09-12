@@ -16,7 +16,7 @@ export interface RefHolder<T> {
 interface PageState {
   // ── Document & Project State ─────────────────────────────────────────────
   currentPage: any | null;
-  workspaceId: string;
+  projectId: string;
   activeFilePage: any | null;
   selectedAsset: AssetInfo | null;
   texFiles: string[];
@@ -33,7 +33,7 @@ interface PageState {
 
   // ── Setters & Actions ───────────────────────────────────────────────────
   setCurrentPage: (page: any) => void;
-  setWorkspaceId: (id: string) => void;
+  setProjectId: (id: string) => void;
   setActiveFilePage: (page: any) => void;
   setSelectedAsset: (asset: AssetInfo | null) => void;
   setTexFiles: (files: string[]) => void;
@@ -42,7 +42,7 @@ interface PageState {
 
 export const usePageStore = create<PageState>((set) => ({
   currentPage: null,
-  workspaceId: "",
+  projectId: "",
   activeFilePage: null,
   selectedAsset: null,
   texFiles: [],
@@ -57,14 +57,14 @@ export const usePageStore = create<PageState>((set) => ({
   isAiPreviewingRef: { current: false },
 
   setCurrentPage: (page) => set({ currentPage: page }),
-  setWorkspaceId: (workspaceId) => set({ workspaceId }),
+  setProjectId: (projectId) => set({ projectId }),
   setActiveFilePage: (activeFilePage) => set({ activeFilePage }),
   setSelectedAsset: (selectedAsset) => set({ selectedAsset }),
   setTexFiles: (texFiles) => set({ texFiles }),
   resetPageState: () =>
     set({
       currentPage: null,
-      workspaceId: "",
+      projectId: "",
       activeFilePage: null,
       selectedAsset: null,
       texFiles: [],

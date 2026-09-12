@@ -9,12 +9,8 @@ import type {
 // ─── 1. Branded Identifiers ──────────────────────────────────────────────────
 
 export type UserId = string & { readonly __brand: unique symbol };
-export type WorkspaceId = string & { readonly __brand: unique symbol };
-export type ProjectId = string & { readonly __brand: unique symbol };
 
 export const toUserId = (id: string): UserId => id as UserId;
-export const toWorkspaceId = (id: string): WorkspaceId => id as WorkspaceId;
-export const toProjectId = (id: string): ProjectId => id as ProjectId;
 
 // ─── 2. User & Session Models ────────────────────────────────────────────────
 

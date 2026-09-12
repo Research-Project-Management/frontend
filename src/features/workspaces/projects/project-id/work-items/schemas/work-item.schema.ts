@@ -1,248 +1,266 @@
 import { z } from "zod";
 
-// ── Enums ────────────────────────────────────────────────────────────────────
+// ── Re-export modular DTO schemas ────────────────────────────────────────────
+export * from "./core.schema";
+export * from "./draft.schema";
+export * from "./assignment.schema";
+export * from "./attachment.schema";
+export * from "./comment.schema";
+export * from "./relation.schema";
+export * from "./template.schema";
+export * from "./update.schema";
+export * from "./property.schema";
 
-export const workItemPrioritySchema = z.enum(["urgent", "high", "medium", "low", "none"]);
-export const taskPrioritySchema = workItemPrioritySchema;
+import {
+  taskPrioritySchema,
+  createWorkItemDtoSchema,
+  updateWorkItemDtoSchema,
+} from "./core.schema";
+import { relationTypeSchema } from "./relation.schema";
 
-export const taskIssueTypeSchema = z.enum(["task", "bug", "feature", "improvement", "epic"]);
-export const workItemIssueTypeSchema = taskIssueTypeSchema;
+// ── Domain Enums & Aliases ───────────────────────────────────────────────────
+export const itemPrioritySchema = taskPrioritySchema;
+export const workItemPrioritySchema = taskPrioritySchema;
+export const taskPriorityEnumSchema = taskPrioritySchema;
 
-export const taskRelationTypeSchema = z.enum(["blocks", "blocked_by", "relates_to", "duplicate_of"]);
-export const workItemRelationTypeSchema = taskRelationTypeSchema;
+export const itemRelationTypeSchema = relationTypeSchema;
+export const workItemRelationTypeSchema = relationTypeSchema;
+export const taskRelationTypeSchema = relationTypeSchema;
 
-export const taskRelationSchema = z.object({
+export const stateGroupSchema = z.enum([
+  "backlog",
+  "unstarted",
+  "started",
+  "completed",
+  "cancelled",
+]);
+export type StateGroup = z.infer<typeof stateGroupSchema>;
+
+// ── Minimal Related Schemas ──────────────────────────────────────────────────
+export const userMinimalSchema = z.object({
   id: z.string(),
-  type: taskRelationTypeSchema,
-  targetTaskId: z.string(),
+  name: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
+  avatar: z.string().nullable().optional(),
+});
+
+export const cycleMinimalSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+
+export const parentItemMinimalSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  identifier: z.string().nullable().optional(),
+});
+export const parentWorkItemMinimalSchema = parentItemMinimalSchema;
+export const parentTaskMinimalSchema = parentItemMinimalSchema;
+
+export const relationSchema = z.object({
+  id: z.string(),
+  type: relationTypeSchema,
+  targetId: z.string().optional(),
+  targetTaskId: z.string().optional(),
   targetTitle: z.string().optional(),
   targetIdentifier: z.string().optional(),
   targetColumnId: z.string().optional(),
 });
-export const workItemRelationSchema = taskRelationSchema;
+export const itemRelationSchema = relationSchema;
+export const workItemRelationSchema = relationSchema;
+export const taskRelationSchema = relationSchema;
 
-export const workItemRecurrenceSchema = z.enum([
-  "none",
-  "daily",
-  "mon-fri",
-  "mon_fri",
-  "weekly",
-  "monthly-day",
-  "monthly_day",
-  "monthly-week",
-  "monthly_week",
-]);
-export const taskRecurrenceSchema = workItemRecurrenceSchema;
-
-export const workItemReminderSchema = z.enum([
-  "none",
-  "at-time",
-  "at_time",
-  "5m",
-  "m5",
-  "10m",
-  "m10",
-  "15m",
-  "m15",
-  "1h",
-  "h1",
-  "2h",
-  "h2",
-  "1day",
-  "d1",
-  "2day",
-  "d2",
-]);
-export const taskReminderSchema = workItemReminderSchema;
-
-// ── Checklist Schemas ────────────────────────────────────────────────────────
-
-export const checklistItemSchema = z.object({
+export const subItemSchema = z.object({
   id: z.string(),
   title: z.string(),
+  identifier: z.string().nullable().optional(),
+  columnId: z.string().default("backlog"),
   completed: z.boolean().default(false),
-  isCompleted: z.boolean().optional(),
-  assigneeId: z.string().optional(),
+  rank: z.number().default(0),
+  assigneeId: z.string().nullable().optional(),
+  assignee: userMinimalSchema.nullable().optional(),
   dueDate: z.string().nullable().optional(),
 });
+export const subtaskItemSchema = subItemSchema;
 
-export const checklistSchema = z.object({
+// ── Attach Center Schemas (Pages, Papers, Files, Links) ─────────────────────
+export const attachPageSchema = z.object({
   id: z.string(),
   title: z.string(),
-  items: z.array(checklistItemSchema),
+  slug: z.string().nullable().optional(),
+  addedAt: z.string().optional(),
 });
 
-export const checklistItemInputSchema = z.object({
-  id: z.string().optional(),
+export const attachPaperSchema = z.object({
+  id: z.string(),
   title: z.string(),
-  completed: z.boolean().optional(),
-  isCompleted: z.boolean().optional(),
-  assigneeId: z.string().optional(),
-  dueDate: z.string().nullable().optional(),
+  doi: z.string().nullable().optional(),
+  citationKey: z.string().nullable().optional(),
+  addedAt: z.string().optional(),
 });
 
-export const checklistInputSchema = z.object({
-  id: z.string().optional(),
-  title: z.string(),
-  items: z.array(checklistItemInputSchema),
-});
-
-// ── Attachment Schema ────────────────────────────────────────────────────────
-
-export const workItemAttachmentSchema = z.object({
+export const attachFileSchema = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.string(),
-  size: z.string(),
   url: z.string(),
-  createdAt: z.string(),
+  size: z.union([z.number(), z.string()]).nullable().optional(),
+  type: z.string().nullable().optional(),
+  createdAt: z.string().optional(),
+  uploadedAt: z.string().optional(),
 });
-export const taskAttachmentSchema = workItemAttachmentSchema;
 
-// ── WorkItem / Task Schema ───────────────────────────────────────────────────
+export const attachLinkSchema = z.object({
+  title: z.string(),
+  url: z.string(),
+  addedAt: z.string().optional(),
+});
 
-export const workItemSchema = z.object({
+export const attachmentsSchema = z.object({
+  pages: z.array(attachPageSchema).default([]),
+  papers: z.array(attachPaperSchema).default([]),
+  files: z.array(attachFileSchema).default([]),
+  links: z.array(attachLinkSchema).default([]),
+});
+export const itemAttachmentsSchema = attachmentsSchema;
+export const workItemAttachmentsSchema = attachmentsSchema;
+
+export const attachmentSchema = attachFileSchema;
+export const itemAttachmentSchema = attachmentSchema;
+export const workItemAttachmentSchema = attachmentSchema;
+export const taskAttachmentSchema = attachmentSchema;
+
+export const attachPageInputSchema = z.object({
+  pageId: z.string().min(1, "Page ID is required"),
+  title: z.string().optional(),
+});
+
+export const attachPaperInputSchema = z.object({
+  paperId: z.string().min(1, "Paper ID is required"),
+  title: z.string().optional(),
+  doi: z.string().optional(),
+  citationKey: z.string().optional(),
+});
+
+export const attachFileInputSchema = z.object({
+  name: z.string().min(1, "File name is required"),
+  url: z.string().url("Must be a valid URL"),
+  size: z.union([z.number(), z.string()]).optional(),
+  type: z.string().optional(),
+});
+
+export const attachLinkInputSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  url: z.string().url("Must be a valid URL"),
+});
+
+// ── Main Item Entity Schema ─────────────────────────────────────────────────
+export const itemSchema = z.object({
   id: z.string(),
   identifier: z.string().nullable().optional(),
-  title: z.string(),
-  content: z.string(),
-  description: z.string(),
-  projectId: z.string(),
+  sequenceNumber: z.number().nullable().optional(),
+  title: z.string().min(1, "Title is required"),
+  content: z.string().default(""),
+  description: z.string().default(""),
   columnId: z.string(),
-  issueType: taskIssueTypeSchema.default("task").optional(),
-  storyPoints: z.number().nullable().optional(),
-  relations: z.array(taskRelationSchema).optional(),
-  assignee: z
-    .object({
-      id: z.string(),
-      name: z.string(),
-      avatar: z.string().nullable().optional(),
-      email: z.string().nullable().optional(),
-    })
-    .nullable()
-    .optional(),
-  assigneeId: z
-    .union([
-      z.string(),
-      z.object({
-        id: z.string(),
-        name: z.string().optional(),
-        avatar: z.string().optional(),
-        email: z.string().optional(),
-      }),
-    ])
-    .nullable()
-    .optional(),
-  dueDate: z.string().nullable().optional(),
+  priority: taskPrioritySchema.default("none"),
+  relations: z.array(relationSchema).default([]),
   startDate: z.string().nullable().optional(),
-  labels: z.array(z.string()),
-  rank: z.number(),
-  authorId: z.string(),
-  priority: workItemPrioritySchema,
-  estimate: z.number().optional(),
-  cycleId: z
-    .union([
-      z.string(),
-      z.object({
-        id: z.string().optional(),
-        name: z.string().optional(),
-        phase: z.string().optional(),
-        status: z.string().optional(),
-        startDate: z.string().optional(),
-        endDate: z.string().optional(),
-      }),
-    ])
-    .nullable()
-    .optional(),
-  parentTaskId: z.union([z.string(), z.record(z.string(), z.unknown())]).nullable().optional(),
-  parentTask: z
-    .object({
-      id: z.string().optional(),
-      title: z.string().optional(),
-      identifier: z.string().optional(),
-    })
-    .nullable()
-    .optional(),
-  subtasks: z.array(z.any()).optional(),
+  dueDate: z.string().nullable().optional(),
+  labels: z.array(z.string()).default([]),
+  attachments: attachmentsSchema.default({
+    pages: [],
+    papers: [],
+    files: [],
+    links: [],
+  }),
+  completed: z.boolean().default(false),
+  rank: z.number().default(0),
+  timeSpent: z.number().nullable().optional(),
+  projectId: z.string(),
+  authorId: z.string().optional(),
+  author: userMinimalSchema.nullable().optional(),
+  assigneeId: z.string().nullable().optional(),
+  assignee: userMinimalSchema.nullable().optional(),
+  assigneeIds: z.array(z.string()).default([]),
+  assignees: z.array(userMinimalSchema).default([]),
+  subscriberIds: z.array(z.string()).default([]),
+  cycleId: z.string().nullable().optional(),
+  cycle: z.union([cycleMinimalSchema, z.string()]).nullable().optional(),
+  parentItemId: z.string().nullable().optional(),
+  parentTaskId: z.string().nullable().optional(),
+  parentItem: parentItemMinimalSchema.nullable().optional(),
+  parentTask: parentTaskMinimalSchema.nullable().optional(),
+  subItems: z.array(subItemSchema).default([]),
+  subtasks: z.array(subtaskItemSchema).default([]),
+  subItemCount: z.number().optional(),
   subtaskCount: z.number().optional(),
+  subItemCompletedCount: z.number().optional(),
   subtaskCompletedCount: z.number().optional(),
-  recurrence: workItemRecurrenceSchema.optional(),
-  reminder: workItemReminderSchema.optional(),
-  checklists: z.array(checklistSchema).optional(),
-  completed: z.boolean().optional(),
-  commentCount: z.number().optional(),
-  isOverdue: z.boolean().optional(),
-  dueState: z.enum(["none", "onTime", "overdue"]).optional(),
-  permissions: z
-    .object({
-      canEdit: z.boolean(),
-      canMove: z.boolean(),
-      canDelete: z.boolean(),
-      canDuplicate: z.boolean(),
-    })
-    .optional(),
-  attachments: z.array(workItemAttachmentSchema).optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });
-export const taskSchema = workItemSchema;
+export const workItemSchema = itemSchema;
+export const taskSchema = itemSchema;
 
-// ── Mutation Input Schema ────────────────────────────────────────────────────
+// ── Mutation Schema Aliases ──────────────────────────────────────────────────
+export const createWorkItemSchema = createWorkItemDtoSchema;
+export const updateWorkItemSchema = updateWorkItemDtoSchema;
+export const itemMutationInputSchema = updateWorkItemDtoSchema;
+export const workItemMutationInputSchema = updateWorkItemDtoSchema;
+export const taskMutationInputSchema = updateWorkItemDtoSchema;
 
-export const workItemMutationInputSchema = workItemSchema
-  .pick({
-    title: true,
-    content: true,
-    description: true,
-    columnId: true,
-    issueType: true,
-    storyPoints: true,
-    relations: true,
-    labels: true,
-    priority: true,
-    estimate: true,
-    rank: true,
-    recurrence: true,
-    reminder: true,
-    completed: true,
-    commentCount: true,
-    attachments: true,
-  })
-  .partial()
-  .extend({
-    dueDate: z.string().nullable().optional(),
-    startDate: z.string().nullable().optional(),
-    assigneeId: z.string().nullable().optional(),
-    cycleId: z.string().nullable().optional(),
-    checklists: z.array(checklistInputSchema).optional(),
-    parentTaskId: z.string().nullable().optional(),
-  });
-export const taskMutationInputSchema = workItemMutationInputSchema;
-
-export const columnSchema = z.object({
+// ── State & Column Schemas ──────────────────────────────────────────────────
+export const stateSchema = z.object({
   id: z.string(),
-  title: z.string(),
-  accentColor: z.string().optional(),
-  isDefault: z.boolean().optional(),
+  name: z.string(),
+  title: z.string().optional(),
   slug: z.string().optional(),
+  color: z.string(),
+  accentColor: z.string().optional(),
+  group: stateGroupSchema,
+  sequence: z.number().default(0),
+  isDefault: z.boolean().default(false),
+  description: z.string().nullable().optional(),
 });
 
-export const columnFormSchema = z.object({
-  sectionName: z.string().min(1, "Column name is required"),
-  selectedColor: z.string(),
+export const stateFormSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  color: z.string().min(1, "Color is required"),
+  group: stateGroupSchema,
+  description: z.string().optional(),
 });
-export type ColumnFormSchema = z.infer<typeof columnFormSchema>;
+export const columnFormSchema = stateFormSchema;
 
-// ── Backward-compatible Aliases ──────────────────────────────────────────────
-
-export const TaskPrioritySchema = taskPrioritySchema;
-export const TaskRecurrenceSchema = taskRecurrenceSchema;
-export const TaskReminderSchema = taskReminderSchema;
-export const ChecklistItemSchema = checklistItemSchema;
-export const ChecklistSchema = checklistSchema;
-export const ChecklistItemInputSchema = checklistItemInputSchema;
-export const ChecklistInputSchema = checklistInputSchema;
-export const TaskSchema = taskSchema;
-export const TaskMutationInputSchema = taskMutationInputSchema;
-export const WorkItemSchema = workItemSchema;
-export const WorkItemMutationInputSchema = workItemMutationInputSchema;
+// ── Filter & Display Schemas ────────────────────────────────────────────────
+export const filtersSchema = z.object({
+  search: z.string().default(""),
+  state: z.array(z.string()).default([]),
+  state_group: z.array(z.string()).default([]),
+  priority: z.array(taskPrioritySchema).default([]),
+  assignees: z.array(z.string()).default([]),
+  mentions: z.array(z.string()).default([]),
+  created_by: z.array(z.string()).default([]),
+  labels: z.array(z.string()).default([]),
+  cycle: z.array(z.string()).default([]),
+  attach: z.array(z.string()).default([]),
+  items: z.array(z.string()).default([]),
+  work_items: z.array(z.string()).default([]),
+  tasks: z.array(z.string()).default([]),
+  parent: z.array(z.string()).default([]),
+  due_date: z.array(z.string()).default([]),
+  start_date: z.array(z.string()).default([]),
+  created_at: z.array(z.string()).default([]),
+  updated_at: z.array(z.string()).default([]),
+  subscribers: z.array(z.string()).default([]),
+  columnId: z.union([z.string(), z.array(z.string())]).optional(),
+  assigneeId: z.union([z.string(), z.array(z.string())]).optional(),
+  cycleId: z.string().optional(),
+  dueDateRange: z
+    .object({
+      from: z.string().optional(),
+      to: z.string().optional(),
+    })
+    .optional(),
+  hasAttachment: z.boolean().optional(),
+});
+export const workItemFiltersSchema = filtersSchema;

@@ -14,8 +14,8 @@ import type {
   SourceItem,
 } from '../types/editor-ai.types';
 import { API_BASE_URL as API_URL } from '@/config/env';
-import { getAuthToken } from '@/shared/lib/api';
-import { logger } from '@/shared/lib/logger';
+import { getAuthToken } from "@/shared/lib/api";
+import { logger } from "@/shared/lib/utils";
 
 function getHeaders(extra?: Record<string, string>): Record<string, string> {
   const token = getAuthToken();
@@ -30,7 +30,6 @@ function getHeaders(extra?: Record<string, string>): Record<string, string> {
 
 export interface StreamEditorChatOptions {
   chatId?: string | null;
-  workspaceId?: string | null;
   projectId?: string | null;
   documentIds?: string[] | null;
   filename?: string | null;
@@ -71,7 +70,6 @@ export async function* streamEditorChat(
     body: JSON.stringify({
       messages: aiMessages,
       chat_id: options?.chatId ?? null,
-      workspace_id: options?.workspaceId ?? null,
       project_id: options?.projectId ?? null,
       document_ids: options?.documentIds ?? null,
       filename: options?.filename ?? null,
@@ -144,10 +142,8 @@ export async function* streamEditorChat(
   }
 }
 
-export async function getPageChat(pageId: string, workspaceId?: string): Promise<any> {
-  const url = workspaceId
-    ? `${API_URL}/api/ai/page-chats/${encodeURIComponent(pageId)}?workspaceId=${encodeURIComponent(workspaceId)}`
-    : `${API_URL}/api/ai/page-chats/${encodeURIComponent(pageId)}`;
+export async function getPageChat(pageId: string, _scopeId?: string): Promise<any> {
+  const url = `${API_URL}/api/ai/page-chats/${encodeURIComponent(pageId)}`;
   const res = await fetch(url, {
     headers: getHeaders(),
     credentials: 'include',
@@ -160,10 +156,8 @@ export async function getPageChat(pageId: string, workspaceId?: string): Promise
   return data;
 }
 
-export async function clearPageChat(pageId: string, workspaceId?: string): Promise<void> {
-  const url = workspaceId
-    ? `${API_URL}/api/ai/page-chats/${encodeURIComponent(pageId)}?workspaceId=${encodeURIComponent(workspaceId)}`
-    : `${API_URL}/api/ai/page-chats/${encodeURIComponent(pageId)}`;
+export async function clearPageChat(pageId: string, _scopeId?: string): Promise<void> {
+  const url = `${API_URL}/api/ai/page-chats/${encodeURIComponent(pageId)}`;
   await fetch(url, {
     method: 'DELETE',
     headers: getHeaders(),
@@ -182,7 +176,6 @@ export async function getChatSession(chatId: string): Promise<ChatSessionDetail>
 }
 
 export async function createChatSession(input: {
-  workspaceId: string;
   title: string;
   projectId?: string | null;
   messages?: ChatMessage[];
@@ -193,7 +186,6 @@ export async function createChatSession(input: {
     headers: getHeaders({ 'Content-Type': 'application/json' }),
     credentials: 'include',
     body: JSON.stringify({
-      workspaceId: input.workspaceId,
       title: input.title,
       projectId: input.projectId,
       messages: input.messages || [],
@@ -222,12 +214,14 @@ export async function appendChatMessages(
 }
 
 export async function listChatSessions(
-  workspaceId?: string | null,
-  projectId?: string | null,
+  scopeIdOrProjectId?: string | null,
+  projectIdParam?: string | null,
 ): Promise<ChatSession[]> {
   const params = new URLSearchParams();
-  if (workspaceId) params.append('workspaceId', workspaceId);
-  if (projectId) params.append('projectId', projectId);
+  const pid = projectIdParam || scopeIdOrProjectId;
+  if (pid && pid !== 'all' && pid !== 'me') {
+    params.append('projectId', pid);
+  }
 
   const res = await fetch(`${API_URL}/api/ai/chats?${params.toString()}`, {
     headers: getHeaders(),

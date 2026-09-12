@@ -7,8 +7,8 @@ import type {
   AgentAction,
 } from '../types/chat.types';
 import { API_BASE_URL as API_URL } from '@/config/env';
-import { getAuthToken } from '@/shared/lib/api';
-import { logger } from '@/shared/lib/logger';
+import { getAuthToken } from "@/shared/lib/api";
+import { logger } from "@/shared/lib/utils";
 
 function getHeaders(extra?: Record<string, string>): Record<string, string> {
   const token = getAuthToken();
@@ -248,14 +248,14 @@ export async function listChatSessions(
   projectId?: string | null,
 ): Promise<ChatSession[]> {
   const params = new URLSearchParams();
-  if (workspaceId) params.set('workspaceId', workspaceId);
-  if (projectId) params.set('projectId', projectId);
+  const pid = projectId || workspaceId;
+  if (pid && pid !== 'all' && pid !== 'me' && pid !== 'flux') params.set('projectId', pid);
 
-  const res = await fetch(`${API_URL}/api/ai/chats?${params}`, {
+  const res = await fetch(`${API_URL}/api/ai/chats?${params.toString()}`, {
     headers: getHeaders(),
     credentials: 'include',
   });
-  if (!res.ok) throw new Error('Failed to list chat sessions');
+  if (!res.ok) return [];
   const data = (await res.json()) as any;
   return data.chats || data.data?.chats || (Array.isArray(data.data) ? data.data : []);
 }
@@ -272,7 +272,6 @@ export async function getChatSession(chatId: string): Promise<ChatSessionDetail>
 
 export async function createChatSession(
   input: {
-    workspaceId: string;
     title: string;
     projectId?: string | null;
     messages?: ChatMessage[];
@@ -284,7 +283,6 @@ export async function createChatSession(
     headers: getHeaders({ 'Content-Type': 'application/json' }),
     credentials: 'include',
     body: JSON.stringify({
-      workspaceId: input.workspaceId,
       title: input.title,
       projectId: input.projectId,
       messages: input.messages || [],
@@ -336,8 +334,9 @@ export async function deleteChatSession(chatId: string): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete chat session');
 }
 
-export async function clearAiMemory(workspaceId: string): Promise<void> {
-  const res = await fetch(`${API_URL}/api/ai/memory/${workspaceId}`, {
+export async function clearAiMemory(scopeId?: string): Promise<void> {
+  const url = scopeId ? `${API_URL}/api/ai/memory/${encodeURIComponent(scopeId)}` : `${API_URL}/api/ai/memory`;
+  const res = await fetch(url, {
     method: 'DELETE',
     headers: getHeaders(),
     credentials: 'include',
@@ -369,12 +368,14 @@ export async function clearPageChat(pageId: string): Promise<void> {
 // ── Document RAG & Sources ────────────────────────────────────────────────────
 
 export async function uploadDocument(
-  workspaceId: string,
+  scopeId: string,
   file: File,
 ): Promise<{ id: string; name: string; size: number }> {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('workspaceId', workspaceId);
+  if (scopeId) {
+    formData.append('projectId', scopeId);
+  }
 
   const res = await fetch(`${API_URL}/api/ai/documents/upload`, {
     method: 'POST',

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useHomeFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/storage/hooks/use-storage';
 import { StorageViewContainer } from '../components/layout/StorageViewContainer';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import { downloadFileUrl } from '@/shared/utils/file';
+import { downloadFileUrl } from "@/shared/lib/file-client";
 import { BulkActionBar } from '../components/actions/BulkActionBar';
 import Topbar from '../components/layout/Topbar';
 import StorageDropzoneOverlay from '../components/dropzone/StorageDropzoneOverlay';
@@ -13,20 +13,17 @@ import { Home } from 'lucide-react';
 import { useTopbar } from '../hooks/use-topbar';
 import { useStorageQueryParams } from '../hooks/use-storage-query-params';
 
-export default function WorkspaceHomePage() {
+export default function HomePage() {
   const router = useRouter();
   const {
-    workspaceUrl,
-    workspace,
-    workspaceId,
-    isWorkspaceLoading,
+    projectId,
     searchQuery,
     setSearchQuery,
     setSelectedItem,
     queryParams,
   } = useStorageQueryParams();
   
-  const { handleUploadFiles } = useTopbar({ workspaceId, searchQuery, onSearchChange: setSearchQuery });
+  const { handleUploadFiles } = useTopbar({ projectId, searchQuery, onSearchChange: setSearchQuery });
 
   // Home view fetches filtered & sorted items directly from backend
   const {
@@ -35,7 +32,7 @@ export default function WorkspaceHomePage() {
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
-  } = useHomeFiles(workspaceId, null, queryParams);
+  } = useHomeFiles(projectId, null, queryParams);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete } = useDeleteItem();
 
@@ -48,13 +45,15 @@ export default function WorkspaceHomePage() {
     }
   };
 
+  const basePath = `/storage`;
+
   const handleOpenLocation = useCallback((item: StorageItem) => {
     if (item.parentId) {
-      router.push(`/${workspaceUrl}/storage/my-files/${item.parentId}?highlight=${item.id}`);
+      router.push(`${basePath}/my-files/${item.parentId}?highlight=${item.id}`);
     } else {
-      router.push(`/${workspaceUrl}/storage/my-files?highlight=${item.id}`);
+      router.push(`${basePath}/my-files?highlight=${item.id}`);
     }
-  }, [router, workspaceUrl]);
+  }, [router, basePath]);
 
   const files = useMemo(
     () => (data?.pages.flatMap((page) => page.files || []) || []) as StorageItem[],
@@ -72,7 +71,7 @@ export default function WorkspaceHomePage() {
     onDownload: handleDownload,
     onOpenLocation: handleOpenLocation,
     onFileClick: (item: StorageItem) => setSelectedItem(item),
-    onFolderClick: (folder: StorageItem) => router.push(`/${workspaceUrl}/storage/my-files/${folder.id}`),
+    onFolderClick: (folder: StorageItem) => router.push(`${basePath}/my-files/${folder.id}`),
   };
 
   const handleFilesDrop = useCallback((droppedFiles: File[]) => {
@@ -84,17 +83,15 @@ export default function WorkspaceHomePage() {
       <Topbar
         title="Home"
         icon={Home}
-        workspaceId={workspaceId}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
       <StorageDropzoneOverlay
         onFilesDrop={handleFilesDrop}
-        folderName={workspace?.name || "All workspace files"}
+        folderName="All files"
       >
         <StorageViewContainer
-          isLoading={isWorkspaceLoading || (isFilesLoading && !data)}
-          workspaceId={workspaceId}
+          isLoading={isFilesLoading && !data}
           viewProps={viewProps}
         />
       </StorageDropzoneOverlay>

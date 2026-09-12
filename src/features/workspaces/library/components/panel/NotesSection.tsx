@@ -2,11 +2,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { MinusCircle, Plus } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Textarea } from '@/shared/components/ui/textarea';
+import { Button } from "@/shared/components/ui";
+import { Textarea } from "@/shared/components/ui";
 import { normalizeNotes, type NormalizedNote } from '@/features/workspaces/library/utils/library.util';
 import { useNotes } from '@/features/workspaces/library/hooks/use-notes';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 import type { Paper } from '@/features/workspaces/library/types/library.types';
 
 export interface NotesSectionProps {
@@ -67,7 +67,7 @@ export default function NotesSection({
     createNote,
     updateNote,
     deleteNote,
-  } = useNotes(paper.workspaceId || '', paper.id);
+  } = useNotes(undefined, paper.id);
 
   // Reset internal interactive state when switching papers to avoid state leakage
   useEffect(() => {
@@ -136,14 +136,10 @@ export default function NotesSection({
     const trimmedContent = newNoteContent.trim();
     if (!trimmedContent) return;
 
-    if (paper.workspaceId) {
-      try {
-        await createNote({ itemId: paper.id, contentMd: trimmedContent });
-      } catch (caughtError) {
-        if (onAddNote) onAddNote(trimmedContent);
-      }
-    } else if (onAddNote) {
-      onAddNote(trimmedContent);
+    try {
+      await createNote({ itemId: paper.id, contentMd: trimmedContent });
+    } catch (caughtError) {
+      if (onAddNote) onAddNote(trimmedContent);
     }
     setNewNoteContent('');
     setIsAdding(false);
@@ -159,20 +155,18 @@ export default function NotesSection({
     if (!trimmedContent) return;
 
     const targetNote = canonicalNotes.find((singleNote) => singleNote.id === noteId);
-    if (targetNote && paper.workspaceId) {
+    if (targetNote) {
       try {
         await updateNote(noteId, targetNote.version || 1, { contentMd: trimmedContent });
       } catch (caughtError) {
         if (onUpdateNote) onUpdateNote(noteId, trimmedContent);
       }
-    } else if (paper.workspaceId) {
+    } else {
       try {
         await createNote({ itemId: paper.id, contentMd: trimmedContent });
       } catch (caughtError) {
         if (onAddNote) onAddNote(trimmedContent);
       }
-    } else if (onUpdateNote) {
-      onUpdateNote(noteId, trimmedContent);
     }
     setEditingNoteId(null);
     setEditingContent('');
@@ -303,7 +297,7 @@ export default function NotesSection({
                     onRequestDelete({ id: n.id, content: n.content });
                   } else if (onDeleteNote) {
                     onDeleteNote(n.id, n.content);
-                  } else if (deleteNote && paper.workspaceId) {
+                  } else if (deleteNote) {
                     const target = canonicalNotes.find((cn) => cn.id === n.id);
                     deleteNote(n.id, target?.version);
                   }

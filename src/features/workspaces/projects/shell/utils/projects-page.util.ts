@@ -208,11 +208,7 @@ export function filterProjectsByCriteria(
     // 3. Lead filter
     if (criteria.leads && criteria.leads.length > 0) {
       const leadMember = p.members?.find(
-        (m: any) =>
-          m.role === 'manager' ||
-          m.role === 'lead' ||
-          m.role === 'owner' ||
-          m.role === 'admin'
+        (m: any) => m.role === 'owner' || m.role === 'lead'
       );
       const leadId =
         leadMember?.user?.id ||

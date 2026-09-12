@@ -35,8 +35,17 @@ export const yourWorkTaskSchema = z.object({
   assignee: z.union([z.string(), yourWorkUserRefSchema]).nullable().optional(),
   authorId: z.string().nullable().optional(),
   author: z.union([z.string(), yourWorkUserRefSchema]).nullable().optional(),
-  projectId: z.union([z.string(), z.object({ id: z.string().optional(), name: z.string().optional() })]).optional(),
-  project: z.object({ id: z.string().optional(), name: z.string().optional() }).optional(),
+  description: z.string().nullable().optional(),
+  sequenceNumber: z.number().nullable().optional(),
+  labels: z.array(z.string()).optional().default([]),
+  projectId: z.union([z.string(), z.object({ id: z.string().optional(), name: z.string().optional(), identifier: z.string().nullable().optional(), avatar: z.string().nullable().optional() })]).optional(),
+  project: z.object({
+    id: z.string().optional(),
+    name: z.string().optional(),
+    identifier: z.string().nullable().optional(),
+    avatar: z.string().nullable().optional(),
+  }).optional(),
+  comments: z.array(z.object({ id: z.string() })).optional().default([]),
   commentCount: z.number().optional().default(0),
   subtasks: z.array(yourWorkSubtaskSchema).optional().default([]),
   subtaskCount: z.number().optional(),
@@ -73,12 +82,39 @@ export const yourWorkActivityEventSchema = z.object({
     .optional(),
 });
 
+export const projectWorkloadBreakdownSchema = z.object({
+  projectId: z.string(),
+  projectName: z.string(),
+  projectIdentifier: z.string().nullable().optional(),
+  projectAvatar: z.string().nullable().optional(),
+  assignedCount: z.number(),
+  createdCount: z.number(),
+  subscribedCount: z.number(),
+  totalCount: z.number(),
+  stateGroupBreakdown: z.record(z.string(), z.number()),
+  subscribedStateGroupBreakdown: z.record(z.string(), z.number()),
+  completionRate: z.number(),
+});
+
+export const userProfileDataSchema = z.object({
+  id: z.string(),
+  name: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
+  avatar: z.string().nullable().optional(),
+  createdAt: z.string().optional(),
+});
+
 export const yourWorkSummaryResponseSchema = z.object({
   assigned: z.array(yourWorkTaskSchema).optional().default([]),
   created: z.array(yourWorkTaskSchema).optional().default([]),
   subscribed: z.array(yourWorkTaskSchema).optional().default([]),
   activity: z.array(yourWorkActivityEventSchema).optional().default([]),
   recent: z.array(z.any()).optional().default([]),
+  stateGroupBreakdown: z.record(z.string(), z.number()).optional(),
+  subscribedStateGroupBreakdown: z.record(z.string(), z.number()).optional(),
+  priorityBreakdown: z.record(z.string(), z.number()).optional(),
+  projectBreakdown: z.array(projectWorkloadBreakdownSchema).optional().default([]),
+  userData: userProfileDataSchema.optional(),
   success: z.boolean().optional(),
 });
 
@@ -86,4 +122,6 @@ export type YourWorkItem = z.infer<typeof yourWorkItemSchema>;
 export type YourWorkTask = z.infer<typeof yourWorkTaskSchema>;
 export type YourWorkSubtask = z.infer<typeof yourWorkSubtaskSchema>;
 export type YourWorkActivityEvent = z.infer<typeof yourWorkActivityEventSchema>;
+export type ProjectWorkloadBreakdown = z.infer<typeof projectWorkloadBreakdownSchema>;
+export type UserProfileData = z.infer<typeof userProfileDataSchema>;
 export type YourWorkSummaryResponse = z.infer<typeof yourWorkSummaryResponseSchema>;

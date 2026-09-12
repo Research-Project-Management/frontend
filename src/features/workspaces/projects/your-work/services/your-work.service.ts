@@ -1,23 +1,16 @@
-import { apiGet } from '@/shared/lib/api';
+import { apiGet } from "@/shared/lib/api";
+import type { YourWorkSummaryResponse } from '../schemas/your-work.schema';
 
 /**
- * Calls backend AnalyticsController.getYourWork
- * Endpoint: GET /api/analytics/your-work/:workspaceId
+ * Calls backend YourWorkController.getYourWork
+ * Endpoint: GET /api/analytics/your-work
  */
-export const getYourWork = (workspaceId: string, signal?: AbortSignal) =>
-  apiGet(`/api/analytics/your-work/${workspaceId}`, { signal });
+export const getYourWork = (_scopeId?: string, signal?: AbortSignal): Promise<YourWorkSummaryResponse> =>
+  apiGet('/api/analytics/your-work', { signal });
 
 /**
  * Calls backend ActivityController.getWorkspaceActivityFeed
- * Endpoint: GET /api/activity/workspaces/:workspaceId/feed
+ * Endpoint: GET /api/activity/feed
  */
-export const getActivityFeed = (workspaceId: string, signal?: AbortSignal) =>
-  apiGet(`/api/activity/workspaces/${workspaceId}/feed`, { signal });
-
-/**
- * Calls backend TaskController.getWorkspaceTasks
- * Endpoint: GET /api/workspace/:workspaceId/tasks
- */
-export const getWorkspaceTasks = (workspaceId: string, signal?: AbortSignal) =>
-  apiGet(`/api/workspace/${workspaceId}/tasks`, { signal });
-
+export const getActivityFeed = (_scopeId?: string, signal?: AbortSignal) =>
+  apiGet('/api/activity/feed', { signal });

@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useMemo, useRef } from "react";
+import { type UseFormReturn, useWatch } from "react-hook-form";
 import { LabelsDisplay } from "../icons/LabelsDisplay";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
-import { Dialog, DialogContent, DialogFooter } from '@/shared/components/ui/dialog';
-import { Button } from '@/shared/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogFooter, Form } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 import { CalendarDays, Plus, X, Lock, ArrowRight, PlayCircle, CheckCircle2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
@@ -16,31 +17,19 @@ import { DatesSection } from "../dialog/Dates";
 import { PhaseIconRenderer } from "../icons/PhaseIcon";
 import { useParams } from "next/navigation";
 import { useLabelsQuery } from "../../hooks/use-label";
+import type { CycleFormData } from "../../schemas/cycle.schema";
 
 import { cn } from "@/shared/lib/utils";
 
-interface CycleModalProps {
+export interface CycleModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: 'create' | 'edit';
-  formName: string;
-  setFormName: (v: string) => void;
-  formDescription: string;
-  setFormDescription: (v: string) => void;
-  formStart: string;
-  setFormStart: (v: string) => void;
-  formEnd: string;
-  setFormEnd: (v: string) => void;
-  formPhase: string;
-  setFormPhase: (v: string) => void;
-  formStatus: string;
-  setFormStatus: (v: string) => void;
-  formLabels: string[];
-  setFormLabels: React.Dispatch<React.SetStateAction<string[]>>;
+  form: UseFormReturn<CycleFormData>;
   phases: any[];
   setPhases: (v: any[]) => void;
   projectData?: any;
-  onSave: () => void;
+  onSave: (values: CycleFormData) => void;
   onComplete?: () => void;
   isReadOnly?: boolean;
   isSaving?: boolean;
@@ -50,20 +39,7 @@ export const CycleModal = ({
   open,
   onOpenChange,
   mode,
-  formName,
-  setFormName,
-  formDescription,
-  setFormDescription,
-  formStart,
-  setFormStart,
-  formEnd,
-  setFormEnd,
-  formPhase,
-  setFormPhase,
-  formStatus,
-  setFormStatus,
-  formLabels,
-  setFormLabels,
+  form,
   phases,
   setPhases,
   projectData,
@@ -72,15 +48,33 @@ export const CycleModal = ({
   isReadOnly = false,
   isSaving = false,
 }: CycleModalProps) => {
-  const { workspaceId, projectId } = useParams() as { workspaceId: string, projectId: string };
-  const { data } = useLabelsQuery(workspaceId!, "cycle", projectId);
+  const { workspaceId, projectId } = useParams() as { workspaceId?: string, projectId: string };
+  const { data } = useLabelsQuery(workspaceId, "cycle", projectId);
 
   const labelsTriggerRef = useRef<HTMLButtonElement>(null);
   const phaseTriggerRef = useRef<HTMLButtonElement>(null);
 
+  const formName = useWatch({ control: form.control, name: 'name' });
+  const formDescription = useWatch({ control: form.control, name: 'description' });
+  const formStart = useWatch({ control: form.control, name: 'startDate' });
+  const formEnd = useWatch({ control: form.control, name: 'endDate' });
+  const formPhase = useWatch({ control: form.control, name: 'phase' });
+  const formLabels = useWatch({ control: form.control, name: 'labels' }) || [];
+
+  const setFormPhase = (v: string) => form.setValue('phase', v, { shouldValidate: true });
+  const setFormLabels = (action: React.SetStateAction<string[]>) => {
+    const current = form.getValues('labels') || [];
+    const next = typeof action === 'function' ? action(current) : action;
+    form.setValue('labels', next, { shouldValidate: true });
+  };
+  const setFormStart = (v: string) => form.setValue('startDate', v, { shouldValidate: true });
+  const setFormEnd = (v: string) => form.setValue('endDate', v, { shouldValidate: true });
+
   const currentPhaseConfig = useMemo(() => {
     return phases.find(p => p.id === formPhase) || phases[0];
   }, [phases, formPhase]);
+
+  const { register, handleSubmit, formState: { errors } } = form;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -89,56 +83,56 @@ export const CycleModal = ({
         onCloseAutoFocus={(e) => e.preventDefault()}
         className="sm:max-w-[720px] flex flex-col p-0 overflow-hidden rounded-sm border-0 bg-popover max-h-[90vh]"
       >
-
-
-        <div className="flex items-center justify-between pl-5 pr-5 py-4 border-b border-border">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-foreground">
-                {mode === 'create' ? 'Create Cycle' : (isReadOnly ? 'Cycle Details' : 'Edit Cycle')}
-              </span>
-              {isReadOnly && (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted rounded-sm text-xs font-semibold text-foreground border border-border">
-                  <Lock className="size-2.5 text-foreground shrink-0" /> Read Only
-                </div>
-              )}
+        <Form {...form}>
+          <div className="flex items-center justify-between pl-5 pr-5 py-4 border-b border-border">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-foreground">
+                  {mode === 'create' ? 'Create Cycle' : (isReadOnly ? 'Cycle Details' : 'Edit Cycle')}
+                </span>
+                {isReadOnly && (
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted rounded-sm text-xs font-semibold text-foreground border border-border">
+                    <Lock className="size-2.5 text-foreground shrink-0" /> Read Only
+                  </div>
+                )}
+              </div>
             </div>
+            <Button variant="ghost" size="icon" className="size-8 text-foreground hover:bg-muted cursor-pointer" onClick={() => onOpenChange(false)} aria-label="Close dialog">
+              <X className="size-5 text-foreground shrink-0" />
+            </Button>
           </div>
-          <Button variant="ghost" size="icon" className="size-8 text-foreground hover:bg-muted cursor-pointer" onClick={() => onOpenChange(false)} aria-label="Close dialog">
-            <X className="size-5 text-foreground shrink-0" />
-          </Button>
-        </div>
 
-        <div className={`px-9 pt-3 pb-1 ${isReadOnly ? 'opacity-90' : ''}`}>
-          <div className={`w-full rounded-sm border border-transparent px-3 py-1.5 transition-all ${isReadOnly ? 'cursor-default' : 'hover:bg-muted focus-within:bg-background focus-within:border-border'}`}>
-            <textarea
-              rows={1}
-              value={formName}
-              readOnly={isReadOnly}
-              onChange={(e) => {
-                if (isReadOnly) return;
-                setFormName(e.target.value);
-                const target = e.currentTarget;
-                target.style.height = "auto";
-                target.style.height = `${target.scrollHeight}px`;
-              }}
-              placeholder="Enter cycle title..."
-              className="w-full resize-none bg-transparent p-0 text-2xl font-semibold leading-tight text-foreground outline-none placeholder:text-muted-foreground block"
-              autoFocus={mode === 'create' && !isReadOnly}
-              style={{ height: 'auto' }}
-            />
-          </div>
-        </div>
-
-        <div className={`px-9 space-y-5 max-h-[500px] overflow-y-auto custom-scrollbar pb-5 pt-1 ${isReadOnly ? 'opacity-95' : ''}`}>
-          {/* Quick-add action buttons row */}
-          {!isReadOnly && (
-            <div className="flex flex-wrap items-center gap-2">
-              <PhaseSection phases={phases} setPhases={setPhases} formPhase={formPhase} setFormPhase={setFormPhase} triggerRef={phaseTriggerRef} />
-              <LabelsSection formLabels={formLabels} setFormLabels={setFormLabels} triggerRef={labelsTriggerRef} />
-              <DatesSection formStart={formStart} formEnd={formEnd} setFormStart={setFormStart} setFormEnd={setFormEnd} />
+          <div className={`px-9 pt-3 pb-1 ${isReadOnly ? 'opacity-90' : ''}`}>
+            <div className={`w-full rounded-sm border border-transparent px-3 py-1.5 transition-all ${isReadOnly ? 'cursor-default' : 'hover:bg-muted focus-within:bg-background focus-within:border-border'}`}>
+              <textarea
+                rows={1}
+                {...register('name')}
+                readOnly={isReadOnly}
+                onInput={(e) => {
+                  const target = e.currentTarget;
+                  target.style.height = "auto";
+                  target.style.height = `${target.scrollHeight}px`;
+                }}
+                placeholder="Enter cycle title..."
+                className="w-full resize-none bg-transparent p-0 text-2xl font-semibold leading-tight text-foreground outline-none placeholder:text-muted-foreground block"
+                autoFocus={mode === 'create' && !isReadOnly}
+                style={{ height: 'auto' }}
+              />
             </div>
-          )}
+            {errors.name && (
+              <p className="text-xs text-destructive px-3 pt-1">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div className={`px-9 space-y-5 max-h-[500px] overflow-y-auto custom-scrollbar pb-5 pt-1 ${isReadOnly ? 'opacity-95' : ''}`}>
+            {/* Quick-add action buttons row */}
+            {!isReadOnly && (
+              <div className="flex flex-wrap items-center gap-2">
+                <PhaseSection phases={phases} setPhases={setPhases} formPhase={formPhase} setFormPhase={setFormPhase} triggerRef={phaseTriggerRef} />
+                <LabelsSection formLabels={formLabels} setFormLabels={setFormLabels} triggerRef={labelsTriggerRef} />
+                <DatesSection formStart={formStart} formEnd={formEnd} setFormStart={setFormStart} setFormEnd={setFormEnd} />
+              </div>
+            )}
 
           {/* Details row — Phase / Labels / Dates all side-by-side */}
           <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
@@ -199,7 +193,7 @@ export const CycleModal = ({
                       )}
                     </div>
                     {!isReadOnly && (
-                      <button onClick={(e) => { e.stopPropagation(); setFormStart(""); setFormEnd(""); }} className="ml-0.5 size-4 rounded-full hover:bg-foreground/10 flex items-center justify-center transition-colors cursor-pointer" aria-label="Clear dates">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setFormStart(""); setFormEnd(""); }} className="ml-0.5 size-4 rounded-full hover:bg-foreground/10 flex items-center justify-center transition-colors cursor-pointer" aria-label="Clear dates">
                         <X className="size-2.5 text-foreground shrink-0" />
                       </button>
                     )}
@@ -216,12 +210,8 @@ export const CycleModal = ({
               <h3 className="text-base font-semibold text-foreground">Description</h3>
             </div>
             <textarea
-              value={formDescription}
+              {...register('description')}
               readOnly={isReadOnly}
-              onChange={(e) => {
-                if (isReadOnly) return;
-                setFormDescription(e.target.value);
-              }}
               placeholder={isReadOnly ? "No description provided." : "Add a more detailed description..."}
               className={`min-h-[120px] w-full resize-none rounded-sm border border-border px-4 py-3 text-base text-foreground outline-none ${isReadOnly ? 'bg-transparent cursor-default' : 'hover:bg-muted focus:bg-background focus:border-border'} transition-all`}
             />
@@ -233,11 +223,12 @@ export const CycleModal = ({
             {isReadOnly ? 'Close' : 'Cancel'}
           </Button>
           {!isReadOnly && (
-            <Button onClick={onSave} disabled={!formName.trim() || isSaving} className="h-9 bg-primary px-6 text-primary-foreground hover:bg-primary/90 shadow-none font-medium transition-all active:scale-95 cursor-pointer">
+            <Button onClick={handleSubmit(onSave)} disabled={!formName?.trim() || isSaving} className="h-9 bg-primary px-6 text-primary-foreground hover:bg-primary-hover shadow-none font-medium transition-all active:scale-95 cursor-pointer">
               {isSaving ? (mode === 'create' ? "Creating..." : "Saving...") : (mode === 'create' ? "Create" : "Save")}
             </Button>
           )}
         </DialogFooter>
+        </Form>
       </DialogContent>
     </Dialog>
   );

@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { useIntersectionObserver } from '@/shared/hooks/use-intersection-observer';
+import { useIntersectionObserver } from "@/shared/hooks";
 
 export function useInfiniteSentinel({
   hasMore,

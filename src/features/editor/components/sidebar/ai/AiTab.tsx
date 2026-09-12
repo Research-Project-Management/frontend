@@ -44,7 +44,7 @@ import {
 } from "@/features/editor/utils/ai.util";
 import SuggestionCard from "./SuggestionCard";
 import ChatHistory from "./ChatHistory";
-import { Button } from '@/shared/components/ui/button';
+import { Button } from "@/shared/components/ui";
 import {
   AssistantMessage,
   MarkdownAssistantMessage,
@@ -74,7 +74,8 @@ import {
 
 export default function AiTab({ onClose }: { onClose?: () => void }) {
   const { pageId } = useParams<{ pageId: string }>();
-  const { editorRef, currentPage, workspaceId, activeFilePage, isAiPreviewingRef, compileRef } = usePageStore();
+  const { editorRef, currentPage, activeFilePage, isAiPreviewingRef, compileRef, projectId: storeProjectId } = usePageStore();
+  const projectId = (typeof currentPage?.projectId === 'object' ? currentPage?.projectId?.id : currentPage?.projectId) || storeProjectId || '';
   const { pendingAiText, setPendingAiText, pendingAiContext, clearPendingAiContext } = useActionsStore();
   const { compileErrors, compileStatus } = useCompileStore();
   const { autoCompile } = useSettingsStore();
@@ -147,13 +148,13 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
   const messagesRef = useRef<ChatMessage[]>([]);
   messagesRef.current = messages;
 
-  // Load per-page chat ΓÇö re-runs whenever workspaceId becomes available
+  // Load per-page chat
   useEffect(() => {
-    if (!pageId || !workspaceId) return;
+    if (!pageId) return;
     setIsLoading(true);
     // NOTE: keep existing messages visible while re-fetching so the UI never
     // shows a full-page spinner on top of a chat the user has already seen.
-    getPageChat(pageId, workspaceId)
+    getPageChat(pageId)
       .then((session: any) => {
         setChatId(session.id);
         setMessages(
@@ -167,7 +168,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
       .catch((err) => console.error("[ChatAiTab] Failed to load chat:", err))
       .finally(() => setIsLoading(false));
     return () => { abortRef.current?.abort(); };
-  }, [pageId, workspaceId]);
+  }, [pageId]);
 
   // Auto-scroll
   useEffect(() => {
@@ -439,7 +440,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
     const cmd = overrideCommand ?? activeCommand;
     const defaultText = cmd ? cmd.label : "";
     const text = (overrideText ?? input).trim() || defaultText;
-    if (!text || isStreaming || !chatId || !workspaceId) return;
+    if (!text || isStreaming || !chatId) return;
 
     if (pendingEditResponse) {
       clearPendingEdit("dismissed");
@@ -548,7 +549,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
     try {
       for await (const chunk of streamEditorChat(newMessages, {
         chatId,
-        workspaceId,
+        projectId,
         fileContent: richCtx?.fileContent ?? currentFileContent,
         filename: (activeFilePage ?? currentPage)?.title ?? "main.tex",
         selection: effectiveSelection,
@@ -649,7 +650,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
       streamRef.current = "";
       abortRef.current = null;
     }
-  }, [input, isStreaming, chatId, workspaceId, pendingEditResponse, getRichContext, activeFilePage, currentPage, activeCommand, compileErrors, pinnedContext, autoApply, parseApplyBlocks, handleApplyOp, editorRef, currentFileContent, clearPendingEdit, liveSelection]);
+  }, [input, isStreaming, chatId, projectId, pendingEditResponse, getRichContext, activeFilePage, currentPage, activeCommand, compileErrors, pinnedContext, autoApply, parseApplyBlocks, handleApplyOp, editorRef, currentFileContent, clearPendingEdit, liveSelection]);
 
   // ΓöÇΓöÇ Auto-preview: whenever a pending edit is set, show it in the editor immediately ΓöÇΓöÇ
   useEffect(() => {
@@ -864,7 +865,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
       const result = await compilePreview({
         baseContent: richCtx?.fileContent ?? "",
         suggestion: latex,
-        sessionId: `${pageId ?? "p"}_${workspaceId ?? "w"}`,
+        sessionId: pageId ?? "p",
       });
       setPreviewResult(result);
     } catch (err) {
@@ -872,7 +873,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
     } finally {
       setPreviewPending(false);
     }
-  }, [getRichContext, pageId, workspaceId]);
+  }, [getRichContext, pageId]);
 
   // Handle input changes ΓÇö detect slash commands
   const handleInputChange = useCallback((val: string) => {
@@ -969,7 +970,6 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
   }, [pageId, pendingEditResponse, clearPendingEdit]);
 
   const handleNewConversation = useCallback(async () => {
-    if (!workspaceId) return;
     setShowClearConfirm(false);
     if (pendingEditResponse) {
       clearPendingEdit("dismissed");
@@ -986,7 +986,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
     try {
       const filename = (activeFilePage ?? currentPage)?.title ?? "main.tex";
       const session = await createChatSession({
-        workspaceId,
+        projectId: projectId || null,
         title: `Editor chat - ${filename}`,
       });
       setChatId(session.id);
@@ -994,7 +994,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
       console.error("[ChatAiTab] New conversation error:", err);
       toast.error("Could not create a new conversation");
     }
-  }, [workspaceId, activeFilePage, currentPage, pendingEditResponse, clearPendingEdit]);
+  }, [projectId, activeFilePage, currentPage, pendingEditResponse, clearPendingEdit]);
 
   const handleSelectHistoryChat = useCallback(async (chat: ChatSession) => {
     setIsLoading(true);
@@ -1068,7 +1068,6 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
       <div className="relative flex h-full flex-col bg-background">
 
         <AiTabHeader
-          workspaceId={workspaceId}
           isStreaming={isStreaming}
           autoApply={autoApply}
           onToggleAutoApply={() => setAutoApply((v) => !v)}
@@ -1419,7 +1418,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
                 onClick={isStreaming ? () => abortRef.current?.abort() : () => handleSend()}
                 disabled={(!input.trim() && !activeCommand && !isStreaming) || isLoading}
                 aria-label={isStreaming ? "Stop response" : "Send message"}
-                className="size-8 flex items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-20 disabled:cursor-not-allowed outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                className="size-8 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary-hover transition-all disabled:opacity-20 disabled:cursor-not-allowed outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 {isStreaming ? <Square className="size-3.5 shrink-0" /> : <ArrowUp className="size-4 shrink-0" />}
               </button>
@@ -1440,7 +1439,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
       <ChatHistory
         open={historyOpen}
         onOpenChange={setHistoryOpen}
-        workspaceId={workspaceId}
+        projectId={projectId}
         activeChatId={chatId}
         onSelectChat={handleSelectHistoryChat}
         title="Editor Chat History"

@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Label } from '@/shared/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Label } from "@/shared/components/ui";
 import {
   ClipboardList,
   Plus,
@@ -231,7 +231,7 @@ export const Phase = ({
           <Input
             value={tempLabel}
             onChange={(event) => setTempLabel(event.target.value)}
-            className="h-9 rounded-sm border-border bg-background text-sm shadow-none ring-primary/20 focus-visible:ring-1"
+            className="h-9 rounded-md border-border bg-background text-sm shadow-none ring-primary/20 focus-visible:ring-1"
             placeholder="Phase name..."
             autoFocus
           />
@@ -265,7 +265,7 @@ export const Phase = ({
       <div className="shrink-0 flex items-center justify-between border-t border-border p-4 bg-background">
         <Button
           onClick={handleSave}
-          className="h-9 rounded-md bg-primary px-6 text-xs font-medium text-primary-foreground shadow-none transition-all hover:bg-primary/90 active:scale-95"
+          className="h-9 rounded-md bg-primary px-6 text-xs font-medium text-primary-foreground shadow-none transition-all hover:bg-primary-hover active:scale-95"
         >
           Save
         </Button>
@@ -382,7 +382,7 @@ export const Phase = ({
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-border bg-muted p-2">
+      <div className="shrink-0 border-t border-border bg-background p-2">
         <Button
           variant="ghost"
           onClick={handleOpenCreate}
@@ -405,7 +405,7 @@ export const Phase = ({
     >
       <PopoverTrigger asChild>
         {trigger || (
-          <button ref={triggerRef} className="flex h-10 items-center gap-2 rounded-sm border border-border bg-background px-4 text-base font-medium text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors hover:bg-muted cursor-pointer">
+          <button type="button" ref={triggerRef} className="flex h-8 items-center gap-2 rounded-md border border-border bg-background px-3 text-13 font-medium text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors hover:bg-muted cursor-pointer">
             <ClipboardList className="size-4 text-foreground shrink-0" />
             Phase
           </button>
@@ -417,7 +417,7 @@ export const Phase = ({
         side="bottom"
         sideOffset={-150}
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="z-140 flex w-[320px] flex-col overflow-hidden rounded-sm border-border bg-popover p-0 animate-in fade-in zoom-in duration-150"
+        className="z-140 flex w-[320px] flex-col overflow-hidden rounded-md border-border bg-popover p-0 animate-in fade-in zoom-in duration-150"
         style={{
           height: view === "edit" ? undefined : phaseListHeight,
           maxHeight:

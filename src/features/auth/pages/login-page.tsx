@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useLogin } from '../hooks/use-login';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
 
 const LoginPage = () => {
   const {
@@ -36,7 +36,7 @@ const LoginPage = () => {
     <div className='flex min-h-dvh items-center justify-center bg-background px-4 py-8'>
       <div className='mx-auto w-full max-w-sm flex flex-col gap-5'>
         <div className='flex flex-col items-center gap-3 text-center'>
-          <Link href='/'>
+          <Link className="shrink-0" href='/'>
             <img src='/Flux.svg' alt='Flux' className='w-14 h-14' />
           </Link>
           <h2 className='text-2xl font-semibold tracking-tight text-foreground'>Sign in to Flux</h2>
@@ -84,7 +84,7 @@ const LoginPage = () => {
           <div className='text-right'>
             <Link
               href='/forgot-password'
-              className='text-sm text-foreground hover:underline transition-colors'
+              className='text-sm text-foreground hover:underline transition-colors shrink-0'
             >
               Forgot password?
             </Link>
@@ -110,7 +110,7 @@ const LoginPage = () => {
           Don&apos;t have an account?{' '}
           <Link
             href='/register'
-            className='text-primary font-semibold hover:underline'
+            className='text-primary font-semibold hover:underline shrink-0'
           >
             Sign up
           </Link>

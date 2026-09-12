@@ -4,7 +4,7 @@ import React, { useRef } from 'react';
 import { motion, LayoutGroup } from 'framer-motion';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 import { useTabsStore } from '@/features/editor/store/tabs.store';
 import type { EditorTab } from '@/features/editor/store/tabs.store';
 

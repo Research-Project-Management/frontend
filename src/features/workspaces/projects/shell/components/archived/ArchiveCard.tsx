@@ -10,8 +10,8 @@ import {
   Globe,
   UserSquare2,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { cn } from '@/shared/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import {
   getProjectKey,
   isProjectPrivate,
@@ -21,7 +21,6 @@ import type { Project } from '../../types/project.types';
 
 export type ArchiveCardProps = {
   project: Project;
-  workspaceId: string;
   onRestore: (projectId: string, e: React.MouseEvent) => void;
   onDeletePermanent: (project: Project, e: React.MouseEvent) => void;
   isRestoring?: boolean;
@@ -29,7 +28,6 @@ export type ArchiveCardProps = {
 
 export function ArchiveCard({
   project,
-  workspaceId,
   onRestore,
   onDeletePermanent,
   isRestoring,
@@ -39,7 +37,7 @@ export function ArchiveCard({
   const isPrivate = isProjectPrivate(project);
 
   const leadMember = project.members?.find(
-    (m: any) => m.role === 'manager' || m.role === 'lead' || m.role === 'owner' || m.role === 'admin'
+    (m: any) => m.role === 'owner' || m.role === 'lead'
   );
   const leadUser =
     leadMember?.user ||
@@ -77,8 +75,8 @@ export function ArchiveCard({
       <div className="pt-6 px-4 pb-4 flex flex-col justify-between flex-1 gap-3 min-w-0">
         <div className="space-y-0.5 min-w-0">
           <Link
-            href={`/${workspaceId}/projects/${projectId}/overview`}
-            className="text-sm font-semibold text-foreground tracking-tight truncate block hover:underline"
+            href={`/projects/${projectId}/work-items`}
+            className="text-sm font-semibold text-foreground tracking-tight truncate block hover:underline shrink-0"
           >
             {project.name}
           </Link>

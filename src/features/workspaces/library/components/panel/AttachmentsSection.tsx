@@ -13,7 +13,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Globe,
+  Star,
+  FileDown,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Document, Page, pdfjs } from 'react-pdf';
 import {
   DropdownMenu,
@@ -21,12 +24,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-} from '@/shared/components/ui/dropdown-menu';
+} from "@/shared/components/ui";
 import { getPaperFileUrl } from '@/features/workspaces/library/utils/library.util';
 import { usePdf } from '@/features/workspaces/reader/hooks/use-pdf';
 import { useAttachments, useAttachmentRevisions } from '@/features/workspaces/library/hooks/use-attachments';
+import { downloadAnnotatedPdf } from '@/features/workspaces/library/services/export.service';
 import SnapshotViewerModal from '../modals/SnapshotViewerModal';
-import type { CatalogItem, ItemAttachment } from '@/features/workspaces/library/types/library.types';
+import type { Item, ItemAttachment } from '@/features/workspaces/library/types/library.types';
 
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -48,7 +52,7 @@ if (
 }
 
 interface PdfPagePreviewProps {
-  paper: CatalogItem;
+  paper: Item;
   paperUrl: string;
   onOpenReader: () => void;
 }
@@ -228,7 +232,7 @@ function AttachmentRevisions({
 }
 
 interface AttachmentsSectionProps {
-  paper: CatalogItem;
+  paper: Item;
   workspaceId?: string;
   onAddAttachment?: () => void;
   isUploading?: boolean;
@@ -246,8 +250,14 @@ export default function AttachmentsSection({
   const params = useParams();
   const rawWorkspaceId = (workspaceId || (params as any)?.workspaceId || 'ws-default') as string;
 
-  const { captureSnapshot, isCapturingSnapshot } = useAttachments(rawWorkspaceId, paper.id || '');
+  const {
+    captureSnapshot,
+    isCapturingSnapshot,
+    setPrimary,
+    isSettingPrimary,
+  } = useAttachments(rawWorkspaceId, paper.id || '');
   const [activeSnapshot, setActiveSnapshot] = useState<{ url: string; title: string; sourceUrl?: string } | null>(null);
+  const [isDownloadingAnnotated, setIsDownloadingAnnotated] = useState(false);
 
   const rawAttachments = paper.attachments || (paper as any).files || EMPTY_ATTACHMENTS;
   const paperUrl = getPaperFileUrl(paper);
@@ -287,7 +297,7 @@ export default function AttachmentsSection({
 
   const handleOpenReader = () => {
     if (!paper.id) return;
-    router.push(`/${rawWorkspaceId}/library/papers/${paper.id}`);
+    router.push(rawWorkspaceId ? `/${rawWorkspaceId}/library/papers/${paper.id}` : `/library/papers/${paper.id}`);
   };
 
   const handleDownload = (url: string, filename: string) => {
@@ -299,6 +309,34 @@ export default function AttachmentsSection({
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  };
+
+  const handleDownloadAnnotatedPdf = async () => {
+    if (!paper.id) return;
+    try {
+      setIsDownloadingAnnotated(true);
+      await downloadAnnotatedPdf(
+        rawWorkspaceId,
+        paper.id,
+        `${paper.title || 'document'}-annotated.pdf`,
+      );
+      toast.success('Annotated PDF downloaded');
+    } catch (err: any) {
+      toast.error('Failed to export annotated PDF', {
+        description: err?.message || 'Please verify that annotations exist or try again.',
+      });
+    } finally {
+      setIsDownloadingAnnotated(false);
+    }
+  };
+
+  const handleSetPrimary = async (attachmentId: string) => {
+    if (!paper.id || !attachmentId || attachmentId === 'open-access-pdf') return;
+    try {
+      await setPrimary(attachmentId);
+    } catch {
+      // Toast notification is handled inside useAttachments
+    }
   };
 
   const handleCaptureSnapshot = async () => {
@@ -371,6 +409,18 @@ export default function AttachmentsSection({
                 >
                   <Download className="size-3.5 text-foreground shrink-0" />
                   <span>Download</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleDownloadAnnotatedPdf}
+                  disabled={isDownloadingAnnotated}
+                  className="gap-2 cursor-pointer"
+                >
+                  {isDownloadingAnnotated ? (
+                    <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
+                  ) : (
+                    <FileDown className="size-3.5 text-foreground shrink-0" />
+                  )}
+                  <span>Download with Annotations</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => window.open(paperUrl, '_blank', 'noopener,noreferrer')}
@@ -466,6 +516,16 @@ export default function AttachmentsSection({
                       <ExternalLink className="size-3.5 text-foreground shrink-0" />
                       <span>Open in New Tab</span>
                     </DropdownMenuItem>
+                    {rawWorkspaceId && att.id && att.id !== 'open-access-pdf' && !isSnapshot && (
+                      <DropdownMenuItem
+                        onClick={() => handleSetPrimary(att.id)}
+                        disabled={isSettingPrimary}
+                        className="gap-2 cursor-pointer"
+                      >
+                        <Star className="size-3.5 text-foreground shrink-0" />
+                        <span>Set as Primary Document</span>
+                      </DropdownMenuItem>
+                    )}
                     {rawWorkspaceId && att.id && (
                       <>
                         <DropdownMenuSeparator />

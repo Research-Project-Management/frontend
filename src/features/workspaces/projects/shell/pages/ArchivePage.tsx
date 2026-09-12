@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useParams } from 'next/navigation';
 import { Archive } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Button } from "@/shared/components/ui";
+import { Skeleton } from "@/shared/components/ui";
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useProjects, useRestoreProject, useDeleteProject } from '../hooks/use-project';
 import {
@@ -23,10 +22,10 @@ import type { Project } from '../types/project.types';
 
 function ArchiveCardSkeleton() {
   return (
-    <div className="flex flex-col rounded-lg border border-border bg-card overflow-hidden h-48 animate-pulse">
-      <div className="h-24 bg-muted" />
-      <div className="pt-6 px-4 pb-4 space-y-2.5">
-        <Skeleton className="h-4 w-3/4" />
+    <div className="flex flex-col rounded-lg border border-border bg-card p-4 space-y-3">
+      <Skeleton className="h-24 w-full rounded-md" />
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-2/3" />
         <Skeleton className="h-3 w-1/3" />
         <Skeleton className="h-3 w-1/2" />
       </div>
@@ -35,8 +34,6 @@ function ArchiveCardSkeleton() {
 }
 
 export function ArchivePage() {
-  const params = useParams<{ workspaceId: string }>();
-  const workspaceId = params.workspaceId;
   const { user } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,7 +46,7 @@ export function ArchivePage() {
   });
   const [deleteConfirmProject, setDeleteConfirmProject] = useState<Project | null>(null);
 
-  const { projects: rawProjects = [], isLoading } = useProjects(workspaceId);
+  const { projects: rawProjects = [], isLoading } = useProjects();
   const restoreProjectMutation = useRestoreProject();
   const deleteProjectMutation = useDeleteProject();
 
@@ -89,7 +86,6 @@ export function ArchivePage() {
     <div className="flex flex-col h-full bg-background overflow-hidden">
       {/* Topbar */}
       <ArchiveTopbar
-        workspaceId={workspaceId}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         totalCount={archivedProjects.length}
@@ -121,7 +117,6 @@ export function ArchivePage() {
                 <ArchiveCard
                   key={projectId}
                   project={project}
-                  workspaceId={workspaceId}
                   onRestore={handleRestore}
                   onDeletePermanent={(p: Project, e: React.MouseEvent) => {
                     e.preventDefault();

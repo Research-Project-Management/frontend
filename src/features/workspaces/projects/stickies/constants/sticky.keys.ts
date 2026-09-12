@@ -4,7 +4,8 @@
  */
 export const stickyKeys = {
   all: ['stickies'] as const,
-  workspaceList: (workspaceId: string, search?: string, projectId?: string) =>
-    [...stickyKeys.all, 'list', { workspaceId, search, projectId }] as const,
+  list: (search?: string) => [...stickyKeys.all, 'list', { search }] as const,
+  workspaceList: (_workspaceId?: string, search?: string, _projectId?: string) =>
+    [...stickyKeys.all, 'list', { search }] as const,
   detail: (id: string) => [...stickyKeys.all, 'detail', id] as const,
 };

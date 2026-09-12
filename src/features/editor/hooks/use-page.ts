@@ -73,8 +73,7 @@ export const projectHistoryQueryOptions = historyQuery;
 export function useActiveDocument() {
   const router = useRouter();
   const pathname = usePathname();
-  const { workspaceId, projectId, pageId } = useParams<{
-    workspaceId?: string;
+  const { projectId, pageId } = useParams<{
     projectId?: string;
     pageId: string;
   }>();
@@ -114,7 +113,7 @@ export function useActiveDocument() {
   const {
     getEditorContent,
     setCurrentPage,
-    setWorkspaceId,
+    setProjectId,
     editorRef,
     selectedAsset,
     setSelectedAsset,
@@ -165,25 +164,22 @@ export function useActiveDocument() {
 
       const proj = parentPage.projectId;
       const projId = proj && typeof proj === "object" ? proj.id : null;
-      const ws = proj && typeof proj === "object" ? proj.workspaceId : null;
-      const wsUrl = ws && typeof ws === "object" ? ws.url : null;
 
       if (parentPage.parentPage) {
         let redirectUrl = `/editor/${parentPage.parentPage}?file=${pageId}`;
-        const currentWorkspaceId = workspaceId || wsUrl;
         const currentProjectId = projectId || projId;
-        if (currentWorkspaceId && currentProjectId) {
-          redirectUrl = `/${currentWorkspaceId}/projects/${currentProjectId}/pages/${parentPage.parentPage}?file=${pageId}`;
-        } else if (currentWorkspaceId) {
-          redirectUrl = `/${currentWorkspaceId}/pages/${parentPage.parentPage}?file=${pageId}`;
+        if (currentProjectId) {
+          redirectUrl = `/projects/${currentProjectId}/pages/${parentPage.parentPage}?file=${pageId}`;
+        } else {
+          redirectUrl = `/pages/${parentPage.parentPage}?file=${pageId}`;
         }
         router.replace(redirectUrl);
         return;
       }
 
-      if (!workspaceId && !projectId && wsUrl && projId) {
+      if (!projectId && projId) {
         const fileParam = fileId ? `?file=${fileId}` : "";
-        router.replace(`/${wsUrl}/projects/${projId}/pages/${pageId}${fileParam}`);
+        router.replace(`/projects/${projId}/pages/${pageId}${fileParam}`);
         return;
       }
 
@@ -212,7 +208,6 @@ export function useActiveDocument() {
     parentPage?.mainFile,
     parentPage?.projectId,
     parentLoading,
-    workspaceId,
     projectId,
     fileId,
     router,
@@ -253,15 +248,12 @@ export function useActiveDocument() {
     if (parentPage) {
       setCurrentPage(parentPage);
       const proj = parentPage.projectId;
-      if (typeof proj === "object") {
-        const ws = (proj as any).workspaceId;
-        const wid = typeof ws === "object" ? ws?.id : typeof ws === "string" ? ws : null;
-        if (wid) setWorkspaceId(wid);
-      }
+      const pid = typeof proj === "object" ? proj?.id : typeof proj === "string" ? proj : "";
+      if (pid) setProjectId(pid);
     }
     return () => {
-      setCurrentPage("");
-      setWorkspaceId("");
+      setCurrentPage(null);
+      setProjectId("");
     };
   }, [parentPage?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 

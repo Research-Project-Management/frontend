@@ -13,21 +13,24 @@ import {
   FormField,
   FormItem,
   FormMessage,
-} from '@/shared/components/ui/form';
+} from "@/shared/components/ui";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/components/ui/select';
-import { Switch } from '@/shared/components/ui/switch';
+} from "@/shared/components/ui";
+import { Switch } from "@/shared/components/ui";
+import { useTheme } from "@/shared/providers";
 
 export default function PreferencesTab() {
+  const { theme, setTheme } = useTheme();
+
   const form = useForm<z.infer<typeof preferencesSchema>>({
     resolver: zodResolver(preferencesSchema),
     defaultValues: {
-      theme: 'system',
+      theme: theme || 'system',
       smoothCursor: false,
       submitShortcut: 'enter',
       timezone: 'utc',
@@ -37,10 +40,17 @@ export default function PreferencesTab() {
     },
   });
 
+  useEffect(() => {
+    if (form.getValues('theme') !== theme) {
+      form.setValue('theme', theme);
+    }
+  }, [theme, form]);
+
   const onSubmit = useCallback((values: z.infer<typeof preferencesSchema>) => {
+    setTheme(values.theme);
     toast.success('Preferences updated successfully');
     form.reset(values); // Reset to new values to clear isDirty state
-  }, [form]);
+  }, [form, setTheme]);
 
   useEffect(() => {
     const subscription = form.watch(() => form.handleSubmit(onSubmit)());
@@ -72,7 +82,13 @@ export default function PreferencesTab() {
                   </span>
                 </div>
                 <FormControl>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select
+                    onValueChange={(val) => {
+                      field.onChange(val);
+                      setTheme(val as 'system' | 'light' | 'dark');
+                    }}
+                    value={field.value}
+                  >
                     <SelectTrigger className='w-[180px] bg-background'>
                       <SelectValue placeholder='Select Theme' />
                     </SelectTrigger>

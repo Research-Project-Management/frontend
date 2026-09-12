@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { getErrorMessage } from '@/shared/utils/error.util';
+import { getErrorMessage } from "@/shared/lib/utils";
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { usePdf } from './use-pdf';
 import { ItemsService } from '../services/items.service';
@@ -31,17 +31,17 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const effectivePaperId = overridePaperId || storeReadingId || params?.paperId || '';
 
   const paperQuery = useQuery({
-    queryKey: ['reader', 'item', workspaceId, effectivePaperId],
-    queryFn: () => ItemsService.getItem(workspaceId, effectivePaperId),
-    enabled: Boolean(workspaceId && effectivePaperId),
+    queryKey: ['reader', 'item', workspaceId || 'me', effectivePaperId],
+    queryFn: () => ItemsService.getItem(workspaceId || 'me', effectivePaperId),
+    enabled: Boolean(effectivePaperId),
   });
   const paper = (paperQuery.data ?? null) as ReaderDocument | null;
   const isLoadingPapers = paperQuery.isLoading;
 
   const fulltextQuery = useQuery({
-    queryKey: ['reader', 'fulltext', workspaceId, effectivePaperId],
-    queryFn: () => ItemsService.getFulltext(workspaceId, effectivePaperId),
-    enabled: Boolean(workspaceId && effectivePaperId),
+    queryKey: ['reader', 'fulltext', workspaceId || 'me', effectivePaperId],
+    queryFn: () => ItemsService.getFulltext(workspaceId || 'me', effectivePaperId),
+    enabled: Boolean(effectivePaperId),
   });
   const fulltext = fulltextQuery.data ?? null;
   const isLoadingFulltext = fulltextQuery.isLoading;
@@ -59,7 +59,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('flux_reader_active_panel');
-      if (saved === 'ai' || saved === 'details' || saved === 'notes' || saved === 'annotations') {
+      if (saved === 'ai' || saved === 'details' || saved === 'notes' || saved === 'annotations' || saved === 'cite') {
         setActivePanel(saved as ReaderPanel);
       }
     }
@@ -102,11 +102,45 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     return () => clearInterval(interval);
   }, [paper, workspaceId, effectivePaperId, qc]);
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [visiblePage, setVisiblePage] = useState(1);
+  const [numPages, setNumPages] = useState(1);
+  const [zoom, setZoom] = useState(1.0);
+  const [selectedAnnotationIds, setSelectedAnnotationIds] = useState<Set<string>>(new Set());
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
+
+  // Restore reading state on paper load
+  const hasRestoredPageRef = useRef(false);
+  useEffect(() => {
+    if (!paper?.id || hasRestoredPageRef.current) return;
+    hasRestoredPageRef.current = true;
+
+    ReadingService.getState(workspaceId, paper.id)
+      .then((stateData) => {
+        if (stateData?.currentPage && stateData.currentPage > 1) {
+          setTargetPage({ pageNumber: stateData.currentPage, timestamp: Date.now() });
+          setVisiblePage(stateData.currentPage);
+        }
+      })
+      .catch(() => {});
+  }, [paper?.id, workspaceId]);
+
+  // Debounced update reading state when page changes
+  useEffect(() => {
+    if (!paper?.id || visiblePage <= 1) return;
+    const timeout = setTimeout(() => {
+      ReadingService.updateState(workspaceId, paper.id, {
+        currentPage: visiblePage,
+      }).catch(() => {});
+    }, 800);
+    return () => clearTimeout(timeout);
+  }, [visiblePage, paper?.id, workspaceId]);
+
   const markedPaperIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (workspaceId && paper?.id && markedPaperIdRef.current !== paper.id) {
+    if (paper?.id && markedPaperIdRef.current !== paper.id) {
       markedPaperIdRef.current = paper.id;
-      ReadingService.markAsRead(workspaceId, paper.id).catch(() => {});
+      ReadingService.markAsRead(workspaceId || 'me', paper.id).catch(() => {});
     }
   }, [workspaceId, paper?.id]);
 
@@ -161,8 +195,10 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     setActivePanel('ai');
   };
 
-  const handleAddToNote = (text: string) => {
-    setPendingNoteText(text);
+  const handleAddToNote = (text: string, pageNumber?: number) => {
+    const trimmed = text.trim();
+    const formatted = pageNumber ? `> "${trimmed}"\n\n— *Page ${pageNumber}*` : `> "${trimmed}"`;
+    setPendingNoteText(formatted);
     setActivePanel('notes');
   };
 
@@ -172,23 +208,23 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     }
   };
 
-  const handleAnnotate = async (text: string, pageNum?: number) => {
+  const handleAnnotate = async (text: string, pageNum?: number, colorHex: string = '#ffd400') => {
     setActivePanel('annotations');
-    if (!workspaceId || !effectiveAttachmentId) return;
+    if (!effectiveAttachmentId) return;
 
     const quote = text?.trim();
     if (!quote) return;
 
     try {
       const pageIndex = pageNum !== undefined && pageNum > 0 ? pageNum - 1 : 0;
-      await AnnotationsService.create(workspaceId, effectiveAttachmentId, {
+      await AnnotationsService.create(workspaceId || 'me', effectiveAttachmentId, {
         type: 'highlight',
         pageIndex,
-        color: '#ffeb3b',
+        color: colorHex,
         quoteText: quote,
       });
       qc.invalidateQueries({
-        queryKey: readerAnnotationKeys.byAttachment(workspaceId, effectiveAttachmentId),
+        queryKey: readerAnnotationKeys.byAttachment(workspaceId || 'me', effectiveAttachmentId),
       });
       toast.success('Highlight created', {
         description: `Saved to page ${pageIndex + 1}.`,
@@ -206,15 +242,15 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const clearSelectionContext = () => setSelectionContext('');
 
   const handleReindex = async () => {
-    if (!workspaceId || !effectivePaperId) return;
+    if (!effectivePaperId) return;
     setIsReindexing(true);
     try {
-      await ItemsService.reindexItem(workspaceId, effectivePaperId);
+      await ItemsService.reindexItem(workspaceId || 'me', effectivePaperId);
       toast.success('AI indexing started', {
         description: 'Extracting semantic embeddings and citation links in background.',
         id: 'reader-ai-index',
       });
-      qc.invalidateQueries({ queryKey: ['reader', 'item', workspaceId, effectivePaperId] });
+      qc.invalidateQueries({ queryKey: ['reader', 'item', workspaceId || 'me', effectivePaperId] });
       setActivePanel('ai');
     } catch (err) {
       console.error('Reindex failed:', err);
@@ -228,13 +264,13 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   };
 
   const handleUpdateTitle = async (newTitle: string) => {
-    if (!paper || !workspaceId || !effectivePaperId) return;
+    if (!paper || !effectivePaperId) return;
     const nextTitle = newTitle.trim();
     if (!nextTitle || nextTitle === paper.title) return;
 
     try {
-      await ItemsService.updateItem(workspaceId, paper.id, { title: nextTitle });
-      qc.invalidateQueries({ queryKey: ['reader', 'item', workspaceId, effectivePaperId] });
+      await ItemsService.updateItem(workspaceId || 'me', paper.id, { title: nextTitle });
+      qc.invalidateQueries({ queryKey: ['reader', 'item', workspaceId || 'me', effectivePaperId] });
       toast.success('Paper title updated', { id: 'reader-title-update' });
     } catch (err: unknown) {
       toast.error('Failed to update title', {
@@ -252,12 +288,97 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     setIsResizingPanel(true);
   };
 
+  const handleToggleSelectAnnotation = (id: string) => {
+    setSelectedAnnotationIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBatchChangeColor = async (colorHex: string) => {
+    if (!effectiveAttachmentId || selectedAnnotationIds.size === 0) return;
+    setIsBatchProcessing(true);
+    try {
+      // Find existing annotations to get version/pageIndex
+      const existing = (qc.getQueryData(
+        readerAnnotationKeys.byAttachment(workspaceId, effectiveAttachmentId),
+      ) || []) as any[];
+
+      const upserts = Array.from(selectedAnnotationIds).map((id) => {
+        const found = existing.find((a) => a.id === id);
+        return {
+          id,
+          pageIndex: found?.pageIndex ?? 0,
+          color: colorHex,
+          expectedVersion: found?.version ?? 1,
+        };
+      });
+
+      await AnnotationsService.batch(workspaceId, effectiveAttachmentId, {
+        upserts,
+        deletes: [],
+      });
+
+      qc.invalidateQueries({
+        queryKey: readerAnnotationKeys.byAttachment(workspaceId, effectiveAttachmentId),
+      });
+      toast.success(`Updated color for ${selectedAnnotationIds.size} highlights`);
+      setSelectedAnnotationIds(new Set());
+    } catch (err) {
+      toast.error('Batch update failed', { description: getErrorMessage(err) });
+    } finally {
+      setIsBatchProcessing(false);
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (!effectiveAttachmentId || selectedAnnotationIds.size === 0) return;
+    setIsBatchProcessing(true);
+    try {
+      const deletes = Array.from(selectedAnnotationIds);
+      await AnnotationsService.batch(workspaceId, effectiveAttachmentId, {
+        upserts: [],
+        deletes,
+      });
+
+      qc.invalidateQueries({
+        queryKey: readerAnnotationKeys.byAttachment(workspaceId, effectiveAttachmentId),
+      });
+      toast.success(`Deleted ${deletes.length} highlights`);
+      setSelectedAnnotationIds(new Set());
+    } catch (err) {
+      toast.error('Batch delete failed', { description: getErrorMessage(err) });
+    } finally {
+      setIsBatchProcessing(false);
+    }
+  };
+
+  const handleBatchAddToNote = () => {
+    if (!effectiveAttachmentId || selectedAnnotationIds.size === 0) return;
+    const existing = (qc.getQueryData(
+      readerAnnotationKeys.byAttachment(workspaceId, effectiveAttachmentId),
+    ) || []) as any[];
+
+    const selected = existing.filter((a) => selectedAnnotationIds.has(a.id));
+    const quotes = selected
+      .map((a) => `> "${a.quoteText || ''}"\n\n— *Page ${(a.pageIndex ?? 0) + 1}*`)
+      .join('\n\n---\n\n');
+
+    setPendingNoteText(quotes);
+    setActivePanel('notes');
+    setSelectedAnnotationIds(new Set());
+    toast.success(`Added ${selected.length} highlights to Note draft`);
+  };
+
   const goBack = () => {
     if (onBackOverride) {
       onBackOverride();
       return;
     }
-    router.push(`/${workspaceUrl}/library`);
+    closeReader();
+    router.push('/library');
   };
 
   return {
@@ -281,6 +402,12 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       fulltext,
       isLoadingFulltext,
       targetPage,
+      isSidebarOpen,
+      visiblePage,
+      numPages,
+      zoom,
+      selectedAnnotationIds,
+      isBatchProcessing,
     },
     actions: {
       setActivePanel,
@@ -299,6 +426,15 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       navigate: router.push,
       goBack,
       closeReader,
+      setIsSidebarOpen,
+      setVisiblePage,
+      setNumPages,
+      setZoom,
+      setSelectedAnnotationIds,
+      handleToggleSelectAnnotation,
+      handleBatchChangeColor,
+      handleBatchDelete,
+      handleBatchAddToNote,
     },
   };
 }

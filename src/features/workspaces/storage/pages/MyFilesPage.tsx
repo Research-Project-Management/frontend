@@ -5,7 +5,6 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ChevronRight, Folder, Home } from 'lucide-react';
 
-import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import {
   useHomeFiles,
   useWorkspaceFiles,
@@ -25,29 +24,27 @@ import {
   navigateBreadcrumbPath,
   canDropIntoFolder,
 } from '../utils/my-files.util';
-import { downloadFileUrl } from '@/shared/utils/file';
+import { downloadFileUrl } from "@/shared/lib/file-client";
 import Topbar from '../components/layout/Topbar';
 import { BulkActionBar } from '../components/actions/BulkActionBar';
-import { useDebounce } from '@/shared/hooks/use-debounce';
+import { useDebounce } from "@/shared/hooks";
 import type { FileQueryParams } from '@/features/workspaces/storage/services/file.service';
 import StorageDropzoneOverlay from '../components/dropzone/StorageDropzoneOverlay';
 import { useTopbar } from '../hooks/use-topbar';
 
-export default function WorkspaceMyFilesPage() {
+export default function MyFilesPage() {
   const router = useRouter();
-  const { workspaceId: workspaceUrl, folderId: routeFolderId } = useParams() as {
-    workspaceId: string;
+  const { projectId, folderId: routeFolderId } = useParams() as {
+    projectId?: string;
     folderId?: string;
   };
   const searchParams = useSearchParams();
   const folderParam = routeFolderId || searchParams.get('folder');
   const highlightParam = searchParams.get('highlight');
 
-  const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl!);
-  const workspaceId = workspace?.id || workspaceUrl;
-  const rootName = workspace?.name || 'All Files';
+  const rootName = 'All Files';
 
-  const { typeFilter, selectedTypes, projectFilter, selectedProjects, sortBy } = useStorageFilterStore();
+  const { typeFilter, selectedTypes, sortBy } = useStorageFilterStore();
   const { clearSelection } = useStorageSelectionStore();
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -60,14 +57,13 @@ export default function WorkspaceMyFilesPage() {
   ]);
   const [draggingItem, setDraggingItem] = useState<StorageItem | null>(null);
 
-  const { handleUploadFiles } = useTopbar({ workspaceId, parentId: currentFolder, searchQuery, onSearchChange: setSearchQuery });
+  const { handleUploadFiles } = useTopbar({ projectId, parentId: currentFolder, searchQuery, onSearchChange: setSearchQuery });
 
   const queryParams: FileQueryParams = useMemo(() => ({
     search: debouncedSearch || undefined,
     sortBy,
     types: selectedTypes.length > 0 ? selectedTypes : (typeFilter !== 'all' ? typeFilter : undefined),
-    projectIds: selectedProjects.length > 0 ? selectedProjects : (projectFilter !== 'all' ? projectFilter : undefined),
-  }), [debouncedSearch, sortBy, selectedTypes, typeFilter, selectedProjects, projectFilter]);
+  }), [debouncedSearch, sortBy, selectedTypes, typeFilter]);
 
   const {
     data,
@@ -75,7 +71,7 @@ export default function WorkspaceMyFilesPage() {
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
-  } = useHomeFiles(workspaceId, currentFolder, queryParams);
+  } = useHomeFiles(projectId, currentFolder, queryParams);
   const { data: folderPathData } = useFolderPath(currentFolder);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete }     = useDeleteItem();
@@ -113,19 +109,21 @@ export default function WorkspaceMyFilesPage() {
     clearSelection();
     setCurrentFolder(folder.id);
     setBreadcrumbs((prev) => pushBreadcrumbFolder(prev, { id: folder.id, name: folder.filename }));
-    router.push(`/${workspaceUrl}/storage/my-files/${folder.id}`);
-  }, [clearSelection, router, workspaceUrl]);
+    const base = `/storage/my-files`;
+    router.push(`${base}/${folder.id}`);
+  }, [clearSelection, router]);
 
   const handleBreadcrumbNavigate = useCallback((index: number, folderId: string | null) => {
     clearSelection();
     setCurrentFolder(folderId);
     setBreadcrumbs((prev) => navigateBreadcrumbPath(prev, index));
+    const base = `/storage/my-files`;
     if (folderId) {
-      router.push(`/${workspaceUrl}/storage/my-files/${folderId}`);
+      router.push(`${base}/${folderId}`);
     } else {
-      router.push(`/${workspaceUrl}/storage/my-files`);
+      router.push(base);
     }
-  }, [clearSelection, router, workspaceUrl]);
+  }, [clearSelection, router]);
 
   const handleTopBreadcrumbNavigate = useCallback((folderId: string | null) => {
     const idx = breadcrumbs.findIndex((s) => s.id === folderId);
@@ -208,7 +206,6 @@ export default function WorkspaceMyFilesPage() {
         icon={Folder}
         breadcrumbs={breadcrumbs}
         onBreadcrumbNavigate={handleTopBreadcrumbNavigate}
-        workspaceId={workspaceId}
         parentId={currentFolder}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -218,8 +215,7 @@ export default function WorkspaceMyFilesPage() {
         folderName={currentFolderName}
       >
         <StorageViewContainer
-          isLoading={isWorkspaceLoading || (isFilesLoading && !data)}
-          workspaceId={workspaceId}
+          isLoading={isFilesLoading && !data}
           viewProps={viewProps}
         />
       </StorageDropzoneOverlay>

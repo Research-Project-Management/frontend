@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from '@/shared/lib/api';
+import { apiGet, apiPost } from "@/shared/lib/api";
 import {
   type UnifiedIngestionPayload,
   type UnifiedIngestionResponse,
@@ -17,11 +17,11 @@ export const IngestionService = {
    * Submits work to the durable ingestion pipeline and returns immediately.
    * Long-running provider and PDF work is observed through the run-status API.
    */
-  ingest: async (workspaceId: string, payload: UnifiedIngestionPayload): Promise<UnifiedIngestionResponse> => {
+  ingest: async (_scopeId: string | undefined, payload: UnifiedIngestionPayload): Promise<UnifiedIngestionResponse> => {
     const validatedPayload = UnifiedIngestionPayloadSchema.parse(payload);
     const submission = toSubmission(validatedPayload);
     const res = await apiPost<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/submit`,
+      `/api/v1/library/ingestion/submit`,
       submission,
       { timeout: 30000 },
     );
@@ -40,9 +40,9 @@ export const IngestionService = {
   /**
    * Safe URL Capture and Metadata Preview
    */
-  captureUrl: async (workspaceId: string, url: string): Promise<UrlCapturePreviewResponse> => {
+  captureUrl: async (_scopeId: string | undefined, url: string): Promise<UrlCapturePreviewResponse> => {
     const res = await apiPost<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/capture-url`,
+      `/api/v1/library/ingestion/capture-url`,
       { url },
     );
     const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
@@ -50,10 +50,10 @@ export const IngestionService = {
   },
 
   /**
-   * Confirm Captured URL metadata and persist CatalogItem
+   * Confirm Captured URL metadata and persist Item
    */
   confirmUrl: (
-    workspaceId: string,
+    _scopeId: string | undefined,
     payload: {
       url: string;
       previewToken?: string;
@@ -70,15 +70,15 @@ export const IngestionService = {
       success: boolean;
       data: { id: string; title: string; doi?: string; year?: number; citationKey?: string };
     }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/confirm-url`,
+      `/api/v1/library/ingestion/confirm-url`,
       payload,
     ),
 
   /**
-   * Fast-Path Async Ingestion 202 Submission (/api/v1/workspaces/:workspaceId/library/ingestion/submit)
+   * Fast-Path Async Ingestion 202 Submission (/api/v1/library/ingestion/submit)
    */
   submit: async (
-    workspaceId: string,
+    _scopeId: string | undefined,
     payload: {
       kind: 'IDENTIFIER' | 'RECORD' | 'URL' | 'FILE' | 'CONNECTOR';
       identifierType?: 'DOI' | 'ARXIV' | 'PMID' | 'ISBN';
@@ -112,7 +112,7 @@ export const IngestionService = {
         deduplicated?: boolean;
       };
     }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/submit`,
+      `/api/v1/library/ingestion/submit`,
       {
         ...rest,
         value: resolvedValue,
@@ -128,7 +128,7 @@ export const IngestionService = {
   /**
    * Retry a failed ingestion run
    */
-  retryRun: async (workspaceId: string, runId: string) =>
+  retryRun: async (_scopeId: string | undefined, runId: string) =>
     apiPost<{
       success: boolean;
       data: {
@@ -138,16 +138,16 @@ export const IngestionService = {
         status: string;
       };
     }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/retry/${encodeURIComponent(runId)}`,
+      `/api/v1/library/ingestion/retry/${encodeURIComponent(runId)}`,
       {},
     ),
 
   /**
-   * Query IngestionRun status scoped by workspaceId
+   * Query IngestionRun status
    */
-  getRunStatus: async (workspaceId: string, runId: string): Promise<IngestionRunSnapshotResponse> => {
+  getRunStatus: async (_scopeId: string | undefined, runId: string): Promise<IngestionRunSnapshotResponse> => {
     const res = await apiGet<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/status/${encodeURIComponent(runId)}`,
+      `/api/v1/library/ingestion/status/${encodeURIComponent(runId)}`,
     );
     const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
     return IngestionRunSnapshotResponseSchema.parse(enveloped);
@@ -156,9 +156,9 @@ export const IngestionService = {
   /**
    * Query real-time granular progress for batch/single ingestion runs
    */
-  getRunProgress: async (workspaceId: string, runId: string): Promise<IngestionProgressResponse> => {
+  getRunProgress: async (_scopeId: string | undefined, runId: string): Promise<IngestionProgressResponse> => {
     const res = await apiGet<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/status/${encodeURIComponent(runId)}/progress`,
+      `/api/v1/library/ingestion/status/${encodeURIComponent(runId)}/progress`,
     );
     const data = res && typeof res === 'object' && 'data' in res ? res.data : res;
     return data as IngestionProgressResponse;

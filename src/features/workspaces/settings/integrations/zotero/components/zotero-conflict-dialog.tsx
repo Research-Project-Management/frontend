@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/shared/components/ui/dialog';
+} from "@/shared/components/ui";
 import { resolveZoteroConflict } from '../services/zotero.service';
 import type { ResolveConflictPayload } from '../types/zotero.types';
 import { AlertTriangle, Check, RefreshCw, X } from 'lucide-react';

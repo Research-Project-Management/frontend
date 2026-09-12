@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Button } from '@/shared/components/ui/button';
+import { Button } from "@/shared/components/ui";
 
 interface DangerZoneProps {
   onDeleteClick: () => void;
@@ -12,12 +12,11 @@ export function DangerZone({ onDeleteClick }: DangerZoneProps) {
     <div className="rounded-lg border border-destructive/30 p-6">
       <div className="flex items-center justify-between gap-6">
         <div className="space-y-1">
-          <h3 className="text-sm font-semibold text-foreground">
-            Delete this workspace
+          <h3 className="text-sm font-semibold text-destructive">
+            Delete Personal Workspace
           </h3>
           <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-            This action is irreversible. All data, projects, pages, and member
-            access will be permanently removed.
+            This action is permanent and irreversible. All research projects, papers, notes, files, and local settings in this personal workspace will be permanently removed.
           </p>
         </div>
         <Button
@@ -26,7 +25,7 @@ export function DangerZone({ onDeleteClick }: DangerZoneProps) {
           onClick={onDeleteClick}
           className="shrink-0 transition-colors hover:bg-destructive cursor-pointer"
         >
-          Delete
+          Delete Workspace
         </Button>
       </div>
     </div>

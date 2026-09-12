@@ -35,7 +35,7 @@ const STORAGE_QUERY_OPTIONS = {
 };
 
 export function useHomeFiles(
-  workspaceId: string,
+  scopeId?: string,
   parentId?: string | null,
   queryParams?: FileQueryParams
 ) {
@@ -45,39 +45,39 @@ export function useHomeFiles(
   };
 
   return useInfiniteQuery({
-    queryKey: [...storageKeys.workspaceHomeFiles(workspaceId, parentId), 'infinite', mergedParams],
+    queryKey: [...storageKeys.workspaceHomeFiles(scopeId, parentId), 'infinite', mergedParams],
     queryFn: ({ pageParam = 1 }) =>
-      getAllFiles(workspaceId, { ...mergedParams, page: pageParam as number, limit: 40 }),
+      getAllFiles(scopeId, { ...mergedParams, page: pageParam as number, limit: 40 }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
-    enabled: !!workspaceId,
+    enabled: true,
     ...STORAGE_QUERY_OPTIONS,
   });
 }
 
-export function useWorkspaceFiles(workspaceId: string, parentId?: string | null) {
+export function useWorkspaceFiles(scopeId?: string, parentId?: string | null) {
   return useQuery({
-    queryKey: storageKeys.workspaceFiles(workspaceId, parentId),
-    queryFn: () => getAllFiles(workspaceId, parentId),
-    enabled: !!workspaceId,
+    queryKey: storageKeys.workspaceFiles(scopeId, parentId),
+    queryFn: () => getAllFiles(scopeId, parentId),
+    enabled: true,
     ...STORAGE_QUERY_OPTIONS,
   });
 }
 
 function createInfiniteStorageQuery(
-  getKey: (workspaceId: string) => readonly unknown[],
-  fetcher: (workspaceId: string, params: FileQueryParams) => Promise<any>,
+  getKey: (scopeId?: string) => readonly unknown[],
+  fetcher: (scopeId?: string, params?: FileQueryParams) => Promise<any>,
 ) {
-  return function useInfiniteStorage(workspaceId: string, params?: FileQueryParams) {
+  return function useInfiniteStorage(scopeId?: string, params?: FileQueryParams) {
     return useInfiniteQuery({
-      queryKey: [...getKey(workspaceId), 'infinite', params],
+      queryKey: [...getKey(scopeId), 'infinite', params],
       queryFn: ({ pageParam = 1 }) =>
-        fetcher(workspaceId, { ...params, page: pageParam as number, limit: 40 }),
+        fetcher(scopeId, { ...params, page: pageParam as number, limit: 40 }),
       initialPageParam: 1,
       getNextPageParam: (lastPage) =>
         lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
-      enabled: !!workspaceId,
+      enabled: true,
       ...STORAGE_QUERY_OPTIONS,
     });
   };
@@ -88,11 +88,11 @@ export const useSharedFiles = createInfiniteStorageQuery(storageKeys.workspaceSh
 export const useStarredFiles = createInfiniteStorageQuery(storageKeys.workspaceStarred, getStarredFiles);
 export const useTrash = createInfiniteStorageQuery(storageKeys.workspaceTrashed, getTrashedFiles);
 
-export function useStorageUsage(workspaceId: string) {
+export function useStorageUsage(scopeId?: string) {
   return useQuery({
-    queryKey: storageKeys.workspaceUsage(workspaceId),
-    queryFn: () => getStorageUsage(workspaceId),
-    enabled: !!workspaceId,
+    queryKey: storageKeys.workspaceUsage(scopeId),
+    queryFn: () => getStorageUsage(scopeId),
+    enabled: true,
     ...STORAGE_QUERY_OPTIONS,
   });
 }
@@ -111,8 +111,8 @@ export function useFolderPath(folderId?: string | null) {
 export const useCreateFolder = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ name, workspaceId, parentId }: { name: string; workspaceId: string; parentId?: string | null }) =>
-      createFolder(name, { workspaceId, parentId }),
+    mutationFn: ({ name, projectId, parentId }: { name: string; projectId?: string; parentId?: string | null }) =>
+      createFolder(name, { projectId, parentId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: storageKeys.all });
     },

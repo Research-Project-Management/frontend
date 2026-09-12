@@ -96,17 +96,22 @@ export function parseCreatorName(rawName: string): { firstName: string; lastName
  * and fallback to creators ([{ creatorType: 'author', name: '...' }]).
  */
 export function normalizeAuthors(
-  rawAuthors?: any,
-  creators?: Array<{ creatorType?: string; name?: string; fullName?: string; firstName?: string; lastName?: string }> | null,
-  contributors?: any[] | null,
+  rawAuthors?: unknown,
+  creators?: Array<{ creatorType?: string; name?: string; fullName?: string; firstName?: string | null; lastName?: string | null; [key: string]: any }> | null,
+  contributors?: Array<{ creatorType?: string; name?: string; fullName?: string; firstName?: string | null; lastName?: string | null; [key: string]: any }> | null,
 ): string[] {
   // If first argument is an object that looks like a paper (has authors/creators/contributors), extract from it
   if (rawAuthors && typeof rawAuthors === 'object' && !Array.isArray(rawAuthors)) {
-    if ('authors' in rawAuthors || 'creators' in rawAuthors || 'contributors' in rawAuthors) {
+    const candidate = rawAuthors as {
+      authors?: unknown;
+      creators?: Array<{ creatorType?: string; name?: string; fullName?: string; firstName?: string | null; lastName?: string | null }> | null;
+      contributors?: Array<{ creatorType?: string; name?: string; fullName?: string; firstName?: string | null; lastName?: string | null }> | null;
+    };
+    if (candidate.authors !== undefined || candidate.creators !== undefined || candidate.contributors !== undefined) {
       return normalizeAuthors(
-        rawAuthors.authors,
-        rawAuthors.creators,
-        rawAuthors.contributors,
+        candidate.authors,
+        candidate.creators,
+        candidate.contributors,
       );
     }
   }

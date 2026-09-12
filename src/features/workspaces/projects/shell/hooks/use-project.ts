@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import {
   ProjectService,
   projectKeys,
+  fetchUserProjects,
   type Project,
   type CreateProjectInput,
   type UpdateProjectInput,
@@ -15,7 +16,7 @@ import {
 // ── Types & Context Interfaces ────────────────────────────────────────────────
 
 export interface CreateProjectVariables extends CreateProjectInput {
-  workspaceId: string;
+  workspaceId?: string;
 }
 
 export interface UpdateProjectVariables extends Partial<UpdateProjectInput> {
@@ -60,11 +61,15 @@ export const useCreateProject = () => {
   const queryClient = useQueryClient();
   return useMutation<unknown, Error, CreateProjectVariables>({
     mutationFn: ({ workspaceId, ...data }: CreateProjectVariables) =>
-      ProjectService.create(workspaceId, data),
+      ProjectService.create(data, workspaceId),
     onSuccess: (_data: unknown, variables: CreateProjectVariables) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.all(variables.workspaceId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.all() });
       queryClient.invalidateQueries({ queryKey: projectKeys.projectsHeader(variables.workspaceId) });
-      queryClient.invalidateQueries({ queryKey: ['workspace', variables.workspaceId] });
+      queryClient.invalidateQueries({ queryKey: projectKeys.projectsHeader() });
+      if (variables.workspaceId) {
+        queryClient.invalidateQueries({ queryKey: ['workspace', variables.workspaceId] });
+      }
       toast.success('Project created successfully', { id: 'project-create-success' });
     },
     onError: (error: Error) => {
@@ -420,13 +425,9 @@ export interface UseProjectsReturn {
 }
 
 export function useProjects(workspaceId?: string): UseProjectsReturn {
-  const params = useParams<{ workspaceId?: string; id?: string }>();
-  const id = workspaceId || params?.workspaceId || params?.id;
-
   const query = useQuery({
-    queryKey: projectKeys.all(id),
-    queryFn: ({ signal }: { signal?: AbortSignal }) => ProjectService.getAll(id!, signal),
-    enabled: !!id,
+    queryKey: projectKeys.all(),
+    queryFn: ({ signal }: { signal?: AbortSignal }) => fetchUserProjects('all', signal),
   });
 
   const createMutation = useCreateProject();
@@ -467,7 +468,7 @@ export function useProjects(workspaceId?: string): UseProjectsReturn {
     () => ({
       refetch: queryRefetch,
       createProject: (data: CreateProjectInput) =>
-        createMutAsync({ workspaceId: id!, ...data }),
+        createMutAsync({ workspaceId, ...data }),
       updateProject: (data: Partial<UpdateProjectInput> & { projectId: string }) =>
         updateMutAsync(data),
       archiveProject: (projectId: string) => archiveMutAsync({ projectId }),
@@ -477,7 +478,7 @@ export function useProjects(workspaceId?: string): UseProjectsReturn {
       deleteProject: (projectId: string) => deleteMutAsync({ projectId }),
     }),
     [
-      id,
+      workspaceId,
       queryRefetch,
       createMutAsync,
       updateMutAsync,
@@ -528,6 +529,7 @@ export interface UseProjectReturn {
   state: UseProjectState;
   actions: UseProjectActions;
   // React query direct aliases
+  project: Project | null;
   data?: { project: Project } | Project;
   isLoading: boolean;
   isError: boolean;
@@ -613,6 +615,7 @@ export function useProject(
     () => ({
       state,
       actions,
+      project: state.project,
       data: query.data,
       isLoading: query.isLoading,
       isError: query.isError,

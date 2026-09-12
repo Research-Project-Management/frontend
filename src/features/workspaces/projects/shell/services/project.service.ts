@@ -1,67 +1,124 @@
-import { apiDelete, apiGet, apiPost, apiPut } from '@/shared/lib/api';
+import { apiDelete, apiGet, apiPost, apiPut, apiPatch } from "@/shared/lib/api";
 import type {
   Project,
   CreateProjectInput,
   UpdateProjectInput,
+  ProjectDetailResponse,
+  ProjectListResponse,
+  ProjectMember,
+  ProjectRole,
 } from '../types/project.types';
 
-export type { Project, CreateProjectInput, UpdateProjectInput };
+export type {
+  Project,
+  CreateProjectInput,
+  UpdateProjectInput,
+  ProjectDetailResponse,
+  ProjectListResponse,
+  ProjectMember,
+  ProjectRole,
+};
 
 // ── Query Keys Factory ────────────────────────────────────────────────────────
 
 export const projectKeys = {
-  all: (workspaceId?: string) => (workspaceId ? ['projects', workspaceId] as const : ['projects'] as const),
+  all: (workspaceId?: string) =>
+    workspaceId ? (['projects', workspaceId] as const) : (['projects', 'me'] as const),
   byId: (projectId: string) => ['project', projectId] as const,
   overview: (projectId: string) => ['project-overview', projectId] as const,
   header: (projectId: string) => ['project-header', projectId] as const,
-  projectsHeader: (workspaceId?: string) => (workspaceId ? ['projects-header', workspaceId] as const : ['projects-header'] as const),
+  projectsHeader: (workspaceId?: string) =>
+    workspaceId
+      ? (['projects-header', workspaceId] as const)
+      : (['projects-header', 'me'] as const),
   members: (projectId: string) => ['project-members', projectId] as const,
 };
 
 // ── Pure HTTP API Layer ───────────────────────────────────────────────────────
 
 export const fetchProject = (projectId: string) =>
-  apiGet<{ project: Project } | Project>(`/api/project/${projectId}`);
-
-export const fetchProjectsByWorkspaceId = (workspaceIdOrUrl: string, signal?: AbortSignal) =>
-  apiGet<{ projects?: Project[]; data?: Project[] } | Project[]>(
-    `/api/workspace/${workspaceIdOrUrl}/projects`,
-    { signal }
+  apiGet<ProjectDetailResponse | { project: Project } | Project>(
+    `/api/project/${projectId}`,
   );
 
-export const createProjectApi = (workspaceId: string, data: CreateProjectInput) =>
-  apiPost<{ project?: Project; data?: Project } | Project>(
-    `/api/workspace/${workspaceId}/projects`,
-    data
+export const fetchUserProjects = (
+  filter?: 'created' | 'shared' | 'all',
+  signal?: AbortSignal,
+) =>
+  apiGet<ProjectListResponse | { projects?: Project[]; myProjects?: Project[]; sharedProjects?: Project[]; data?: Project[] } | Project[]>(
+    filter ? `/api/projects?type=${filter}` : `/api/projects`,
+    { signal },
   );
 
-export const updateProjectApi = (projectId: string, data: Partial<UpdateProjectInput>) =>
-  apiPut<{ project?: Project; data?: Project } | Project>(`/api/project/${projectId}`, data);
+export const fetchProjectsByWorkspaceId = (
+  _workspaceIdOrUrl?: string,
+  signal?: AbortSignal,
+) =>
+  fetchUserProjects('all', signal);
+
+export function createProjectApi(
+  first: CreateProjectInput | string,
+  second?: CreateProjectInput | string,
+): Promise<ProjectDetailResponse | { project?: Project; data?: Project } | Project> {
+  const payload: CreateProjectInput =
+    typeof first === 'object'
+      ? first
+      : typeof second === 'object'
+        ? second
+        : ({} as CreateProjectInput);
+
+  return apiPost<ProjectDetailResponse | { project?: Project; data?: Project } | Project>(
+    `/api/projects`,
+    payload,
+  );
+}
+
+export const updateProjectApi = (
+  projectId: string,
+  data: Partial<UpdateProjectInput>,
+) =>
+  apiPut<ProjectDetailResponse | { project?: Project; data?: Project } | Project>(
+    `/api/project/${projectId}`,
+    data,
+  );
 
 export const deleteProjectApi = (projectId: string) =>
-  apiDelete<{ success: boolean }>(`/api/project/${projectId}`);
+  apiDelete<{ success: boolean; message?: string }>(`/api/project/${projectId}`);
 
 export const archiveProjectApi = (projectId: string) =>
-  apiPut<{ project?: Project; data?: Project } | Project>(`/api/project/${projectId}`, {
-    isActive: false,
-    isArchived: true,
-  });
+  apiPatch<ProjectDetailResponse | { project?: Project } | Project>(
+    `/api/project/${projectId}/archive`,
+  );
 
 export const restoreProjectApi = (projectId: string) =>
-  apiPost<{ project?: Project; data?: Project } | Project>(`/api/project/${projectId}/restore`);
+  apiPatch<ProjectDetailResponse | { project?: Project } | Project>(
+    `/api/project/${projectId}/unarchive`,
+  );
 
-export const toggleProjectFavoriteApi = (projectId: string, isFavorite: boolean) =>
-  apiPut<{ project?: Project; data?: Project } | Project>(`/api/project/${projectId}`, {
-    isFavorite,
-  });
+export const toggleProjectFavoriteApi = (
+  projectId: string,
+  isFavorite: boolean,
+) =>
+  apiPut<ProjectDetailResponse | { project?: Project; data?: Project } | Project>(
+    `/api/project/${projectId}`,
+    { isFavorite },
+  );
 
 export const fetchProjectMembers = (projectId: string) =>
-  apiGet<{ members: any[] }>(`/api/project/${projectId}/members`);
+  apiGet<{ members: ProjectMember[] }>(`/api/project/${projectId}/members`);
 
-export const addProjectMemberApi = (projectId: string, userId: string, role: string = 'contributor') =>
+export const addProjectMemberApi = (
+  projectId: string,
+  userId: string,
+  role: ProjectRole | string = 'contributor',
+) =>
   apiPost(`/api/project/${projectId}/members`, { userId, role });
 
-export const updateProjectMemberRoleApi = (projectId: string, userId: string, role: string) =>
+export const updateProjectMemberRoleApi = (
+  projectId: string,
+  userId: string,
+  role: ProjectRole | string,
+) =>
   apiPut(`/api/project/${projectId}/members/${userId}`, { role });
 
 export const removeProjectMemberApi = (projectId: string, userId: string) =>
@@ -84,9 +141,10 @@ export const ProjectService = {
   removeMember: removeProjectMemberApi,
 };
 
-// Aliases for backwards compatibility
+// Backwards compatibility aliases
 export const createProject = createProjectApi;
 export const updateProject = updateProjectApi;
 export const deleteProject = deleteProjectApi;
 export const archiveProject = archiveProjectApi;
 export const restoreProject = restoreProjectApi;
+

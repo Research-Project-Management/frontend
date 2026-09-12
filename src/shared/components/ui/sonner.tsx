@@ -17,16 +17,6 @@ import {
   ToastCloseIcon,
 } from './toast-icons';
 
-export {
-  TOAST_ICONS,
-  ToastSuccessIcon,
-  ToastErrorIcon,
-  ToastWarningIcon,
-  ToastInfoIcon,
-  ToastLoadingIcon,
-  ToastCloseIcon,
-};
-
 type ToasterProps = React.ComponentProps<typeof SonnerToaster>;
 
 export function Toaster({ ...props }: ToasterProps) {

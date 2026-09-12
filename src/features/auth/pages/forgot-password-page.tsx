@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { useForgotPassword } from '../hooks/use-forgot-password';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
 
 const ForgotPasswordPage = () => {
   const {
@@ -25,7 +25,7 @@ const ForgotPasswordPage = () => {
       <div className='flex min-h-dvh items-center justify-center bg-background px-4 py-8'>
         <div className='mx-auto w-full max-w-sm flex flex-col gap-5'>
           <div className='flex flex-col items-center gap-3 text-center'>
-            <Link href='/'>
+            <Link className="shrink-0" href='/'>
               <img src='/Flux.svg' alt='Flux' className='w-14 h-14' />
             </Link>
             <h2 className='text-2xl font-semibold text-center'>Check your email</h2>
@@ -45,7 +45,7 @@ const ForgotPasswordPage = () => {
               </button>
             </p>
           </div>
-          <Link href='/login' className='w-full'>
+          <Link href='/login' className='w-full shrink-0'>
             <Button className='w-full h-10 rounded-md cursor-pointer'>Return to sign in</Button>
           </Link>
         </div>
@@ -57,7 +57,7 @@ const ForgotPasswordPage = () => {
     <div className='flex min-h-dvh items-center justify-center bg-background px-4 py-8'>
       <div className='mx-auto w-full max-w-sm flex flex-col gap-5'>
         <div className='flex flex-col items-center gap-3 text-center'>
-          <Link href='/'>
+          <Link className="shrink-0" href='/'>
             <img src='/Flux.svg' alt='Flux' className='w-14 h-14' />
           </Link>
           <h2 className='text-2xl font-semibold tracking-tight text-foreground text-center'>Reset your password</h2>
@@ -97,7 +97,7 @@ const ForgotPasswordPage = () => {
         <div className='text-center text-sm text-muted-foreground'>
           <Link
             href='/login'
-            className='text-primary font-semibold hover:underline'
+            className='text-primary font-semibold hover:underline shrink-0'
           >
             Back to sign in
           </Link>

@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost, getAuthToken } from '@/shared/lib/api';
+import { apiGet, apiPatch, apiPost, getAuthToken } from "@/shared/lib/api";
 import type { ReaderDocument, DocumentFulltext } from '../types/reader.types';
 
 // API base resolution
@@ -175,43 +175,43 @@ export const ItemsService = {
   getPaperFileUrl,
   fetchPdfBlob,
 
-  getItem: async (workspaceId: string, itemId: string): Promise<ReaderDocument> => {
+  getItem: async (_scopeId: string | undefined, itemId: string): Promise<ReaderDocument> => {
     const raw = await apiGet<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}`,
+      `/api/v1/library/items/${encodeURIComponent(itemId)}`,
     );
     return raw?.data || raw?.item || raw;
   },
 
   updateItem: async (
-    workspaceId: string,
+    _scopeId: string | undefined,
     itemId: string,
     data: Partial<ReaderDocument>,
   ): Promise<ReaderDocument> => {
     const raw = await apiPatch<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}`,
+      `/api/v1/library/items/${encodeURIComponent(itemId)}`,
       data,
     );
     return raw?.data || raw?.item || raw;
   },
 
   reindexItem: async (
-    workspaceId: string,
+    _scopeId: string | undefined,
     itemId: string,
   ): Promise<{ success: boolean }> => {
     const raw = await apiPost<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/reindex`,
+      `/api/v1/library/items/${encodeURIComponent(itemId)}/reindex`,
       {},
     );
     return raw?.data || raw || { success: true };
   },
 
   getFulltext: async (
-    workspaceId: string,
+    _scopeId: string | undefined,
     itemId: string,
   ): Promise<DocumentFulltext | null> => {
     try {
       const raw = await apiGet<any>(
-        `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/fulltext`,
+        `/api/v1/library/items/${encodeURIComponent(itemId)}/fulltext`,
       );
       return raw?.data || raw || null;
     } catch {

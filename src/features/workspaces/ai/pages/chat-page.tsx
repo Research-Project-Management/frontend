@@ -17,8 +17,8 @@ import {
   ArrowDown,
   Loader2,
 } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
-import { cn } from '@/shared/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import type { ChatMessage, SourceItem, AgentId } from '../types/chat.types';
 import { renderMarkdown } from '../utils/render-markdown';
 import { ChatInput } from '../components/chat/chat-input';
@@ -85,7 +85,7 @@ function ThinkingBlock({ content, isOpen }: { content: string; isOpen: boolean }
         </span>
         {!isOpen && (
           <ChevronDown
-            className={`size-3.5 text-muted-foreground/60 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+            className={`size-3.5 text-muted-foreground/60 transition-transform ${collapsed ? '-rotate-90' : ''} shrink-0`}
           />
         )}
       </button>
@@ -130,7 +130,7 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
           s.snippet ? (
             <Popover key={i}>
               <PopoverTrigger asChild>
-                <button className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary max-w-55 truncate cursor-pointer hover:bg-primary/20 transition-colors">
+                <button type="button" className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary max-w-55 truncate cursor-pointer hover:bg-primary/20 transition-colors">
                   <FileText className="size-2.5 shrink-0" />
                   <span className="truncate">{s.source}</span>
                 </button>

@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { getErrorMessage } from '@/shared/utils/error.util';
+import { getErrorMessage } from "@/shared/lib/utils";
 import {
   AnnotationsService,
   type CreateAnnotationDTO,
@@ -14,11 +14,11 @@ import { PdfAnnotationEngine } from '../utils/reader.util';
 
 export const readerAnnotationKeys = {
   all: ['reader', 'annotations'] as const,
-  byAttachment: (workspaceId: string, attachmentId?: string) =>
-    [...readerAnnotationKeys.all, workspaceId, attachmentId || 'none'] as const,
+  byAttachment: (workspaceId?: string, attachmentId?: string) =>
+    [...readerAnnotationKeys.all, workspaceId || 'default', attachmentId || 'none'] as const,
 };
 
-export function useAnnotations(workspaceId: string, attachmentId?: string) {
+export function useAnnotations(workspaceId?: string, attachmentId?: string) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -27,7 +27,7 @@ export function useAnnotations(workspaceId: string, attachmentId?: string) {
       if (!attachmentId) return [];
       return AnnotationsService.getByAttachment(workspaceId, attachmentId);
     },
-    enabled: Boolean(workspaceId && attachmentId),
+    enabled: Boolean(attachmentId),
   });
 
   const createMutation = useMutation({

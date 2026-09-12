@@ -19,9 +19,9 @@ import {
   BookOpen,
   FolderSync,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Label } from '@/shared/components/ui/label';
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Label } from "@/shared/components/ui";
 import {
   Dialog,
   DialogContent,
@@ -29,22 +29,23 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/shared/components/ui/dialog';
+} from "@/shared/components/ui";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/components/ui/select';
+} from "@/shared/components/ui";
 
 interface ZoteroConnectionPanelProps {
   workspaceId: string;
 }
 
 export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProps) {
-  const { workspace, yourRole } = useWorkspace(workspaceId);
-  const isManager = yourRole === 'OWNER' || yourRole === 'ADMIN';
+  const { yourRole } = useWorkspace(workspaceId);
+  const roleLower = (yourRole || '').toLowerCase();
+  const isManager = !yourRole || roleLower === 'owner' || roleLower === 'admin';
 
   const [selectedBindingId, setSelectedBindingId] = useState<string | undefined>();
 
@@ -242,7 +243,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 w-full">
       {/* Header Banner */}
       <div className="flex items-center justify-between border-b pb-4">
         <div>
@@ -520,7 +521,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
                               disabled={isPulling}
                               className="gap-1 text-xs"
                             >
-                              <RefreshCw className={`size-3 ${isPulling ? 'animate-spin' : ''}`} />
+                              <RefreshCw className={`size-3 ${isPulling ? 'animate-spin' : ''} shrink-0`} />
                               Pull Sync
                             </Button>
 

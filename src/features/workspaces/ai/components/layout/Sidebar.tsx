@@ -19,10 +19,10 @@ import React, {
 } from 'react';
 import { LayoutGroup } from 'framer-motion';
 import { useParams, useRouter } from 'next/navigation';
-import { cn } from '@/shared/lib/utils';
-import { logger } from '@/shared/lib/logger';
-import { getErrorMessage } from '@/shared/utils/error.util';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { cn } from "@/shared/lib/utils";
+import { logger } from "@/shared/lib/utils";
+import { getErrorMessage } from "@/shared/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import type { ChatSession } from '../../types/chat.types';
 import {
   listChatSessions,
@@ -31,6 +31,7 @@ import {
   clearAiMemory,
 } from '../../services/chat.service';
 import { useWorkspaceProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { toast } from 'sonner';
 
 type ProjectGroup = { projectId: string | null; chats: ChatSession[] };
@@ -76,11 +77,13 @@ function saveSet(k: string, s: Set<string>) {
 }
 
 export function Sidebar() {
-  const { workspaceId, chatId } = useParams<{ workspaceId?: string; chatId?: string }>();
+  const { chatId } = useParams<{ chatId?: string }>();
   const router = useRouter();
   const activeChatId = chatId ?? null;
   const layoutGroupId = useId();
 
+  const { workspace } = useWorkspace();
+  const workspaceId = workspace?.id || 'flux';
   const { projects } = useWorkspaceProjects(workspaceId);
 
   const [chats, setChats] = useState<ChatSession[]>([]);
@@ -107,10 +110,9 @@ export function Sidebar() {
   }, [projects]);
 
   const loadSessions = useCallback(async () => {
-    if (!workspaceId) return;
     try {
       setLoading(true);
-      const list = await listChatSessions(workspaceId, selectedProjectId);
+      const list = await listChatSessions(selectedProjectId);
       setChats(list);
     } catch (e) {
       console.error('Failed to load chat sessions:', e);
@@ -118,7 +120,7 @@ export function Sidebar() {
     } finally {
       setLoading(false);
     }
-  }, [workspaceId, selectedProjectId]);
+  }, [selectedProjectId]);
 
   useEffect(() => {
     loadSessions();
@@ -172,8 +174,8 @@ export function Sidebar() {
       await deleteChatSession(targetChatId);
       setChats((prev) => prev.filter((c) => c.id !== targetChatId));
       toast.success('Chat deleted');
-      if (activeChatId === targetChatId && workspaceId) {
-        router.push(`/${workspaceId}/ai`);
+      if (activeChatId === targetChatId) {
+        router.push('/ai');
       }
     } catch (err) {
       toast.error(getErrorMessage(err) || 'Failed to delete chat');
@@ -217,7 +219,7 @@ export function Sidebar() {
       {/* Header */}
       <div className="p-2.5 border-b border-border flex items-center justify-between gap-2">
         <button
-          onClick={() => workspaceId && router.push(`/${workspaceId}/ai`)}
+          onClick={() => router.push('/ai')}
           className="flex-1 flex items-center justify-center gap-2 h-8 rounded-md border border-border bg-background hover:bg-muted text-foreground text-13 font-medium transition-colors shadow-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
         >
           <SquarePen className="size-3.5 text-foreground shrink-0" />
@@ -279,7 +281,7 @@ export function Sidebar() {
                     <ChevronDown
                       className={`size-3 text-muted-foreground transition-transform ${
                         isCollapsed ? '-rotate-90' : ''
-                      }`}
+                      } shrink-0`}
                     />
                   </button>
 
@@ -293,7 +295,7 @@ export function Sidebar() {
                           <div
                             key={chat.id}
                             onClick={() =>
-                              workspaceId && router.push(`/${workspaceId}/ai/${chat.id}`)
+                              router.push(`/ai/${chat.id}`)
                             }
                             className={cn(
                               'group relative flex h-8 items-center justify-between gap-2 px-2.5 rounded-md text-13 leading-5 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary',

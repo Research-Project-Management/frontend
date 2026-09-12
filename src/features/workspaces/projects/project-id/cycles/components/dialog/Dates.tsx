@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
-import { Button } from '@/shared/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
 import { 
   CalendarDays, 
   ChevronLeft, 
@@ -170,7 +170,7 @@ export const Dates = ({ formStart, formEnd, setFormStart, setFormEnd, trigger }:
     <Popover>
       <PopoverTrigger asChild>
         {trigger || (
-          <button className="h-10 rounded-sm border border-border bg-background px-4 text-base font-medium text-foreground hover:bg-muted flex items-center gap-2 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer">
+          <button type="button" className="h-8 rounded-md border border-border bg-background px-3 text-13 font-medium text-foreground hover:bg-muted flex items-center gap-2 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer">
             <CalendarDays className="size-4 text-foreground shrink-0" />
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">Start date</span>

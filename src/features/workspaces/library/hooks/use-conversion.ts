@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { CatalogItemService } from '../services/catalog.service';
+import { ItemService } from '../services/item.service';
 import { itemKeys } from './use-items';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -49,8 +49,9 @@ export interface TypeConversionPreview {
  * `previewAsync` is an on-demand call (not tied to a query key),
  * allowing callers to check `hasLoss` before deciding whether to show a modal.
  */
-export function useItemTypeConversion(workspaceId: string) {
+export function useItemTypeConversion(scopeId?: string) {
   const queryClient = useQueryClient();
+  const effectiveScopeId = scopeId || 'user';
 
   const previewMutation = useMutation({
     mutationFn: ({
@@ -62,12 +63,12 @@ export function useItemTypeConversion(workspaceId: string) {
       targetType: string;
       retainUnmappedInExtra?: boolean;
     }) =>
-      CatalogItemService.previewConvertType(
-        workspaceId,
+      ItemService.previewConvertType(
+        effectiveScopeId,
         itemId,
         targetType,
         retainUnmappedInExtra,
-      ).then((res: any): TypeConversionPreview => res?.preview ?? res?.data ?? res),
+      ).then((res: unknown): TypeConversionPreview => (res as { preview?: TypeConversionPreview; data?: TypeConversionPreview })?.preview ?? (res as { data?: TypeConversionPreview })?.data ?? (res as TypeConversionPreview)),
     onError: (err: any) => {
       toast.error('Preview failed', {
         description: err?.message || 'Failed to preview type conversion.',
@@ -90,8 +91,8 @@ export function useItemTypeConversion(workspaceId: string) {
       retainUnmappedInExtra?: boolean;
       silent?: boolean;
     }) =>
-      CatalogItemService.convertType(
-        workspaceId,
+      ItemService.convertType(
+        effectiveScopeId,
         itemId,
         targetType,
         expectedVersion,
@@ -99,9 +100,9 @@ export function useItemTypeConversion(workspaceId: string) {
       ),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: itemKeys.byId(workspaceId, variables.itemId),
+        queryKey: itemKeys.byId(effectiveScopeId, variables.itemId),
       });
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
       if (!variables.silent) {
         toast.success('Item type converted', {
           description: variables.retainUnmappedInExtra ? 'Unmapped fields have been preserved in Extra.' : undefined,

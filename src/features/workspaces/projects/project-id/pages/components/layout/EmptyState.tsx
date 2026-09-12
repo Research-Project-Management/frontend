@@ -1,6 +1,6 @@
 import React from 'react';
 import { FileText, Plus } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
+import { Button } from "@/shared/components/ui";
 
 interface EmptyStateProps {
   onCreateClick: () => void;
@@ -18,7 +18,7 @@ export function EmptyState({ onCreateClick }: EmptyStateProps) {
       </div>
       <Button
         size="sm"
-        className="mt-2 bg-primary text-primary-foreground hover:bg-primary/90"
+        className="mt-2 bg-primary text-primary-foreground hover:bg-primary-hover"
         onClick={onCreateClick}
       >
         <Plus className="mr-2 size-4 shrink-0" />

@@ -3,15 +3,17 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { isWithinInterval, parseISO } from "date-fns";
 import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useCycle, useCompleteCycle, type DerivedStatus } from '../hooks/use-cycle';
+import type { Cycle } from '../types/cycle.types';
+import { cycleFormSchema, type CycleFormData } from '../schemas/cycle.schema';
 import { useLabels } from '../hooks/use-label';
-import { Skeleton } from '@/shared/components/ui/skeleton';
-import { 
-  Plus,
-  RotateCcw
-} from "lucide-react";
+import { Skeleton } from "@/shared/components/ui";
+import { Plus } from "lucide-react";
+import { CycleIcon } from "@/shared/components/ui";
 
 import { Item, ListViewGroup, EmptyState } from '../components/views/ListView';
 
@@ -19,17 +21,16 @@ import { Item, ListViewGroup, EmptyState } from '../components/views/ListView';
 import { DeleteModal } from '../components/modals/DeleteModal';
 import { CycleModal } from '../components/modals/CycleModal';
 import { StatusModal, type StatusModalType } from '../components/modals/StatusModal';
-import type { Cycle, CycleMilestone } from '../types/cycle.types';
-import { TopBar as Topbar } from '@/features/workspaces/settings/components/layout/TopBar';
 import CycleTopBarActions from '../components/layout/Topbar';
-import { logger } from '@/shared/lib/logger';
+import { Switcher } from '@/features/workspaces/projects/project-id/components/layout';
+import { logger } from "@/shared/lib/utils";
 
 const PHASE_CONFIG: Record<string, any> = {
   todo: { label: "To Do", color: "#64748b" },
   in_progress: { label: "In Progress", color: "#3b82f6" },
   done: { label: "Done", color: "#22c55e" },
 };
-import { Button } from '@/shared/components/ui/button';
+import { Button } from "@/shared/components/ui";
 
 const PHASES = Object.entries(PHASE_CONFIG).map(([id, config]) => ({
   id,
@@ -37,7 +38,7 @@ const PHASES = Object.entries(PHASE_CONFIG).map(([id, config]) => ({
 }));
 
 export function CyclePage() {
-  const { projectId, workspaceId } = useParams() as { projectId: string, workspaceId: string };
+  const { projectId } = useParams() as { projectId: string };
   const router = useRouter();
   
   const {
@@ -50,11 +51,11 @@ export function CyclePage() {
     getGroupedCycles,
     deriveStatus,
     checkParallelConflict,
-  } = useCycle(projectId!, workspaceId);
+  } = useCycle(projectId!);
 
   const completeMutation = useCompleteCycle();
 
-  const { workspaceLabels: allLabels } = useLabels(workspaceId!, "cycle", projectId);
+  const { workspaceLabels: allLabels } = useLabels("", "cycle", projectId);
 
   // UI Local States
   const [phases, setPhases] = useState(PHASES);
@@ -116,14 +117,19 @@ export function CyclePage() {
     dueDate?: { start: string; end: string; label: string };
   }>({});
 
-  // Form Local States
-  const [formName, setFormName] = useState("");
-  const [formDescription, setFormDescription] = useState("");
-  const [formStart, setFormStart] = useState("");
-  const [formEnd, setFormEnd] = useState("");
-  const [formPhase, setFormPhase] = useState<string>(PHASES[0].id);
-  const [formStatus, setFormStatus] = useState<string>("planned");
-  const [formLabels, setFormLabels] = useState<string[]>([]);
+  // Form State (React Hook Form)
+  const form = useForm<CycleFormData>({
+    resolver: zodResolver(cycleFormSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      phase: PHASES[0].id,
+      status: "planned",
+      startDate: "",
+      endDate: "",
+      labels: [],
+    },
+  });
 
   // Derived Values
   const groupedCycles = useMemo(() => {
@@ -166,36 +172,35 @@ export function CyclePage() {
 
   const openCreate = () => {
     setEditingCycle(null);
-    setFormName("");
-    setFormDescription("");
-    setFormPhase(PHASES[0].id);
-    setFormStatus("planned");
-    setFormStart("");
-    setFormEnd("");
-    setFormLabels([]);
+    form.reset({
+      name: "",
+      description: "",
+      phase: PHASES[0].id,
+      status: "planned",
+      startDate: "",
+      endDate: "",
+      labels: [],
+    });
     setDialogOpen(true);
   };
 
   const openEdit = (cycle: Cycle) => {
     setEditingCycle(cycle);
-    setFormName(cycle.name);
-    setFormDescription(cycle.description || "");
-    setFormPhase(cycle.phase || 'custom');
-    setFormStart(cycle.startDate ? cycle.startDate.split("T")[0] : "");
-
-    setFormEnd(cycle.endDate ? cycle.endDate.split("T")[0] : "");
-    setFormLabels(cycle.labels || []);
+    form.reset({
+      name: cycle.name,
+      description: cycle.description || "",
+      phase: cycle.phase || 'custom',
+      status: (cycle.status as any) || "planned",
+      startDate: cycle.startDate ? cycle.startDate.split("T")[0] : "",
+      endDate: cycle.endDate ? cycle.endDate.split("T")[0] : "",
+      labels: cycle.labels || [],
+    });
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
-    if (!formName.trim()) {
-      toast.error("Please enter a title");
-      return;
-    }
-
+  const handleSave = (values: CycleFormData) => {
     // Rule: Basic Date Validation (only if both are provided)
-    if (formStart && formEnd && new Date(formStart) > new Date(formEnd)) {
+    if (values.startDate && values.endDate && new Date(values.startDate) > new Date(values.endDate)) {
       toast.error("Start date cannot be after end date");
       return;
     }
@@ -205,8 +210,8 @@ export function CyclePage() {
     // Rule: Check for overlaps and multiple active cycles if parallel is OFF
     if (!parallelEnabled) {
       // Check for overlap with ANY other cycle (including upcoming)
-      if (formStart && formEnd) {
-        const hasOverlap = checkParallelConflict(formStart, formEnd, editingCycle?.id);
+      if (values.startDate && values.endDate) {
+        const hasOverlap = checkParallelConflict(values.startDate, values.endDate, editingCycle?.id);
         if (hasOverlap) {
           toast.error("Dates overlap with an existing cycle");
           return;
@@ -216,8 +221,8 @@ export function CyclePage() {
       // Check for multiple active cycles (based on dates)
       const now = new Date();
       now.setHours(0, 0, 0, 0);
-      const newStart = new Date(formStart);
-      const newEnd = new Date(formEnd);
+      const newStart = new Date(values.startDate);
+      const newEnd = new Date(values.endDate);
       const isNewActive = now >= newStart && now <= newEnd;
 
       if (isNewActive) {
@@ -230,12 +235,12 @@ export function CyclePage() {
     }
 
     const payload = {
-      name: formName,
-      description: formDescription,
-      phase: formPhase as any,
-      startDate: formStart || undefined,
-      endDate: formEnd || undefined,
-      labels: formLabels,
+      name: values.name.trim(),
+      description: values.description?.trim(),
+      phase: values.phase as any,
+      startDate: values.startDate || undefined,
+      endDate: values.endDate || undefined,
+      labels: values.labels,
     };
 
     if (editingCycle) {
@@ -333,10 +338,14 @@ export function CyclePage() {
 
   return (
     <div className="flex-1 flex min-h-0 flex-col h-full bg-background overflow-hidden">
-      <Topbar
-        title="Cycles"
-        Icon={RotateCcw}
-        actions={
+      <header className="h-11 border-b border-border px-3 sm:px-4 flex items-center justify-between gap-2 sm:gap-3 bg-background shrink-0 text-13 w-full min-w-0 select-none sticky top-0 z-10">
+        <Switcher
+          project={projectData}
+          moduleTitle="Cycles"
+          moduleIcon={CycleIcon}
+          count={cycles?.length}
+        />
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
           <CycleTopBarActions
             onAddCycle={openCreate}
             searchQuery={searchTerm}
@@ -344,8 +353,8 @@ export function CyclePage() {
             dateFilters={dateFilters}
             onDateFilterChange={setDateFilters}
           />
-        }
-      />
+        </div>
+      </header>
       <main className="w-full flex-1 overflow-y-auto px-6 py-4 scroll-smooth custom-scrollbar">
         <div>
           {isLoading ? (
@@ -356,12 +365,12 @@ export function CyclePage() {
             <div className="mt-1">
               {cycles.length === 0 && !searchTerm ? (
                 <div className="flex flex-col items-center justify-center py-32 text-center">
-                  <RotateCcw className="size-10 text-muted-foreground mb-4 shrink-0" strokeWidth={1.5} />
+                  <CycleIcon className="size-10 text-muted-foreground mb-4 shrink-0" />
                   <h3 className="text-base font-semibold text-foreground mb-1.5">No cycles found</h3>
                   <p className="text-xs text-muted-foreground max-w-[400px] mb-6 leading-relaxed">
                     Research cycles help you track progress over time. Create your first cycle to start organizing your tasks.
                   </p>
-                  <Button onClick={openCreate} className="h-8 px-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md gap-2 cursor-pointer text-xs">
+                  <Button onClick={openCreate} className="h-8 px-4 bg-primary hover:bg-primary-hover text-primary-foreground rounded-md gap-2 cursor-pointer text-xs">
                     <Plus className="size-4 shrink-0" />
                     <span>Create your first cycle</span>
                   </Button>
@@ -391,7 +400,7 @@ export function CyclePage() {
                           setExpandedCycleId(expandedCycleId === cycle.id ? null : cycle.id)
                         }
                         onNavigate={() => {
-                          router.push(`/${workspaceId}/projects/${projectId}/cycles/${cycle.id}`);
+                          router.push(`/projects/${projectId}/cycles/${cycle.id}`);
                         }}
                         allLabels={allLabels}
                         showLabelDetails={labelDetailsCycleIds.has(cycle.id)}
@@ -416,20 +425,7 @@ export function CyclePage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         mode={editingCycle ? 'edit' : 'create'}
-        formName={formName}
-        setFormName={setFormName}
-        formDescription={formDescription}
-        setFormDescription={setFormDescription}
-        formStart={formStart}
-        setFormStart={setFormStart}
-        formEnd={formEnd}
-        setFormEnd={setFormEnd}
-        formPhase={formPhase}
-        setFormPhase={setFormPhase}
-        formStatus={formStatus}
-        setFormStatus={setFormStatus}
-        formLabels={formLabels}
-        setFormLabels={setFormLabels}
+        form={form}
         phases={phases}
         setPhases={setPhases}
         projectData={projectData}

@@ -95,7 +95,6 @@ export const chatSessionDetailSchema = chatSessionSchema.extend({
 });
 
 export const createChatSessionSchema = z.object({
-  workspaceId: z.string(),
   title: z.string(),
   projectId: z.string().optional(),
   messages: z.array(chatMessageSchema),

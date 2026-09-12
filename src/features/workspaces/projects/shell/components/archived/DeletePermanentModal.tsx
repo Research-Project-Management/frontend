@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Button } from '@/shared/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
+import { Button } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/shared/components/ui";
 import type { Project } from '../../types/project.types';
 
 export type DeletePermanentModalProps = {

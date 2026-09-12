@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { cn } from "@/shared/lib/utils";
 import {
   BookOpen,
@@ -12,19 +13,21 @@ import {
   FileText,
   FolderUp,
   FolderPlus,
+  FolderInput,
   Link2,
-  PanelLeft,
 } from "lucide-react";
-import { useLibrarySidebarStore } from "@/features/workspaces/library/store/sidebar.store";
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+  DropdownMenuSeparator,
+} from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
+import { useWorkspace } from "@/features/workspaces/shell/hooks/use-workspace";
+import TagFilterPopover from "./TagSelector";
 
 export interface BreadcrumbItem {
   id?: string;
@@ -39,11 +42,14 @@ export interface TopbarProps {
   search?: string;
   onSearchChange?: (search: string) => void;
   searchPlaceholder?: string;
+  showFilter?: boolean;
+  workspaceId?: string;
   onAddPaper?: (mode?: 'file' | 'folder' | 'link') => void;
   onDirectFilesUpload?: (files: File[]) => void;
   onDirectFolderUpload?: (files: File[], folderName: string) => void;
   onAddCollection?: () => void;
   onAddLink?: () => void;
+  onImportFromPersonal?: () => void;
   isSubcollection?: boolean;
   onNavigateCrumb?: (crumbId?: string) => void;
   children?: React.ReactNode;
@@ -57,17 +63,23 @@ export default function Topbar({
   search = "",
   onSearchChange,
   searchPlaceholder = "Search references...",
+  showFilter = true,
+  workspaceId: propWorkspaceId,
   onAddPaper,
   onDirectFilesUpload,
   onDirectFolderUpload,
   onAddCollection,
   onAddLink,
+  onImportFromPersonal,
   isSubcollection = false,
   onNavigateCrumb,
   children,
   className,
 }: TopbarProps) {
-  const { isOpen, toggle } = useLibrarySidebarStore();
+  const params = useParams() as { workspaceId?: string; collectionId?: string };
+  const { workspace } = useWorkspace(propWorkspaceId || params?.workspaceId);
+  const effectiveWorkspaceId = propWorkspaceId || workspace?.id || params?.workspaceId || '';
+
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const directFileInputRef = useRef<HTMLInputElement>(null);
@@ -119,27 +131,12 @@ export default function Topbar({
   return (
     <header
       className={cn(
-        "flex items-center justify-between border-b border-border bg-background px-4 h-12 sticky top-0 z-10 shrink-0 select-none",
+        "flex items-center justify-between border-b border-border bg-background px-4 h-11 sticky top-0 z-10 shrink-0 select-none",
         className
       )}
     >
-      {/* Left Section: Title or Breadcrumbs */}
+      {/* Left Section: Title / Breadcrumbs */}
       <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
-        {!isOpen && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={toggle}
-                aria-label="Expand sidebar"
-                className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary mr-0.5 shrink-0"
-              >
-                <PanelLeft className="size-4 shrink-0 text-foreground" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Expand sidebar</TooltipContent>
-          </Tooltip>
-        )}
-
         {breadcrumbs && breadcrumbs.length > 0 ? (
           <nav aria-label="Breadcrumbs" className="flex items-center gap-1.5 sm:gap-2 min-w-0 overflow-hidden">
             {breadcrumbs.map((crumb, idx) => {
@@ -232,7 +229,7 @@ export default function Topbar({
           >
             <Search
               className={cn(
-                "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10",
+                "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 shrink-0",
                 isSearchExpanded || search
                   ? "left-2 translate-x-0 text-muted-foreground"
                   : "left-1/2 -translate-x-1/2 text-muted-foreground"
@@ -268,11 +265,16 @@ export default function Topbar({
           </div>
         )}
 
-        {/* + New Button with Dropdown Menu */}
-        {(onAddPaper || onAddCollection || onDirectFilesUpload || onDirectFolderUpload || onAddLink) && (
+        {/* Tag Filter Popover Button */}
+        {showFilter && effectiveWorkspaceId && (
+          <TagFilterPopover workspaceId={effectiveWorkspaceId} />
+        )}
+
+        {/* + New Button with Dropdown Menu (Includes Import from My Library when in Project scope) */}
+        {(onAddPaper || onAddCollection || onDirectFilesUpload || onDirectFolderUpload || onAddLink || onImportFromPersonal) && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" className="h-8 gap-1.5 px-3 rounded-md cursor-pointer font-medium text-xs">
+              <Button size="sm" className="h-8 gap-1.5 px-3 rounded-md cursor-pointer font-medium text-12">
                 <Plus className="size-4 text-primary-foreground shrink-0" />
                 <span>New</span>
               </Button>
@@ -281,12 +283,12 @@ export default function Topbar({
               align="end"
               sideOffset={4}
               onCloseAutoFocus={(e) => e.preventDefault()}
-              className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5"
+              className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5"
             >
               {(onDirectFilesUpload || onAddPaper) && (
                 <DropdownMenuItem
                   onClick={handleAddFileClick}
-                  className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                  className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
                 >
                   <FileText className="size-4 text-foreground shrink-0" />
                   <span className="text-foreground">Add file</span>
@@ -295,7 +297,7 @@ export default function Topbar({
               {(onDirectFolderUpload || onAddPaper) && (
                 <DropdownMenuItem
                   onClick={handleAddFolderClick}
-                  className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                  className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
                 >
                   <FolderUp className="size-4 text-foreground shrink-0" />
                   <span className="text-foreground">Add folder</span>
@@ -304,7 +306,7 @@ export default function Topbar({
               {onAddCollection && (
                 <DropdownMenuItem
                   onClick={onAddCollection}
-                  className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                  className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
                 >
                   <FolderPlus className="size-4 text-foreground shrink-0" />
                   <span className="text-foreground">{isSubcollection ? "New Subcollection" : "New Collection"}</span>
@@ -313,11 +315,23 @@ export default function Topbar({
               {(onAddLink || onAddPaper) && (
                 <DropdownMenuItem
                   onClick={handleAddLinkClick}
-                  className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                  className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
                 >
                   <Link2 className="size-4 text-foreground shrink-0" />
                   <span className="text-foreground">Add link</span>
                 </DropdownMenuItem>
+              )}
+              {onImportFromPersonal && (
+                <>
+                  <DropdownMenuSeparator className="my-1 bg-border" />
+                  <DropdownMenuItem
+                    onClick={onImportFromPersonal}
+                    className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                  >
+                    <FolderInput className="size-4 text-foreground shrink-0" />
+                    <span className="text-foreground">Import from My Library...</span>
+                  </DropdownMenuItem>
+                </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UploadCloud, FolderUp } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 
 interface StorageDropzoneOverlayProps {
   children: React.ReactNode;
@@ -94,7 +94,7 @@ export default function StorageDropzoneOverlay({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="absolute inset-2 z-50 rounded-md border-2 border-dashed border-primary bg-background/90 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center shadow-sm pointer-events-none"
+            className="absolute inset-2 z-50 rounded-md border-2 border-dashed border-primary bg-background/90 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center pointer-events-none"
           >
             <motion.div
               initial={{ y: 8, scale: 0.9 }}

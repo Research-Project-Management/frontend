@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -14,21 +14,21 @@ import type {
 } from '../types/library.types';
 
 export const collectionKeys = {
-  all: (workspaceId: string) => ['collections', workspaceId] as const,
-  byId: (workspaceId: string, collectionId: string) => ['collections', workspaceId, collectionId] as const,
+  all: (scopeId?: string) => ['collections', scopeId || 'user'] as const,
+  byId: (scopeId?: string, collectionId?: string) => ['collections', scopeId || 'user', collectionId] as const,
 };
 
-export const invalidateCollections = (qc: QueryClient, workspaceId: string) => {
-  qc.invalidateQueries({ queryKey: collectionKeys.all(workspaceId) });
+export const invalidateCollections = (qc: QueryClient, scopeId?: string) => {
+  qc.invalidateQueries({ queryKey: collectionKeys.all(scopeId) });
 };
 
-export function useCollections(workspaceId: string) {
+export function useCollections(scopeId?: string) {
   const queryClient = useQueryClient();
 
   const collectionsQuery = useQuery({
-    queryKey: collectionKeys.all(workspaceId),
-    queryFn: () => getCollections(workspaceId),
-    enabled: Boolean(workspaceId),
+    queryKey: collectionKeys.all(scopeId),
+    queryFn: () => getCollections(scopeId),
+    enabled: true,
     select: (data) => data.collections || [],
   });
 
@@ -43,10 +43,10 @@ export function useCollections(workspaceId: string) {
         icon: data.icon || '',
         parentId: cleanParentId,
       };
-      return createCollection(workspaceId, payload as any);
+      return createCollection(scopeId, payload as any);
     },
     onSuccess: () => {
-      invalidateCollections(queryClient, workspaceId);
+      invalidateCollections(queryClient, scopeId);
       toast.success('Collection created', { id: 'collection-mutation' });
     },
     onError: (err: any) => {
@@ -60,9 +60,9 @@ export function useCollections(workspaceId: string) {
   const updateMutation = useMutation({
     mutationFn: (data: UpdateCollectionDTO & { collectionId: string }) => {
       const { collectionId, ...rest } = data;
-      const rawParent = (rest as any).parentId ?? (rest as any).parent ?? undefined;
+      const rawParent = rest.parentId ?? (rest as { parent?: string | null }).parent ?? undefined;
       const cleanParentId = rawParent === 'root' ? null : rawParent;
-      const payload: any = {
+      const payload: UpdateCollectionDTO = {
         name: rest.name !== undefined ? rest.name.trim() : undefined,
         description: rest.description !== undefined ? rest.description.trim() : undefined,
         color: rest.color,
@@ -71,10 +71,10 @@ export function useCollections(workspaceId: string) {
       if (rawParent !== undefined) {
         payload.parentId = cleanParentId;
       }
-      return updateCollection(workspaceId, collectionId, payload);
+      return updateCollection(scopeId, collectionId, payload);
     },
     onSuccess: () => {
-      invalidateCollections(queryClient, workspaceId);
+      invalidateCollections(queryClient, scopeId);
       toast.success('Collection updated', { id: 'collection-mutation' });
     },
     onError: (err: any) => {
@@ -86,9 +86,9 @@ export function useCollections(workspaceId: string) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (collectionId: string) => deleteCollection(workspaceId, collectionId),
+    mutationFn: (collectionId: string) => deleteCollection(scopeId, collectionId),
     onSuccess: () => {
-      invalidateCollections(queryClient, workspaceId);
+      invalidateCollections(queryClient, scopeId);
       toast.success('Collection deleted', {
         description: 'Contained papers were unfiled to library, not deleted.',
         id: 'collection-mutation',

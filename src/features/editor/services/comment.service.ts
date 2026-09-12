@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { PageComment, CommentReply } from '@/features/editor/types/document.types';
-import { apiGet, apiPost, apiPut, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
 
 // ── Fetch comments ─────────────────────────────────────────────────────────────
 
@@ -16,6 +16,9 @@ export const usePageComments = (pageId: string | null) => {
     enabled: !!pageId,
   });
 };
+
+export const useComments = usePageComments;
+
 
 // ── Create comment ─────────────────────────────────────────────────────────────
 

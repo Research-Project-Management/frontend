@@ -1,36 +1,29 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { stickyKeys } from "../constants/sticky.keys";
-import { useWorkspace } from "@/features/workspaces/shell/hooks/use-workspace";
 import { getStickies, createSticky, updateSticky, deleteSticky, reorderStickies } from "../services/sticky.service";
 import type { Sticky } from "../types/sticky.types";
-
-export const useSticky = (workspaceId: string, search?: string, projectId?: string, options?: { enabled?: boolean }) => {
-  const { workspace } = useWorkspace(workspaceId);
-  const effectiveWorkspaceId = workspace?.id || workspaceId;
+export const useSticky = (workspaceId?: string, search?: string, projectId?: string, options?: { enabled?: boolean }) => {
   const queryClient = useQueryClient();
-  const fullQueryKey = stickyKeys.workspaceList(effectiveWorkspaceId, search, projectId);
+  const fullQueryKey = stickyKeys.list(search);
   const invalidateKey = stickyKeys.all;
 
   const query = useQuery({
     queryKey: fullQueryKey,
-    queryFn: () => getStickies(effectiveWorkspaceId, search, projectId),
-    enabled: (options?.enabled ?? true) && !!effectiveWorkspaceId,
+    queryFn: () => getStickies(workspaceId, search, projectId),
+    enabled: options?.enabled ?? true,
     staleTime: 30_000,
   });
 
   const create = useMutation({
     mutationFn: (variables: {
-      workspaceId: string;
+      workspaceId?: string;
       title?: string;
       content: string;
       color?: string;
       position?: { x: number; y: number };
-    }) =>
-      createSticky({
-        ...variables,
-        workspaceId: effectiveWorkspaceId || variables.workspaceId,
-      }),
+      projectId?: string;
+    }) => createSticky(variables),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: invalidateKey });
       toast.success("Sticky added", { id: "sticky-action" });
@@ -90,7 +83,7 @@ export const useSticky = (workspaceId: string, search?: string, projectId?: stri
   });
 
   const reorder = useMutation({
-    mutationFn: (stickyIds: string[]) => reorderStickies(effectiveWorkspaceId, stickyIds),
+    mutationFn: (stickyIds: string[]) => reorderStickies(workspaceId, stickyIds, projectId),
     onMutate: async (stickyIds) => {
       await queryClient.cancelQueries({ queryKey: fullQueryKey });
       const previous = queryClient.getQueryData(fullQueryKey);

@@ -11,10 +11,8 @@ import {
   Maximize2,
   ListTree,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { cn } from '@/shared/lib/utils';
+import { Button, Form, Input, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import { pageNavFormSchema } from '../../schemas/reader.schema';
 import type { PageNavFormData } from '../../types/reader.types';
 
@@ -41,12 +39,13 @@ export default function PdfViewerToolbar({
   onToggleDrawer,
   isDrawerOpen,
 }: PdfViewerToolbarProps) {
-  const { register, handleSubmit, reset } = useForm<PageNavFormData>({
+  const pageNavForm = useForm<PageNavFormData>({
     resolver: zodResolver(pageNavFormSchema),
     defaultValues: {
       page: pageNumber,
     },
   });
+  const { register, handleSubmit, reset } = pageNavForm;
 
   useEffect(() => {
     reset({ page: pageNumber });
@@ -111,27 +110,29 @@ export default function PdfViewerToolbar({
             <TooltipContent side="top" className="text-xs">Previous page</TooltipContent>
           </Tooltip>
 
-          <form onSubmit={handleSubmit(onPageSubmit)} className="flex items-center gap-1">
-            <Input
-              type="number"
-              min={1}
-              max={numPages ?? undefined}
-              {...register('page', { valueAsNumber: true })}
-              onBlur={handleSubmit(onPageSubmit)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  reset({ page: pageNumber });
-                  e.currentTarget.blur();
-                }
-              }}
-              disabled={loading || !numPages}
-              aria-label="Current page"
-              className="h-6 w-11 px-1 text-center font-mono text-xs tabular-nums text-foreground focus-visible:ring-1 focus-visible:ring-primary rounded-sm border-border [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-            <span className="text-11 font-mono tabular-nums text-muted-foreground select-none">
-              / {numPages ?? '-'}
-            </span>
-          </form>
+          <Form {...pageNavForm}>
+            <form onSubmit={handleSubmit(onPageSubmit)} className="flex items-center gap-1">
+              <Input
+                type="number"
+                min={1}
+                max={numPages ?? undefined}
+                {...register('page', { valueAsNumber: true })}
+                onBlur={handleSubmit(onPageSubmit)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    reset({ page: pageNumber });
+                    e.currentTarget.blur();
+                  }
+                }}
+                disabled={loading || !numPages}
+                aria-label="Current page"
+                className="h-6 w-11 px-1 text-center font-mono text-xs tabular-nums text-foreground focus-visible:ring-1 focus-visible:ring-primary rounded-sm border-border [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="text-11 font-mono tabular-nums text-muted-foreground select-none">
+                / {numPages ?? '-'}
+              </span>
+            </form>
+          </Form>
 
           <Tooltip>
             <TooltipTrigger asChild>

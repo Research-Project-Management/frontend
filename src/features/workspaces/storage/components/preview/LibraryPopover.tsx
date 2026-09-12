@@ -7,9 +7,9 @@ import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { previewServices } from "../../services/preview.service";
 import { toAuthors, toKeywords, toYear } from "../../utils/preview.util";
-import { getErrorMessage } from "@/shared/utils/error.util";
-import { Button } from '@/shared/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { getErrorMessage } from "@/shared/lib/utils";
+import { Button } from "@/shared/components/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 
 export interface StoragePdfMetadata {
@@ -26,7 +26,7 @@ export interface StoragePdfMetadata {
 
 interface AddToLibraryPopoverProps {
   item: StorageItem;
-  workspaceId: string;
+  projectId?: string;
   metadata?: StoragePdfMetadata | null;
   trigger: ReactNode;
 }
@@ -40,7 +40,7 @@ interface SimpleCollection {
 
 export default function LibraryPopover({
   item,
-  workspaceId,
+  projectId,
   metadata,
   trigger,
 }: AddToLibraryPopoverProps) {
@@ -49,9 +49,9 @@ export default function LibraryPopover({
   const qc = useQueryClient();
 
   const { data: collectionsData, isLoading } = useQuery({
-    queryKey: ['storage', 'library-collections', workspaceId],
-    queryFn: () => previewServices.getCollections(workspaceId),
-    enabled: !!workspaceId && open,
+    queryKey: ['storage', 'library-collections', projectId || 'me'],
+    queryFn: () => previewServices.getCollections(projectId),
+    enabled: open,
   });
 
   const collections = collectionsData?.collections || [];
@@ -59,11 +59,11 @@ export default function LibraryPopover({
 
   const ingestMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
-      previewServices.ingestPaper(workspaceId, data),
+      previewServices.ingestPaper(projectId, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['items', workspaceId] });
-      qc.invalidateQueries({ queryKey: ['papers', workspaceId] });
-      qc.invalidateQueries({ queryKey: ['collections', workspaceId] });
+      qc.invalidateQueries({ queryKey: ['items'] });
+      qc.invalidateQueries({ queryKey: ['papers'] });
+      qc.invalidateQueries({ queryKey: ['collections'] });
       toast.success(`Added to ${selectedCollection?.name || 'Library'}.`);
       setOpen(false);
       setCollectionId("");

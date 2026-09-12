@@ -2,19 +2,16 @@
 
 // ── Home hooks ────────────────────────────────────────────────────────────────
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'next/navigation';
 import { getRecentItems } from '../services/home.service';
 import type { RecentItem } from '../types/home.types';
 export const homeKeys = {
   all: ['home'] as const,
-  recent: (workspaceId: string) => [...homeKeys.all, 'recent', workspaceId] as const,
+  recent: (scope: string = 'me') => [...homeKeys.all, 'recent', scope] as const,
 };
 
-export const useRecentItems = () => {
-  const { workspaceId } = useParams<{ workspaceId: string }>();
+export const useRecentItems = (scopeId?: string) => {
   return useQuery<RecentItem[]>({
-    queryKey: homeKeys.recent(workspaceId!),
-    queryFn: ({ signal }) => getRecentItems(workspaceId!, signal),
-    enabled: !!workspaceId,
+    queryKey: homeKeys.recent(scopeId || 'me'),
+    queryFn: ({ signal }) => getRecentItems(scopeId, signal),
   });
 };

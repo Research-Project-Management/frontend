@@ -4,7 +4,7 @@ import React from 'react';
 import { Plus, Wand2, History, Trash2, Check, X } from 'lucide-react';
 
 interface AiTabHeaderProps {
-  workspaceId: string | null | undefined;
+  projectId?: string | null | undefined;
   isStreaming: boolean;
   autoApply: boolean;
   onToggleAutoApply: () => void;
@@ -18,7 +18,7 @@ interface AiTabHeaderProps {
 }
 
 export function AiTabHeader({
-  workspaceId,
+  projectId,
   isStreaming,
   autoApply,
   onToggleAutoApply,
@@ -41,7 +41,7 @@ export function AiTabHeader({
       <div className="flex items-center gap-0.5">
         <button
           onClick={onNewConversation}
-          disabled={!workspaceId || isStreaming}
+          disabled={isStreaming}
           title="New conversation"
           className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer disabled:cursor-not-allowed disabled:opacity-20"
         >
@@ -69,7 +69,6 @@ export function AiTabHeader({
 
         <button
           onClick={onOpenHistory}
-          disabled={!workspaceId}
           title="Show chat history"
           className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer disabled:cursor-not-allowed disabled:opacity-20"
         >

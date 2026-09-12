@@ -35,6 +35,7 @@ export const readerAnnotationSchema = z.object({
   attachmentId: z.string().optional(),
   pageNumber: z.number().int().positive().optional(),
   pageIndex: z.number().int().nonnegative().optional(),
+  annotationSortIndex: z.string().nullable().optional(),
   ...baseAnnotationFields,
   version: z.number().optional(),
   authorId: z.string().optional(),
@@ -59,7 +60,7 @@ export const updateAnnotationSchema = z.object({
   boundingRect: annotationRectSchema.optional(),
 });
 
-export const readerPanelSchema = z.enum(['ai', 'details', 'notes', 'annotations']);
+export const readerPanelSchema = z.enum(['ai', 'details', 'notes', 'annotations', 'cite']);
 export const readerNavPanelSchema = z.enum(['outline', 'figures', 'tables', 'formulas', 'thumbnails']);
 export const readerFitModeSchema = z.enum(['fit-width', 'fit-page', 'auto', 'custom']);
 export const readerViewModeSchema = z.enum(['single', 'continuous', 'spread']);
@@ -171,6 +172,9 @@ export const readerCollectionSchema = z.object({
 export const documentReadingStateSchema = z.object({
   readStatus: z.enum(['unread', 'reading', 'completed']).default('unread'),
   rating: z.number().min(0).max(5).default(0),
+  currentPage: z.number().int().positive().default(1).optional(),
+  scrollPosition: z.unknown().nullable().optional(),
+  lastOpenedAt: z.string().nullable().optional(),
   lastReadAt: z.string().nullable().optional(),
 });
 
@@ -261,7 +265,7 @@ export const readerPaperContextSchema = z.object({
   year: z.number().nullable().optional(),
   doi: z.string().optional(),
   ragDocId: z.string().optional(),
-  workspaceId: z.string(),
+  workspaceId: z.string().optional(),
 });
 
 // ── Form Schemas for React Hook Form ──────────────────────────────────────────

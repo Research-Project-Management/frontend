@@ -10,7 +10,6 @@ import { toast } from 'sonner';
 import { useAuth } from './use-auth';
 import { registerUser } from '../services/auth.service';
 import { registerSchema, type RegisterSchema } from '../schemas/auth.schema';
-import { fetchAllWorkspaces } from '@/features/workspaces/shell/services/workspace.service';
 import { env } from '@/config/env';
 import type { RegisterPayload } from '../types/auth.types';
 
@@ -56,20 +55,7 @@ export const useRegister = () => {
   useEffect(() => {
     let isMounted = true;
     if (!isAuthLoading && user) {
-      fetchAllWorkspaces()
-        .then((data) => {
-          if (!isMounted) return;
-          if (data?.workspaces && data.workspaces.length > 0) {
-            router.replace(`/${data.workspaces[0].url}`);
-          } else {
-            router.replace('/create-workspace');
-          }
-        })
-        .catch(() => {
-          if (isMounted) {
-            router.replace('/create-workspace');
-          }
-        });
+      router.replace('/home');
     }
     return () => {
       isMounted = false;

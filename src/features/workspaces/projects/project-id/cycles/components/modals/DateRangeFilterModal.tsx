@@ -7,9 +7,9 @@ import {
   isAfter, isBefore, parseISO, startOfDay, addYears, subYears
 } from "date-fns";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from "lucide-react";
-import { Button } from '@/shared/components/ui/button';
-import { Dialog, DialogContent } from '@/shared/components/ui/dialog';
-import { logger } from '@/shared/lib/logger';
+import { Button } from "@/shared/components/ui";
+import { Dialog, DialogContent } from "@/shared/components/ui";
+import { logger } from "@/shared/lib/utils";
 
 interface DoubleCalendarProps {
   startDate: string;
@@ -167,7 +167,7 @@ export const DoubleCalendarModal = ({
             <Button variant="ghost" size="sm" onClick={onCancel} className="h-8 text-foreground hover:bg-muted font-medium px-4 cursor-pointer">
               Cancel
             </Button>
-            <Button size="sm" onClick={handleApply} className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-6 transition-all active:scale-95 cursor-pointer">
+            <Button size="sm" onClick={handleApply} className="h-8 bg-primary hover:bg-primary-hover text-primary-foreground font-medium px-6 transition-all active:scale-95 cursor-pointer">
               Apply
             </Button>
           </div>

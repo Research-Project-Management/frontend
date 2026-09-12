@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   ArrowUp,
@@ -9,12 +9,16 @@ import {
   BookmarkPlus,
   BookOpen,
   ArrowRight,
+  Copy,
+  Check,
 } from 'lucide-react';
+import { Form } from "@/shared/components/ui";
+import { renderMarkdown } from '@/features/workspaces/ai/utils/render-markdown';
 import { useCopilotChat } from '../../hooks/use-copilot';
 import { chatMessageFormSchema } from '../../schemas/reader.schema';
 import type { CopilotCitation, QuickPrompt, ChatMessageFormData } from '../../types/reader.types';
-import { cn } from '@/shared/lib/utils';
-import { copyToClipboard } from '@/shared/lib/clipboard';
+import { cn } from "@/shared/lib/utils";
+import { copyToClipboard } from "@/shared/lib/utils";
 import { toast } from 'sonner';
 
 const DEFAULT_QUICK_PROMPTS: QuickPrompt[] = [
@@ -108,19 +112,21 @@ export default function ChatPanel({
     return () => window.removeEventListener('clear-reader-chat', handleClear);
   }, [clearMessages]);
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    watch,
-  } = useForm<ChatMessageFormData>({
+  const form = useForm<ChatMessageFormData>({
     resolver: zodResolver(chatMessageFormSchema),
     defaultValues: {
       message: '',
     },
   });
 
-  const messageValue = watch('message');
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+  } = form;
+
+  const messageValue = useWatch({ control, name: 'message' }) ?? '';
   const canSend = Boolean(messageValue && messageValue.trim().length > 0);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -208,10 +214,16 @@ export default function ChatPanel({
                       : 'border border-border bg-card text-foreground',
                   )}
                 >
-                  <div className="whitespace-pre-wrap select-text">
-                    {msg.content}
-                    {msg.isStreaming && (
-                      <span className="inline-block w-1.5 h-3 bg-primary align-middle ml-1 animate-pulse" />
+                  <div className="select-text overflow-hidden">
+                    {isUser ? (
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    ) : (
+                      <div className="space-y-1 text-xs">
+                        {renderMarkdown(msg.content)}
+                        {msg.isStreaming && (
+                          <span className="inline-block w-1.5 h-3 bg-primary align-middle ml-1 animate-pulse" />
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -230,14 +242,27 @@ export default function ChatPanel({
 
                   {/* Action for Assistant Message */}
                   {!isUser && !msg.isStreaming && (
-                    <div className="pt-1.5 mt-1.5 border-t border-border flex items-center gap-2">
+                    <div className="pt-1.5 mt-1.5 border-t border-border flex items-center justify-between">
                       <button
                         type="button"
                         onClick={() => handleSaveNote(msg.content)}
-                        className="inline-flex items-center gap-1 text-11 text-foreground hover:bg-muted px-1 py-0.5 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none rounded-sm transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 text-11 text-foreground hover:bg-muted px-1.5 py-0.5 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none rounded-sm transition-colors cursor-pointer"
+                        title="Save response to paper notes"
                       >
                         <BookmarkPlus className="size-3 shrink-0" />
                         <span>Save to Notes</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const ok = await copyToClipboard(msg.content);
+                          if (ok) toast.success('Copied response to clipboard', { id: 'reader-clipboard' });
+                        }}
+                        className="inline-flex items-center gap-1 text-11 text-muted-foreground hover:text-foreground hover:bg-muted px-1.5 py-0.5 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none rounded-sm transition-colors cursor-pointer"
+                        title="Copy text"
+                      >
+                        <Copy className="size-3 shrink-0" />
+                        <span>Copy</span>
                       </button>
                     </div>
                   )}
@@ -248,44 +273,46 @@ export default function ChatPanel({
         )}
       </div>
 
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="p-2 border-t border-border bg-background shrink-0"
-      >
-        <div className="flex items-center gap-1 rounded-sm border border-border bg-background focus-within:ring-1 focus-within:ring-ring px-2 py-1">
-          <textarea
-            {...register('message')}
-            onKeyDown={handleKeyDown}
-            aria-label="Ask assistant"
-            placeholder="Ask a question..."
-            rows={1}
-            disabled={isStreaming}
-            className="flex-1 resize-none bg-transparent text-xs outline-none placeholder:text-muted-foreground/50 max-h-24 min-h-7 text-foreground leading-relaxed disabled:opacity-60"
-          />
-          {isStreaming ? (
-            <button
-              type="button"
-              onClick={stopStreaming}
-              aria-label="Stop generation"
-              className="size-6 flex items-center justify-center rounded-sm text-destructive hover:bg-destructive/10 focus-visible:ring-1 focus-visible:ring-destructive focus-visible:outline-none transition-colors shrink-0 cursor-pointer"
-            >
-              <Square className="size-3 fill-current shrink-0" />
-            </button>
-          ) : (
-            <button
-              type="submit"
-              disabled={!canSend}
-              aria-label="Send message"
-              className="size-6 flex items-center justify-center rounded-sm text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors shrink-0 cursor-pointer"
-            >
-              <ArrowUp className="size-3.5 shrink-0" />
-            </button>
-          )}
-        </div>
-        <div className="flex items-center justify-between px-1 pt-1.5 text-10 text-muted-foreground/60 select-none">
-          <span>Enter to send, Shift+Enter for newline</span>
-        </div>
-      </form>
+      <Form {...form}>
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="p-2 border-t border-border bg-background shrink-0"
+        >
+          <div className="flex items-center gap-1 rounded-sm border border-border bg-background focus-within:ring-1 focus-within:ring-ring px-2 py-1">
+            <textarea
+              {...register('message')}
+              onKeyDown={handleKeyDown}
+              aria-label="Ask assistant"
+              placeholder="Ask a question..."
+              rows={1}
+              disabled={isStreaming}
+              className="flex-1 resize-none bg-transparent text-xs outline-none placeholder:text-muted-foreground/50 max-h-24 min-h-7 text-foreground leading-relaxed disabled:opacity-60"
+            />
+            {isStreaming ? (
+              <button
+                type="button"
+                onClick={stopStreaming}
+                aria-label="Stop generation"
+                className="size-6 flex items-center justify-center rounded-sm text-destructive hover:bg-destructive/10 focus-visible:ring-1 focus-visible:ring-destructive focus-visible:outline-none transition-colors shrink-0 cursor-pointer"
+              >
+                <Square className="size-3 fill-current shrink-0" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!canSend}
+                aria-label="Send message"
+                className="size-6 flex items-center justify-center rounded-sm text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors shrink-0 cursor-pointer"
+              >
+                <ArrowUp className="size-3.5 shrink-0" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center justify-between px-1 pt-1.5 text-10 text-muted-foreground/60 select-none">
+            <span>Enter to send, Shift+Enter for newline</span>
+          </div>
+        </form>
+      </Form>
     </div>
   );
 }

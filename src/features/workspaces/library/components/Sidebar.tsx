@@ -23,19 +23,26 @@ import {
   Files,
   PanelLeft,
   X,
+  ShieldAlert,
+  Award,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useCollections } from '@/features/workspaces/library/hooks/use-library';
-import { useCatalogItems } from '@/features/workspaces/library/hooks/use-items';
+import { useItems } from '@/features/workspaces/library/hooks/use-items';
+import { useRetraction } from '@/features/workspaces/library/hooks/use-retraction';
 import { useLibrarySidebarStore } from '@/features/workspaces/library/store/sidebar.store';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
-import { Input } from '@/shared/components/ui/input';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
+import { useAuth } from '@/features/auth/hooks/use-auth';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
 import CreateCollectionModal from './modals/CreateCollectionModal';
 import TrashModal, { type MoveToTrashTarget } from './modals/TrashModal';
-import type { Collection, CollectionInput } from '@/features/workspaces/library/types/library.types';
+import { isUnfiled } from '../utils/filter.util';
+import type { Collection, CollectionInput, Item } from '@/features/workspaces/library/types/library.types';
 
 // ── Tree Builder ──────────────────────────────────────────────────────────────
 
@@ -184,7 +191,7 @@ function CollectionNode({
                 className="flex size-4 shrink-0 items-center justify-center rounded-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
               >
                 <ChevronRight
-                  className={cn('size-3.5 transition-transform duration-150', effectiveIsOpen && 'rotate-90')}
+                  className={cn('size-3.5 transition-transform duration-150 shrink-0', effectiveIsOpen && 'rotate-90')}
                 />
               </button>
             ) : depth > 0 ? (
@@ -194,7 +201,7 @@ function CollectionNode({
             <Link
               href={to}
               onClick={onLinkClick}
-              className="flex flex-1 min-w-0 items-center gap-2 py-1 outline-none"
+              className="flex flex-1 min-w-0 items-center gap-2 py-1 outline-none shrink-0"
             >
               {hasChildren && effectiveIsOpen ? (
                 <FolderOpen className="size-4 shrink-0 text-foreground" />
@@ -348,15 +355,15 @@ function CollectionNode({
 
 export default function LibrarySideBar() {
   const { workspaceId: workspaceUrl, collectionId: activeId } = useParams() as {
-    workspaceId: string;
-    collectionId: string;
+    workspaceId?: string;
+    collectionId?: string;
   };
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
   const id = useId();
 
-  const { workspace } = useWorkspace(workspaceUrl!);
+  const { workspace } = useWorkspace(workspaceUrl);
   const workspaceId = workspace?.id || workspaceUrl || '';
 
   const collectionService = useCollections(workspaceId);
@@ -373,6 +380,7 @@ export default function LibrarySideBar() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [isLibraryExpanded, setIsLibraryExpanded] = useState(true);
+  const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
 
   // Resizable drag handle state
   const [isDragging, setIsDragging] = useState(false);
@@ -440,14 +448,35 @@ export default function LibrarySideBar() {
     setIsSearchExpanded(false);
   };
 
-  const basePath = `/${workspaceUrl}/library`;
+  const basePath = '/library';
   const currentFilter = searchParams.get('filter');
 
-  const isLibraryActive = pathname === basePath && !currentFilter && !activeId;
-  const isRecentReadActive = pathname === `${basePath}/recently-read` || (pathname === basePath && currentFilter === 'recent-read');
-  const isUnfiledActive = pathname === `${basePath}/unfiled` || (pathname === basePath && currentFilter === 'unfiled');
-  const isDuplicatesActive = pathname === `${basePath}/duplicates` || (pathname === basePath && currentFilter === 'duplicates');
-  const isTrashActive = pathname === `${basePath}/trash` || (pathname === basePath && currentFilter === 'trash');
+  const { activeScope, setActiveScope } = useLibrarySidebarStore();
+  const { projects } = useProjects();
+  const { user } = useAuth();
+  const currentUserId = user?.id;
+
+  const isPersonalScope = activeScope.type === 'personal';
+  const isLibraryActive = isPersonalScope && pathname === basePath && !currentFilter && !activeId;
+  const isRecentReadActive = isPersonalScope && (pathname === `${basePath}/recently-read` || (pathname === basePath && currentFilter === 'recent-read'));
+  const isUnfiledActive = isPersonalScope && (pathname === `${basePath}/unfiled` || (pathname === basePath && currentFilter === 'unfiled'));
+  const isDuplicatesActive = isPersonalScope && (pathname === `${basePath}/duplicates` || (pathname === basePath && currentFilter === 'duplicates'));
+  const isTrashActive = isPersonalScope && (pathname === `${basePath}/trash` || (pathname === basePath && currentFilter === 'trash'));
+  const isRetractedActive = isPersonalScope && pathname === basePath && currentFilter === 'retracted';
+  const isMyPublicationsActive =
+    isPersonalScope &&
+    (pathname === `${basePath}/my-publications` ||
+      (pathname === basePath && (currentFilter === 'my-publications' || currentFilter === 'publications')));
+
+  const { stats: retractionStats } = useRetraction(workspaceId);
+  const { allItems } = useItems({ workspaceId });
+  const myPublicationsCount = useMemo(() => {
+    return (allItems || []).filter((it: Item) => Boolean(it.isMyPublication)).length;
+  }, [allItems]);
+
+  const unfiledCount = useMemo(() => {
+    return (allItems || []).filter((it: Item) => isUnfiled(it)).length;
+  }, [allItems]);
 
   const collections = useMemo(
     () => collectionService.state.collections ?? [],
@@ -616,9 +645,11 @@ export default function LibrarySideBar() {
           minWidth: '220px',
           maxWidth: '400px',
         }}
-        className="fixed inset-y-0 left-0 z-50 md:static md:z-auto h-full overflow-x-hidden border-r border-border bg-background p-2.5 py-4 flex flex-col select-none shrink-0 shadow-none"
+        className="fixed inset-y-0 left-0 z-50 md:static md:z-auto h-full overflow-hidden border-r border-border bg-background flex flex-col select-none shrink-0 shadow-none"
       >
-      {/* Header: Matching Storage/Projects Sidebar with expandable search */}
+        {/* Upper Area: Header, Collections Tree, Views */}
+        <div className="flex-1 min-h-0 flex flex-col p-2.5 pt-4 pb-1 overflow-hidden">
+          {/* Header: Matching Storage/Projects Sidebar with expandable search */}
       <div className="mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground select-none">
         {isSearchExpanded || searchQuery ? (
           <div className="relative flex items-center transition-all duration-300 ease-in-out w-full h-8 rounded-md border border-border bg-background/80 overflow-hidden group font-normal text-xs">
@@ -717,7 +748,15 @@ export default function LibrarySideBar() {
           <div className="relative group/root flex items-center w-full">
             <Link
               href={basePath}
-              onClick={handleMobileLinkClick}
+              onClick={() => {
+                setActiveScope({
+                  type: 'personal',
+                  id: 'user',
+                  name: 'My Library',
+                  role: 'owner',
+                });
+                handleMobileLinkClick();
+              }}
               className={cn(
                 "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none select-none pr-8",
                 isLibraryActive
@@ -750,7 +789,7 @@ export default function LibrarySideBar() {
             >
               <ChevronRight
                 className={cn(
-                  'size-3.5 text-foreground transition-transform duration-150',
+                  'size-3.5 text-foreground transition-transform duration-150 shrink-0',
                   isLibraryExpanded && 'rotate-90'
                 )}
               />
@@ -760,7 +799,84 @@ export default function LibrarySideBar() {
           {/* Sub-items directly nested under My Library */}
           {isLibraryExpanded && (
             <div className="flex flex-col gap-1 w-full">
-              {/* 1. Recently Read (First item in My Library) */}
+              {/* 1. User Collections Tree */}
+              {tree.map((node) => (
+                <CollectionNode
+                  key={node.id}
+                  node={node}
+                  depth={0}
+                  {...sharedNodeProps}
+                />
+              ))}
+
+              {/* Empty Search Result */}
+              {searchQuery.trim().length > 0 && tree.length === 0 && (
+                <div className="py-6 px-3 text-center text-xs text-muted-foreground select-none">
+                  No collections matching &ldquo;{searchQuery}&rdquo;
+                </div>
+              )}
+
+              {/* 2. Unfiled Items (Inbox for items not filed into any collection) */}
+              <Link
+                href={`${basePath}/unfiled`}
+                onClick={handleMobileLinkClick}
+                className={cn(
+                  "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
+                  isUnfiledActive
+                    ? "bg-muted text-foreground font-medium"
+                    : "text-foreground hover:bg-muted font-normal"
+                )}
+              >
+                {isUnfiledActive && (
+                  <motion.div
+                    layoutId={`library-nav-active-${id}`}
+                    className="absolute inset-0 rounded-md bg-muted"
+                    initial={false}
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <Inbox className="relative z-10 size-4 shrink-0 text-foreground" />
+                <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
+                  Unfiled Items
+                </span>
+                {unfiledCount > 0 && (
+                  <span className="relative z-10 text-10 font-mono text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded-full tabular-nums shrink-0">
+                    {unfiledCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* 3. My Publications (User authored works) */}
+              <Link
+                href={`${basePath}?filter=my-publications`}
+                onClick={handleMobileLinkClick}
+                className={cn(
+                  "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
+                  isMyPublicationsActive
+                    ? "bg-muted text-foreground font-medium"
+                    : "text-foreground hover:bg-muted font-normal"
+                )}
+              >
+                {isMyPublicationsActive && (
+                  <motion.div
+                    layoutId={`library-nav-active-${id}`}
+                    className="absolute inset-0 rounded-md bg-muted"
+                    initial={false}
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <Award className="relative z-10 size-4 shrink-0 text-foreground" />
+                <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
+                  My Publications
+                </span>
+                {myPublicationsCount > 0 && (
+                  <span className="relative z-10 text-10 font-mono text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded-full tabular-nums shrink-0">
+                    {myPublicationsCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* 4. Recently Read (Reading history/activity) */}
               <Link
                 href={`${basePath}/recently-read`}
                 onClick={handleMobileLinkClick}
@@ -785,24 +901,7 @@ export default function LibrarySideBar() {
                 </span>
               </Link>
 
-              {/* User Collections Tree */}
-              {tree.map((node) => (
-                <CollectionNode
-                  key={node.id}
-                  node={node}
-                  depth={0}
-                  {...sharedNodeProps}
-                />
-              ))}
-
-              {/* Empty Search Result */}
-              {searchQuery.trim().length > 0 && tree.length === 0 && (
-                <div className="py-6 px-3 text-center text-xs text-muted-foreground select-none">
-                  No collections matching &ldquo;{searchQuery}&rdquo;
-                </div>
-              )}
-
-              {/* 2. Duplicate Items */}
+              {/* 5. Duplicate Items (Deduplication engine) */}
               <Link
                 href={`${basePath}/duplicates`}
                 onClick={handleMobileLinkClick}
@@ -827,18 +926,18 @@ export default function LibrarySideBar() {
                 </span>
               </Link>
 
-              {/* 3. Unfiled Items */}
+              {/* 6. Retracted Items (Integrity alerts) */}
               <Link
-                href={`${basePath}/unfiled`}
+                href={`${basePath}?filter=retracted`}
                 onClick={handleMobileLinkClick}
                 className={cn(
                   "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
-                  isUnfiledActive
+                  isRetractedActive
                     ? "bg-muted text-foreground font-medium"
                     : "text-foreground hover:bg-muted font-normal"
                 )}
               >
-                {isUnfiledActive && (
+                {isRetractedActive && (
                   <motion.div
                     layoutId={`library-nav-active-${id}`}
                     className="absolute inset-0 rounded-md bg-muted"
@@ -846,13 +945,18 @@ export default function LibrarySideBar() {
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
-                <Inbox className="relative z-10 size-4 shrink-0 text-foreground" />
-                <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
-                  Unfiled Items
+                <ShieldAlert className="relative z-10 size-4 shrink-0 text-foreground" />
+                <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground font-normal">
+                  Retracted Items
                 </span>
+                {retractionStats?.retractedCount ? (
+                  <span className="relative z-10 text-10 font-mono text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded-full tabular-nums shrink-0">
+                    {retractionStats.retractedCount}
+                  </span>
+                ) : null}
               </Link>
 
-              {/* 4. Trash */}
+              {/* 7. Trash */}
               <Link
                 href={`${basePath}/trash`}
                 onClick={handleMobileLinkClick}
@@ -878,8 +982,112 @@ export default function LibrarySideBar() {
               </Link>
             </div>
           )}
+
+          {/* 2. Project Libraries (Collaborative Research Groups) - Cùng cấp với My Library */}
+          <div className="mt-1 flex flex-col gap-1 w-full">
+            <div className="relative group/root flex items-center w-full">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsProjectsExpanded((v) => !v);
+                }}
+                className={cn(
+                  "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none select-none pr-8 cursor-pointer text-left",
+                  activeScope.type === 'project'
+                    ? "bg-muted text-foreground font-medium"
+                    : "text-foreground hover:bg-muted font-normal"
+                )}
+              >
+                <Users className="relative z-10 size-4 shrink-0 text-foreground" />
+                <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
+                  Project Libraries
+                </span>
+                {projects.length > 0 && (
+                  <span className="relative z-10 text-10 font-mono text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded-full tabular-nums shrink-0 mr-1">
+                    {projects.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsProjectsExpanded((v) => !v);
+                }}
+                aria-label={isProjectsExpanded ? 'Collapse Project Libraries' : 'Expand Project Libraries'}
+                className="absolute right-2 z-20 flex size-5 shrink-0 items-center justify-center rounded-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
+              >
+                <ChevronRight
+                  className={cn(
+                    'size-3.5 text-foreground transition-transform duration-150 shrink-0',
+                    isProjectsExpanded && 'rotate-90'
+                  )}
+                />
+              </button>
+            </div>
+
+            {isProjectsExpanded && (
+              <div className="flex flex-col gap-0.5 w-full">
+                {projects.length === 0 ? (
+                  <div className="pl-6 pr-2.5 py-1.5 text-11 text-muted-foreground/70 italic select-none">
+                    No project libraries
+                  </div>
+                ) : (
+                  projects.map((project) => {
+                    const isProjectActive =
+                      activeScope.type === 'project' && activeScope.id === project.id;
+                    return (
+                      <button
+                        key={project.id}
+                        type="button"
+                        onClick={() => {
+                          const member = (project.members || []).find(
+                            (m: any) => m.userId === currentUserId || m.user?.id === currentUserId,
+                          );
+                          const role =
+                            project.createdById === currentUserId
+                              ? 'owner'
+                              : (member?.role as any) || 'contributor';
+                          setActiveScope({
+                            type: 'project',
+                            id: project.id,
+                            name: project.name,
+                            role,
+                          });
+                          router.push(basePath);
+                          handleMobileLinkClick();
+                        }}
+                        className={cn(
+                          "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md pr-2.5 pl-6 text-13 leading-5 transition-colors outline-none select-none text-left cursor-pointer",
+                          isProjectActive
+                            ? "bg-muted text-foreground font-medium"
+                            : "text-foreground hover:bg-muted font-normal",
+                        )}
+                      >
+                        {isProjectActive && (
+                          <motion.div
+                            layoutId={`library-project-active-${id}`}
+                            className="absolute inset-0 rounded-md bg-muted"
+                            initial={false}
+                            transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                          />
+                        )}
+                        <Folder className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                        <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
+                          {project.name}
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+
         </nav>
       </LayoutGroup>
+      </div>
 
       {/* Drag Handle for Resizing */}
       <div

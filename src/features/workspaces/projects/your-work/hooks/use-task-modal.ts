@@ -6,6 +6,7 @@ import { getTaskProjectId } from '../utils/your-work.util';
 export interface SelectedTaskState {
   taskId: string;
   projectId: string;
+  task?: any;
 }
 
 export function useTaskModal(tasks: any[] = []) {
@@ -17,7 +18,7 @@ export function useTaskModal(tasks: any[] = []) {
       const projectId = task ? getTaskProjectId(task) : fallbackProjectId || null;
 
       if (projectId) {
-        setSelectedTask({ taskId, projectId });
+        setSelectedTask({ taskId, projectId, task });
       }
     },
     [tasks],

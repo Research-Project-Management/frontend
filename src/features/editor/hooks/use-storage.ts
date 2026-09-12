@@ -20,18 +20,18 @@ export function useEditorStorage(pageId: string | null | undefined, parentId?: s
   const uploadFileMutation = useMutation({
     mutationFn: async ({
       file,
-      workspaceId,
+      projectId,
       pageId: targetPageId,
       parentId: targetParentId,
     }: {
       file: File;
-      projectId: string;
-      workspaceId: string;
+      projectId?: string;
       pageId: string;
       parentId?: string | null;
     }) => {
       const timestamp = Date.now();
-      const fileName = `workspace/${workspaceId}/${timestamp}-${file.name}`;
+      const prefix = projectId ? `projects/${projectId}` : 'uploads';
+      const fileName = `${prefix}/${timestamp}-${file.name}`;
       const fileBase64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve((reader.result as string).split(',')[1] ?? (reader.result as string));
@@ -71,15 +71,14 @@ export function useEditorStorage(pageId: string | null | undefined, parentId?: s
       pageId: targetPageId,
     }: {
       name: string;
-      projectId: string;
-      workspaceId: string;
+      projectId?: string;
       parentId?: string | null;
       pageId?: string | null;
     }) => {
       if (targetPageId) {
         return EditorStorageService.createPageFolder(targetPageId, name, targetParentId);
       }
-      return EditorStorageService.createProjectFolder(projectId, name, targetParentId);
+      return EditorStorageService.createProjectFolder(projectId || 'default', name, targetParentId);
     },
     onSuccess: (_, variables) => {
       if (variables.pageId || variables.projectId) {

@@ -2,13 +2,13 @@
 
 import { useRef, useMemo } from 'react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { useUpload } from '@/shared/hooks/use-upload';
+import { useUpload } from "@/shared/hooks/use-upload";
 import { useUpdateProfile } from '../hooks/use-profile';
 import { toast } from 'sonner';
-import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { getErrorMessage } from '@/shared/utils/error.util';
+import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { getErrorMessage } from "@/shared/lib/utils";
 import { useForm, useWatch, type Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { updateProfileSchema } from '../schemas/profile.schema';
@@ -20,7 +20,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/shared/components/ui/form';
+} from "@/shared/components/ui";
 
 interface ProfileAvatarDisplayProps {
   control: Control<UpdateProfileFormValues>;

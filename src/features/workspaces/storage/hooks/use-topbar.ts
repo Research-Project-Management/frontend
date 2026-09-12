@@ -1,21 +1,22 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useUpload } from '@/shared/hooks/use-upload';
+import { useUpload } from "@/shared/hooks/use-upload";
 import { useCreateFileRecord } from "./use-storage";
 import { toast } from "sonner";
 import { checkDuplicateFile, deleteItem } from '../services/file.service';
 import type { UploadMode } from '../components/modal/DuplicateModal';
 
 export function useTopbar({
-  workspaceId,
+  projectId,
   parentId,
   searchQuery = "",
   onSearchChange
 }: {
-  workspaceId?: string;
+  projectId?: string;
   parentId?: string | null;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
 }) {
+  const scopeId = projectId;
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -73,14 +74,13 @@ export function useTopbar({
   }, []);
 
   const performSingleFileUpload = useCallback(async (file: File, targetFolder: string | null) => {
-    if (!workspaceId) return;
     const doUpload = async () => {
       const url = await uploadFile(file, {
-        prefix: `workspace/${workspaceId}`,
+        prefix: projectId ? `project/${projectId}` : `user`,
       });
       
       return await createFileRecord({
-        workspaceId: workspaceId,
+        projectId,
         filename: file.name,
         size: file.size,
         mimeType: file.type,
@@ -99,14 +99,12 @@ export function useTopbar({
     
     // Await the single promise task so sequential uploads in loop wait for completion
     await task.catch((err) => console.error(err));
-  }, [workspaceId, uploadFile, createFileRecord]);
+  }, [projectId, uploadFile, createFileRecord]);
 
   const handleUploadFiles = useCallback(async (filesToUpload: File[], targetFolder: string | null) => {
-    if (!workspaceId) return;
-
     for (const file of filesToUpload) {
       try {
-        const check = await checkDuplicateFile(workspaceId, file.name, targetFolder);
+        const check = await checkDuplicateFile(scopeId, file.name, targetFolder);
         
         if (check.exists && check.existingFile) {
           // Pause execution and wait for user response
@@ -138,7 +136,7 @@ export function useTopbar({
         console.error(err);
       }
     }
-  }, [workspaceId, performSingleFileUpload]);
+  }, [scopeId, performSingleFileUpload]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {

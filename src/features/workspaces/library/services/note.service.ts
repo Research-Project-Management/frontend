@@ -1,18 +1,18 @@
-import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/shared/lib/api";
 import type { Note } from '../types/library.types';
 import { noteResponseSchema, noteListResponseSchema } from '../schemas/library.schema';
 
 export interface CreateNoteDTO {
   itemId?: string | null;
   title?: string;
-  contentJson?: any;
+  contentJson?: Record<string, unknown> | null;
   contentMd?: string;
   tags?: string[];
 }
 
 export interface UpdateNoteDTO {
   title?: string;
-  contentJson?: any;
+  contentJson?: Record<string, unknown> | null;
   contentMd?: string;
   tags?: string[];
   expectedVersion?: number;
@@ -20,12 +20,12 @@ export interface UpdateNoteDTO {
 
 export const NoteService = {
   /**
-   * List notes for a workspace, optionally filtered by itemId
+   * List notes, optionally filtered by itemId
    */
-  list: async (workspaceId: string, itemId?: string): Promise<Note[]> => {
+  list: async (_scopeId?: string, itemId?: string): Promise<Note[]> => {
     const query = itemId ? `?itemId=${encodeURIComponent(itemId)}` : '';
     const raw = await apiGet<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes${query}`,
+      `/api/v1/library/notes${query}`,
     );
 
     const parsed = noteListResponseSchema.safeParse(raw);
@@ -41,9 +41,9 @@ export const NoteService = {
   /**
    * Get single note by id
    */
-  get: async (workspaceId: string, id: string): Promise<Note> => {
+  get: async (_scopeId: string | undefined, id: string): Promise<Note> => {
     const raw = await apiGet<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes/${encodeURIComponent(id)}`,
+      `/api/v1/library/notes/${encodeURIComponent(id)}`,
     );
 
     const parsed = noteResponseSchema.safeParse(raw);
@@ -56,9 +56,9 @@ export const NoteService = {
   /**
    * Create a new canonical Note
    */
-  create: async (workspaceId: string, dto: CreateNoteDTO): Promise<Note> => {
+  create: async (_scopeId: string | undefined, dto: CreateNoteDTO): Promise<Note> => {
     const raw = await apiPost<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes`,
+      `/api/v1/library/notes`,
       dto,
     );
 
@@ -73,13 +73,13 @@ export const NoteService = {
    * Update an existing Note with optimistic locking
    */
   update: async (
-    workspaceId: string,
+    _scopeId: string | undefined,
     id: string,
     expectedVersion: number | undefined,
     dto: UpdateNoteDTO,
   ): Promise<Note> => {
     const raw = await apiPatch<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes/${encodeURIComponent(id)}`,
+      `/api/v1/library/notes/${encodeURIComponent(id)}`,
       {
         ...dto,
         expectedVersion,
@@ -97,7 +97,7 @@ export const NoteService = {
    * Soft-delete a Note
    */
   delete: async (
-    workspaceId: string,
+    _scopeId: string | undefined,
     id: string,
     expectedVersion?: number,
   ): Promise<{ deleted: boolean }> => {
@@ -105,7 +105,7 @@ export const NoteService = {
       ? `?expectedVersion=${encodeURIComponent(String(expectedVersion))}`
       : '';
     const raw = await apiDelete<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes/${encodeURIComponent(id)}${versionQuery}`,
+      `/api/v1/library/notes/${encodeURIComponent(id)}${versionQuery}`,
     );
 
     if (raw && typeof raw === 'object' && 'deleted' in raw) {

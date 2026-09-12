@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
 import {
   Plus,
   Briefcase,
@@ -19,50 +18,59 @@ import {
   AlertCircle,
   RefreshCw,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { Button } from '@/shared/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/components/ui";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
+import { Skeleton } from "@/shared/components/ui";
 import { CreateProjectModal } from '../components/project/CreateProjectModal';
+import { ProjectAvatar } from "@/shared/components/ui";
 import { Topbar } from '../components/project/Topbar';
 import { Card } from '../components/project/Card';
-import { useProjects, useArchiveProject } from '../hooks/use-project';
-import { useAuth } from '@/features/auth/hooks/use-auth';
 import {
   filterActiveProjects,
   filterProjectsByVisibility,
   filterProjectsByCriteria,
-  searchProjects,
-  sortProjects,
   calculateProjectFilterCounts,
+  sortProjects,
+  searchProjects,
   isProjectPrivate,
-  type ProjectVisibilityFilter,
-  type ProjectSortOption,
   type ProjectFilterCriteria,
+  type ProjectSortOption,
+  type ProjectVisibilityFilter,
 } from '../utils/projects-page.util';
 import { filterArchivedProjects } from '../utils/archive-page.util';
-import { cn } from '@/shared/lib/utils';
+import {
+  useProjects,
+  useArchiveProject,
+} from '../hooks/use-project';
+import { useAuth } from '@/features/auth/hooks/use-auth';
+import { cn } from "@/shared/lib/utils";
 import type { Project } from '../types/project.types';
 
 type ViewMode = 'grid' | 'list';
 
 function ProjectCardSkeleton() {
   return (
-    <div className="flex flex-col rounded-md border border-border bg-card overflow-hidden h-48 animate-pulse">
-      <div className="h-24 bg-muted" />
-      <div className="pt-6 px-4 pb-4 space-y-2.5">
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-3 w-1/3" />
-        <Skeleton className="h-3 w-1/2" />
-      </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div
+          key={i}
+          className="flex flex-col rounded-lg border border-border bg-card p-4 space-y-3 animate-pulse"
+        >
+          <Skeleton className="h-24 w-full rounded-md" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-3 w-1/3" />
+            <Skeleton className="h-3 w-1/2" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
 
 export function ProjectsPage() {
-  const params = useParams<{ workspaceId: string }>();
-  const workspaceId = params.workspaceId;
   const { user } = useAuth();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -89,7 +97,7 @@ export function ProjectsPage() {
     }
   }, []);
 
-  const { projects: rawProjects = [], isLoading, isError } = useProjects(workspaceId);
+  const { projects: rawProjects = [], isLoading, isError } = useProjects();
   const archiveProjectMutation = useArchiveProject();
 
   const handleSetViewMode = (mode: ViewMode) => {
@@ -135,9 +143,8 @@ export function ProjectsPage() {
     e.preventDefault();
     e.stopPropagation();
     if (typeof window !== 'undefined') {
-      navigator.clipboard.writeText(
-        `${window.location.origin}/${workspaceId}/projects/${projectId}/overview`
-      );
+      const url = `${window.location.origin}/projects/${projectId}/work-items`;
+      navigator.clipboard.writeText(url);
     }
   };
 
@@ -333,7 +340,6 @@ export function ProjectsPage() {
               <Card
                 key={project.id}
                 project={project}
-                workspaceId={workspaceId}
                 onArchive={handleArchiveProject}
               />
             ))}
@@ -349,7 +355,7 @@ export function ProjectsPage() {
               const isPrivate = isProjectPrivate(project);
 
               const leadMember = project.members?.find(
-                (m: any) => m.role === 'manager' || m.role === 'lead' || m.role === 'owner' || m.role === 'admin'
+                (m: any) => m.role === 'owner' || m.role === 'lead'
               );
               const leadUser =
                 leadMember?.user ||
@@ -362,19 +368,15 @@ export function ProjectsPage() {
                 >
                   {/* Left: Avatar + Title + Key + Description */}
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="size-8 rounded-lg bg-muted border border-border flex items-center justify-center text-base shrink-0 font-semibold text-foreground">
-                      {project.avatar ? (
-                        <span>{project.avatar}</span>
-                      ) : (
-                        <span>{project.name ? project.name.charAt(0).toUpperCase() : 'P'}</span>
-                      )}
+                    <div className="size-8 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden font-semibold text-foreground">
+                      <ProjectAvatar avatar={project.avatar} name={project.name} size="md" />
                     </div>
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 min-w-0">
                         <Link
-                          href={`/${workspaceId}/projects/${projectId}/overview`}
-                          className="font-semibold text-foreground hover:underline transition-colors truncate block"
+                          href={`/projects/${projectId}/work-items`}
+                          className="font-semibold text-foreground hover:underline transition-colors truncate block shrink-0"
                         >
                           {project.name}
                         </Link>
@@ -452,8 +454,8 @@ export function ProjectsPage() {
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild className="cursor-pointer font-medium">
                           <Link
-                            href={`/${workspaceId}/projects/${projectId}/settings`}
-                            className="flex items-center gap-2 w-full"
+                            href={`/projects/${projectId}/settings`}
+                            className="flex items-center gap-2 w-full shrink-0"
                           >
                             <Settings className="size-3.5 shrink-0" />
                             <span>Settings</span>
@@ -531,17 +533,11 @@ export function ProjectsPage() {
       </div>
 
       {/* Create Project Modal */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent
-          onCloseAutoFocus={(e: Event) => e.preventDefault()}
-          className="sm:max-w-xl bg-popover"
-        >
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-foreground">New Project</DialogTitle>
-          </DialogHeader>
-          <CreateProjectModal onSuccess={() => setIsCreateOpen(false)} />
-        </DialogContent>
-      </Dialog>
+      <CreateProjectModal
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onSuccess={() => setIsCreateOpen(false)}
+      />
     </div>
   );
 }

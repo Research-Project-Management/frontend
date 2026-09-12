@@ -1,17 +1,18 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { FileText, Plus, X, ExternalLink, Loader2 } from 'lucide-react';
 import { useRelations } from '@/features/workspaces/library/hooks/use-relations';
 import { useViewItems } from '@/features/workspaces/library/hooks/use-items';
-import { Button } from '@/shared/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog';
-import type { CatalogItem, RelatedItem } from '@/features/workspaces/library/types/library.types';
-import { cn } from '@/shared/lib/utils';
+import { Button } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/components/ui";
+import type { Item, RelatedItem } from '@/features/workspaces/library/types/library.types';
+import { cn } from "@/shared/lib/utils";
 
 interface RelatedSectionProps {
-  paper: CatalogItem;
-  workspaceId: string;
+  paper: Item;
+  workspaceId?: string;
+  scopeId?: string;
   onSelectPaper?: (paperId: string) => void;
   hideHeader?: boolean;
   forceAdding?: boolean;
@@ -22,15 +23,16 @@ interface RelatedSectionProps {
 export default function RelatedSection({
   paper,
   workspaceId,
+  scopeId,
   onSelectPaper,
   hideHeader = false,
   forceAdding = false,
   isAddOpen,
   onAddOpenChange,
 }: RelatedSectionProps) {
-  const activeWorkspaceId = workspaceId || paper.workspaceId || '';
-  const { relatedItems, isLoading, link, unlink, isLinking } = useRelations(activeWorkspaceId, paper.id || '');
-  const { data: allItemsRes } = useViewItems(activeWorkspaceId, 'all');
+  const activeScopeId = scopeId || workspaceId || (paper as any)?.workspaceId || (paper as any)?.projectId || '';
+  const { relatedItems, isLoading, link, unlink, isLinking } = useRelations(activeScopeId, paper.id || '');
+  const { data: allItemsRes } = useViewItems(activeScopeId, 'all');
 
   const [internalAddOpen, setInternalAddOpen] = useState(false);
   const isModalOpen = isAddOpen !== undefined ? isAddOpen : internalAddOpen;
@@ -47,7 +49,7 @@ export default function RelatedSection({
 
   const relatedList: RelatedItem[] = relatedItems;
   const availableItems = (allItemsRes?.items || []).filter(
-    (targetItem: CatalogItem) =>
+    (targetItem: Item) =>
       targetItem.id !== paper.id &&
       !relatedList.some((rel) => rel.id === targetItem.id) &&
       (searchQuery.trim() === '' ||
@@ -144,7 +146,7 @@ export default function RelatedSection({
 
       {/* Add Related Item Dialog */}
       <Dialog open={isModalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-md bg-background text-foreground p-5 space-y-4 shadow-none border border-border rounded-md">
+        <DialogContent className="sm:max-w-md bg-background text-foreground p-5 space-y-4 shadow-none border border-border rounded-lg">
           <DialogHeader className="p-0 space-y-1">
             <DialogTitle className="text-sm font-semibold text-foreground">
               Add Related Item
@@ -171,7 +173,7 @@ export default function RelatedSection({
                   No other items available to link
                 </p>
               ) : (
-                availableItems.map((targetItem: CatalogItem) => {
+                availableItems.map((targetItem: Item) => {
                   const isSelected = selectedTargetId === targetItem.id;
                   return (
                     <button

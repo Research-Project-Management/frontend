@@ -2,17 +2,16 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Skeleton } from "@/shared/components/ui";
 import { GeneralBanner } from '../components/general/Banner';
 import { GeneralDetails } from '../components/general/Details';
 import { GeneralDanger } from '../components/general/Danger';
 import { useGeneral } from '../hooks/use-general';
 
 export default function GeneralPage() {
-  const { workspaceId, projectId } = useParams() as {
-    workspaceId: string;
+  const { projectId } = useParams<{
     projectId: string;
-  };
+  }>();
 
   const {
     project,
@@ -29,13 +28,12 @@ export default function GeneralPage() {
     cover,
     isPrivate,
     setIsPrivate,
-    timezone,
-    setTimezone,
     isArchived,
     createdAt,
     // Actions
     hasChanges,
     save,
+    errors,
     isSaving,
     isUploading,
     handleSelectAvatar,
@@ -44,29 +42,29 @@ export default function GeneralPage() {
     toggleArchive,
     deleteProj,
     isDeleting,
-  } = useGeneral(projectId, workspaceId);
+  } = useGeneral(projectId);
 
   if (isLoading) {
     return (
-      <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-6">
-        <Skeleton className="h-48 w-full rounded-lg" />
-        <Skeleton className="h-10 w-full rounded-lg" />
-        <Skeleton className="h-28 w-full rounded-lg" />
-        <Skeleton className="h-10 w-full rounded-lg" />
+      <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
+        <Skeleton className="h-48 w-full rounded-md" />
+        <Skeleton className="h-10 w-full rounded-md" />
+        <Skeleton className="h-28 w-full rounded-md" />
+        <Skeleton className="h-10 w-full rounded-md" />
       </div>
     );
   }
 
   if (isError || !project) {
     return (
-      <div className="px-6 md:px-10 lg:px-12 py-8 text-sm text-muted-foreground">
+      <div className="max-w-5xl mx-auto p-6 md:p-8 text-sm text-muted-foreground">
         Error loading project details.
       </div>
     );
   }
 
   return (
-    <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
       {/* ── Visual Banner & Icon (Image 1) ── */}
       <GeneralBanner
         name={name}
@@ -86,15 +84,14 @@ export default function GeneralPage() {
         identifier={identifier}
         description={description}
         isPrivate={isPrivate}
-        timezone={timezone}
         createdAt={createdAt}
         isSaving={isSaving}
         hasChanges={hasChanges}
+        errors={errors}
         onNameChange={setName}
         onIdentifierChange={setIdentifier}
         onDescriptionChange={setDescription}
         onPrivateChange={setIsPrivate}
-        onTimezoneChange={setTimezone}
         onSubmit={save}
       />
 

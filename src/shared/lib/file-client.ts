@@ -20,7 +20,7 @@ export interface ThumbnailOptions {
 }
 
 export interface UploadScope {
-  readonly type: 'workspace' | 'project' | 'page' | 'general';
+  readonly type: 'project' | 'page' | 'general';
   readonly id?: string;
 }
 
@@ -201,25 +201,19 @@ export function uploadFileWithDetails(
       const parts = prefix.split('/').filter(Boolean);
       if (parts.length >= 2) {
         if (parts.includes('library')) {
-          const extractedWorkspaceId = parts.find((p) => p !== 'library') || parts[0];
-          formData.append('workspaceId', extractedWorkspaceId);
           formData.append('source', 'library');
-        } else if (parts[0] === 'workspace' && parts[1] !== 'avatars') {
-          formData.append('workspaceId', parts[1]);
         } else if (parts[0] === 'project') {
           formData.append('projectId', parts[1]);
         } else if (parts[0] === 'page') {
           formData.append('pageId', parts[1]);
         }
-      } else if (parts.length === 1 && !['avatars', 'general', 'workspace'].includes(parts[0])) {
-        formData.append('workspaceId', parts[0]);
+      } else if (parts.length === 1 && !['avatars', 'general', 'projects'].includes(parts[0])) {
+        formData.append('projectId', parts[0]);
       }
     } else if (scope) {
       if ((scope.type as string) === 'library' && scope.id) {
-        formData.append('workspaceId', scope.id);
+        formData.append('projectId', scope.id);
         formData.append('source', 'library');
-      } else if (scope.type === 'workspace' && scope.id) {
-        formData.append('workspaceId', scope.id);
       } else if (scope.type === 'project' && scope.id) {
         formData.append('projectId', scope.id);
       } else if (scope.type === 'page' && scope.id) {

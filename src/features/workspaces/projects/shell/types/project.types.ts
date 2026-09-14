@@ -21,12 +21,3 @@ export type UpdateProjectInput = z.infer<typeof UpdateProjectInputSchema>;
 export type ProjectDetailResponse = z.infer<typeof ProjectDetailResponseSchema>;
 export type ProjectListResponse = z.infer<typeof ProjectListResponseSchema>;
 
-export interface WorkspaceSummary {
-  id: string;
-  name: string;
-  slug?: string;
-  url?: string;
-}
-
-export type Workspace = WorkspaceSummary;
-

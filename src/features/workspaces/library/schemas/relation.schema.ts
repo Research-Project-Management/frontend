@@ -2,7 +2,14 @@ import { z } from 'zod';
 
 export const relationTypeSchema = z.enum([
   'related',
+  'cites',
+  'cited_by',
+  'replicates',
   'extends',
+  'is_preprint_of',
+  'is_published_version_of',
+  'is_translation_of',
+  'supplements',
   'rebuts',
   'uses_dataset',
   'survey_of',

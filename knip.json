@@ -1,0 +1,14 @@
+﻿{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/app/**/{page,layout,template,error,not-found,loading,route,default}.{js,ts,jsx,tsx}",
+    "src/app/**/*.{js,ts,jsx,tsx}",
+    "next.config.{js,ts,mjs}",
+    "src/proxy.ts",
+    "playwright.config.ts",
+    "vitest.config.ts"
+  ],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignore": ["**/*.d.ts"],
+  "ignoreDependencies": ["tw-animate-css"]
+}

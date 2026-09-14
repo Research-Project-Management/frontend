@@ -3,13 +3,13 @@ import type { Cycle, CreateCycleInput, UpdateCycleInput } from "../types/cycle.t
 
 export const CycleService = {
   getProjectCycles: (projectId: string) =>
-    apiGet<{ cycles: Cycle[] }>(`/api/project/${projectId}/cycles`),
+    apiGet<{ cycles: Cycle[] }>(`/api/projects/${projectId}/cycles`),
 
   getCycle: (cycleId: string) =>
     apiGet<{ cycle: Cycle }>(`/api/cycles/${cycleId}`),
 
   create: ({ projectId, ...data }: { projectId: string } & Partial<CreateCycleInput>) =>
-    apiPost<{ cycle?: Cycle }>(`/api/project/${projectId}/cycles`, data),
+    apiPost<{ cycle?: Cycle }>(`/api/projects/${projectId}/cycles`, data),
 
   update: ({ cycleId, ...data }: { cycleId: string; projectId?: string } & Partial<UpdateCycleInput>) =>
     apiPut<{ cycle?: Cycle }>(`/api/cycles/${cycleId}`, data),

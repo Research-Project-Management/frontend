@@ -109,9 +109,18 @@ export const AnnotationsService = {
     attachmentId: string,
     dto: CreateAnnotationDTO,
   ): Promise<ReaderAnnotation> => {
+    const rawType = (dto as any)?.type;
+    const resolvedType =
+      rawType === 'box' || rawType === 'area'
+        ? 'rect'
+        : rawType === 'strike'
+          ? 'underline'
+          : rawType;
+    const payload = { ...dto, ...(resolvedType ? { type: resolvedType } : {}) };
+
     const raw = await apiPost<AnnotationSingleResponse>(
       `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/annotations`,
-      dto,
+      payload,
     );
     if (raw && typeof raw === 'object') {
       if ('data' in raw && raw.data) return raw.data;

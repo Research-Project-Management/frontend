@@ -1,7 +1,9 @@
 import React from "react";
-import { type Sticky } from '@/features/workspaces/projects/stickies/types/sticky.types';
-import { type StickyColor } from '@/features/workspaces/projects/stickies/types/sticky.types';
-import { STICKY_COLOR_MAP } from '@/features/workspaces/projects/stickies/types/sticky.types';
+import {
+  type Sticky,
+  type StickyColor,
+  STICKY_COLOR_MAP,
+} from '@/features/workspaces/projects/stickies/types/sticky.types';
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 import { Palette } from "lucide-react";
 import { ToolbarBtn } from "../ui/ToolbarBtn";
@@ -33,7 +35,7 @@ export default function ColorModal({
       </PopoverTrigger>
       <PopoverContent 
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="w-[242px] p-0 rounded-md z-[100] bg-popover border border-border text-popover-foreground overflow-hidden" 
+        className="w-[180px] p-0 rounded-md z-[100] bg-popover border border-border text-popover-foreground overflow-hidden" 
         align="start" 
         side="top" 
         sideOffset={14}
@@ -50,7 +52,7 @@ export default function ColorModal({
               <div className="mb-2.5 text-xs font-semibold text-muted-foreground">
                 Background colors
               </div>
-              <div className="grid grid-cols-6 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 {(Object.keys(STICKY_COLOR_MAP) as StickyColor[]).map((color) => (
                   <motion.button
                     key={color}

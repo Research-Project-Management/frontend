@@ -13,9 +13,6 @@ interface TopBarProps {
   onAddSticky: () => void;
   isAddingSticky: boolean;
   addLabel?: string;
-  projectFilter?: string[];
-  onProjectFilterChange?: (projectIds: string[]) => void;
-  availableProjectIds?: string[];
 }
 
 export default function TopBar({

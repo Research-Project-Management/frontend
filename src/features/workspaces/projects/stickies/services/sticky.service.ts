@@ -20,26 +20,38 @@ export const normalizeSticky = (s: Partial<Sticky> | null | undefined): Sticky =
   } as Sticky;
 };
 
-export const getStickies = async (_workspaceId?: string, search?: string, _projectId?: string): Promise<Sticky[]> => {
+export const getStickies = async (
+  _workspaceId?: string,
+  search?: string,
+  projectId?: string,
+): Promise<Sticky[]> => {
   const params = new URLSearchParams();
   if (search) params.append("search", search);
   const queryStr = params.toString() ? `?${params.toString()}` : "";
 
-  const data = await apiGet<{ stickies: Partial<Sticky>[] }>(`/api/me/stickies${queryStr}`);
+  const url = projectId
+    ? `/api/projects/${projectId}/stickies${queryStr}`
+    : `/api/me/stickies${queryStr}`;
+
+  const data = await apiGet<{ stickies: Partial<Sticky>[] }>(url);
   return (data?.stickies || []).map(normalizeSticky);
 };
 
-export const createSticky = async (variables: {
+export const createSticky = async (variables?: {
   workspaceId?: string;
   title?: string;
-  content: string;
+  content?: string;
   color?: string;
   position?: { x: number; y: number };
   projectId?: string;
 }): Promise<Sticky> => {
-  const { workspaceId: _w, projectId: _p, ...payload } = variables;
+  const { workspaceId: _w, ...payload } = variables || {};
+  const url = variables?.projectId
+    ? `/api/projects/${variables.projectId}/stickies`
+    : `/api/me/stickies`;
+
   const res = await apiPost<{ sticky: Partial<Sticky> } | Partial<Sticky>>(
-    `/api/me/stickies`,
+    url,
     payload,
   );
   const stickyData = res && 'sticky' in res ? res.sticky : res;
@@ -60,6 +72,14 @@ export const deleteSticky = async (stickyId: string) => {
   return apiDelete(`/api/stickies/${stickyId}`);
 };
 
-export const reorderStickies = async (_workspaceId?: string, stickyIds: string[] = [], _projectId?: string) => {
-  return apiPut('/api/me/stickies/reorder', { stickyIds });
+export const reorderStickies = async (
+  _workspaceId?: string,
+  stickyIds: string[] = [],
+  projectId?: string,
+) => {
+  const url = projectId
+    ? `/api/projects/${projectId}/stickies/reorder`
+    : '/api/me/stickies/reorder';
+  return apiPut(url, { stickyIds });
 };
+

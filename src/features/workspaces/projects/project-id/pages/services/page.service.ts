@@ -6,13 +6,13 @@ export const PageService = {
     const params: Record<string, string> = {};
     if (status && status !== 'all') params.status = status;
     if (search) params.search = search;
-    const res = await apiGet<{ pages: Page[] }>(`/api/project/${projectId}/pages`, { params });
+    const res = await apiGet<{ pages: Page[] }>(`/api/projects/${projectId}/pages`, { params });
     return res.pages;
   },
 
   create: async (input: CreatePageInput) => {
     const res = await apiPost<{ page: Page; mainFile?: { id: string; [key: string]: unknown } | string | null }>(
-      `/api/project/${input.projectId}/pages`,
+      `/api/projects/${input.projectId}/pages`,
       { title: input.title, content: input.content, status: input.status },
     );
     const mainFile = res.mainFile || null;

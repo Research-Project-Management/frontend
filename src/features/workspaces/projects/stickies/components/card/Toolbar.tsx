@@ -1,7 +1,7 @@
 'use client';
 
 import type { Sticky } from "@/features/workspaces/projects/stickies/types/sticky.types";
-import { Palette, Bold, Italic, ListTodo, Trash2 } from "lucide-react";
+import { Bold, Italic, ListTodo, Trash2 } from "lucide-react";
 import React from "react";
 import type { Editor } from "@tiptap/react";
 import { ToolbarBtn } from "../ui/ToolbarBtn";

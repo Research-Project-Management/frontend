@@ -14,8 +14,10 @@ export const annotationTypeSchema = z.enum([
   'underline',
   'strike',
   'note',
+  'rect',
   'box',
   'area',
+  'image',
 ]);
 
 const baseAnnotationFields = {
@@ -130,7 +132,7 @@ export const primaryFileSchema = z.object({
 
 export const readerNoteSchema = z.object({
   id: z.string(),
-  workspaceId: z.string().optional(),
+  projectId: z.string().optional(),
   itemId: z.string().nullable().optional(),
   title: z.string().optional(),
   contentJson: z.unknown().optional(),
@@ -142,7 +144,7 @@ export const readerNoteSchema = z.object({
 });
 
 export const createNoteSchema = z.object({
-  workspaceId: z.string().optional(),
+  projectId: z.string().optional(),
   itemId: z.string().nullable().optional(),
   title: z.string().default('Untitled Note'),
   contentJson: z.unknown().optional(),
@@ -159,7 +161,7 @@ export const updateNoteSchema = z.object({
 
 export const readerCollectionSchema = z.object({
   id: z.string(),
-  workspaceId: z.string().optional(),
+  projectId: z.string().optional(),
   name: z.string(),
   description: z.string().optional(),
   color: z.string().optional(),
@@ -197,7 +199,7 @@ const documentPublicationFields = {
 
 export const readerDocumentSchema = z.object({
   id: z.string(),
-  workspaceId: z.string().optional(),
+  projectId: z.string().optional(),
   collectionId: z.string().nullable().optional(),
   title: z.string(),
   itemType: z.string().optional(),
@@ -265,7 +267,7 @@ export const readerPaperContextSchema = z.object({
   year: z.number().nullable().optional(),
   doi: z.string().optional(),
   ragDocId: z.string().optional(),
-  workspaceId: z.string().optional(),
+  projectId: z.string().optional(),
 });
 
 // ── Form Schemas for React Hook Form ──────────────────────────────────────────

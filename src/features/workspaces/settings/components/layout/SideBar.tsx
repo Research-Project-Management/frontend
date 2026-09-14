@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Puzzle, Tag, User, SlidersHorizontal, Bell, Lock } from 'lucide-react';
+import { Tag, User, SlidersHorizontal, Bell, Lock } from 'lucide-react';
 import React, { useId } from 'react';
 import { motion, LayoutGroup } from 'framer-motion';
 import Link from 'next/link';
@@ -26,7 +26,6 @@ export function SideBar() {
 
   const systemItems: NavItem[] = [
     { label: 'Labels', icon: Tag, to: '/settings/labels' },
-    { label: 'Integrations', icon: Puzzle, to: '/settings/integrations' },
   ];
 
   const renderItem = (item: NavItem) => {

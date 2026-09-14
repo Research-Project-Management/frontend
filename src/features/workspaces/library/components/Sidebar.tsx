@@ -26,8 +26,11 @@ import {
   ShieldAlert,
   Award,
   Users,
+  Download,
+  FileDown,
 } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { cn } from "@/shared/lib/utils";
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useCollections } from '@/features/workspaces/library/hooks/use-library';
@@ -40,6 +43,7 @@ import { Input } from "@/shared/components/ui";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
 import CreateCollectionModal from './modals/CreateCollectionModal';
 import TrashModal, { type MoveToTrashTarget } from './modals/TrashModal';
+import { CollectionService } from '../services/collection.service';
 import type { Collection, CollectionInput, Item } from '@/features/workspaces/library/types/library.types';
 
 // ── Tree Builder ──────────────────────────────────────────────────────────────
@@ -103,6 +107,8 @@ interface NodeProps {
   onMove: (collectionId: string, newParentId: string | null) => void;
   onCopy: (collectionId: string, targetParentId: string | null) => void;
   onCreateSub: (parentId: string, parentName: string) => void;
+  onExportBibtex?: (id: string, name: string) => void;
+  onExportBundle?: (id: string, name: string) => void;
   onLinkClick?: () => void;
 }
 
@@ -124,6 +130,8 @@ function CollectionNode({
   onMove,
   onCopy,
   onCreateSub,
+  onExportBibtex,
+  onExportBundle,
   onLinkClick,
 }: NodeProps) {
   const to = `${basePath}/${node.id}`;
@@ -298,6 +306,26 @@ function CollectionNode({
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
 
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem
+                  className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-muted focus:bg-muted"
+                  onClick={() => onExportBibtex?.(node.id, node.name)}
+                >
+                  <FileDown className="size-4 text-foreground shrink-0" />
+                  <span>Export BibTeX (.bib)</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-muted focus:bg-muted"
+                  onClick={() => onExportBundle?.(node.id, node.name)}
+                >
+                  <Download className="size-4 text-foreground shrink-0" />
+                  <span>Export Bundle (.json)</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
                 <DropdownMenuItem
                   className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-muted focus:bg-muted"
                   onClick={() => onDelete(node.id)}
@@ -341,6 +369,9 @@ function CollectionNode({
               onMove={onMove}
               onCopy={onCopy}
               onCreateSub={onCreateSub}
+              onExportBibtex={onExportBibtex}
+              onExportBundle={onExportBundle}
+              onLinkClick={onLinkClick}
             />
           ))}
         </div>
@@ -473,10 +504,10 @@ export default function LibrarySideBar() {
     (pathname === `${basePath}/my-publications` ||
       (pathname === basePath && (currentFilter === 'my-publications' || currentFilter === 'publications')));
 
-  const myPublicationsCount = 0;
-  const unfiledCount = 0;
-  const duplicateCount = 0;
-  const canManageCollections = true;
+  const canManageCollections =
+    activeScope.type === 'personal' ||
+    activeScope.role === 'owner' ||
+    activeScope.role === 'contributor';
   const { stats: retractionStats } = useRetraction(effectiveScopeId);
 
   const personalCollections = useMemo(
@@ -913,11 +944,6 @@ export default function LibrarySideBar() {
                 <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
                   Unfiled Items
                 </span>
-                {unfiledCount > 0 && (
-                  <span className="relative z-10 text-10 font-mono text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded-full tabular-nums shrink-0">
-                    {unfiledCount}
-                  </span>
-                )}
               </Link>
 
               {/* 4. Duplicate Items (Deduplication engine) */}
@@ -951,11 +977,6 @@ export default function LibrarySideBar() {
                 <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
                   Duplicate Items
                 </span>
-                {duplicateCount > 0 && (
-                  <span className="relative z-10 text-10 font-mono text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded-full tabular-nums shrink-0">
-                    {duplicateCount}
-                  </span>
-                )}
               </Link>
 
               {/* 5. My Publications (User authored works) */}
@@ -989,11 +1010,6 @@ export default function LibrarySideBar() {
                 <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
                   My Publications
                 </span>
-                {myPublicationsCount > 0 && (
-                  <span className="relative z-10 text-10 font-mono text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded-full tabular-nums shrink-0">
-                    {myPublicationsCount}
-                  </span>
-                )}
               </Link>
 
               {/* 6. Retracted Items (Integrity alerts) */}

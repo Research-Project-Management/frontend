@@ -1,11 +1,9 @@
 'use client';
 
 import { useState, useCallback, useMemo } from "react";
-import { useParams } from "next/navigation";
 import { useSticky } from '@/features/workspaces/projects/stickies/hooks/use-sticky';
-import { type Sticky, STICKY_COLOR_CYCLE } from '@/features/workspaces/projects/stickies/types/sticky.types';
+import { type Sticky } from '@/features/workspaces/projects/stickies/types/sticky.types';
 import { isStickyEmpty, stripHtml } from '@/features/workspaces/projects/stickies/utils/sticky.utils';
-import { toast } from "sonner";
 import {
   MouseSensor,
   TouchSensor,
@@ -19,12 +17,20 @@ import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
 const getStickyId = (sticky: Sticky): string => String(sticky.id || '');
 
-export const useCard = (options?: { search?: string }) => {
+export interface UseCardOptions {
+  search?: string;
+  projectId?: string;
+  workspaceId?: string;
+}
+
+export const useCard = (options?: UseCardOptions) => {
   const search = options?.search;
+  const projectId = options?.projectId;
+  const workspaceId = options?.workspaceId;
 
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const api = useSticky(undefined, search, undefined);
+  const api = useSticky(workspaceId, search, projectId);
   const rawStickies = useMemo(() => (api.query.data || []) as Sticky[], [api.query.data]);
 
   const stickies = useMemo(() => {
@@ -49,7 +55,6 @@ export const useCard = (options?: { search?: string }) => {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const getStickyId = (s: Sticky) => s.id || '';
   const hasEmptySticky = stickies.some(isStickyEmpty);
 
   return {
@@ -67,27 +72,11 @@ export const useCard = (options?: { search?: string }) => {
     actions: {
       add: useCallback(() => {
         if (isCreatePending) return;
-
-        if (stickies.some(isStickyEmpty)) {
-          toast.info("Please add content to your empty sticky before creating a new one", {
-            id: "empty-sticky-info",
-          });
-          return;
-        }
-
-        const lastColor = stickies.length > 0 ? stickies[0].color : undefined;
-        const idx = lastColor ? STICKY_COLOR_CYCLE.indexOf(lastColor) : -1;
-        const nextColor = STICKY_COLOR_CYCLE[idx === -1 ? 0 : (idx + 1) % STICKY_COLOR_CYCLE.length];
-
-        createStickyMutate({
-          content: "<p></p>",
-          color: nextColor,
-          position: { x: 0, y: 0 },
-        });
-      }, [stickies, createStickyMutate, isCreatePending]),
+        createStickyMutate({ projectId });
+      }, [createStickyMutate, isCreatePending, projectId]),
 
       update: useCallback(
-        (id: string, updates: any) =>
+        (id: string, updates: Partial<Sticky>) =>
           updateStickyMutate({ stickyId: id, updates }),
         [updateStickyMutate],
       ),
@@ -109,24 +98,25 @@ export const useCard = (options?: { search?: string }) => {
           const { active, over } = event;
           if (!over || active.id === over.id) return;
 
-          const oldIdx = stickies.findIndex(
+          const oldIdx = rawStickies.findIndex(
             (sticky: Sticky) => getStickyId(sticky) === String(active.id),
           );
-          const newIdx = stickies.findIndex(
+          const newIdx = rawStickies.findIndex(
             (sticky: Sticky) => getStickyId(sticky) === String(over.id),
           );
 
           if (oldIdx !== -1 && newIdx !== -1) {
             const newOrderIds: string[] = arrayMove<string>(
-              stickies.map(getStickyId).filter((id): id is string => Boolean(id)),
+              rawStickies.map(getStickyId).filter((id): id is string => Boolean(id)),
               oldIdx,
               newIdx,
             );
             reorderStickyMutate(newOrderIds);
           }
         },
-        [stickies, reorderStickyMutate],
+        [rawStickies, reorderStickyMutate],
       ),
     },
   };
 };
+

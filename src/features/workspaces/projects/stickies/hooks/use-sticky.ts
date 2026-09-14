@@ -3,9 +3,14 @@ import { toast } from "sonner";
 import { stickyKeys } from "../constants/sticky.keys";
 import { getStickies, createSticky, updateSticky, deleteSticky, reorderStickies } from "../services/sticky.service";
 import type { Sticky } from "../types/sticky.types";
-export const useSticky = (workspaceId?: string, search?: string, projectId?: string, options?: { enabled?: boolean }) => {
+export const useSticky = (
+  workspaceId?: string,
+  search?: string,
+  projectId?: string,
+  options?: { enabled?: boolean },
+) => {
   const queryClient = useQueryClient();
-  const fullQueryKey = stickyKeys.list(search);
+  const fullQueryKey = stickyKeys.list(search, projectId);
   const invalidateKey = stickyKeys.all;
 
   const query = useQuery({
@@ -16,14 +21,18 @@ export const useSticky = (workspaceId?: string, search?: string, projectId?: str
   });
 
   const create = useMutation({
-    mutationFn: (variables: {
+    mutationFn: (variables?: {
       workspaceId?: string;
       title?: string;
-      content: string;
+      content?: string;
       color?: string;
       position?: { x: number; y: number };
       projectId?: string;
-    }) => createSticky(variables),
+    }) =>
+      createSticky({
+        ...variables,
+        projectId: variables?.projectId ?? projectId,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: invalidateKey });
       toast.success("Sticky added", { id: "sticky-action" });

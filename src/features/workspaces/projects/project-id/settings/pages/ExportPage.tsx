@@ -39,7 +39,7 @@ export default function ExportPage() {
         toast.success(`Exported ${reportType}.${extension}`);
       } else if (extension === 'md') {
         const [projRes, countsRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/project/${projectId}`, { headers })
+          fetch(`${API_BASE_URL}/api/projects/${projectId}`, { headers })
             .then((r) => (r.ok ? r.json() : null))
             .catch(() => null),
           fetch(`${API_BASE_URL}/api/projects/${projectId}/states/counts`, { headers })

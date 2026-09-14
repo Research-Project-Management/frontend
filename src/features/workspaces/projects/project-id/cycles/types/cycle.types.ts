@@ -1,6 +1,5 @@
 import { z } from "zod";
 import {
-  cyclePhaseSchema,
   cycleStatusSchema,
   cycleMilestoneSchema,
   cycleDeliverableSchema,
@@ -8,9 +7,6 @@ import {
   createCycleInputSchema,
   updateCycleInputSchema,
 } from "../schemas/cycle.schema";
-
-
-export type CyclePhase = z.infer<typeof cyclePhaseSchema>;
 export type CycleStatus = z.infer<typeof cycleStatusSchema>;
 export type CycleMilestone = z.infer<typeof cycleMilestoneSchema>;
 export type CycleDeliverable = z.infer<typeof cycleDeliverableSchema>;

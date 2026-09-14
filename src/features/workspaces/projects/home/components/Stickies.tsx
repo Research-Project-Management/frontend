@@ -6,8 +6,7 @@ import { Plus, Loader2, Search, X } from 'lucide-react';
 import { useSticky } from '@/features/workspaces/projects/stickies/hooks/use-sticky';
 import Card from '@/features/workspaces/projects/stickies/components/card/Card';
 import type { Sticky } from '@/features/workspaces/projects/stickies/types/sticky.types';
-import { STICKY_COLOR_CYCLE } from '@/features/workspaces/projects/stickies/types/sticky.types';
-import { stripHtml, isStickyEmpty } from '@/features/workspaces/projects/stickies/utils/sticky.utils';
+import { stripHtml } from '@/features/workspaces/projects/stickies/utils/sticky.utils';
 
 export default function Stickies() {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -32,18 +31,7 @@ export default function Stickies() {
 
   const handleAdd = () => {
     if (mutations.create.isPending) return;
-    if (notes.some(isStickyEmpty)) return;
-
-    const lastColor = notes[0]?.color;
-    const idx = STICKY_COLOR_CYCLE.indexOf(lastColor || 'yellow-1');
-    const color = STICKY_COLOR_CYCLE[idx === -1 ? 0 : (idx + 1) % STICKY_COLOR_CYCLE.length];
-
-    mutations.create.mutate({
-      content: '<p></p>',
-      color,
-      title: '',
-      position: { x: 0, y: 0 },
-    });
+    mutations.create.mutate({});
   };
 
   return (

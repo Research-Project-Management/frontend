@@ -1,18 +1,10 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import {
   workspaceKeys,
   DEFAULT_WORKSPACE,
-  createWorkspace,
-  updateWorkspaceById,
-  deleteWorkspaceById,
-} from '../services/workspace.service';
-import type {
-  CreateWorkspaceBody,
-  WorkspacePatch,
 } from '../services/workspace.service';
 import type { Workspace } from '../types/workspace.types';
 
@@ -30,7 +22,6 @@ export const useWorkspaces = () => {
       slug: 'flux',
       url: 'flux',
       avatar: user.avatar || '',
-      plan: 'free',
       createdAt: (user as any)?.createdAt || new Date().toISOString(),
       updatedAt: (user as any)?.updatedAt || new Date().toISOString(),
     };
@@ -66,44 +57,4 @@ export const useWorkspace = (_explicitWorkspaceId?: string) => {
 
 export const useWorkspaceById = (_workspaceUrl?: string) => {
   return useWorkspace(_workspaceUrl);
-};
-
-// ── Mutations ─────────────────────────────────────────────────────────────────
-
-export const useCreateWorkspace = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: CreateWorkspaceBody) => createWorkspace(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['auth', 'session'] });
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
-    },
-  });
-};
-
-export const useUpdateWorkspace = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: WorkspacePatch;
-    }) => updateWorkspaceById(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['auth', 'session'] });
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
-    },
-  });
-};
-
-export const useDeleteWorkspace = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (workspaceId: string) => deleteWorkspaceById(workspaceId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
-    },
-  });
 };

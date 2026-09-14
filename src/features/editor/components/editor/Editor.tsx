@@ -870,7 +870,7 @@ export default function Editor({ page }: EditorProps) {
         typeof document !== "undefined" &&
         createPortal(
           <div
-            className="fixed z-[9997] max-w-xs rounded-lg border border-border bg-popover py-2 px-3 pointer-events-none shadow-md"
+            className="fixed z-[9997] max-w-xs rounded-lg border border-border bg-popover py-2 px-3 pointer-events-none shadow-raised-200"
             style={{ left: glyphTooltip.x, bottom: glyphTooltip.bottom }}
           >
             {glyphTooltip.comments.map((c, idx) => (
@@ -916,7 +916,7 @@ export default function Editor({ page }: EditorProps) {
         createPortal(
           <div
             ref={selFloatingRef}
-            className="fixed z-[9998] flex items-center gap-px rounded-lg border border-border bg-popover px-1 py-1 shadow-md"
+            className="fixed z-[9998] flex items-center gap-px rounded-lg border border-border bg-popover px-1 py-1 shadow-raised-200"
             style={{ left: selFloating.x, top: selFloating.y }}
           >
             <button
@@ -966,7 +966,7 @@ export default function Editor({ page }: EditorProps) {
             ref={ctxMenuRef}
             role="menu"
             aria-label="Editor context menu"
-            className="fixed z-[9999] w-52 rounded-md border border-border bg-popover py-1 overflow-hidden shadow-lg"
+            className="fixed z-[9999] w-52 rounded-md border border-border bg-popover py-1 overflow-hidden shadow-raised-200"
             style={{
               left: ctxPos?.x ?? ctxMenu.x,
               top: ctxPos?.y ?? ctxMenu.y,
@@ -1020,7 +1020,7 @@ export default function Editor({ page }: EditorProps) {
             aria-labelledby="rename-dialog-title"
             className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/50 backdrop-blur-xs"
           >
-            <div className="w-full max-w-sm rounded-lg border border-border bg-card p-4 space-y-3 shadow-xl">
+            <div className="w-full max-w-sm rounded-lg border border-border bg-card p-4 space-y-3 shadow-raised-200">
               <h2
                 id="rename-dialog-title"
                 className="text-sm font-semibold text-foreground"

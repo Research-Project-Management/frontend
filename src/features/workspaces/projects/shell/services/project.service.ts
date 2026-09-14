@@ -37,15 +37,13 @@ export const projectKeys = {
 // ── Pure HTTP API Layer ───────────────────────────────────────────────────────
 
 export const fetchProject = (projectId: string) =>
-  apiGet<ProjectDetailResponse | { project: Project } | Project>(
-    `/api/project/${projectId}`,
-  );
+  apiGet<ProjectDetailResponse>(`/api/projects/${projectId}`);
 
 export const fetchUserProjects = (
   filter?: 'created' | 'shared' | 'all',
   signal?: AbortSignal,
 ) =>
-  apiGet<ProjectListResponse | { projects?: Project[]; myProjects?: Project[]; sharedProjects?: Project[]; data?: Project[] } | Project[]>(
+  apiGet<ProjectListResponse>(
     filter ? `/api/projects?type=${filter}` : `/api/projects`,
     { signal },
   );
@@ -59,7 +57,7 @@ export const fetchProjectsByWorkspaceId = (
 export function createProjectApi(
   first: CreateProjectInput | string,
   second?: CreateProjectInput | string,
-): Promise<ProjectDetailResponse | { project?: Project; data?: Project } | Project> {
+): Promise<ProjectDetailResponse> {
   const payload: CreateProjectInput =
     typeof first === 'object'
       ? first
@@ -67,62 +65,52 @@ export function createProjectApi(
         ? second
         : ({} as CreateProjectInput);
 
-  return apiPost<ProjectDetailResponse | { project?: Project; data?: Project } | Project>(
-    `/api/projects`,
-    payload,
-  );
+  return apiPost<ProjectDetailResponse>(`/api/projects`, payload);
 }
 
 export const updateProjectApi = (
   projectId: string,
   data: Partial<UpdateProjectInput>,
 ) =>
-  apiPut<ProjectDetailResponse | { project?: Project; data?: Project } | Project>(
-    `/api/project/${projectId}`,
-    data,
-  );
+  apiPut<ProjectDetailResponse>(`/api/projects/${projectId}`, data);
 
 export const deleteProjectApi = (projectId: string) =>
-  apiDelete<{ success: boolean; message?: string }>(`/api/project/${projectId}`);
+  apiDelete<{ success: boolean; message?: string }>(`/api/projects/${projectId}`);
 
 export const archiveProjectApi = (projectId: string) =>
-  apiPatch<ProjectDetailResponse | { project?: Project } | Project>(
-    `/api/project/${projectId}/archive`,
-  );
+  apiPatch<ProjectDetailResponse>(`/api/projects/${projectId}/archive`);
 
 export const restoreProjectApi = (projectId: string) =>
-  apiPatch<ProjectDetailResponse | { project?: Project } | Project>(
-    `/api/project/${projectId}/unarchive`,
-  );
+  apiPatch<ProjectDetailResponse>(`/api/projects/${projectId}/unarchive`);
 
 export const toggleProjectFavoriteApi = (
   projectId: string,
   isFavorite: boolean,
 ) =>
-  apiPut<ProjectDetailResponse | { project?: Project; data?: Project } | Project>(
-    `/api/project/${projectId}`,
+  apiPut<ProjectDetailResponse>(
+    `/api/projects/${projectId}`,
     { isFavorite },
   );
 
 export const fetchProjectMembers = (projectId: string) =>
-  apiGet<{ members: ProjectMember[] }>(`/api/project/${projectId}/members`);
+  apiGet<{ members: ProjectMember[] }>(`/api/projects/${projectId}/members`);
 
 export const addProjectMemberApi = (
   projectId: string,
   userId: string,
   role: ProjectRole | string = 'contributor',
 ) =>
-  apiPost(`/api/project/${projectId}/members`, { userId, role });
+  apiPost(`/api/projects/${projectId}/members`, { userId, role });
 
 export const updateProjectMemberRoleApi = (
   projectId: string,
   userId: string,
   role: ProjectRole | string,
 ) =>
-  apiPut(`/api/project/${projectId}/members/${userId}`, { role });
+  apiPut(`/api/projects/${projectId}/members/${userId}`, { role });
 
 export const removeProjectMemberApi = (projectId: string, userId: string) =>
-  apiDelete(`/api/project/${projectId}/members/${userId}`);
+  apiDelete(`/api/projects/${projectId}/members/${userId}`);
 
 // ── Structured Project Service Object ─────────────────────────────────────────
 

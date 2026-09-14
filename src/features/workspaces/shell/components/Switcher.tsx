@@ -45,18 +45,9 @@ export interface DisplayProjectItem {
   name: string;
   identifier?: string;
   avatar?: string | null;
-  role?: string;
-  membersCount?: number;
-  plan?: string;
+  role: 'Owner' | 'Contributor' | 'Reviewer' | 'Viewer' | 'Member';
+  membersCount: number;
 }
-
-const FALLBACK_PROJECTS: DisplayProjectItem[] = [
-  { id: 'proj-tieptuc', name: 'tieptuc', identifier: 'TIEPTUC', role: 'Owner', membersCount: 1, plan: 'Free' },
-  { id: 'proj-7-8cais', name: '7-8cais', identifier: '7-8CAIS', role: 'Owner', membersCount: 1, plan: 'Free' },
-  { id: 'proj-my-workspace', name: 'my-worksapce', identifier: 'MYWS', role: 'Owner', membersCount: 2, plan: 'Free' },
-  { id: 'proj-tam20', name: 'tam20', identifier: 'TAM20', role: 'Owner', membersCount: 1, plan: 'Free' },
-  { id: 'proj-tanthanh2', name: 'tanthanh2', identifier: 'TT2', role: 'Owner', membersCount: 1, plan: 'Free' },
-];
 
 const STORAGE_KEY_ACTIVE_PROJECT = 'flux_active_project_id';
 
@@ -64,6 +55,30 @@ interface SwitcherProps {
   currentItem?: Workspace | null;
   items?: Workspace[];
   activeId?: string;
+}
+
+function resolveMemberRole(
+  project: any,
+  userId?: string,
+): 'Owner' | 'Contributor' | 'Reviewer' | 'Viewer' | 'Member' {
+  if (!userId) return 'Member';
+  if (project.createdById === userId) return 'Owner';
+
+  const member = project.members?.find((m: any) => m.userId === userId);
+  if (!member?.role) return 'Member';
+
+  switch (String(member.role).toLowerCase()) {
+    case 'owner':
+      return 'Owner';
+    case 'contributor':
+      return 'Contributor';
+    case 'commenter':
+      return 'Reviewer';
+    case 'viewer':
+      return 'Viewer';
+    default:
+      return 'Member';
+  }
 }
 
 export default function Switcher({
@@ -102,24 +117,22 @@ export default function Switcher({
 
   // Map API projects into unified display items
   const combinedProjects = useMemo<DisplayProjectItem[]>(() => {
-    if (projects && projects.length > 0) {
-      const nonArchived = projects.filter((p) => !p.isArchived);
-      return nonArchived.map((p) => ({
-        id: p.id,
-        name: p.name,
-        identifier: p.identifier,
-        avatar: p.avatar,
-        role: 'Owner',
-        membersCount: p.members?.length || 1,
-        plan: 'Free',
-      }));
-    }
-    return FALLBACK_PROJECTS;
-  }, [projects]);
+    if (!projects || projects.length === 0) return [];
+    const nonArchived = projects.filter((p) => !p.isArchived);
+    return nonArchived.map((p) => ({
+      id: p.id,
+      name: p.name,
+      identifier: p.identifier,
+      avatar: p.avatar,
+      role: resolveMemberRole(p, user?.id),
+      membersCount: p.members?.length || 1,
+    }));
+  }, [projects, user?.id]);
 
   // Determine current active project
   const activeProjectId = params?.projectId;
-  const activeProject = useMemo<DisplayProjectItem>(() => {
+  const activeProject = useMemo<DisplayProjectItem | null>(() => {
+    if (!combinedProjects.length) return null;
     if (activeProjectId) {
       const found = combinedProjects.find(
         (p) => p.id === activeProjectId || p.identifier === activeProjectId
@@ -130,10 +143,11 @@ export default function Switcher({
       const found = combinedProjects.find((p) => p.id === storedActiveId);
       if (found) return found;
     }
-    return combinedProjects[0] || FALLBACK_PROJECTS[0];
+    return combinedProjects[0] ?? null;
   }, [combinedProjects, activeProjectId, storedActiveId]);
 
   const otherProjects = useMemo(() => {
+    if (!activeProject) return combinedProjects;
     return combinedProjects.filter((p) => p.id !== activeProject.id);
   }, [combinedProjects, activeProject]);
 
@@ -147,6 +161,7 @@ export default function Switcher({
   };
 
   const handleCopyInviteLink = () => {
+    if (!activeProject) return;
     const link = typeof window !== 'undefined' ? `${window.location.origin}/invite/${activeProject.identifier || activeProject.id}` : '';
     navigator.clipboard.writeText(link);
     setIsCopied(true);
@@ -157,26 +172,28 @@ export default function Switcher({
     <>
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger
-          aria-label={`Project: ${activeProject.name}`}
+          aria-label={activeProject ? `Project: ${activeProject.name}` : 'Projects'}
           className='group flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors hover:bg-muted data-[state=open]:bg-muted'
         >
           {/* Project Avatar */}
-          <div className="relative flex items-center justify-center shrink-0">
-            <ProjectAvatar
-              avatar={activeProject.avatar}
-              name={activeProject.name}
-              id={activeProject.id}
-              size='xs'
-              className='size-5.5 rounded-md'
-            />
-            {pendingInvitations.length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary ring-2 ring-background" />
-            )}
-          </div>
+          {activeProject ? (
+            <div className="relative flex items-center justify-center shrink-0">
+              <ProjectAvatar
+                avatar={activeProject.avatar}
+                name={activeProject.name}
+                id={activeProject.id}
+                size='xs'
+                className='size-5.5 rounded-md'
+              />
+              {pendingInvitations.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary ring-2 ring-background" />
+              )}
+            </div>
+          ) : null}
 
           {/* Project Name */}
           <span className='max-w-[150px] truncate text-13 font-semibold tracking-tight text-foreground'>
-            {activeProject.name}
+            {activeProject ? activeProject.name : 'Projects'}
           </span>
 
           {isOpen ? (
@@ -194,61 +211,64 @@ export default function Switcher({
         >
           {/* User Email Header */}
           <div className='px-4 pt-3.5 pb-2.5 text-xs font-normal text-muted-foreground bg-background truncate'>
-            {user?.email || 'thanhngo.26102006@gmail.com'}
+            {user?.email || 'Personal Account'}
           </div>
 
           {/* Current Active Project Card */}
-          <div className='bg-muted px-4 py-3.5 border-b border-border/60'>
-            <div className='flex items-center justify-between'>
-              <div className='flex items-center gap-3 min-w-0'>
-                <ProjectAvatar
-                  avatar={activeProject.avatar}
-                  name={activeProject.name}
-                  id={activeProject.id}
-                  size='lg'
-                  className='size-9 rounded-md'
-                />
-                <span className='text-sm font-semibold text-foreground tracking-tight truncate'>
-                  {activeProject.name}
-                </span>
+          {activeProject ? (
+            <div className='bg-muted px-4 py-3.5 border-b border-border/60'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-3 min-w-0'>
+                  <ProjectAvatar
+                    avatar={activeProject.avatar}
+                    name={activeProject.name}
+                    id={activeProject.id}
+                    size='lg'
+                    className='size-9 rounded-md'
+                  />
+                  <div className='flex flex-col min-w-0'>
+                    <span className='text-sm font-semibold text-foreground tracking-tight truncate'>
+                      {activeProject.name}
+                    </span>
+                    <span className='text-xs text-muted-foreground'>
+                      {activeProject.role}
+                    </span>
+                  </div>
+                </div>
+                <Check className='size-4 text-foreground shrink-0' strokeWidth={1.75} />
               </div>
-              <Check className='size-4 text-foreground shrink-0' strokeWidth={1.75} />
-            </div>
 
-            {/* Settings & Invite Members Buttons */}
-            <div className='flex items-center gap-2 mt-3.5'>
-              <button
-                type='button'
-                onClick={() => {
-                  setIsOpen(false);
-                  if (activeProject.id && !activeProject.id.startsWith('proj-')) {
+              {/* Settings & Invite Members Buttons */}
+              <div className='flex items-center gap-2 mt-3.5'>
+                <button
+                  type='button'
+                  onClick={() => {
+                    setIsOpen(false);
                     router.push(`/projects/${activeProject.id}/settings`);
-                  } else {
-                    router.push('/settings');
-                  }
-                }}
-                className='h-8 flex-1 px-2.5 bg-background hover:bg-neutral-100 dark:hover:bg-neutral-800 font-medium text-xs rounded-md border border-border text-foreground transition-colors cursor-pointer flex items-center justify-center gap-1.5 outline-none shadow-none'
-              >
-                <Settings className='size-3.5 text-foreground shrink-0' />
-                <span>Settings</span>
-              </button>
-              <button
-                type='button'
-                onClick={() => {
-                  setIsOpen(false);
-                  if (activeProject.id && !activeProject.id.startsWith('proj-')) {
+                  }}
+                  className='h-8 flex-1 px-2.5 bg-background hover:bg-neutral-100 dark:hover:bg-neutral-800 font-medium text-xs rounded-md border border-border text-foreground transition-colors cursor-pointer flex items-center justify-center gap-1.5 outline-none shadow-none'
+                >
+                  <Settings className='size-3.5 text-foreground shrink-0' />
+                  <span>Settings</span>
+                </button>
+                <button
+                  type='button'
+                  onClick={() => {
+                    setIsOpen(false);
                     router.push(`/projects/${activeProject.id}/settings/members`);
-                  } else {
-                    setIsInviteOpen(true);
-                  }
-                }}
-                className='h-8 flex-1 px-2.5 bg-background hover:bg-neutral-100 dark:hover:bg-neutral-800 font-medium text-xs rounded-md border border-border text-foreground transition-colors cursor-pointer flex items-center justify-center gap-1.5 outline-none shadow-none'
-              >
-                <UserPlus className='size-3.5 text-foreground shrink-0' />
-                <span>Invite members</span>
-              </button>
+                  }}
+                  className='h-8 flex-1 px-2.5 bg-background hover:bg-neutral-100 dark:hover:bg-neutral-800 font-medium text-xs rounded-md border border-border text-foreground transition-colors cursor-pointer flex items-center justify-center gap-1.5 outline-none shadow-none'
+                >
+                  <UserPlus className='size-3.5 text-foreground shrink-0' />
+                  <span>Invite members</span>
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className='bg-muted/50 px-4 py-3 text-xs text-muted-foreground border-b border-border/60'>
+              No projects yet. Create a project to start collaborating.
+            </div>
+          )}
 
           {/* Other Projects List */}
           {otherProjects.length > 0 && (
@@ -275,8 +295,8 @@ export default function Switcher({
                       </span>
                     </div>
                   </div>
-                  <span className='text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-md border border-border/40 shrink-0'>
-                    {proj.plan || 'Free'}
+                  <span className='text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-md border border-border/40 shrink-0 capitalize'>
+                    {proj.role}
                   </span>
                 </button>
               ))}
@@ -347,7 +367,7 @@ export default function Switcher({
       <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
         <DialogContent className='sm:max-w-[440px]'>
           <DialogHeader>
-            <DialogTitle>Invite members to {activeProject.name}</DialogTitle>
+            <DialogTitle>Invite members to {activeProject ? activeProject.name : 'Project'}</DialogTitle>
             <DialogDescription>
               Invite collaborators to join your project.
             </DialogDescription>
@@ -389,7 +409,7 @@ export default function Switcher({
             <div className='flex items-center gap-2'>
               <Input
                 readOnly
-                value={typeof window !== 'undefined' ? `${window.location.origin}/invite/${activeProject.identifier || activeProject.id}` : ''}
+                value={activeProject && typeof window !== 'undefined' ? `${window.location.origin}/invite/${activeProject.identifier || activeProject.id}` : ''}
                 className='text-xs font-mono bg-muted/50'
               />
               <Button

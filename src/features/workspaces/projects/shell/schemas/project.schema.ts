@@ -60,7 +60,6 @@ export const ProjectSchema = z.object({
   isPrivate: z.boolean().default(false).optional(),
   timezone: z.string().nullish().transform((v) => v ?? undefined),
   modules: z.array(z.string()).default(['work-items', 'cycles', 'views', 'pages']),
-  workspaceId: z.string().optional(),
   leadId: z.string().nullish().transform((v) => v ?? undefined),
   lead: ProjectMemberUserSchema.nullish().transform((v) => v ?? undefined),
   createdBy: ProjectMemberUserSchema.nullish().transform((v) => v ?? undefined),
@@ -87,7 +86,6 @@ export const CreateProjectInputSchema = z.object({
   isPrivate: z.boolean().default(false).optional(),
   timezone: z.string().optional(),
   modules: z.array(z.string()).optional(),
-  workspaceId: z.string().optional(),
 });
 
 export const createProjectFormSchema = z.object({
@@ -136,4 +134,7 @@ export const ProjectDetailResponseSchema = z.object({
 
 export const ProjectListResponseSchema = z.object({
   projects: z.array(ProjectSchema),
+  myProjects: z.array(ProjectSchema).optional(),
+  sharedProjects: z.array(ProjectSchema).optional(),
+  total: z.number().optional(),
 }).passthrough();

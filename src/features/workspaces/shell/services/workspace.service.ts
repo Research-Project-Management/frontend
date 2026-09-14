@@ -1,20 +1,14 @@
-import { apiGet, apiPut } from "@/shared/lib/api";
+import { apiGet } from "@/shared/lib/api";
 import type {
   Workspace,
   WorkspaceListResponse,
   WorkspaceDetailResponse,
-  CreateWorkspaceBody,
-  WorkspacePatch,
-  DeleteWorkspaceResult,
 } from '../types/workspace.types';
 
 export type {
   Workspace,
   WorkspaceListResponse,
   WorkspaceDetailResponse,
-  CreateWorkspaceBody,
-  WorkspacePatch,
-  DeleteWorkspaceResult,
 };
 
 // ── Query Keys Factory ────────────────────────────────────────────────────────
@@ -89,38 +83,9 @@ export const fetchWorkspaceById = async (
   }
 };
 
-export const createWorkspace = async (_data: CreateWorkspaceBody): Promise<WorkspaceDetailResponse> => {
-  return fetchWorkspaceById('flux');
-};
-
-export const updateWorkspaceById = async (
-  _id: string,
-  data: WorkspacePatch,
-): Promise<WorkspaceDetailResponse> => {
-  try {
-    await apiPut('/api/users/settings', {
-      name: (data as any).name,
-      avatar: (data as any).avatar,
-      settings: data,
-    });
-  } catch {
-    // Graceful fallback
-  }
-  return fetchWorkspaceById('flux');
-};
-
-export const deleteWorkspaceById = async (
-  id: string,
-): Promise<DeleteWorkspaceResult> => {
-  return { workspaceId: id, alreadyDeleted: true };
-};
-
 // ── Structured Service Object ─────────────────────────────────────────────────
 
 export const WorkspaceService = {
   getAll: fetchAllWorkspaces,
   getById: fetchWorkspaceById,
-  create: createWorkspace,
-  update: updateWorkspaceById,
-  delete: deleteWorkspaceById,
 };

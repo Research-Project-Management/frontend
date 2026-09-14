@@ -9,14 +9,6 @@ export const cycleStatusSchema = z.enum([
 ]);
 export type CycleStatus = z.infer<typeof cycleStatusSchema>;
 
-export const cyclePhaseSchema = z.enum([
-  "custom",
-  "discovery",
-  "sprint",
-  "hardening",
-]).or(z.string());
-export type CyclePhase = z.infer<typeof cyclePhaseSchema>;
-
 export const incompleteWorkItemActionSchema = z.enum([
   "transfer",
   "backlog",
@@ -31,7 +23,6 @@ export const createCycleDtoSchema = z.object({
   startDate: z.union([z.string(), z.date()]).nullable().optional(),
   endDate: z.union([z.string(), z.date()]).nullable().optional(),
   status: cycleStatusSchema.optional().default("planned"),
-  phase: cyclePhaseSchema.optional().default("custom"),
   projectId: z.string().optional(),
 });
 export type CreateCycleDtoInput = z.infer<typeof createCycleDtoSchema>;
@@ -89,7 +80,6 @@ export const cycleSchema = z.object({
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   status: cycleStatusSchema.optional(),
-  phase: cyclePhaseSchema.optional(),
   milestones: z.array(cycleMilestoneSchema).optional(),
   deliverables: z.array(cycleDeliverableSchema).optional(),
   labels: z.array(z.string()).optional(),

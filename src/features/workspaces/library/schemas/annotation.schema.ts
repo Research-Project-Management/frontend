@@ -5,7 +5,9 @@ export const annotationTypeSchema = z.enum([
   'highlight',
   'underline',
   'note',
+  'rect',
   'box',
+  'image',
 ]);
 
 export const rectCoordsSchema = z.object({

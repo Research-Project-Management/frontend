@@ -503,7 +503,7 @@ function EditorShell() {
               onClick={() => setActiveSidebarPanel(null)}
               aria-label="Close drawer"
             />
-            <div className="relative z-10 w-[85vw] max-w-[340px] h-full bg-card border-r border-border shadow-2xl flex flex-col">
+            <div className="relative z-10 w-[85vw] max-w-[340px] h-full bg-card border-r border-border flex flex-col">
               <div className="flex items-center justify-between px-3 h-11 border-b border-border shrink-0">
                 <span className="text-xs font-semibold text-foreground">Explorer & Tools</span>
                 <button

@@ -32,7 +32,12 @@ const copy = {
   addLabel: "Add Sticky",
 };
 
-export default function StickyPage() {
+interface StickyPageProps {
+  projectId?: string;
+  workspaceId?: string;
+}
+
+export default function StickyPage({ projectId, workspaceId }: StickyPageProps = {}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isMounted, setIsMounted] = useState(false);
 
@@ -42,6 +47,8 @@ export default function StickyPage() {
 
   const { state, actions } = useCard({
     search: searchQuery,
+    projectId,
+    workspaceId,
   });
 
   if (state.status.isLoading) {

@@ -45,6 +45,7 @@ export default function RelatedSection({
   }, [forceAdding, setModalOpen]);
 
   const [selectedTargetId, setSelectedTargetId] = useState('');
+  const [selectedRelationType, setSelectedRelationType] = useState<string>('related');
   const [searchQuery, setSearchQuery] = useState('');
 
   const relatedList: RelatedItem[] = relatedItems;
@@ -59,8 +60,9 @@ export default function RelatedSection({
 
   const handleLink = async () => {
     if (!selectedTargetId) return;
-    await link({ targetItemId: selectedTargetId, relationType: 'related' });
+    await link({ targetItemId: selectedTargetId, relationType: selectedRelationType as any });
     setSelectedTargetId('');
+    setSelectedRelationType('related');
     setSearchQuery('');
     setModalOpen(false);
   };
@@ -165,6 +167,25 @@ export default function RelatedSection({
               placeholder="Search library items..."
               className="w-full px-3 py-1.5 text-xs bg-muted text-foreground rounded-md border border-border focus:border-primary outline-none focus:outline-none focus-visible:outline-none"
             />
+
+            {/* Relation Type Select */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground font-medium shrink-0">Relation Type:</label>
+              <select
+                value={selectedRelationType}
+                onChange={(e) => setSelectedRelationType(e.target.value)}
+                className="flex-1 px-2 py-1 text-xs bg-muted text-foreground rounded-md border border-border focus:border-primary outline-none cursor-pointer"
+              >
+                <option value="related">Related Work</option>
+                <option value="cites">Cites</option>
+                <option value="cited_by">Cited By</option>
+                <option value="extends">Extends</option>
+                <option value="replicates">Replicates</option>
+                <option value="supplements">Supplements</option>
+                <option value="is_preprint_of">Preprint Of</option>
+                <option value="rebuts">Rebuts</option>
+              </select>
+            </div>
 
             {/* Paper options select / list */}
             <div className="max-h-48 overflow-y-auto space-y-1 border border-border rounded-md p-1 bg-muted">

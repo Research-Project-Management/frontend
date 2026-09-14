@@ -326,14 +326,21 @@ export default function Editor({ page }: EditorProps) {
     });
   }, [page.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Close context menu when clicking outside
+  // Close context menu when clicking outside or pressing Escape
   useEffect(() => {
     if (!ctxMenu) return;
     const handler = (e: MouseEvent) => {
       if (!ctxMenuRef.current?.contains(e.target as Node)) setCtxMenu(null);
     };
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCtxMenu(null);
+    };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("keydown", keyHandler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", keyHandler);
+    };
   }, [ctxMenu]);
 
   useLayoutEffect(() => {
@@ -863,7 +870,7 @@ export default function Editor({ page }: EditorProps) {
         typeof document !== "undefined" &&
         createPortal(
           <div
-            className="fixed z-9997 max-w-xs rounded-lg border border-border bg-popover py-2 px-3 pointer-events-none"
+            className="fixed z-[9997] max-w-xs rounded-lg border border-border bg-popover py-2 px-3 pointer-events-none shadow-md"
             style={{ left: glyphTooltip.x, bottom: glyphTooltip.bottom }}
           >
             {glyphTooltip.comments.map((c, idx) => (
@@ -909,7 +916,7 @@ export default function Editor({ page }: EditorProps) {
         createPortal(
           <div
             ref={selFloatingRef}
-            className="fixed z-9998 flex items-center gap-px rounded-lg border border-border bg-popover px-1 py-1"
+            className="fixed z-[9998] flex items-center gap-px rounded-lg border border-border bg-popover px-1 py-1 shadow-md"
             style={{ left: selFloating.x, top: selFloating.y }}
           >
             <button
@@ -957,7 +964,9 @@ export default function Editor({ page }: EditorProps) {
         createPortal(
           <div
             ref={ctxMenuRef}
-            className="fixed z-9999 w-52 rounded-md border border-border bg-popover py-1 overflow-hidden shadow-none"
+            role="menu"
+            aria-label="Editor context menu"
+            className="fixed z-[9999] w-52 rounded-md border border-border bg-popover py-1 overflow-hidden shadow-lg"
             style={{
               left: ctxPos?.x ?? ctxMenu.x,
               top: ctxPos?.y ?? ctxMenu.y,
@@ -966,17 +975,18 @@ export default function Editor({ page }: EditorProps) {
           >
             {menuGroups.map((group, gi) => (
               <React.Fragment key={gi}>
-                {gi > 0 && <div className="my-1 mx-2 h-px bg-border" />}
+                {gi > 0 && <div className="my-1 mx-2 h-px bg-border" role="separator" />}
                 {group.map((item) => {
                   const Icon = item.icon;
                   return (
                     <button
                       key={item.label}
+                      role="menuitem"
                       disabled={item.disabled}
                       onClick={item.action}
                       className={cn(
                         "group w-full flex items-center gap-2.5 px-2.5 py-1.5 text-xs cursor-pointer",
-                        "hover:bg-muted text-foreground transition-colors",
+                        "hover:bg-muted text-foreground transition-colors outline-none focus-visible:bg-muted",
                         "disabled:opacity-40 disabled:cursor-not-allowed",
                       )}
                     >
@@ -1008,15 +1018,15 @@ export default function Editor({ page }: EditorProps) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="rename-dialog-title"
-            className="fixed inset-0 z-9999 flex items-center justify-center bg-background/50 backdrop-blur-xs"
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/50 backdrop-blur-xs"
           >
-            <div className="w-full max-w-sm rounded-lg border border-border bg-card p-4 space-y-3">
-              <h3
+            <div className="w-full max-w-sm rounded-lg border border-border bg-card p-4 space-y-3 shadow-xl">
+              <h2
                 id="rename-dialog-title"
                 className="text-sm font-semibold text-foreground"
               >
                 Rename Occurrences
-              </h3>
+              </h2>
               <div className="space-y-1">
                 <label
                   htmlFor="rename-input"

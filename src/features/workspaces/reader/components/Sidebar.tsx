@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ListTree, LayoutGrid, ChevronRight } from 'lucide-react';
+import { ListTree, LayoutGrid, ChevronRight, Highlighter } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
-import type { DocumentFulltext } from '../types/reader.types';
+import type { DocumentFulltext, ReaderDocument } from '../types/reader.types';
+import AnnotationsPanel from './panel/AnnotationsPanel';
 
 export interface SidebarProps {
   isOpen: boolean;
@@ -12,6 +13,12 @@ export interface SidebarProps {
   totalPages?: number;
   onJumpToPage: (page: number) => void;
   fulltext?: DocumentFulltext | null;
+  paper?: ReaderDocument | null;
+  workspaceId?: string;
+  attachmentId?: string;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  annotationsCount?: number;
 }
 
 export function Sidebar({
@@ -21,8 +28,14 @@ export function Sidebar({
   totalPages = 1,
   onJumpToPage,
   fulltext,
+  paper,
+  workspaceId,
+  attachmentId,
+  selectedIds,
+  onToggleSelect,
+  annotationsCount = 0,
 }: SidebarProps) {
-  const [activeTab, setActiveTab] = useState<'outline' | 'pages'>('outline');
+  const [activeTab, setActiveTab] = useState<'outline' | 'annotations' | 'pages'>('outline');
   const sections = fulltext?.sections || [];
 
   if (!isOpen) return null;
@@ -30,16 +43,16 @@ export function Sidebar({
   return (
     <aside
       aria-label="Document navigation"
-      className="w-60 h-full border-r border-border bg-background flex flex-col shrink-0 select-none z-20"
+      className="w-72 h-full border-r border-border bg-background flex flex-col shrink-0 select-none z-20"
     >
-      {/* Header with tabs */}
-      <div className="h-9 shrink-0 border-b border-border px-2 flex items-center justify-between">
-        <div className="flex items-center gap-1">
+      {/* Header with 3 tabs: Outline, Annotations, Pages */}
+      <div className="h-9 shrink-0 border-b border-border px-1.5 flex items-center justify-between">
+        <div className="flex items-center gap-0.5">
           <button
             type="button"
             onClick={() => setActiveTab('outline')}
             className={cn(
-              "flex items-center gap-1.5 px-2 py-1 text-12 font-medium rounded-md transition-colors cursor-pointer",
+              "flex items-center gap-1 px-2 py-1 text-12 font-medium rounded-md transition-colors cursor-pointer",
               activeTab === 'outline'
                 ? "bg-muted text-foreground"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -51,9 +64,28 @@ export function Sidebar({
 
           <button
             type="button"
+            onClick={() => setActiveTab('annotations')}
+            className={cn(
+              "flex items-center gap-1 px-2 py-1 text-12 font-medium rounded-md transition-colors cursor-pointer",
+              activeTab === 'annotations'
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            )}
+          >
+            <Highlighter className="size-3.5 shrink-0" strokeWidth={1.5} />
+            Notes
+            {annotationsCount > 0 && (
+              <span className="text-10 font-mono tabular-nums text-muted-foreground ml-0.5">
+                ({annotationsCount})
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('pages')}
             className={cn(
-              "flex items-center gap-1.5 px-2 py-1 text-12 font-medium rounded-md transition-colors cursor-pointer",
+              "flex items-center gap-1 px-2 py-1 text-12 font-medium rounded-md transition-colors cursor-pointer",
               activeTab === 'pages'
                 ? "bg-muted text-foreground"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -66,7 +98,10 @@ export function Sidebar({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className={cn(
+        "flex-1 min-h-0",
+        activeTab === 'annotations' ? "overflow-hidden" : "overflow-y-auto p-2 thin-scrollbar"
+      )}>
         {activeTab === 'outline' ? (
           sections.length > 0 ? (
             <div className="space-y-0.5">
@@ -102,6 +137,21 @@ export function Sidebar({
           ) : (
             <div className="p-4 text-center text-12 text-muted-foreground">
               No outline detected in PDF.
+            </div>
+          )
+        ) : activeTab === 'annotations' ? (
+          paper ? (
+            <AnnotationsPanel
+              paper={paper}
+              workspaceId={workspaceId || 'me'}
+              attachmentId={attachmentId}
+              onNavigateToPage={onJumpToPage}
+              selectedIds={selectedIds}
+              onToggleSelect={onToggleSelect}
+            />
+          ) : (
+            <div className="p-4 text-center text-12 text-muted-foreground">
+              No document loaded.
             </div>
           )
         ) : (

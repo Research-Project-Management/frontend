@@ -9,13 +9,11 @@ import {
   Layers,
   Settings,
   BookOpen,
-  Home,
 } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 
 const NAV_ITEMS = [
-  { label: 'Home', icon: Home, to: '/home' },
-  { label: 'Projects', icon: Layers, to: '/projects' },
+  { label: 'Projects', icon: Layers, to: '/home' },
   { label: 'AI', imageSrc: '/Chat.svg', to: '/ai' },
   { label: 'Library', icon: BookOpen, to: '/library' },
   { label: 'Storage', icon: Cloud, to: '/storage' },
@@ -38,11 +36,21 @@ export default function Sidebar() {
           const fullPath = item.to;
 
           const isActive =
-            item.to === '/projects'
-              ? pathname === '/projects' || pathname.startsWith('/projects/')
-              : item.to === '/home'
-                ? pathname === '/home' || pathname.startsWith('/home/') || pathname === '/dashboard' || pathname.startsWith('/dashboard/')
-                : pathname === item.to || pathname.startsWith(`${item.to}/`);
+            item.label === 'Projects'
+              ? pathname === '/' ||
+                pathname === '/home' ||
+                pathname.startsWith('/home/') ||
+                pathname === '/dashboard' ||
+                pathname.startsWith('/dashboard/') ||
+                pathname === '/projects' ||
+                pathname.startsWith('/projects/') ||
+                pathname === '/drafts' ||
+                pathname.startsWith('/drafts/') ||
+                pathname === '/your-work' ||
+                pathname.startsWith('/your-work/') ||
+                pathname === '/stickies' ||
+                pathname.startsWith('/stickies/')
+              : pathname === item.to || pathname.startsWith(`${item.to}/`);
 
           return (
             <Link

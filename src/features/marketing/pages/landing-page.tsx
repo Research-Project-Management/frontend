@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, type ReactNode } from 'react';
+import { useRef, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { motion, useInView } from 'framer-motion';
 import {
@@ -94,8 +95,15 @@ export default function LandingPage() {
   const statsReveal = useScrollReveal();
   const ctaReveal = useScrollReveal();
 
+  const router = useRouter();
   const { user } = useAuth();
   const isAuthenticated = Boolean(user || (typeof window !== 'undefined' && hasAuthToken()));
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/home');
+    }
+  }, [isAuthenticated, router]);
 
   return (
     <div className='min-h-screen flex flex-col bg-background'>
@@ -152,7 +160,7 @@ export default function LandingPage() {
                 className='group flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer shrink-0'
               >
                 Start for free
-                <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 shrink-0' aria-hidden='true' />
+                <ArrowRight className='size-3.5 transition-transform group-hover:translate-x-0.5 shrink-0' aria-hidden='true' />
               </Link>
               <Link
                 href={isAuthenticated ? '/home' : '/login'}
@@ -222,8 +230,8 @@ export default function LandingPage() {
             />
             <FeatureCard
               icon={<CheckSquare className='w-5 h-5 shrink-0' aria-hidden='true' />}
-              title='Task management'
-              description='Track progress with tasks, deadlines, and priorities. Kanban boards and list views to match your workflow.'
+              title='Work item management'
+              description='Track progress with work items, deadlines, and priorities. Kanban boards and list views to match your workflow.'
             />
             <FeatureCard
               icon={<MessageSquare className='w-5 h-5 shrink-0' aria-hidden='true' />}
@@ -343,7 +351,7 @@ export default function LandingPage() {
                 className='group flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer shrink-0'
               >
                 Get started
-                <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 shrink-0' aria-hidden='true' />
+                <ArrowRight className='size-3.5 transition-transform group-hover:translate-x-0.5 shrink-0' aria-hidden='true' />
               </Link>
               <a
                 href='https://github.com/Research-Project-TDTU'
@@ -352,7 +360,7 @@ export default function LandingPage() {
                 className='flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
               >
                 View on GitHub
-                <ArrowUpRight className='w-3.5 h-3.5 shrink-0' aria-hidden='true' />
+                <ArrowUpRight className='size-3.5 shrink-0' aria-hidden='true' />
               </a>
             </div>
           </motion.div>

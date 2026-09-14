@@ -219,7 +219,7 @@ const LabelSelect = ({
     <Popover open={isOpen} onOpenChange={(val) => { setIsOpen(val); if(!val) setView("list"); }}>
       <PopoverTrigger asChild>
         {trigger || (
-          <Button variant="outline" className="h-9 rounded-md border-border bg-background px-4 text-xs font-medium text-foreground shadow-none hover:bg-muted cursor-pointer"><Tag className="mr-2 h-4 w-4 text-foreground shrink-0" />Labels</Button>
+          <Button variant="outline" className="h-9 rounded-md border-border bg-background px-4 text-xs font-medium text-foreground shadow-none hover:bg-muted cursor-pointer"><Tag className="mr-2 size-4 text-foreground shrink-0" />Labels</Button>
         )}
       </PopoverTrigger>
       <PopoverContent

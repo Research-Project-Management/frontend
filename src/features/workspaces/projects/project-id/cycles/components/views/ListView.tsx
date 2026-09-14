@@ -14,15 +14,8 @@ import {
   Pencil,
   AlignLeft
 } from "lucide-react";
-import { Button } from "@/shared/components/ui";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
+import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
 import type { Cycle } from "../../types/cycle.types";
-const STATIC_PHASE_CONFIG: Record<string, any> = {
-  todo: { label: "To Do", color: "#64748b" },
-  in_progress: { label: "In Progress", color: "#3b82f6" },
-  done: { label: "Done", color: "#22c55e" },
-};
-import { PhaseIconRenderer } from "../icons/PhaseIcon";
 import { cn } from "@/shared/lib/utils";
 
 export type DerivedStatus = "active" | "planned" | "completed";
@@ -80,7 +73,6 @@ function EmptyState({ status, searchTerm }: { status: DerivedStatus; searchTerm?
 
 interface ItemProps {
   cycle: Cycle;
-  phases: any[];
   isExpanded: boolean;
   onToggleExpand: () => void;
   onEdit: () => void;
@@ -127,7 +119,6 @@ function CycleStatusIndicator({ status, hasDates }: { status: string; hasDates: 
 
 export function Item({
   cycle,
-  phases,
   isExpanded,
   onToggleExpand,
   onEdit,
@@ -141,16 +132,6 @@ export function Item({
   showLabelDetails,
   onToggleLabelDetails,
 }: ItemProps) {
-  const phaseConfig = useMemo(() => {
-    const currentPhase = cycle.phase || "custom";
-    const dynamic = phases.find((p) => p.id === currentPhase);
-    if (dynamic) return dynamic;
-
-    const stat = (STATIC_PHASE_CONFIG as any)[currentPhase];
-    if (stat) return stat;
-
-    return { label: "Custom", color: "#6b7280", icon: "📋" };
-  }, [phases, cycle.phase]);
 
 
   const cycleLabels = useMemo(() => {
@@ -191,7 +172,7 @@ export function Item({
         className="flex items-center gap-3 shrink-0"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Labels - Task List Style */}
+        {/* Labels - Work Item List Style */}
         {cycleLabels.length > 0 && (
           <button
             type="button"
@@ -224,21 +205,6 @@ export function Item({
           </button>
         )}
 
-        {/* Phase Badge - Now at the end */}
-        <div className="flex items-center gap-1.5 h-7 px-2 bg-muted border border-border rounded-sm shrink-0 cursor-default">
-          <PhaseIconRenderer 
-            phaseId={cycle.phase || 'custom'}
-            icon={phaseConfig.icon}
-            color={phaseConfig.color}
-            size="sm"
-            className="!size-3.5 !bg-transparent"
-          />
-
-          <span className="text-xs font-medium text-foreground shrink-0">
-            {phaseConfig.label}
-          </span>
-        </div>
-
         {hasDescription && (
           <AlignLeft className="size-3.5 text-foreground shrink-0" />
         )}
@@ -263,7 +229,7 @@ export function Item({
               onClick={(e) => { e.stopPropagation(); }}
               aria-label="Cycle options"
             >
-              <MoreHorizontal className="h-4 w-4 text-foreground shrink-0" />
+              <MoreHorizontal className="size-4 text-foreground shrink-0" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -279,7 +245,7 @@ export function Item({
                 }} 
                 className="text-foreground focus:text-foreground focus:bg-muted font-medium py-2 cursor-pointer"
               >
-                <PlayCircle className="mr-2 h-4 w-4 text-foreground shrink-0" /> Start Cycle
+                <PlayCircle className="mr-2 size-4 text-foreground shrink-0" /> Start Cycle
               </DropdownMenuItem>
             )}
             {status === "active" && (
@@ -287,7 +253,7 @@ export function Item({
                 onClick={(e) => { e.stopPropagation(); onComplete?.(); }}
                 className="text-foreground focus:text-foreground focus:bg-muted font-medium py-2 cursor-pointer"
               >
-                <CheckCircle2 className="mr-2 h-4 w-4 text-foreground shrink-0" /> End Cycle
+                <CheckCircle2 className="mr-2 size-4 text-foreground shrink-0" /> End Cycle
               </DropdownMenuItem>
             )}
             {!isReadOnly && (
@@ -295,14 +261,14 @@ export function Item({
                 onClick={(e) => { e.stopPropagation(); onEdit(); }}
                 className="py-2 text-foreground focus:text-foreground focus:bg-muted cursor-pointer"
               >
-                <Pencil className="mr-2 h-4 w-4 text-foreground shrink-0" /> Edit Details
+                <Pencil className="mr-2 size-4 text-foreground shrink-0" /> Edit Details
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
               className="text-destructive focus:bg-destructive/10 focus:text-destructive py-2 cursor-pointer"
             >
-              <Trash2 className="mr-2 h-4 w-4 shrink-0" /> Delete
+              <Trash2 className="mr-2 size-4 shrink-0" /> Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

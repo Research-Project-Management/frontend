@@ -17,8 +17,6 @@ import {
 } from 'lucide-react';
 import { CycleIcon } from "@/shared/components/ui";
 import { useProjectDetails, useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
-import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
-import { useAuth } from '@/features/auth/hooks/use-auth';
 import { cn } from "@/shared/lib/utils";
 import { ScrollArea } from "@/shared/components/ui";
 import Switcher from './Switcher';
@@ -46,32 +44,9 @@ export default function Sidebar() {
   const pathname = usePathname();
   const projectId = params?.projectId || '';
 
-  const { workspace } = useWorkspace();
-  const workspaceId = workspace?.id || '';
-
-  const { user } = useAuth();
   const { data: projectData } = useProjectDetails(projectId);
   const project = (projectData as any)?.project || projectData;
   const { projects = [] } = useProjects();
-
-  // User role within this project
-  const userMember = project?.members?.find(
-    (m: any) =>
-      m.userId === user?.id ||
-      m.user?.id === user?.id,
-  );
-  const role =
-    project?.createdById === user?.id
-      ? 'Owner (PI)'
-      : userMember?.role === 'owner'
-        ? 'Owner (PI)'
-        : userMember?.role === 'contributor'
-          ? 'Contributor'
-          : userMember?.role === 'commenter'
-            ? 'Commenter'
-            : userMember?.role === 'viewer'
-              ? 'Viewer'
-              : 'Contributor';
 
   const base = `/projects/${projectId}/settings`;
 
@@ -82,7 +57,7 @@ export default function Sidebar() {
         { id: 'general', label: 'General', icon: Settings, to: base, exact: true },
         { id: 'members', label: 'Members', icon: Users, to: `${base}/members` },
         { id: 'modules', label: 'Modules', icon: LayoutGrid, to: `${base}/modules` },
-        { id: 'ai', label: 'AI', icon: Sparkles, to: `${base}/ai` },
+        { id: 'ai', label: 'AI Assistant', icon: Sparkles, to: `${base}/ai` },
       ],
     },
     {
@@ -100,23 +75,24 @@ export default function Sidebar() {
   const isItemActive = (item: NavItem) => {
     if (item.exact) return pathname === item.to || pathname === `${item.to}/general`;
     return (
-      pathname.startsWith(item.to) ||
+      pathname === item.to ||
+      pathname.startsWith(`${item.to}/`) ||
       (item.aliases?.some((a) => pathname.startsWith(a)) ?? false)
     );
   };
 
   return (
-    <aside className="h-full w-60 shrink-0 border-r border-border bg-transparent select-none">
+    <aside className="h-full w-60 shrink-0 border-r border-border bg-transparent select-none max-md:w-full max-md:border-r-0 max-md:border-b">
       <ScrollArea type="scroll" scrollHideDelay={600} className="h-full w-full">
-        <div className="w-full p-2 py-4">
-          {/* Back */}
-          <div className="mb-2 px-1">
+        <div className="w-full p-2.5 py-4">
+          {/* Back to Project */}
+          <div className="mb-2.5 px-1">
             <Link
               href={`/projects/${projectId}/work-items`}
-              className="group flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 font-normal text-foreground hover:bg-muted transition-colors shrink-0"
+              className="group flex h-8 w-full items-center gap-2 rounded-md px-2 text-13 leading-5 font-normal text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
             >
-              <ArrowLeft className="size-4 shrink-0 text-foreground transition-transform group-hover:-translate-x-0.5" />
-              <span className="tracking-tight">Project settings</span>
+              <ArrowLeft className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-transform group-hover:-translate-x-0.5" />
+              <span className="tracking-tight font-medium">Back to project</span>
             </Link>
           </div>
 
@@ -125,11 +101,10 @@ export default function Sidebar() {
             currentProject={project}
             projects={projects}
             currentProjectId={projectId}
-            role={role}
           />
 
           {/* Nav groups */}
-          <div className="mt-3 flex flex-col gap-3.5">
+          <div className="mt-4 flex flex-col gap-4">
             {navGroups.map((group) => (
               <GroupSection key={group.title} group={group} isItemActive={isItemActive} />
             ))}
@@ -151,10 +126,10 @@ function GroupSection({
 }) {
   return (
     <div>
-      <div className="px-2 pb-1.5 pt-1 text-13 font-medium text-muted-foreground select-none">
+      <div className="px-2 pb-1.5 pt-0.5 text-11 font-medium text-muted-foreground select-none">
         {group.title}
       </div>
-      <nav className="flex flex-col gap-1">
+      <nav className="flex flex-col gap-0.5">
         {group.items.map((item) => {
           const active = isItemActive(item);
           const Icon = item.icon;
@@ -163,7 +138,7 @@ function GroupSection({
               key={item.id}
               href={item.to}
               className={cn(
-                'group flex h-8 items-center gap-1.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none shrink-0',
+                'group flex h-8 items-center gap-2 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none shrink-0',
                 active
                   ? 'bg-muted text-foreground font-medium'
                   : 'text-foreground hover:bg-muted font-normal'

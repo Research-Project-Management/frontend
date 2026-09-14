@@ -12,7 +12,7 @@ import {
 import { useProjectItems } from "../../hooks/use-work-item";
 import { useAddExistingItemsToCycle } from "../../hooks/use-cycle";
 import { DetailModal } from "./DetailModal";
-import type { Item, Task, Column } from "../../types/work-item.types";
+import type { Item, Column } from "../../types/work-item.types";
 import { cn } from "@/shared/lib/utils";
 
 export interface AddExistingModalProps {
@@ -26,8 +26,6 @@ export interface AddExistingModalProps {
   onSuccess?: () => void;
 }
 
-export type AddExistingTaskModalProps = AddExistingModalProps;
-
 export function AddExistingModal({
   open,
   onOpenChange,
@@ -37,15 +35,15 @@ export function AddExistingModal({
   columns = [],
   members = [],
   onSuccess,
-}: AddExistingTaskModalProps) {
+}: AddExistingModalProps) {
   const { data, isLoading } = useProjectItems(projectId);
-  const { addItems, addTasks, isPending } = useAddExistingItemsToCycle(projectId, currentCycleId);
+  const { addItems, isPending } = useAddExistingItemsToCycle(projectId, currentCycleId);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [detailItem, setDetailItem] = useState<Item | null>(null);
 
   const filteredItems = useMemo(() => {
-    const allItems = (data as any)?.items || (data as any)?.tasks || [];
+    const allItems = (data as any)?.items || (data as any)?.workItems || [];
     if (!allItems.length) return [];
     
     const resolveCycleId = (item: Item) =>
@@ -61,7 +59,7 @@ export function AddExistingModal({
       return matchesSearch && notInCurrentCycle;
     });
 
-    return [...filtered].sort((a: Task, b: Task) => {
+    return [...filtered].sort((a: Item, b: Item) => {
       const aCycleId = resolveCycleId(a);
       const bCycleId = resolveCycleId(b);
       const aHasCycle = !!aCycleId;
@@ -70,25 +68,25 @@ export function AddExistingModal({
       if (aHasCycle && !bHasCycle) return 1;
       return 0;
     });
-  }, [data?.tasks, searchTerm, currentCycleId]);
+  }, [data?.items, searchTerm, currentCycleId]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(filteredItems.map((t) => t.id));
+      setSelectedIds(filteredItems.map((item) => item.id));
     } else {
       setSelectedIds([]);
     }
   };
 
-  const handleToggleSelect = (taskId: string) => {
+  const handleToggleSelect = (itemId: string) => {
     setSelectedIds((prev) =>
-      prev.includes(taskId)
-        ? prev.filter((id) => id !== taskId)
-        : [...prev, taskId]
+      prev.includes(itemId)
+        ? prev.filter((id) => id !== itemId)
+        : [...prev, itemId]
     );
   };
 
-  const handleAddTasks = async () => {
+  const handleAddItems = async () => {
     await addItems({
       selectedIds,
       onSuccess: () => {
@@ -143,7 +141,7 @@ export function AddExistingModal({
               )}
             </div>
 
-            {/* Task list */}
+            {/* Work item list */}
             <div className="border border-border rounded-sm overflow-hidden bg-background">
               <div className="px-3 py-2 border-b border-border bg-muted flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -235,7 +233,7 @@ export function AddExistingModal({
             </Button>
             <Button
               size="sm"
-              onClick={handleAddTasks}
+              onClick={handleAddItems}
               disabled={selectedIds.length === 0 || isPending}
               className="text-xs font-semibold"
             >
@@ -245,7 +243,7 @@ export function AddExistingModal({
         </DialogContent>
       </Dialog>
 
-      {/* Task Preview Dialog */}
+      {/* Work Item Preview Dialog */}
       {detailItem && (
         <DetailModal
           open={!!detailItem}
@@ -261,5 +259,4 @@ export function AddExistingModal({
   );
 }
 
-export const AddExistingTaskModal = AddExistingModal;
 export default AddExistingModal;

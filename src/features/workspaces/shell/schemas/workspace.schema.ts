@@ -90,7 +90,7 @@ export const DeleteWorkspaceResultSchema = z.object({
  * Search result item schema across workspace entities
  */
 export const WorkspaceSearchItemSchema = z.object({
-  type: z.enum(['project', 'task', 'paper', 'page', 'file', 'folder', 'sticky']),
+  type: z.enum(['project', 'work_item', 'paper', 'page', 'file', 'folder', 'sticky']),
   id: z.string(),
   name: z.string(),
   identifier: z.string().nullable().optional(),

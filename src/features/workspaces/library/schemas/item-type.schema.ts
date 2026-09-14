@@ -1,9 +1,8 @@
 /**
  * Library Item-Type Registry — Frontend Canonical Definitions & Offline Cache
- * Dynamically loaded from official api.zotero.org/schema (Schema v42).
- * Eliminates manual guesswork and keeps UI strictly in sync with Zotero Desktop and Backend.
+ * Dynamic runtime SSOT powered by Backend GET /api/v1/library/item-types.
+ * Lightweight static fallbacks provide offline stability without bundling raw 462KB JSON.
  */
-import rawZoteroSchema from './zotero-schema.json';
 
 export interface SchemaFieldDefinition {
   field: string;
@@ -231,51 +230,284 @@ const MONO_FIELDS = new Set([
   'scale', 'numPages', 'numberOfVolumes'
 ]);
 
-function buildFrontendRegistry() {
-  const schema = rawZoteroSchema as any;
-  const en = schema.locales?.['en-US'] || { fields: {}, itemTypes: {}, creatorTypes: {} };
+const TYPE_PRIMARY_CREATORS: Record<string, string> = {
+  computerProgram: 'programmer',
+  film: 'director',
+  videoRecording: 'director',
+  tvBroadcast: 'director',
+  radioBroadcast: 'director',
+  podcast: 'podcaster',
+  patent: 'inventor',
+  presentation: 'presenter',
+  interview: 'interviewee',
+  map: 'cartographer',
+  artwork: 'artist',
+};
 
+const ITEM_TYPE_LABELS: Record<string, string> = {
+  journalArticle: 'Journal Article',
+  preprint: 'Preprint',
+  conferencePaper: 'Conference Paper',
+  thesis: 'Thesis',
+  report: 'Report',
+  dataset: 'Dataset',
+  presentation: 'Presentation',
+  standard: 'Standard',
+  book: 'Book',
+  bookSection: 'Book Section',
+  manuscript: 'Manuscript',
+  dictionaryEntry: 'Dictionary Entry',
+  encyclopediaArticle: 'Encyclopedia Article',
+  magazineArticle: 'Magazine Article',
+  newspaperArticle: 'Newspaper Article',
+  bill: 'Bill',
+  case: 'Case',
+  hearing: 'Hearing',
+  statute: 'Statute',
+  patent: 'Patent',
+  audioRecording: 'Audio Recording',
+  videoRecording: 'Video Recording',
+  film: 'Film',
+  radioBroadcast: 'Radio Broadcast',
+  tvBroadcast: 'TV Broadcast',
+  podcast: 'Podcast',
+  artwork: 'Artwork',
+  map: 'Map',
+  blogPost: 'Blog Post',
+  webpage: 'Web Page',
+  forumPost: 'Forum Post',
+  letter: 'Letter',
+  interview: 'Interview',
+  document: 'Document',
+  email: 'E-mail',
+  instantMessage: 'Instant Message',
+  computerProgram: 'Computer Program',
+};
+
+const FIELD_LABELS: Record<string, string> = {
+  title: 'Title',
+  shortTitle: 'Short Title',
+  abstractNote: 'Abstract',
+  publicationTitle: 'Publication Title',
+  publisher: 'Publisher',
+  place: 'Place',
+  university: 'University',
+  institution: 'Institution',
+  conferenceName: 'Conference Name',
+  court: 'Court',
+  distributor: 'Distributor',
+  studio: 'Studio',
+  network: 'Network',
+  company: 'Company',
+  repository: 'Repository',
+  date: 'Date',
+  dateDecided: 'Date Decided',
+  dateEnacted: 'Date Enacted',
+  issueDate: 'Issue Date',
+  filingDate: 'Filing Date',
+  accessDate: 'Accessed',
+  pages: 'Pages',
+  volume: 'Volume',
+  issue: 'Issue',
+  section: 'Section',
+  partNumber: 'Part Number',
+  partTitle: 'Part Title',
+  series: 'Series',
+  seriesTitle: 'Series Title',
+  seriesText: 'Series Text',
+  seriesNumber: 'Series Number',
+  journalAbbreviation: 'Journal Abbr',
+  language: 'Language',
+  edition: 'Edition',
+  numPages: '# of Pages',
+  numberOfVolumes: '# of Volumes',
+  runningTime: 'Running Time',
+  versionNumber: 'Version',
+  DOI: 'DOI',
+  ISSN: 'ISSN',
+  ISBN: 'ISBN',
+  PMID: 'PMID',
+  PMCID: 'PMCID',
+  url: 'URL',
+  citationKey: 'Citation Key',
+  archiveID: 'Archive ID',
+  patentNumber: 'Patent Number',
+  applicationNumber: 'Application Number',
+  reportNumber: 'Report Number',
+  docketNumber: 'Docket Number',
+  documentNumber: 'Document Number',
+  billNumber: 'Bill Number',
+  standardNumber: 'Standard Number',
+  codeNumber: 'Code Number',
+  publicLawNumber: 'Public Law Number',
+  archive: 'Archive',
+  archiveLocation: 'Loc. in Archive',
+  libraryCatalog: 'Library Catalog',
+  callNumber: 'Call Number',
+  rights: 'Rights',
+  extra: 'Extra',
+};
+
+export const ALL_CREATOR_TYPES: Record<string, string> = {
+  author: 'Author',
+  contributor: 'Contributor',
+  editor: 'Editor',
+  translator: 'Translator',
+  seriesEditor: 'Series Editor',
+  interviewee: 'Interviewee',
+  interviewer: 'Interviewer',
+  director: 'Director',
+  scriptwriter: 'Scriptwriter',
+  producer: 'Producer',
+  castMember: 'Cast Member',
+  programmer: 'Programmer',
+  artist: 'Artist',
+  sponsor: 'Sponsor',
+  inventor: 'Inventor',
+  attorneyAgent: 'Attorney/Agent',
+  recipient: 'Recipient',
+  performer: 'Performer',
+  composer: 'Composer',
+  wordsBy: 'Words By',
+  cartographer: 'Cartographer',
+  cosponsor: 'Cosponsor',
+  bookAuthor: 'Book Author',
+  reviewedAuthor: 'Reviewed Author',
+  commenter: 'Commenter',
+  presenter: 'Presenter',
+  guest: 'Guest',
+  podcaster: 'Podcaster',
+};
+
+const COMMON_FIELDS = ['title', 'abstractNote', 'date', 'url', 'extra'];
+
+const TYPE_SPECIFIC_FIELDS: Record<string, string[]> = {
+  journalArticle: [
+    'title', 'abstractNote', 'publicationTitle', 'volume', 'issue', 'pages', 'date',
+    'series', 'seriesTitle', 'seriesText', 'journalAbbreviation', 'language', 'DOI',
+    'ISSN', 'shortTitle', 'url', 'accessDate', 'archive', 'archiveLocation',
+    'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  preprint: [
+    'title', 'abstractNote', 'repository', 'archiveID', 'place', 'series', 'seriesNumber',
+    'date', 'numPages', 'language', 'DOI', 'citationKey', 'shortTitle', 'url',
+    'accessDate', 'archive', 'rights', 'extra',
+  ],
+  conferencePaper: [
+    'title', 'abstractNote', 'publicationTitle', 'volume', 'series', 'place', 'date',
+    'pages', 'publisher', 'language', 'DOI', 'ISBN', 'shortTitle', 'url',
+    'accessDate', 'archive', 'archiveLocation', 'libraryCatalog', 'callNumber',
+    'rights', 'extra',
+  ],
+  book: [
+    'title', 'abstractNote', 'series', 'seriesNumber', 'volume', 'numberOfVolumes',
+    'edition', 'place', 'publisher', 'date', 'numPages', 'language', 'ISBN',
+    'shortTitle', 'url', 'accessDate', 'archive', 'archiveLocation', 'libraryCatalog',
+    'callNumber', 'rights', 'extra',
+  ],
+  bookSection: [
+    'title', 'abstractNote', 'publicationTitle', 'series', 'seriesNumber', 'volume',
+    'numberOfVolumes', 'edition', 'place', 'publisher', 'date', 'pages', 'language',
+    'ISBN', 'shortTitle', 'url', 'accessDate', 'archive', 'archiveLocation',
+    'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  thesis: [
+    'title', 'abstractNote', 'university', 'place', 'date', 'numPages', 'language',
+    'shortTitle', 'url', 'accessDate', 'archive', 'archiveLocation', 'libraryCatalog',
+    'callNumber', 'rights', 'extra',
+  ],
+  report: [
+    'title', 'abstractNote', 'reportNumber', 'institution', 'place', 'date',
+    'pages', 'language', 'shortTitle', 'url', 'accessDate', 'archive', 'archiveLocation',
+    'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  webpage: [
+    'title', 'abstractNote', 'publicationTitle', 'date', 'shortTitle', 'url',
+    'accessDate', 'rights', 'extra',
+  ],
+  patent: [
+    'title', 'abstractNote', 'place', 'patentNumber', 'applicationNumber', 'filingDate',
+    'issueDate', 'url', 'accessDate', 'rights', 'extra',
+  ],
+  dataset: [
+    'title', 'abstractNote', 'repository', 'versionNumber', 'date', 'DOI', 'citationKey',
+    'shortTitle', 'url', 'accessDate', 'rights', 'extra',
+  ],
+};
+
+function buildFrontendRegistry() {
   const fieldDefinitions: Record<string, SchemaFieldDefinition> = {};
+  for (const field of Object.keys(FIELD_CATEGORY_MAP)) {
+    fieldDefinitions[field] = {
+      field,
+      label: FIELD_LABELS[field] || field,
+      type: field.toLowerCase().endsWith('date') || field === 'date'
+        ? 'date'
+        : field === 'url'
+          ? 'url'
+          : field === 'abstractNote' || field === 'extra'
+            ? 'textarea'
+            : ['numPages', 'numberOfVolumes'].includes(field)
+              ? 'number'
+              : 'text',
+      category: FIELD_CATEGORY_MAP[field] || 'publication',
+      mono: MONO_FIELDS.has(field),
+    };
+  }
+
   const libraryItemTypes: Record<string, SchemaItemTypeDefinition> = {};
   const flatItemTypes: { value: string; label: string }[] = [];
 
-  for (const t of schema.itemTypes || []) {
-    const typeKey = t.itemType;
-    if (['attachment', 'note', 'annotation'].includes(typeKey)) continue;
+  for (const [typeKey, label] of Object.entries(ITEM_TYPE_LABELS)) {
+    const category = CATEGORY_MAP[typeKey] || 'documents';
+    const primaryCreatorType = TYPE_PRIMARY_CREATORS[typeKey] || 'author';
 
-    const fields: SchemaFieldDefinition[] = (t.fields || []).map((f: any) => {
-      const fieldDef: SchemaFieldDefinition = {
-        field: f.field,
-        label: en.fields[f.field] || f.field,
-        type: schema.meta?.fields?.[f.field]?.type === 'date'
-          ? 'date'
-          : f.field === 'url'
-            ? 'url'
-            : f.field === 'abstractNote' || f.field === 'extra'
-              ? 'textarea'
-              : 'text',
-        category: FIELD_CATEGORY_MAP[f.field] || 'publication',
-        mono: MONO_FIELDS.has(f.field),
-        baseField: f.baseField,
-      };
-      if (!fieldDefinitions[f.field]) {
-        fieldDefinitions[f.field] = fieldDef;
-      }
-      return fieldDef;
-    });
+    const creatorTypes: SchemaCreatorTypeDefinition[] = [
+      {
+        creatorType: primaryCreatorType,
+        label: ALL_CREATOR_TYPES[primaryCreatorType] || primaryCreatorType,
+        primary: true,
+      },
+      {
+        creatorType: 'contributor',
+        label: 'Contributor',
+      },
+    ];
 
-    const creatorTypes: SchemaCreatorTypeDefinition[] = (t.creatorTypes || []).map((c: any) => ({
-      creatorType: c.creatorType,
-      label: en.creatorTypes[c.creatorType] || c.creatorType,
-      primary: Boolean(c.primary),
-    }));
+    if (primaryCreatorType !== 'author') {
+      creatorTypes.push({
+        creatorType: 'author',
+        label: 'Author',
+      });
+    }
+    if (['book', 'bookSection', 'conferencePaper'].includes(typeKey)) {
+      creatorTypes.push(
+        { creatorType: 'editor', label: 'Editor' },
+        { creatorType: 'translator', label: 'Translator' },
+      );
+    } else if (['journalArticle', 'preprint'].includes(typeKey)) {
+      creatorTypes.push(
+        { creatorType: 'translator', label: 'Translator' },
+        { creatorType: 'editor', label: 'Editor' },
+      );
+    }
 
-    const primaryCreatorType = creatorTypes.find((c) => c.primary)?.creatorType || creatorTypes[0]?.creatorType || 'author';
+    const fieldKeys = TYPE_SPECIFIC_FIELDS[typeKey] || COMMON_FIELDS;
+    const fields: SchemaFieldDefinition[] = fieldKeys.map(
+      (f) =>
+        fieldDefinitions[f] || {
+          field: f,
+          label: FIELD_LABELS[f] || f,
+          type: 'text',
+          category: FIELD_CATEGORY_MAP[f] || 'publication',
+          mono: MONO_FIELDS.has(f),
+        },
+    );
 
     libraryItemTypes[typeKey] = {
       itemType: typeKey,
-      label: en.itemTypes[typeKey] || typeKey,
-      category: CATEGORY_MAP[typeKey] || 'documents',
+      label,
+      category,
       primaryCreatorType,
       creatorTypes,
       fields,
@@ -283,14 +515,13 @@ function buildFrontendRegistry() {
 
     flatItemTypes.push({
       value: typeKey,
-      label: en.itemTypes[typeKey] || typeKey,
+      label,
     });
   }
 
   flatItemTypes.sort((a, b) => a.label.localeCompare(b.label));
 
   return {
-    creatorTypes: (en.creatorTypes || {}) as Record<string, string>,
     fieldDefinitions,
     libraryItemTypes,
     flatItemTypes,
@@ -299,7 +530,6 @@ function buildFrontendRegistry() {
 
 const REGISTRY_DATA = buildFrontendRegistry();
 
-export const ALL_CREATOR_TYPES: Record<string, string> = REGISTRY_DATA.creatorTypes;
 export const FIELD_DEFINITIONS: Record<string, SchemaFieldDefinition> = REGISTRY_DATA.fieldDefinitions;
 export const LIBRARY_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> = REGISTRY_DATA.libraryItemTypes;
 export const ALL_ITEM_TYPES_FLAT: { value: string; label: string }[] = REGISTRY_DATA.flatItemTypes;

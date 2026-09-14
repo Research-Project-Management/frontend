@@ -17,12 +17,12 @@ export const cyclePhaseSchema = z.enum([
 ]).or(z.string());
 export type CyclePhase = z.infer<typeof cyclePhaseSchema>;
 
-export const incompleteTaskActionSchema = z.enum([
+export const incompleteWorkItemActionSchema = z.enum([
   "transfer",
   "backlog",
   "leave",
 ]);
-export type IncompleteTaskAction = z.infer<typeof incompleteTaskActionSchema>;
+export type IncompleteWorkItemAction = z.infer<typeof incompleteWorkItemActionSchema>;
 
 // ── Create Cycle DTO Schema (Matches CreateCycleDto) ─────────────────────────
 export const createCycleDtoSchema = z.object({
@@ -42,17 +42,18 @@ export type UpdateCycleDtoInput = z.infer<typeof updateCycleDtoSchema>;
 
 // ── Complete Cycle DTO Schema (Matches CompleteCycleDto) ─────────────────────
 export const completeCycleDtoSchema = z.object({
-  action: incompleteTaskActionSchema,
+  action: incompleteWorkItemActionSchema,
   targetCycleId: z.string().optional(),
   projectId: z.string().optional(),
 });
 export type CompleteCycleDtoInput = z.infer<typeof completeCycleDtoSchema>;
 
-// ── Add Cycle Tasks Batch DTO Schema (Matches AddCycleTasksBatchDto) ─────────
-export const addCycleTasksBatchDtoSchema = z.object({
-  taskIds: z.array(z.string()).min(1, "WorkItem IDs array is required"),
+// ── Add Cycle Work Items Batch DTO Schema (Matches AddCycleWorkItemsBatchDto) ─────────
+export const addCycleWorkItemsBatchDtoSchema = z.object({
+  itemIds: z.array(z.string()).min(1, "WorkItem IDs array is required"),
+  workItemIds: z.array(z.string()).optional(),
 });
-export type AddCycleTasksBatchDtoInput = z.infer<typeof addCycleTasksBatchDtoSchema>;
+export type AddCycleWorkItemsBatchDtoInput = z.infer<typeof addCycleWorkItemsBatchDtoSchema>;
 
 // ── Deliverables & Milestones Schemas (Feature compatibility) ───────────────
 export const cycleMilestoneSchema = z.object({
@@ -92,7 +93,8 @@ export const cycleSchema = z.object({
   milestones: z.array(cycleMilestoneSchema).optional(),
   deliverables: z.array(cycleDeliverableSchema).optional(),
   labels: z.array(z.string()).optional(),
-  tasks: z.array(z.any()).optional(),
+  items: z.array(z.any()).optional(),
+  workItems: z.array(z.any()).optional(),
   authorId: z.string().optional(),
   author: z
     .object({
@@ -133,7 +135,6 @@ export const cycleFormSchema = z.object({
   description: z.string(),
   startDate: z.string(),
   endDate: z.string(),
-  phase: z.string(),
   status: cycleStatusSchema,
   labels: z.array(z.string()),
 });

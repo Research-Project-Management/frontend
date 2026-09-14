@@ -39,130 +39,137 @@ export default function NotificationsTab() {
   }, [form, onSubmit]);
 
   return (
-    <div className='p-6 md:px-8 w-full max-w-4xl mx-auto'>
-      <div className='mb-8'>
-        <h2 className='text-xl font-semibold text-foreground'>Email notifications</h2>
-        <p className='text-sm text-muted-foreground mt-1'>
-          Stay in the loop on Work items you are subscribed to. Enable this to get notified.
-        </p>
-      </div>
-
+    <div className='p-6 md:px-8 w-full max-w-4xl mx-auto space-y-6'>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-          {/* Property changes */}
-          <FormField
-            control={form.control}
-            name="propertyChanges"
-            render={({ field }) => (
-              <FormItem className='flex items-center justify-between py-2 space-y-0'>
-                <div className='flex flex-col gap-1 pr-4'>
-                  <span className='text-sm font-medium text-foreground'>Property changes</span>
-                  <span className='text-sm text-muted-foreground'>
-                    Notify me when work items' properties like assignees, priority, estimates or anything else changes.
-                  </span>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className='rounded-md border border-border bg-card overflow-hidden'>
+            <div className='px-4 py-3 border-b border-border bg-muted/25'>
+              <h3 className='text-13 font-medium text-foreground'>Email & Activity Notifications</h3>
+              <p className='text-12 text-muted-foreground mt-0.5'>
+                Stay in the loop on work items you are subscribed to. Choose when you receive email alerts.
+              </p>
+            </div>
 
-          {/* State change */}
-          <FormField
-            control={form.control}
-            name="stateChange"
-            render={({ field }) => (
-              <FormItem className='flex items-center justify-between py-2 space-y-0'>
-                <div className='flex flex-col gap-1 pr-4'>
-                  <span className='text-sm font-medium text-foreground'>State change</span>
-                  <span className='text-sm text-muted-foreground'>
-                    Notify me when the work items moves to a different state
-                  </span>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <div className='divide-y divide-border'>
+              {/* Property changes */}
+              <FormField
+                control={form.control}
+                name="propertyChanges"
+                render={({ field }) => (
+                  <FormItem className='flex items-center justify-between p-4 space-y-0 gap-4'>
+                    <div className='flex flex-col gap-0.5 pr-2'>
+                      <span className='text-13 font-medium text-foreground'>Property changes</span>
+                      <span className='text-12 text-muted-foreground'>
+                        Notify me when work item properties like assignees, priority, or estimates change.
+                      </span>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          {/* Work item completed (Nested) */}
-          <FormField
-            control={form.control}
-            name="workItemCompleted"
-            render={({ field }) => (
-              <FormItem className='flex items-center justify-between py-2 pl-4 border-l-2 border-border ml-2 space-y-0'>
-                <div className='flex flex-col gap-1 pr-4'>
-                  <span className='text-sm font-medium text-foreground'>Work item completed</span>
-                  <span className='text-sm text-muted-foreground'>
-                    Notify me only when a work item is completed
-                  </span>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+              {/* State change */}
+              <FormField
+                control={form.control}
+                name="stateChange"
+                render={({ field }) => (
+                  <FormItem className='flex items-center justify-between p-4 space-y-0 gap-4'>
+                    <div className='flex flex-col gap-0.5 pr-2'>
+                      <span className='text-13 font-medium text-foreground'>State change</span>
+                      <span className='text-12 text-muted-foreground'>
+                        Notify me when a work item moves to a different state in the workflow.
+                      </span>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          {/* Comments */}
-          <FormField
-            control={form.control}
-            name="comments"
-            render={({ field }) => (
-              <FormItem className='flex items-center justify-between py-2 mt-4 space-y-0'>
-                <div className='flex flex-col gap-1 pr-4'>
-                  <span className='text-sm font-medium text-foreground'>Comments</span>
-                  <span className='text-sm text-muted-foreground'>
-                    Notify me when someone leaves a comment on the work item
-                  </span>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+              {/* Work item completed (Nested) */}
+              <FormField
+                control={form.control}
+                name="workItemCompleted"
+                render={({ field }) => (
+                  <FormItem className='flex items-center justify-between pl-8 pr-4 py-3.5 bg-muted/15 space-y-0 gap-4'>
+                    <div className='flex flex-col gap-0.5 pr-2'>
+                      <div className='flex items-center gap-2'>
+                        <span className='size-1.5 rounded-full bg-muted-foreground/50 shrink-0' />
+                        <span className='text-13 font-medium text-foreground'>Only when completed</span>
+                      </div>
+                      <span className='text-12 text-muted-foreground pl-3.5'>
+                        Limit state notifications to when a work item is marked completed or cancelled.
+                      </span>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          {/* Mentions */}
-          <FormField
-            control={form.control}
-            name="mentions"
-            render={({ field }) => (
-              <FormItem className='flex items-center justify-between py-2 space-y-0'>
-                <div className='flex flex-col gap-1 pr-4'>
-                  <span className='text-sm font-medium text-foreground'>Mentions</span>
-                  <span className='text-sm text-muted-foreground'>
-                    Notify me only when someone mentions me in the comments or description
-                  </span>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+              {/* Comments */}
+              <FormField
+                control={form.control}
+                name="comments"
+                render={({ field }) => (
+                  <FormItem className='flex items-center justify-between p-4 space-y-0 gap-4'>
+                    <div className='flex flex-col gap-0.5 pr-2'>
+                      <span className='text-13 font-medium text-foreground'>Comments</span>
+                      <span className='text-12 text-muted-foreground'>
+                        Notify me when someone leaves a comment or updates an existing comment on a work item.
+                      </span>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Mentions */}
+              <FormField
+                control={form.control}
+                name="mentions"
+                render={({ field }) => (
+                  <FormItem className='flex items-center justify-between p-4 space-y-0 gap-4'>
+                    <div className='flex flex-col gap-0.5 pr-2'>
+                      <span className='text-13 font-medium text-foreground'>Mentions</span>
+                      <span className='text-12 text-muted-foreground'>
+                        Notify me specifically when someone @mentions me in a description or comment.
+                      </span>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
         </form>
       </Form>
     </div>

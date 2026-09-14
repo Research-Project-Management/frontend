@@ -10,13 +10,12 @@ import {
   DialogFooter,
   Button,
 } from "@/shared/components/ui";
-import type { Item, Task } from '../../types/work-item.types';
+import type { Item } from '../../types/work-item.types';
 
 export interface DeleteModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item?: Item | null;
-  task?: Item | null;
   onConfirm: () => void | Promise<void>;
   isDeleting?: boolean;
 }
@@ -24,12 +23,10 @@ export interface DeleteModalProps {
 export function DeleteModal({
   open,
   onOpenChange,
-  item: propItem,
-  task: propTask,
+  item,
   onConfirm,
   isDeleting = false,
 }: DeleteModalProps) {
-  const item = propItem || propTask;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-full max-w-md p-6 gap-4 rounded-lg border border-border bg-background">

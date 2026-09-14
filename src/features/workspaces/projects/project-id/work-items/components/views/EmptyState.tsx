@@ -141,17 +141,15 @@ export function WorkItemVerticalStackIllustration({ className }: TIllustrationAs
 
 export interface EmptyStateProps {
   onCreateItem?: () => void;
-  onCreateTask?: () => void;
   isReadOnly?: boolean;
 }
 export type WorkItemsEmptyStateProps = EmptyStateProps;
 
 export function EmptyState({
   onCreateItem,
-  onCreateTask,
   isReadOnly = false,
 }: EmptyStateProps) {
-  const handleCreate = onCreateItem || onCreateTask;
+  const handleCreate = onCreateItem;
   return (
     <div className="flex-1 w-full h-full min-h-[420px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in zoom-in-95 duration-200">
       <div

@@ -80,11 +80,10 @@ export function BatchBar({
       return;
     }
 
-    const workspaceId = resolvedItems[0]?.workspaceId || '';
     const itemIds = resolvedItems.map((p) => p.id).filter(Boolean);
-    if (workspaceId && itemIds.length > 0) {
+    if (itemIds.length > 0) {
       try {
-        const res = await CitationService.batchFormat(workspaceId, itemIds, style);
+        const res = await CitationService.batchFormat(undefined, itemIds, style);
         const text = res.citations
           .map((c) => c.citation?.bibliography)
           .filter(Boolean)
@@ -167,18 +166,18 @@ export function BatchBar({
             >
               <DropdownMenuItem
                 onClick={() => onBatchMove(null)}
-                className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                className="h-8 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
-                <Library className="size-4 text-foreground shrink-0" />
+                <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                 <span>My Library</span>
               </DropdownMenuItem>
               {collections.map((c) => (
                 <DropdownMenuItem
                   key={c.id}
                   onClick={() => onBatchMove(c.id)}
-                  className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="h-8 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
-                  <Folder className="size-4 text-foreground shrink-0" />
+                  <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                   <span className="truncate">{c.name}</span>
                 </DropdownMenuItem>
               ))}

@@ -10,9 +10,9 @@ import { usePdf } from './use-pdf';
 import { ItemsService } from '../services/items.service';
 import { ReadingService } from '../services/reading.service';
 import { AnnotationsService } from '../services/annotations.service';
-import { readerAnnotationKeys } from './use-annotations';
+import { readerAnnotationKeys, useAnnotations } from './use-annotations';
 import { useLibraryReaderStore } from '../store/reader.store';
-import type { ReaderPanel, ReaderDocument } from '../types/reader.types';
+import type { ReaderPanel, ReaderDocument, AnnotationRect } from '../types/reader.types';
 
 const MIN_PANEL_WIDTH = 320;
 const MAX_PANEL_WIDTH = 560;
@@ -90,6 +90,12 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
 
   const effectiveAttachmentId =
     paper?.attachments?.[0]?.id || paper?.primaryFile?.fileId || undefined;
+
+  const {
+    annotations = [],
+    updateAnnotation,
+    deleteAnnotation,
+  } = useAnnotations(workspaceId, effectiveAttachmentId);
 
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
@@ -208,7 +214,12 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     }
   };
 
-  const handleAnnotate = async (text: string, pageNum?: number, colorHex: string = '#ffd400') => {
+  const handleAnnotate = async (
+    text: string,
+    pageNum?: number,
+    colorHex: string = '#ffd400',
+    rects?: AnnotationRect[],
+  ) => {
     setActivePanel('annotations');
     if (!effectiveAttachmentId) return;
 
@@ -222,6 +233,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
         pageIndex,
         color: colorHex,
         quoteText: quote,
+        rects,
       });
       qc.invalidateQueries({
         queryKey: readerAnnotationKeys.byAttachment(workspaceId || 'me', effectiveAttachmentId),
@@ -408,6 +420,8 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       zoom,
       selectedAnnotationIds,
       isBatchProcessing,
+      annotations: annotations || [],
+      effectiveAttachmentId,
     },
     actions: {
       setActivePanel,
@@ -435,6 +449,8 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       handleBatchChangeColor,
       handleBatchDelete,
       handleBatchAddToNote,
+      updateAnnotation,
+      deleteAnnotation,
     },
   };
 }

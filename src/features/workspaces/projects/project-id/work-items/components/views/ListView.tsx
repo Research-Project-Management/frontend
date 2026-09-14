@@ -11,6 +11,10 @@ import {
   UserPlus,
   MoreHorizontal,
   LayoutGrid,
+  ChevronRight,
+  ChevronDown,
+  Check,
+  CornerDownRight,
 } from 'lucide-react';
 import {
   Button,
@@ -48,7 +52,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { createPortal } from 'react-dom';
 import { cn } from "@/shared/lib/utils";
-import { ItemHelpers, ItemHelpers as TaskHelpers } from '../../utils/work-item.utils';
+import { ItemHelpers } from '../../utils/work-item.utils';
 import { StatusIcon } from '@/shared/components/icons';
 import {
   PriorityPopover,
@@ -60,16 +64,16 @@ import {
 } from '../modals/Popovers';
 import type {
   Item,
-  Task,
+  SubItem,
   Column,
   Priority,
-  TaskPriority,
   DisplayOptions,
   Cycle,
   BaseWorkItemViewProps,
   WorkItemCardHandlers,
 } from '../../types/work-item.types';
-import { resolveTaskColumnId, resolveTaskColumnColor } from '../../utils/work-item.utils';
+import { resolveColumnId } from '../../utils/work-item.utils';
+import { CoreService } from '../../services/core.service';
 
 // ── 1. Semantic Color Theme Maps & Date Formatters ────────────────────────────
 
@@ -143,23 +147,22 @@ function GroupCheckbox({
   );
 }
 
-// ── 3. Task Row Component (Responsive, Scannable & Hardened) ──────────────────
+// ── 3. Item Row Component (Responsive, Scannable & Hardened) ──────────────────
 
-interface TaskRowProps {
-  task: Task;
+export interface ItemRowProps {
+  item: Item;
   columns: Column[];
   currentColumn?: Column;
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
-  onEditCard: (task: Task) => void;
-  onDuplicateCard: (task: Task) => void;
-  onJoinCard: (task: Task) => void;
-  onLeaveCard: (task: Task) => void;
-  onRemoveFromCycle?: (task: Task) => void;
-  onDeleteCard: (task: Task) => void;
-  onMoveCard: (taskId: string, targetColumnId: string) => void;
+  onEditCard: (item: Item) => void;
+  onDuplicateCard: (item: Item) => void;
+  onJoinCard: (item: Item) => void;
+  onLeaveCard: (item: Item) => void;
+  onRemoveFromCycle?: (item: Item) => void;
+  onDeleteCard: (item: Item) => void;
+  onMoveCard: (itemId: string, targetColumnId: string) => void;
   onUpdateItem?: (id: string, data: any) => void;
-  onUpdateTask?: (id: string, data: any) => void;
   displayOptions?: DisplayOptions;
   members?: any[];
   cycles?: Cycle[];
@@ -167,10 +170,12 @@ interface TaskRowProps {
   currentUserAvatar?: string;
   isDragging?: boolean;
   isReadOnly?: boolean;
+  isChildrenExpanded?: boolean;
+  onToggleExpandChildren?: (itemId: string) => void;
 }
 
-const TaskRow = ({
-  task,
+export const ItemRow = ({
+  item,
   columns,
   currentColumn,
   isSelected = false,
@@ -182,14 +187,16 @@ const TaskRow = ({
   onRemoveFromCycle,
   onDeleteCard,
   onMoveCard,
-  onUpdateTask,
+  onUpdateItem,
   displayOptions,
   members = [],
   cycles = [],
   currentUserId,
   isDragging = false,
   isReadOnly = false,
-}: TaskRowProps) => {
+  isChildrenExpanded = false,
+  onToggleExpandChildren,
+}: ItemRowProps) => {
   // Popover state triggers for inline editing
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [assigneeOpen, setAssigneeOpen] = useState(false);
@@ -203,39 +210,39 @@ const TaskRow = ({
   const showId = propsConfig?.id !== false;
   const showState = propsConfig?.state !== false;
   const showPriority = propsConfig?.priority !== false;
-  const showStartDate = Boolean(propsConfig?.startDate || task.startDate);
+  const showStartDate = Boolean(propsConfig?.startDate || item.startDate);
   const showDueDate = propsConfig?.dueDate !== false;
   const showAssignee = propsConfig?.assignee !== false;
   const showAttach = propsConfig?.attach !== false;
   const showCycle = propsConfig?.cycle !== false;
   const showLabels = propsConfig?.labels !== false;
 
-  const priorityKey = (task.priority || 'none').toLowerCase() as TaskPriority;
+  const priorityKey = (item.priority || 'none').toLowerCase() as Priority;
 
-  const resolvedAssignees = TaskHelpers.resolveAssignees(task, members);
-  const assignee = TaskHelpers.resolveAssignee(task) || resolvedAssignees[0] || null;
-  const assigneeId = TaskHelpers.resolveAssigneeId(task) || resolvedAssignees[0]?.id || null;
+  const resolvedAssignees = ItemHelpers.resolveAssignees(item, members);
+  const assignee = ItemHelpers.resolveAssignee(item) || resolvedAssignees[0] || null;
+  const assigneeId = ItemHelpers.resolveAssigneeId(item) || resolvedAssignees[0]?.id || null;
   const resolvedAssigneeIds = resolvedAssignees.map((a) => a.id).filter(Boolean);
   const isCurrentUserAssignee = Boolean(
     currentUserId && (assigneeId === currentUserId || resolvedAssigneeIds.includes(currentUserId))
   );
 
-  const formattedStart = formatDueDate(task.startDate);
-  const formattedDue = formatDueDate(task.dueDate);
+  const formattedStart = formatDueDate(item.startDate);
+  const formattedDue = formatDueDate(item.dueDate);
 
   // Overdue and Due Today Calculations for Colorization
   const isOverdue = useMemo(() => {
-    if (!task.dueDate || task.completed) return false;
-    const due = new Date(task.dueDate);
+    if (!item.dueDate || item.completed) return false;
+    const due = new Date(item.dueDate);
     if (Number.isNaN(due.getTime())) return false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return due < today;
-  }, [task.dueDate, task.completed]);
+  }, [item.dueDate, item.completed]);
 
   const isDueToday = useMemo(() => {
-    if (!task.dueDate || task.completed) return false;
-    const due = new Date(task.dueDate);
+    if (!item.dueDate || item.completed) return false;
+    const due = new Date(item.dueDate);
     if (Number.isNaN(due.getTime())) return false;
     const today = new Date();
     return (
@@ -243,11 +250,11 @@ const TaskRow = ({
       due.getMonth() === today.getMonth() &&
       due.getDate() === today.getDate()
     );
-  }, [task.dueDate, task.completed]);
+  }, [item.dueDate, item.completed]);
 
   // Attachments / modules count
   const attachItems = useMemo(() => {
-    const attachObj = (task as any).attach;
+    const attachObj = (item as any).attach;
     if (!attachObj) return [];
     const items: Array<{ id: string; title: string }> = [];
     if (Array.isArray(attachObj.pages)) {
@@ -263,7 +270,7 @@ const TaskRow = ({
       attachObj.links.forEach((l: any) => items.push({ id: l.id, title: l.title || 'Link' }));
     }
     return items;
-  }, [task]);
+  }, [item]);
 
   const attachLabel = useMemo(() => {
     if (attachItems.length === 0) return null;
@@ -273,32 +280,32 @@ const TaskRow = ({
 
   // Cycle resolving
   const cycleName = useMemo(() => {
-    if (!task.cycle) return null;
-    if (typeof task.cycle === 'object' && task.cycle !== null) {
-      return (task.cycle as { name?: string }).name || null;
+    if (!item.cycle) return null;
+    if (typeof item.cycle === 'object' && item.cycle !== null) {
+      return (item.cycle as { name?: string }).name || null;
     }
-    if (typeof task.cycle === 'string') return task.cycle;
+    if (typeof item.cycle === 'string') return item.cycle;
     return null;
-  }, [task.cycle]);
+  }, [item.cycle]);
 
-  const taskCycleId = useMemo(() => {
-    if (typeof task.cycle === 'object' && task.cycle !== null) {
-      return (task.cycle as any).id || null;
+  const itemCycleId = useMemo(() => {
+    if (typeof item.cycle === 'object' && item.cycle !== null) {
+      return (item.cycle as any).id || null;
     }
-    return task.cycleId || null;
-  }, [task.cycle, task.cycleId]);
+    return item.cycleId || null;
+  }, [item.cycle, item.cycleId]);
 
   // Labels resolving
   const labelsList = useMemo(() => {
-    if (!Array.isArray(task.labels) || task.labels.length === 0) return [];
-    return task.labels.filter(Boolean);
-  }, [task.labels]);
+    if (!Array.isArray(item.labels) || item.labels.length === 0) return [];
+    return item.labels.filter(Boolean);
+  }, [item.labels]);
 
   const colTitle = currentColumn?.title || currentColumn?.name || 'Backlog';
   const currentColor =
-    currentColumn?.accentColor ||
     currentColumn?.color ||
-    resolveTaskColumnColor(task.columnId, currentColumn?.accentColor);
+    currentColumn?.accentColor ||
+    '#8A9093';
 
   return (
     <div
@@ -306,7 +313,7 @@ const TaskRow = ({
         'group/row relative h-10 pl-7 sm:pl-8 pr-3 sm:pr-4 flex items-center justify-between border-b border-border bg-background hover:bg-muted select-none text-13 transition-colors duration-150',
         isDragging && 'opacity-50 bg-muted',
         isSelected && 'bg-muted font-medium',
-        task.completed && 'opacity-75',
+        item.completed && 'opacity-75',
       )}
     >
       {/* Checkbox: Positioned absolutely at left-2 (fades in on hover or when checked) */}
@@ -319,10 +326,10 @@ const TaskRow = ({
           checked={isSelected}
           onChange={(e) => {
             e.stopPropagation();
-            onToggleSelect?.(task.id);
+            onToggleSelect?.(item.id);
           }}
           onClick={(e) => e.stopPropagation()}
-          aria-label={`Select item ${task.identifier || task.title || 'untitled'}`}
+          aria-label={`Select item ${item.identifier || item.title || 'untitled'}`}
           className={cn(
             'size-3.5 rounded-sm border border-border text-primary focus:ring-1 focus:ring-ring focus:outline-none cursor-pointer shrink-0 accent-primary transition-opacity duration-150',
             isSelected
@@ -333,11 +340,55 @@ const TaskRow = ({
       </div>
 
       {/* Left: Identifier & Title */}
-      <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-3 sm:mr-4">
+      <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-3 sm:mr-4">
+        {/* Child Items Expand/Collapse Toggle */}
+        {(() => {
+          const childList = (item.childWorkItems && item.childWorkItems.length > 0)
+            ? item.childWorkItems
+            : (item.subItems || []);
+          if (childList.length === 0) return null;
+          const completedCount = childList.filter(
+            (s: any) => s.completed || s.columnId === 'done' || s.columnId === 'completed'
+          ).length;
+
+          return (
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleExpandChildren?.(item.id);
+                }}
+                aria-label={isChildrenExpanded ? 'Collapse sub-items' : 'Expand sub-items'}
+                className="size-4.5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer -ml-0.5"
+              >
+                <ChevronRight
+                  className={cn(
+                    'size-3.5 transition-transform duration-150',
+                    isChildrenExpanded && 'rotate-90'
+                  )}
+                />
+              </button>
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleExpandChildren?.(item.id);
+                }}
+                title={`${completedCount} of ${childList.length} sub-items completed`}
+                className="font-mono text-10 font-medium text-muted-foreground bg-muted px-1.5 py-0.2 rounded-full tabular-nums shrink-0 cursor-pointer hover:bg-muted/80"
+              >
+                {completedCount}/{childList.length}
+              </span>
+            </div>
+          );
+        })()}
+
         {/* Work Item Identifier (e.g. TIEPT-3) */}
-        {showId && task.identifier && (
-          <span className="font-mono text-12 font-medium text-muted-foreground uppercase shrink-0 select-none tracking-tight tabular-nums mr-1">
-            {task.identifier}
+        {showId && item.identifier && (
+          <span className="font-mono text-12 font-medium text-muted-foreground shrink-0 select-none tracking-tight tabular-nums mr-0.5">
+            {item.identifier}
           </span>
         )}
 
@@ -345,21 +396,21 @@ const TaskRow = ({
         <span
           role="button"
           tabIndex={0}
-          onClick={() => onEditCard(task)}
+          onClick={() => onEditCard(item)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              onEditCard(task);
+              onEditCard(item);
             }
           }}
           className={cn(
             'font-normal truncate cursor-pointer text-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:underline',
-            task.completed && 'text-muted-foreground line-through',
-            !task.title?.trim() && 'italic text-muted-foreground',
+            item.completed && 'text-muted-foreground line-through',
+            !item.title?.trim() && 'italic text-muted-foreground',
           )}
-          title={task.title || 'Untitled work item'}
+          title={item.title || 'Untitled work item'}
         >
-          {task.title?.trim() || '(Untitled work item)'}
+          {item.title?.trim() || '(Untitled work item)'}
         </span>
       </div>
 
@@ -387,14 +438,14 @@ const TaskRow = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44 p-1 text-xs z-100">
               {columns.map((col) => {
-                const cId = resolveTaskColumnId(col);
-                const isCurr = cId === task.columnId;
+                const cId = resolveColumnId(col);
+                const isCurr = cId === item.columnId;
                 const cTitle = col.title || col.name || 'Column';
-                const cColor = col.accentColor || col.color || resolveTaskColumnColor(cId, col.accentColor);
+                const cColor = col.color || col.accentColor || '#8A9093';
                 return (
                   <DropdownMenuItem
                     key={cId}
-                    onClick={() => onMoveCard(task.id, cId)}
+                    onClick={() => onMoveCard(item.id, cId)}
                     className={cn(
                       'flex items-center gap-2 cursor-pointer py-1.5 text-xs rounded-sm',
                       isCurr && 'bg-muted font-medium',
@@ -420,8 +471,8 @@ const TaskRow = ({
             <PriorityPopover
               open={priorityOpen}
               onOpenChange={setPriorityOpen}
-              priority={priorityKey as TaskPriority}
-              setPriority={(p) => onUpdateTask?.(task.id, { priority: p })}
+              priority={priorityKey as Priority}
+              setPriority={(p) => onUpdateItem?.(item.id, { priority: p })}
               isReadOnly={isReadOnly}
               actionBtnClass={cn(
                 'h-6 px-2.5 text-11 font-normal rounded-full border transition-colors shadow-none',
@@ -438,10 +489,10 @@ const TaskRow = ({
               open={startDateOpen}
               onOpenChange={setStartDateOpen}
               label={formattedStart || 'Start date'}
-              date={task.startDate || ''}
-              onSelectDate={(d) => onUpdateTask?.(task.id, { startDate: d || null })}
+              date={item.startDate || ''}
+              onSelectDate={(d) => onUpdateItem?.(item.id, { startDate: d || null })}
               actionBtnClass={cn(
-                task.startDate
+                item.startDate
                   ? 'h-6 px-2.5 text-11 font-normal rounded-full border border-border bg-background hover:bg-muted text-foreground'
                   : 'size-6 p-0 rounded-full border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center shrink-0 [&>span]:hidden',
               )}
@@ -456,10 +507,10 @@ const TaskRow = ({
               open={dateOpen}
               onOpenChange={setDateOpen}
               label={formattedDue || 'Due date'}
-              date={task.dueDate || ''}
-              onSelectDate={(d) => onUpdateTask?.(task.id, { dueDate: d || null })}
+              date={item.dueDate || ''}
+              onSelectDate={(d) => onUpdateItem?.(item.id, { dueDate: d || null })}
               actionBtnClass={cn(
-                task.dueDate
+                item.dueDate
                   ? cn(
                       'h-6 px-2.5 text-11 font-normal rounded-full border transition-colors shadow-none',
                       isOverdue
@@ -495,7 +546,7 @@ const TaskRow = ({
                 className="size-6 rounded-full border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all"
                 title={resolvedAssignees[0].name || 'Assignee'}
               >
-                <Avatar className="size-full">
+                <Avatar className="size-full shrink-0">
                   <AvatarImage src={resolvedAssignees[0].avatar || undefined} alt={resolvedAssignees[0].name || 'Assignee'} />
                   <AvatarFallback className="text-10 font-medium bg-muted text-foreground">
                     {(resolvedAssignees[0].name || 'U').slice(0, 1).toUpperCase()}
@@ -510,7 +561,7 @@ const TaskRow = ({
                 className="size-6 rounded-full border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all"
                 title={assignee.name || 'Assignee'}
               >
-                <Avatar className="size-full">
+                <Avatar className="size-full shrink-0">
                   <AvatarImage src={assignee.avatar || undefined} alt={assignee.name || 'Assignee'} />
                   <AvatarFallback className="text-10 font-medium bg-muted text-foreground">
                     {(assignee.name || 'U').slice(0, 1).toUpperCase()}
@@ -534,10 +585,10 @@ const TaskRow = ({
               open={assigneeOpen}
               onOpenChange={setAssigneeOpen}
               assigneeId={assigneeId ?? null}
-              setAssigneeId={(id) => onUpdateTask?.(task.id, { assigneeId: id })}
+              setAssigneeId={(id) => onUpdateItem?.(item.id, { assigneeId: id })}
               assigneeIds={resolvedAssigneeIds}
               setAssigneeIds={(ids) =>
-                onUpdateTask?.(task.id, {
+                onUpdateItem?.(item.id, {
                   assigneeIds: ids,
                   assigneeId: ids[0] ?? null,
                 })
@@ -553,7 +604,7 @@ const TaskRow = ({
         {showAttach && attachLabel && (
           <button
             type="button"
-            onClick={() => onEditCard(task)}
+            onClick={() => onEditCard(item)}
             className="h-6 px-2.5 text-11 font-normal rounded-full border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground hidden xl:flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
             title="Attached modules/pages/files"
           >
@@ -568,8 +619,8 @@ const TaskRow = ({
             <CyclePopover
               open={cycleOpen}
               onOpenChange={setCycleOpen}
-              cycleId={taskCycleId}
-              setCycleId={(id) => onUpdateTask?.(task.id, { cycleId: id })}
+              cycleId={itemCycleId}
+              setCycleId={(id) => onUpdateItem?.(item.id, { cycleId: id })}
               cycles={cycles}
               isReadOnly={isReadOnly}
               actionBtnClass={cn(
@@ -605,13 +656,13 @@ const TaskRow = ({
             <LabelPopover
               open={labelOpen}
               onOpenChange={setLabelOpen}
-              labels={Array.isArray(task.labels) ? task.labels.map((l: any) => (typeof l === 'string' ? l : l.id)) : []}
+              labels={Array.isArray(item.labels) ? item.labels.map((l: any) => (typeof l === 'string' ? l : l.id)) : []}
               setLabels={(updater) => {
-                const currentIds = Array.isArray(task.labels)
-                  ? task.labels.map((l: any) => (typeof l === 'string' ? l : l.id))
+                const currentIds = Array.isArray(item.labels)
+                  ? item.labels.map((l: any) => (typeof l === 'string' ? l : l.id))
                   : [];
                 const nextIds = typeof updater === 'function' ? updater(currentIds) : updater;
-                onUpdateTask?.(task.id, { labels: nextIds });
+                onUpdateItem?.(item.id, { labels: nextIds });
               }}
               actionBtnClass="size-6 p-0 rounded-full border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center shrink-0 [&>span]:hidden shadow-none"
             />
@@ -634,16 +685,24 @@ const TaskRow = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44 p-1 text-xs z-100">
               <DropdownMenuItem
-                onClick={() => onDuplicateCard(task)}
+                onClick={() => onDuplicateCard(item)}
                 className="cursor-pointer gap-2 py-1.5"
               >
                 <Copy className="size-3.5 text-muted-foreground shrink-0" />
                 <span>Duplicate</span>
               </DropdownMenuItem>
 
+              <DropdownMenuItem
+                onClick={() => onToggleExpandChildren?.(item.id)}
+                className="cursor-pointer gap-2 py-1.5"
+              >
+                <CornerDownRight className="size-3.5 text-muted-foreground shrink-0" />
+                <span>Add sub-item</span>
+              </DropdownMenuItem>
+
               {currentUserId && (
                 <DropdownMenuItem
-                  onClick={() => (isCurrentUserAssignee ? onLeaveCard(task) : onJoinCard(task))}
+                  onClick={() => (isCurrentUserAssignee ? onLeaveCard(item) : onJoinCard(item))}
                   className="cursor-pointer gap-2 py-1.5"
                 >
                   {isCurrentUserAssignee ? (
@@ -660,9 +719,9 @@ const TaskRow = ({
                 </DropdownMenuItem>
               )}
 
-              {onRemoveFromCycle && task.cycle && (
+              {onRemoveFromCycle && item.cycle && (
                 <DropdownMenuItem
-                  onClick={() => onRemoveFromCycle(task)}
+                  onClick={() => onRemoveFromCycle(item)}
                   className="cursor-pointer gap-2 py-1.5"
                 >
                   <RotateCcw className="size-3.5 text-muted-foreground shrink-0" />
@@ -673,7 +732,7 @@ const TaskRow = ({
               <DropdownMenuSeparator />
 
               <DropdownMenuItem
-                onClick={() => onDeleteCard(task)}
+                onClick={() => onDeleteCard(item)}
                 className="cursor-pointer gap-2 py-1.5 text-destructive focus:text-destructive-foreground focus:bg-destructive"
               >
                 <Trash2 className="size-3.5 shrink-0" />
@@ -687,14 +746,265 @@ const TaskRow = ({
   );
 };
 
-// ── 4. Sortable Task Row Wrapper (DnD) ───────────────────────────────────────
+// ── 4. Child Item Components (Hierarchical Nested Tree) ─────────────────────────
 
-export const ItemRow = TaskRow;
+interface ChildItemRowProps {
+  childItem: SubItem;
+  parentItem: Item;
+  index: number;
+  columns: Column[];
+  isReadOnly?: boolean;
+  onEditCard: (item: Item) => void;
+  onUpdateChildItem?: (parentItem: Item, childItem: SubItem, subIndex: number, data: Partial<SubItem>) => void;
+  onDeleteChildItem?: (parentItem: Item, childItemId: string, subIndex: number) => void;
+}
 
-const SortableTaskRow = memo(function SortableTaskRow(props: TaskRowProps) {
+const ChildItemRow = ({
+  childItem,
+  parentItem,
+  index,
+  columns,
+  isReadOnly = false,
+  onEditCard,
+  onUpdateChildItem,
+  onDeleteChildItem,
+}: ChildItemRowProps) => {
+  const isDone = Boolean(childItem.completed || childItem.columnId === 'done' || childItem.columnId === 'completed');
+  const currentCol = columns.find((c) => resolveColumnId(c) === childItem.columnId);
+  const colTitle = currentCol?.title || currentCol?.name || childItem.columnId || 'Todo';
+  const colColor = currentCol?.accentColor || currentCol?.color || (isDone ? '#10B981' : '#8A9093');
+
+  const defaultUnstartedId = useMemo(() => {
+    if (!Array.isArray(columns) || columns.length === 0) return 'todo';
+    const col =
+      columns.find((c) => c.group === 'unstarted' && c.isDefault) ||
+      columns.find((c) => c.group === 'unstarted') ||
+      columns.find((c) => c.isDefault) ||
+      columns[0];
+    return col ? resolveColumnId(col) : 'todo';
+  }, [columns]);
+
+  const defaultCompletedId = useMemo(() => {
+    if (!Array.isArray(columns) || columns.length === 0) return 'done';
+    const col =
+      columns.find((c) => c.group === 'completed') ||
+      columns[columns.length - 1];
+    return col ? resolveColumnId(col) : 'done';
+  }, [columns]);
+
+  return (
+    <div className="group/sub relative h-9 pl-12 sm:pl-14 pr-3 sm:pr-4 flex items-center justify-between hover:bg-muted/60 select-none text-12 transition-colors duration-150 border-b border-border/40">
+      {/* Left Tree Branch & Checkbox & Title */}
+      <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
+        <CornerDownRight className="size-3 text-muted-foreground/60 shrink-0 -ml-5" />
+
+        <button
+          type="button"
+          disabled={isReadOnly}
+          onClick={(e) => {
+            e.stopPropagation();
+            onUpdateChildItem?.(parentItem, childItem, index, {
+              completed: !isDone,
+              columnId: !isDone ? defaultCompletedId : defaultUnstartedId,
+            });
+          }}
+          aria-label={`Mark sub-item as ${isDone ? 'incomplete' : 'complete'}`}
+          className={cn(
+            'size-3.5 rounded-sm border flex items-center justify-center transition-colors cursor-pointer shrink-0',
+            isDone
+              ? 'bg-emerald-500 border-emerald-500 text-white'
+              : 'border-border hover:border-primary'
+          )}
+        >
+          {isDone && <Check className="size-2.5 shrink-0 stroke-[3]" />}
+        </button>
+
+        {childItem.identifier && (
+          <span className="font-mono text-11 font-medium text-muted-foreground shrink-0 tabular-nums">
+            {childItem.identifier}
+          </span>
+        )}
+
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            onEditCard({
+              ...parentItem,
+              id: childItem.id,
+              title: childItem.title,
+              columnId: childItem.columnId || defaultUnstartedId,
+              completed: isDone,
+              parentId: parentItem.id,
+            } as Item);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onEditCard({
+                ...parentItem,
+                id: childItem.id,
+                title: childItem.title,
+                columnId: childItem.columnId || defaultUnstartedId,
+                completed: isDone,
+                parentId: parentItem.id,
+              } as Item);
+            }
+          }}
+          className={cn(
+            'truncate cursor-pointer hover:text-primary transition-colors text-12 font-normal',
+            isDone ? 'line-through text-muted-foreground' : 'text-foreground'
+          )}
+          title={childItem.title}
+        >
+          {childItem.title}
+        </span>
+      </div>
+
+      {/* Right Properties: Status dropdown + Delete action */}
+      <div className="flex items-center gap-2 shrink-0">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild disabled={isReadOnly}>
+            <button
+              type="button"
+              className="h-5 px-2 text-10 font-normal rounded-full border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1 shrink-0 transition-colors cursor-pointer outline-none"
+            >
+              <StatusIcon
+                title={colTitle}
+                group={currentCol?.group || currentCol?.slug || colTitle}
+                color={colColor}
+                className="size-2.5 shrink-0"
+              />
+              <span className="truncate max-w-[65px]">{colTitle}</span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40 p-1 text-xs z-100">
+            {columns.map((col) => {
+              const cId = resolveColumnId(col);
+              const cTitle = col.title || col.name || 'Column';
+              const cColor = col.color || col.accentColor || '#8A9093';
+              const isCurr = cId === childItem.columnId;
+              return (
+                <DropdownMenuItem
+                  key={cId}
+                  onClick={() => {
+                    const completed = cId === 'done' || cId === 'completed';
+                    onUpdateChildItem?.(parentItem, childItem, index, { columnId: cId, completed });
+                  }}
+                  className={cn('gap-2 py-1 cursor-pointer text-11', isCurr && 'font-medium bg-muted')}
+                >
+                  <StatusIcon
+                    title={cTitle}
+                    group={col.group || col.slug || cTitle}
+                    color={cColor}
+                    className="size-3 shrink-0"
+                  />
+                  <span>{cTitle}</span>
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {!isReadOnly && onDeleteChildItem && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteChildItem(parentItem, childItem.id, index);
+            }}
+            aria-label="Delete sub-item"
+            className="opacity-0 group-hover/sub:opacity-100 size-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer"
+          >
+            <Trash2 className="size-3 shrink-0" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ChildItemQuickAdd = ({
+  parentItem,
+  onAddChildItem,
+}: {
+  parentItem: Item;
+  onAddChildItem: (parentItemId: string, title: string) => void;
+}) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [title, setTitle] = useState('');
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (isAdding) {
+      inputRef.current?.focus();
+    }
+  }, [isAdding]);
+
+  const handleSubmit = () => {
+    if (title.trim()) {
+      onAddChildItem(parentItem.id, title.trim());
+      setTitle('');
+    }
+  };
+
+  return (
+    <div className="pl-12 sm:pl-14 pr-3 sm:pr-4 h-8 flex items-center border-b border-border/40 bg-background/50">
+      {isAdding ? (
+        <div className="flex items-center gap-2 w-full">
+          <CornerDownRight className="size-3 text-muted-foreground/60 shrink-0 -ml-5" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSubmit();
+              } else if (e.key === 'Escape') {
+                setIsAdding(false);
+                setTitle('');
+              }
+            }}
+            onBlur={() => {
+              if (!title.trim()) setIsAdding(false);
+            }}
+            placeholder="Sub-item title... (Enter to save, Esc to cancel)"
+            className="w-full bg-transparent text-12 text-foreground placeholder:text-muted-foreground outline-none font-normal"
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsAdding(true)}
+          className="flex items-center gap-1.5 text-11 text-muted-foreground hover:text-foreground transition-colors cursor-pointer -ml-5"
+        >
+          <Plus className="size-3" />
+          <span>Add sub-item</span>
+        </button>
+      )}
+    </div>
+  );
+};
+
+// ── 5. Sortable Item Row Wrapper (DnD & Nested Child Items) ───────────────────
+
+export interface SortableItemRowProps extends ItemRowProps {
+  onUpdateChildItem?: (parentItem: Item, childItem: SubItem, subIndex: number, data: Partial<SubItem>) => void;
+  onDeleteChildItem?: (parentItem: Item, childItemId: string, subIndex: number) => void;
+  onAddChildItem?: (parentItemId: string, title: string) => void;
+}
+
+export const SortableItemRow = memo(function SortableItemRow({
+  onUpdateChildItem,
+  onDeleteChildItem,
+  onAddChildItem,
+  ...props
+}: SortableItemRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: props.task.id,
-    data: { task: props.task },
+    id: props.item.id,
+    data: { item: props.item },
   });
 
   const style: React.CSSProperties = {
@@ -702,13 +1012,50 @@ const SortableTaskRow = memo(function SortableTaskRow(props: TaskRowProps) {
     transition,
   };
 
+  const childList: SubItem[] = useMemo(() => {
+    if (props.item.childWorkItems && props.item.childWorkItems.length > 0) {
+      return props.item.childWorkItems;
+    }
+    if (props.item.subItems && props.item.subItems.length > 0) {
+      return props.item.subItems;
+    }
+    return [];
+  }, [props.item.subItems, props.item.childWorkItems]);
+
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <TaskRow {...props} isDragging={isDragging} />
+    <div ref={setNodeRef} style={style}>
+      <div {...attributes} {...listeners}>
+        <ItemRow {...props} isDragging={isDragging} />
+      </div>
+      {props.isChildrenExpanded && (
+        <div
+          className="bg-muted/20 border-b border-border divide-y divide-border/40"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {childList.map((sub: SubItem, idx: number) => (
+            <ChildItemRow
+              key={sub.id || `sub_${idx}`}
+              childItem={sub}
+              parentItem={props.item}
+              index={idx}
+              columns={props.columns}
+              isReadOnly={props.isReadOnly}
+              onEditCard={props.onEditCard}
+              onUpdateChildItem={onUpdateChildItem}
+              onDeleteChildItem={onDeleteChildItem}
+            />
+          ))}
+          {!props.isReadOnly && onAddChildItem && (
+            <ChildItemQuickAdd
+              parentItem={props.item}
+              onAddChildItem={onAddChildItem}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 });
-const SortableItemRow = SortableTaskRow;
 
 // ── 5. Group Section Component (Collapsible, Polished & Keyboard Navigable) ──
 
@@ -726,27 +1073,29 @@ interface ListViewGroupProps {
   quickAddKey: string | null;
   setQuickAddKey: (key: string | null) => void;
   onAddCard: (columnId: string, title?: string) => void;
-  onEditCard: (task: Task) => void;
-  onDuplicateCard: (task: Task) => void;
-  onJoinCard: (task: Task) => void;
-  onLeaveCard: (task: Task) => void;
-  onRemoveFromCycle?: (task: Task) => void;
-  onDeleteCard: (task: Task) => void;
-  onMoveCard: (taskId: string, targetColumnId: string) => void;
-  onUpdateTask?: (taskId: string, data: any) => void;
+  onEditCard: (item: Item) => void;
+  onDuplicateCard: (item: Item) => void;
+  onJoinCard: (item: Item) => void;
+  onLeaveCard: (item: Item) => void;
+  onRemoveFromCycle?: (item: Item) => void;
+  onDeleteCard: (item: Item) => void;
+  onMoveCard: (itemId: string, targetColumnId: string) => void;
+  onUpdateItem?: (itemId: string, data: any) => void;
   displayOptions?: DisplayOptions;
   members?: any[];
   cycles?: Cycle[];
   currentUserId?: string | null;
   currentUserAvatar?: string;
   selectedIds?: string[];
-  selectedTaskIds?: string[];
   onToggleSelect?: (id: string) => void;
-  onToggleSelectTask?: (id: string) => void;
   onSelectAll?: (ids: string[]) => void;
-  onSelectAllTasks?: (ids: string[]) => void;
   isReadOnly?: boolean;
   projectPrefix?: string;
+  expandedChildParentIds?: Set<string>;
+  onToggleExpandChildren?: (itemId: string) => void;
+  onUpdateChildItem?: (parentItem: Item, childItem: SubItem, subIndex: number, data: Partial<SubItem>) => void;
+  onDeleteChildItem?: (parentItem: Item, childItemId: string, subIndex: number) => void;
+  onAddChildItem?: (parentItemId: string, title: string) => void;
 }
 
 const ListViewGroup = ({
@@ -764,24 +1113,23 @@ const ListViewGroup = ({
   onRemoveFromCycle,
   onDeleteCard,
   onMoveCard,
-  onUpdateTask,
+  onUpdateItem,
   displayOptions,
   members = [],
   cycles = [],
   currentUserId,
   currentUserAvatar,
-  selectedIds: propSelectedIds,
-  selectedTaskIds: propSelectedTaskIds = [],
-  onToggleSelect: propOnToggleSelect,
-  onToggleSelectTask: propOnToggleSelectTask,
-  onSelectAll: propOnSelectAll,
-  onSelectAllTasks: propOnSelectAllTasks,
+  selectedIds = [],
+  onToggleSelect,
+  onSelectAll,
   isReadOnly = false,
   projectPrefix,
+  expandedChildParentIds,
+  onToggleExpandChildren,
+  onUpdateChildItem,
+  onDeleteChildItem,
+  onAddChildItem,
 }: ListViewGroupProps) => {
-  const selectedTaskIds = propSelectedIds || propSelectedTaskIds || [];
-  const onToggleSelectTask = propOnToggleSelect || propOnToggleSelectTask;
-  const onSelectAllTasks = propOnSelectAll || propOnSelectAllTasks;
   const { setNodeRef, isOver } = useDroppable({ id: group.key });
   const [quickTitle, setQuickTitle] = useState('');
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -809,24 +1157,24 @@ const ListViewGroup = ({
 
   // Group Selection Checkbox Calculation
   const selectedInGroup = useMemo(() => {
-    return group.items.filter((t) => selectedTaskIds.includes(t.id));
-  }, [group.items, selectedTaskIds]);
+    return group.items.filter((t) => selectedIds.includes(t.id));
+  }, [group.items, selectedIds]);
 
   const isAllGroupSelected = group.items.length > 0 && selectedInGroup.length === group.items.length;
   const isGroupIndeterminate = selectedInGroup.length > 0 && !isAllGroupSelected;
 
   const handleToggleGroupSelection = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!onSelectAllTasks) return;
+    if (!onSelectAll) return;
 
     if (isAllGroupSelected) {
       // Deselect all in this group
-      const remainingIds = selectedTaskIds.filter((id: string) => !group.items.some((t) => t.id === id));
-      onSelectAllTasks(remainingIds);
+      const remainingIds = selectedIds.filter((id: string) => !group.items.some((t) => t.id === id));
+      onSelectAll(remainingIds);
     } else {
       // Select all in this group
-      const allIds = Array.from(new Set([...selectedTaskIds, ...group.items.map((t) => t.id)]));
-      onSelectAllTasks(allIds);
+      const allIds = Array.from(new Set([...selectedIds, ...group.items.map((t) => t.id)]));
+      onSelectAll(allIds);
     }
   };
 
@@ -909,14 +1257,14 @@ const ListViewGroup = ({
         <div className="w-full">
           {group.items.length > 0 && (
             <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-              {group.items.map((task) => (
+              {group.items.map((item) => (
                 <SortableItemRow
-                  key={task.id}
-                  task={task}
+                  key={item.id}
+                  item={item}
                   columns={columns}
                   currentColumn={group.column}
-                  isSelected={selectedTaskIds.includes(task.id)}
-                  onToggleSelect={onToggleSelectTask}
+                  isSelected={selectedIds.includes(item.id)}
+                  onToggleSelect={onToggleSelect}
                   onEditCard={onEditCard}
                   onDuplicateCard={onDuplicateCard}
                   onJoinCard={onJoinCard}
@@ -924,13 +1272,18 @@ const ListViewGroup = ({
                   onRemoveFromCycle={onRemoveFromCycle}
                   onDeleteCard={onDeleteCard}
                   onMoveCard={onMoveCard}
-                  onUpdateTask={onUpdateTask}
+                  onUpdateItem={onUpdateItem}
                   displayOptions={displayOptions}
                   members={members}
                   cycles={cycles}
                   currentUserId={currentUserId}
                   currentUserAvatar={currentUserAvatar}
                   isReadOnly={isReadOnly}
+                  isChildrenExpanded={expandedChildParentIds?.has(item.id)}
+                  onToggleExpandChildren={onToggleExpandChildren}
+                  onUpdateChildItem={onUpdateChildItem}
+                  onDeleteChildItem={onDeleteChildItem}
+                  onAddChildItem={onAddChildItem}
                 />
               ))}
             </SortableContext>
@@ -944,7 +1297,7 @@ const ListViewGroup = ({
                   <div className="h-8 flex items-center gap-2">
                     <Plus className="size-3.5 shrink-0 text-muted-foreground" />
                     {projectPrefix && (
-                      <span className="font-mono text-12 font-medium text-muted-foreground uppercase shrink-0 select-none tracking-tight tabular-nums">
+                      <span className="font-mono text-12 font-medium text-muted-foreground shrink-0 select-none tracking-tight tabular-nums">
                         {projectPrefix}
                       </span>
                     )}
@@ -1000,20 +1353,19 @@ const ListViewGroup = ({
 export interface ListViewProps extends BaseWorkItemViewProps, WorkItemCardHandlers {
   columns: Column[];
   itemsByColumnId?: Map<string, Item[]> | Record<string, Item[]>;
-  tasksByColumnId?: Map<string, Item[]> | Record<string, Item[]>;
   onAddCard: (columnId: string, title?: string) => void;
   onUpdateItem?: (id: string, data: any) => void;
-  onUpdateTask?: (id: string, data: any) => void;
-  onAddColumn?: () => void;
-  onEditColumn?: (column: Column) => void;
-  onDeleteColumn?: (column: Column) => void;
   isAddingCard?: boolean;
   projectId: string;
+  selectedIds?: string[];
+  onToggleSelect?: (id: string) => void;
+  onSelectAll?: ((ids?: string[]) => void) | (() => void);
+  members?: any[];
+  cycles?: Cycle[];
 }
 
 export function ListView({
   itemsByColumnId: propItemsByColumnId,
-  tasksByColumnId: propTasksByColumnId,
   columns,
   currentUserId,
   currentUserAvatar,
@@ -1025,69 +1377,84 @@ export function ListView({
   onLeaveCard,
   onRemoveFromCycle,
   onMoveCard,
-  onUpdateTask: onUpdateTaskProp,
+  onUpdateItem,
   isReadOnly = false,
-  selectedIds: propSelectedIds,
-  selectedTaskIds: propSelectedTaskIds = [],
-  onToggleSelect: propOnToggleSelect,
-  onToggleSelectTask: propOnToggleSelectTask,
-  onSelectAll: propOnSelectAll,
-  onSelectAllTasks: propOnSelectAllTasks,
-  onUpdateItem: propOnUpdateItem,
+  selectedIds = [],
+  onToggleSelect,
+  onSelectAll,
   displayOptions,
   members = [],
   cycles = [],
 }: ListViewProps) {
   // Groups with items are expanded by default (matching Plane.so behavior)
-  const tasksByColumnId = propItemsByColumnId || propTasksByColumnId || new Map();
-  const selectedTaskIds = propSelectedIds || propSelectedTaskIds;
-  const onToggleSelectTask = propOnToggleSelect || propOnToggleSelectTask;
-  const onSelectAllTasks = propOnSelectAll || propOnSelectAllTasks;
-  const onUpdateTask = propOnUpdateItem || onUpdateTaskProp;
+  const itemsByColumnId = propItemsByColumnId || new Map();
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => {
     const initial = new Set<string>();
     columns.forEach((col) => {
-      const colId = resolveTaskColumnId(col);
+      const colId = resolveColumnId(col);
       const items =
-        tasksByColumnId instanceof Map
-          ? tasksByColumnId.get(colId) ?? []
-          : (tasksByColumnId as Record<string, Task[]>)?.[colId] ?? [];
+        itemsByColumnId instanceof Map
+          ? itemsByColumnId.get(colId) ?? []
+          : (itemsByColumnId as Record<string, Item[]>)?.[colId] ?? [];
       if (items.length > 0) {
         initial.add(colId);
       }
     });
     // If all groups are empty, expand the first group
     if (initial.size === 0 && columns.length > 0) {
-      initial.add(resolveTaskColumnId(columns[0]));
+      initial.add(resolveColumnId(columns[0]));
     }
     return initial;
   });
 
   const [quickAddKey, setQuickAddKey] = useState<string | null>(null);
-  const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [activeItem, setActiveItem] = useState<Item | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [expandedChildParentIds, setExpandedChildParentIds] = useState<Set<string>>(new Set());
+
+  const defaultUnstartedColumnId = useMemo(() => {
+    if (!Array.isArray(columns) || columns.length === 0) return 'todo';
+    const col =
+      columns.find((c) => c.group === 'unstarted' && c.isDefault) ||
+      columns.find((c) => c.group === 'unstarted') ||
+      columns.find((c) => c.isDefault) ||
+      columns[0];
+    return col ? resolveColumnId(col) : 'todo';
+  }, [columns]);
+
+  const handleToggleExpandChildren = useCallback((itemId: string) => {
+    setExpandedChildParentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Update expanded keys when columns or tasks change (auto-expand newly populated columns)
+  // Update expanded keys when columns or items change (auto-expand newly populated columns)
   useEffect(() => {
     setExpandedKeys((prev) => {
       const next = new Set(prev);
       columns.forEach((col) => {
-        const id = resolveTaskColumnId(col);
+        const id = resolveColumnId(col);
         const items =
-          tasksByColumnId instanceof Map
-            ? tasksByColumnId.get(id) ?? []
-            : (tasksByColumnId as Record<string, Task[]>)?.[id] ?? [];
+          itemsByColumnId instanceof Map
+            ? itemsByColumnId.get(id) ?? []
+            : (itemsByColumnId as Record<string, Item[]>)?.[id] ?? [];
         if (items.length > 0 && !prev.has(id)) {
           next.add(id);
         }
       });
       return next;
     });
-  }, [columns, tasksByColumnId]);
+  }, [columns, itemsByColumnId]);
 
   const toggleExpand = useCallback((key: string) => {
     setExpandedKeys((prev) => {
@@ -1113,19 +1480,8 @@ export function ListView({
   const groups = useMemo(() => {
     if (!Array.isArray(columns)) return [];
     return columns.map((col) => {
-      const colId = resolveTaskColumnId(col);
-      const groupKey = (col.group || '').toLowerCase();
-      const titleLower = (col.title || col.name || '').toLowerCase();
-      const fallbackColor =
-        groupKey === 'backlog' || titleLower.includes('backlog') ? '#8A9093' :
-        groupKey === 'unstarted' || titleLower.includes('todo') || titleLower.includes('to do') ? '#525866' :
-        groupKey === 'started' || titleLower.includes('progress') || titleLower.includes('doing') ? '#F59E0B' :
-        groupKey === 'completed' || titleLower.includes('done') || titleLower.includes('completed') ? '#10B981' :
-        groupKey === 'cancelled' || titleLower.includes('cancel') ? '#EF4444' :
-        '#8A9093';
-
-      const resolved = col.accentColor || col.color || resolveTaskColumnColor(colId, col.accentColor) || fallbackColor;
-      const colColor = (resolved === '#6B7280' || resolved === '#6366F1' || resolved === '#0EA5E9') ? fallbackColor : resolved;
+      const colId = resolveColumnId(col);
+      const colColor = col.color || col.accentColor || '#8A9093';
 
       return {
         key: colId,
@@ -1137,12 +1493,12 @@ export function ListView({
           color: colColor,
         },
         items:
-          tasksByColumnId instanceof Map
-            ? tasksByColumnId.get(colId) ?? []
-            : (tasksByColumnId as Record<string, Task[]>)?.[colId] ?? [],
+          itemsByColumnId instanceof Map
+            ? itemsByColumnId.get(colId) ?? []
+            : (itemsByColumnId as Record<string, Item[]>)?.[colId] ?? [],
       };
     });
-  }, [columns, tasksByColumnId]);
+  }, [columns, itemsByColumnId]);
 
   const projectPrefix = useMemo(() => {
     for (const group of groups) {
@@ -1155,34 +1511,122 @@ export function ListView({
     return '';
   }, [groups]);
 
+  const handleUpdateChildItem = useCallback(
+    async (parentItem: Item, childItem: SubItem, subIndex: number, data: Partial<SubItem>) => {
+      const childList: SubItem[] = (parentItem.subItems && parentItem.subItems.length > 0)
+        ? [...parentItem.subItems]
+        : [];
+
+      const updated = childList.map((s, idx) => {
+        if ((s.id && s.id === childItem.id) || idx === subIndex) {
+          return { ...s, ...data };
+        }
+        return s;
+      });
+
+      onUpdateItem?.(parentItem.id, {
+        subItems: updated,
+      });
+
+      if (childItem.id && !childItem.id.startsWith('sub_')) {
+        try {
+          await CoreService.update({
+            id: childItem.id,
+            ...(data.title !== undefined && { title: data.title }),
+            ...(data.columnId !== undefined && { columnId: data.columnId }),
+            ...(data.completed !== undefined && { completed: data.completed }),
+          });
+        } catch {
+          // Handled
+        }
+      }
+    },
+    [onUpdateItem]
+  );
+
+  const handleDeleteChildItem = useCallback(
+    async (parentItem: Item, childItemId: string, subIndex: number) => {
+      const childList: SubItem[] = (parentItem.subItems && parentItem.subItems.length > 0)
+        ? [...parentItem.subItems]
+        : [];
+
+      const updated = childList.filter((s, idx) => (s.id ? s.id !== childItemId : idx !== subIndex));
+
+      onUpdateItem?.(parentItem.id, {
+        subItems: updated,
+      });
+
+      if (childItemId && !childItemId.startsWith('sub_')) {
+        try {
+          await CoreService.delete(childItemId);
+        } catch {
+          // Handled
+        }
+      }
+    },
+    [onUpdateItem]
+  );
+
+  const handleAddChildItem = useCallback(
+    async (parentItemId: string, title: string) => {
+      if (!title.trim()) return;
+      try {
+        await CoreService.createSubItem(parentItemId, {
+          title: title.trim(),
+          columnId: defaultUnstartedColumnId,
+        });
+        setExpandedChildParentIds((prev) => new Set(prev).add(parentItemId));
+      } catch {
+        for (const group of groups) {
+          const parent = group.items.find((t: Item) => t.id === parentItemId);
+          if (parent) {
+            const currentSubs = parent.subItems || [];
+            const newSub: SubItem = {
+              id: `sub_${Date.now()}`,
+              title: title.trim(),
+              columnId: defaultUnstartedColumnId,
+              completed: false,
+              rank: currentSubs.length,
+            };
+            onUpdateItem?.(parentItemId, {
+              subItems: [...currentSubs, newSub],
+            });
+            break;
+          }
+        }
+      }
+    },
+    [groups, onUpdateItem, defaultUnstartedColumnId]
+  );
+
   const handleDragStart = (event: DragStartEvent) => {
-    const task = event.active.data.current?.task as Task | undefined;
-    if (task) setActiveTask(task);
+    const item = event.active.data.current?.item as Item | undefined;
+    if (item) setActiveItem(item);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    setActiveTask(null);
+    setActiveItem(null);
     if (!over) return;
 
     const activeId = String(active.id);
     const overId = String(over.id);
 
     // If dropped directly onto a column droppable
-    const isOverGroup = columns.some((c) => resolveTaskColumnId(c) === overId);
+    const isOverGroup = columns.some((c) => resolveColumnId(c) === overId);
     if (isOverGroup) {
-      const task = active.data.current?.task as Task | undefined;
-      if (task && task.columnId !== overId) {
+      const item = active.data.current?.item as Item | undefined;
+      if (item && item.columnId !== overId) {
         onMoveCard(activeId, overId);
       }
       return;
     }
 
-    // If dropped onto another task, find target task's column
+    // If dropped onto another item, find target item's column
     for (const group of groups) {
-      if (group.items.some((t: Task) => t.id === overId)) {
-        const task = active.data.current?.task as Task | undefined;
-        if (task && task.columnId !== group.key) {
+      if (group.items.some((t: Item) => t.id === overId)) {
+        const item = active.data.current?.item as Item | undefined;
+        if (item && item.columnId !== group.key) {
           onMoveCard(activeId, group.key);
         }
         break;
@@ -1226,31 +1670,36 @@ export function ListView({
               onRemoveFromCycle={onRemoveFromCycle}
               onDeleteCard={onDeleteCard}
               onMoveCard={onMoveCard}
-              onUpdateTask={onUpdateTask}
+              onUpdateItem={onUpdateItem}
               displayOptions={displayOptions}
               members={members}
               cycles={cycles}
               currentUserId={currentUserId}
               currentUserAvatar={currentUserAvatar}
-              selectedTaskIds={selectedTaskIds}
-              onToggleSelectTask={onToggleSelectTask}
-              onSelectAllTasks={onSelectAllTasks}
+              selectedIds={selectedIds}
+              onToggleSelect={onToggleSelect}
+              onSelectAll={onSelectAll as (ids: string[]) => void}
               isReadOnly={isReadOnly}
               projectPrefix={projectPrefix}
+              expandedChildParentIds={expandedChildParentIds}
+              onToggleExpandChildren={handleToggleExpandChildren}
+              onUpdateChildItem={handleUpdateChildItem}
+              onDeleteChildItem={handleDeleteChildItem}
+              onAddChildItem={handleAddChildItem}
             />
           ))
         )}
       </div>
 
       {isMounted &&
-        activeTask &&
+        activeItem &&
         createPortal(
           <DragOverlay dropAnimation={{ duration: 150, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }}>
             <div className="w-[calc(100vw-32px)] max-w-3xl bg-background text-foreground border border-border rounded-md overflow-hidden opacity-95 ring-1 ring-ring">
-              <TaskRow
-                task={activeTask}
+              <ItemRow
+                item={activeItem}
                 columns={columns}
-                currentColumn={columns.find((c) => resolveTaskColumnId(c) === activeTask.columnId)}
+                currentColumn={columns.find((c) => resolveColumnId(c) === activeItem.columnId)}
                 onEditCard={() => {}}
                 onDuplicateCard={() => {}}
                 onJoinCard={() => {}}

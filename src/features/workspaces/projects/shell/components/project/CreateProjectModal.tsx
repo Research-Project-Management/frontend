@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { IconPicker, ProjectAvatar, Form } from "@/shared/components/ui";
+import { IconPicker, ProjectAvatar, Form, getRandomProjectEmoji } from "@/shared/components/ui";
 import { toast } from 'sonner';
 import {
   X,
@@ -127,7 +127,7 @@ export function CreateProjectModal({
       name: '',
       identifier: '',
       description: '',
-      avatar: '👌',
+      avatar: getRandomProjectEmoji(),
       cover: DEFAULT_COVER,
       isPrivate: false,
     },
@@ -194,6 +194,13 @@ export function CreateProjectModal({
     }
   };
 
+  // Refresh default avatar to a new random emoji whenever modal opens with clean form
+  useEffect(() => {
+    if (isModalOpen && !form.formState.isDirty && !name) {
+      setValue('avatar', getRandomProjectEmoji());
+    }
+  }, [isModalOpen]);
+
   const handleClose = () => {
     handleOpenChange(false);
     setTimeout(() => {
@@ -202,7 +209,7 @@ export function CreateProjectModal({
         name: '',
         identifier: '',
         description: '',
-        avatar: '👌',
+        avatar: getRandomProjectEmoji(),
         cover: DEFAULT_COVER,
         isPrivate: false,
       });

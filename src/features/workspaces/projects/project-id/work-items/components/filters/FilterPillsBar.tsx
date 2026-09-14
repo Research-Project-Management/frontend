@@ -27,7 +27,6 @@ import {
 import {
   type Column,
   Item,
-  type Task,
   Priority,
   type DueDateFilterOption,
   type Cycle,
@@ -36,17 +35,13 @@ import {
   STATE_GROUP_CONFIG,
 } from '../../types/work-item.types';
 import type { AssigneeFilterOption } from '../../hooks/use-topbar';
-import { resolveStateId, resolveStateColor } from '../../utils/work-item.utils';
+import { resolveStateId } from '../../utils/work-item.utils';
+import { StatusIcon } from '@/shared/components/icons';
 import {
   TextLinesIcon,
-  ItemsIcon, TasksIcon,
+  ItemsIcon,
   ParentBranchIcon,
   CycleContrastIcon,
-  StateBacklogIcon,
-  StateTodoIcon,
-  StateInProgressIcon,
-  StateDoneIcon,
-  StateGroupCancelledIcon,
   PriorityUrgentIcon,
   PriorityHighIcon,
   PriorityMediumIcon,
@@ -59,7 +54,6 @@ export interface FilterPillsBarProps {
   assignees: AssigneeFilterOption[];
   cycles?: Cycle[];
   items?: Item[];
-  tasks?: Item[];
   totalFiltersCount: number;
   onClearAll: () => void;
   // Unified Filter State
@@ -102,8 +96,7 @@ export function FilterPillsBar({
   columns,
   assignees,
   cycles = [],
-  items: propItems,
-  tasks: propTasks = [],
+  items = [],
   totalFiltersCount,
   onClearAll,
   filters,
@@ -118,7 +111,6 @@ export function FilterPillsBar({
   dueDateFilter = 'all',
   onRemoveDueDate,
 }: FilterPillsBarProps) {
-  const items = propItems || propTasks || [];
   if (totalFiltersCount === 0) return null;
 
   // Active state lists with backward compatibility
@@ -131,7 +123,7 @@ export function FilterPillsBar({
   const activeLabels = filters ? filters.labels : [];
   const activeCycles = filters ? filters.cycle : [];
   const activeAttach = filters ? filters.attach : [];
-  const activeItems = filters ? [...((filters as any).items || []), ...(filters.work_items || []), ...(filters.tasks || [])] : [];
+  const activeItems = filters ? [...((filters as any).items || []), ...(filters.work_items || [])] : [];
   const activeParents = filters ? filters.parent : [];
   const activeDueDates = filters ? filters.due_date : (dueDateFilter !== 'all' ? [dueDateFilter] : []);
   const activeStartDates = filters ? filters.start_date : [];
@@ -162,24 +154,20 @@ export function FilterPillsBar({
         {activeStates.map((colId) => {
           const col = columns.find((c) => resolveStateId(c) === colId);
           const title = col?.title || colId;
-          const color = col ? resolveStateColor(colId, col.accentColor) : 'currentColor';
-          const lower = title.toLowerCase();
-
-          let StateIcon = <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: color }} />;
-          if (lower.includes('progress')) {
-            StateIcon = <StateInProgressIcon className="size-3 shrink-0" />;
-          } else if (lower.includes('done') || lower.includes('complete')) {
-            StateIcon = <StateDoneIcon className="size-3 shrink-0" />;
-          } else if (lower.includes('backlog')) {
-            StateIcon = <StateBacklogIcon className="size-3 shrink-0" />;
-          }
+          const color = col?.color || col?.accentColor;
 
           return (
             <span
               key={`state-${colId}`}
               className="inline-flex items-center gap-1.5 px-2 py-0.5 h-7 rounded-md bg-background border border-border text-12 text-foreground shadow-2xs shrink-0 select-none"
             >
-              {StateIcon}
+              <StatusIcon
+                id={colId}
+                title={title}
+                group={col?.group}
+                color={color}
+                className="size-3 shrink-0"
+              />
               <span className="truncate max-w-40 font-medium">{title}</span>
               <button
                 type="button"
@@ -201,18 +189,16 @@ export function FilterPillsBar({
           const config = (STATE_GROUP_CONFIG as Record<string, any>)[group];
           const label = config?.label || group;
 
-          let GroupIcon = <StateTodoIcon className="size-3 shrink-0" />;
-          if (group === 'backlog') GroupIcon = <StateBacklogIcon className="size-3 shrink-0" />;
-          else if (group === 'started') GroupIcon = <StateInProgressIcon className="size-3 shrink-0" />;
-          else if (group === 'completed') GroupIcon = <StateDoneIcon className="size-3 shrink-0" />;
-          else if (group === 'cancelled') GroupIcon = <StateGroupCancelledIcon className="size-3 shrink-0" />;
-
           return (
             <span
               key={`group-${group}`}
               className="inline-flex items-center gap-1.5 px-2 py-0.5 h-7 rounded-md bg-background border border-border text-12 text-foreground shadow-2xs shrink-0 select-none"
             >
-              {GroupIcon}
+              <StatusIcon
+                group={group}
+                title={label}
+                className="size-3 shrink-0"
+              />
               <span className="truncate max-w-40 font-medium">{label}</span>
               <button
                 type="button"
@@ -439,7 +425,7 @@ export function FilterPillsBar({
               <button
                 type="button"
                 onClick={() => {
-                  onRemoveFilter?.('items', tId); onRemoveFilter?.('work_items', tId); onRemoveFilter?.('tasks', tId);
+                  onRemoveFilter?.('items', tId);
                   onRemoveFilter?.('work_items', tId);
                 }}
                 className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"

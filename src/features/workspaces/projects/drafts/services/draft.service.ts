@@ -51,8 +51,8 @@ export const DraftService = {
   publishDraft: async (
     id: string,
     input: PublishDraftInput,
-  ): Promise<{ task: any; [key: string]: any }> => {
-    const res = await apiPost<{ task: any; [key: string]: any }>(
+  ): Promise<{ workItem: any; item: any; [key: string]: any }> => {
+    const res = await apiPost<{ workItem: any; item: any; [key: string]: any }>(
       `/api/work-items/drafts/${id}/publish`,
       input,
     );

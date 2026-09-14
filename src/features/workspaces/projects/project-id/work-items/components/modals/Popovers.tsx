@@ -22,7 +22,6 @@ import {
 import {
   Button,
   Input,
-  Label,
   Checkbox,
   Avatar,
   AvatarFallback,
@@ -38,140 +37,51 @@ import {
 } from "@/shared/components/ui";
 import { Calendar } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { ItemHelpers, ItemHelpers as TaskHelpers } from '../../utils/work-item.utils';
+import { ItemHelpers, resolveColumnId } from '../../utils/work-item.utils';
 import { useLabelsQuery } from '../../hooks/use-label';
 import type {
   Priority,
-  TaskPriority,
   Cycle,
   Item,
-  Task,
   Column,
-  Label as TaskLabel,
+  Label,
 } from '../../types/work-item.types';
 import {
   PRIORITY_CONFIG,
 } from '../../types/work-item.types';
-import { resolveTaskColumnId } from '../../utils/work-item.utils';
 
 export { PRIORITY_CONFIG };
 
-// ── Custom Visual Match Icons (Pixel-accurate to Reference Design) ───────────
+// ── Universal State Icons (Powered by Shared StatusIcon) ─────────────────────
 
-export function BacklogStateIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeDasharray="2.5 2"
-      className={cn("size-3.5 shrink-0 text-muted-foreground", className)}
-      style={style}
-    >
-      <circle cx="8" cy="8" r="6" />
-    </svg>
-  );
-}
+import {
+  StatusIcon,
+  BacklogStatusIcon as BacklogStateIcon,
+  TodoStatusIcon as TodoStateIcon,
+  InProgressStatusIcon as InProgressStateIcon,
+  DoneStatusIcon as DoneStateIcon,
+  CancelledStatusIcon as CancelledStateIcon,
+} from '@/shared/components/icons';
 
-export function TodoStateIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      className={cn("size-3.5 shrink-0 text-foreground", className)}
-      style={style}
-    >
-      <circle cx="8" cy="8" r="6" />
-    </svg>
-  );
-}
-
-export function InProgressStateIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="none"
-      className={cn("size-3.5 shrink-0 text-amber-500", className)}
-      style={style}
-    >
-      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" />
-      <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.5" />
-    </svg>
-  );
-}
-
-export function DoneStateIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      className={cn("size-3.5 shrink-0 text-emerald-500", className)}
-      style={style}
-    >
-      <circle cx="8" cy="8" r="6.5" />
-      <path
-        d="M5.2 8.2l2 2 3.8-4"
-        stroke="white"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </svg>
-  );
-}
-
-export function CancelledStateIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      className={cn("size-3.5 shrink-0 text-red-500", className)}
-      style={style}
-    >
-      <circle cx="8" cy="8" r="6.5" />
-      <path
-        d="M5.5 5.5l5 5m0-5l-5 5"
-        stroke="white"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        fill="none"
-      />
-    </svg>
-  );
-}
+export {
+  BacklogStateIcon,
+  TodoStateIcon,
+  InProgressStateIcon,
+  DoneStateIcon,
+  CancelledStateIcon,
+};
 
 export function StateItemIcon({ col, className }: { col?: Partial<Column> | null; className?: string }) {
-  const text = `${col?.group || ''} ${col?.id || ''} ${col?.title || ''} ${col?.name || ''}`.toLowerCase();
-
-  if (text.includes('backlog')) {
-    return <BacklogStateIcon className={className} />;
-  }
-  if (text.includes('progress') || text.includes('doing') || text.includes('started') || text.includes('in_progress')) {
-    return <InProgressStateIcon className={className} />;
-  }
-  if (text.includes('done') || text.includes('completed')) {
-    return <DoneStateIcon className={className} />;
-  }
-  if (text.includes('cancel')) {
-    return <CancelledStateIcon className={className} />;
-  }
-  if (text.includes('todo') || text.includes('unstarted') || text.includes('to do') || text.includes('to_do')) {
-    return <TodoStateIcon className={className} />;
-  }
-
-  if (col?.accentColor || (col as any)?.color) {
-    return (
-      <span
-        className={cn("size-3 rounded-full shrink-0", className)}
-        style={{ backgroundColor: col?.accentColor || (col as any)?.color }}
-      />
-    );
-  }
-  return <TodoStateIcon className={className} />;
+  if (!col) return null;
+  return (
+    <StatusIcon
+      id={col.id}
+      title={col.title || col.name}
+      group={col.group}
+      color={col.color || col.accentColor}
+      className={cn("size-3.5 shrink-0", className)}
+    />
+  );
 }
 
 // ── Priority Box Icons ───────────────────────────────────────────────────────
@@ -379,7 +289,7 @@ export const StatePopover: React.FC<StatePopoverProps> = ({
   isReadOnly = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const activeCol = columns.find((c) => resolveTaskColumnId(c) === columnId);
+  const activeCol = columns.find((c) => resolveColumnId(c) === columnId);
 
   const filteredColumns = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -422,7 +332,7 @@ export const StatePopover: React.FC<StatePopoverProps> = ({
             </div>
           ) : (
             filteredColumns.map((col) => {
-              const cId = resolveTaskColumnId(col);
+              const cId = resolveColumnId(col);
               const isCurrent = columnId === cId;
               return (
                 <button
@@ -457,14 +367,14 @@ export const StatePopover: React.FC<StatePopoverProps> = ({
 export interface PriorityPopoverProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  priority: TaskPriority;
-  setPriority: (priority: TaskPriority) => void;
+  priority: Priority;
+  setPriority: (priority: Priority) => void;
   actionBtnClass?: string;
   isReadOnly?: boolean;
   defaultLabel?: string;
 }
 
-const PRIORITY_OPTIONS: { id: TaskPriority; label: string; icon: React.FC<{ className?: string }> }[] = [
+const PRIORITY_OPTIONS: { id: Priority; label: string; icon: React.FC<{ className?: string }> }[] = [
   { id: 'urgent', label: 'Urgent', icon: UrgentPriorityBoxIcon },
   { id: 'high', label: 'High', icon: HighPriorityBoxIcon },
   { id: 'medium', label: 'Medium', icon: MediumPriorityBoxIcon },
@@ -535,7 +445,7 @@ export const PriorityPopover: React.FC<PriorityPopoverProps> = ({
   );
 };
 
-// ── 2. Task Type Popover ─────────────────────────────────────────────────────
+// ── 2. Work Item Type Popover ─────────────────────────────────────────────
 
 // ── 4. Avatar Stack & Member Popover ──────────────────────────────────────────
 
@@ -561,7 +471,7 @@ export function AvatarStack({
     <div className={cn("flex items-center -space-x-1.5 overflow-hidden", className)}>
       {visible.map((u, i) => {
         const name = u.name || 'Member';
-        const initials = TaskHelpers.getInitials(name);
+        const initials = ItemHelpers.getInitials(name);
         return (
           <Avatar
             key={u.id || i}
@@ -796,9 +706,9 @@ export function LabelPopover({
   const setIsOpen = onOpenChange !== undefined ? onOpenChange : setInternalOpen;
   const [labelSearch, setLabelSearch] = useState('');
 
-  const { data: rawLabels } = useLabelsQuery(workspaceId || '', 'task', projectId || '');
+  const { data: rawLabels } = useLabelsQuery(workspaceId || '', 'work-item', projectId || '');
 
-  const labelList: TaskLabel[] = useMemo(() => {
+  const labelList: Label[] = useMemo(() => {
     if (Array.isArray(rawLabels)) return rawLabels;
     if (Array.isArray((rawLabels as any)?.labels)) return (rawLabels as any).labels;
     return [];
@@ -1352,42 +1262,37 @@ export interface ParentItemPopoverProps {
   parentId?: string | null;
   setParentId: (parentId: string | null) => void;
   items?: Item[];
-  tasks?: Item[];
   actionBtnClass?: string;
   isReadOnly?: boolean;
 }
-export type ParentTaskPopoverProps = ParentItemPopoverProps;
 
 export const ParentItemPopover: React.FC<ParentItemPopoverProps> = ({
   open,
   onOpenChange,
   parentId,
   setParentId,
-  items: propItems,
-  tasks: propTasks = [],
+  items = [],
   actionBtnClass,
   isReadOnly = false,
 }) => {
-  const items = propItems || propTasks;
-  const tasks = items;
   const [query, setQuery] = useState('');
 
   const selectedParent = useMemo(() => {
     if (!parentId) return null;
-    return tasks.find((t) => t.id === parentId) || null;
-  }, [parentId, tasks]);
+    return items.find((item) => item.id === parentId) || null;
+  }, [parentId, items]);
 
-  const filteredTasks = useMemo(() => {
+  const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return tasks.slice(0, 30);
-    return tasks
-      .filter((t) => {
-        const titleMatch = t.title?.toLowerCase().includes(q);
-        const identMatch = t.identifier?.toLowerCase().includes(q);
+    if (!q) return items.slice(0, 30);
+    return items
+      .filter((item) => {
+        const titleMatch = item.title?.toLowerCase().includes(q);
+        const identMatch = item.identifier?.toLowerCase().includes(q);
         return Boolean(titleMatch || identMatch);
       })
       .slice(0, 30);
-  }, [tasks, query]);
+  }, [items, query]);
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
@@ -1437,19 +1342,19 @@ export const ParentItemPopover: React.FC<ParentItemPopoverProps> = ({
               <span>Remove parent</span>
             </button>
           )}
-          {filteredTasks.length === 0 ? (
+          {filteredItems.length === 0 ? (
             <div className="py-2.5 text-center text-xs text-muted-foreground">
               No work items found
             </div>
           ) : (
-            filteredTasks.map((t) => {
-              const isSelected = parentId === t.id;
+            filteredItems.map((item) => {
+              const isSelected = parentId === item.id;
               return (
                 <button
-                  key={t.id}
+                  key={item.id}
                   type="button"
                   onClick={() => {
-                    setParentId(isSelected ? null : t.id);
+                    setParentId(isSelected ? null : item.id);
                     onOpenChange(false);
                   }}
                   className={cn(
@@ -1458,12 +1363,12 @@ export const ParentItemPopover: React.FC<ParentItemPopoverProps> = ({
                   )}
                 >
                   <div className="flex items-center gap-1.5 truncate min-w-0">
-                    {t.identifier && (
-                      <span className="text-10 font-mono text-muted-foreground shrink-0 uppercase">
-                        {t.identifier}
+                    {item.identifier && (
+                      <span className="text-10 font-mono text-muted-foreground shrink-0">
+                        {item.identifier}
                       </span>
                     )}
-                    <span className="truncate text-foreground">{t.title}</span>
+                    <span className="truncate text-foreground">{item.title}</span>
                   </div>
                   {isSelected && <Check className="size-4 shrink-0 text-foreground" />}
                 </button>
@@ -1475,6 +1380,4 @@ export const ParentItemPopover: React.FC<ParentItemPopoverProps> = ({
     </Popover>
   );
 };
-
-export const ParentTaskPopover = ParentItemPopover;
 

@@ -8,19 +8,19 @@ export function useCreatedWork() {
   const base = useYourWorkBase();
   const source = context || base;
 
-  const createdTasks = source.created;
+  const createdWorkItems = source.created;
 
   return {
     state: {
       workspaceId: source.workspaceId,
-      allTasks: source.allTasks,
-      createdTasks,
-      count: createdTasks.length,
-      taskProjectMap: source.taskProjectMap,
+      allWorkItems: source.allWorkItems,
+      createdWorkItems,
+      count: createdWorkItems.length,
+      workItemProjectMap: source.workItemProjectMap,
       selectedProjectId: context?.selectedProjectId || null,
       selectedProject: context?.selectedProject || null,
       isLoading: source.isLoading,
-      isLoadingTasks: source.isLoadingTasks,
+      isLoadingWorkItems: source.isLoadingWorkItems,
       isLoadingProjects: source.isLoadingProjects,
     },
     actions: {

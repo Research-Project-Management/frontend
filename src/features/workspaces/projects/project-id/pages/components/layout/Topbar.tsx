@@ -2,7 +2,7 @@ import React from 'react';
 import { PenLine, Search, LayoutGrid, List, Plus } from 'lucide-react';
 import { Button } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { Switcher } from '@/features/workspaces/projects/project-id/components/layout';
+import { Switcher } from '@/features/workspaces/projects/project-id/components/layout/Switcher';
 
 export interface TopbarProps {
   project?: {

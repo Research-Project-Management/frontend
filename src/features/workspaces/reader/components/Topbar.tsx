@@ -47,7 +47,7 @@ export function Topbar({
   const currentTabId = activeTabId || (paper ? paper.id : 'library');
 
   return (
-    <header className="h-9 shrink-0 bg-muted border-b border-border flex items-center px-1 select-none z-30 text-12">
+    <header className="h-9 shrink-0 bg-background border-b border-border flex items-center px-1 select-none z-30 text-12">
       {/* Scrollable Tabs Bar */}
       <div
         role="tablist"

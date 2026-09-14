@@ -21,7 +21,6 @@ import {
 } from "@/shared/components/icons";
 import type {
   Item,
-  Task,
   Column,
   Cycle,
   Priority,
@@ -40,7 +39,7 @@ import type { AssigneeFilterOption, ViewMode } from '../../hooks/use-topbar';
 import type { SavedViewRecord } from '../../services/view.service';
 import { DisplayPopover } from './DisplayPopover';
 import { FilterDropdown } from '../filters/FilterDropdown';
-import { Switcher } from '@/features/workspaces/projects/project-id/components/layout';
+import { Switcher } from '@/features/workspaces/projects/project-id/components/layout/Switcher';
 
 export type { AssigneeFilterOption, ViewMode };
 
@@ -66,7 +65,6 @@ export interface TopbarProps {
     name: string;
   };
   items?: Item[];
-  tasks?: Item[];
   cycles?: Cycle[];
   onCycleSelect?: (cycleId: string) => void;
   // View controls
@@ -101,9 +99,7 @@ export interface TopbarProps {
   onOpenAnalytics?: () => void;
   // Actions
   onAddItem?: () => void;
-  onAddTask?: () => void;
   onAddExistingItem?: () => void;
-  onAddExistingTask?: () => void;
   showArchived?: boolean;
   onToggleArchived?: () => void;
   isLoading?: boolean;
@@ -127,8 +123,7 @@ export function Topbar({
   cycleId,
   currentCycle,
   cycles = [],
-  items: propItems,
-  tasks: propTasks,
+  items = [],
 
   onCycleSelect,
   viewMode,
@@ -158,18 +153,15 @@ export function Topbar({
   onDisplayOpenChange,
   onOpenAnalytics,
   onAddItem,
-  onAddTask,
   onAddExistingItem,
-  onAddExistingTask,
   isLoading = false,
   isReadOnly = false,
   className,
 }: TopbarProps) {
   const HeaderIcon = icon || PropIcon || WorkItemsIcon;
 
-  const items = propItems || propTasks || [];
-  const handleAdd = onAddItem || onAddTask || (() => {});
-  const handleAddExisting = onAddExistingItem || onAddExistingTask;
+  const handleAdd = onAddItem || (() => {});
+  const handleAddExisting = onAddExistingItem;
   const effectiveModules = propProjectModules || project?.modules || ['work-items', 'cycles', 'views', 'pages'];
   const isCyclesEnabled = effectiveModules.includes('cycles');
   const isViewsEnabled = effectiveModules.includes('views');
@@ -297,7 +289,7 @@ export function Topbar({
           <div
             role="tablist"
             aria-label="View modes"
-            className="flex items-center bg-muted/70 p-0.5 rounded-lg shrink-0 gap-0.5 h-8 border border-border/40"
+            className="flex items-center bg-muted/70 p-0.5 rounded-lg shrink-0 gap-0.5 h-8 border border-border/40 shadow-2xs"
           >
             {viewOptions.map((v) => {
               const IconComp = v.icon;
@@ -319,7 +311,7 @@ export function Topbar({
                       {isSelected && (
                         <motion.div
                           layoutId="work-items-view-toggle"
-                          className="absolute inset-0 bg-background rounded-md shadow-xs border border-border/50"
+                          className="absolute inset-0 bg-background rounded-md shadow-2xs border border-border/50"
                           transition={{ type: 'spring', bounce: 0.15, duration: 0.4 }}
                         />
                       )}
@@ -338,7 +330,7 @@ export function Topbar({
 
           {/* 2. Filter Dropdown Menu (Exact matching official UI) */}
           <FilterDropdown
-            items={items} tasks={items}
+            items={items}
             columns={columns}
             selectedColumnIds={selectedColumnIds}
             onToggleColumn={handleToggleCol}
@@ -364,7 +356,7 @@ export function Topbar({
                   propFilters.labels.length +
                   propFilters.cycle.length +
                   propFilters.attach.length +
-                  ((propFilters.tasks?.length ?? 0) + (propFilters.work_items?.length ?? 0)) +
+                  propFilters.work_items.length +
                   propFilters.parent.length +
                   propFilters.due_date.length +
                   propFilters.start_date.length +
@@ -394,14 +386,14 @@ export function Topbar({
             type="button"
             size="sm"
             onClick={onOpenAnalytics}
-            className="h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shrink-0"
+            className="h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shadow-2xs shrink-0"
             aria-label="Analytics"
           >
             <span>Analytics</span>
           </Button>
         </TooltipProvider>
 
-        {/* 5. Primary Actions (+ Add Task & + Add Existing) */}
+        {/* 5. Primary Actions (+ Add Work Item & + Add Existing) */}
         {!isReadOnly && (
           <div className="flex items-center gap-1.5 shrink-0">
             {cycleId && handleAddExisting && (
@@ -409,7 +401,7 @@ export function Topbar({
                 type="button"
                 size="sm"
                 onClick={handleAddExisting}
-                className="h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shrink-0"
+                className="h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shadow-2xs shrink-0"
               >
                 <span>Add existing</span>
               </Button>

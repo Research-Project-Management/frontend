@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * Valid Project Roles in Flux:
  * - owner: Principal Investigator / Team Lead (Full admin permissions)
- * - contributor: Researcher (Create/edit/delete tasks, pages, files)
+ * - contributor: Researcher (Create/edit/delete work items, pages, files)
  * - commenter: Reviewer (Can view and comment)
  * - viewer: Read-only guest/visitor
  */

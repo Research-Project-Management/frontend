@@ -54,7 +54,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import type { EditorStorageItem as StorageItem } from '@/features/editor/services/storage.service';
 
-// GöÇGöÇ File icon helper GöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇ
+// ── File icon helper ────────────────────────────────────────────────────────
 
 function getFileIcon(filename: string) {
   const ext = filename.split(".").pop()?.toLowerCase() ?? "";
@@ -183,7 +183,7 @@ async function findPdfPageForTitle(
   return null;
 }
 
-// GöÇGöÇ Main FilesTab GöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇ
+// ── Main FilesTab ───────────────────────────────────────────────────────────
 
 export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const { pageId } = useParams<{ pageId: string }>();
@@ -289,9 +289,11 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       return true;
     };
 
+    let attempts = 0;
     if (!attachEditorListener()) {
       retryTimer = setInterval(() => {
-        if (attachEditorListener() && retryTimer) {
+        attempts++;
+        if ((attachEditorListener() || attempts > 20) && retryTimer) {
           clearInterval(retryTimer);
           retryTimer = null;
         }
@@ -427,7 +429,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     [existingNames],
   );
 
-  /** Auto-generate a unique suffix name: file.tex GåÆ file_2.tex, file_3.tex GÇª */
+  /** Auto-generate a unique suffix name: file.tex -> file_2.tex, file_3.tex ... */
   const autoSuffix = useCallback(
     (name: string): string => {
       const dot = name.lastIndexOf(".");
@@ -1004,7 +1006,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           </div>
         </div>
 
-        {/* GöÇGöÇ File tree GöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇ */}
+        {/* ── File tree ──────────────────────────────────────────────────────── */}
         <div
           className="relative min-h-0 flex-1 overflow-y-auto"
           onDragEnter={handleDragEnter}
@@ -1024,7 +1026,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             </div>
           )}
 
-          {/* GöÇGöÇ Inline create inputs GöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇ */}
+          {/* ── Inline create inputs ────────────────────────────────────────── */}
           {isCreatingFile && (
             <InlineInput
               icon={FileCode2}
@@ -1070,12 +1072,12 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             <div className="flex h-8 items-center gap-2 px-5">
               <Loader2 className="size-3 animate-spin text-muted-foreground shrink-0" />
               <span className="text-xs text-muted-foreground">
-                Uploading {uploadingCount} file{uploadingCount > 1 ? "s" : ""}GÇª
+                Uploading {uploadingCount} file{uploadingCount > 1 ? "s" : ""}…
               </span>
             </div>
           )}
 
-          {/* GöÇGöÇ UNIFIED FILE TREE GöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇ */}
+          {/* ── UNIFIED FILE TREE ─────────────────────────────────────────── */}
           {!isLoading &&
             !projectFilesLoading &&
             (() => {

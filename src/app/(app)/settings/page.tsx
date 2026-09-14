@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import GeneralPage from '@/features/workspaces/settings/pages/GeneralPage';
+import ProfilePage from '@/features/workspaces/settings/pages/ProfilePage';
 
-export const metadata: Metadata = { title: 'Settings · Flux' };
+export const metadata: Metadata = { title: 'Profile · Flux' };
 
 export default function SettingsPage() {
-  return <GeneralPage />;
+  return <ProfilePage />;
 }

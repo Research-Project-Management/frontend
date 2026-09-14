@@ -11,10 +11,8 @@ import { CalendarDays, Plus, X, Lock, ArrowRight, PlayCircle, CheckCircle2 } fro
 import { format, parseISO } from "date-fns";
 
 // Internal Sections
-import { PhaseSection } from "../dialog/Phase";
 import { LabelsSection } from "../dialog/Labels";
 import { DatesSection } from "../dialog/Dates";
-import { PhaseIconRenderer } from "../icons/PhaseIcon";
 import { useParams } from "next/navigation";
 import { useLabelsQuery } from "../../hooks/use-label";
 import type { CycleFormData } from "../../schemas/cycle.schema";
@@ -26,8 +24,6 @@ export interface CycleModalProps {
   onOpenChange: (open: boolean) => void;
   mode: 'create' | 'edit';
   form: UseFormReturn<CycleFormData>;
-  phases: any[];
-  setPhases: (v: any[]) => void;
   projectData?: any;
   onSave: (values: CycleFormData) => void;
   onComplete?: () => void;
@@ -40,8 +36,6 @@ export const CycleModal = ({
   onOpenChange,
   mode,
   form,
-  phases,
-  setPhases,
   projectData,
   onSave,
   onComplete,
@@ -52,16 +46,13 @@ export const CycleModal = ({
   const { data } = useLabelsQuery(workspaceId, "cycle", projectId);
 
   const labelsTriggerRef = useRef<HTMLButtonElement>(null);
-  const phaseTriggerRef = useRef<HTMLButtonElement>(null);
 
   const formName = useWatch({ control: form.control, name: 'name' });
   const formDescription = useWatch({ control: form.control, name: 'description' });
   const formStart = useWatch({ control: form.control, name: 'startDate' });
   const formEnd = useWatch({ control: form.control, name: 'endDate' });
-  const formPhase = useWatch({ control: form.control, name: 'phase' });
   const formLabels = useWatch({ control: form.control, name: 'labels' }) || [];
 
-  const setFormPhase = (v: string) => form.setValue('phase', v, { shouldValidate: true });
   const setFormLabels = (action: React.SetStateAction<string[]>) => {
     const current = form.getValues('labels') || [];
     const next = typeof action === 'function' ? action(current) : action;
@@ -69,10 +60,6 @@ export const CycleModal = ({
   };
   const setFormStart = (v: string) => form.setValue('startDate', v, { shouldValidate: true });
   const setFormEnd = (v: string) => form.setValue('endDate', v, { shouldValidate: true });
-
-  const currentPhaseConfig = useMemo(() => {
-    return phases.find(p => p.id === formPhase) || phases[0];
-  }, [phases, formPhase]);
 
   const { register, handleSubmit, formState: { errors } } = form;
 
@@ -128,33 +115,13 @@ export const CycleModal = ({
             {/* Quick-add action buttons row */}
             {!isReadOnly && (
               <div className="flex flex-wrap items-center gap-2">
-                <PhaseSection phases={phases} setPhases={setPhases} formPhase={formPhase} setFormPhase={setFormPhase} triggerRef={phaseTriggerRef} />
                 <LabelsSection formLabels={formLabels} setFormLabels={setFormLabels} triggerRef={labelsTriggerRef} />
                 <DatesSection formStart={formStart} formEnd={formEnd} setFormStart={setFormStart} setFormEnd={setFormEnd} />
               </div>
             )}
 
-          {/* Details row — Phase / Labels / Dates all side-by-side */}
+          {/* Details row — Labels / Dates all side-by-side */}
           <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
-            {/* Phase */}
-            <div className="flex shrink-0 flex-col gap-1.5">
-              <span className="text-xs font-semibold text-muted-foreground">Research Phase</span>
-              <button
-                type="button"
-                disabled={isReadOnly}
-                onClick={() => phaseTriggerRef.current?.click()}
-                className={`h-9 px-3 bg-muted border border-border rounded-sm flex items-center gap-2 text-foreground font-medium text-sm ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-muted'} transition-colors`}
-              >
-                <PhaseIconRenderer
-                  phaseId={formPhase}
-                  icon={currentPhaseConfig?.icon}
-                  color={currentPhaseConfig?.color}
-                  size="sm"
-                  className="!bg-transparent !size-5"
-                />
-                <span className="whitespace-nowrap">{currentPhaseConfig?.label}</span>
-              </button>
-            </div>
 
             {/* Labels */}
             {formLabels.length > 0 && (

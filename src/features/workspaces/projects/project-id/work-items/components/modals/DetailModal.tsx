@@ -31,14 +31,11 @@ import { cn } from "@/shared/lib/utils";
 
 import type {
   Item,
-  Task,
   Column,
   ItemMutationInput,
-  TaskMutationInput,
   Priority,
-  TaskPriority,
-  TaskRelation,
-  SubtaskMinimal,
+  Relation,
+  SubItem,
   Project,
   ProjectMember,
   AttachPageItem,
@@ -47,35 +44,39 @@ import type {
   AttachLinkItem,
 } from '../../types/work-item.types';
 import {
-  resolveColumnId, resolveColumnColor,
+  resolveColumnId,
   resolveStateId,
+  ItemHelpers,
+  WorkItemHelpers,
 } from "../../utils/work-item.utils";
+import { StatusIcon } from "@/shared/components/icons";
 import {
-  useTaskComments,
+  useComments,
   useAddComment,
   useUpdateComment,
   useReactComment,
   useDeleteComment,
 } from "../../hooks/use-comment";
 import {
-  useCreateSubtask,
-  useConvertSubtaskToRoot,
-  useSubtaskNotification,
-  useCopyTaskText,
+  useCreateSubItem,
+  useConvertSubItemToRoot,
+  useSubItemNotification,
+  useCopyItemText,
+  useUpdateItem,
+  useDeleteItem,
 } from "../../hooks/use-work-item";
-import { useTaskActivityLogs } from "../../hooks/use-history";
+import { useActivityLogs } from "../../hooks/use-history";
 import { useLabelsQuery } from "../../hooks/use-label";
-import { useUploadFilesWithToast } from "../../hooks/use-attachment";
+import { useUploadFilesWithToast, useWorkItemAttachments } from "../../hooks/use-attachment";
 import {
   useAddRelationMutation,
   useRemoveRelationMutation,
 } from "../../hooks/use-relation";
-import { useArchiveTask, useRestoreTask } from "../../hooks/use-archive";
+import { useArchiveItem, useRestoreItem } from "../../hooks/use-archive";
 import { useCreateTemplateMutation } from "../../hooks/use-template";
-import { ItemHelpers, TaskHelpers } from "../../utils/work-item.utils";
 
 import { Activities, type ActivityEntry } from "./Activities";
-import { Attachments, type TaskAttachment, type AttachCenterData } from "./Attachments";
+import { Attachments, type ItemAttachment, type AttachCenterData } from "./Attachments";
 import { Updates } from "./WorkItemUpdates";
 import {
   MemberPopover,
@@ -85,7 +86,7 @@ import {
 } from "./Popovers";
 import { Relations } from "./Relations";
 
-function resolveTaskAssigneeId(assignee?: any): string | null {
+function resolveAssigneeId(assignee?: any): string | null {
   if (!assignee) return null;
   if (typeof assignee === "string") return assignee;
   return assignee.id ?? null;
@@ -120,15 +121,12 @@ export type DetailModalProps = {
   project?: Project;
   members?: ProjectMember[];
   availableItems?: Item[];
-  availableTasks?: Item[];
-  onSave: (data: ItemMutationInput) => void;
+onSave: (data: ItemMutationInput) => void;
   onDelete?: () => void;
   onDuplicate?: () => void;
   onRemoveFromCycle?: () => void;
   isReadOnly?: boolean;
 };
-
-export type TaskDetailModalProps = DetailModalProps;
 
 export function DetailModal({
   open,
@@ -139,24 +137,22 @@ export function DetailModal({
   project,
   members = [],
   availableItems: propAvailableItems,
-  availableTasks: propAvailableTasks = [],
-  onSave,
+onSave,
   onDelete,
   onDuplicate,
   onRemoveFromCycle,
   isReadOnly = false,
 }: DetailModalProps) {
   const card = propItem || propCard;
-  const availableItems = propAvailableItems || propAvailableTasks;
-  const availableTasks = availableItems;
+  const availableItems = propAvailableItems || [];
   const { workspaceId, projectId: routeProjectId } = useParams() as { workspaceId?: string; projectId?: string };
   const currentProjectId = routeProjectId || (project as any)?.id || card?.projectId;
   const { user: currentUser } = useAuth();
-  const copyTaskText = useCopyTaskText();
-  const convertSubtaskToRoot = useConvertSubtaskToRoot();
-  const { notifySubtaskAdded } = useSubtaskNotification();
+  const copyItemText = useCopyItemText();
+  const convertSubItemToRoot = useConvertSubItemToRoot();
+  const { notifySubItemAdded } = useSubItemNotification();
   const uploadFilesWithToast = useUploadFilesWithToast();
-  const { data: rawLabels } = useLabelsQuery(workspaceId || '', 'task', currentProjectId);
+  const { data: rawLabels } = useLabelsQuery(workspaceId || '', 'work-item', currentProjectId);
   const workspaceLabels = useMemo(() => {
     if (Array.isArray(rawLabels)) return rawLabels;
     if (Array.isArray((rawLabels as any)?.labels)) return (rawLabels as any).labels;
@@ -168,8 +164,8 @@ export function DetailModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [columnId, setColumnId] = useState(firstColumnId);
-  const [relations, setRelations] = useState<TaskRelation[]>(card?.relations || []);
-  const [priority, setPriority] = useState<TaskPriority>(card?.priority || "none");
+  const [relations, setRelations] = useState<Relation[]>(card?.relations || []);
+  const [priority, setPriority] = useState<Priority>(card?.priority || "none");
   const [dueDate, setDueDate] = useState("");
   const [startDate, setStartDate] = useState("");
   const [labels, setLabels] = useState<string[]>([]);
@@ -182,8 +178,8 @@ export function DetailModal({
   const commentTextareaRef = useRef<HTMLTextAreaElement>(null);
   const dialogScrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [subtasks, setSubtasks] = useState<any[]>([]);
-  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [subItems, setSubItems] = useState<SubItem[]>([]);
+  const [newSubItemTitle, setNewSubItemTitle] = useState("");
   const [completed, setCompleted] = useState(false);
   const [attachments, setAttachments] = useState<AttachCenterData>(EMPTY_ATTACHMENTS);
   const [commentFocusToken, setCommentFocusToken] = useState(0);
@@ -201,34 +197,54 @@ export function DetailModal({
   const [dragActive, setDragActive] = useState(false);
 
   const workItemId = card?.id || null;
-  const taskId = workItemId;
   const currentUserId = currentUser?.id || null;
   const isCurrentUserAssignee = Boolean(currentUserId && (assigneeId === currentUserId || assigneeIds.includes(currentUserId)));
-  const canComment = Boolean(taskId);
-  const { data: taskComments = [] } = useTaskComments(open && taskId ? taskId : "");
-  const { data: taskActivity = [], error: activityError, isLoading: activityLoading } = useTaskActivityLogs(open && taskId ? taskId : "");
-  const createTaskCommentMutation = useAddComment();
-  const updateTaskCommentMutation = useUpdateComment();
-  const reactTaskCommentMutation = useReactComment();
-  const deleteTaskCommentMutation = useDeleteComment();
-  const createSubtaskMutation = useCreateSubtask();
+  const canComment = Boolean(workItemId);
+  const { data: itemComments = [] } = useComments(open && workItemId ? workItemId : "");
+  const { data: itemActivity = [], error: activityError, isLoading: activityLoading } = useActivityLogs(open && workItemId ? workItemId : "");
+  const { data: fetchedAttachments } = useWorkItemAttachments(open && workItemId ? workItemId : "");
+  const createCommentMutation = useAddComment();
+  const updateCommentMutation = useUpdateComment();
+  const reactCommentMutation = useReactComment();
+  const deleteCommentMutation = useDeleteComment();
+  const createSubItemMutation = useCreateSubItem();
+  const updateSubItemMutation = useUpdateItem();
+  const deleteSubItemMutation = useDeleteItem();
   const addRelationMutation = useAddRelationMutation();
   const removeRelationMutation = useRemoveRelationMutation();
-  const archiveTaskMutation = useArchiveTask();
-  const restoreTaskMutation = useRestoreTask();
+  const archiveItemMutation = useArchiveItem();
+  const restoreItemMutation = useRestoreItem();
   const createTemplateMutation = useCreateTemplateMutation();
 
   const isArchived = Boolean((card as any)?.archivedAt);
 
-  const handleArchiveTask = async () => {
-    if (!taskId) return;
-    await archiveTaskMutation.mutateAsync(taskId);
+  const defaultUnstartedColumnId = useMemo(() => {
+    if (!Array.isArray(columns) || columns.length === 0) return 'todo';
+    const unstarted =
+      columns.find((c) => c.group === 'unstarted' && c.isDefault) ||
+      columns.find((c) => c.group === 'unstarted') ||
+      columns.find((c) => c.isDefault) ||
+      columns[0];
+    return unstarted ? resolveColumnId(unstarted) : 'todo';
+  }, [columns]);
+
+  const defaultCompletedColumnId = useMemo(() => {
+    if (!Array.isArray(columns) || columns.length === 0) return 'done';
+    const completed =
+      columns.find((c) => c.group === 'completed') ||
+      columns[columns.length - 1];
+    return completed ? resolveColumnId(completed) : 'done';
+  }, [columns]);
+
+  const handleArchiveItem = async () => {
+    if (!workItemId) return;
+    await archiveItemMutation.mutateAsync(workItemId);
     onOpenChange(false);
   };
 
-  const handleRestoreTask = async () => {
-    if (!taskId) return;
-    await restoreTaskMutation.mutateAsync(taskId);
+  const handleRestoreItem = async () => {
+    if (!workItemId) return;
+    await restoreItemMutation.mutateAsync(workItemId);
   };
 
   const handleSaveAsTemplate = async () => {
@@ -249,11 +265,11 @@ export function DetailModal({
     });
   };
 
-  const handleConvertSubtask = async (sub: any, sIdx: number) => {
+  const handleConvertSubItem = async (sub: any, sIdx: number) => {
     try {
-      await convertSubtaskToRoot.mutateAsync({ id: sub.id, itemId: sub.id, taskId: sub.id });
-      const updated = subtasks.filter((_, i) => i !== sIdx);
-      setSubtasks(updated);
+      await convertSubItemToRoot.mutateAsync({ id: sub.id, itemId: sub.id, workItemId: sub.id });
+      const updated = subItems.filter((_, i) => i !== sIdx);
+      setSubItems(updated);
     } catch {}
   };
 
@@ -270,7 +286,13 @@ export function DetailModal({
       setLabels(ItemHelpers.uniqueLabels(card.labels));
       setDueDate(card.dueDate || "");
       setStartDate(card.startDate || "");
-      setSubtasks(Array.isArray(card.subtasks) ? card.subtasks : []);
+      setSubItems(
+        Array.isArray((card as any)?.childWorkItems) && (card as any).childWorkItems.length > 0
+          ? (card as any).childWorkItems
+          : Array.isArray((card as any)?.subItems)
+          ? (card as any).subItems
+          : []
+      );
       setCompleted(card.completed || false);
       setAttachments(normalizeAttachments(card.attachments));
 
@@ -297,7 +319,7 @@ export function DetailModal({
       setStartDate("");
       setAssigneeId(null);
       setAssigneeIds([]);
-      setSubtasks([]);
+      setSubItems([]);
       setCompleted(false);
       setAttachments(EMPTY_ATTACHMENTS);
     }
@@ -333,7 +355,22 @@ export function DetailModal({
     autosaveReadyRef.current = false;
   }, [open, card, firstColumnId]);
 
-  const currentPayload = useMemo<TaskMutationInput>(() => {
+  useEffect(() => {
+    if (fetchedAttachments) {
+      const normalized = normalizeAttachments(fetchedAttachments);
+      setAttachments(normalized);
+      if (initialSnapshotRef.current) {
+        try {
+          const parsed = JSON.parse(initialSnapshotRef.current) as Record<string, any>;
+          parsed.attachments = normalized;
+          initialSnapshotRef.current = JSON.stringify(parsed);
+          autosaveSignatureRef.current = initialSnapshotRef.current;
+        } catch {}
+      }
+    }
+  }, [fetchedAttachments]);
+
+  const currentPayload = useMemo<ItemMutationInput>(() => {
     return {
       title: title.trim(),
       content: description.trim(),
@@ -369,14 +406,14 @@ export function DetailModal({
     return ItemHelpers.createSnapshot(currentPayload) !== initialSnapshotRef.current;
   }, [open, currentPayload]);
 
-  const safeSave = useCallback((payload: TaskMutationInput) => {
+  const safeSave = useCallback((payload: ItemMutationInput) => {
     if (isReadOnly) return;
-    if (!taskId && !payload.title?.trim()) return;
+    if (!workItemId && !payload.title?.trim()) return;
     onSave(payload);
-  }, [isReadOnly, taskId, onSave]);
+  }, [isReadOnly, workItemId, onSave]);
 
   useEffect(() => {
-    if (!open || isReadOnly || !taskId) return;
+    if (!open || isReadOnly || !workItemId) return;
 
     if (!autosaveReadyRef.current) {
       autosaveReadyRef.current = true;
@@ -394,7 +431,7 @@ export function DetailModal({
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [open, hasUnsavedChanges, currentPayload, isReadOnly, safeSave, taskId]);
+  }, [open, hasUnsavedChanges, currentPayload, isReadOnly, safeSave, workItemId]);
 
   const handleClose = () => {
     onOpenChange(false);
@@ -413,7 +450,7 @@ export function DetailModal({
     safeSave({ ...currentPayload, columnId: newColId });
   };
 
-  const handleJoinTask = () => {
+  const handleJoinItem = () => {
     if (!currentUserId || isReadOnly) return;
     const nextIds = Array.from(new Set([...assigneeIds, currentUserId]));
     setAssigneeIds(nextIds);
@@ -421,7 +458,7 @@ export function DetailModal({
     safeSave({ ...currentPayload, assigneeIds: nextIds, assigneeId: currentUserId });
   };
 
-  const handleLeaveTask = () => {
+  const handleLeaveItem = () => {
     if (!isCurrentUserAssignee || isReadOnly) return;
     const nextIds = assigneeIds.filter((id) => id !== currentUserId);
     setAssigneeIds(nextIds);
@@ -431,90 +468,97 @@ export function DetailModal({
 
   const handleCopyIdentifier = () => {
     if (card?.identifier) {
-      copyTaskText(card.identifier, `Copied identifier: ${card.identifier}`);
+      copyItemText(card.identifier, `Copied identifier: ${card.identifier}`);
     }
   };
 
-  // Subtask quick actions
-  const handleAddSubtask = async (e: React.FormEvent) => {
+  // Sub-item quick actions
+  const handleAddSubItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSubtaskTitle.trim()) return;
-    const title = newSubtaskTitle.trim();
-    setNewSubtaskTitle("");
+    if (!newSubItemTitle.trim()) return;
+    const title = newSubItemTitle.trim();
+    setNewSubItemTitle("");
 
-    if (taskId) {
+    if (workItemId) {
       try {
-        const res = await createSubtaskMutation.mutateAsync({
-          taskId,
+        const res: any = await createSubItemMutation.mutateAsync({
+          id: workItemId,
+          itemId: workItemId,
+          workItemId: workItemId,
           title,
-          columnId: 'todo',
+          columnId: defaultUnstartedColumnId,
         });
-        const created = res.task;
-        const newSub: SubtaskMinimal = {
+        const created = res?.subItem || res?.workItem || res?.item || res;
+        const newSub: SubItem = {
           id: created.id,
           title: created.title,
           identifier: created.identifier,
-          columnId: created.columnId || 'todo',
+          columnId: created.columnId || defaultUnstartedColumnId,
           completed: created.completed || false,
-          rank: created.rank || subtasks.length,
+          rank: created.rank || subItems.length,
           assigneeId: created.assigneeId || null,
           assignee: created.assignee || null,
           dueDate: created.dueDate || null,
         };
-        setSubtasks((prev) => [...prev, newSub]);
+        setSubItems((prev) => [...prev, newSub]);
       } catch {
         // Error toast handled by mutation
       }
     } else {
-      const newSub: SubtaskMinimal = {
+      const newSub: SubItem = {
         id: `sub_${Date.now()}`,
         title,
         completed: false,
-        columnId: 'todo',
-        rank: subtasks.length,
+        columnId: defaultUnstartedColumnId,
+        rank: subItems.length,
       };
-      setSubtasks((prev) => [...prev, newSub]);
-      notifySubtaskAdded();
+      setSubItems((prev) => [...prev, newSub]);
+      notifySubItemAdded();
     }
   };
 
   // AI Appends
-  const handleAiAppendSubtasks = async (newItems: Array<{ title: string; completed: boolean }>) => {
-    if (taskId) {
+  const handleAiAppendSubItems = async (newItems: Array<{ title: string; completed: boolean }>) => {
+    if (workItemId) {
       try {
         const results = await Promise.all(
           newItems.map((item) =>
-            createSubtaskMutation.mutateAsync({
-              taskId,
+            createSubItemMutation.mutateAsync({
+              id: workItemId,
+              itemId: workItemId,
+              workItemId: workItemId,
               title: item.title,
-              columnId: 'todo',
+              columnId: defaultUnstartedColumnId,
             })
           )
         );
-        const createdSubs: SubtaskMinimal[] = results.map((res: any) => ({
-          id: res.task.id,
-          title: res.task.title,
-          identifier: res.task.identifier,
-          columnId: res.task.columnId || 'todo',
-          completed: res.task.completed || false,
-          rank: res.task.rank || 0,
-          assigneeId: res.task.assigneeId || null,
-          assignee: res.task.assignee || null,
-          dueDate: res.task.dueDate || null,
-        }));
-        setSubtasks((prev) => [...prev, ...createdSubs]);
+        const createdSubs: SubItem[] = results.map((res: any) => {
+          const t = res?.subItem || res?.workItem || res?.item || res;
+          return {
+            id: t.id,
+            title: t.title,
+            identifier: t.identifier,
+            columnId: t.columnId || defaultUnstartedColumnId,
+            completed: t.completed || false,
+            rank: t.rank || 0,
+            assigneeId: t.assigneeId || null,
+            assignee: t.assignee || null,
+            dueDate: t.dueDate || null,
+          };
+        });
+        setSubItems((prev) => [...prev, ...createdSubs]);
       } catch {
         // Handled
       }
     } else {
-      const createdSubs: SubtaskMinimal[] = newItems.map((item: any, idx: number) => ({
+      const createdSubs: SubItem[] = newItems.map((item: any, idx: number) => ({
         id: `sub_${Date.now()}_${idx}`,
         title: item.title,
         completed: item.completed,
-        columnId: 'todo',
-        rank: subtasks.length + idx,
+        columnId: defaultUnstartedColumnId,
+        rank: subItems.length + idx,
       }));
-      setSubtasks((prev) => [...prev, ...createdSubs]);
+      setSubItems((prev) => [...prev, ...createdSubs]);
     }
   };
 
@@ -535,7 +579,7 @@ export function DetailModal({
         showSuccessToast: false,
         errorMessage: 'Failed to upload attachment',
       });
-      const newAttachments: TaskAttachment[] = results.map(({ file: f, url: uploadedUrl }) => ({
+      const newAttachments: ItemAttachment[] = results.map(({ file: f, url: uploadedUrl }) => ({
         id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         name: f.name,
         type: f.type,
@@ -624,7 +668,7 @@ export function DetailModal({
     size?: number;
     type?: string;
   }) => {
-    const newFile: TaskAttachment = {
+    const newFile: ItemAttachment = {
       id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       name: file.name,
       url: file.url,
@@ -691,24 +735,24 @@ export function DetailModal({
 
   // Comment Actions
   const handleSaveComment = (text: string) => {
-    if (!taskId || !text.trim()) return;
-    createTaskCommentMutation.mutate({ taskId, content: text.trim() });
+    if (!workItemId || !text.trim()) return;
+    createCommentMutation.mutate({ id: workItemId, itemId: workItemId, workItemId, content: text.trim() });
     setCommentText("");
   };
 
   const handleUpdateComment = (commentId: string, content: string) => {
-    if (!taskId || !content.trim()) return;
-    updateTaskCommentMutation.mutate({ taskId, commentId, content: content.trim() });
+    if (!workItemId || !content.trim()) return;
+    updateCommentMutation.mutate({ id: workItemId, itemId: workItemId, workItemId, commentId, content: content.trim() });
   };
 
   const handleDeleteComment = (commentId: string) => {
-    if (!taskId) return;
-    deleteTaskCommentMutation.mutate({ taskId, commentId });
+    if (!workItemId) return;
+    deleteCommentMutation.mutate({ id: workItemId, itemId: workItemId, workItemId, commentId });
   };
 
   const handleReactComment = (commentId: string, emoji: string) => {
-    if (!taskId) return;
-    reactTaskCommentMutation.mutate({ taskId, commentId, emoji });
+    if (!workItemId) return;
+    reactCommentMutation.mutate({ id: workItemId, itemId: workItemId, workItemId, commentId, emoji });
   };
 
   // Selected Member & Labels for display
@@ -736,13 +780,13 @@ export function DetailModal({
   }, [workspaceLabels, labels]);
 
   const progressRollup = useMemo(() => {
-    return ItemHelpers.calculateProgressRollup(subtasks);
-  }, [subtasks]);
+    return ItemHelpers.calculateProgressRollup(subItems);
+  }, [subItems]);
 
   const visibleActivities = useMemo<ActivityEntry[]>(() => {
-    const commentsList = Array.isArray(taskComments)
-      ? taskComments
-      : (taskComments as any)?.comments || (taskComments as any)?.data || [];
+    const commentsList = Array.isArray(itemComments)
+      ? itemComments
+      : (itemComments as any)?.comments || (itemComments as any)?.data || [];
     const commentEntries: ActivityEntry[] = commentsList.map((c: any) => {
       let reactionEmoji: string | undefined = undefined;
       if (c.reactions) {
@@ -775,9 +819,9 @@ export function DetailModal({
       };
     });
 
-    const activityList = Array.isArray(taskActivity)
-      ? taskActivity
-      : (taskActivity as any)?.activity || (taskActivity as any)?.activities || (taskActivity as any)?.data || [];
+    const activityList = Array.isArray(itemActivity)
+      ? itemActivity
+      : (itemActivity as any)?.activity || (itemActivity as any)?.activities || (itemActivity as any)?.data || [];
     const logEntries: ActivityEntry[] = activityList.map((a: any) => ({
       id: a.id || `log_${Math.random()}`,
       kind: 'activity',
@@ -792,7 +836,7 @@ export function DetailModal({
     return [...commentEntries, ...logEntries].sort(
       (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
     );
-  }, [taskComments, taskActivity]);
+  }, [itemComments, itemActivity]);
 
   // Compact Pill Button Class
   const actionBtnClass =
@@ -800,7 +844,6 @@ export function DetailModal({
 
   const renderStatusSelector = () => {
     const activeCol = columns.find((c) => resolveColumnId(c) === columnId);
-    const activeColColor = resolveColumnColor(columnId, activeCol?.accentColor);
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild disabled={isReadOnly}>
@@ -811,14 +854,19 @@ export function DetailModal({
               isReadOnly && 'opacity-60 cursor-not-allowed'
             )}
           >
-            <span className="size-2 rounded-full shrink-0 bg-muted-foreground" />
+            <StatusIcon
+              id={columnId}
+              title={activeCol?.title || activeCol?.name}
+              group={activeCol?.group}
+              color={activeCol?.color || activeCol?.accentColor}
+              className="size-3.5 shrink-0"
+            />
             <span>{activeCol?.title || columnId}</span>
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" sideOffset={4} className="w-44 p-1 text-xs z-100 rounded-md border-border bg-popover">
           {columns.map((col) => {
             const cId = resolveColumnId(col);
-            const color = resolveColumnColor(cId, col.accentColor);
             const isCurrent = columnId === cId;
             return (
               <DropdownMenuItem
@@ -830,7 +878,13 @@ export function DetailModal({
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                  <StatusIcon
+                    id={cId}
+                    title={col.title || col.name}
+                    group={col.group}
+                    color={col.color || col.accentColor}
+                    className="size-3.5 shrink-0"
+                  />
                   <span className="truncate">{col.title}</span>
                 </div>
                 {isCurrent && <Check className="size-3.5 shrink-0 text-primary" />}
@@ -858,7 +912,7 @@ export function DetailModal({
           {/* Top Modal Header */}
           <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border bg-background shrink-0">
             <DialogTitle className="text-base sm:text-lg font-semibold text-foreground tracking-tight flex items-center gap-2">
-              <span>{card?.identifier ? card.identifier : "Item Detail"}</span>
+              <span>{card?.identifier ? card.identifier : "Work Item Detail"}</span>
               {isArchived && (
                 <span className="px-1.5 py-0.5 rounded text-10 font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                   Archived
@@ -882,50 +936,50 @@ export function DetailModal({
                   <DropdownMenuContent align="end" className="w-48 rounded-md border-border p-1">
                     {!isReadOnly && onDuplicate && (
                       <DropdownMenuItem onClick={onDuplicate} className="rounded-sm py-1.5 text-xs">
-                        <Copy className="mr-2 h-3.5 w-3.5 shrink-0 text-foreground" />
+                        <Copy className="mr-2 size-3.5 shrink-0 text-foreground" />
                         <span>Duplicate</span>
                       </DropdownMenuItem>
                     )}
-                    {!isReadOnly && taskId && (
+                    {!isReadOnly && workItemId && (
                       <DropdownMenuItem
-                        onClick={isArchived ? handleRestoreTask : handleArchiveTask}
+                        onClick={isArchived ? handleRestoreItem : handleArchiveItem}
                         className="rounded-sm py-1.5 text-xs"
                       >
                         {isArchived ? (
                           <>
-                            <ArchiveRestore className="mr-2 h-3.5 w-3.5 shrink-0 text-foreground" />
-                            <span>Restore issue</span>
+                            <ArchiveRestore className="mr-2 size-3.5 shrink-0 text-foreground" />
+                            <span>Restore work item</span>
                           </>
                         ) : (
                           <>
-                            <Archive className="mr-2 h-3.5 w-3.5 shrink-0 text-foreground" />
-                            <span>Archive issue</span>
+                            <Archive className="mr-2 size-3.5 shrink-0 text-foreground" />
+                            <span>Archive work item</span>
                           </>
                         )}
                       </DropdownMenuItem>
                     )}
                     {!isReadOnly && (
                       <DropdownMenuItem onClick={handleSaveAsTemplate} className="rounded-sm py-1.5 text-xs">
-                        <Bookmark className="mr-2 h-3.5 w-3.5 shrink-0 text-foreground" />
+                        <Bookmark className="mr-2 size-3.5 shrink-0 text-foreground" />
                         <span>Save as template</span>
                       </DropdownMenuItem>
                     )}
                     {currentUserId && (
                       <DropdownMenuItem
-                        onClick={isCurrentUserAssignee ? handleLeaveTask : handleJoinTask}
+                        onClick={isCurrentUserAssignee ? handleLeaveItem : handleJoinItem}
                         className="rounded-sm py-1.5 text-xs"
                       >
                         {isCurrentUserAssignee ? (
-                          <UserMinus className="mr-2 h-3.5 w-3.5 shrink-0 text-foreground" />
+                          <UserMinus className="mr-2 size-3.5 shrink-0 text-foreground" />
                         ) : (
-                          <UserPlus className="mr-2 h-3.5 w-3.5 shrink-0 text-foreground" />
+                          <UserPlus className="mr-2 size-3.5 shrink-0 text-foreground" />
                         )}
                         <span>{isCurrentUserAssignee ? "Leave work item" : "Join work item"}</span>
                       </DropdownMenuItem>
                     )}
                     {onRemoveFromCycle && (
                       <DropdownMenuItem onClick={onRemoveFromCycle} className="rounded-sm py-1.5 text-xs">
-                        <RotateCcw className="mr-2 h-3.5 w-3.5 shrink-0 text-foreground" />
+                        <RotateCcw className="mr-2 size-3.5 shrink-0 text-foreground" />
                         <span>Remove from cycle</span>
                       </DropdownMenuItem>
                     )}
@@ -934,7 +988,7 @@ export function DetailModal({
                         onClick={onDelete}
                         className="rounded-sm py-1.5 text-xs text-destructive focus:bg-destructive focus:text-destructive-foreground"
                       >
-                        <Trash2 className="mr-2 h-3.5 w-3.5 shrink-0" />
+                        <Trash2 className="mr-2 size-3.5 shrink-0" />
                         <span>Delete work item</span>
                       </DropdownMenuItem>
                     )}
@@ -988,7 +1042,7 @@ export function DetailModal({
                   />
 
                   {/* Progress Rollup Bar */}
-                  {subtasks.length > 0 && (
+                  {subItems.length > 0 && (
                     <div className="space-y-1 p-2 rounded-md bg-muted border border-border">
                       <div className="flex items-center justify-between text-11">
                         <span className="font-semibold text-foreground flex items-center gap-1">
@@ -1058,7 +1112,7 @@ export function DetailModal({
                             key={member.id}
                             className="flex items-center gap-1 bg-muted rounded-md px-1.5 py-0.5 text-10 font-medium text-foreground border border-border"
                           >
-                            <Avatar className="size-3.5">
+                            <Avatar className="size-3.5 shrink-0">
                               <AvatarImage src={member.avatar || undefined} />
                               <AvatarFallback className="text-9">
                                 {member.name.charAt(0)}
@@ -1262,29 +1316,36 @@ export function DetailModal({
                   {/* Dependencies & Relations */}
                   <Relations
                     relations={relations}
-                    currentTaskId={taskId || undefined}
-                    availableItems={availableItems} availableTasks={availableItems}
+                    currentItemId={workItemId || undefined}
+                    availableItems={availableItems}
                     onAddRelation={(newRel) => {
                       const updated = [...relations, newRel];
                       setRelations(updated);
-                      if (taskId && newRel.targetTaskId) {
+                      const target = newRel.targetId || newRel.targetWorkItemId;
+                      if (workItemId && target) {
                         addRelationMutation.mutate({
-                          taskId,
+                          id: workItemId,
+                          itemId: workItemId,
+                          workItemId,
                           type: newRel.type,
-                          targetTaskId: newRel.targetTaskId,
+                          targetId: target,
+                          targetWorkItemId: target,
                         });
                       } else {
                         onSave({ ...currentPayload, relations: updated });
                       }
                     }}
-                    onRemoveRelation={(relId, targetTaskId) => {
+                    onRemoveRelation={(relId, targetItemId) => {
                       const updated = relations.filter((r) => r.id !== relId);
                       setRelations(updated);
-                      if (taskId) {
+                      if (workItemId) {
                         removeRelationMutation.mutate({
-                          taskId,
+                          id: workItemId,
+                          itemId: workItemId,
+                          workItemId,
                           relationId: relId,
-                          targetTaskId,
+                          targetId: targetItemId,
+                          targetWorkItemId: targetItemId,
                         });
                       } else {
                         onSave({ ...currentPayload, relations: updated });
@@ -1293,18 +1354,18 @@ export function DetailModal({
                     isReadOnly={isReadOnly}
                   />
 
-                  {/* Subtasks Section */}
+                  {/* Sub-items Section */}
                   <div className="space-y-2 pt-1">
                     <div className="flex items-center justify-between">
                       <label className="text-11 font-semibold text-muted-foreground tracking-normal flex items-center gap-1.5">
                         <GitBranch className="size-3.5 shrink-0" />
-                        <span>Sub-items ({subtasks.filter((s: any) => s.completed || s.columnId === 'done').length}/{subtasks.length})</span>
+                        <span>Sub-items ({subItems.filter((s: any) => s.completed || s.columnId === 'done').length}/{subItems.length})</span>
                       </label>
                     </div>
 
-                    {subtasks.length > 0 && (
+                    {subItems.length > 0 && (
                       <div className="divide-y divide-border rounded-md border border-border bg-background overflow-hidden">
-                        {subtasks.map((sub: any, sIdx: number) => {
+                        {subItems.map((sub: any, sIdx: number) => {
                           const isSubDone = sub.completed || sub.columnId === 'done';
                           return (
                             <div key={sub.id || sIdx} className="flex items-center justify-between px-2.5 py-1.5 text-xs hover:bg-muted transition-colors group">
@@ -1313,10 +1374,19 @@ export function DetailModal({
                                   type="button"
                                   disabled={isReadOnly}
                                   onClick={() => {
-                                    const updated = subtasks.map((s, i) =>
-                                      i === sIdx ? { ...s, completed: !isSubDone, columnId: !isSubDone ? 'done' : 'todo' } : s
+                                    const nextCompleted = !isSubDone;
+                                    const nextColumnId = nextCompleted ? defaultCompletedColumnId : defaultUnstartedColumnId;
+                                    const updated = subItems.map((s, i) =>
+                                      i === sIdx ? { ...s, completed: nextCompleted, columnId: nextColumnId } : s
                                     );
-                                    setSubtasks(updated);
+                                    setSubItems(updated);
+                                    if (sub.id && !String(sub.id).startsWith('sub_')) {
+                                      updateSubItemMutation.mutate({
+                                        id: sub.id,
+                                        completed: nextCompleted,
+                                        columnId: nextColumnId,
+                                      });
+                                    }
                                   }}
                                   className={cn(
                                     'size-3.5 rounded-sm border flex items-center justify-center transition-colors cursor-pointer',
@@ -1334,7 +1404,7 @@ export function DetailModal({
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <button
                                     type="button"
-                                    onClick={() => handleConvertSubtask(sub, sIdx)}
+                                    onClick={() => handleConvertSubItem(sub, sIdx)}
                                     className="hover:text-primary p-0.5 text-muted-foreground cursor-pointer transition-colors"
                                     title="Convert to independent work item"
                                   >
@@ -1343,9 +1413,11 @@ export function DetailModal({
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const updated = subtasks.filter((_, i) => i !== sIdx);
-                                      setSubtasks(updated);
-                                      onSave({ ...currentPayload });
+                                      const updated = subItems.filter((_, i) => i !== sIdx);
+                                      setSubItems(updated);
+                                      if (sub.id && !String(sub.id).startsWith('sub_')) {
+                                        deleteSubItemMutation.mutate({ id: sub.id });
+                                      }
                                     }}
                                     className="hover:text-red-500 p-0.5 text-muted-foreground cursor-pointer transition-colors"
                                     title="Delete sub-item"
@@ -1361,14 +1433,14 @@ export function DetailModal({
                     )}
 
                     {!isReadOnly && (
-                      <form onSubmit={handleAddSubtask} className="flex items-center gap-1.5">
+                      <form onSubmit={handleAddSubItem} className="flex items-center gap-1.5">
                         <Input
-                          value={newSubtaskTitle}
-                          onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                          value={newSubItemTitle}
+                          onChange={(e) => setNewSubItemTitle(e.target.value)}
                           placeholder="+ Add sub-item..."
                           className="h-7 text-xs"
                         />
-                        {newSubtaskTitle.trim() && (
+                        {newSubItemTitle.trim() && (
                           <Button type="submit" size="sm" className="h-7 text-xs shrink-0 px-2.5">
                             Add
                           </Button>
@@ -1380,8 +1452,7 @@ export function DetailModal({
                   {/* Attachments Section */}
                   <Attachments
                     attachments={attachments}
-                    itemId={taskId || undefined}
-                    taskId={taskId || undefined}
+                    itemId={workItemId || undefined}
                     projectId={currentProjectId}
                     workspaceId={workspaceId}
                     onRenameAttachment={handleRenameAttachment}
@@ -1398,10 +1469,9 @@ export function DetailModal({
                   />
 
                   {/* Progress Briefings / Status Updates Section */}
-                  {taskId && (
+                  {workItemId && (
                     <Updates
-                      taskId={taskId}
-                      workItemId={taskId}
+                      workItemId={workItemId}
                       projectId={currentProjectId}
                       isReadOnly={isReadOnly}
                     />
@@ -1423,8 +1493,8 @@ export function DetailModal({
                     commentCaretPosition={commentCaretPosition}
                     onCommentCaretChange={setCommentCaretPosition}
                     canComment={canComment}
-                    isSavingComment={createTaskCommentMutation.isPending}
-                    isUpdatingComment={updateTaskCommentMutation.isPending}
+                    isSavingComment={createCommentMutation.isPending}
+                    isUpdatingComment={updateCommentMutation.isPending}
                     showDetailActivity={showDetailActivity}
                     setShowDetailActivity={setShowDetailActivity}
                     activityLoading={activityLoading}
@@ -1441,7 +1511,5 @@ export function DetailModal({
   );
 }
 
-export const TaskDetailModal = DetailModal;
 export const WorkItemDetailModal = DetailModal;
-export const TaskDialog = DetailModal;
 export default DetailModal;

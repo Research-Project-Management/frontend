@@ -59,7 +59,7 @@ const Card = memo(
               {sticky.updatedAt ? new Date(sticky.updatedAt).toLocaleDateString() : ""}
             </div>
           </div>
-          <GripVertical className="h-3.5 w-3.5 opacity-30 shrink-0" />
+          <GripVertical className="size-3.5 opacity-30 shrink-0" />
         </div>
 
         {/* Content */}

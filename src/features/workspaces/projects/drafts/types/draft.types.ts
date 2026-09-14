@@ -1,10 +1,17 @@
-export type TaskPriority = 'urgent' | 'high' | 'medium' | 'low' | 'none';
+export type WorkItemPriority = 'urgent' | 'high' | 'medium' | 'low' | 'none';
+
 
 export interface ProjectSummary {
   id: string;
   name: string;
   identifier: string;
-  taskColumns?: Array<{
+  workItemColumns?: Array<{
+    id: string;
+    name: string;
+    color?: string;
+    order?: number;
+  }>;
+  columns?: Array<{
     id: string;
     name: string;
     color?: string;
@@ -18,7 +25,7 @@ export interface WorkItemDraft {
   content: string | null;
   description: string | null;
   columnId: string | null;
-  priority: TaskPriority;
+  priority: WorkItemPriority;
   startDate: string | null;
   dueDate: string | null;
   labels: string[];
@@ -38,7 +45,7 @@ export interface CreateDraftInput {
   description?: string;
   projectId?: string;
   columnId?: string;
-  priority?: TaskPriority;
+  priority?: WorkItemPriority;
   startDate?: string;
   dueDate?: string;
   labels?: string[];
@@ -53,7 +60,7 @@ export interface UpdateDraftInput {
   description?: string;
   projectId?: string;
   columnId?: string;
-  priority?: TaskPriority;
+  priority?: WorkItemPriority;
   startDate?: string;
   dueDate?: string;
   labels?: string[];
@@ -67,7 +74,7 @@ export interface PublishDraftInput {
   columnId?: string;
   cycleId?: string;
   title?: string;
-  priority?: TaskPriority;
+  priority?: WorkItemPriority;
 }
 
 export interface DraftQueryFilter {

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { Item, Task, Column } from '../../types/work-item.types';
+import type { Item, Column } from '../../types/work-item.types';
 import type { AssigneeFilterOption } from '../../hooks/use-topbar';
 
 import {
@@ -20,7 +20,6 @@ export interface AnalyticsDrawerProps {
   onClose: () => void;
   project?: any;
   items?: Item[];
-  tasks?: Item[];
   columns?: Column[];
   assignees?: AssigneeFilterOption[];
   [key: string]: any;
@@ -29,18 +28,14 @@ export interface AnalyticsDrawerProps {
 export function AnalyticsDrawer({
   isOpen,
   onClose,
-  items: propItems,
-  tasks: propTasks = [],
+  items = [],
   columns = [],
 }: AnalyticsDrawerProps) {
-  const items = propItems || propTasks || [];
   const totalItems = items.length;
   const completedItems = items.filter(
     (t) => t.completed || t.columnId === 'done'
   ).length;
   const completionRate = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
-  const totalTasks = totalItems;
-  const completedTasks = completedItems;
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -72,7 +67,7 @@ export function AnalyticsDrawer({
                 <BarChart3 className="size-3.5 text-muted-foreground shrink-0" />
               </div>
               <div className="text-xl font-semibold text-foreground font-mono">
-                {totalTasks}
+                {totalItems}
               </div>
               <p className="text-10 text-muted-foreground">Toàn bộ work items</p>
             </div>
@@ -85,7 +80,7 @@ export function AnalyticsDrawer({
               <div className="text-xl font-semibold text-foreground font-mono">
                 {completionRate}%
               </div>
-              <p className="text-10 text-muted-foreground">{completedTasks}/{totalTasks} hoàn thành</p>
+              <p className="text-10 text-muted-foreground">{completedItems}/{totalItems} hoàn thành</p>
             </div>
           </div>
 
@@ -109,8 +104,8 @@ export function AnalyticsDrawer({
                       className="h-full bg-primary rounded-full"
                       style={{
                         width: `${
-                          totalTasks > 0
-                            ? (items.filter((t) => t.columnId === col.id).length / totalTasks) * 100
+                          totalItems > 0
+                            ? (items.filter((t) => t.columnId === col.id).length / totalItems) * 100
                             : 0
                         }%`,
                       }}

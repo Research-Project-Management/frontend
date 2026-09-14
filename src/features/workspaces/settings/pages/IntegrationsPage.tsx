@@ -28,17 +28,14 @@ export default function IntegrationsPage() {
 
   return (
     <div className="flex h-full w-full flex-col bg-background">
-      <TopBar title="Integrations" Icon={Puzzle} />
+      <TopBar
+        title="Integrations"
+        description="Configure external reference managers and bidirectional synchronization pipelines."
+        Icon={Puzzle}
+      />
 
-      <div className="flex-1 overflow-y-auto px-6 md:px-10 lg:px-12 py-8 md:py-10">
-        <div className="w-full max-w-5xl mx-auto space-y-8">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Workspace Integrations</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Configure external integrations, reference managers, and bidirectional synchronization pipelines.
-            </p>
-          </div>
-
+      <div className="flex-1 overflow-y-auto p-6 md:p-8">
+        <div className="w-full max-w-5xl mx-auto space-y-6">
           <ZoteroConnectionPanel workspaceId={workspaceId} />
 
           <ZoteroConflictInbox workspaceId={workspaceId} />

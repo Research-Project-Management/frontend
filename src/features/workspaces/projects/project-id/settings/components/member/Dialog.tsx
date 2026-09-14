@@ -218,7 +218,7 @@ export function AddMemberDialog({
                             : 'border-muted-foreground/40'
                         )}
                       >
-                        {isSelected && <Check className="size-3 stroke-[3] shrink-0" />}
+                        {isSelected && <Check className="size-3 stroke-[1.75] shrink-0" />}
                       </div>
 
                       <Avatar className="size-7 rounded-full border border-border shrink-0">

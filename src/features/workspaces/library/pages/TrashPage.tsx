@@ -51,6 +51,7 @@ export default function TrashPage() {
   const { state, actions } = useLibrary();
   const {
     workspaceId,
+    effectiveScopeId,
     selectedItemId,
     selectedItem,
     selectedCollection,
@@ -70,7 +71,7 @@ export default function TrashPage() {
     emptyTrash,
     isPurging,
     isEmptyingTrash,
-  } = useTrash(workspaceId);
+  } = useTrash(effectiveScopeId || workspaceId);
 
   const filteredTrashItems = search.trim()
     ? trashItems.filter((item) =>
@@ -186,7 +187,7 @@ export default function TrashPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setEmptyTrashDialogOpen(true)}
-                    className="h-8 text-xs gap-1.5 px-3 cursor-pointer font-medium text-foreground hover:bg-muted border border-border !rounded-md shadow-none"
+                    className="h-8 text-xs gap-1.5 px-3 cursor-pointer font-medium text-foreground hover:bg-muted border border-border rounded-md shadow-none"
                   >
                     <Trash2 className="size-3.5 text-foreground shrink-0" />
                     <span>Empty Trash</span>
@@ -357,16 +358,16 @@ export default function TrashPage() {
                                   <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
                                     <DropdownMenuItem
                                       onClick={() => handleRestoreItem(paper.id)}
-                                      className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                      className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
-                                      <RotateCcw className="size-3.5 text-foreground shrink-0" />
+                                      <RotateCcw className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                                       <span>Restore to Library</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => setSinglePurgeTarget(paper)}
-                                      className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                      className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
-                                      <Trash2 className="size-3.5 text-foreground shrink-0" />
+                                      <Trash2 className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                                       <span>Delete Permanently</span>
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
@@ -418,31 +419,31 @@ export default function TrashPage() {
       {/* Empty Trash Confirmation Dialog */}
       <Dialog open={emptyTrashDialogOpen} onOpenChange={isPurging || isEmptyingTrash ? undefined : setEmptyTrashDialogOpen}>
         <DialogContent
-          className="max-w-[520px] p-6 !rounded-md"
+          className="max-w-[480px] p-5 rounded-md border border-border bg-background shadow-none"
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
-          <DialogHeader className="flex flex-row items-start gap-4 space-y-0 text-left">
-            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground">
-              <Trash2 className="h-5 w-5 text-foreground shrink-0" />
+          <DialogHeader className="flex flex-row items-start gap-3.5 space-y-0 text-left">
+            <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
             </div>
 
             <div className="min-w-0 flex-1">
-              <DialogTitle className="text-base font-semibold text-foreground">
+              <DialogTitle className="text-14 font-medium text-foreground">
                 Permanently empty trash?
               </DialogTitle>
-              <DialogDescription className="mt-1 text-sm text-muted-foreground leading-relaxed">
+              <DialogDescription className="mt-1 text-12 text-muted-foreground leading-normal">
                 Are you sure you want to permanently delete all {trashItems.length} items from the trash? This action cannot be undone.
               </DialogDescription>
             </div>
           </DialogHeader>
 
-          <DialogFooter className="mt-6 flex w-full flex-row items-center justify-end gap-2 sm:justify-end">
+          <DialogFooter className="mt-5 flex w-full flex-row items-center justify-end gap-2 sm:justify-end">
             <Button
               type="button"
               variant="outline"
               onClick={() => setEmptyTrashDialogOpen(false)}
               disabled={isPurging || isEmptyingTrash}
-              className="cursor-pointer !rounded-md"
+              className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md hover:bg-muted"
             >
               Cancel
             </Button>
@@ -450,7 +451,7 @@ export default function TrashPage() {
               type="button"
               onClick={handleConfirmEmptyTrash}
               disabled={isPurging || isEmptyingTrash}
-              className="bg-foreground text-background hover:bg-foreground/90 cursor-pointer shadow-none !rounded-md"
+              className="h-8 px-3 text-12 font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer shadow-none rounded-md"
             >
               {isPurging || isEmptyingTrash ? (
                 <span className="inline-flex items-center gap-1.5">
@@ -468,32 +469,32 @@ export default function TrashPage() {
       {/* Single Item Purge Confirmation Dialog */}
       <Dialog open={Boolean(singlePurgeTarget)} onOpenChange={(open) => !open && setSinglePurgeTarget(null)}>
         <DialogContent
-          className="max-w-[520px] p-6 !rounded-md"
+          className="max-w-[480px] p-5 rounded-md border border-border bg-background shadow-none"
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
-          <DialogHeader className="flex flex-row items-start gap-4 space-y-0 text-left">
-            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground">
-              <Trash2 className="h-5 w-5 text-foreground shrink-0" />
+          <DialogHeader className="flex flex-row items-start gap-3.5 space-y-0 text-left">
+            <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
             </div>
 
             <div className="min-w-0 flex-1">
-              <DialogTitle className="text-base font-semibold text-foreground">
+              <DialogTitle className="text-14 font-medium text-foreground">
                 Permanently delete reference?
               </DialogTitle>
-              <DialogDescription className="mt-1 text-sm text-muted-foreground leading-relaxed">
+              <DialogDescription className="mt-1 text-12 text-muted-foreground leading-normal">
                 Are you sure you want to permanently delete &ldquo;{singlePurgeTarget?.title || 'Untitled Reference'}&rdquo;?
                 This action cannot be undone and any associated files will be removed.
               </DialogDescription>
             </div>
           </DialogHeader>
 
-          <DialogFooter className="mt-6 flex w-full flex-row items-center justify-end gap-2 sm:justify-end">
+          <DialogFooter className="mt-5 flex w-full flex-row items-center justify-end gap-2 sm:justify-end">
             <Button
               type="button"
               variant="outline"
               onClick={() => setSinglePurgeTarget(null)}
               disabled={isPurging}
-              className="cursor-pointer !rounded-md"
+              className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md hover:bg-muted"
             >
               Cancel
             </Button>
@@ -501,7 +502,7 @@ export default function TrashPage() {
               type="button"
               onClick={() => singlePurgeTarget && handlePurgeItem(singlePurgeTarget.id)}
               disabled={isPurging}
-              className="bg-foreground text-background hover:bg-foreground/90 cursor-pointer shadow-none !rounded-md"
+              className="h-8 px-3 text-12 font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer shadow-none rounded-md"
             >
               {isPurging ? (
                 <span className="inline-flex items-center gap-1.5">

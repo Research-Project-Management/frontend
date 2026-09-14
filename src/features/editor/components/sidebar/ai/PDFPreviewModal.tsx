@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/shared/components/ui";
 import { Button } from "@/shared/components/ui";
 import type { PreviewCompileResult } from '@/features/editor/services/document.service';
@@ -50,6 +51,9 @@ export function PDFPreviewModal({
               Isolated — does not affect your document
             </span>
           </div>
+          <DialogDescription className="sr-only">
+            Isolated compilation preview of the AI LaTeX suggestion
+          </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-hidden flex">
           {result.success && blobUrl ? (

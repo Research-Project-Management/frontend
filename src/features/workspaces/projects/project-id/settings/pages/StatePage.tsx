@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/shared/components/ui";
 import { stateFormSchema, type StateFormValues } from '../schemas/state.schema';
+import TopBar from '../components/layout/TopBar';
 import {
   Plus,
   RotateCcw,
@@ -75,7 +76,7 @@ export default function StatePage() {
 
   const {
     states,
-    taskCounts,
+    itemCounts, workItemCounts,
     isLoading,
     isMutating,
     createState,
@@ -197,7 +198,7 @@ export default function StatePage() {
 
   const handleDeleteConfirm = async () => {
     if (!deletingState) return;
-    const count = taskCounts[deletingState.id] || 0;
+    const count = itemCounts[deletingState.id] || 0;
     await deleteState({
       stateId: deletingState.id,
       fallbackStateId: count > 0 ? fallbackStateId : undefined,
@@ -235,58 +236,59 @@ export default function StatePage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-48 rounded-md" />
-          <Skeleton className="h-8 w-32 rounded-md" />
-        </div>
-        <div className="space-y-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-md" />
-          ))}
+      <div className="flex flex-col h-full w-full bg-background">
+        <TopBar
+          title="States"
+          description="Manage workflow lifecycle states and column definitions"
+          Icon={Layers}
+        />
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-md" />
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
+  const topBarActions = (
+    <div className="flex items-center gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setIsResetConfirmOpen(true)}
+        disabled={isMutating}
+        className="h-8 text-xs gap-1.5 rounded-md border-border bg-background hover:bg-muted"
+      >
+        <RotateCcw className="size-3.5 shrink-0 text-muted-foreground" />
+        <span>Reset to Defaults</span>
+      </Button>
+
+      <Button
+        size="sm"
+        onClick={() => handleOpenAddModal()}
+        disabled={isMutating}
+        className="h-8 text-xs gap-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary-hover"
+      >
+        <Plus className="size-3.5 shrink-0" />
+        <span>New State</span>
+      </Button>
+    </div>
+  );
+
   return (
-    <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-            States
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage lifecycle states and progress groups for work items in this project.
-          </p>
-        </div>
+    <div className="flex flex-col h-full w-full bg-background">
+      <TopBar
+        title="States"
+        description="Manage workflow lifecycle states and column definitions"
+        Icon={Layers}
+        actions={topBarActions}
+      />
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsResetConfirmOpen(true)}
-            disabled={isMutating}
-            className="h-8 text-xs gap-1.5 rounded-md border-border bg-background hover:bg-muted"
-          >
-            <RotateCcw className="size-3.5 shrink-0 text-muted-foreground" />
-            <span>Reset to Defaults</span>
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={() => handleOpenAddModal()}
-            disabled={isMutating}
-            className="h-8 text-xs gap-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary-hover"
-          >
-            <Plus className="size-3.5 shrink-0" />
-            <span>New State</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* State Groups List */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
       <div className="space-y-6">
         {STATE_GROUPS.map((groupKey) => {
           const groupConfig = STATE_GROUP_CONFIG[groupKey];
@@ -328,7 +330,7 @@ export default function StatePage() {
                   {groupStates.map((s, idx) => {
                     const globalIdx = states.findIndex((item) => item.id === s.id);
                     const color = resolveStateColor(s.id, s.color || s.accentColor);
-                    const count = taskCounts[s.id] || 0;
+                    const count = itemCounts[s.id] || 0;
                     const isOnlyState = states.length <= 1;
 
                     return (
@@ -416,6 +418,8 @@ export default function StatePage() {
             </div>
           );
         })}
+      </div>
+        </div>
       </div>
 
       {/* Create / Edit State Modal */}
@@ -583,10 +587,10 @@ export default function StatePage() {
               </div>
             </DialogHeader>
 
-            {deletingState && (taskCounts[deletingState.id] || 0) > 0 && (
+            {deletingState && (itemCounts[deletingState.id] || 0) > 0 && (
               <div className="mt-4 p-3 rounded-md bg-destructive/5 border border-destructive/20 space-y-2.5">
                 <p className="text-xs text-foreground font-medium">
-                  This state contains <strong className="text-destructive font-semibold">{taskCounts[deletingState.id]}</strong> active work item(s).
+                  This state contains <strong className="text-destructive font-semibold">{itemCounts[deletingState.id]}</strong> active work item(s).
                   Please choose a destination state to safely move them to:
                 </p>
                 <select

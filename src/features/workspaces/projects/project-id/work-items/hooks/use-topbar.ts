@@ -31,7 +31,6 @@ import { ItemHelpers, resolveStateId, inferStateGroup } from '../utils/work-item
 export type ViewMode = 'board' | 'list' | 'calendar' | 'table' | 'timeline' | 'split';
 
 const ITEMS_VIEW_STORAGE_KEY = 'flux:work-items-view-mode';
-const TASKS_VIEW_STORAGE_KEY = 'flux:tasks-view-mode';
 const DISPLAY_OPTIONS_STORAGE_KEY = 'flux:work-item-display-options';
 const VALID_MODES: ViewMode[] = ['board', 'list', 'calendar', 'table', 'timeline', 'split'];
 
@@ -51,7 +50,7 @@ export type AssigneeFilterOption = {
 
 export interface UseTopbarOptions {
   items?: Item[];
-  tasks?: Item[];
+  workItems?: Item[];
   columns?: Column[];
   selectedColumnIds?: string[];
   onColumnFilterChange?: (colIds: string[]) => void;
@@ -66,7 +65,7 @@ export interface UseTopbarOptions {
 
 export function useTopbar({
   items: propItems,
-  tasks: propTasks,
+  workItems: propWorkItems,
 
   columns = [],
   selectedColumnIds: propColIds,
@@ -79,8 +78,7 @@ export function useTopbar({
   cycles = [],
   initialFilters,
 }: UseTopbarOptions = {}) {
-  const items = propItems || propTasks || [];
-  const tasks = items;
+  const items = propItems || propWorkItems || [];
   const { workspaceId, projectId } = useParams() as { workspaceId?: string; projectId: string };
   const router = useRouter();
   const pathname = usePathname();
@@ -103,7 +101,7 @@ export function useTopbar({
   const [mode, setModeState] = useState<ViewMode>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = (localStorage.getItem(ITEMS_VIEW_STORAGE_KEY) || localStorage.getItem(TASKS_VIEW_STORAGE_KEY)) as ViewMode;
+        const saved = localStorage.getItem(ITEMS_VIEW_STORAGE_KEY) as ViewMode;
         if (saved && VALID_MODES.includes(saved)) return saved;
       } catch {}
     }
@@ -125,7 +123,7 @@ export function useTopbar({
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = (localStorage.getItem(ITEMS_VIEW_STORAGE_KEY) || localStorage.getItem(TASKS_VIEW_STORAGE_KEY)) as ViewMode;
+        const saved = localStorage.getItem(ITEMS_VIEW_STORAGE_KEY) as ViewMode;
         if (saved && VALID_MODES.includes(saved)) {
           setModeState((prev) => (saved !== prev ? saved : prev));
         }
@@ -155,7 +153,7 @@ export function useTopbar({
           ...(beDisplayFilters?.orderBy ? { orderBy: beDisplayFilters.orderBy } : {}),
           ...(beDisplayFilters?.orderDirection ? { orderDirection: beDisplayFilters.orderDirection } : {}),
           ...(beDisplayFilters?.showEmptyGroups !== undefined ? { showEmptyGroups: Boolean(beDisplayFilters.showEmptyGroups) } : {}),
-          ...(beDisplayFilters?.showSubtasks !== undefined ? { showSubtasks: Boolean(beDisplayFilters.showSubtasks) } : {}),
+          ...(beDisplayFilters?.showChildWorkItems !== undefined ? { showChildWorkItems: Boolean(beDisplayFilters.showChildWorkItems) } : {}),
         }));
       }
     }
@@ -215,8 +213,7 @@ export function useTopbar({
         ...prev.properties,
         [key]: value,
       };
-      if (key === 'subtaskCount' || key === 'subWorkItemCount') {
-        nextProps.subtaskCount = value;
+      if (key === 'subWorkItemCount') {
         nextProps.subWorkItemCount = value;
       }
       if (key === 'attachmentCount' || key === 'attach') {
@@ -318,11 +315,11 @@ export function useTopbar({
       }
     }
 
-    // 3. Scan tasks for any assignees not already in map
-    if (Array.isArray(tasks)) {
-      for (const task of tasks) {
-        const assignee = ItemHelpers.resolveAssignee(task);
-        const assigneeUserId = ItemHelpers.resolveAssigneeId(task);
+    // 3. Scan items for any assignees not already in map
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        const assignee = ItemHelpers.resolveAssignee(item);
+        const assigneeUserId = ItemHelpers.resolveAssigneeId(item);
 
         if (assigneeUserId && assignee) {
           if (!map.has(assigneeUserId)) {
@@ -338,39 +335,39 @@ export function useTopbar({
       }
     }
     const list = Array.from(map.values()).sort((first, second) =>
-      (first.name || '').localeCompare(second.name || '', 'vi')
+      (first.name || '').localeCompare(first.name || '', 'vi')
     );
     if (hasUnassigned || list.length > 0) list.push({ id: '__unassigned__', name: 'Unassigned' });
     return list;
-  }, [tasks, propUsers, members]);
+  }, [items, propUsers, members]);
 
   // ── Comprehensive Filtering Engine ───────────────────────────────────────
   const filteredItems = useMemo(() => {
-    let result = Array.isArray(tasks) ? tasks : [];
+    let result = Array.isArray(items) ? items : [];
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     // 1. State (Column) filter
     if (filters.state.length > 0) {
-      result = result.filter((task) => task?.columnId && filters.state.includes(task.columnId));
+      result = result.filter((item) => item?.columnId && filters.state.includes(item.columnId));
     }
 
     // 3. State Group filter
     if (filters.state_group.length > 0) {
-      result = result.filter((task) => {
-        if (!task?.columnId) return false;
-        const column = columns.find((col) => resolveStateId(col) === task.columnId);
+      result = result.filter((item) => {
+        if (!item?.columnId) return false;
+        const column = columns.find((col) => resolveStateId(col) === item.columnId);
         const group =
           column?.group && (STATE_GROUPS as readonly string[]).includes(column.group)
             ? column.group
-            : inferStateGroup(task.columnId, column?.title || '');
+            : inferStateGroup(item.columnId, column?.title || '');
         return filters.state_group.includes(group as StateGroup);
       });
     }
 
     // 4. Priority filter
     if (filters.priority.length > 0) {
-      result = result.filter((task) => filters.priority.includes(task.priority || 'none'));
+      result = result.filter((item) => filters.priority.includes(item.priority || 'none'));
     }
 
     // 5. Assignees filter
@@ -381,8 +378,8 @@ export function useTopbar({
         (id) => id !== '__unassigned__' && id !== 'unassigned',
       );
 
-      result = result.filter((task) => {
-        const assigneeUserId = ItemHelpers.resolveAssigneeId(task);
+      result = result.filter((item) => {
+        const assigneeUserId = ItemHelpers.resolveAssigneeId(item);
 
         if (!assigneeUserId) {
           return hasUnassignedFilter;
@@ -393,12 +390,12 @@ export function useTopbar({
 
     // 6. Mentions filter
     if (filters.mentions.length > 0) {
-      result = result.filter((task) => {
-        const text = `${task.title || ''} ${task.description || ''} ${task.content || ''}`.toLowerCase();
+      result = result.filter((item) => {
+        const text = `${item.title || ''} ${item.description || ''} ${item.content || ''}`.toLowerCase();
         return filters.mentions.some((userId) => {
           const user = assignees.find((assignee) => assignee.id === userId);
           if (user?.name && text.includes(`@${user.name.toLowerCase()}`)) return true;
-          const assigneeUserId = ItemHelpers.resolveAssigneeId(task);
+          const assigneeUserId = ItemHelpers.resolveAssigneeId(item);
           return assigneeUserId === userId;
         });
       });
@@ -406,17 +403,17 @@ export function useTopbar({
 
     // 7. Created by filter
     if (filters.created_by.length > 0) {
-      result = result.filter((task) => {
-        const author = task.authorId || (task as any).createdBy;
+      result = result.filter((item) => {
+        const author = item.authorId || (item as any).createdBy;
         return author && filters.created_by.includes(author);
       });
     }
 
     // 8. Labels filter
     if (filters.labels.length > 0) {
-      result = result.filter((task) => {
-        if (!Array.isArray(task.labels) || task.labels.length === 0) return false;
-        return task.labels.some((label) => filters.labels.includes(label));
+      result = result.filter((item) => {
+        if (!Array.isArray(item.labels) || item.labels.length === 0) return false;
+        return item.labels.some((label) => filters.labels.includes(label));
       });
     }
 
@@ -428,12 +425,12 @@ export function useTopbar({
         (id) => id !== '__no_cycle__' && id !== 'no_cycle',
       );
 
-      result = result.filter((task) => {
+      result = result.filter((item) => {
         const targetCycleId =
-          (task as any).cycleId ||
-          (typeof (task as any).cycle === 'object' && (task as any).cycle !== null
-            ? (task as any).cycle?.id
-            : (task as any).cycle);
+          (item as any).cycleId ||
+          (typeof (item as any).cycle === 'object' && (item as any).cycle !== null
+            ? (item as any).cycle?.id
+            : (item as any).cycle);
         if (!targetCycleId) return hasNoCycle;
         return specificCycles.includes(targetCycleId);
       });
@@ -441,8 +438,8 @@ export function useTopbar({
 
     // 10. Attach filter
     if (filters.attach.length > 0) {
-      result = result.filter((task) => {
-        const attachments = task.attachments;
+      result = result.filter((item) => {
+        const attachments = item.attachments;
         const hasPages = Array.isArray((attachments as any)?.pages) && (attachments as any).pages.length > 0;
         const hasPapers = Array.isArray((attachments as any)?.papers) && (attachments as any).papers.length > 0;
         const hasFiles =
@@ -462,16 +459,15 @@ export function useTopbar({
       });
     }
 
-    // 11. Tasks filter
-    const activeTaskFilterIds = [
-      ...(filters.tasks || []),
+    // 11. Work items filter
+    const activeWorkItemFilterIds = [
       ...(filters.work_items || []),
     ];
-    if (activeTaskFilterIds.length > 0) {
+    if (activeWorkItemFilterIds.length > 0) {
       result = result.filter(
-        (task) =>
-          activeTaskFilterIds.includes(task.id) ||
-          (task.identifier && activeTaskFilterIds.includes(task.identifier)),
+        (item) =>
+          activeWorkItemFilterIds.includes(item.id) ||
+          (item.identifier && activeWorkItemFilterIds.includes(item.identifier)),
       );
     }
 
@@ -483,9 +479,14 @@ export function useTopbar({
         (id) => id !== '__none__' && id !== 'parent:none',
       );
 
-      result = result.filter((task) => {
+      result = result.filter((item) => {
+        const rawParent =
+          (item as any).parentWorkItemId ||
+          (item as any).parentItemId ||
+          item.parentItem?.id ||
+          item.parentWorkItem?.id;
         const parentId =
-          typeof task.parentTaskId === 'object' ? (task.parentTaskId as any)?.id : task.parentTaskId;
+          typeof rawParent === 'object' ? rawParent?.id : rawParent;
         if (!parentId) return hasNone;
         return specificParents.includes(parentId);
       });
@@ -493,12 +494,12 @@ export function useTopbar({
 
     // 13. Due Date filter
     if (filters.due_date.length > 0) {
-      result = result.filter((task) => {
-        if (!task.dueDate) return filters.due_date.includes('no_date');
-        const due = new Date(task.dueDate);
+      result = result.filter((item) => {
+        if (!item.dueDate) return filters.due_date.includes('no_date');
+        const due = new Date(item.dueDate);
         return filters.due_date.some((option) => {
           if (option === 'all') return true;
-          if (option === 'overdue') return due < todayStart && !task.completed;
+          if (option === 'overdue') return due < todayStart && !item.completed;
           if (option === 'today') return due.toDateString() === now.toDateString();
           if (option === 'this_week') return isSameWeek(due, now, { weekStartsOn: 1 });
           if (option === 'this_month')
@@ -510,9 +511,9 @@ export function useTopbar({
 
     // 14. Start Date filter
     if (filters.start_date.length > 0) {
-      result = result.filter((task) => {
-        if (!task.startDate) return filters.start_date.includes('no_date');
-        const start = new Date(task.startDate);
+      result = result.filter((item) => {
+        if (!item.startDate) return filters.start_date.includes('no_date');
+        const start = new Date(item.startDate);
         return filters.start_date.some((option) => {
           if (option === 'today') return start.toDateString() === now.toDateString();
           if (option === 'this_week') return isSameWeek(start, now, { weekStartsOn: 1 });
@@ -527,9 +528,9 @@ export function useTopbar({
 
     // 15. Created At filter
     if (filters.created_at.length > 0) {
-      result = result.filter((task) => {
-        if (!task.createdAt) return false;
-        const created = new Date(task.createdAt);
+      result = result.filter((item) => {
+        if (!item.createdAt) return false;
+        const created = new Date(item.createdAt);
         return filters.created_at.some((option) => {
           const lower = option.toLowerCase();
           if (lower === 'today') return created.toDateString() === now.toDateString();
@@ -547,9 +548,9 @@ export function useTopbar({
 
     // 16. Updated At filter
     if (filters.updated_at.length > 0) {
-      result = result.filter((task) => {
-        if (!task.updatedAt) return false;
-        const updated = new Date(task.updatedAt);
+      result = result.filter((item) => {
+        if (!item.updatedAt) return false;
+        const updated = new Date(item.updatedAt);
         return filters.updated_at.some((option) => {
           const lower = option.toLowerCase();
           if (lower === 'today') return updated.toDateString() === now.toDateString();
@@ -569,9 +570,9 @@ export function useTopbar({
     if (filters.subscribers && filters.subscribers.length > 0) {
       const hasMe = filters.subscribers.includes('__me__');
       const specificIds = filters.subscribers.filter((id) => id !== '__me__');
-      result = result.filter((task) => {
-        const subs: string[] = Array.isArray((task as any).subscriberIds)
-          ? (task as any).subscriberIds
+      result = result.filter((item) => {
+        const subs: string[] = Array.isArray((item as any).subscriberIds)
+          ? (item as any).subscriberIds
           : [];
         if (hasMe) {
           // 'me' = current user — handled by ID match if user ID is in list
@@ -619,7 +620,7 @@ export function useTopbar({
     });
 
     return result;
-  }, [tasks, filters, columns, assignees, displayOptions]);
+  }, [items, filters, columns, assignees, displayOptions]);
 
   // ── Projects & Cycles Search ──────────────────────────────────────────────
   const filteredProjects = useMemo(() => {
@@ -658,7 +659,6 @@ export function useTopbar({
       filters.labels.length +
       filters.cycle.length +
       filters.attach.length +
-      (filters.tasks?.length ?? 0) +
       (filters.work_items?.length ?? 0) +
       filters.parent.length +
       filters.due_date.length +
@@ -807,7 +807,6 @@ export function useTopbar({
     dueDateFilter: (filters.due_date[0] as DueDateFilterOption) || 'all',
     items: filteredItems,
     filteredItems,
-    filteredTasks: filteredItems,
     assignees,
     activeColumns: activeCols,
     activeAssignees: activeUsers,

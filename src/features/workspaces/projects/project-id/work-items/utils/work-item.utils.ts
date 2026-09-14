@@ -6,8 +6,6 @@ import type {
 import {
   STATE_GROUPS,
   DEFAULT_STATES,
-  DEFAULT_STATE_COLORS,
-  DEFAULT_COLUMN_COLORS,
 } from "../types/work-item.types";
 
 // ── 1. Column & State Resolvers ──────────────────────────────────────────────
@@ -17,114 +15,33 @@ export function resolveColumnId(column?: Pick<Column, "id"> | null): string {
 }
 
 export function resolveColumnColor(
-  columnId?: string | Partial<State> | null,
+  columnId?: string | Partial<Column> | Partial<State> | null,
   accentColor?: string
 ): string {
-  if (
-    accentColor &&
-    accentColor !== "#6B7280" &&
-    accentColor !== "#6366F1" &&
-    accentColor !== "#0EA5E9"
-  ) {
-    return accentColor;
-  }
   if (!columnId) return accentColor || "#8A9093";
   if (typeof columnId === "object") {
     const colObj = columnId as Record<string, unknown>;
-    const group = typeof colObj.group === 'string' ? (colObj.group as StateGroup) : undefined;
-    const groupColor =
-      group && group in DEFAULT_STATE_COLORS
-        ? DEFAULT_STATE_COLORS[group]
-        : undefined;
-    const colAcc = (typeof colObj.accentColor === 'string' ? colObj.accentColor : undefined) || (typeof colObj.color === 'string' ? colObj.color : undefined);
-    if (
-      colAcc &&
-      colAcc !== "#6B7280" &&
-      colAcc !== "#6366F1" &&
-      colAcc !== "#0EA5E9"
-    ) {
-      return colAcc;
-    }
-    return groupColor || colAcc || accentColor || "#8A9093";
+    const colColor =
+      (typeof colObj.color === "string" ? colObj.color : undefined) ||
+      (typeof colObj.accentColor === "string" ? colObj.accentColor : undefined);
+    return colColor || accentColor || "#8A9093";
   }
-  if (DEFAULT_COLUMN_COLORS[columnId]) return DEFAULT_COLUMN_COLORS[columnId];
-  if (DEFAULT_STATE_COLORS[columnId]) return DEFAULT_STATE_COLORS[columnId];
-  const lower = columnId.toLowerCase();
-  if (lower.includes("backlog")) return "#8A9093";
-  if (lower.includes("todo") || lower.includes("unstarted")) return "#525866";
-  if (
-    lower.includes("doing") ||
-    lower.includes("progress") ||
-    lower.includes("started")
-  )
-    return "#F59E0B";
-  if (lower.includes("done") || lower.includes("complete")) return "#10B981";
-  if (lower.includes("cancel")) return "#EF4444";
   return accentColor || "#8A9093";
 }
 
-export function resolveItemId(target?: { id?: string; itemId?: string; taskId?: string } | null): string {
+export function resolveItemId(target?: { id?: string; itemId?: string; workItemId?: string } | null): string {
   if (!target) return "";
-  return target.id ?? target.itemId ?? target.taskId ?? "";
+  return target.id ?? target.workItemId ?? target.itemId ?? "";
 }
+export const resolveWorkItemId = resolveItemId;
+export const resolveColumnItemId = resolveItemId;
+export const resolveWorkItemColumnId = resolveColumnId;
 
 export function resolveStateId(state?: Pick<State, "id"> | null): string {
   return state?.id ?? "";
 }
 
-export function resolveStateColor(
-  state?: string | Partial<State> | null,
-  customColor?: string
-): string {
-  if (
-    customColor &&
-    customColor !== "#6B7280" &&
-    customColor !== "#6366F1" &&
-    customColor !== "#0EA5E9"
-  ) {
-    return customColor;
-  }
-  if (!state) return "#8A9093";
-  if (typeof state === "object") {
-    const sObj = state as Record<string, unknown>;
-    const group = typeof sObj.group === 'string' ? (sObj.group as StateGroup) : undefined;
-    const groupColor =
-      group && group in DEFAULT_STATE_COLORS
-        ? DEFAULT_STATE_COLORS[group]
-        : undefined;
-    const custom = (typeof sObj.accentColor === 'string' ? sObj.accentColor : undefined) || (typeof sObj.color === 'string' ? sObj.color : undefined);
-    if (
-      custom &&
-      custom !== "#6B7280" &&
-      custom !== "#6366F1" &&
-      custom !== "#0EA5E9"
-    ) {
-      return custom;
-    }
-    const stateIdStr = typeof sObj.id === 'string' ? sObj.id : undefined;
-    return (
-      (stateIdStr ? DEFAULT_STATE_COLORS[stateIdStr] : undefined) ||
-      groupColor ||
-      custom ||
-      customColor ||
-      "#8A9093"
-    );
-  }
-  if (DEFAULT_STATE_COLORS[state]) return DEFAULT_STATE_COLORS[state];
-  if (DEFAULT_COLUMN_COLORS[state]) return DEFAULT_COLUMN_COLORS[state];
-  const lower = state.toLowerCase();
-  if (lower.includes("backlog")) return "#8A9093";
-  if (lower.includes("todo") || lower.includes("unstarted")) return "#525866";
-  if (
-    lower.includes("doing") ||
-    lower.includes("progress") ||
-    lower.includes("started")
-  )
-    return "#F59E0B";
-  if (lower.includes("done") || lower.includes("complete")) return "#10B981";
-  if (lower.includes("cancel")) return "#EF4444";
-  return customColor || "#8A9093";
-}
+export const resolveStateColor = resolveColumnColor;
 
 export function resolveStateTitle(state?: Partial<State> | null): string {
   if (!state) return "";
@@ -201,15 +118,9 @@ export function normalizeStates(raw: unknown): Column[] {
       cancelled: "#EF4444",
     };
     const rawCustom =
-      (rawObj.accentColor as string) || (rawObj.color as string);
-    const customColor =
-      rawCustom === "#6366F1" ||
-      rawCustom === "#0EA5E9" ||
-      rawCustom === "#6B7280"
-        ? undefined
-        : rawCustom;
-    const color =
-      customColor || groupColorMap[group] || resolveStateColor(rawId, customColor);
+      (typeof rawObj.color === "string" && rawObj.color.trim() ? rawObj.color.trim() : undefined) ||
+      (typeof rawObj.accentColor === "string" && rawObj.accentColor.trim() ? rawObj.accentColor.trim() : undefined);
+    const color = rawCustom || groupColorMap[group] || "#8A9093";
     return {
       id: rawId,
       name: rawName,
@@ -430,7 +341,6 @@ export const WorkItemHelpers = {
   },
 };
 
-export const TaskHelpers = WorkItemHelpers;
 export const ItemHelpers = WorkItemHelpers;
 export const Helpers = WorkItemHelpers;
 
@@ -446,10 +356,7 @@ export const resolveAssigneeId = WorkItemHelpers.resolveAssigneeId;
 export const createSnapshot = WorkItemHelpers.createSnapshot;
 export const calculateProgressRollup = WorkItemHelpers.calculateProgressRollup;
 export const isDueSoon = WorkItemHelpers.isDueSoon;
-
-// Backward Compatibility Aliases
-export const resolveTaskColumnId = resolveColumnId;
-export const resolveWorkItemColumnId = resolveColumnId;
-export const resolveTaskColumnColor = resolveColumnColor;
 export const resolveWorkItemColumnColor = resolveColumnColor;
+export const resolveItemColumnColor = resolveColumnColor;
+export const resolveItemColumnId = resolveColumnId;
 

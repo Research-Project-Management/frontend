@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   description:
     'The all-in-one workspace for research teams. Collaborate seamlessly, manage projects efficiently, and accelerate your research workflow with AI-powered tools.',
   keywords:
-    'research management, project management, team collaboration, AI assistant, documentation, task tracking, file storage',
+    'research management, project management, team collaboration, AI assistant, documentation, work item tracking, file storage',
   openGraph: {
     title: 'Flux - Keep Research Moving Forward',
     description:

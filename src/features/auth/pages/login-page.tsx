@@ -73,7 +73,7 @@ const LoginPage = () => {
                 className='absolute right-3 top-1/2 -translate-y-1/2 text-foreground transition-colors cursor-pointer'
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? <EyeOff className='h-4 w-4 shrink-0' /> : <Eye className='h-4 w-4 shrink-0' />}
+                {showPassword ? <EyeOff className='size-4 shrink-0' /> : <Eye className='size-4 shrink-0' />}
               </button>
             </div>
             {errors.password && (
@@ -101,7 +101,7 @@ const LoginPage = () => {
             className='w-full h-9 mt-1 rounded-md cursor-pointer'
             disabled={isPending}
           >
-            {isPending && <Loader2 className='mr-2 h-4 w-4 animate-spin shrink-0' />}
+            {isPending && <Loader2 className='mr-2 size-4 animate-spin shrink-0' />}
             {isPending ? 'Signing in...' : 'Sign in'}
           </Button>
         </form>
@@ -123,7 +123,7 @@ const LoginPage = () => {
             onClick={() => handleOAuthLogin('google')}
             className='w-full h-9 gap-1.5 text-foreground hover:bg-muted transition-colors rounded-md cursor-pointer'
           >
-            <img src='/google.svg' alt='' aria-hidden='true' className='w-4 h-4' />
+            <img src='/google.svg' alt='' aria-hidden='true' className='size-4' />
             Google
           </Button>
           <Button
@@ -132,7 +132,7 @@ const LoginPage = () => {
             onClick={() => handleOAuthLogin('github')}
             className='w-full h-9 gap-1.5 text-foreground hover:bg-muted transition-colors rounded-md cursor-pointer'
           >
-            <img src='/github.svg' alt='' aria-hidden='true' className='w-4 h-4' />
+            <img src='/github.svg' alt='' aria-hidden='true' className='size-4' />
             Github
           </Button>
         </div>

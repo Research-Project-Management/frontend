@@ -21,6 +21,8 @@ import ReaderToolbar from '../components/ReaderToolbar';
 import Sidebar from '../components/Sidebar';
 import Panel from '@/features/workspaces/library/components/Panel';
 import BibtexModal from '../components/modals/BibtexModal';
+import Systembar from '../components/Systembar';
+import DocumentNavDrawer from '../components/viewer/DocumentNavDrawer';
 
 const Viewer = dynamic(() => import('../components/viewer/Viewer'), {
   ssr: false,
@@ -71,6 +73,8 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     zoom,
     selectedAnnotationIds,
     isBatchProcessing,
+    annotations = [],
+    effectiveAttachmentId,
   } = state;
 
   const {
@@ -92,6 +96,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     handleBatchChangeColor,
     handleBatchDelete,
     handleBatchAddToNote,
+    deleteAnnotation,
   } = actions;
 
   // Zotero 7 Multi-Tab Store
@@ -109,6 +114,22 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
   // Library Sidebar / Inspector Store (Unified between Library and Reader)
   const { isInspectorOpen, setIsInspectorOpen, activeScope } = useLibrarySidebarStore();
+
+  // In-Document Search & Academic Entities Drawer
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+  const [isEntitiesDrawerOpen, setIsEntitiesDrawerOpen] = useState<boolean>(false);
+
+  // Global keyboard shortcut: Ctrl+F / Cmd+F to toggle document search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setIsSearchOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Register opened paper into tab store
   useEffect(() => {
@@ -191,14 +212,17 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           onRotate={handleRotate}
           themeMode={themeMode}
           onToggleThemeMode={handleToggleThemeMode}
+          onToggleSearch={() => setIsSearchOpen((v) => !v)}
           isInspectorOpen={isInspectorOpen}
           onToggleInspector={() => setIsInspectorOpen(!isInspectorOpen)}
+          isEntitiesDrawerOpen={isEntitiesDrawerOpen}
+          onToggleEntitiesDrawer={() => setIsEntitiesDrawerOpen((v) => !v)}
         />
       )}
 
       {/* WORKSPACE VIEWPORT */}
       <div className="relative flex min-h-0 flex-1 overflow-hidden bg-muted">
-        {/* 3. SIDEBAR (Collapsible 240px: TOC & Pages) */}
+        {/* 3. SIDEBAR (Collapsible 288px: Outline, Annotations & Pages) */}
         <Sidebar
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
@@ -206,9 +230,15 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           totalPages={numPages}
           onJumpToPage={handleNavigateToPage}
           fulltext={fulltext}
+          paper={paper}
+          workspaceId={workspaceId}
+          attachmentId={effectiveAttachmentId}
+          selectedIds={selectedAnnotationIds}
+          onToggleSelect={handleToggleSelectAnnotation}
+          annotationsCount={annotations.length}
         />
 
-        {/* 4. MAIN PDF CANVAS - 100% CLEAN WITHOUT ANY FLOATING DOCK */}
+        {/* 4. MAIN PDF CANVAS */}
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden relative">
           {isLoadingPapers ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-2">
@@ -230,7 +260,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 variant="outline"
                 size="sm"
                 onClick={goBack}
-                className="mt-1 text-12 font-medium rounded-md shadow-none cursor-pointer"
+                className="h-8 px-3 mt-1 text-12 font-medium rounded-md shadow-none cursor-pointer border-border"
               >
                 <ChevronLeft className="size-3.5 mr-1 shrink-0" strokeWidth={1.5} />
                 Return to Library
@@ -245,6 +275,8 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
               onAskAi={handleAskAi}
               onAddToNote={handleAddToNote}
               onAnnotate={handleAnnotate}
+              annotations={annotations}
+              onDeleteAnnotation={(ann) => deleteAnnotation && deleteAnnotation(ann.id, ann.version)}
               fulltext={fulltext}
               isLoadingFulltext={isLoadingFulltext}
               targetPage={targetPage}
@@ -257,6 +289,8 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
               interactionMode={interactionMode}
               activeColor={activeColor}
               activeTool={activeTool}
+              isSearchOpen={isSearchOpen}
+              onCloseSearch={() => setIsSearchOpen(false)}
             />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center p-6 text-center max-w-md mx-auto">
@@ -270,7 +304,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsInspectorOpen(true)}
-                className="text-12"
+                className="h-8 px-3 text-12 font-medium rounded-md shadow-none cursor-pointer border-border"
               >
                 Open Details
               </Button>
@@ -278,7 +312,17 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           )}
         </main>
 
-        {/* 5. UNIFIED INSPECTOR PANEL (Cloned from Library Panel) */}
+        {/* Academic Entities Drawer (Figures, Tables, Formulas) */}
+        <DocumentNavDrawer
+          isOpen={isEntitiesDrawerOpen}
+          onClose={() => setIsEntitiesDrawerOpen(false)}
+          fulltext={fulltext}
+          isLoading={isLoadingFulltext}
+          currentPage={visiblePage}
+          onJumpToPage={(p) => handleNavigateToPage(p)}
+        />
+
+        {/* 5. UNIFIED INSPECTOR PANEL */}
         <Panel
           paper={paper as any}
           item={paper as any}
@@ -286,6 +330,16 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           onClose={() => setIsInspectorOpen(false)}
         />
       </div>
+
+      {/* Batch Annotation Action Bar (Dock) */}
+      <Systembar
+        selectedCount={selectedAnnotationIds.size}
+        onClearSelection={() => setSelectedAnnotationIds(new Set())}
+        onChangeColor={handleBatchChangeColor}
+        onAddToNote={handleBatchAddToNote}
+        onBatchDelete={handleBatchDelete}
+        isProcessing={isBatchProcessing}
+      />
 
       {/* BibTeX / RIS Export Modal */}
       {paper && (

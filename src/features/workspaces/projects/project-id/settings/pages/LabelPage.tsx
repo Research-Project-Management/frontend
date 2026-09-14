@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useProjectDetails } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { Button, Form, Input, Skeleton, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/components/ui";
 import { DeleteModal } from '@/features/workspaces/settings/components/modal/DeleteModal';
+import TopBar from '../components/layout/TopBar';
 import {
   Tag,
   Search,
@@ -226,44 +227,59 @@ export default function LabelPage() {
 
   if (isLoadingLabels || isLoadingProject) {
     return (
-      <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
-        <Skeleton className="h-8 w-44 rounded-md" />
-        <Skeleton className="h-48 w-full rounded-md" />
+      <div className="flex flex-col h-full w-full bg-background">
+        <TopBar
+          title="Labels"
+          description="Organize, categorize, and group work items within this project"
+          Icon={Tag}
+        />
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
+            <Skeleton className="h-10 w-full rounded-md" />
+            <Skeleton className="h-48 w-full rounded-md" />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (isError || !project) {
-    return <div className="max-w-5xl mx-auto p-6 md:p-8 text-sm text-muted-foreground">Error loading project.</div>;
-  }
-
-  return (
-    <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
-      {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold text-foreground tracking-tight">Labels</h1>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-              {allLabelsCount}
-            </span>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Organize, categorize, and group work items within this project.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            size="sm"
-            onClick={() => openCreateModal()}
-            className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-none gap-1.5"
-          >
-            <Plus className="size-3.5 shrink-0" />
-            <span>Add label</span>
-          </Button>
+    return (
+      <div className="flex flex-col h-full w-full bg-background">
+        <TopBar
+          title="Labels"
+          description="Organize, categorize, and group work items within this project"
+          Icon={Tag}
+        />
+        <div className="flex-1 p-5 md:p-6 text-sm text-muted-foreground">
+          Error loading project.
         </div>
       </div>
+    );
+  }
+
+  const topBarActions = (
+    <Button
+      size="sm"
+      onClick={() => openCreateModal()}
+      className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-none gap-1.5 shrink-0"
+    >
+      <Plus className="size-3.5 shrink-0" />
+      <span>Add label</span>
+    </Button>
+  );
+
+  return (
+    <div className="flex flex-col h-full w-full bg-background">
+      <TopBar
+        title="Labels"
+        description="Organize, categorize, and group work items within this project"
+        Icon={Tag}
+        actions={topBarActions}
+      />
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
 
       {/* ── Search Bar ── */}
       <div className="flex items-center justify-between gap-4">
@@ -451,6 +467,8 @@ export default function LabelPage() {
           })}
         </div>
       )}
+        </div>
+      </div>
 
       {/* ── Create / Edit Label Modal ── */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>

@@ -49,13 +49,13 @@ function DiffViewer({
         {oldLines.map((line, i) => (
           <div
             key={`r${i}`}
-            className="grid grid-cols-[1.75rem_2.5rem_minmax(0,1fr)] border-b border-destructive/10 bg-destructive/7 text-destructive/80 last:border-b-0"
+            className="grid grid-cols-[1.75rem_2.5rem_minmax(0,1fr)] border-b border-destructive/10 bg-destructive/10 text-destructive/90 last:border-b-0"
           >
             <span className="select-none py-1.5 text-center font-semibold">-</span>
-            <span className="select-none border-r border-destructive/15 py-1.5 pr-2 text-right text-xs text-destructive/40">
+            <span className="select-none border-r border-destructive/20 py-1.5 pr-2 text-right text-xs text-destructive/70">
               {startLine + i}
             </span>
-            <span className="px-2.5 py-1.5 leading-relaxed line-through decoration-red-500/40 whitespace-pre-wrap break-all">
+            <span className="px-2.5 py-1.5 leading-relaxed line-through decoration-destructive/40 whitespace-pre-wrap break-all">
               {line || ' '}
             </span>
           </div>
@@ -64,10 +64,10 @@ function DiffViewer({
         {newLines.map((line, i) => (
           <div
             key={`a${i}`}
-            className="grid grid-cols-[1.75rem_2.5rem_minmax(0,1fr)] border-b border-success/10 bg-success/7 text-success last:border-b-0"
+            className="grid grid-cols-[1.75rem_2.5rem_minmax(0,1fr)] border-b border-success/10 bg-success/10 text-success last:border-b-0"
           >
             <span className="select-none py-1.5 text-center font-semibold">+</span>
-            <span className="select-none border-r border-success/15 py-1.5 pr-2 text-right text-xs text-muted-foreground/45">
+            <span className="select-none border-r border-success/20 py-1.5 pr-2 text-right text-xs text-muted-foreground">
               {startLine + i}
             </span>
             <span className="px-2.5 py-1.5 leading-relaxed whitespace-pre-wrap break-all">

@@ -114,20 +114,26 @@ export default function SideBar({
   return (
     <div className="flex h-full w-full overflow-hidden bg-card">
       {/* Icon strip */}
-      <ul className="flex h-full w-12 shrink-0 flex-col items-center gap-1 border-r border-border bg-card px-1 py-2">
+      <ul
+        role="tablist"
+        aria-label="Sidebar navigation"
+        className="flex h-full w-12 shrink-0 flex-col items-center gap-1 border-r border-border bg-card px-1 py-2"
+      >
         {sideBarItems.map((item) => {
           const isOpen = activePanel === item.name;
           return (
-            <li key={item.name}>
+            <li key={item.name} role="none">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
+                    role="tab"
                     onClick={() => togglePanel(item.name)}
                     aria-label={`${item.name} panel`}
+                    aria-selected={isOpen}
                     aria-pressed={isOpen}
                     className={cn(
-                      "flex size-10 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                      "flex size-10 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer",
                       isOpen
                         ? "bg-muted text-primary"
                         : "text-muted-foreground hover:bg-muted",
@@ -163,11 +169,7 @@ export default function SideBar({
               onClose={() => setActivePanel(null)}
             />
           </div>
-        ) : activePanel === null ? (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs px-3 text-center leading-relaxed">
-            Click an icon to open a panel
-          </div>
-        ) : (
+        ) : activePanel === null ? null : (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <PanelContent
               tab={activePanel}

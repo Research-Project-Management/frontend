@@ -131,8 +131,10 @@ export const AssistantMessage = memo(function AssistantMessage({
         </div>
         {!isStreaming && content && (
           <button
+            type="button"
             onClick={handleCopy}
-            className="mt-1 flex items-center gap-1 text-xs text-foreground px-2 py-0.5 rounded-md hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+            aria-label={copied ? 'Content copied' : 'Copy message'}
+            className="mt-1 flex items-center gap-1 text-xs text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
           >
             {copied ? <Check className="size-3 text-success shrink-0" /> : <Copy className="size-3 shrink-0" />}
             {copied ? 'Copied' : 'Copy'}
@@ -341,8 +343,10 @@ export const AssistantMessage = memo(function AssistantMessage({
       </div>
       {!isStreaming && content && (
         <button
+          type="button"
           onClick={handleCopy}
-          className="mt-1 flex items-center gap-1 text-xs text-foreground px-2 py-0.5 rounded-md hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+          aria-label={copied ? 'Content copied' : 'Copy message'}
+          className="mt-1 flex items-center gap-1 text-xs text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
         >
           {copied ? <Check className="size-3 text-success shrink-0" /> : <Copy className="size-3 shrink-0" />}
           {copied ? 'Copied' : 'Copy'}
@@ -377,8 +381,10 @@ export function MarkdownAssistantMessage({
       </div>
       {!isStreaming && content && (
         <button
+          type="button"
           onClick={handleCopy}
-          className="mt-1 flex items-center gap-1 text-xs text-foreground px-2 py-0.5 rounded-md hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+          aria-label={copied ? 'Content copied' : 'Copy message'}
+          className="mt-1 flex items-center gap-1 text-xs text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
         >
           {copied ? <Check className="size-3 text-success shrink-0" /> : <Copy className="size-3 shrink-0" />}
           {copied ? 'Copied' : 'Copy'}

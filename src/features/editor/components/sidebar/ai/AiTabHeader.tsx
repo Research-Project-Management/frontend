@@ -40,9 +40,11 @@ export function AiTabHeader({
       </div>
       <div className="flex items-center gap-0.5">
         <button
+          type="button"
           onClick={onNewConversation}
           disabled={isStreaming}
           title="New conversation"
+          aria-label="New conversation"
           className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer disabled:cursor-not-allowed disabled:opacity-20"
         >
           <Plus className="size-3.5 shrink-0" />
@@ -50,7 +52,10 @@ export function AiTabHeader({
 
         {/* Auto Apply toggle */}
         <button
+          type="button"
           onClick={onToggleAutoApply}
+          aria-pressed={autoApply}
+          aria-label={autoApply ? 'Auto Apply enabled, click to disable' : 'Auto Apply disabled, click to enable'}
           title={
             autoApply
               ? 'Auto Apply ON — click to disable'
@@ -68,8 +73,10 @@ export function AiTabHeader({
         </button>
 
         <button
+          type="button"
           onClick={onOpenHistory}
           title="Show chat history"
+          aria-label="Show chat history"
           className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer disabled:cursor-not-allowed disabled:opacity-20"
         >
           <History className="size-3.5 shrink-0" />
@@ -78,15 +85,19 @@ export function AiTabHeader({
         {showClearConfirm ? (
           <div className="flex h-8 items-center gap-0.5 rounded-md border border-destructive/20 bg-destructive/10 px-1">
             <button
+              type="button"
               onClick={onClear}
               title="Confirm clear chat"
+              aria-label="Confirm clear chat"
               className="flex size-6 items-center justify-center rounded text-destructive hover:bg-destructive/15 transition-colors cursor-pointer"
             >
               <Check className="size-3.5 shrink-0" />
             </button>
             <button
+              type="button"
               onClick={() => onShowClearConfirm(false)}
               title="Cancel"
+              aria-label="Cancel clear chat"
               className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <X className="size-3.5 shrink-0" />
@@ -94,9 +105,11 @@ export function AiTabHeader({
           </div>
         ) : (
           <button
+            type="button"
             onClick={() => hasMessages && onShowClearConfirm(true)}
             disabled={!hasMessages}
             title="Clear chat"
+            aria-label="Clear chat"
             className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-20 cursor-pointer"
           >
             <Trash2 className="size-3.5 shrink-0" />
@@ -104,7 +117,9 @@ export function AiTabHeader({
         )}
         {onClose && (
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close AI panel"
             className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer"
           >
             <X className="size-3.5 shrink-0" />

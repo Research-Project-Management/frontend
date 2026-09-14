@@ -6,20 +6,21 @@ import { QualityService } from '../services/curation.service';
 import { itemKeys } from './use-items';
 
 export const curationKeys = {
-  duplicates: (workspaceId: string) => ['curation', workspaceId, 'duplicates'] as const,
-  integrity: (workspaceId: string) => ['curation', workspaceId, 'integrity'] as const,
+  duplicates: (workspaceId?: string) => ['curation', workspaceId || 'user', 'duplicates'] as const,
+  integrity: (workspaceId?: string) => ['curation', workspaceId || 'user', 'integrity'] as const,
 };
 
-export function useDuplicateGroups(workspaceId: string) {
+export function useDuplicateGroups(workspaceId?: string) {
   return useQuery({
     queryKey: curationKeys.duplicates(workspaceId),
     queryFn: () => QualityService.getDuplicates(workspaceId),
-    enabled: Boolean(workspaceId),
+    enabled: true,
   });
 }
 
-export function useMergePapers(workspaceId: string) {
+export function useMergePapers(workspaceId?: string) {
   const queryClient = useQueryClient();
+  const effectiveScope = workspaceId || 'user';
 
   return useMutation({
     mutationFn: ({
@@ -30,7 +31,7 @@ export function useMergePapers(workspaceId: string) {
       masterPaperId: string;
       sourcePaperIds: string[];
       fieldSelections?: Record<string, any>;
-    }) => QualityService.mergePapers(workspaceId, masterPaperId, sourcePaperIds, fieldSelections),
+    }) => QualityService.mergePapers(effectiveScope, masterPaperId, sourcePaperIds, fieldSelections),
     onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: curationKeys.duplicates(workspaceId) });
       queryClient.invalidateQueries({ queryKey: curationKeys.integrity(workspaceId) });
@@ -50,11 +51,11 @@ export function useMergePapers(workspaceId: string) {
   });
 }
 
-export function useLibraryIntegrity(workspaceId: string) {
+export function useLibraryIntegrity(workspaceId?: string) {
   return useQuery({
     queryKey: curationKeys.integrity(workspaceId),
     queryFn: () => QualityService.getIntegrityReport(workspaceId),
-    enabled: Boolean(workspaceId),
+    enabled: true,
   });
 }
 

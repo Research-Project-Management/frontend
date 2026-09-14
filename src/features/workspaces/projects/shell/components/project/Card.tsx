@@ -143,7 +143,7 @@ export function Card({ project, onArchive }: CardProps) {
 
       {/* Avatar Icon Badge (overlapping banner bottom) */}
       <div className="absolute top-16 left-4 size-10 rounded-lg bg-background border border-border flex items-center justify-center shrink-0 overflow-hidden shadow-xs">
-        <ProjectAvatar avatar={project.avatar} name={project.name} size="lg" />
+        <ProjectAvatar avatar={project.avatar} name={project.name} id={projectId} size="lg" />
       </div>
 
       {/* Card Body */}
@@ -206,7 +206,7 @@ export function Card({ project, onArchive }: CardProps) {
                 {(Array.isArray(membersList) ? membersList : []).slice(0, 3).map((m: any, idx: number) => {
                   const u = m.user || {};
                   return (
-                    <Avatar key={u.id || idx} className="size-4.5 border border-background">
+                    <Avatar key={u.id || idx} className="size-4.5 border border-background shrink-0">
                       <AvatarImage src={u.avatar} alt={u.name} />
                       <AvatarFallback className="text-xs bg-muted font-medium">
                         {u.name ? u.name.charAt(0).toUpperCase() : 'U'}

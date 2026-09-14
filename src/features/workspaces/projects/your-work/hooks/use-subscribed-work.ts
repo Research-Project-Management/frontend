@@ -8,19 +8,19 @@ export function useSubscribedWork() {
   const base = useYourWorkBase();
   const source = context || base;
 
-  const subscribedTasks = source.subscribed;
+  const subscribedWorkItems = source.subscribed;
 
   return {
     state: {
       workspaceId: source.workspaceId,
-      allTasks: source.allTasks,
-      subscribedTasks,
-      count: subscribedTasks.length,
-      taskProjectMap: source.taskProjectMap,
+      allWorkItems: source.allWorkItems,
+      subscribedWorkItems,
+      count: subscribedWorkItems.length,
+      workItemProjectMap: source.workItemProjectMap,
       selectedProjectId: context?.selectedProjectId || null,
       selectedProject: context?.selectedProject || null,
       isLoading: source.isLoading,
-      isLoadingTasks: source.isLoadingTasks,
+      isLoadingWorkItems: source.isLoadingWorkItems,
       isLoadingProjects: source.isLoadingProjects,
     },
     actions: {

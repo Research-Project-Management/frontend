@@ -41,7 +41,7 @@ export function useCreateProjectLabel(projectId: string) {
     onSuccess: (newLabel) => {
       queryClient.invalidateQueries({ queryKey: labelKeys.project(projectId) });
       queryClient.invalidateQueries({ queryKey: ['project-work-items', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
       toast.success(`Label "${newLabel.name}" created`);
     },
     onError: (err: any) => {
@@ -62,7 +62,7 @@ export function useUpdateProjectLabel(projectId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: labelKeys.project(projectId) });
       queryClient.invalidateQueries({ queryKey: ['project-work-items', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
       toast.success('Label updated');
     },
     onError: (err: any) => {
@@ -80,7 +80,7 @@ export function useDeleteProjectLabel(projectId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: labelKeys.project(projectId) });
       queryClient.invalidateQueries({ queryKey: ['project-work-items', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
       toast.success('Label deleted');
     },
     onError: (err: any) => {

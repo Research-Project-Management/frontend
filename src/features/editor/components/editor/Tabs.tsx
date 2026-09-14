@@ -95,13 +95,13 @@ function TabItem({ tab, isActive, rootPageId, onActivate, onCloseTab }: TabItemP
         }}
         onAuxClick={(e) => e.preventDefault()}
         className={cn(
-          'ml-auto shrink-0 rounded-md p-1 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer',
+          'ml-auto shrink-0 size-6 min-w-[24px] min-h-[24px] flex items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer',
           isActive
             ? 'opacity-70 hover:opacity-100 hover:bg-muted'
             : 'opacity-0 group-hover/tab:opacity-70 group-hover/tab:hover:opacity-100 hover:bg-muted focus-visible:opacity-100',
         )}
       >
-        <X className="size-3 shrink-0" />
+        <X className="size-3.5 shrink-0" />
       </button>
     </div>
   );
@@ -170,6 +170,12 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
     }
   };
 
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (e.deltaY !== 0 && tabListRef.current) {
+      tabListRef.current.scrollLeft += e.deltaY;
+    }
+  };
+
   if (tabs.length === 0) return null;
 
   return (
@@ -179,6 +185,7 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
         role="tablist"
         aria-label="Open document tabs"
         onKeyDown={handleTabListKeyDown}
+        onWheel={handleWheel}
         className="flex h-10 bg-secondary/70 border-b border-border overflow-x-auto shrink-0 scrollbar-none"
       >
         {tabs.map((tab) => (

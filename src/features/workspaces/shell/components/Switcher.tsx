@@ -36,6 +36,8 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { CreateProjectModal } from '@/features/workspaces/projects/shell/components/project/CreateProjectModal';
 import { ProjectAvatar } from '@/shared/components/icon-picker/ProjectAvatar';
+import { ProjectInvitesModal } from '@/features/workspaces/projects/invitation/components/ProjectInvitesModal';
+import { useMyProjectInvitations } from '@/features/workspaces/projects/invitation/hooks/use-project-invitations';
 import type { Workspace } from '../types/workspace.types';
 
 export interface DisplayProjectItem {
@@ -73,6 +75,7 @@ export default function Switcher({
   const params = useParams<{ projectId?: string }>();
   const { user, logout } = useAuth();
   const { projects = [] } = useProjects();
+  const { data: pendingInvitations = [] } = useMyProjectInvitations();
 
   const [isOpen, setIsOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
@@ -82,7 +85,6 @@ export default function Switcher({
   // Invite states
   const [inviteEmail, setInviteEmail] = useState('');
   const [isCopied, setIsCopied] = useState(false);
-  const [joinCode, setJoinCode] = useState('');
 
   // Active Project ID state from localStorage
   const [storedActiveId, setStoredActiveId] = useState<string>('');
@@ -159,17 +161,18 @@ export default function Switcher({
           className='group flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors hover:bg-muted data-[state=open]:bg-muted'
         >
           {/* Project Avatar */}
-          <Avatar className='size-5.5 rounded-md shrink-0 font-semibold'>
-            {activeProject.avatar ? (
-              <AvatarImage
-                src={resolveFileUrl(activeProject.avatar) || undefined}
-                alt={activeProject.name}
-              />
-            ) : null}
-            <AvatarFallback className='rounded-md bg-[#006797] text-white text-[11px] font-semibold'>
-              {String(activeProject.name).substring(0, 1).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative flex items-center justify-center shrink-0">
+            <ProjectAvatar
+              avatar={activeProject.avatar}
+              name={activeProject.name}
+              id={activeProject.id}
+              size='xs'
+              className='size-5.5 rounded-md'
+            />
+            {pendingInvitations.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary ring-2 ring-background" />
+            )}
+          </div>
 
           {/* Project Name */}
           <span className='max-w-[150px] truncate text-13 font-semibold tracking-tight text-foreground'>
@@ -186,7 +189,7 @@ export default function Switcher({
         <DropdownMenuContent
           align='start'
           onCloseAutoFocus={(e) => e.preventDefault()}
-          className='w-[310px] p-0 rounded-lg overflow-hidden bg-popover border border-border shadow-md select-none'
+          className='w-[310px] p-0 rounded-lg overflow-hidden bg-popover border border-border shadow-raised-200 select-none'
           sideOffset={8}
         >
           {/* User Email Header */}
@@ -195,25 +198,21 @@ export default function Switcher({
           </div>
 
           {/* Current Active Project Card */}
-          <div className='bg-[#f4f4f5] dark:bg-muted/70 px-4 py-3.5 border-b border-border/60'>
+          <div className='bg-muted px-4 py-3.5 border-b border-border/60'>
             <div className='flex items-center justify-between'>
               <div className='flex items-center gap-3 min-w-0'>
-                <Avatar className='size-9 rounded-md shrink-0 font-medium'>
-                  {activeProject.avatar ? (
-                    <AvatarImage
-                      src={resolveFileUrl(activeProject.avatar) || undefined}
-                      alt={activeProject.name}
-                    />
-                  ) : null}
-                  <AvatarFallback className='rounded-md bg-[#006797] text-white text-sm font-semibold'>
-                    {String(activeProject.name).substring(0, 1).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <ProjectAvatar
+                  avatar={activeProject.avatar}
+                  name={activeProject.name}
+                  id={activeProject.id}
+                  size='lg'
+                  className='size-9 rounded-md'
+                />
                 <span className='text-sm font-semibold text-foreground tracking-tight truncate'>
                   {activeProject.name}
                 </span>
               </div>
-              <Check className='size-4 text-foreground shrink-0' strokeWidth={2.5} />
+              <Check className='size-4 text-foreground shrink-0' strokeWidth={1.75} />
             </div>
 
             {/* Settings & Invite Members Buttons */}
@@ -262,17 +261,13 @@ export default function Switcher({
                   className='w-full px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-muted/60 transition-colors text-left outline-none'
                 >
                   <div className='flex items-center gap-3 min-w-0'>
-                    <Avatar className='size-8 rounded-md shrink-0 font-medium'>
-                      {proj.avatar ? (
-                        <AvatarImage
-                          src={resolveFileUrl(proj.avatar) || undefined}
-                          alt={proj.name}
-                        />
-                      ) : null}
-                      <AvatarFallback className='rounded-md bg-[#006797] text-white text-xs font-semibold'>
-                        {String(proj.name).substring(0, 1).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <ProjectAvatar
+                      avatar={proj.avatar}
+                      name={proj.name}
+                      id={proj.id}
+                      size='md'
+                      className='size-8 rounded-md'
+                    />
                     <div className='flex flex-col min-w-0'>
                       <span className='text-sm font-medium text-foreground truncate'>{proj.name}</span>
                       <span className='text-xs text-muted-foreground truncate'>
@@ -308,10 +303,17 @@ export default function Switcher({
                 setIsOpen(false);
                 setIsProjectInvitesOpen(true);
               }}
-              className='flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer text-sm font-medium text-foreground hover:bg-muted/60 transition-colors w-full text-left outline-none'
+              className='flex items-center justify-between px-3 py-2 rounded-md cursor-pointer text-sm font-medium text-foreground hover:bg-muted/60 transition-colors w-full text-left outline-none'
             >
-              <Mail className='size-4 text-foreground shrink-0' />
-              <span>Project invites</span>
+              <div className='flex items-center gap-3 min-w-0'>
+                <Mail className='size-4 text-foreground shrink-0' />
+                <span>Project invites</span>
+              </div>
+              {pendingInvitations.length > 0 && (
+                <span className='px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-10 font-semibold leading-none'>
+                  {pendingInvitations.length}
+                </span>
+              )}
             </button>
 
             <button
@@ -379,7 +381,7 @@ export default function Switcher({
               <div className='absolute inset-0 flex items-center'>
                 <span className='w-full border-t border-border' />
               </div>
-              <div className='relative flex justify-center text-xs uppercase'>
+              <div className='relative flex justify-center text-xs'>
                 <span className='bg-background px-2 text-muted-foreground'>Or share link</span>
               </div>
             </div>
@@ -415,56 +417,10 @@ export default function Switcher({
       </Dialog>
 
       {/* ── Project Invites Modal ─────────────────────────────────── */}
-      <Dialog open={isProjectInvitesOpen} onOpenChange={setIsProjectInvitesOpen}>
-        <DialogContent className='sm:max-w-[420px]'>
-          <DialogHeader>
-            <DialogTitle>Project invites</DialogTitle>
-            <DialogDescription>
-              View pending invitations or join a project with an invite code.
-            </DialogDescription>
-          </DialogHeader>
-          <div className='space-y-4 pt-2'>
-            <div className='rounded-md border border-dashed border-border p-4 text-center text-sm text-muted-foreground'>
-              <Mail className='size-8 mx-auto mb-2 text-muted-foreground/60' />
-              <p>No pending project invitations</p>
-              <p className='text-xs text-muted-foreground/80 mt-1'>
-                When you are invited to a project, it will appear here.
-              </p>
-            </div>
-
-            <div className='space-y-2 pt-2'>
-              <Label htmlFor='project-join-code'>Join with invite code</Label>
-              <div className='flex gap-2'>
-                <Input
-                  id='project-join-code'
-                  placeholder='Enter project code...'
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value)}
-                />
-                <Button
-                  type='button'
-                  disabled={!joinCode.trim()}
-                  onClick={() => {
-                    setJoinCode('');
-                    setIsProjectInvitesOpen(false);
-                  }}
-                >
-                  Join
-                </Button>
-              </div>
-            </div>
-          </div>
-          <DialogFooter className='pt-2'>
-            <Button
-              type='button'
-              variant='outline'
-              onClick={() => setIsProjectInvitesOpen(false)}
-            >
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ProjectInvitesModal
+        open={isProjectInvitesOpen}
+        onOpenChange={setIsProjectInvitesOpen}
+      />
     </>
   );
 }

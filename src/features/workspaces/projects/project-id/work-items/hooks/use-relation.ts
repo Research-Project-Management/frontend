@@ -6,7 +6,7 @@ import { RelationService } from '../services/relation.service';
 
 export const relationKeys = {
   item: (id: string) => ['work-item-relations', id] as const,
-  task: (id: string) => ['work-item-relations', id] as const,
+  workItem: (id: string) => ['work-item-relations', id] as const,
 };
 
 export const useRelations = (id: string) =>
@@ -16,7 +16,7 @@ export const useRelations = (id: string) =>
     enabled: Boolean(id),
   });
 
-export const useTaskRelations = useRelations;
+export const useWorkItemRelations = useRelations;
 
 export const useAddRelationMutation = () => {
   const queryClient = useQueryClient();
@@ -24,27 +24,26 @@ export const useAddRelationMutation = () => {
     mutationFn: ({
       id,
       itemId,
-      taskId,
+      workItemId,
       targetId,
-      targetTaskId,
+      targetWorkItemId,
       type,
     }: {
       id?: string;
       itemId?: string;
-      taskId?: string;
+      workItemId?: string;
       targetId?: string;
-      targetTaskId?: string;
+      targetWorkItemId?: string;
       type: 'blocks' | 'blocked_by' | 'relates_to' | 'duplicate_of';
     }) => {
-      const sourceId = (id || itemId || taskId) ?? '';
-      const target = (targetId || targetTaskId) ?? '';
-      return RelationService.addRelation(sourceId, { targetTaskId: target, targetId: target, type });
+      const sourceId = (id || itemId || workItemId) ?? '';
+      const target = (targetId || targetWorkItemId) ?? '';
+      return RelationService.addRelation(sourceId, { targetWorkItemId: target, targetId: target, type });
     },
     onSuccess: (_, vars) => {
-      const sourceId = (vars.id || vars.itemId || vars.taskId) ?? '';
-      const target = (vars.targetId || vars.targetTaskId) ?? '';
+      const sourceId = (vars.id || vars.itemId || vars.workItemId) ?? '';
+      const target = (vars.targetId || vars.targetWorkItemId) ?? '';
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: relationKeys.item(sourceId) });
       if (target) {
         queryClient.invalidateQueries({ queryKey: relationKeys.item(target) });
@@ -60,27 +59,26 @@ export const useRemoveRelationMutation = () => {
     mutationFn: ({
       id,
       itemId,
-      taskId,
+      workItemId,
       relationId,
       targetId,
-      targetTaskId,
+      targetWorkItemId,
     }: {
       id?: string;
       itemId?: string;
-      taskId?: string;
+      workItemId?: string;
       relationId?: string;
       targetId?: string;
-      targetTaskId?: string;
+      targetWorkItemId?: string;
     }) => {
-      const sourceId = (id || itemId || taskId) ?? '';
-      const target = (targetId || targetTaskId || relationId) ?? '';
+      const sourceId = (id || itemId || workItemId) ?? '';
+      const target = (targetId || targetWorkItemId || relationId) ?? '';
       return RelationService.removeRelation(sourceId, target);
     },
     onSuccess: (_, vars) => {
-      const sourceId = (vars.id || vars.itemId || vars.taskId) ?? '';
-      const target = (vars.targetId || vars.targetTaskId || vars.relationId) ?? '';
+      const sourceId = (vars.id || vars.itemId || vars.workItemId) ?? '';
+      const target = (vars.targetId || vars.targetWorkItemId || vars.relationId) ?? '';
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: relationKeys.item(sourceId) });
       if (target) {
         queryClient.invalidateQueries({ queryKey: relationKeys.item(target) });

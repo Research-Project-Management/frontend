@@ -37,7 +37,7 @@ const DISPLAY_PROPERTY_ITEMS: Array<{ key: DisplayPropertyKey; label: string }> 
   { key: 'labels', label: 'Labels' },
   { key: 'priority', label: 'Priority' },
   { key: 'state', label: 'State' },
-  { key: 'subtaskCount', label: 'Subtasks count' },
+  { key: 'childWorkItemCount', label: 'Child work items' },
   { key: 'attachmentCount', label: 'Attachment count' },
   { key: 'link', label: 'Links & Dependencies' },
   { key: 'cycle', label: 'Cycle' },
@@ -89,7 +89,7 @@ export function DisplayPopover({
     orderDirection,
     showEmptyGroups,
   } = displayOptions;
-  const isSubtasksShown = displayOptions.showSubtasks ?? displayOptions.showSubWorkItems ?? true;
+  const isChildWorkItemsShown = displayOptions.showChildWorkItems ?? true;
 
   const [propertiesOpen, setPropertiesOpen] = useState(true);
   const [groupByOpen, setGroupByOpen] = useState(true);
@@ -132,11 +132,10 @@ export function DisplayPopover({
     });
   };
 
-  const handleShowSubtasksToggle = (checked: boolean) => {
+  const handleShowChildWorkItemsToggle = (checked: boolean) => {
     onDisplayOptionsChange({
       ...displayOptions,
-      showSubtasks: checked,
-      showSubWorkItems: checked,
+      showChildWorkItems: checked,
     });
   };
 
@@ -146,7 +145,7 @@ export function DisplayPopover({
         <Button
           type="button"
           size="sm"
-          className="h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shrink-0"
+          className="h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shadow-2xs shrink-0"
           aria-label="Display options"
         >
           <span>Display</span>
@@ -241,7 +240,7 @@ export function DisplayPopover({
                           : "border border-muted-foreground/35 group-hover:border-foreground"
                       )}
                     >
-                      {isSelected && <Check className="size-2.5 stroke-[3] text-primary-foreground shrink-0" />}
+                      {isSelected && <Check className="size-2.5 stroke-[1.75] text-primary-foreground shrink-0" />}
                     </div>
                     <span className="font-normal">{opt.label}</span>
                   </div>
@@ -295,7 +294,7 @@ export function DisplayPopover({
                           : "border border-muted-foreground/35 group-hover:border-foreground"
                       )}
                     >
-                      {isSelected && <Check className="size-2.5 stroke-[3] text-primary-foreground shrink-0" />}
+                      {isSelected && <Check className="size-2.5 stroke-[1.75] text-primary-foreground shrink-0" />}
                     </div>
                     <span className="font-normal">{opt.label}</span>
                   </div>
@@ -364,7 +363,7 @@ export function DisplayPopover({
                           : "border border-border group-hover:border-foreground"
                       )}
                     >
-                      {isSelected && <Check className="size-2.5 stroke-[3] text-primary-foreground shrink-0" />}
+                      {isSelected && <Check className="size-2.5 stroke-[1.75] text-primary-foreground shrink-0" />}
                     </div>
                     <span className="font-normal">{opt.label}</span>
                   </div>
@@ -380,11 +379,11 @@ export function DisplayPopover({
         <div className="space-y-2 pt-1 pb-1">
           <label className="flex items-center gap-2.5 text-13 text-foreground cursor-pointer select-none py-0.5">
             <Checkbox
-              checked={isSubtasksShown}
-              onCheckedChange={handleShowSubtasksToggle}
+              checked={isChildWorkItemsShown}
+              onCheckedChange={handleShowChildWorkItemsToggle}
               className="size-4 rounded-sm border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary cursor-pointer"
             />
-            <span>Show subtasks</span>
+            <span>Show sub-items</span>
           </label>
 
           <label className="flex items-center gap-2.5 text-13 text-foreground cursor-pointer select-none py-0.5">

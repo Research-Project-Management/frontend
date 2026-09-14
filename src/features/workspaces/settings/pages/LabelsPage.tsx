@@ -248,29 +248,34 @@ export default function LabelsPage() {
 
   return (
     <div className="flex h-full w-full flex-col bg-background">
-      <TopBar title="Labels" Icon={Tag} />
+      <TopBar
+        title="Labels"
+        description="Organize, categorize, and group research projects across your account."
+        Icon={Tag}
+      />
 
-      <div className="flex-1 overflow-y-auto px-6 md:px-10 lg:px-12 py-8 md:py-10">
-        <div className="w-full max-w-5xl mx-auto space-y-8">
-          {/* ── Page Header ── */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold text-foreground tracking-tight">Labels</h1>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                  {allLabelsCount}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                Organize, categorize, and group research projects across your account, similar to labels in Overleaf and Google Drive.
-              </p>
+      <div className="flex-1 overflow-y-auto p-6 md:p-8">
+        <div className="w-full max-w-5xl mx-auto space-y-5">
+          {/* ── Toolbar ── */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="relative w-full max-w-xs">
+              <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0" />
+              <Input
+                placeholder="Search labels..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 pl-8 text-12 rounded-md border-border bg-background shadow-2xs"
+              />
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              <span className="text-12 text-muted-foreground mr-1 hidden sm:inline-block">
+                {allLabelsCount} {allLabelsCount === 1 ? 'label' : 'labels'}
+              </span>
               <Button
                 size="sm"
                 onClick={() => openCreateModal()}
-                className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-none gap-1.5"
+                className="h-8 text-12 font-medium px-3 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-2xs gap-1.5"
               >
                 <Plus className="size-3.5 shrink-0" />
                 <span>Add label</span>
@@ -278,25 +283,12 @@ export default function LabelsPage() {
             </div>
           </div>
 
-          {/* ── Search Bar ── */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative w-full max-w-sm">
-              <Search className="size-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0" />
-              <Input
-                placeholder="Search labels..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8.5 pl-8 text-xs rounded-md border-border bg-background"
-              />
-            </div>
-          </div>
-
           {/* ── Labels Hierarchical List ── */}
           {filteredRoots.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12 text-center rounded-md border border-dashed border-border bg-card">
-              <Tag className="size-9 text-muted-foreground/60 mb-3 shrink-0" />
-              <h3 className="text-sm font-semibold text-foreground">No labels found</h3>
-              <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+              <Tag className="size-8 text-muted-foreground/60 mb-2.5 shrink-0" />
+              <h3 className="text-13 font-medium text-foreground">No labels found</h3>
+              <p className="text-12 text-muted-foreground mt-1 max-w-sm">
                 {searchQuery
                   ? `No labels matching "${searchQuery}".`
                   : 'Create labels to categorize, differentiate, and group research projects across your account.'}
@@ -305,7 +297,7 @@ export default function LabelsPage() {
                 <Button
                   size="sm"
                   onClick={() => openCreateModal()}
-                  className="mt-4 h-8 text-xs font-medium px-3.5 rounded-md bg-primary text-primary-foreground"
+                  className="mt-4 h-8 text-12 font-medium px-3.5 rounded-md bg-primary text-primary-foreground shadow-2xs cursor-pointer"
                 >
                   Create your first label
                 </Button>

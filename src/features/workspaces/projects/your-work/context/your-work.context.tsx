@@ -5,10 +5,10 @@ import { useYourWorkBase } from '../hooks/use-your-work-base';
 import {
   calculateStatusBreakdown,
   calculatePriorityBreakdown,
-  getTaskProjectId,
+  getWorkItemProjectId,
 } from '../utils/your-work.util';
 import type {
-  YourWorkTask,
+  YourWorkItem,
   YourWorkActivityEvent,
   ProjectWorkloadBreakdown,
   UserProfileData,
@@ -22,18 +22,18 @@ export interface YourWorkContextType {
   selectedProjectId: string | null;
   selectedProject: ProjectWorkloadBreakdown | null;
   setSelectedProjectId: (projectId: string | null) => void;
-  // Filtered tasks & metrics
-  allTasks: YourWorkTask[];
-  assigned: YourWorkTask[];
-  created: YourWorkTask[];
-  subscribed: YourWorkTask[];
+  // Filtered items & metrics
+  allWorkItems: YourWorkItem[];
+  assigned: YourWorkItem[];
+  created: YourWorkItem[];
+  subscribed: YourWorkItem[];
   activities: YourWorkActivityEvent[];
   recent: any[];
   statusBreakdown: Record<string, number>;
   subscribedStatusBreakdown: Record<string, number>;
   priorityBreakdown: Record<string, number>;
   projectBreakdown: ProjectWorkloadBreakdown[];
-  taskProjectMap: ProjectMap;
+  workItemProjectMap: ProjectMap;
   userData?: UserProfileData;
   // Raw / Unfiltered counts
   totalCounts: {
@@ -45,7 +45,7 @@ export interface YourWorkContextType {
   // Loading & query status
   isLoading: boolean;
   isLoadingYourWork: boolean;
-  isLoadingTasks: boolean;
+  isLoadingWorkItems: boolean;
   isLoadingProjects: boolean;
   isRefetching: boolean;
   refetch: () => Promise<unknown>;
@@ -82,20 +82,20 @@ export function YourWorkProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Filter tasks if a project is selected
+  // Filter items if a project is selected
   const filteredAssigned = useMemo(() => {
     if (!selectedProjectId) return base.assigned;
-    return base.assigned.filter((t) => getTaskProjectId(t) === selectedProjectId);
+    return base.assigned.filter((t) => getWorkItemProjectId(t) === selectedProjectId);
   }, [base.assigned, selectedProjectId]);
 
   const filteredCreated = useMemo(() => {
     if (!selectedProjectId) return base.created;
-    return base.created.filter((t) => getTaskProjectId(t) === selectedProjectId);
+    return base.created.filter((t) => getWorkItemProjectId(t) === selectedProjectId);
   }, [base.created, selectedProjectId]);
 
   const filteredSubscribed = useMemo(() => {
     if (!selectedProjectId) return base.subscribed;
-    return base.subscribed.filter((t) => getTaskProjectId(t) === selectedProjectId);
+    return base.subscribed.filter((t) => getWorkItemProjectId(t) === selectedProjectId);
   }, [base.subscribed, selectedProjectId]);
 
   const filteredActivities = useMemo(() => {
@@ -106,8 +106,8 @@ export function YourWorkProvider({ children }: { children: React.ReactNode }) {
     });
   }, [base.activities, selectedProjectId]);
 
-  const filteredAllTasks = useMemo(() => {
-    const map = new Map<string, YourWorkTask>();
+  const filteredAllWorkItems = useMemo(() => {
+    const map = new Map<string, YourWorkItem>();
     [...filteredAssigned, ...filteredCreated, ...filteredSubscribed].forEach((t) => {
       if (t.id && !map.has(t.id)) {
         map.set(t.id, t);
@@ -157,7 +157,7 @@ export function YourWorkProvider({ children }: { children: React.ReactNode }) {
       selectedProjectId,
       selectedProject,
       setSelectedProjectId,
-      allTasks: filteredAllTasks,
+      allWorkItems: filteredAllWorkItems,
       assigned: filteredAssigned,
       created: filteredCreated,
       subscribed: filteredSubscribed,
@@ -167,12 +167,12 @@ export function YourWorkProvider({ children }: { children: React.ReactNode }) {
       subscribedStatusBreakdown,
       priorityBreakdown,
       projectBreakdown: base.projectBreakdown,
-      taskProjectMap: base.taskProjectMap,
+      workItemProjectMap: base.workItemProjectMap,
       userData: base.userData,
       totalCounts,
       isLoading: base.isLoading,
       isLoadingYourWork: base.isLoadingYourWork,
-      isLoadingTasks: base.isLoadingTasks,
+      isLoadingWorkItems: base.isLoadingWorkItems,
       isLoadingProjects: base.isLoadingProjects,
       isRefetching: base.isRefetching,
       refetch: base.refetch,
@@ -184,7 +184,7 @@ export function YourWorkProvider({ children }: { children: React.ReactNode }) {
       selectedProjectId,
       selectedProject,
       setSelectedProjectId,
-      filteredAllTasks,
+      filteredAllWorkItems,
       filteredAssigned,
       filteredCreated,
       filteredSubscribed,
@@ -194,12 +194,12 @@ export function YourWorkProvider({ children }: { children: React.ReactNode }) {
       subscribedStatusBreakdown,
       priorityBreakdown,
       base.projectBreakdown,
-      base.taskProjectMap,
+      base.workItemProjectMap,
       base.userData,
       totalCounts,
       base.isLoading,
       base.isLoadingYourWork,
-      base.isLoadingTasks,
+      base.isLoadingWorkItems,
       base.isLoadingProjects,
       base.isRefetching,
       base.refetch,

@@ -3,10 +3,12 @@ import type { TagWithCount } from '../types/library.types';
 export type { TagWithCount };
 
 export const TagService = {
-  list: async (_workspaceId?: string): Promise<TagWithCount[]> => {
-    const raw = await apiGet<any>(
-      `/api/v1/library/tags`,
-    );
+  list: async (workspaceId?: string): Promise<TagWithCount[]> => {
+    const isProject = workspaceId && workspaceId !== 'user';
+    const basePath = isProject
+      ? `/api/v1/projects/${encodeURIComponent(workspaceId)}/library/tags`
+      : `/api/v1/library/tags`;
+    const raw = await apiGet<any>(basePath);
     if (Array.isArray(raw)) return raw;
     if (raw && typeof raw === 'object' && Array.isArray(raw.data)) {
       return raw.data;
@@ -15,51 +17,76 @@ export const TagService = {
   },
 
   create: async (
-    _workspaceId: string,
+    workspaceId: string,
     name: string,
     color?: string,
     type: string = 'manual',
   ): Promise<TagWithCount> => {
+    const isProject = workspaceId && workspaceId !== 'user';
+    const basePath = isProject
+      ? `/api/v1/projects/${encodeURIComponent(workspaceId)}/library/tags`
+      : `/api/v1/library/tags`;
     const raw = await apiPost<any>(
-      `/api/v1/library/tags`,
-      { name, color, type },
+      basePath,
+      {
+        name,
+        color,
+        type,
+        ...(isProject ? { projectId: workspaceId } : {}),
+      },
     );
     return raw?.data || raw;
   },
 
-  delete: async (_workspaceId: string, tagId: string): Promise<void> => {
+  delete: async (workspaceId: string, tagId: string): Promise<void> => {
+    const isProject = workspaceId && workspaceId !== 'user';
+    const basePath = isProject
+      ? `/api/v1/projects/${encodeURIComponent(workspaceId)}/library/tags`
+      : `/api/v1/library/tags`;
     await apiDelete<any>(
-      `/api/v1/library/tags/${tagId}`,
+      `${basePath}/${encodeURIComponent(tagId)}`,
     );
   },
 
   deleteAutomatic: async (
-    _workspaceId?: string,
+    workspaceId?: string,
   ): Promise<{ count: number }> => {
+    const isProject = workspaceId && workspaceId !== 'user';
+    const basePath = isProject
+      ? `/api/v1/projects/${encodeURIComponent(workspaceId)}/library/tags`
+      : `/api/v1/library/tags`;
     const raw = await apiDelete<any>(
-      `/api/v1/library/tags/automatic`,
+      `${basePath}/automatic`,
     );
     return raw?.data || raw || { count: 0 };
   },
 
   assignToItem: async (
-    _workspaceId: string,
+    workspaceId: string,
     tagId: string,
     itemId: string,
   ): Promise<void> => {
+    const isProject = workspaceId && workspaceId !== 'user';
+    const basePath = isProject
+      ? `/api/v1/projects/${encodeURIComponent(workspaceId)}/library/tags`
+      : `/api/v1/library/tags`;
     await apiPost<any>(
-      `/api/v1/library/tags/${tagId}/items/${itemId}`,
+      `${basePath}/${encodeURIComponent(tagId)}/items/${encodeURIComponent(itemId)}`,
       {},
     );
   },
 
   removeFromItem: async (
-    _workspaceId: string,
+    workspaceId: string,
     tagId: string,
     itemId: string,
   ): Promise<void> => {
+    const isProject = workspaceId && workspaceId !== 'user';
+    const basePath = isProject
+      ? `/api/v1/projects/${encodeURIComponent(workspaceId)}/library/tags`
+      : `/api/v1/library/tags`;
     await apiDelete<any>(
-      `/api/v1/library/tags/${tagId}/items/${itemId}`,
+      `${basePath}/${encodeURIComponent(tagId)}/items/${encodeURIComponent(itemId)}`,
     );
   },
 };

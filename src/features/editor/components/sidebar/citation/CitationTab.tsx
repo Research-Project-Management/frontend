@@ -41,9 +41,21 @@ export default function CitationTab({ onClose }: CitationTabProps) {
 
   useEffect(() => {
     refreshContent();
-    const timer = setInterval(refreshContent, 2000);
-    return () => clearInterval(timer);
-  }, [refreshContent]);
+    const ed = editorRef.current;
+    if (!ed) {
+      const fallbackTimer = setTimeout(refreshContent, 1000);
+      return () => clearTimeout(fallbackTimer);
+    }
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const disposable = ed.onDidChangeModelContent(() => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(refreshContent, 600);
+    });
+    return () => {
+      clearTimeout(timeoutId);
+      disposable.dispose();
+    };
+  }, [refreshContent, editorRef, editorRef.current]);
 
   const {
     citedItems,

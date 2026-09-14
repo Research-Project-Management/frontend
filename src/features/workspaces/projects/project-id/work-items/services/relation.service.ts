@@ -1,9 +1,9 @@
 import { apiGet, apiPost, apiDelete } from "@/shared/lib/api";
-import type { Relation, TaskRelation } from '../types/work-item.types';
+import type { Relation } from '../types/work-item.types';
 
 export interface AddRelationInput {
   targetId?: string;
-  targetTaskId?: string;
+  targetWorkItemId?: string;
   type: 'blocks' | 'blocked_by' | 'relates_to' | 'duplicate_of';
 }
 
@@ -18,10 +18,10 @@ export const RelationService = {
     apiGet<{ relations: Relation[] }>(`/api/work-items/${itemId}/relations`),
 
   addRelation: (itemId: string, input: AddRelationInput) => {
-    const target = input.targetId || input.targetTaskId || '';
+    const target = input.targetWorkItemId || input.targetId || '';
     return apiPost<RelationResponse>(`/api/work-items/${itemId}/relations`, {
-      ...input,
-      targetTaskId: target,
+      targetWorkItemId: target,
+      type: input.type,
     });
   },
 

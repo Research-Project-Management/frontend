@@ -2,22 +2,22 @@
 
 import React from 'react';
 import { useCreatedWork } from '../hooks/use-created-work';
-import { CreatedTaskList } from '../components/created/CreatedTaskList';
+import { CreatedWorkItemList } from '../components/created/CreatedWorkItemList';
 import { YourWorkPageLayout } from '../components/shared/YourWorkPageLayout';
 
 export function CreatedPage() {
   const { state } = useCreatedWork();
-  const { allTasks, createdTasks, taskProjectMap, isLoading } = state;
+  const { allWorkItems, createdWorkItems, workItemProjectMap, isLoading } = state;
 
   return (
     <YourWorkPageLayout
       isLoading={isLoading}
-      allTasks={allTasks}
-      renderList={(handleOpenTask) => (
-        <CreatedTaskList
-          tasks={createdTasks}
-          onTaskClick={handleOpenTask}
-          taskProjectMap={taskProjectMap}
+      allWorkItems={allWorkItems}
+      renderList={(handleOpenItem) => (
+        <CreatedWorkItemList
+          workItems={createdWorkItems}
+          onWorkItemClick={handleOpenItem}
+          workItemProjectMap={workItemProjectMap}
         />
       )}
     />

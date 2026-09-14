@@ -8,9 +8,44 @@ import { cn } from '@/shared/lib/utils';
 export interface ProjectAvatarProps {
   avatar?: string | null;
   name?: string;
+  id?: string;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'custom';
   className?: string;
   fallbackClassName?: string;
+}
+
+export const PROJECT_DEFAULT_EMOJIS = [
+  '🚀', '💻', '🎯', '📚', '🔬', '⚡', '🎨', '💡',
+  '🧩', '📊', '🛠️', '💼', '📁', '🌟', '🔍', '📈',
+  '🤖', '🌐', '📦', '🏷️', '🔮', '🦄', '🏆', '🧭',
+  '🛡️', '⚙️', '🔑', '☕', '📱', '🎧', '🧪', '🌈',
+  '🪐', '🛸', '🎮', '🔥', '✨', '🍀', '💎', '🌿',
+];
+
+/**
+ * Returns a random project emoji from the curated list.
+ * Used as dynamic default when creating a new project.
+ */
+export function getRandomProjectEmoji(): string {
+  const index = Math.floor(Math.random() * PROJECT_DEFAULT_EMOJIS.length);
+  return PROJECT_DEFAULT_EMOJIS[index];
+}
+
+/**
+ * Generates a stable deterministic project emoji from project id or name.
+ * Guarantees that any project lacking an explicit avatar renders identically across all views.
+ */
+export function getDeterministicProjectEmoji(seed?: string | null): string {
+  if (!seed || !seed.trim()) {
+    return PROJECT_DEFAULT_EMOJIS[0];
+  }
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash << 5) - hash + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  const index = Math.abs(hash) % PROJECT_DEFAULT_EMOJIS.length;
+  return PROJECT_DEFAULT_EMOJIS[index];
 }
 
 const SIZE_STYLES = {
@@ -54,6 +89,7 @@ const SIZE_STYLES = {
 export function ProjectAvatar({
   avatar,
   name = '',
+  id = '',
   size = 'md',
   className,
   fallbackClassName,
@@ -122,17 +158,20 @@ export function ProjectAvatar({
     );
   }
 
-  // 4. Fallback Initial Letter
-  const fallbackLetter = name.trim() ? name.trim().charAt(0).toUpperCase() : 'P';
+  // 4. Deterministic Fallback Emoji (Synchronized across all components for the same project)
+  const fallbackEmoji = getDeterministicProjectEmoji(id || name || 'project');
   return (
     <div
       className={cn(
-        'flex items-center justify-center shrink-0 font-semibold rounded-md bg-primary/10 text-primary border border-primary/20 select-none leading-none',
+        'flex items-center justify-center shrink-0 select-none leading-none',
         styles.container,
-        fallbackClassName || className
+        className,
+        fallbackClassName
       )}
     >
-      <span>{fallbackLetter}</span>
+      <span className={cn('leading-none select-none', styles.emoji)}>
+        {fallbackEmoji}
+      </span>
     </div>
   );
 }

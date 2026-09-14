@@ -58,20 +58,28 @@ function Avatar({
   author?: { name: string; avatar?: string };
   size?: number;
 }) {
+  const sizePx = size * 4;
+  const iconSizePx = Math.round(sizePx * 0.55);
+
   if (author?.avatar) {
     return (
       <img
         src={author.avatar}
-        alt={author.name}
-        className={`size-${size} rounded-full object-cover shrink-0`}
+        alt={author.name || 'User avatar'}
+        style={{ width: sizePx, height: sizePx }}
+        className="rounded-full object-cover shrink-0"
+        onError={(e) => {
+          (e.currentTarget as HTMLElement).style.display = 'none';
+        }}
       />
     );
   }
   return (
     <div
-      className={`size-${size} rounded-full bg-primary/10 flex items-center justify-center shrink-0`}
+      style={{ width: sizePx, height: sizePx }}
+      className="rounded-full bg-primary/10 flex items-center justify-center shrink-0"
     >
-      <User className={`size-${Math.round(size * 0.55)} text-primary shrink-0`} />
+      <User style={{ width: iconSizePx, height: iconSizePx }} className="text-primary shrink-0" />
     </div>
   );
 }

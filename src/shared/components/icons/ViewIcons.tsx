@@ -108,7 +108,6 @@ export function ItemsIcon({ className }: IconProps) {
     </svg>
   );
 }
-export const TasksIcon = ItemsIcon;
 
 export function ParentBranchIcon({ className }: IconProps) {
   return (

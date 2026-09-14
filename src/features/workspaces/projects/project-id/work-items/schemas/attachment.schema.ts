@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const entityTypeSchema = z.enum([
-  "task",
+  "work_item",
   "comment",
   "page",
   "sticky",
@@ -24,7 +24,7 @@ export type CreateAttachmentDtoInput = z.infer<typeof createAttachmentDtoSchema>
 // ── Presign Attachment DTO Schema (Matches PresignAttachmentDto) ─────────────
 export const presignAttachmentDtoSchema = z.object({
   filename: z.string().min(1, "Filename is required"),
-  entityType: entityTypeSchema.default("task"),
+  entityType: entityTypeSchema.default("work_item"),
   entityId: z.string().min(1, "Entity ID is required"),
   contentType: z.string().optional(),
   size: z.number().int().min(1).optional(),

@@ -69,7 +69,7 @@ export default function Toolbar({
           <Italic size={14} className="shrink-0" />
         </ToolbarBtn>
         <ToolbarBtn
-          title="Task list"
+          title="To-do list"
           onClick={() => editor?.chain().focus().toggleTaskList().run()}
           isActive={editor?.isActive("taskList")}
           disabled={!editor}

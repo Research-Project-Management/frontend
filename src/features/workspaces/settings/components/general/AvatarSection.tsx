@@ -39,7 +39,7 @@ export function AvatarSection({
         }}
         className="relative group size-16 shrink-0 rounded-lg flex items-center justify-center overflow-hidden transition-opacity hover:opacity-95 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <Avatar className="size-full rounded-lg">
+        <Avatar className="size-full rounded-lg shrink-0">
           {currentAvatar && (
             <AvatarImage
               src={resolveFileUrl(currentAvatar) || undefined}

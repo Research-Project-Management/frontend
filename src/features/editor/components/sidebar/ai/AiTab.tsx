@@ -101,7 +101,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
   const [annotations, setAnnotations] = useState<Array<{ id: string; startLine: number; endLine: number; text: string }>>([]);
   const decorationsRef = useRef<string[]>([]);
 
-  // Live selection context ΓÇö updated real-time from Monaco listener
+  // Live selection context — updated real-time from Monaco listener
   const [liveSelection, setLiveSelection] = useState<{
     text: string;
     startLine: number;
@@ -123,7 +123,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
   const [autoApply, setAutoApply] = useState(false);
   // autoApplyToast replaced by sonner toast()
 
-  // Structured JSON edit preview ΓÇö shown before applying
+  // Structured JSON edit preview — shown before applying
   const [pendingEditResponse, setPendingEditResponse] = useState<AiEditResponse | null>(null);
   const [editSafetyWarning, setEditSafetyWarning] = useState<string | null>(null);
   const previewHandleRef = useRef<AiEditPreviewHandle | null>(null);
@@ -138,7 +138,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
   const lastUserPromptRef = useRef<string>("");
   const lastUserCmdRef = useRef<SlashCommand | null>(null);
 
-  // Save last known Monaco cursor position ΓÇö restored for insert after button click steals focus
+  // Save last known Monaco cursor position — restored for insert after button click steals focus
   const lastCursorRef = useRef<{ lineNumber: number; column: number } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);

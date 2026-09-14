@@ -57,7 +57,7 @@ function SortableRow({
         {...listeners}
         className="cursor-grab text-muted-foreground/20 shrink-0 transition-colors"
       >
-        <GripVertical className="h-4 w-4 shrink-0" />
+        <GripVertical className="size-4 shrink-0" />
       </button>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-foreground transition-colors">{config.label}</p>

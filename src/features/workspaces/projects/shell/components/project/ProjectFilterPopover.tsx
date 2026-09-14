@@ -38,7 +38,7 @@ function FilterCheckbox({ checked }: { checked: boolean }) {
           : 'border-border bg-background hover:border-border'
       )}
     >
-      {checked && <Check className="size-2.5 stroke-[3] text-primary-foreground shrink-0" />}
+      {checked && <Check className="size-2.5 stroke-[1.75] text-primary-foreground shrink-0" />}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -27,8 +27,14 @@ export default function EditorLayout({
   // Show loading indicator while session is being verified
   if (isLoading) {
     return (
-      <div className='flex h-dvh w-full items-center justify-center bg-background'>
-        <Loader2 className='h-8 w-8 animate-spin text-primary shrink-0' />
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label="Loading workspace..."
+        className="flex h-dvh w-full items-center justify-center bg-background"
+      >
+        <Loader2 className="h-8 w-8 animate-spin text-primary shrink-0" />
+        <span className="sr-only">Loading workspace...</span>
       </div>
     );
   }

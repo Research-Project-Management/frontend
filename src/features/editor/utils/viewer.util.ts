@@ -135,10 +135,10 @@ export async function generateThumbnail(pdfBlob: Blob): Promise<string | null> {
   try {
     const { pdfjs } = await import("react-pdf");
     const arrayBuffer = await pdfBlob.arrayBuffer();
-    const loadingTask = pdfjs.getDocument({
+    const loadingOp = pdfjs.getDocument({
       data: new Uint8Array(arrayBuffer),
     });
-    const pdf = await loadingTask.promise;
+    const pdf = await loadingOp.promise;
     const page = await pdf.getPage(1);
     const viewport = page.getViewport({ scale: 1.5 });
     const canvas = document.createElement("canvas");
@@ -568,8 +568,8 @@ export async function extractPdfMetadataFromFile(file: File): Promise<PdfMetadat
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
     const arrayBuffer = await file.arrayBuffer();
-    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
-    const pdfDoc = await loadingTask.promise;
+    const loadingOp = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
+    const pdfDoc = await loadingOp.promise;
 
     meta.pageCount = pdfDoc.numPages;
 

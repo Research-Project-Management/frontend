@@ -4,7 +4,10 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Maximize2, Minimize2, Plus } from 'lucide-react';
 import { Button } from "@/shared/components/ui";
 import { StatusIcon } from '@/shared/components/icons';
-import type { Item, Task, Column as ColumnType, Cycle, ProjectMember, BaseWorkItemViewProps, WorkItemCardHandlers } from '../../types/work-item.types';
+import { cn } from "@/shared/lib/utils";
+import { toast } from 'sonner';
+import { RelationService } from '../../services/relation.service';
+import type { Item, Column as ColumnType, Cycle, ProjectMember, BaseWorkItemViewProps, WorkItemCardHandlers } from '../../types/work-item.types';
 
 // ==========================================
 // TYPES
@@ -31,7 +34,7 @@ export interface TimelineHeaderGroup {
 }
 
 export interface TimelineBarData {
-  task: Task;
+  item: Item;
   startIndex: number;
   endIndex: number;
   hasDates: boolean;
@@ -45,8 +48,8 @@ export interface TimelineBarData {
 export type DepLineType = 'FS' | 'SS' | 'FF';
 
 export interface DependencyLine {
-  fromTaskId: string;
-  toTaskId: string;
+  fromItemId: string;
+  toItemId: string;
   /** x pixel from canvas left where line starts */
   fromX: number;
   /** row center y of the source bar */
@@ -62,12 +65,11 @@ export interface DependencyLine {
 
 export interface TimelineViewProps extends BaseWorkItemViewProps, WorkItemCardHandlers {
   items?: Item[];
-  tasks?: Item[];
   columns: ColumnType[];
   projectId?: string;
   workspaceId?: string;
   onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
-  onUpdateCard?: (task: { id: string } & Partial<Task>) => void;
+  onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
 }
 
 // ==========================================
@@ -287,18 +289,17 @@ export function calculateDuration(
   return { days: 1, label: '1 day' };
 }
 
-export const mapItemToBar = mapTaskToBar;
-export function mapTaskToBar(
-  task: Task,
+export function mapItemToBar(
+  item: Item,
   days: TimelineDayColumn[]
 ): TimelineBarData {
-  const start = parseDateOnly(task.startDate);
-  const due = parseDateOnly(task.dueDate);
-  const duration = calculateDuration(task.startDate, task.dueDate);
+  const start = parseDateOnly(item.startDate);
+  const due = parseDateOnly(item.dueDate);
+  const duration = calculateDuration(item.startDate, item.dueDate);
 
   if (!start && !due) {
     return {
-      task,
+      item,
       startIndex: -1,
       endIndex: -1,
       hasDates: false,
@@ -322,7 +323,7 @@ export function mapTaskToBar(
 
     if (effectiveDue < minDay || effectiveStart > maxDay) {
       return {
-        task,
+        item,
         startIndex: -1,
         endIndex: -1,
         hasDates: true,
@@ -342,7 +343,7 @@ export function mapTaskToBar(
   }
 
   return {
-    task,
+    item,
     startIndex,
     endIndex,
     hasDates: true,
@@ -356,7 +357,7 @@ export function mapTaskToBar(
 // ==========================================
 
 /**
- * Compute SVG connector lines for task relations visible in the current viewport.
+ * Compute SVG connector lines for work item relations visible in the current viewport.
  * Supported relation types:
  *   FS (Finish-to-Start):  blocks / blocked_by
  *   SS (Start-to-Start):   starts_before / starts_after
@@ -366,39 +367,39 @@ export function mapTaskToBar(
  * on the "to" bar, rendered as an elbow path in SVG.
  */
 export function computeDependencyLines(
-  tasks: Task[],
+  items: Item[],
   barDataMap: Map<string, TimelineBarData>,
   dayWidth: number,
 ): DependencyLine[] {
   const lines: DependencyLine[] = [];
 
-  const taskMap = new Map<string, Task>(tasks.map((t) => [t.id, t]));
-  const rowIndexMap = new Map<string, number>(tasks.map((t, i) => [t.id, i]));
+  const itemMap = new Map<string, Item>(items.map((t) => [t.id, t]));
+  const rowIndexMap = new Map<string, number>(items.map((t, i) => [t.id, i]));
 
   const FS_TYPES = new Set(['blocks', 'blocked_by']);
   const SS_TYPES = new Set(['starts_before', 'starts_after']);
   const FF_TYPES = new Set(['finishes_before', 'finishes_after']);
 
-  for (const fromTask of tasks) {
-    const relations = (fromTask.relations as Array<{ targetTaskId?: string; type?: string }>) || [];
+  for (const fromItem of items) {
+    const relations = (fromItem.relations as Array<{ targetWorkItemId?: string; targetId?: string; type?: string }>) || [];
     if (!Array.isArray(relations) || relations.length === 0) continue;
 
-    const fromBar = barDataMap.get(fromTask.id);
-    const fromRowIdx = rowIndexMap.get(fromTask.id);
+    const fromBar = barDataMap.get(fromItem.id);
+    const fromRowIdx = rowIndexMap.get(fromItem.id);
     if (!fromBar || fromRowIdx === undefined) continue;
 
     for (const rel of relations) {
       const relType = rel?.type;
-      const toTaskId = rel?.targetTaskId;
-      if (!relType || !toTaskId) continue;
+      const toItemId = rel?.targetWorkItemId || rel?.targetId;
+      if (!relType || !toItemId) continue;
 
       // Skip non-timeline relations
       if (!FS_TYPES.has(relType) && !SS_TYPES.has(relType) && !FF_TYPES.has(relType)) continue;
 
-      const toTask = taskMap.get(toTaskId);
-      const toBar = barDataMap.get(toTaskId);
-      const toRowIdx = rowIndexMap.get(toTaskId);
-      if (!toTask || !toBar || toRowIdx === undefined) continue;
+      const toItem = itemMap.get(toItemId);
+      const toBar = barDataMap.get(toItemId);
+      const toRowIdx = rowIndexMap.get(toItemId);
+      if (!toItem || !toBar || toRowIdx === undefined) continue;
       if (!fromBar.hasDates || !toBar.hasDates) continue;
       if (fromBar.startIndex === -1 || toBar.startIndex === -1) continue;
 
@@ -412,27 +413,27 @@ export function computeDependencyLines(
         // Line exits right side of from-bar, enters left side of to-bar
         fromX = (fromBar.endIndex + 1) * dayWidth;
         toX = toBar.startIndex * dayWidth;
-        // Violated: toTask starts before fromTask ends
-        const toStart = parseDateOnly(toTask.startDate);
-        const fromDue = parseDateOnly(fromTask.dueDate);
+        // Violated: toItem starts before fromItem ends
+        const toStart = parseDateOnly(toItem.startDate);
+        const fromDue = parseDateOnly(fromItem.dueDate);
         violated = !!(toStart && fromDue && toStart < fromDue);
       } else if (SS_TYPES.has(relType)) {
         depType = 'SS';
         // Line exits left side of from-bar, enters left side of to-bar
         fromX = fromBar.startIndex * dayWidth;
         toX = toBar.startIndex * dayWidth;
-        // Violated: toTask starts before fromTask starts
-        const toStart = parseDateOnly(toTask.startDate);
-        const fromStart = parseDateOnly(fromTask.startDate);
+        // Violated: toItem starts before fromItem starts
+        const toStart = parseDateOnly(toItem.startDate);
+        const fromStart = parseDateOnly(fromItem.startDate);
         violated = !!(toStart && fromStart && toStart < fromStart);
       } else {
         depType = 'FF';
         // Line exits right side of from-bar, enters right side of to-bar
         fromX = (fromBar.endIndex + 1) * dayWidth;
         toX = (toBar.endIndex + 1) * dayWidth;
-        // Violated: toTask ends before fromTask ends
-        const toDue = parseDateOnly(toTask.dueDate);
-        const fromDue = parseDateOnly(fromTask.dueDate);
+        // Violated: toItem ends before fromItem ends
+        const toDue = parseDateOnly(toItem.dueDate);
+        const fromDue = parseDateOnly(fromItem.dueDate);
         violated = !!(toDue && fromDue && toDue < fromDue);
       }
 
@@ -440,7 +441,7 @@ export function computeDependencyLines(
       const fromY = fromRowIdx * ROW_HEIGHT + ROW_HEIGHT / 2;
       const toY = toRowIdx * ROW_HEIGHT + ROW_HEIGHT / 2;
 
-      lines.push({ fromTaskId: fromTask.id, toTaskId, fromX, fromY, toX, toY, type: depType, violated });
+      lines.push({ fromItemId: fromItem.id, toItemId, fromX, fromY, toX, toY, type: depType, violated });
     }
   }
 
@@ -518,9 +519,9 @@ function TimelineTopControls({
         title={isFullscreen ? 'Exit full screen' : 'Full screen'}
       >
         {isFullscreen ? (
-          <Minimize2 className="h-3.5 w-3.5 shrink-0" />
+          <Minimize2 className="size-3.5 shrink-0" />
         ) : (
-          <Maximize2 className="h-3.5 w-3.5 shrink-0" />
+          <Maximize2 className="size-3.5 shrink-0" />
         )}
       </Button>
     </div>
@@ -528,9 +529,9 @@ function TimelineTopControls({
 }
 
 interface TimelineSidebarProps {
-  tasks: Task[];
+  items: Item[];
   columns: ColumnType[];
-  onEditCard: (task: Task) => void;
+  onEditCard: (item: Item) => void;
   onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
   isReadOnly?: boolean;
   sidebarScrollRef?: React.RefObject<HTMLDivElement | null>;
@@ -538,7 +539,7 @@ interface TimelineSidebarProps {
 }
 
 function TimelineSidebar({
-  tasks,
+  items,
   columns,
   onEditCard,
   onAddCard,
@@ -548,8 +549,8 @@ function TimelineSidebar({
 }: TimelineSidebarProps) {
   const defaultColumnId = columns[0]?.id || '';
 
-  const getColumnForTask = (task: Task) => {
-    return columns.find((column) => column.id === task.columnId);
+  const getColumnForItem = (item: Item) => {
+    return columns.find((column) => column.id === item.columnId);
   };
 
   return (
@@ -571,29 +572,29 @@ function TimelineSidebar({
         onScroll={onScroll}
         className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       >
-        {tasks.map((task) => {
-          const column = getColumnForTask(task);
+        {items.map((item) => {
+          const column = getColumnForItem(item);
           const identifier =
-            task.identifier ||
-            (task.sequenceNumber ? `TIEPT-${task.sequenceNumber}` : task.id.slice(0, 6));
-          const duration = calculateDuration(task.startDate, task.dueDate);
+            item.identifier ||
+            (item.sequenceNumber ? `TIEPT-${item.sequenceNumber}` : item.id.slice(0, 6));
+          const duration = calculateDuration(item.startDate, item.dueDate);
 
           return (
             <div
-              key={task.id}
+              key={item.id}
               role="button"
               tabIndex={0}
-              aria-label={`Work item: ${task.title}`}
-              onClick={() => onEditCard(task)}
+              aria-label={`Work item: ${item.title}`}
+              onClick={() => onEditCard(item)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  onEditCard(task);
+                  onEditCard(item);
                 }
               }}
               className="flex items-center justify-between px-3 border-b border-border hover:bg-muted cursor-pointer transition-colors group text-xs shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary"
               style={{ height: `${ROW_HEIGHT}px` }}
-              title={task.title}
+              title={item.title}
             >
               {/* Left: Status Icon, Identifier, Title */}
               <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
@@ -601,13 +602,13 @@ function TimelineSidebar({
                   title={column?.title || 'Backlog'}
                   group={column?.slug || column?.title || 'backlog'}
                   color={column?.accentColor}
-                  className="h-3.5 w-3.5 shrink-0"
+                  className="size-3.5 shrink-0"
                 />
                 <span className="text-11 font-mono text-muted-foreground shrink-0">
                   {identifier}
                 </span>
                 <span className="truncate text-foreground font-normal group-hover:text-primary transition-colors">
-                  {task.title}
+                  {item.title}
                 </span>
               </div>
 
@@ -637,7 +638,7 @@ function TimelineSidebar({
             onClick={() => onAddCard(defaultColumnId)}
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors w-full text-left py-1"
           >
-            <Plus className="h-3.5 w-3.5 shrink-0" />
+            <Plus className="size-3.5 shrink-0" />
             <span>New work item</span>
           </button>
         </div>
@@ -647,26 +648,34 @@ function TimelineSidebar({
 }
 
 interface TimelineBarProps {
-  task: Task;
+  item: Item;
   startIndex: number;
   endIndex: number;
   dayWidth: number;
   days: TimelineDayColumn[];
   column?: ColumnType;
-  onEditCard: (task: Task) => void;
-  onUpdateCard?: (task: { id: string } & Partial<Task>) => void;
+  rowIndex?: number;
+  onEditCard: (item: Item) => void;
+  onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
+  onStartConnect?: (itemId: string, side: 'start' | 'end', startX: number, startY: number) => void;
+  isConnecting?: boolean;
+  isConnectTarget?: boolean;
   isReadOnly?: boolean;
 }
 
 function TimelineBar({
-  task,
+  item,
   startIndex,
   endIndex,
   dayWidth,
   days,
   column,
+  rowIndex = 0,
   onEditCard,
   onUpdateCard,
+  onStartConnect,
+  isConnecting = false,
+  isConnectTarget = false,
   isReadOnly = false,
 }: TimelineBarProps) {
   const [isHovered, setIsHovered] = useState(false);
@@ -725,7 +734,7 @@ function TimelineBar({
 
       if (newStartDate && newDueDate) {
         onUpdateCard({
-          id: task.id,
+          id: item.id,
           startDate: newStartDate,
           dueDate: newDueDate,
         });
@@ -756,11 +765,11 @@ function TimelineBar({
     <div
       role="button"
       tabIndex={0}
-      aria-label={`Timeline item: ${task.title}`}
+      aria-label={`Timeline item: ${item.title}`}
       onKeyDown={(e) => {
         if (!dragging && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
-          onEditCard(task);
+          onEditCard(item);
         }
       }}
       style={{
@@ -770,19 +779,42 @@ function TimelineBar({
         top: '6px',
         backgroundColor: accentColor,
       }}
-      className={`absolute z-10 rounded-md flex items-center px-2 text-white select-none transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary ${
-        dragging ? 'opacity-90 ring-2 ring-primary cursor-grabbing' : 'cursor-pointer hover:brightness-105'
-      }`}
+      className={cn(
+        'absolute z-10 rounded-md flex items-center px-2 text-white select-none transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary',
+        dragging ? 'opacity-90 ring-2 ring-primary cursor-grabbing' : 'cursor-pointer hover:brightness-105',
+        isConnectTarget && 'ring-2 ring-primary ring-offset-2 scale-[1.02] shadow-raised-200',
+        isConnecting && 'ring-2 ring-primary opacity-80'
+      )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={(event) => {
         if (!dragging) {
           event.stopPropagation();
-          onEditCard(task);
+          onEditCard(item);
         }
       }}
-      title={`${task.title} (${task.startDate || 'No start'} -> ${task.dueDate || 'No due'})`}
+      title={`${item.title} (${item.startDate || 'No start'} -> ${item.dueDate || 'No due'})`}
     >
+      {/* Left connector handle (Blocked by) */}
+      {!isReadOnly && onStartConnect && (
+        <div
+          role="button"
+          tabIndex={-1}
+          title="Drag to create dependency (Blocked by)"
+          onPointerDown={(event) => {
+            event.stopPropagation();
+            event.preventDefault();
+            onStartConnect(item.id, 'start', visualLeft, rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2);
+          }}
+          className={cn(
+            'absolute -left-2 top-1/2 -translate-y-1/2 size-3.5 rounded-full bg-primary ring-2 ring-background cursor-crosshair z-30 transition-all hover:scale-125 flex items-center justify-center',
+            isHovered || isConnecting ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          )}
+        >
+          <div className="size-1.5 rounded-full bg-primary-foreground" />
+        </div>
+      )}
+
       {/* Left resize handle */}
       {!isReadOnly && onUpdateCard && (
         <div
@@ -804,10 +836,10 @@ function TimelineBar({
           title={column?.title || 'Backlog'}
           group={column?.slug || column?.title || 'backlog'}
           color={column?.accentColor}
-          className="h-3 w-3 shrink-0 text-primary-foreground"
+          className="size-3 shrink-0 text-primary-foreground"
         />
         <span className="text-11 font-medium truncate text-primary-foreground">
-          {task.title}
+          {item.title}
         </span>
       </div>
 
@@ -820,6 +852,26 @@ function TimelineBar({
           }`}
         >
           <div className="w-0.5 h-3 bg-primary-foreground rounded-full" />
+        </div>
+      )}
+
+      {/* Right connector handle (Blocks) */}
+      {!isReadOnly && onStartConnect && (
+        <div
+          role="button"
+          tabIndex={-1}
+          title="Drag to create dependency (Blocks)"
+          onPointerDown={(event) => {
+            event.stopPropagation();
+            event.preventDefault();
+            onStartConnect(item.id, 'end', visualLeft + visualWidth, rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2);
+          }}
+          className={cn(
+            'absolute -right-2 top-1/2 -translate-y-1/2 size-3.5 rounded-full bg-primary ring-2 ring-background cursor-crosshair z-30 transition-all hover:scale-125 flex items-center justify-center',
+            isHovered || isConnecting ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          )}
+        >
+          <div className="size-1.5 rounded-full bg-primary-foreground" />
         </div>
       )}
     </div>
@@ -837,7 +889,7 @@ interface DependencyOverlayProps {
 }
 
 /**
- * Renders SVG elbow connector lines for task dependencies.
+ * Renders SVG elbow connector lines for work item dependencies.
  * Positioned absolutely over the rows section of the canvas (below header).
  * An "elbow" path: horizontal → vertical → horizontal, with a small arrowhead at the end.
  */
@@ -917,20 +969,20 @@ function DependencyOverlay({ lines, totalWidth, totalHeight }: DependencyOverlay
 }
 
 interface TimelineCanvasProps {
-  tasks: Task[];
+  items: Item[];
   columns: ColumnType[];
   days: TimelineDayColumn[];
   zoom: TimelineZoom;
   dayWidth: number;
-  onEditCard: (task: Task) => void;
-  onUpdateCard?: (task: { id: string } & Partial<Task>) => void;
+  onEditCard: (item: Item) => void;
+  onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
   isReadOnly?: boolean;
   canvasScrollRef: React.RefObject<HTMLDivElement | null>;
   onScroll?: (event: React.UIEvent<HTMLDivElement>) => void;
 }
 
 function TimelineCanvas({
-  tasks,
+  items,
   columns,
   days,
   zoom,
@@ -945,15 +997,15 @@ function TimelineCanvas({
   const monthGroups = getMonthYearGroups(days);
   const weekGroups = getWeekGroups(days);
 
-  const getColumnForTask = (task: Task) => {
-    return columns.find((column) => column.id === task.columnId);
+  const getColumnForItem = (item: Item) => {
+    return columns.find((column) => column.id === item.columnId);
   };
 
   // Quick-add dates by clicking on empty row
-  const handleEmptyRowClick = (task: Task, day: TimelineDayColumn) => {
+  const handleEmptyRowClick = (item: Item, day: TimelineDayColumn) => {
     if (isReadOnly || !onUpdateCard) return;
     onUpdateCard({
-      id: task.id,
+      id: item.id,
       startDate: day.dateStr,
       dueDate: day.dateStr,
     });
@@ -966,18 +1018,126 @@ function TimelineCanvas({
   // ── Phase 3: Compute bar data map for dependency lines ────────────────────
   const barDataMap = useMemo(() => {
     const map = new Map<string, TimelineBarData>();
-    for (const task of tasks) {
-      map.set(task.id, mapTaskToBar(task, days));
+    for (const item of items) {
+      map.set(item.id, mapItemToBar(item, days));
     }
     return map;
-  }, [tasks, days]);
+  }, [items, days]);
 
   const depLines = useMemo(
-    () => computeDependencyLines(tasks, barDataMap, dayWidth),
-    [tasks, barDataMap, dayWidth],
+    () => computeDependencyLines(items, barDataMap, dayWidth),
+    [items, barDataMap, dayWidth],
   );
 
-  const totalRowsHeight = tasks.length * ROW_HEIGHT;
+  const totalRowsHeight = items.length * ROW_HEIGHT;
+
+  interface ActiveConnectionDrag {
+    sourceItemId: string;
+    sourceType: 'blocks' | 'blocked_by';
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+    hoveredItemId: string | null;
+  }
+
+  const [activeDrag, setActiveDrag] = useState<ActiveConnectionDrag | null>(null);
+
+  const handleStartConnect = (
+    sourceItemId: string,
+    side: 'start' | 'end',
+    startX: number,
+    startY: number
+  ) => {
+    if (isReadOnly) return;
+    const sourceType: 'blocks' | 'blocked_by' = side === 'end' ? 'blocks' : 'blocked_by';
+    setActiveDrag({
+      sourceItemId,
+      sourceType,
+      startX,
+      startY,
+      currentX: startX,
+      currentY: startY,
+      hoveredItemId: null,
+    });
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!canvasScrollRef.current) return;
+      const rect = canvasScrollRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left + canvasScrollRef.current.scrollLeft;
+      const y = e.clientY - rect.top + canvasScrollRef.current.scrollTop - HEADER_HEIGHT;
+
+      const targetRowIdx = Math.floor(y / ROW_HEIGHT);
+      let targetId: string | null = null;
+      if (targetRowIdx >= 0 && targetRowIdx < items.length) {
+        const candidate = items[targetRowIdx];
+        if (candidate && candidate.id !== sourceItemId) {
+          targetId = candidate.id;
+        }
+      }
+
+      setActiveDrag((prev) =>
+        prev
+          ? {
+              ...prev,
+              currentX: x,
+              currentY: Math.max(0, y),
+              hoveredItemId: targetId,
+            }
+          : null
+      );
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+
+      setActiveDrag((currentDrag) => {
+        if (
+          currentDrag &&
+          currentDrag.hoveredItemId &&
+          currentDrag.hoveredItemId !== currentDrag.sourceItemId
+        ) {
+          const fromId =
+            currentDrag.sourceType === 'blocks'
+              ? currentDrag.sourceItemId
+              : currentDrag.hoveredItemId;
+          const toId =
+            currentDrag.sourceType === 'blocks'
+              ? currentDrag.hoveredItemId
+              : currentDrag.sourceItemId;
+
+          RelationService.addRelation(fromId, {
+            targetId: toId,
+            targetWorkItemId: toId,
+            type: 'blocks',
+          })
+            .then(() => {
+              toast.success('Created dependency relation');
+              if (onUpdateCard) {
+                const src = items.find((t) => t.id === fromId);
+                if (src) {
+                  onUpdateCard({
+                    id: fromId,
+                    relations: [
+                      ...(src.relations || []),
+                      { id: `rel-${Date.now()}`, type: 'blocks', targetId: toId, targetWorkItemId: toId },
+                    ],
+                  });
+                }
+              }
+            })
+            .catch((err: any) => {
+              toast.error(err?.message || 'Failed to create relation');
+            });
+        }
+        return null;
+      });
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
 
   return (
     <div
@@ -1029,11 +1189,11 @@ function TimelineCanvas({
                 style={{ width: `${dayWidth}px` }}
                 className={`shrink-0 flex items-center justify-center border-r border-border text-11 font-medium transition-colors ${
                   day.isWeekend ? 'bg-secondary' : ''
-                } ${day.isToday ? 'font-bold' : 'text-muted-foreground'}`}
+                } ${day.isToday ? 'font-semibold' : 'text-muted-foreground'}`}
               >
                 {day.isToday ? (
                   <div className="flex items-center gap-1">
-                    <span className="bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center font-semibold text-10 shadow-none">
+                    <span className="bg-primary text-primary-foreground rounded-full size-5 flex items-center justify-center font-semibold text-10 shadow-none">
                       {day.dayNumber}
                     </span>
                     <span className="text-10 text-primary font-semibold">{day.dayOfWeek}</span>
@@ -1088,28 +1248,86 @@ function TimelineCanvas({
             totalHeight={totalRowsHeight}
           />
 
-          {/* Task rows */}
+          {/* Active interactive dependency dragging line */}
+          {activeDrag && (
+            <svg
+              aria-hidden="true"
+              className="absolute inset-0 pointer-events-none z-35"
+              width={totalWidth}
+              height={totalRowsHeight}
+              style={{ overflow: 'visible' }}
+            >
+              <defs>
+                <marker
+                  id="live-arrow"
+                  markerWidth="8"
+                  markerHeight="8"
+                  refX="6"
+                  refY="4"
+                  orient="auto"
+                >
+                  <path d="M0,1 L8,4 L0,7 z" fill="hsl(var(--primary))" />
+                </marker>
+              </defs>
+              <circle
+                cx={activeDrag.startX}
+                cy={activeDrag.startY}
+                r="4"
+                fill="hsl(var(--primary))"
+              />
+              <path
+                d={`M ${activeDrag.startX} ${activeDrag.startY} C ${
+                  activeDrag.startX + (activeDrag.currentX - activeDrag.startX) / 2
+                } ${activeDrag.startY}, ${
+                  activeDrag.startX + (activeDrag.currentX - activeDrag.startX) / 2
+                } ${activeDrag.currentY}, ${activeDrag.currentX} ${activeDrag.currentY}`}
+                fill="none"
+                stroke="hsl(var(--primary))"
+                strokeWidth="2.5"
+                strokeDasharray="5 3"
+                markerEnd="url(#live-arrow)"
+              />
+              <circle
+                cx={activeDrag.currentX}
+                cy={activeDrag.currentY}
+                r="5"
+                fill={activeDrag.hoveredItemId ? 'hsl(var(--primary))' : 'none'}
+                stroke="hsl(var(--primary))"
+                strokeWidth="2"
+              />
+            </svg>
+          )}
+
+          {/* Work item rows */}
           <div className="relative z-10 flex flex-col">
-            {tasks.map((task) => {
-              const column = getColumnForTask(task);
-              const barData = barDataMap.get(task.id) ?? mapTaskToBar(task, days);
+            {items.map((item, rowIndex) => {
+              const column = getColumnForItem(item);
+              const barData = barDataMap.get(item.id) ?? mapItemToBar(item, days);
+              const isConnectTarget = activeDrag?.hoveredItemId === item.id;
 
               return (
                 <div
-                  key={task.id}
+                  key={item.id}
                   style={{ height: `${ROW_HEIGHT}px` }}
-                  className="border-b border-border relative flex items-center group/row hover:bg-muted transition-colors"
+                  className={cn(
+                    'border-b border-border relative flex items-center group/row hover:bg-muted transition-colors',
+                    isConnectTarget && 'bg-primary/10 ring-1 ring-inset ring-primary'
+                  )}
                 >
                   {barData.hasDates ? (
                     <TimelineBar
-                      task={task}
+                      item={item}
                       startIndex={barData.startIndex}
                       endIndex={barData.endIndex}
                       dayWidth={dayWidth}
                       days={days}
                       column={column}
+                      rowIndex={rowIndex}
                       onEditCard={onEditCard}
                       onUpdateCard={onUpdateCard}
+                      onStartConnect={handleStartConnect}
+                      isConnecting={activeDrag?.sourceItemId === item.id}
+                      isConnectTarget={isConnectTarget}
                       isReadOnly={isReadOnly}
                     />
                   ) : (
@@ -1117,9 +1335,9 @@ function TimelineCanvas({
                     <div className="absolute inset-0 flex">
                       {days.map((day) => (
                         <div
-                          key={`cell-${task.id}-${day.dateStr}`}
+                          key={`cell-${item.id}-${day.dateStr}`}
                           style={{ width: `${dayWidth}px` }}
-                          onClick={() => handleEmptyRowClick(task, day)}
+                          onClick={() => handleEmptyRowClick(item, day)}
                           className="h-full cursor-pointer hover:bg-primary/5 transition-colors group/cell flex items-center justify-center relative"
                           title="Click to set start date"
                         />
@@ -1155,16 +1373,14 @@ function TimelineCanvas({
 // ==========================================
 
 export function TimelineView({
-  items: propItems,
-  tasks: propTasks,
+  items: propItems = [],
   columns,
   onAddCard,
   onEditCard,
   onUpdateCard,
   isReadOnly = false,
 }: TimelineViewProps) {
-  const tasks = propItems || propTasks || [];
-  const items = tasks;
+  const items = propItems;
   // Zoom state with localStorage persistence
   const [zoom, setZoom] = useState<TimelineZoom>(() => {
     if (typeof window !== 'undefined') {
@@ -1274,7 +1490,7 @@ export function TimelineView({
     >
       {/* Top Controls: Work item count, Zoom selector (Week | Month | Quarter), Today, Fullscreen */}
       <TimelineTopControls
-        totalCount={tasks.length}
+        totalCount={items.length}
         zoom={zoom}
         onZoomChange={handleZoomChange}
         onTodayClick={scrollToToday}
@@ -1285,7 +1501,7 @@ export function TimelineView({
       {/* Main Gantt Grid: Frozen Sidebar (Work items + Duration + New) & Scrollable Canvas */}
       <div className="flex-1 flex min-h-0 overflow-hidden border border-border rounded-lg bg-background ">
         <TimelineSidebar
-          tasks={tasks}
+          items={items}
           columns={columns}
           onEditCard={onEditCard}
           onAddCard={onAddCard}
@@ -1295,7 +1511,7 @@ export function TimelineView({
         />
 
         <TimelineCanvas
-          tasks={tasks}
+          items={items}
           columns={columns}
           days={days}
           zoom={zoom}

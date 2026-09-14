@@ -41,7 +41,8 @@ export const useCreateCycle = () => {
       CycleService.create({ projectId, ...data }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: cycleKeys.project(variables.projectId) });
-      queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["work-items"] });
+      queryClient.invalidateQueries({ queryKey: ["work-items", variables.projectId] });
     },
   });
 };
@@ -53,7 +54,8 @@ export const useUpdateCycle = () => {
       CycleService.update({ cycleId, projectId, ...data }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: cycleKeys.project(variables.projectId) });
-      queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["work-items"] });
+      queryClient.invalidateQueries({ queryKey: ["work-items", variables.projectId] });
     },
   });
 };
@@ -65,7 +67,8 @@ export const useDeleteCycle = () => {
       CycleService.delete({ cycleId, projectId }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: cycleKeys.project(variables.projectId) });
-      queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["work-items"] });
+      queryClient.invalidateQueries({ queryKey: ["work-items", variables.projectId] });
     },
   });
 };
@@ -87,7 +90,8 @@ export const useCompleteCycle = () => {
       CycleService.complete({ cycleId, action, targetCycleId }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: cycleKeys.project(variables.projectId) });
-      queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["work-items"] });
+      queryClient.invalidateQueries({ queryKey: ["work-items", variables.projectId] });
     },
   });
 };

@@ -7,9 +7,7 @@ import {
   userMinimalSchema,
   cycleMinimalSchema,
   parentItemMinimalSchema,
-  parentTaskMinimalSchema,
   subItemSchema,
-  subtaskItemSchema,
   attachPageSchema,
   attachPaperSchema,
   attachFileSchema,
@@ -21,29 +19,14 @@ import {
   attachFileInputSchema,
   attachLinkInputSchema,
   itemSchema,
-  workItemSchema,
-  taskSchema,
   createItemSchema,
-  createWorkItemSchema,
-  createTaskSchema,
   updateItemSchema,
-  updateWorkItemSchema,
-  updateTaskSchema,
   itemMutationInputSchema,
-  workItemMutationInputSchema,
-  taskMutationInputSchema,
   reorderItemSchema,
-  reorderWorkItemSchema,
-  reorderTaskSchema,
   bulkUpdateItemSchema,
-  bulkUpdateWorkItemSchema,
-  bulkUpdateTaskSchema,
   bulkDeleteItemSchema,
   createSubItemSchema,
-  createSubtaskSchema,
   stateSchema,
-  stateFormSchema,
-  columnFormSchema,
   filtersSchema,
 } from "../schemas/work-item.schema";
 
@@ -54,7 +37,6 @@ export type Brand<B> = { readonly [__brand]: B };
 
 export type ItemId = string & Brand<'ItemId'>;
 export type WorkItemId = ItemId;
-export type TaskId = ItemId;
 export type ColumnId = string & Brand<'ColumnId'>;
 export type ProjectId = string & Brand<'ProjectId'>;
 export type CycleId = string & Brand<'CycleId'>;
@@ -64,21 +46,17 @@ export type CycleId = string & Brand<'CycleId'>;
 export type Priority = z.infer<typeof prioritySchema>;
 export type ItemPriority = Priority;
 export type WorkItemPriority = Priority;
-export type TaskPriority = Priority;
 
 export type RelationType = z.infer<typeof relationTypeSchema>;
 export type ItemRelationType = RelationType;
 export type WorkItemRelationType = RelationType;
-export type TaskRelationType = RelationType;
 
 export type Relation = z.infer<typeof relationSchema>;
 export type ItemRelation = Relation;
 export type WorkItemRelation = Relation;
-export type TaskRelation = Relation;
 
 export type Attachment = z.infer<typeof attachmentSchema>;
 export type ItemAttachment = Attachment;
-export type TaskAttachment = Attachment;
 export type WorkItemAttachment = Attachment;
 
 export type AttachPageItem = z.infer<typeof attachPageSchema>;
@@ -93,43 +71,34 @@ export type UserMinimal = z.infer<typeof userMinimalSchema>;
 export type CycleMinimal = z.infer<typeof cycleMinimalSchema>;
 export type ParentItemMinimal = z.infer<typeof parentItemMinimalSchema>;
 export type ParentWorkItemMinimal = ParentItemMinimal;
-export type ParentTaskMinimal = ParentItemMinimal;
 
 export type SubItem = z.infer<typeof subItemSchema>;
 export type SubItemMinimal = SubItem;
-export type SubtaskItem = SubItem;
-export type SubtaskMinimal = SubItem;
+export type ChildWorkItem = SubItem;
 
 export type Item = z.infer<typeof itemSchema>;
 export type WorkItem = Item;
-export type Task = Item;
 
 export type CreateItemInput = z.infer<typeof createItemSchema>;
 export type CreateWorkItemInput = CreateItemInput;
-export type CreateTaskInput = CreateItemInput;
 
 export type UpdateItemInput = z.infer<typeof updateItemSchema>;
 export type UpdateWorkItemInput = UpdateItemInput;
-export type UpdateTaskInput = UpdateItemInput;
 
 export type ItemMutationInput = z.infer<typeof itemMutationInputSchema>;
 export type WorkItemMutationInput = ItemMutationInput;
-export type TaskMutationInput = ItemMutationInput;
 
 export type ReorderItemInput = z.infer<typeof reorderItemSchema>;
 export type ReorderWorkItemInput = ReorderItemInput;
-export type ReorderTaskInput = ReorderItemInput;
 
 export type BulkUpdateItemInput = z.infer<typeof bulkUpdateItemSchema>;
 export type BulkUpdateWorkItemInput = BulkUpdateItemInput;
-export type BulkUpdateTaskInput = BulkUpdateItemInput;
 
 export type BulkDeleteItemInput = z.infer<typeof bulkDeleteItemSchema>;
 export type BulkDeleteWorkItemInput = BulkDeleteItemInput;
-export type BulkDeleteTaskInput = BulkDeleteItemInput;
 
 export type CreateSubItemInput = z.infer<typeof createSubItemSchema>;
-export type CreateSubtaskInput = CreateSubItemInput;
+export type CreateSubWorkItemInput = CreateSubItemInput;
 
 export type AttachPageInput = z.infer<typeof attachPageInputSchema>;
 export type AttachPaperInput = z.infer<typeof attachPaperInputSchema>;
@@ -143,8 +112,18 @@ export type WorkItemState = State;
 export type WorkItemStateSchema = State;
 
 export type StateGroup = z.infer<typeof stateGroupSchema>;
-export type StateForm = z.infer<typeof stateFormSchema>;
-export type ColumnForm = z.infer<typeof columnFormSchema>;
+
+export interface SubItemMinimalData {
+  id: string;
+  title: string;
+  identifier?: string | null;
+  columnId: string;
+  completed: boolean;
+  rank?: number;
+  assigneeId?: string | null;
+  assignee?: { id?: string; name?: string; avatar?: string } | null;
+  dueDate?: string | null;
+}
 
 export type Filters = z.infer<typeof filtersSchema>;
 export type WorkItemFilters = Filters;
@@ -202,7 +181,6 @@ export type Project = {
 export type ActivityLog = {
   id: string;
   itemId?: string;
-  taskId?: string;
   workItemId?: string;
   action?: string;
   message?: string;
@@ -232,20 +210,17 @@ export type ActivityLog = {
   };
 };
 export type ItemActivityLog = ActivityLog;
-export type TaskActivityLog = ActivityLog;
 export type WorkItemActivityLog = ActivityLog;
 
 export type ProjectItemsData = {
   items?: Item[];
   workItems?: Item[];
-  tasks: Item[];
   columns: Column[];
   states?: Column[];
   projectName?: string;
   cycles?: Cycle[];
 };
 export type ProjectWorkItemsData = ProjectItemsData;
-export type ProjectTasksData = ProjectItemsData;
 
 export interface WorkItemCardHandlers {
   onEditCard: (card: any) => void;
@@ -254,7 +229,10 @@ export interface WorkItemCardHandlers {
   onJoinCard: (card: any) => void;
   onLeaveCard: (card: any) => void;
   onRemoveFromCycle?: (card: any) => void;
-  onMoveCard: (taskId: string, newColumnId: string, laneData?: any) => void;
+  onMoveCard: (workItemId: string, newColumnId: string, laneData?: any) => void;
+  onUpdateCard?: (card: any) => void;
+  onUpdateItem?: (id: string, data: any) => void;
+  onUpdateWorkItem?: (id: string, data: any) => void;
 }
 
 export interface BaseWorkItemViewProps {
@@ -266,37 +244,31 @@ export interface BaseWorkItemViewProps {
   members?: ProjectMember[] | any[];
   cycles?: Cycle[];
   selectedIds?: string[];
-  selectedTaskIds?: string[];
   onToggleSelect?: (id: string) => void;
-  onToggleSelectTask?: (id: string) => void;
   onSelectAll?: (ids: string[]) => void;
-  onSelectAllTasks?: (ids: string[]) => void;
 }
 
 // ── 4. UI Modes & States ─────────────────────────────────────────────────────
 
 export type ViewMode = "board" | "list" | "calendar" | "table" | "timeline" | "split";
 export type ItemViewMode = ViewMode;
-export type TaskViewMode = ViewMode;
 export type WorkItemViewMode = ViewMode;
 export type ItemDetailDisplayMode = "side-peek" | "center" | "fullscreen";
-export type TaskDetailDisplayMode = ItemDetailDisplayMode;
 
 export type ModalState =
   | { mode: "idle" }
   | { mode: "create"; columnId?: string; title?: string }
-  | { mode: "edit"; item: Item; task?: Item; workItem?: Item }
-  | { mode: "delete"; item: Item; task?: Item; workItem?: Item }
-  | { mode: "transfer"; item: Item; task?: Item; workItem?: Item }
+  | { mode: "edit"; item: Item; workItem?: Item }
+  | { mode: "delete"; item: Item; workItem?: Item }
+  | { mode: "transfer"; item: Item; workItem?: Item }
   | { mode: "add-existing" };
 export type ItemModalState = ModalState;
-export type TaskModalState = ModalState;
 export type WorkItemModalState = ModalState;
 
 // ── 5. Standard Domain Configurations ────────────────────────────────────────
 
 export const RELATION_TYPE_CONFIG: Record<
-  TaskRelationType,
+  WorkItemRelationType,
   { label: string; description: string; badgeColor: string }
 > = {
   blocks: {
@@ -419,36 +391,6 @@ export const DEFAULT_STATES: State[] = [
 ];
 export const DEFAULT_WORK_ITEM_STATES = DEFAULT_STATES;
 
-export const DEFAULT_STATE_COLORS: Record<string, string> = {
-  backlog: "#8A9093",
-  todo: "#525866",
-  unstarted: "#525866",
-  in_progress: "#F59E0B",
-  started: "#F59E0B",
-  done: "#10B981",
-  completed: "#10B981",
-  cancelled: "#EF4444",
-};
-
-export const FIXED_COLUMNS: Column[] = [
-  { id: "backlog", name: "Backlog", title: "Backlog", accentColor: "#8A9093", color: "#8A9093", group: "backlog", sequence: 1000, isDefault: true },
-  { id: "todo", name: "To Do", title: "To Do", accentColor: "#525866", color: "#525866", group: "unstarted", sequence: 2000, isDefault: false },
-  { id: "doing", name: "In Progress", title: "In Progress", accentColor: "#F59E0B", color: "#F59E0B", group: "started", sequence: 3000, isDefault: false },
-  { id: "done", name: "Done", title: "Done", accentColor: "#10B981", color: "#10B981", group: "completed", sequence: 4000, isDefault: false },
-  { id: "cancelled", name: "Cancelled", title: "Cancelled", accentColor: "#EF4444", color: "#EF4444", group: "cancelled", sequence: 5000, isDefault: false },
-];
-export const FIXED_TASK_COLUMNS = FIXED_COLUMNS;
-export const FIXED_WORK_ITEM_COLUMNS = FIXED_COLUMNS;
-
-export const DEFAULT_COLUMN_COLORS: Record<string, string> = {
-  backlog: "#8A9093",
-  todo: "#525866",
-  doing: "#F59E0B",
-  done: "#10B981",
-  cancelled: "#EF4444",
-};
-export const DEFAULT_TASK_COLUMN_COLORS = DEFAULT_COLUMN_COLORS;
-export const DEFAULT_WORK_ITEM_COLUMN_COLORS = DEFAULT_COLUMN_COLORS;
 
 export const PRIORITY_CONFIG = {
   urgent: { label: "Urgent", color: "red" },
@@ -468,9 +410,11 @@ export type DisplayPropertyKey =
   | 'labels'
   | 'priority'
   | 'state'
-  | 'subtaskCount'
+  | 'childWorkItemCount'
   | 'subWorkItemCount'
+  | 'subItemCount'
   | 'attachmentCount'
+  | 'attachment'
   | 'link'
   | 'dependencies'
   | 'attach'
@@ -513,7 +457,7 @@ export interface DisplayOptions {
   orderBy: OrderByOption;
   orderDirection: OrderDirection;
   showEmptyGroups: boolean;
-  showSubtasks: boolean;
+  showChildWorkItems: boolean;
   showSubWorkItems?: boolean;
 }
 export type WorkItemDisplayOptions = DisplayOptions;
@@ -527,9 +471,11 @@ export const DEFAULT_DISPLAY_OPTIONS: DisplayOptions = {
     labels: true,
     priority: true,
     state: true,
-    subtaskCount: false,
+    childWorkItemCount: false,
     subWorkItemCount: false,
+    subItemCount: false,
     attachmentCount: false,
+    attachment: false,
     link: false,
     dependencies: true,
     attach: false,
@@ -540,8 +486,7 @@ export const DEFAULT_DISPLAY_OPTIONS: DisplayOptions = {
   orderBy: 'manual',
   orderDirection: 'asc',
   showEmptyGroups: true,
-  showSubtasks: true,
-  showSubWorkItems: true,
+  showChildWorkItems: true,
 };
 export const DEFAULT_WORK_ITEM_DISPLAY_OPTIONS = DEFAULT_DISPLAY_OPTIONS;
 
@@ -560,7 +505,6 @@ export const DEFAULT_FILTERS: Filters = {
   attach: [],
   items: [],
   work_items: [],
-  tasks: [],
   parent: [],
   due_date: [],
   start_date: [],
@@ -586,5 +530,4 @@ export interface Label {
 }
 
 export type WorkItemLabel = Label;
-export type TaskLabel = Label;
 

@@ -1,16 +1,12 @@
 'use client';
 
-import { useRouter, useParams } from 'next/navigation';
 import { Mail, Search } from 'lucide-react';
-import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useWorkspaces } from '../hooks/use-workspace';
-import AccountDropdown from './AccountDropdown';
 import Switcher from './Switcher';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
 import type { Workspace } from '../types/workspace.types';
 
 export default function Topbar() {
-  const { user, isLoading } = useAuth();
   const { workspaces = [] } = useWorkspaces();
   const currentWorkspace: Workspace | null = workspaces[0] ?? null;
   const workspaceId = currentWorkspace?.url ?? 'flux';
@@ -40,7 +36,7 @@ export default function Topbar() {
         </button>
       </div>
 
-      {/* Right: Inbox + User menu */}
+      {/* Right: Inbox */}
       <div className='flex items-center gap-2 shrink-0'>
         <TooltipProvider delayDuration={150}>
           <Tooltip>
@@ -58,8 +54,6 @@ export default function Topbar() {
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-
-        <AccountDropdown />
       </div>
     </nav>
   );

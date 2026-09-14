@@ -16,6 +16,7 @@ import {
   Plus,
   PanelRight,
   X,
+  LucideIcon,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -69,7 +70,7 @@ export type SectionId = InspectorSectionId;
 interface SectionDefinition {
   id: SectionId;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }>;
 }
 
 
@@ -98,7 +99,7 @@ const DEFAULT_COLLAPSED_SECTIONS: Record<SectionId, boolean> = {
 interface InspectorSectionHeaderProps {
   id: SectionId;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }>;
   count?: number;
   isOpen: boolean;
   hasAdd?: boolean;
@@ -130,7 +131,7 @@ function InspectorSectionHeader({
     >
       <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
         <div className="size-4 shrink-0 flex items-center justify-center">
-          <Icon className="size-4 text-foreground shrink-0" />
+          <Icon className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
         </div>
         <span className="truncate text-13 text-foreground font-sans font-medium tracking-tight">
           {label}{count !== undefined && count > 0 && <span className="text-11 font-normal text-muted-foreground font-mono tabular-nums ml-1">({count})</span>}
@@ -154,7 +155,7 @@ function InspectorSectionHeader({
                 className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
                 aria-label={`Add ${label}`}
               >
-                <Plus className="size-3.5 text-foreground shrink-0" />
+                <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
               </button>
             </TooltipTrigger>
             <TooltipContent side="left">Add {label}</TooltipContent>
@@ -177,6 +178,7 @@ function InspectorSectionHeader({
                   "size-3.5 text-foreground shrink-0",
                   paper && isOpen && "rotate-180"
                 )}
+                strokeWidth={1.5}
               />
             </button>
           </TooltipTrigger>
@@ -678,7 +680,7 @@ export default function InspectorPanel({
                   className="md:hidden p-1.5 rounded-md text-foreground hover:bg-muted cursor-pointer"
                   aria-label="Close inspector"
                 >
-                  <X className="size-4 shrink-0 text-foreground" />
+                  <X className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                 </button>
               </header>
             ) : (
@@ -690,7 +692,7 @@ export default function InspectorPanel({
                   className="md:hidden p-1.5 rounded-md text-foreground hover:bg-muted cursor-pointer"
                   aria-label="Close inspector"
                 >
-                  <X className="size-4 shrink-0 text-foreground" />
+                  <X className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                 </button>
               </header>
             )}
@@ -829,13 +831,13 @@ export default function InspectorPanel({
                     paper ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button
+                            <button
                             type="button"
                             onClick={(e) => e.stopPropagation()}
                             className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
                             aria-label="Add to collection"
                           >
-                            <Plus className="size-3.5 text-foreground shrink-0" />
+                            <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
@@ -848,7 +850,7 @@ export default function InspectorPanel({
                             }}
                             className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-muted text-foreground"
                           >
-                            <FolderPlus className="size-3.5 text-foreground shrink-0" />
+                            <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                             <span>Create Collection</span>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
@@ -860,7 +862,7 @@ export default function InspectorPanel({
                               }}
                               className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-muted text-foreground"
                             >
-                              <Folder className="size-3.5 text-foreground shrink-0" />
+                              <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                               <span className="truncate">{col.name}</span>
                             </DropdownMenuItem>
                           ))}
@@ -980,7 +982,7 @@ export default function InspectorPanel({
               className="size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary text-foreground hover:bg-muted cursor-pointer"
               aria-label={isInspectorOpen ? "Collapse panel" : "Expand panel"}
             >
-              <PanelRight className="size-4 text-foreground shrink-0" />
+              <PanelRight className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
             </button>
           </div>
 
@@ -1001,7 +1003,7 @@ export default function InspectorPanel({
                 className="size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary text-foreground hover:bg-muted cursor-pointer"
                 aria-label={sec.label}
               >
-                <Icon className="size-4 text-foreground shrink-0" />
+                <Icon className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
               </button>
             );
           })}

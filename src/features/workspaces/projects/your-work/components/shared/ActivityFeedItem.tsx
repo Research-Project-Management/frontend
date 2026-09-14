@@ -4,26 +4,27 @@ import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { getTaskProject, type ProjectMap } from '../../utils/your-work.util';
+import { getWorkItemProject, type ProjectMap } from '../../utils/your-work.util';
 import type { YourWorkActivityEvent } from '../../schemas/your-work.schema';
 
 export interface ActivityFeedItemProps {
   activity: YourWorkActivityEvent | any;
-  onTaskClick?: (taskId: string) => void;
-  taskProjectMap?: ProjectMap;
+  onWorkItemClick?: (workItemId: string) => void;
+  workItemProjectMap?: ProjectMap;
   className?: string;
 }
 
 export function ActivityFeedItem({
   activity,
-  onTaskClick,
-  taskProjectMap = {},
+  onWorkItemClick,
+  workItemProjectMap = {},
   className,
 }: ActivityFeedItemProps) {
-  const isTaskRelated =
+  const isWorkItemRelated =
     activity.itemId &&
-    (activity.type?.startsWith('task') ||
-      activity.type?.includes('task') ||
+    (activity.type?.startsWith('work_item') ||
+      activity.type?.includes('work_item') ||
+      activity.type?.includes('item') ||
       !activity.type);
 
   const timeDate = activity.time ? new Date(activity.time) : new Date();
@@ -36,7 +37,7 @@ export function ActivityFeedItem({
         ? activity.project.name || null
         : activity.project;
   } else if (activity.itemId) {
-    const proj = getTaskProject(activity, taskProjectMap);
+    const proj = getWorkItemProject(activity, workItemProjectMap);
     if (proj) projectName = proj.name;
   }
 
@@ -45,13 +46,13 @@ export function ActivityFeedItem({
   const actionVerb = activity.actionVerb || activity.verb || 'updated';
 
   const handleClick = () => {
-    if (isTaskRelated && activity.itemId) {
-      onTaskClick?.(activity.itemId);
+    if (isWorkItemRelated && activity.itemId) {
+      onWorkItemClick?.(activity.itemId);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (isTaskRelated && (e.key === 'Enter' || e.key === ' ')) {
+    if (isWorkItemRelated && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault();
       handleClick();
     }
@@ -59,13 +60,13 @@ export function ActivityFeedItem({
 
   return (
     <div
-      role={isTaskRelated ? 'button' : undefined}
-      tabIndex={isTaskRelated ? 0 : undefined}
+      role={isWorkItemRelated ? 'button' : undefined}
+      tabIndex={isWorkItemRelated ? 0 : undefined}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(
         'flex items-start gap-3.5 px-5 py-4 transition-colors text-left select-none',
-        isTaskRelated
+        isWorkItemRelated
           ? 'hover:bg-muted focus-visible:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer group'
           : '',
         className,

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { taskPrioritySchema } from "./core.schema";
+import { workItemPrioritySchema } from "./core.schema";
 
 // ── Create Template DTO Schema (Matches CreateTemplateDto) ───────────────────
 export const createTemplateDtoSchema = z.object({
@@ -7,7 +7,7 @@ export const createTemplateDtoSchema = z.object({
   description: z.string().optional(),
   title: z.string().optional(),
   content: z.string().optional(),
-  priority: taskPrioritySchema.optional().default("none"),
+  priority: workItemPrioritySchema.optional().default("none"),
   labelIds: z.array(z.string()).optional(),
   labels: z.array(z.string()).optional(),
   assigneeIds: z.array(z.string()).optional(),
@@ -32,7 +32,7 @@ export const instantiateTemplateDtoSchema = z.object({
   cycleId: z.string().optional(),
   assigneeId: z.string().optional(),
   assigneeIds: z.array(z.string()).optional(),
-  priority: taskPrioritySchema.optional(),
+  priority: workItemPrioritySchema.optional(),
   overrides: z.record(z.string(), z.any()).optional(),
 });
 export type InstantiateTemplateDtoInput = z.infer<typeof instantiateTemplateDtoSchema>;

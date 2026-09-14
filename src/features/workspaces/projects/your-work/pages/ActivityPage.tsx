@@ -7,18 +7,18 @@ import { YourWorkPageLayout } from '../components/shared/YourWorkPageLayout';
 
 export function ActivityPage() {
   const { state } = useActivityFeed();
-  const { allTasks, activities, taskProjectMap, isLoading, isLoadingActivity } = state;
+  const { allWorkItems, activities, workItemProjectMap, isLoading, isLoadingActivity } = state;
 
   return (
     <YourWorkPageLayout
       isLoading={isLoading}
-      allTasks={allTasks}
-      renderList={(handleOpenTask) => (
+      allWorkItems={allWorkItems}
+      renderList={(handleOpenItem) => (
         <ActivityTimeline
           activities={activities}
           isLoading={isLoadingActivity}
-          onTaskClick={handleOpenTask}
-          taskProjectMap={taskProjectMap}
+          onWorkItemClick={handleOpenItem}
+          workItemProjectMap={workItemProjectMap}
         />
       )}
     />

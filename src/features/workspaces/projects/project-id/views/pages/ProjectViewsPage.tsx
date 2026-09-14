@@ -30,7 +30,7 @@ import {
   DialogDescription,
 } from "@/shared/components/ui";
 import { DeleteModal } from '@/features/workspaces/settings/components/modal/DeleteModal';
-import { Switcher } from '@/features/workspaces/projects/project-id/components/layout';
+import { Switcher } from '@/features/workspaces/projects/project-id/components/layout/Switcher';
 import { cn } from "@/shared/lib/utils";
 import { useProjectViews } from '../hooks/use-view';
 import type {
@@ -369,7 +369,7 @@ export function ProjectViewsPage() {
                   <div className="flex items-center gap-4 shrink-0" onClick={(e) => e.stopPropagation()}>
                     {view.createdBy && (
                       <div className="hidden md:flex items-center gap-2">
-                        <Avatar className="size-5">
+                        <Avatar className="size-5 shrink-0">
                           <AvatarImage src={view.createdBy.avatar || undefined} />
                           <AvatarFallback className="text-9">
                             {view.createdBy.name?.charAt(0) || 'U'}

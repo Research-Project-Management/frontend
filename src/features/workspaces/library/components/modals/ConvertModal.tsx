@@ -112,28 +112,28 @@ export function ConvertModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[440px] p-6 font-sans gap-5">
+      <DialogContent className="max-w-[480px] p-5 rounded-md border border-border bg-background shadow-none font-sans gap-4">
         <DialogHeader className="gap-1.5 text-left">
           <div className="flex items-center gap-2 text-primary">
-            <ArrowLeftRight className="size-4.5 shrink-0" />
-            <DialogTitle className="text-base font-semibold text-foreground">
+            <ArrowLeftRight className="size-4 shrink-0" strokeWidth={1.5} />
+            <DialogTitle className="text-14 font-medium text-foreground">
               Convert Item Type
             </DialogTitle>
           </div>
-          <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
+          <DialogDescription className="text-12 text-muted-foreground leading-relaxed">
             Change the bibliographic classification for this reference.
           </DialogDescription>
         </DialogHeader>
 
         {/* Type Transition Card */}
-        <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/40 text-xs">
+        <div className="flex items-center justify-between p-3 rounded-md border border-border bg-muted/40 text-xs">
           <div className="space-y-0.5 min-w-0">
             <span className="text-11 font-medium text-muted-foreground block">
               Current
             </span>
             <p className="font-semibold text-foreground truncate">{sourceTypeName}</p>
           </div>
-          <ArrowRight className="size-4 text-muted-foreground shrink-0 mx-3" />
+          <ArrowRight className="size-4 text-muted-foreground shrink-0 mx-3" strokeWidth={1.5} />
           <div className="space-y-0.5 text-right min-w-0">
             <span className="text-11 font-medium text-muted-foreground block">
               Target
@@ -160,9 +160,9 @@ export function ConvertModal({
               <span>Checking field compatibility…</span>
             </div>
           ) : hasLoss && droppedWithValues.length > 0 ? (
-            <div className="space-y-2.5 p-3.5 rounded-lg border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/60 dark:bg-amber-950/20 text-xs">
+            <div className="space-y-2.5 p-3.5 rounded-md border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/60 dark:bg-amber-950/20 text-xs">
               <div className="flex items-center gap-1.5 text-amber-900 dark:text-amber-200 font-medium">
-                <AlertTriangle className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                <AlertTriangle className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" strokeWidth={1.5} />
                 <span>Unmapped fields preserved in Extra</span>
               </div>
               <p className="text-11 text-amber-800/90 dark:text-amber-300/80 leading-normal">
@@ -180,8 +180,8 @@ export function ConvertModal({
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2 p-3 rounded-lg border border-emerald-200/80 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 text-xs">
-              <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <div className="flex items-center gap-2 p-3 rounded-md border border-emerald-200/80 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 text-xs">
+              <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" strokeWidth={1.5} />
               <span>All existing fields are fully compatible with this type.</span>
             </div>
           )}
@@ -196,7 +196,7 @@ export function ConvertModal({
             />
             <Label
               htmlFor="retain-extra-fields"
-              className="text-xs text-muted-foreground font-normal cursor-pointer select-none"
+              className="text-12 text-muted-foreground font-normal cursor-pointer select-none"
             >
               Preserve unmapped values in Extra notes
             </Label>
@@ -211,7 +211,7 @@ export function ConvertModal({
             size="sm"
             onClick={() => onOpenChange(false)}
             disabled={isConverting}
-            className="h-8 text-xs"
+            className="h-8 px-3 text-12 font-medium rounded-md border-border"
           >
             Cancel
           </Button>
@@ -220,7 +220,7 @@ export function ConvertModal({
             size="sm"
             onClick={handleConfirm}
             disabled={isConverting || isLoadingPreview}
-            className="h-8 text-xs gap-1.5 min-w-[100px]"
+            className="h-8 px-3 text-12 font-medium rounded-md gap-1.5 min-w-[100px]"
           >
             {isConverting && <Loader2 className="size-3 animate-spin shrink-0" />}
             <span>Convert Type</span>

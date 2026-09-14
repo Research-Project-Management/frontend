@@ -1,19 +1,19 @@
 import { z } from "zod";
 
-// ── Assign Task DTO Schema (Matches AssignTaskDto) ────────────────────────────
-export const assignTaskDtoSchema = z.object({
+// ── Assign Work Item DTO Schema (Matches AssignWorkItemDto) ───────────────────
+export const assignWorkItemDtoSchema = z.object({
   assigneeId: z.string().nullable().optional(),
   assignee: z.string().nullable().optional(),
 });
-export type AssignTaskDtoInput = z.infer<typeof assignTaskDtoSchema>;
+export type AssignWorkItemDtoInput = z.infer<typeof assignWorkItemDtoSchema>;
 
-// ── Bulk Assign Task DTO Schema (Matches BulkAssignTaskDto) ───────────────────
-export const bulkAssignTaskDtoSchema = z.object({
-  taskIds: z.array(z.string()).min(1, "At least one WorkItem ID must be provided"),
+// ── Bulk Assign Work Item DTO Schema (Matches BulkAssignWorkItemDto) ───────────
+export const bulkAssignWorkItemDtoSchema = z.object({
+  workItemIds: z.array(z.string()).min(1, "At least one WorkItem ID must be provided"),
   assigneeId: z.string().nullable().optional(),
   assignee: z.string().nullable().optional(),
 });
-export type BulkAssignTaskDtoInput = z.infer<typeof bulkAssignTaskDtoSchema>;
+export type BulkAssignWorkItemDtoInput = z.infer<typeof bulkAssignWorkItemDtoSchema>;
 
 // ── Set Assignees DTO Schema (Matches SetAssigneesDto) ────────────────────────
 export const setAssigneesDtoSchema = z.object({

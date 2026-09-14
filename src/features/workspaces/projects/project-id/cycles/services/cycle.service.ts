@@ -43,8 +43,8 @@ export const CycleService = {
   getProgress: (cycleId: string) =>
     apiGet<unknown>(`/api/cycles/${cycleId}/progress`),
 
-  addTasksBatch: (cycleId: string, taskIds: string[]) =>
-    apiPost<{ message: string; count: number }>(`/api/cycles/${cycleId}/work-items/batch`, { taskIds }),
+  addWorkItemsBatch: (cycleId: string, itemIds: string[]) =>
+    apiPost<{ message: string; count: number }>(`/api/cycles/${cycleId}/work-items/batch`, { itemIds, workItemIds: itemIds }),
 
   autoTransition: (projectId: string) =>
     apiPost<{ startedCycle: Cycle | null; completedCycle: Cycle | null }>(`/api/projects/${projectId}/cycles/auto-transition`),

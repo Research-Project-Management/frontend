@@ -15,8 +15,12 @@ import {
   Star,
   Share2,
   Link2,
-  SlidersHorizontal,
   FileText,
+  Briefcase,
+  Layers,
+  BarChart3,
+  Pin,
+  PinOff,
 } from 'lucide-react';
 import { motion, LayoutGroup } from 'framer-motion';
 import { toast } from 'sonner';
@@ -24,6 +28,12 @@ import { logger } from '@/shared/lib/logger';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  ProjectAvatar,
+} from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 import {
   AddWorkItemIcon,
@@ -40,20 +50,20 @@ import { useProject } from '@/features/workspaces/projects/project-id/work-items
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ProjectModuleKey = 'work-items' | 'pages' | 'cycles' | 'views';
+type ProjectModuleKey = 'work-items' | 'views' | 'pages' | 'cycles';
 
 const MODULE_ORDER: ProjectModuleKey[] = [
   'work-items',
+  'views',
   'pages',
   'cycles',
-  'views',
 ];
 
 const modulesConfig: Record<ProjectModuleKey, { label: string; icon: React.ComponentType<any>; path: string }> = {
   'work-items': { label: 'Work items', icon: WorkItemsIcon, path: 'work-items' },
+  'views':      { label: 'Views',      icon: Layers,        path: 'views' },
   'pages':      { label: 'Pages',      icon: FileText,      path: 'pages' },
   'cycles':     { label: 'Cycles',     icon: CycleIcon,     path: 'cycles' },
-  'views':      { label: 'Views',      icon: SlidersHorizontal, path: 'views' },
 };
 
 type NavItem = {
@@ -92,8 +102,78 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   ];
 
   // Collapsible section open states
+  const [workspaceSectionOpen, setWorkspaceSectionOpen] = useState(true);
   const [favoritesSectionOpen, setFavoritesSectionOpen] = useState(true);
   const [projectsSectionOpen, setProjectsSectionOpen] = useState(true);
+
+  // Hidden items in Workspace section (persisted)
+  const [hiddenWorkspaceItems, setHiddenWorkspaceItems] = useState<Set<string>>(() => new Set<string>());
+  const [isHidePopoverOpen, setIsHidePopoverOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('sidebar_hidden_workspace_items');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setHiddenWorkspaceItems(new Set(parsed.filter((item): item is string => typeof item === 'string')));
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  const toggleHideWorkspaceItem = (itemId: string) => {
+    setHiddenWorkspaceItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      try {
+        localStorage.setItem('sidebar_hidden_workspace_items', JSON.stringify(Array.from(next)));
+      } catch (e) {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  const workspaceItems = useMemo(
+    () => [
+      {
+        id: 'projects',
+        label: 'Projects',
+        icon: Briefcase,
+        to: '/projects',
+        canHide: false,
+      },
+      {
+        id: 'views',
+        label: 'Views',
+        icon: Layers,
+        to: activeProjectId ? `/projects/${activeProjectId}/views` : '/projects/views',
+        canHide: true,
+      },
+      {
+        id: 'analytics',
+        label: 'Analytics',
+        icon: BarChart3,
+        to: '/projects/analytics',
+        canHide: true,
+      },
+      {
+        id: 'archives',
+        label: 'Archives',
+        icon: Archive,
+        to: '/projects/archives',
+        canHide: true,
+      },
+    ],
+    [activeProjectId]
+  );
 
   // ── Favorite projects (persisted & synchronized across views) ─────────────
   const { favoriteIds: favoriteProjectIds, toggleFavorite } = useFavorites();
@@ -160,6 +240,8 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
     const isProjActive = pathname.includes(`/projects/${projId}`);
     const isFavorited = favoriteProjectIds.has(projId);
 
+    const isProjExactActive = pathname === `/projects/${projId}` || pathname === `/projects/${projId}/`;
+
     return (
       <Collapsible
         className="w-full group/project-row"
@@ -170,7 +252,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         <div
           className={cn(
             "group/row flex h-8 w-full items-center justify-between gap-1.5 rounded-md px-2.5 transition-colors select-none outline-none",
-            isProjActive
+            isProjExactActive
               ? "bg-muted text-foreground font-medium"
               : "text-foreground hover:bg-muted font-normal"
           )}
@@ -179,11 +261,11 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
             href={`/projects/${projId}`}
             className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left text-13 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
-            <span className="shrink-0 text-sm leading-none">{project.avatar || '📁'}</span>
+            <ProjectAvatar avatar={project.avatar} name={project.name} id={projId} size="xs" />
             <span
               className={cn(
                 "min-w-0 truncate text-13 tracking-tight text-foreground",
-                isProjActive ? "font-medium" : "font-normal"
+                isProjExactActive ? "font-medium" : "font-normal"
               )}
             >
               {project.name}
@@ -320,7 +402,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           {(() => {
             const rawModules: string[] =
               projectModules && projectModules.length > 0
-                ? projectModules.map((m: string) => (m === 'tasks' ? 'work-items' : m))
+                ? projectModules.map((m: string) => m)
                 : ['work-items', 'pages', 'cycles', 'views'];
             const activeSet = new Set(rawModules);
 
@@ -339,9 +421,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                 pathname.startsWith(link + '/') ||
                 (moduleKey === 'work-items' &&
                   (pathname === `/projects/${projId}` ||
-                    pathname === `/projects/${projId}/` ||
-                    pathname === `/projects/${projId}/tasks` ||
-                    pathname.startsWith(`/projects/${projId}/tasks/`)));
+                    pathname === `/projects/${projId}/`));
               return (
                 <Link
                   href={link}
@@ -370,77 +450,197 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
     <aside className="flex flex-col h-full w-60 overflow-hidden border-r border-border bg-transparent p-2 py-3 select-none">
       {/* Header */}
       <div className="mb-2 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground shrink-0">
-        <span>Projects</span>
-        <TooltipProvider delayDuration={150}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={onToggle}
-                aria-label="Toggle sidebar"
-                className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
-              >
-                <PanelLeft className="size-4 text-foreground shrink-0" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={6}>
-              Toggle sidebar
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <span className="text-14 font-semibold text-foreground">Projects</span>
+        <div className="flex items-center gap-0.5">
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onToggle}
+                  aria-label="Toggle sidebar"
+                  className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                >
+                  <PanelLeft className="size-4 text-foreground shrink-0" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={6}>
+                Toggle sidebar
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
 
       {/* Quick Action: New Work Item */}
-      <div className="mb-2 px-1 shrink-0">
+      <div className="mb-2 shrink-0">
         <button
           type="button"
           onClick={() => setIsCreateWorkItemOpen(true)}
-          className="group flex h-8 w-full items-center gap-2 rounded-md border border-border/80 bg-background hover:bg-muted/70 px-2.5 text-13 font-medium text-foreground transition-all cursor-pointer shadow-xs active:scale-[0.99] outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className="flex h-8 w-full items-center gap-2 rounded-md border border-border bg-background px-2.5 text-13 font-medium text-foreground cursor-pointer shadow-2xs outline-none focus-visible:ring-1 focus-visible:ring-primary"
         >
-          <AddWorkItemIcon className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+          <AddWorkItemIcon className="size-4 shrink-0 text-foreground" />
           <span className="tracking-tight">New work item</span>
         </button>
       </div>
 
-      {/* Nav items: strictly (home, drafts, your work, sticky) */}
-      <div className="shrink-0 mb-3">
-        <LayoutGroup id={`sb-nav-${id}`}>
-          <nav className="flex flex-col gap-1">
-            {navItems.map((item) => {
-              const active = isActive(item);
-              return (
-                <Link
-                  href={item.to}
-                  key={item.label}
-                  className={cn(
-                    "group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none",
-                    active
-                      ? "bg-muted text-foreground font-medium"
-                      : "text-foreground hover:bg-muted font-normal"
-                  )}
-                >
-                  {active && (
-                    <motion.div
-                      layoutId={`sb-nav-active-${id}`}
-                      className="absolute inset-0 rounded-md bg-muted"
-                      initial={false}
-                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                    />
-                  )}
-                  <item.icon
-                    className="relative z-10 size-4 shrink-0 text-foreground"
-                  />
-                  <span className="relative z-10 min-w-0 truncate tracking-tight">
-                    {item.label}
-                  </span>
-                </Link>
-              );
-            })}
-          </nav>
-        </LayoutGroup>
-      </div>
-
-      {/* Middle Scrollable Section: Favorites & Projects */}
+      {/* Scrollable Section: All Navigation below New Work Item */}
       <div className="flex-1 min-h-0 overflow-y-auto sidebar-scrollbar flex flex-col gap-2">
+        {/* Nav items: strictly (home, drafts, your work, sticky) */}
+        <div className="shrink-0">
+          <LayoutGroup id={`sb-nav-${id}`}>
+            <nav className="flex flex-col gap-1">
+              {navItems.map((item) => {
+                const active = isActive(item);
+                return (
+                  <Link
+                    href={item.to}
+                    key={item.label}
+                    className={cn(
+                      "group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none",
+                      active
+                        ? "bg-muted text-foreground font-medium"
+                        : "text-foreground hover:bg-muted font-normal"
+                    )}
+                  >
+                    {active && (
+                      <motion.div
+                        layoutId={`sb-nav-active-${id}`}
+                        className="absolute inset-0 rounded-md bg-muted"
+                        initial={false}
+                        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                      />
+                    )}
+                    <item.icon
+                      className="relative z-10 size-4 shrink-0 text-foreground"
+                    />
+                    <span className="relative z-10 min-w-0 truncate tracking-tight">
+                      {item.label}
+                    </span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </LayoutGroup>
+        </div>
+
+        {/* Workspace section */}
+        <Collapsible
+          open={workspaceSectionOpen}
+          onOpenChange={setWorkspaceSectionOpen}
+          className="select-none"
+        >
+          <div className="group flex items-center justify-between h-8 px-2.5 rounded-md text-13 font-medium text-muted-foreground hover:bg-muted transition-colors duration-200 cursor-pointer">
+            <CollapsibleTrigger asChild>
+              <button className="flex-1 text-left text-13 font-medium text-inherit cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors duration-200">
+                Workspace
+              </button>
+            </CollapsibleTrigger>
+
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={workspaceSectionOpen ? "Collapse workspace" : "Expand workspace"}
+                      className="size-6 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-sidebar-accent transition-all duration-150 active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    >
+                      <ChevronDown
+                        className={cn(
+                          "size-3.5 text-inherit transition-transform duration-200",
+                          workspaceSectionOpen ? "" : "-rotate-90"
+                        )}
+                      />
+                    </button>
+                  </CollapsibleTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6}>
+                  {workspaceSectionOpen ? "Collapse workspace" : "Expand workspace"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+
+          <CollapsibleContent className="overflow-hidden mt-1">
+            <div className="flex flex-col gap-1">
+              {workspaceItems
+                .filter((item) => !hiddenWorkspaceItems.has(item.id))
+                .map((item) => {
+                  const ItemIcon = item.icon;
+                  const active =
+                    item.to === '/projects'
+                      ? pathname === '/projects' || pathname === '/projects/'
+                      : pathname === item.to || pathname.startsWith(item.to + '/');
+
+                  return (
+                    <Link
+                      key={item.id}
+                      href={item.to}
+                      className={cn(
+                        "group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none",
+                        active
+                          ? "bg-muted text-foreground font-medium"
+                          : "text-foreground hover:bg-muted font-normal"
+                      )}
+                    >
+                      <ItemIcon className="size-4 shrink-0 text-foreground" />
+                      <span className="min-w-0 truncate tracking-tight">{item.label}</span>
+                    </Link>
+                  );
+                })}
+
+              {/* Hide / Customize Trigger */}
+              <Popover open={isHidePopoverOpen} onOpenChange={setIsHidePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="group flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none cursor-pointer"
+                  >
+                    <MoreHorizontal className="size-4 shrink-0" />
+                    <span className="min-w-0 truncate tracking-tight">Hide</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  side="right"
+                  align="start"
+                  sideOffset={8}
+                  className="w-56 p-1.5 border border-border bg-popover text-popover-foreground rounded-lg shadow-raised-200 z-50 text-xs"
+                >
+                  <div className="space-y-0.5">
+                    {workspaceItems
+                      .filter((item) => item.canHide)
+                      .map((item) => {
+                        const ItemIcon = item.icon;
+                        const isHidden = hiddenWorkspaceItems.has(item.id);
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => toggleHideWorkspaceItem(item.id)}
+                            className="flex w-full items-center justify-between gap-2 px-2.5 py-2 rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer text-left text-13 group"
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              <ItemIcon className="size-4 shrink-0 text-foreground" />
+                              <span className="truncate">{item.label}</span>
+                            </div>
+                            {isHidden ? (
+                              <Pin
+                                className="size-4 shrink-0 text-muted-foreground/40 group-hover:text-foreground transition-colors"
+                              />
+                            ) : (
+                              <PinOff
+                                className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors"
+                              />
+                            )}
+                          </button>
+                        );
+                      })}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
         {/* Favorites section (only rendered when user has favorited projects) */}
         {favoriteProjects.length > 0 && (
           <Collapsible
@@ -605,7 +805,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
               toast.error('Work item title is required');
               return;
             }
-            await activeProjectActions.createTask({
+            await (activeProjectActions.createWorkItem || activeProjectActions.create)({
               ...formData,
               title: itemTitle,
               projectId: targetProjId,

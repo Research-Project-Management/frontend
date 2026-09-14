@@ -17,12 +17,12 @@ export const relationKeys = {
  */
 export function useRelations(scopeId?: string, itemId?: string) {
   const queryClient = useQueryClient();
-  const effectiveItemId = itemId || scopeId || '';
+  const effectiveItemId = itemId || '';
 
   const relationsQuery = useQuery({
     queryKey: relationKeys.all(scopeId, effectiveItemId),
     queryFn: () => RelationService.getRelated(scopeId || '', effectiveItemId),
-    enabled: Boolean(effectiveItemId),
+    enabled: Boolean(effectiveItemId && effectiveItemId !== 'user'),
     select: (data) => ({
       items: data.relatedItems || (data as any).relatedPapers || [],
       total: data.total || 0,

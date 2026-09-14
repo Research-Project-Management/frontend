@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { taskPrioritySchema } from "./core.schema";
+import { workItemPrioritySchema } from "./core.schema";
 
 // ── Create Draft DTO Schema (Matches CreateDraftDto) ─────────────────────────
 export const createDraftDtoSchema = z.object({
@@ -8,11 +8,11 @@ export const createDraftDtoSchema = z.object({
   description: z.string().optional(),
   content: z.string().optional(),
   columnId: z.string().optional(),
-  priority: taskPrioritySchema.optional(),
+  priority: workItemPrioritySchema.optional(),
   startDate: z.string().nullable().optional(),
   dueDate: z.string().nullable().optional(),
   cycleId: z.string().nullable().optional(),
-  parentTaskId: z.string().nullable().optional(),
+  parentWorkItemId: z.string().nullable().optional(),
   labels: z.array(z.string()).optional(),
   assigneeId: z.string().nullable().optional(),
   assigneeIds: z.array(z.string()).optional(),
@@ -31,7 +31,7 @@ export const publishDraftDtoSchema = z.object({
   columnId: z.string().optional(),
   cycleId: z.string().optional(),
   title: z.string().optional(),
-  priority: taskPrioritySchema.optional(),
+  priority: workItemPrioritySchema.optional(),
 });
 export type PublishDraftDtoInput = z.infer<typeof publishDraftDtoSchema>;
 

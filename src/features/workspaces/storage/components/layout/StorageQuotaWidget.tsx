@@ -78,7 +78,7 @@ export function StorageQuotaWidget({
                   <span className="absolute -top-1 -right-1 flex size-2 rounded-full bg-primary ring-1 ring-background" />
                 )}
               </div>
-              <span className="text-[10px] font-medium tracking-tight mt-0.5 text-muted-foreground group-hover:text-foreground">
+              <span className="text-10 font-medium tracking-tight mt-0.5 text-muted-foreground group-hover:text-foreground">
                 {percentage}%
               </span>
             </Link>
@@ -89,18 +89,18 @@ export function StorageQuotaWidget({
               <span>{isProjectScope ? 'Dung lượng Dự án' : 'Dung lượng cá nhân'}</span>
             </div>
             {isProjectScope && ownerName && (
-              <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+              <p className="text-11 text-muted-foreground flex items-center gap-1">
                 <Crown className="size-3 text-amber-500 shrink-0" />
                 <span>Chủ trì: <strong>{ownerName}</strong></span>
               </p>
             )}
             <Progress value={percentage} className={cn('h-1.5', progressColorClass)} />
-            <div className="flex justify-between text-[11px] text-muted-foreground pt-0.5">
+            <div className="flex justify-between text-11 text-muted-foreground pt-0.5">
               <span>{usedFormatted} / {limitFormatted}</span>
               <span>{percentage}%</span>
             </div>
             {isProjectScope && (
-              <p className="text-[10px] text-muted-foreground/80 italic border-t border-border/50 pt-1">
+              <p className="text-10 text-muted-foreground/80 italic border-t border-border/50 pt-1">
                 Dung lượng tính vào tài khoản Chủ trì đề tài
               </p>
             )}
@@ -129,14 +129,14 @@ export function StorageQuotaWidget({
         {isProjectScope ? (
           <Badge
             variant="outline"
-            className="text-[10px] px-1.5 py-0 h-4 border-primary/30 bg-primary/10 text-primary font-normal shrink-0"
+            className="text-10 px-1.5 py-0 h-4 border-primary/30 bg-primary/10 text-primary font-normal shrink-0"
           >
             Dự án
           </Badge>
         ) : (
           <Badge
             variant="outline"
-            className="text-[10px] px-1.5 py-0 h-4 border-border text-muted-foreground font-normal shrink-0"
+            className="text-10 px-1.5 py-0 h-4 border-border text-muted-foreground font-normal shrink-0"
           >
             Cá nhân
           </Badge>
@@ -145,7 +145,7 @@ export function StorageQuotaWidget({
 
       {/* Project Owner Attribution (Chủ trì đề tài) */}
       {isProjectScope && (
-        <div className="flex items-center gap-1 text-[11px] text-muted-foreground bg-muted/50 rounded px-1.5 py-0.5">
+        <div className="flex items-center gap-1 text-11 text-muted-foreground bg-muted/50 rounded px-1.5 py-0.5">
           <Crown className="size-3 text-amber-500 shrink-0" />
           <span className="truncate">
             Chủ trì: <strong className="text-foreground font-medium">{ownerName || 'Chủ trì đề tài'}</strong>
@@ -177,7 +177,7 @@ export function StorageQuotaWidget({
           aria-label={`Storage used ${percentage}%`}
         />
 
-        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+        <div className="flex items-center justify-between text-11 text-muted-foreground">
           <span className="tabular-nums">
             {usedFormatted} <span className="text-muted-foreground/60">/</span> {limitFormatted}
           </span>
@@ -189,7 +189,7 @@ export function StorageQuotaWidget({
 
       {/* Secondary stat: Project-specific usage if inside project */}
       {isProjectScope && projectFormatted && (
-        <div className="text-[10px] text-muted-foreground/90 flex justify-between border-t border-border/40 pt-1">
+        <div className="text-10 text-muted-foreground/90 flex justify-between border-t border-border/40 pt-1">
           <span>Dữ liệu dự án này:</span>
           <span className="font-medium text-foreground">{projectFormatted}</span>
         </div>
@@ -197,7 +197,7 @@ export function StorageQuotaWidget({
 
       {/* Warning Alert if near quota */}
       {isDanger && (
-        <div className="flex items-center gap-1 text-[11px] text-destructive bg-destructive/10 rounded px-1.5 py-0.5 mt-0.5">
+        <div className="flex items-center gap-1 text-11 text-destructive bg-destructive/10 rounded px-1.5 py-0.5 mt-0.5">
           <AlertTriangle className="size-3 shrink-0" />
           <span className="truncate">Dung lượng sắp hết (&gt;95%)</span>
         </div>

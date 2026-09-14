@@ -27,7 +27,6 @@ export const useActivityLogs = (id: string) =>
     enabled: Boolean(id),
   });
 
-export const useTaskActivityLogs = useActivityLogs;
 export const useWorkItemActivityLogs = useActivityLogs;
 
 export const useItemHistory = (id: string) =>
@@ -43,7 +42,7 @@ export const useItemHistory = (id: string) =>
     enabled: Boolean(id),
   });
 
-export const useTaskHistory = useItemHistory;
+export const useWorkItemHistory = useItemHistory;
 
 export const useItemFeed = (id: string) =>
   useQuery({

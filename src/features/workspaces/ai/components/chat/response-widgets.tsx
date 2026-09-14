@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2, CircleDot, Clock3, ListTodo, UserRound, type LucideIcon } from 'lucide-react';
 import type { AgentAction, ResponseWidget } from '../../types/chat.types';
 
-type TaskLike = {
+type WorkItemLike = {
   id?: string;
   title?: string;
   priority?: string;
@@ -38,50 +38,50 @@ function normalizePriority(priority?: string) {
   return { label: 'None', className: 'bg-muted text-muted-foreground' };
 }
 
-function normalizeTask(task: TaskLike) {
+function normalizeWorkItem(item: WorkItemLike) {
   return {
-    id: task.id,
-    title: task.title || 'Untitled task',
-    priority: task.priority || 'none',
-    assignee: task.assignee?.name || '',
-    dueDate: task.dueDate || null,
-    isOverdue: Boolean(task.isOverdue),
-    completed: Boolean(task.completed),
-    project: task.project ? { name: task.project.name || 'Unknown Project', avatar: task.project.avatar } : null,
+    id: item.id,
+    title: item.title || 'Untitled work item',
+    priority: item.priority || 'none',
+    assignee: item.assignee?.name || '',
+    dueDate: item.dueDate || null,
+    isOverdue: Boolean(item.isOverdue),
+    completed: Boolean(item.completed),
+    project: item.project ? { name: item.project.name || 'Unknown Project', avatar: item.project.avatar } : null,
   };
 }
 
-function buildTaskWidget(tool: string, output: Record<string, unknown>): ResponseWidget | null {
+function buildWorkItemWidget(tool: string, output: Record<string, unknown>): ResponseWidget | null {
   const rawColumns = asRecord(output.columns);
-  const rawTasks = Array.isArray(output.tasks) ? (output.tasks as TaskLike[]) : [];
+  const rawItems = Array.isArray(output.workItems) ? (output.workItems as WorkItemLike[]) : Array.isArray(output.items) ? (output.items as WorkItemLike[]) : [];
 
-  if (!rawColumns && rawTasks.length === 0) return null;
+  if (!rawColumns && rawItems.length === 0) return null;
 
   const groups = rawColumns
     ? Object.entries(rawColumns)
-        .map(([columnName, tasks]) => ({
+        .map(([columnName, items]) => ({
           label: columnName,
-          tasks: Array.isArray(tasks) ? tasks.map((task) => normalizeTask(task as TaskLike)) : [],
+          workItems: Array.isArray(items) ? items.map((item) => normalizeWorkItem(item as WorkItemLike)) : [],
         }))
-        .filter((group) => group.tasks.length > 0)
+        .filter((group) => group.workItems.length > 0)
     : [
         {
-          label: tool === 'get_my_tasks' ? 'Assigned to you' : 'Tasks',
-          tasks: rawTasks.map(normalizeTask),
+          label: tool === 'get_my_work_items' ? 'Assigned to you' : 'Work Items',
+          workItems: rawItems.map(normalizeWorkItem),
         },
       ];
 
-  const allTasks = groups.flatMap((group) => group.tasks);
-  const done = allTasks.filter((task) => task.completed).length;
-  const overdue = allTasks.filter((task) => task.isOverdue).length;
+  const allItems = groups.flatMap((group) => group.workItems);
+  const done = allItems.filter((item) => item.completed).length;
+  const overdue = allItems.filter((item) => item.isOverdue).length;
 
   return {
-    type: 'task_overview',
-    title: tool === 'get_my_tasks' ? 'My Tasks Overview' : 'Workspace Tasks Overview',
-    subtitle: `${allTasks.length} task${allTasks.length === 1 ? '' : 's'} tracked across this view`,
-    total: allTasks.length,
+    type: 'work_item_overview',
+    title: tool === 'get_my_work_items' ? 'My Work Items Overview' : 'Workspace Work Items Overview',
+    subtitle: `${allItems.length} work item${allItems.length === 1 ? '' : 's'} tracked across this view`,
+    total: allItems.length,
     done,
-    inProgress: Math.max(allTasks.length - done, 0),
+    inProgress: Math.max(allItems.length - done, 0),
     overdue,
     groups,
   };
@@ -90,17 +90,17 @@ function buildTaskWidget(tool: string, output: Record<string, unknown>): Respons
 function buildMetricWidget(output: Record<string, unknown>): ResponseWidget | null {
   const metrics: Array<{ label: string; value: string | number; tone?: 'default' | 'good' | 'warn' | 'bad' }> = [];
 
-  if (typeof output.total_tasks === 'number') {
-    metrics.push({ label: 'Total Tasks', value: output.total_tasks });
+  if (typeof output.total_work_items === 'number') {
+    metrics.push({ label: 'Total Work Items', value: output.total_work_items });
   }
-  if (typeof output.completed_tasks === 'number') {
-    metrics.push({ label: 'Completed', value: output.completed_tasks, tone: 'good' });
+  if (typeof output.completed_work_items === 'number') {
+    metrics.push({ label: 'Completed', value: output.completed_work_items, tone: 'good' });
   }
-  if (typeof output.overdue_tasks === 'number') {
+  if (typeof output.overdue_work_items === 'number') {
     metrics.push({
       label: 'Overdue',
-      value: output.overdue_tasks,
-      tone: output.overdue_tasks > 0 ? 'warn' : 'default',
+      value: output.overdue_work_items,
+      tone: output.overdue_work_items > 0 ? 'warn' : 'default',
     });
   }
   if (typeof output.completion_rate === 'number') {
@@ -128,13 +128,13 @@ export function buildResponseWidgetsFromActions(actions: AgentAction[]): Respons
       continue;
     }
 
-    if (action.tool === 'list_tasks' || action.tool === 'get_my_tasks') {
-      const widget = buildTaskWidget(action.tool, action.output);
+    if (action.tool === 'list_work_items' || action.tool === 'get_my_work_items') {
+      const widget = buildWorkItemWidget(action.tool, action.output);
       if (widget) widgets.push(widget);
       continue;
     }
 
-    if (action.tool === 'summarize_member_tasks' || action.tool === 'get_workload_distribution') {
+    if (action.tool === 'summarize_member_work_items' || action.tool === 'get_workload_distribution') {
       const widget = buildMetricWidget(action.output);
       if (widget) widgets.push(widget);
     }
@@ -149,8 +149,8 @@ export function ResponseWidgets({ widgets }: { widgets?: ResponseWidget[] }) {
   return (
     <div className="my-3 space-y-3">
       {widgets.map((widget, index) => {
-        if (widget.type === 'task_overview') {
-          return <TaskOverviewCard key={index} widget={widget} />;
+        if (widget.type === 'work_item_overview') {
+          return <WorkItemOverviewCard key={index} widget={widget} />;
         }
         return <MetricSummaryCard key={index} widget={widget} />;
       })}
@@ -174,7 +174,7 @@ function MetricSummaryCard({ widget }: { widget: Extract<ResponseWidget, { type:
   );
 }
 
-function TaskOverviewCard({ widget }: { widget: Extract<ResponseWidget, { type: 'task_overview' }> }) {
+function WorkItemOverviewCard({ widget }: { widget: Extract<ResponseWidget, { type: 'work_item_overview' }> }) {
   return (
     <div className="rounded-md border border-border bg-card p-4 ">
       <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
@@ -194,37 +194,37 @@ function TaskOverviewCard({ widget }: { widget: Extract<ResponseWidget, { type: 
           <div key={groupIdx} className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground/80">{group.label}</p>
             <div className="divide-y divide-border/30 rounded-lg border border-border bg-secondary/20">
-              {group.tasks.map((task, taskIdx) => {
-                const priority = normalizePriority(task.priority);
+              {group.workItems.map((item, itemIdx) => {
+                const priority = normalizePriority(item.priority);
                 return (
-                  <div key={task.id || taskIdx} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
+                  <div key={item.id || itemIdx} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
                     <div className="flex items-center gap-2 min-w-0">
-                      {task.completed ? (
+                      {item.completed ? (
                         <CheckCircle2 className="size-3.5 text-success shrink-0" />
                       ) : (
                         <CircleDot className="size-3.5 text-muted-foreground/60 shrink-0" />
                       )}
-                      <span className={`truncate ${task.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                        {task.title}
+                      <span className={`truncate ${item.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                        {item.title}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      {task.project?.name && (
+                      {item.project?.name && (
                         <span className="hidden sm:inline text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                          {task.project.name}
+                          {item.project.name}
                         </span>
                       )}
-                      {task.assignee && (
+                      {item.assignee && (
                         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                           <UserRound className="size-3 shrink-0" />
-                          {task.assignee}
+                          {item.assignee}
                         </span>
                       )}
-                      {task.dueDate && (
-                        <span className={`inline-flex items-center gap-1 text-xs ${task.isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                      {item.dueDate && (
+                        <span className={`inline-flex items-center gap-1 text-xs ${item.isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
                           <Clock3 className="size-3 shrink-0" />
-                          {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          {new Date(item.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                         </span>
                       )}
                       <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${priority.className}`}>

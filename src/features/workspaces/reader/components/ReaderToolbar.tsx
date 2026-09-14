@@ -25,6 +25,7 @@ import {
   Hand,
   MousePointer,
   Check,
+  Layers,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -71,10 +72,12 @@ export interface ReaderToolbarProps {
   themeMode?: 'normal' | 'sepia' | 'dark';
   onToggleThemeMode?: () => void;
 
-  // Search & Inspector
+  // Search & Inspector & Entities
   onToggleSearch?: () => void;
   isInspectorOpen: boolean;
   onToggleInspector: () => void;
+  isEntitiesDrawerOpen?: boolean;
+  onToggleEntitiesDrawer?: () => void;
 }
 
 export const ZOTERO_COLORS = [
@@ -121,6 +124,8 @@ export function ReaderToolbar({
   onToggleSearch,
   isInspectorOpen,
   onToggleInspector,
+  isEntitiesDrawerOpen = false,
+  onToggleEntitiesDrawer,
 }: ReaderToolbarProps) {
   const pageNavForm = useForm<PageNavFormData>({
     resolver: zodResolver(pageNavFormSchema),
@@ -169,6 +174,30 @@ export function ReaderToolbar({
               {isSidebarOpen ? "Close sidebar (Ctrl+\\)" : "Open sidebar (Ctrl+\\)"}
             </TooltipContent>
           </Tooltip>
+
+          {/* Academic Entities Drawer Toggle (Figures, Tables, Formulas) */}
+          {onToggleEntitiesDrawer && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onToggleEntitiesDrawer}
+                  className={cn(
+                    "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                    isEntitiesDrawerOpen
+                      ? "bg-muted text-foreground font-medium"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                  aria-label="Toggle academic entities drawer"
+                >
+                  <Layers className="size-4 shrink-0" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-11">
+                {isEntitiesDrawerOpen ? "Close Entities (Figures/Tables/Math)" : "Entities (Figures/Tables/Math)"}
+              </TooltipContent>
+            </Tooltip>
+          )}
 
           <div className="w-px h-3.5 bg-border mx-1" />
 

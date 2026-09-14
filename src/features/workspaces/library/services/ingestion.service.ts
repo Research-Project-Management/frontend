@@ -17,9 +17,12 @@ export const IngestionService = {
    * Submits work to the durable ingestion pipeline and returns immediately.
    * Long-running provider and PDF work is observed through the run-status API.
    */
-  ingest: async (_scopeId: string | undefined, payload: UnifiedIngestionPayload): Promise<UnifiedIngestionResponse> => {
+  ingest: async (scopeId: string | undefined, payload: UnifiedIngestionPayload): Promise<UnifiedIngestionResponse> => {
     const validatedPayload = UnifiedIngestionPayloadSchema.parse(payload);
-    const submission = toSubmission(validatedPayload);
+    const submission = {
+      ...toSubmission(validatedPayload),
+      ...(scopeId && scopeId !== 'user' ? { projectId: scopeId } : {}),
+    };
     const res = await apiPost<any>(
       `/api/v1/library/ingestion/submit`,
       submission,
@@ -53,7 +56,7 @@ export const IngestionService = {
    * Confirm Captured URL metadata and persist Item
    */
   confirmUrl: (
-    _scopeId: string | undefined,
+    scopeId: string | undefined,
     payload: {
       url: string;
       previewToken?: string;
@@ -71,14 +74,17 @@ export const IngestionService = {
       data: { id: string; title: string; doi?: string; year?: number; citationKey?: string };
     }>(
       `/api/v1/library/ingestion/confirm-url`,
-      payload,
+      {
+        ...payload,
+        ...(scopeId && scopeId !== 'user' ? { projectId: scopeId } : {}),
+      },
     ),
 
   /**
    * Fast-Path Async Ingestion 202 Submission (/api/v1/library/ingestion/submit)
    */
   submit: async (
-    _scopeId: string | undefined,
+    scopeId: string | undefined,
     payload: {
       kind: 'IDENTIFIER' | 'RECORD' | 'URL' | 'FILE' | 'CONNECTOR';
       identifierType?: 'DOI' | 'ARXIV' | 'PMID' | 'ISBN';
@@ -121,6 +127,7 @@ export const IngestionService = {
         rawRecord: resolvedContent,
         format: resolvedFormat,
         recordFormat: resolvedFormat,
+        ...(scopeId && scopeId !== 'user' ? { projectId: scopeId } : {}),
       },
     );
   },

@@ -8,19 +8,19 @@ export function useAssignedWork() {
   const base = useYourWorkBase();
   const source = context || base;
 
-  const assignedTasks = source.assigned;
+  const assignedWorkItems = source.assigned;
 
   return {
     state: {
       workspaceId: source.workspaceId,
-      allTasks: source.allTasks,
-      assignedTasks,
-      count: assignedTasks.length,
-      taskProjectMap: source.taskProjectMap,
+      allWorkItems: source.allWorkItems,
+      assignedWorkItems,
+      count: assignedWorkItems.length,
+      workItemProjectMap: source.workItemProjectMap,
       selectedProjectId: context?.selectedProjectId || null,
       selectedProject: context?.selectedProject || null,
       isLoading: source.isLoading,
-      isLoadingTasks: source.isLoadingTasks,
+      isLoadingWorkItems: source.isLoadingWorkItems,
       isLoadingProjects: source.isLoadingProjects,
     },
     actions: {

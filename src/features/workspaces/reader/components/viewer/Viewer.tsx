@@ -1,9 +1,27 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { Loader2, AlertTriangle, StickyNote, Copy, Check, Highlighter, Quote } from 'lucide-react';
-import type { DocumentFulltext, ReaderDocument } from '../../types/reader.types';
+import {
+  Loader2,
+  AlertTriangle,
+  StickyNote,
+  Copy,
+  Check,
+  Highlighter,
+  Quote,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Trash2,
+} from 'lucide-react';
+import type {
+  DocumentFulltext,
+  ReaderDocument,
+  ReaderAnnotation,
+  AnnotationRect,
+} from '../../types/reader.types';
 import type { ReaderAnnotationTool } from '../../store/reader.store';
 import { formatInTextCitation } from '../../utils/reader.util';
 
@@ -53,7 +71,14 @@ interface ViewerProps {
   onRetry?: () => void;
   onAskAi: (selectedText: string) => void;
   onAddToNote?: (selectedText: string, pageNumber?: number) => void;
-  onAnnotate?: (selectedText: string, pageNumber: number, colorHex?: string) => void;
+  onAnnotate?: (
+    selectedText: string,
+    pageNumber: number,
+    colorHex?: string,
+    rects?: AnnotationRect[],
+  ) => void;
+  annotations?: ReaderAnnotation[];
+  onDeleteAnnotation?: (annotation: ReaderAnnotation) => void;
   fulltext?: DocumentFulltext | null;
   isLoadingFulltext?: boolean;
   targetPage?: { pageNumber: number; timestamp: number } | null;
@@ -66,6 +91,8 @@ interface ViewerProps {
   interactionMode?: 'select' | 'hand';
   activeColor?: string;
   activeTool?: ReaderAnnotationTool;
+  isSearchOpen?: boolean;
+  onCloseSearch?: () => void;
 }
 
 export default function Viewer({
@@ -76,6 +103,8 @@ export default function Viewer({
   onAskAi,
   onAddToNote,
   onAnnotate,
+  annotations = [],
+  onDeleteAnnotation,
   fulltext,
   isLoadingFulltext,
   targetPage,
@@ -88,6 +117,8 @@ export default function Viewer({
   interactionMode = 'select',
   activeColor,
   activeTool = 'highlight',
+  isSearchOpen = false,
+  onCloseSearch,
 }: ViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [visiblePage, setVisiblePage] = useState<number>(1);
@@ -103,12 +134,92 @@ export default function Viewer({
     }
   }, [blobUrl]);
 
-  // Text selection floating menu
+  // Text selection floating menu & normalized rects
   const [selectedText, setSelectedText] = useState<string>('');
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const [showFloatingMenu, setShowFloatingMenu] = useState<boolean>(false);
   const [copiedSelection, setCopiedSelection] = useState<boolean>(false);
   const [copiedCitation, setCopiedCitation] = useState<boolean>(false);
+  const [selectedPageNum, setSelectedPageNum] = useState<number>(1);
+  const [selectedRects, setSelectedRects] = useState<AnnotationRect[]>([]);
+  const [activeHighlightTooltip, setActiveHighlightTooltip] = useState<{
+    id: string;
+    quote?: string;
+    comment?: string;
+    color?: string;
+    top: number;
+    left: number;
+    ann: ReaderAnnotation;
+  } | null>(null);
+
+  // Group annotations by 1-based page number
+  const pageAnnotationsMap = useMemo(() => {
+    const map: Record<number, ReaderAnnotation[]> = {};
+    for (const ann of annotations || []) {
+      const p =
+        ann.pageIndex !== undefined && ann.pageIndex !== null
+          ? ann.pageIndex + 1
+          : ann.pageNumber || 1;
+      if (!map[p]) map[p] = [];
+      map[p].push(ann);
+    }
+    return map;
+  }, [annotations]);
+
+  // In-Document Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isSearchOpen) {
+      setTimeout(() => searchInputRef.current?.focus(), 80);
+    } else {
+      setSearchQuery('');
+      setCurrentMatchIdx(0);
+    }
+  }, [isSearchOpen]);
+
+  const searchMatches = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q || q.length < 2) return [];
+
+    const list: { page: number; title?: string }[] = [];
+    if (fulltext?.sections) {
+      for (const sec of fulltext.sections) {
+        const titleMatch = sec.title && sec.title.toLowerCase().includes(q);
+        const paraMatch = sec.paragraphs && sec.paragraphs.some((p) => p.toLowerCase().includes(q));
+        if (titleMatch || paraMatch) {
+          list.push({ page: sec.page || 1, title: sec.title });
+        }
+      }
+    }
+    if (list.length === 0 && numPages > 0) {
+      for (let p = 1; p <= numPages; p++) {
+        const pEl = pageRefs.current.get(p);
+        if (pEl && pEl.textContent?.toLowerCase().includes(q)) {
+          list.push({ page: p });
+        }
+      }
+    }
+    return list;
+  }, [searchQuery, fulltext?.sections, numPages]);
+
+  const handleNextMatch = () => {
+    if (searchMatches.length === 0) return;
+    const next = (currentMatchIdx + 1) % searchMatches.length;
+    setCurrentMatchIdx(next);
+    const m = searchMatches[next];
+    if (m) scrollToPage(m.page);
+  };
+
+  const handlePrevMatch = () => {
+    if (searchMatches.length === 0) return;
+    const prev = (currentMatchIdx - 1 + searchMatches.length) % searchMatches.length;
+    setCurrentMatchIdx(prev);
+    const m = searchMatches[prev];
+    if (m) scrollToPage(m.page);
+  };
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number>(600);
@@ -222,6 +333,40 @@ export default function Viewer({
 
       setMenuPosition({ top, left });
       setSelectedText(text);
+
+      // Determine page number and normalized bounding rects (0..1)
+      const anchorNode = selection.anchorNode;
+      const anchorEl = (anchorNode?.nodeType === Node.ELEMENT_NODE
+        ? anchorNode
+        : anchorNode?.parentElement) as HTMLElement | null;
+      const pageEl = anchorEl?.closest('[data-page-num]') as HTMLElement | null;
+      const pNum = pageEl ? Number(pageEl.dataset.pageNum) : visiblePage;
+      setSelectedPageNum(pNum);
+
+      if (pageEl) {
+        const pageRect = pageEl.getBoundingClientRect();
+        const clientRects = Array.from(range.getClientRects());
+        const relative = clientRects
+          .map((cr) => {
+            const x1 = Math.max(0, (cr.left - pageRect.left) / pageRect.width);
+            const y1 = Math.max(0, (cr.top - pageRect.top) / pageRect.height);
+            const width = Math.min(1 - x1, cr.width / pageRect.width);
+            const height = Math.min(1 - y1, cr.height / pageRect.height);
+            return {
+              x1,
+              y1,
+              x2: x1 + width,
+              y2: y1 + height,
+              width,
+              height,
+            };
+          })
+          .filter((r) => r.width > 0.001 && r.height > 0.001);
+        setSelectedRects(relative);
+      } else {
+        setSelectedRects([]);
+      }
+
       setShowFloatingMenu(true);
       setCopiedSelection(false);
       setCopiedCitation(false);
@@ -317,6 +462,65 @@ export default function Viewer({
           interactionMode === 'hand' ? "cursor-grab active:cursor-grabbing select-none" : "select-text"
         )}
       >
+        {/* Floating In-Document Search Bar (Ctrl+F) */}
+        {isSearchOpen && (
+          <div className="absolute top-3 right-4 z-40 flex items-center gap-1.5 rounded-md border border-border bg-card p-1.5 shadow-none text-12 font-sans select-none animate-in fade-in slide-in-from-top-2 duration-150">
+            <Search className="size-3.5 text-muted-foreground ml-1 shrink-0" strokeWidth={1.5} />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (e.shiftKey) handlePrevMatch();
+                  else handleNextMatch();
+                } else if (e.key === 'Escape') {
+                  onCloseSearch?.();
+                }
+              }}
+              placeholder="Find in document..."
+              className="h-6 w-44 bg-transparent text-12 text-foreground placeholder:text-muted-foreground outline-none font-sans"
+            />
+            {searchMatches.length > 0 ? (
+              <span className="text-11 font-mono tabular-nums text-muted-foreground px-1 shrink-0">
+                {currentMatchIdx + 1} / {searchMatches.length}
+              </span>
+            ) : searchQuery ? (
+              <span className="text-11 font-mono text-muted-foreground px-1 shrink-0">0 matches</span>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={handlePrevMatch}
+              disabled={searchMatches.length === 0}
+              className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer"
+              title="Previous match (Shift+Enter)"
+            >
+              <ChevronLeft className="size-3.5 shrink-0" strokeWidth={1.5} />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleNextMatch}
+              disabled={searchMatches.length === 0}
+              className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer"
+              title="Next match (Enter)"
+            >
+              <ChevronRight className="size-3.5 shrink-0" strokeWidth={1.5} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onCloseSearch?.()}
+              className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer ml-0.5"
+              title="Close (Escape)"
+            >
+              <X className="size-3.5 shrink-0" strokeWidth={1.5} />
+            </button>
+          </div>
+        )}
+
         {error || docError ? (
           <div className="flex flex-col items-center justify-center text-center p-10 max-w-md mx-auto mt-20 gap-3">
             <div className="size-12 rounded-md bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive">
@@ -376,7 +580,7 @@ export default function Viewer({
                     else pageRefs.current.delete(pageNum);
                   }}
                   className={cn(
-                    "bg-card border border-border rounded-md overflow-hidden transition-all shadow-xs",
+                    "bg-card border border-border rounded-md overflow-hidden transition-all shadow-xs relative",
                     themeMode === 'dark' && "invert-[0.9] hue-rotate-180 contrast-90 brightness-95",
                     themeMode === 'sepia' && "sepia-[0.3] contrast-95 brightness-95"
                   )}
@@ -389,16 +593,135 @@ export default function Viewer({
                     renderAnnotationLayer={true}
                     loading={<DocumentPageSkeleton width={pageWidth} />}
                   />
+
+                  {/* VISUAL HIGHLIGHTS OVERLAY */}
+                  {pageAnnotationsMap[pageNum] && pageAnnotationsMap[pageNum].length > 0 && (
+                    <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
+                      {pageAnnotationsMap[pageNum].map((ann: ReaderAnnotation) => {
+                        const rects = (Array.isArray(ann.rects) ? ann.rects : []) as AnnotationRect[];
+                        const colorHex = ann.color || '#ffd400';
+
+                        if (rects.length > 0) {
+                          return rects.map((r, rIdx) => (
+                            <div
+                              key={`${ann.id}-${rIdx}`}
+                              className="absolute pointer-events-auto rounded-[2px] transition-all cursor-pointer hover:opacity-75"
+                              style={{
+                                left: `${r.x1 * 100}%`,
+                                top: `${r.y1 * 100}%`,
+                                width: `${r.width * 100}%`,
+                                height: `${r.height * 100}%`,
+                                backgroundColor: colorHex,
+                                opacity: 0.38,
+                                mixBlendMode: 'multiply',
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const target = e.currentTarget.getBoundingClientRect();
+                                const container = scrollContainerRef.current?.getBoundingClientRect();
+                                const top = target.bottom - (container?.top || 0) + (scrollContainerRef.current?.scrollTop || 0) + 4;
+                                const left = Math.max(10, target.left - (container?.left || 0) + (scrollContainerRef.current?.scrollLeft || 0));
+                                setActiveHighlightTooltip(
+                                  activeHighlightTooltip?.id === ann.id
+                                    ? null
+                                    : { id: ann.id, quote: ann.quoteText, comment: ann.comment, color: colorHex, top, left, ann },
+                                );
+                              }}
+                            />
+                          ));
+                        }
+
+                        // Fallback chip if no rects stored yet
+                        return (
+                          <div
+                            key={ann.id}
+                            className="absolute top-2 left-2 z-20 pointer-events-auto flex items-center gap-1 px-1.5 py-0.5 rounded-md text-10 font-mono border shadow-none cursor-pointer bg-background/85 backdrop-blur-xs"
+                            style={{ borderColor: colorHex }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const target = e.currentTarget.getBoundingClientRect();
+                              const container = scrollContainerRef.current?.getBoundingClientRect();
+                              const top = target.bottom - (container?.top || 0) + (scrollContainerRef.current?.scrollTop || 0) + 4;
+                              const left = Math.max(10, target.left - (container?.left || 0) + (scrollContainerRef.current?.scrollLeft || 0));
+                              setActiveHighlightTooltip(
+                                activeHighlightTooltip?.id === ann.id
+                                  ? null
+                                  : { id: ann.id, quote: ann.quoteText, comment: ann.comment, color: colorHex, top, left, ann },
+                              );
+                            }}
+                          >
+                            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: colorHex }} />
+                            <span className="truncate max-w-[120px] text-foreground">{ann.quoteText || 'Highlight'}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           </Document>
         )}
 
+        {/* Highlight Tooltip Popover */}
+        {activeHighlightTooltip && (
+          <div
+            className="absolute z-40 rounded-md border border-border bg-card p-2.5 shadow-none text-12 select-none max-w-xs animate-in fade-in zoom-in-95 duration-100 font-sans"
+            style={{
+              top: `${activeHighlightTooltip.top}px`,
+              left: `${activeHighlightTooltip.left}px`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-1 mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: activeHighlightTooltip.color }} />
+                <span className="text-11 font-medium text-foreground">Highlight</span>
+              </div>
+              <div className="flex items-center gap-0.5">
+                {onDeleteAnnotation && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onDeleteAnnotation(activeHighlightTooltip.ann);
+                      setActiveHighlightTooltip(null);
+                    }}
+                    className="size-5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer"
+                    title="Delete highlight"
+                  >
+                    <Trash2 className="size-3 shrink-0" strokeWidth={1.5} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setActiveHighlightTooltip(null)}
+                  className="size-5 rounded-md text-muted-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
+                  title="Close"
+                >
+                  <X className="size-3 shrink-0" strokeWidth={1.5} />
+                </button>
+              </div>
+            </div>
+            {activeHighlightTooltip.quote && (
+              <p
+                className="text-11 leading-snug text-foreground italic border-l-2 pl-1.5 mb-1 select-text"
+                style={{ borderColor: activeHighlightTooltip.color }}
+              >
+                &ldquo;{activeHighlightTooltip.quote}&rdquo;
+              </p>
+            )}
+            {activeHighlightTooltip.comment && (
+              <p className="text-11 text-muted-foreground leading-relaxed pl-1.5 select-text">
+                {activeHighlightTooltip.comment}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Floating selection action menu: highlight colors, note, ask AI, cite, copy */}
         {showFloatingMenu && selectedText && (
           <div
-            className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1.5 bg-card text-foreground px-2 py-1 rounded-md border border-border shadow-raised-200 duration-150 select-none"
+            className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1.5 bg-card text-foreground px-2 py-1 rounded-md border border-border shadow-none duration-150 select-none"
             style={{
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,
@@ -426,7 +749,7 @@ export default function Viewer({
                       type="button"
                       aria-label={`Highlight in ${c.label}`}
                       onClick={() => {
-                        onAnnotate(selectedText, visiblePage, c.hex);
+                        onAnnotate(selectedText, selectedPageNum, c.hex, selectedRects);
                         setShowFloatingMenu(false);
                         window.getSelection()?.removeAllRanges();
                       }}
@@ -448,7 +771,7 @@ export default function Viewer({
                 type="button"
                 aria-label="Add selected text to Note"
                 onClick={() => {
-                  onAddToNote(selectedText, visiblePage);
+                  onAddToNote(selectedText, selectedPageNum);
                   setShowFloatingMenu(false);
                   window.getSelection()?.removeAllRanges();
                 }}

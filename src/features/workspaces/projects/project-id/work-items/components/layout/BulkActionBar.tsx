@@ -55,7 +55,6 @@ const PRIORITY_ICONS: Record<Priority, React.ElementType> = {
 
 export interface BulkActionBarProps {
   selectedIds?: string[];
-  selectedTaskIds?: string[];
   totalCount: number;
   columns: Column[];
   members: ProjectMember[];
@@ -78,8 +77,7 @@ export interface BulkActionBarProps {
 }
 
 export const BulkActionBar: React.FC<BulkActionBarProps> = ({
-  selectedIds: propSelectedIds,
-  selectedTaskIds: propSelectedTaskIds,
+  selectedIds = [],
   columns,
   members,
   cycles,
@@ -103,14 +101,13 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
 
-  const selectedIds = propSelectedIds || propSelectedTaskIds || [];
   if (selectedIds.length === 0) return null;
 
   const count = selectedIds.length;
 
   return (
     <>
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-background/95 backdrop-blur-md border border-border rounded-md px-3 py-1.5 flex items-center gap-2 max-w-[calc(100vw-2rem)] overflow-x-auto shadow-lg animate-in fade-in slide-in-from-bottom-3 duration-200">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-background/95 backdrop-blur-md border border-border rounded-md px-3 py-1.5 flex items-center gap-2 max-w-[calc(100vw-2rem)] overflow-x-auto shadow-raised-200 animate-in fade-in slide-in-from-bottom-3 duration-200">
         {/* Selection count badge */}
         <div className="flex items-center gap-1.5 bg-muted px-2 py-1 rounded-md text-xs font-medium text-foreground shrink-0">
           <span>{count} selected</span>

@@ -7,16 +7,16 @@ export interface RecentActivityFeedProps {
   activities?: any[];
   isLoading?: boolean;
   limit?: number;
-  onTaskClick?: (taskId: string) => void;
-  taskProjectMap?: Record<string, { id: string; name: string }>;
+  onWorkItemClick?: (workItemId: string) => void;
+  workItemProjectMap?: Record<string, { id: string; name: string }>;
 }
 
 export function RecentActivityFeed({
   activities = [],
   isLoading = false,
   limit = 5,
-  onTaskClick,
-  taskProjectMap = {},
+  onWorkItemClick,
+  workItemProjectMap = {},
 }: RecentActivityFeedProps) {
   const displayItems = Array.isArray(activities) && limit > 0 ? activities.slice(0, limit) : (Array.isArray(activities) ? activities : []);
 
@@ -28,8 +28,8 @@ export function RecentActivityFeed({
       <ActivityFeedList
         items={displayItems}
         isLoading={isLoading}
-        onTaskClick={onTaskClick}
-        taskProjectMap={taskProjectMap}
+        onWorkItemClick={onWorkItemClick}
+        workItemProjectMap={workItemProjectMap}
         emptyPadding="py-8"
       />
     </div>

@@ -97,21 +97,25 @@ export function InlineInput({
         className="flex-1 min-w-0 text-xs bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/40"
       />
       <button
+        type="button"
         onClick={onCommit}
         disabled={isPending}
-        className="p-0.5 text-primary hover:opacity-70 transition-opacity disabled:opacity-40 shrink-0"
+        aria-label="Confirm"
+        className="size-6 min-w-[24px] min-h-[24px] flex items-center justify-center rounded text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 shrink-0"
       >
         {isPending ? (
-          <Loader2 className="size-3 animate-spin shrink-0" />
+          <Loader2 className="size-3.5 animate-spin shrink-0" />
         ) : (
-          <Check className="size-3 shrink-0" />
+          <Check className="size-3.5 shrink-0" />
         )}
       </button>
       <button
+        type="button"
         onClick={onCancel}
-        className="p-0.5 text-foreground hover:bg-muted rounded transition-colors shrink-0"
+        aria-label="Cancel"
+        className="size-6 min-w-[24px] min-h-[24px] flex items-center justify-center text-foreground hover:bg-muted rounded transition-colors shrink-0"
       >
-        <X className="size-3 shrink-0" />
+        <X className="size-3.5 shrink-0" />
       </button>
     </div>
   );
@@ -146,27 +150,31 @@ export function RenameInput({
         className="min-w-0 flex-1 rounded-md border border-primary/40 bg-primary/5 px-1 text-xs text-foreground outline-none"
       />
       <button
+        type="button"
         onClick={(e) => {
           e.stopPropagation();
           onCommit();
         }}
         disabled={isPending}
-        className="p-0.5 text-primary hover:opacity-70 transition-opacity disabled:opacity-40 shrink-0"
+        aria-label="Confirm rename"
+        className="size-6 min-w-[24px] min-h-[24px] flex items-center justify-center rounded text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 shrink-0"
       >
         {isPending ? (
-          <Loader2 className="size-3 animate-spin shrink-0" />
+          <Loader2 className="size-3.5 animate-spin shrink-0" />
         ) : (
-          <Check className="size-3 shrink-0" />
+          <Check className="size-3.5 shrink-0" />
         )}
       </button>
       <button
+        type="button"
         onClick={(e) => {
           e.stopPropagation();
           onCancel();
         }}
-        className="p-0.5 text-foreground hover:bg-muted rounded transition-colors shrink-0"
+        aria-label="Cancel rename"
+        className="size-6 min-w-[24px] min-h-[24px] flex items-center justify-center text-foreground hover:bg-muted rounded transition-colors shrink-0"
       >
-        <X className="size-3 shrink-0" />
+        <X className="size-3.5 shrink-0" />
       </button>
     </>
   );
@@ -290,7 +298,7 @@ export function StorageFolderNode({
             </span>
             <RowActions>
               <DropdownMenuItem
-                className="text-xs!"
+                className="text-xs"
                 onClick={(e) => {
                   e.stopPropagation();
                   setRenamingId(folder.id);
@@ -301,7 +309,7 @@ export function StorageFolderNode({
                 Rename
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="text-xs!"
+                className="text-xs"
                 onClick={(e) => {
                   e.stopPropagation();
                   deleteFile.mutate(folder.id);
@@ -422,7 +430,7 @@ export function StorageFileRow({
           </span>
           <RowActions>
             <DropdownMenuItem
-              className="text-xs!"
+              className="text-xs"
               onClick={(e) => {
                 e.stopPropagation();
                 onInsertAsset(item.filename);
@@ -432,7 +440,7 @@ export function StorageFileRow({
               Insert Command
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="text-xs!"
+              className="text-xs"
               onClick={(e) => {
                 e.stopPropagation();
                 setRenamingId(item.id);
@@ -443,7 +451,7 @@ export function StorageFileRow({
               Rename
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="text-xs!"
+              className="text-xs"
               onClick={(e) => {
                 e.stopPropagation();
                 deleteFile.mutate(item.id);

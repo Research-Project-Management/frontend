@@ -38,7 +38,8 @@ import {
   LowPriorityBoxIcon,
   NonePriorityBoxIcon,
 } from '@/features/workspaces/projects/project-id/work-items/components/modals/Popovers';
-import type { WorkItemDraft, TaskPriority } from '../../types/draft.types';
+import type { WorkItemDraft } from '../../types/draft.types';
+import type { WorkItemPriority } from '@/features/workspaces/projects/project-id/work-items/types/work-item.types';
 
 export interface EditorModalProps {
   isOpen: boolean;
@@ -48,12 +49,13 @@ export interface EditorModalProps {
     id: string;
     name: string;
     identifier?: string;
-    taskColumns?: Array<{ id: string; name: string; color?: string }>;
+    workItemColumns?: Array<{ id: string; name: string; color?: string }>;
+    columns?: Array<{ id: string; name: string; color?: string }>;
   }>;
   onSave: (data: {
     title: string;
     description: string;
-    priority: TaskPriority;
+    priority: WorkItemPriority;
     columnId?: string;
     projectId?: string;
     labels?: string[];
@@ -63,7 +65,7 @@ export interface EditorModalProps {
   isSaving: boolean;
 }
 
-const PRIORITY_OPTIONS: Array<{ key: TaskPriority; label: string; icon: React.FC<{ className?: string }> }> = [
+const PRIORITY_OPTIONS: Array<{ key: WorkItemPriority; label: string; icon: React.FC<{ className?: string }> }> = [
   { key: 'none', label: 'None', icon: NonePriorityBoxIcon },
   { key: 'low', label: 'Low', icon: LowPriorityBoxIcon },
   { key: 'medium', label: 'Medium', icon: MediumPriorityBoxIcon },
@@ -89,7 +91,7 @@ export const EditorModal: React.FC<EditorModalProps> = ({
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<TaskPriority>('none');
+  const [priority, setPriority] = useState<WorkItemPriority>('none');
   const [columnName, setColumnName] = useState('Backlog');
   const [columnId, setColumnId] = useState<string | undefined>(undefined);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');

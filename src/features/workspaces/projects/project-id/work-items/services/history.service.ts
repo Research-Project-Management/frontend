@@ -4,7 +4,7 @@ import type { ActivityLog } from "../types/work-item.types";
 export interface HistoryItem {
   id: string;
   itemId?: string;
-  taskId?: string;
+  workItemId?: string;
   field: string;
   oldValue: unknown;
   newValue: unknown;

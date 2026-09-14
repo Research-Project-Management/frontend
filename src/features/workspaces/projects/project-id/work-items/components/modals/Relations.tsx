@@ -18,9 +18,8 @@ import { RELATION_TYPE_CONFIG } from '../../types/work-item.types';
 
 export interface RelationsProps {
   relations?: Relation[];
-  currentTaskId?: string;
   currentItemId?: string;
-  availableTasks?: Item[];
+  currentWorkItemId?: string;
   availableItems?: Item[];
   onAddRelation: (relation: Relation) => void;
   onRemoveRelation: (relationId: string, targetId?: string) => void;
@@ -29,16 +28,15 @@ export interface RelationsProps {
 
 export const Relations: React.FC<RelationsProps> = ({
   relations = [],
-  currentTaskId,
   currentItemId,
-  availableTasks,
-  availableItems,
+  currentWorkItemId,
+  availableItems = [],
   onAddRelation,
   onRemoveRelation,
   isReadOnly = false,
 }) => {
-  const currentId = currentItemId || currentTaskId;
-  const items = availableItems || availableTasks || [];
+  const currentId = currentItemId || currentWorkItemId;
+  const items = availableItems;
   const [openAddPopover, setOpenAddPopover] = useState(false);
   const [selectedType, setSelectedType] = useState<RelationType>('blocks');
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,15 +46,15 @@ export const Relations: React.FC<RelationsProps> = ({
   const isBlocked = blockedByRelations.length > 0;
 
   const selectableItems = useMemo(() => {
-    const existingTargetIds = new Set(relations.map((r) => r.targetTaskId));
-    return items.filter((t) => {
-      if (t.id === currentId) return false;
-      if (existingTargetIds.has(t.id)) return false;
+    const existingTargetIds = new Set(relations.map((r) => r.targetId || r.targetWorkItemId));
+    return items.filter((item) => {
+      if (item.id === currentId) return false;
+      if (existingTargetIds.has(item.id)) return false;
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
       return (
-        (t.title && t.title.toLowerCase().includes(q)) ||
-        (t.identifier && t.identifier.toLowerCase().includes(q))
+        (item.title && item.title.toLowerCase().includes(q)) ||
+        (item.identifier && item.identifier.toLowerCase().includes(q))
       );
     });
   }, [items, currentId, relations, searchQuery]);
@@ -68,7 +66,8 @@ export const Relations: React.FC<RelationsProps> = ({
     const newRelation: Relation = {
       id: `rel-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       type: selectedType,
-      targetTaskId: selectedTargetItem.id,
+      targetId: selectedTargetItem.id,
+      targetWorkItemId: selectedTargetItem.id,
       targetTitle: selectedTargetItem.title,
       targetIdentifier: selectedTargetItem.identifier || undefined,
     };
@@ -252,7 +251,7 @@ export const Relations: React.FC<RelationsProps> = ({
                 {!isReadOnly && (
                   <button
                     type="button"
-                    onClick={() => onRemoveRelation(rel.id, rel.targetId || rel.targetTaskId)}
+                    onClick={() => onRemoveRelation(rel.id, rel.targetId || rel.targetWorkItemId)}
                     className="opacity-0 group-hover:opacity-100 hover:text-red-500 p-1 text-muted-foreground cursor-pointer transition-opacity"
                     title="Remove relation"
                   >
@@ -267,6 +266,4 @@ export const Relations: React.FC<RelationsProps> = ({
     </div>
   );
 };
-
-export const TaskRelations = Relations;
-export type TaskRelationsProps = RelationsProps;
+export default Relations;

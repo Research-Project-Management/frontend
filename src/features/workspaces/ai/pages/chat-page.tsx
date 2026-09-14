@@ -31,7 +31,7 @@ const AGENT_LABELS: Record<string, { label: string; color: string }> = {
   rag: { label: 'Document Search', color: 'bg-primary/10 text-primary' },
   analyze: { label: 'Analysis', color: 'bg-success/15 text-success' },
   latex: { label: 'LaTeX', color: 'bg-warning/15 text-warning' },
-  task: { label: 'Task Planning', color: 'bg-destructive/10 text-destructive' },
+  work_item: { label: 'Work Item Planning', color: 'bg-destructive/10 text-destructive' },
   web_search: { label: 'Web Search', color: 'bg-primary/15 text-primary' },
   action: { label: 'Workspace Agent', color: 'bg-primary/10 text-primary' },
 };
@@ -277,7 +277,7 @@ const WELCOME_STARTERS: WelcomeStarter[] = [
     id: 'workspace',
     title: 'Plan work',
     description: 'Turn research intent into concrete workspace actions.',
-    draft: 'Help me turn this research goal into project tasks, milestones, and a first-week plan.',
+    draft: 'Help me turn this research goal into project work items, milestones, and a first-week plan.',
     agent: 'action',
     icon: WandSparkles,
   },
@@ -375,7 +375,7 @@ function EmptyConversation() {
       </div>
       <h2 className="text-lg font-semibold tracking-tight text-foreground mb-1.5">Start a conversation</h2>
       <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-        Ask about your project, analyze papers, generate LaTeX, or plan your next research tasks.
+        Ask about your project, analyze papers, generate LaTeX, or plan your next research work items.
       </p>
     </div>
   );

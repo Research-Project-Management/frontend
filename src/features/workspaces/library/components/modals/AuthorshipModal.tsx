@@ -72,15 +72,15 @@ export default function AuthorshipModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-6 font-sans">
+      <DialogContent className="max-w-[480px] p-5 rounded-md border border-border bg-background shadow-none font-sans">
         <DialogHeader className="gap-2">
           <div className="flex items-center gap-2 text-primary">
-            <Award className="size-5 shrink-0" />
-            <DialogTitle className="text-base font-semibold text-foreground">
+            <Award className="size-4 shrink-0" strokeWidth={1.5} />
+            <DialogTitle className="text-14 font-medium text-foreground">
               {isAlreadyPublication ? 'My Publications - Authorship' : 'Add to My Publications'}
             </DialogTitle>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
+          <p className="text-12 text-muted-foreground leading-relaxed">
             {isAlreadyPublication
               ? 'This publication is currently part of your academic portfolio.'
               : 'Add this paper to your personal publications list to curate your academic portfolio, track your scientific output, and generate CV bibliographies.'}
@@ -90,8 +90,8 @@ export default function AuthorshipModal({
         <Form {...form}>
           <form onSubmit={handleSubmit(onValidSubmit)} className="space-y-4 pt-2">
             {/* Paper Summary Card */}
-            <div className="p-3.5 rounded-lg border border-border bg-muted/50 space-y-1.5">
-              <h4 className="text-xs font-semibold text-foreground line-clamp-2 leading-snug">
+            <div className="p-3.5 rounded-md border border-border bg-muted/40 space-y-1.5">
+              <h4 className="text-12 font-medium text-foreground line-clamp-2 leading-snug">
                 {item.title || 'Untitled Reference'}
               </h4>
               <div className="flex items-center gap-3 text-11 text-muted-foreground">
@@ -100,7 +100,7 @@ export default function AuthorshipModal({
               </div>
               {isAlreadyPublication && item.publicationConfirmedAt ? (
                 <div className="pt-1 flex items-center gap-1 text-11 font-medium text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="size-3.5 shrink-0" />
+                  <CheckCircle2 className="size-3.5 shrink-0" strokeWidth={1.5} />
                   <span>
                     Authorship confirmed on{' '}
                     {new Date(item.publicationConfirmedAt).toLocaleDateString('en-US')}
@@ -126,22 +126,22 @@ export default function AuthorshipModal({
                 />
                 <Label
                   htmlFor="authorship-declare"
-                  className="text-xs text-foreground font-normal leading-snug cursor-pointer select-none"
+                  className="text-12 text-foreground font-normal leading-snug cursor-pointer select-none"
                 >
-                  <strong>I created this work.</strong> I confirm that I am an author or co-author of this
+                  <strong className="font-medium">I created this work.</strong> I confirm that I am an author or co-author of this
                   publication, and I hold the rights to include it in my portfolio.
                 </Label>
               </div>
             ) : null}
 
-            <DialogFooter className="gap-2 pt-2">
+            <DialogFooter className="gap-2 pt-2 sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => onOpenChange(false)}
                 disabled={isPending}
-                className="text-xs h-8"
+                className="h-8 px-3 text-12 font-medium rounded-md border-border"
               >
                 Cancel
               </Button>
@@ -152,7 +152,7 @@ export default function AuthorshipModal({
                   variant="destructive"
                   size="sm"
                   disabled={isPending}
-                  className="text-xs h-8 gap-1.5"
+                  className="h-8 px-3 text-12 font-medium rounded-md gap-1.5"
                 >
                   <span>{isPending ? 'Removing...' : 'Remove from My Publications'}</span>
                 </Button>
@@ -161,9 +161,9 @@ export default function AuthorshipModal({
                   type="submit"
                   size="sm"
                   disabled={!confirmed || isPending}
-                  className="text-xs h-8 gap-1.5"
+                  className="h-8 px-3 text-12 font-medium rounded-md gap-1.5"
                 >
-                  <ShieldCheck className="size-3.5 shrink-0" />
+                  <ShieldCheck className="size-3.5 shrink-0" strokeWidth={1.5} />
                   <span>{isPending ? 'Adding...' : 'Confirm & Add to My Publications'}</span>
                 </Button>
               )}

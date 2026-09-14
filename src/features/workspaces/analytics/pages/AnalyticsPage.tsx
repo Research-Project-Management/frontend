@@ -93,16 +93,16 @@ export default function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) 
   const stats = workspaceData?.stats;
   const projectStats = projectOverviewData?.stats;
 
-  // Compute tasks metrics
-  const totalTasks = selectedProjectId
-    ? projectStats?.totalTasks ?? (projectDist?.assignee?.reduce((sum, a) => sum + a.count, 0) || 0)
-    : stats?.tasks || 0;
+  // Compute work items metrics
+  const totalWorkItems = selectedProjectId
+    ? projectStats?.totalWorkItems ?? (projectDist?.assignee?.reduce((sum, a) => sum + a.count, 0) || 0)
+    : stats?.workItems || 0;
 
-  const completedTasks = selectedProjectId
-    ? projectStats?.completedTasks ?? (projectDist?.state?.['done'] || 0)
-    : projectStats?.completedTasks ?? 0;
+  const completedWorkItems = selectedProjectId
+    ? projectStats?.completedWorkItems ?? (projectDist?.state?.['done'] || 0)
+    : projectStats?.completedWorkItems ?? 0;
 
-  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const completionRate = totalWorkItems > 0 ? Math.round((completedWorkItems / totalWorkItems) * 100) : 0;
 
   const handleRefresh = () => {
     if (selectedProjectId) {
@@ -141,7 +141,7 @@ export default function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) 
               >
                 {selectedProject ? (
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <ProjectAvatar avatar={selectedProject.avatar} name={selectedProject.name} size="xs" />
+                    <ProjectAvatar avatar={selectedProject.avatar} name={selectedProject.name} id={selectedProject.id} size="xs" />
                     <span className="truncate max-w-[130px] font-medium">{selectedProject.name}</span>
                   </div>
                 ) : (
@@ -176,7 +176,7 @@ export default function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) 
                     className={cn('cursor-pointer font-medium flex items-center justify-between', isSelected && 'bg-muted font-semibold')}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <ProjectAvatar avatar={p.avatar} name={p.name} size="xs" />
+                      <ProjectAvatar avatar={p.avatar} name={p.name} id={p.id} size="xs" />
                       <span className="truncate">{p.name}</span>
                     </div>
                     {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
@@ -250,7 +250,7 @@ export default function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) 
               <Skeleton className="h-7 w-16 rounded" />
             ) : (
               <div className="text-2xl font-semibold text-foreground font-mono">
-                {selectedProjectId ? totalTasks : stats?.projects || projects.length}
+                {selectedProjectId ? totalWorkItems : stats?.projects || projects.length}
               </div>
             )}
             <p className="text-11 text-muted-foreground">
@@ -258,7 +258,7 @@ export default function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) 
             </p>
           </div>
 
-          {/* Card 2: Work Items Completion or Total Tasks */}
+          {/* Card 2: Work Items Completion or Total Work Items */}
           <div className="p-4 rounded-lg border border-border bg-card space-y-2">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{selectedProjectId ? 'Completion Rate' : 'Total Work Items'}</span>
@@ -268,12 +268,12 @@ export default function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) 
               <Skeleton className="h-7 w-16 rounded" />
             ) : (
               <div className="text-2xl font-semibold text-foreground font-mono">
-                {selectedProjectId ? `${completionRate}%` : stats?.tasks || 0}
+                {selectedProjectId ? `${completionRate}%` : stats?.workItems || 0}
               </div>
             )}
             <p className="text-11 text-muted-foreground">
               {selectedProjectId
-                ? `${completedTasks} of ${totalTasks} items completed`
+                ? `${completedWorkItems} of ${totalWorkItems} items completed`
                 : 'Aggregated across all projects'}
             </p>
           </div>
@@ -338,7 +338,7 @@ export default function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) 
                   <div className="space-y-3 pt-1">
                     {projectDist?.state && Object.keys(projectDist.state).length > 0 ? (
                       Object.entries(projectDist.state).map(([stateKey, count]) => {
-                        const pct = totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0;
+                        const pct = totalWorkItems > 0 ? Math.round((count / totalWorkItems) * 100) : 0;
                         return (
                           <div key={stateKey} className="space-y-1.5">
                             <div className="flex items-center justify-between text-xs">
@@ -394,7 +394,7 @@ export default function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) 
                   <div className="space-y-3 pt-1">
                     {projectDist?.priority && Object.keys(projectDist.priority).length > 0 ? (
                       Object.entries(projectDist.priority).map(([prioKey, count]) => {
-                        const pct = totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0;
+                        const pct = totalWorkItems > 0 ? Math.round((count / totalWorkItems) * 100) : 0;
                         const prioColor =
                           prioKey === 'urgent'
                             ? 'bg-red-500'
@@ -437,7 +437,7 @@ export default function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) 
                   <Users className="size-4 text-foreground" />
                   <h3 className="text-sm font-semibold text-foreground">Team Workload Distribution</h3>
                 </div>
-                <span className="text-xs text-muted-foreground font-mono">Tasks per contributor</span>
+                <span className="text-xs text-muted-foreground font-mono">Work items per contributor</span>
               </div>
 
               {isLoading ? (
@@ -509,12 +509,12 @@ export default function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) 
                         className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 hover:bg-muted/30 transition-colors gap-3"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <ProjectAvatar avatar={p.avatar} name={p.name} size="sm" />
+                          <ProjectAvatar avatar={p.avatar} name={p.name} id={p.id} size="sm" />
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-semibold text-foreground truncate">{p.name}</span>
                               {(p.identifier || p.key) && (
-                                <span className="text-10 font-mono uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                <span className="text-10 font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                                   {p.identifier || p.key}
                                 </span>
                               )}

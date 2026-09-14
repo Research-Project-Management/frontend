@@ -59,7 +59,6 @@ export const useInstantiateTemplateMutation = () => {
     }) => TemplateService.instantiateTemplate(projectId, templateId, { overrides }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Work item created from template');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to instantiate template'),

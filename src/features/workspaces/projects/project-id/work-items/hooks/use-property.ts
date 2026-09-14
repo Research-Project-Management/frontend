@@ -82,7 +82,7 @@ export function useProperty(projectId?: string | null) {
       orderBy?: string;
       orderDirection?: string;
       showEmptyGroups?: boolean;
-      showSubtasks?: boolean;
+      showChildWorkItems?: boolean;
     }) => {
       if (!projectId) return;
       const { properties, ...displayFilters } = options;

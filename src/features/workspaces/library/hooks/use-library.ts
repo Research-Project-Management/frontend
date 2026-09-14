@@ -164,8 +164,8 @@ export function useLibrary() {
   const isPapersLoading = itemsHook.state.isLoadingAll;
   const collectionService = useCollections(effectiveScopeId);
   const collections = collectionService.state.collections;
-  const { ingest: ingestUnified } = useUnifiedIngest(workspaceId);
-  const ingestProgress = useIngestProgress(workspaceId);
+  const { ingest: ingestUnified } = useUnifiedIngest(effectiveScopeId);
+  const ingestProgress = useIngestProgress(effectiveScopeId);
 
   // UI State
   const [searchQuery, setSearchQuery] = useState('');
@@ -192,7 +192,7 @@ export function useLibrary() {
   const savedSearchId = searchParams.get('savedSearchId');
   const isSavedSearchActive = activeFilter === 'saved-search' && Boolean(savedSearchId);
   const savedSearchResults = useSavedSearchResults(
-    workspaceId,
+    effectiveScopeId,
     isSavedSearchActive ? savedSearchId : null,
   );
 
@@ -271,7 +271,7 @@ export function useLibrary() {
           const content = await recordFile.text();
           const isRis = /\.ris$/i.test(recordFile.name);
           const format = isRis ? 'RIS' : 'BIBTEX';
-          const res = await IngestionService.submit(workspaceId, {
+          const res = await IngestionService.submit(effectiveScopeId, {
             kind: 'RECORD',
             format,
             content,
@@ -293,9 +293,9 @@ export function useLibrary() {
       if (otherFiles.length === 1) {
         const file = otherFiles[0];
         try {
-          const { fileId } = await uploadLibraryFile(workspaceId, file);
+          const { fileId } = await uploadLibraryFile(effectiveScopeId, file);
           if (fileId) {
-            const res = await IngestionService.submit(workspaceId, {
+            const res = await IngestionService.submit(effectiveScopeId, {
               kind: 'FILE',
               fileId,
               filename: file.name,
@@ -373,7 +373,7 @@ export function useLibrary() {
             { id: loadingToastId },
           );
 
-          const uploadRes = await uploadLibraryFile(workspaceId, file);
+          const uploadRes = await uploadLibraryFile(effectiveScopeId, file);
 
           if (!uploadRes?.fileId) {
             throw new Error(`Upload failed for ${file.name}`);
@@ -482,7 +482,7 @@ export function useLibrary() {
             };
           }
 
-          const res = await IngestionService.submit(workspaceId, submissionPayload);
+          const res = await IngestionService.submit(effectiveScopeId, submissionPayload);
           const runId = (res as any)?.data?.runId || (res as any)?.runId;
           if (runId) {
             ingestProgress.startMonitoring(runId, linkData.title || rawInput);

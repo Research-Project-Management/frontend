@@ -68,7 +68,7 @@ export default function Navbar() {
               className='group flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer shrink-0'
             >
               Get started
-              <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 shrink-0' aria-hidden='true' />
+              <ArrowRight className='size-3.5 transition-transform group-hover:translate-x-0.5 shrink-0' aria-hidden='true' />
             </Link>
           </div>
 
@@ -110,7 +110,7 @@ export default function Navbar() {
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Get started
-                  <ArrowRight className='w-3.5 h-3.5 shrink-0' aria-hidden='true' />
+                  <ArrowRight className='size-3.5 shrink-0' aria-hidden='true' />
                 </Link>
               </div>
             </motion.div>

@@ -61,7 +61,7 @@ export const StatusModal = ({
               <DialogDescription className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
                 {isComplete ? (
                   <>
-                    Are you sure you want to end <span className="font-semibold text-foreground">{title}</span>? Choose how to handle any incomplete tasks.
+                    Are you sure you want to end <span className="font-semibold text-foreground">{title}</span>? Choose how to handle any incomplete work items.
                   </>
                 ) : (
                   <>
@@ -164,7 +164,7 @@ export const StatusModal = ({
                       <CircleSlash className="size-3.5 shrink-0" /> Keep in this Cycle
                     </span>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Preserve incomplete tasks inside this completed cycle as historical record.
+                      Preserve incomplete work items inside this completed cycle as historical record.
                     </p>
                   </div>
                 </label>

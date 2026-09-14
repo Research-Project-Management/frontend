@@ -89,16 +89,16 @@ export function useTopbar({
       });
     };
 
-    const task = doUpload();
+    const uploadPromise = doUpload();
 
-    toast.promise(task, {
+    toast.promise(uploadPromise, {
       loading: `Uploading ${file.name}...`,
       success: `${file.name} uploaded successfully`,
       error: `Failed to upload ${file.name}`,
     });
     
-    // Await the single promise task so sequential uploads in loop wait for completion
-    await task.catch((err) => console.error(err));
+    // Await the single upload promise so sequential uploads in loop wait for completion
+    await uploadPromise.catch((err) => console.error(err));
   }, [projectId, uploadFile, createFileRecord]);
 
   const handleUploadFiles = useCallback(async (filesToUpload: File[], targetFolder: string | null) => {

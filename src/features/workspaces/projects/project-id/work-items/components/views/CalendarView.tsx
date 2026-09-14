@@ -43,7 +43,7 @@ import {
   DialogContent,
   Checkbox,
 } from "@/shared/components/ui";
-import type { Column, Item, Task } from '../../types/work-item.types';
+import type { Column, Item } from '../../types/work-item.types';
 import { PRIORITY_CONFIG } from '../../types/work-item.types';
 import { resolveStateId, resolveStateColor } from '../../utils/work-item.utils';
 import {
@@ -63,8 +63,8 @@ import { cn } from "@/shared/lib/utils";
 import { createPortal } from 'react-dom';
 
 interface CalendarCardProps {
-  card: Task;
-  onRemoveFromCycle?: (card: Task) => void;
+  card: Item;
+  onRemoveFromCycle?: (card: Item) => void;
   isReadOnly?: boolean;
 }
 
@@ -99,7 +99,7 @@ function CalendarCard({ card }: CalendarCardProps) {
 
         {card.assignee && (
           <div className="flex items-center gap-1">
-            <Avatar className="size-4">
+            <Avatar className="size-4 shrink-0">
               <AvatarImage src={(card.assignee as any).avatar} />
               <AvatarFallback className="text-9">
                 {(card.assignee as any).name ? (card.assignee as any).name.charAt(0) : 'U'}
@@ -115,15 +115,13 @@ function CalendarCard({ card }: CalendarCardProps) {
 
 type CalendarViewProps = {
   items?: Item[];
-  tasks?: Item[];
   columns: Column[];
-  workspaceId: string;
+  workspaceId?: string;
   projectId: string;
   onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
-  onOpenCardDetail: (task: Task) => void;
+  onOpenCardDetail: (item: Item) => void;
   onAssignExistingItems?: (ids: string[], dueDate: string, quiet?: boolean, startDate?: string | null) => void;
-  onAssignExistingTasks?: (ids: string[], dueDate: string, quiet?: boolean, startDate?: string | null) => void;
-  onRemoveFromCycle?: (task: Task) => void;
+  onRemoveFromCycle?: (item: Item) => void;
   isAddingCard?: boolean;
   isReadOnly?: boolean;
 };
@@ -163,33 +161,30 @@ function createCalendarDueDate(dateKey: string) {
 }
 
 export function CalendarView({
-  items: propItems,
-  tasks: propTasks,
+  items: propItems = [],
   columns,
   workspaceId,
   projectId,
   onAddCard,
   onOpenCardDetail,
-  onAssignExistingItems,
-  onAssignExistingTasks: propOnAssignExistingTasks,
+  onAssignExistingItems: propOnAssignExistingItems,
   onRemoveFromCycle,
   isAddingCard,
   isReadOnly,
 }: CalendarViewProps) {
-  const tasks = propItems || propTasks || [];
-  const items = tasks;
-  const onAssignExistingTasks = onAssignExistingItems || propOnAssignExistingTasks || (() => {});
+  const items = propItems;
+  const onAssignExistingItems = propOnAssignExistingItems || (() => {});
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [layoutMode, setLayoutMode] = useState<CalendarLayoutMode>("month");
   const [quickAddDateKey, setQuickAddDateKey] = useState<string | null>(null);
   const [quickAddTitle, setQuickAddTitle] = useState("");
-  const [addTaskMenuDateKey, setAddTaskMenuDateKey] = useState<string | null>(null);
+  const [addItemMenuDateKey, setAddItemMenuDateKey] = useState<string | null>(null);
   const [existingDialogDateKey, setExistingDialogDateKey] = useState<string | null>(
     null,
   );
   const [existingSearch, setExistingSearch] = useState("");
-  const [selectedExistingTaskIds, setSelectedExistingTaskIds] = useState<string[]>([]);
-  const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [selectedExistingItemIds, setSelectedExistingItemIds] = useState<string[]>([]);
+  const [activeItem, setActiveItem] = useState<Item | null>(null);
   const [draggedWidth, setDraggedWidth] = useState<number | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -214,43 +209,60 @@ export function CalendarView({
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [currentMonth, layoutMode]);
 
-  const tasksByDate = useMemo(() => {
-    const grouped = new Map<string, Task[]>();
+  const { multiDayItems, singleDayItemsByDate } = useMemo(() => {
+    const multiDay: Array<Item & { startKey: string; dueKey: string }> = [];
+    const singleDay = new Map<string, Item[]>();
 
-    tasks.forEach((task) => {
-      const dateKey = getCalendarDateKey(task.dueDate);
-      if (!dateKey) return;
-      if (!grouped.has(dateKey)) grouped.set(dateKey, []);
-      grouped.get(dateKey)!.push(task);
+    items.forEach((item) => {
+      const startKey = getCalendarDateKey(item.startDate);
+      const dueKey = getCalendarDateKey(item.dueDate);
+
+      if (startKey && dueKey && startKey < dueKey) {
+        multiDay.push({ ...item, startKey, dueKey });
+      } else {
+        const targetKey = dueKey || startKey;
+        if (targetKey) {
+          if (!singleDay.has(targetKey)) singleDay.set(targetKey, []);
+          singleDay.get(targetKey)!.push(item);
+        }
+      }
     });
 
-    return grouped;
-  }, [tasks]);
+    return { multiDayItems: multiDay, singleDayItemsByDate: singleDay };
+  }, [items]);
 
-  const existingTaskCandidates = useMemo(
-    () => tasks.filter((task) => !task.dueDate),
-    [tasks],
+  const calendarWeeks = useMemo(() => {
+    const weeks: Date[][] = [];
+    for (let i = 0; i < calendarDays.length; i += 7) {
+      weeks.push(calendarDays.slice(i, i + 7));
+    }
+    return weeks;
+  }, [calendarDays]);
+
+  const existingItemCandidates = useMemo(
+    () => items.filter((item) => !item.dueDate),
+    [items],
   );
 
-  const filteredExistingTaskCandidates = useMemo(() => {
+  const filteredExistingItemCandidates = useMemo(() => {
     const keyword = existingSearch.trim().toLowerCase();
-    if (!keyword) return existingTaskCandidates;
+    if (!keyword) return existingItemCandidates;
 
-    return existingTaskCandidates.filter((task) => {
-      const identifierText = task.identifier?.toLowerCase() || "";
-      const titleText = task.title?.toLowerCase() || "";
+    return existingItemCandidates.filter((item) => {
+      const identifierText = item.identifier?.toLowerCase() || "";
+      const titleText = item.title?.toLowerCase() || "";
       return identifierText.includes(keyword) || titleText.includes(keyword);
     });
-  }, [existingSearch, existingTaskCandidates]);
+  }, [existingSearch, existingItemCandidates]);
 
-  const allFilteredTasksSelected = useMemo(() => {
-    if (filteredExistingTaskCandidates.length === 0) return false;
+  const allFilteredItemsSelected = useMemo(() => {
+    if (filteredExistingItemCandidates.length === 0) return false;
 
-    const selectedSet = new Set(selectedExistingTaskIds);
-    return filteredExistingTaskCandidates.every((task) =>
-      selectedSet.has(task.id),
+    const selectedSet = new Set(selectedExistingItemIds);
+    return filteredExistingItemCandidates.every((item) =>
+      selectedSet.has(item.id),
     );
-  }, [filteredExistingTaskCandidates, selectedExistingTaskIds]);
+  }, [filteredExistingItemCandidates, selectedExistingItemIds]);
 
   const handlePrevious = useCallback(() => {
     if (layoutMode === "week") {
@@ -303,83 +315,83 @@ export function CalendarView({
     onAddCard(columnIdToSubmit, trimmedTitle, createCalendarDueDate(dateKeyToSubmit));
   }, [quickAddDateKey, columns, quickAddTitle, onAddCard]);
 
-  const handleOpenAddTaskMenu = useCallback((dateKey: string) => {
-    setAddTaskMenuDateKey(dateKey);
+  const handleOpenAddItemMenu = useCallback((dateKey: string) => {
+    setAddItemMenuDateKey(dateKey);
   }, []);
 
-  const handleAddTask = useCallback((dateKey: string) => {
-    setAddTaskMenuDateKey(null);
+  const handleAddItem = useCallback((dateKey: string) => {
+    setAddItemMenuDateKey(null);
     setExistingDialogDateKey(null);
     handleOpenQuickAdd(dateKey);
   }, [handleOpenQuickAdd]);
 
-  const handleAddExistingTask = useCallback((dateKey: string) => {
-    setAddTaskMenuDateKey(null);
+  const handleAddExistingItem = useCallback((dateKey: string) => {
+    setAddItemMenuDateKey(null);
     setExistingDialogDateKey(dateKey);
     setExistingSearch("");
-    setSelectedExistingTaskIds([]);
+    setSelectedExistingItemIds([]);
   }, []);
 
   const handleCloseExistingDialog = useCallback(() => {
     setExistingDialogDateKey(null);
     setExistingSearch("");
-    setSelectedExistingTaskIds([]);
+    setSelectedExistingItemIds([]);
   }, []);
 
-  const handleToggleExistingTask = useCallback((taskId: string) => {
-    setSelectedExistingTaskIds((prev) =>
-      prev.includes(taskId)
-        ? prev.filter((id) => id !== taskId)
-        : [...prev, taskId],
+  const handleToggleExistingItem = useCallback((itemId: string) => {
+    setSelectedExistingItemIds((prev) =>
+      prev.includes(itemId)
+        ? prev.filter((id) => id !== itemId)
+        : [...prev, itemId],
     );
   }, []);
 
-  const handleSubmitExistingTasks = useCallback(() => {
-    if (!existingDialogDateKey || selectedExistingTaskIds.length === 0) return;
+  const handleSubmitExistingItems = useCallback(() => {
+    if (!existingDialogDateKey || selectedExistingItemIds.length === 0) return;
 
-    onAssignExistingTasks(
-      selectedExistingTaskIds,
+    onAssignExistingItems(
+      selectedExistingItemIds,
       createCalendarDueDate(existingDialogDateKey),
     );
     handleCloseExistingDialog();
-  }, [existingDialogDateKey, selectedExistingTaskIds, onAssignExistingTasks, handleCloseExistingDialog]);
+  }, [existingDialogDateKey, selectedExistingItemIds, onAssignExistingItems, handleCloseExistingDialog]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
-    const task = event.active.data.current?.task;
-    if (task) {
-      setActiveTask(task);
+    const item = event.active.data.current?.item;
+    if (item) {
+      setActiveItem(item);
       setDraggedWidth(event.active.rect.current.initial?.width ?? null);
     }
   }, []);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
-    setActiveTask(null);
+    setActiveItem(null);
     setDraggedWidth(null);
     const { active, over } = event;
     if (!over) return;
 
-    const taskId = String(active.id);
+    const itemId = String(active.id);
     const dateKey = String(over.id);
 
-    const task = tasks.find((t) => t.id === taskId);
-    if (!task) return;
+    const item = items.find((t) => t.id === itemId);
+    if (!item) return;
 
-    const currentDueDateKey = getCalendarDateKey(task.dueDate);
+    const currentDueDateKey = getCalendarDateKey(item.dueDate);
     const isMovingForward = currentDueDateKey && dateKey > currentDueDateKey;
 
     if (isMovingForward) {
       // Design: if moving forward, preserve start date
-      onAssignExistingTasks(
-        [taskId],
+      onAssignExistingItems(
+        [itemId],
         createCalendarDueDate(dateKey),
         true,
-        task.startDate,
+        item.startDate,
       );
     } else {
       // Design: if moving backward, only keep the end date (clear start date)
-      onAssignExistingTasks([taskId], createCalendarDueDate(dateKey), true, null);
+      onAssignExistingItems([itemId], createCalendarDueDate(dateKey), true, null);
     }
-  }, [onAssignExistingTasks, tasks]);
+  }, [onAssignExistingItems, items]);
 
   return (
     <DndContext
@@ -457,62 +469,117 @@ export function CalendarView({
 
         {/* Scrollable Calendar Grid (Unified 7-Column Grid with sleek custom scrollbar) */}
         <div className="flex-1 overflow-auto vertical-scrollbar custom-scrollbar">
-          <div className="grid grid-cols-7 bg-background min-h-full min-w-[560px]">
+          <div className="min-h-full min-w-[560px] bg-background">
             {/* Week Day Labels (Row 1 of Grid - Centralized bg-secondary, Natural Title Case, No Bottom Border) */}
-            {WEEK_DAY_LABELS.map((label) => (
-              <div
-                key={label}
-                className="sticky top-0 z-20 h-8 px-3 flex items-center justify-end text-11 font-medium text-muted-foreground bg-secondary [&:not(:nth-child(7n))]:border-r border-border select-none"
-              >
-                {label}
-              </div>
-            ))}
+            <div className="grid grid-cols-7 sticky top-0 z-20 bg-secondary">
+              {WEEK_DAY_LABELS.map((label) => (
+                <div
+                  key={label}
+                  className="h-8 px-3 flex items-center justify-end text-11 font-medium text-muted-foreground [&:not(:nth-child(7n))]:border-r border-border select-none"
+                >
+                  {label}
+                </div>
+              ))}
+            </div>
 
-            {/* Calendar Days (Rows 2+ of Grid) */}
-            {calendarDays.map((day) => {
-              const dateKey = format(day, DATE_KEY_FORMAT);
-              const dayTasks = tasksByDate.get(dateKey) || [];
-              const isQuickAdding = quickAddDateKey === dateKey;
-              const isCurrentMonth =
-                layoutMode === "week"
-                  ? isSameWeek(day, currentMonth, { weekStartsOn: 1 })
-                  : isSameMonth(day, currentMonth);
-              const isThisToday = isToday(day);
-              const isWeekendDay = isWeekend(day);
-              const dayTextClass = !isCurrentMonth
-                ? "text-muted-foreground"
-                : isWeekendDay
-                    ? "text-muted-foreground"
-                    : "text-foreground";
+            {/* Weeks with Multi-day Spanning Bars */}
+            {calendarWeeks.map((weekDays) => {
+              const weekStartKey = format(weekDays[0], DATE_KEY_FORMAT);
+              const weekEndKey = format(weekDays[6], DATE_KEY_FORMAT);
+
+              const weekSpanningItems = multiDayItems
+                .filter((t) => t.startKey <= weekEndKey && t.dueKey >= weekStartKey)
+                .map((t) => {
+                  const sIdx = weekDays.findIndex((d) => format(d, DATE_KEY_FORMAT) === t.startKey);
+                  const startIndex = sIdx === -1 ? 0 : sIdx;
+                  const eIdx = weekDays.findIndex((d) => format(d, DATE_KEY_FORMAT) === t.dueKey);
+                  const endIndex = eIdx === -1 ? 6 : Math.min(6, eIdx);
+                  const span = Math.max(1, endIndex - startIndex + 1);
+                  const isContinuedFromPrev = t.startKey < weekStartKey;
+                  const isContinuedToNext = t.dueKey > weekEndKey;
+
+                  return {
+                    item: t,
+                    startIndex,
+                    span,
+                    isContinuedFromPrev,
+                    isContinuedToNext,
+                  };
+                });
 
               return (
-                <CalendarDayCell
-                  key={dateKey}
-                  dateKey={dateKey}
-                  day={day}
-                  dayTasks={dayTasks}
-                  isQuickAdding={isQuickAdding}
-                  isCurrentMonth={isCurrentMonth}
-                  isThisToday={isThisToday}
-                  dayTextClass={dayTextClass}
-                  dayCellMinHeight={dayCellMinHeight}
-                  layoutMode={layoutMode}
-                  onOpenCardDetail={onOpenCardDetail}
-                  handleOpenAddTaskMenu={handleOpenAddTaskMenu}
-                  addTaskMenuDateKey={addTaskMenuDateKey}
-                  isAddTaskMenuOpen={addTaskMenuDateKey === dateKey}
-                  onSetAddTaskMenuDateKey={setAddTaskMenuDateKey}
-                  onAddWorkItem={handleAddTask}
-                  onAddExistingWorkItem={handleAddExistingTask}
-                  quickAddTitle={quickAddTitle}
-                  onSetQuickAddTitle={setQuickAddTitle}
-                  onQuickAddSubmit={handleQuickAddSubmit}
-                  onCloseQuickAdd={handleCloseQuickAdd}
-                  onRemoveFromCycle={onRemoveFromCycle}
-                  isAddingCard={isAddingCard}
-                  columns={columns}
-                  isReadOnly={isReadOnly}
-                />
+                <div key={weekStartKey} className="border-b border-border/40">
+                  {/* Multi-day Spanning Bars */}
+                  {weekSpanningItems.length > 0 && (
+                    <div className="grid grid-cols-7 pt-1 pb-0.5 px-0.5 bg-muted/20 border-b border-border/20">
+                      {weekSpanningItems.map(
+                        ({ item, startIndex, span, isContinuedFromPrev, isContinuedToNext }) => (
+                          <CalendarSpanningBar
+                            key={`${item.id}-${weekStartKey}`}
+                            item={item}
+                            startIndex={startIndex}
+                            span={span}
+                            isContinuedFromPrev={isContinuedFromPrev}
+                            isContinuedToNext={isContinuedToNext}
+                            onOpenCardDetail={onOpenCardDetail}
+                            onRemoveFromCycle={onRemoveFromCycle}
+                            isReadOnly={isReadOnly}
+                          />
+                        )
+                      )}
+                    </div>
+                  )}
+
+                  {/* Calendar Days in this week */}
+                  <div className="grid grid-cols-7">
+                    {weekDays.map((day) => {
+                      const dateKey = format(day, DATE_KEY_FORMAT);
+                      const dayItems = singleDayItemsByDate.get(dateKey) || [];
+                      const isQuickAdding = quickAddDateKey === dateKey;
+                      const isCurrentMonth =
+                        layoutMode === "week"
+                          ? isSameWeek(day, currentMonth, { weekStartsOn: 1 })
+                          : isSameMonth(day, currentMonth);
+                      const isThisToday = isToday(day);
+                      const isWeekendDay = isWeekend(day);
+                      const dayTextClass = !isCurrentMonth
+                        ? "text-muted-foreground"
+                        : isWeekendDay
+                            ? "text-muted-foreground"
+                            : "text-foreground";
+
+                      return (
+                        <CalendarDayCell
+                          key={dateKey}
+                          dateKey={dateKey}
+                          day={day}
+                          dayItems={dayItems}
+                          isQuickAdding={isQuickAdding}
+                          isCurrentMonth={isCurrentMonth}
+                          isThisToday={isThisToday}
+                          dayTextClass={dayTextClass}
+                          dayCellMinHeight={dayCellMinHeight}
+                          layoutMode={layoutMode}
+                          onOpenCardDetail={onOpenCardDetail}
+                          handleOpenAddItemMenu={handleOpenAddItemMenu}
+                          addItemMenuDateKey={addItemMenuDateKey}
+                          isAddItemMenuOpen={addItemMenuDateKey === dateKey}
+                          onSetAddItemMenuDateKey={setAddItemMenuDateKey}
+                          onAddWorkItem={handleAddItem}
+                          onAddExistingWorkItem={handleAddExistingItem}
+                          quickAddTitle={quickAddTitle}
+                          onSetQuickAddTitle={setQuickAddTitle}
+                          onQuickAddSubmit={handleQuickAddSubmit}
+                          onCloseQuickAdd={handleCloseQuickAdd}
+                          onRemoveFromCycle={onRemoveFromCycle}
+                          isAddingCard={isAddingCard}
+                          columns={columns}
+                          isReadOnly={isReadOnly}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -541,23 +608,23 @@ export function CalendarView({
             </div>
 
             {/* Selected chips */}
-            {selectedExistingTaskIds.length > 0 && (
+            {selectedExistingItemIds.length > 0 && (
               <div className="mt-1.5 flex min-h-9 flex-wrap items-center gap-2 px-5 py-2">
-                {selectedExistingTaskIds.map((taskId) => {
-                  const selectedTask = existingTaskCandidates.find(
-                    (task) => task.id === taskId,
+                {selectedExistingItemIds.map((itemId) => {
+                  const selectedItem = existingItemCandidates.find(
+                    (item) => item.id === itemId,
                   );
-                  if (!selectedTask) return null;
+                  if (!selectedItem) return null;
                   return (
                     <button
-                      key={taskId}
+                      key={itemId}
                       type="button"
-                      onClick={() => handleToggleExistingTask(taskId)}
+                      onClick={() => handleToggleExistingItem(itemId)}
                       className="group inline-flex items-center gap-1.5 rounded-sm border border-border bg-card px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
-                      title={selectedTask.title || "Untitled"}
+                      title={selectedItem.title || "Untitled"}
                     >
                       <span className="max-w-45 truncate">
-                        {selectedTask.title || "Untitled"}
+                        {selectedItem.title || "Untitled"}
                       </span>
                       <X className="size-3 text-foreground shrink-0" />
                     </button>
@@ -566,32 +633,32 @@ export function CalendarView({
               </div>
             )}
 
-            {/* Task list */}
+            {/* Item list */}
             <div className="max-h-80 overflow-y-auto px-1 py-2">
-              {filteredExistingTaskCandidates.length === 0 ? (
+              {filteredExistingItemCandidates.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
                   <Search className="size-8 mb-2 opacity-20 shrink-0" strokeWidth={1.5} />
                   <p className="text-sm font-medium">No work items found</p>
                 </div>
               ) : (
-                filteredExistingTaskCandidates.map((task) => {
-                  const checked = selectedExistingTaskIds.includes(task.id);
+                filteredExistingItemCandidates.map((item) => {
+                  const checked = selectedExistingItemIds.includes(item.id);
 
                   return (
-                    <div key={task.id} className="px-2">
+                    <div key={item.id} className="px-2">
                       <button
                         type="button"
-                        onClick={() => handleToggleExistingTask(task.id)}
+                        onClick={() => handleToggleExistingItem(item.id)}
                         className="group flex w-full items-center gap-3 rounded-sm px-3 py-2.5 text-left transition-colors hover:bg-muted"
                       >
                         <Checkbox
                           checked={checked}
-                          aria-label={`Select ${task.title}`}
+                          aria-label={`Select ${item.title}`}
                           className="size-4 shrink-0 rounded-sm border-border bg-background data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         />
                         <div className="flex flex-1 items-center gap-2.5 min-w-0">
                           {(() => {
-                            const col = columns.find(c => c.id === task.columnId);
+                            const col = columns.find(c => c.id === item.columnId);
                             if (!col) return null;
                             return (
                               <span className="shrink-0 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-sm truncate max-w-[80px]">
@@ -600,14 +667,14 @@ export function CalendarView({
                             );
                           })()}
                           <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
-                            {task.title}
+                            {item.title}
                           </span>
                         </div>
                         <button
                           type="button"
                           onClick={(event) => {
                             event.stopPropagation();
-                            onOpenCardDetail(task);
+                            onOpenCardDetail(item);
                           }}
                           className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-foreground transition-colors hover:bg-muted"
                           aria-label="Open item detail"
@@ -626,26 +693,26 @@ export function CalendarView({
               <button
                 type="button"
                 onClick={() => {
-                  if (allFilteredTasksSelected) {
+                  if (allFilteredItemsSelected) {
                     const visibleIds = new Set(
-                      filteredExistingTaskCandidates.map((task) => task.id),
+                      filteredExistingItemCandidates.map((item) => item.id),
                     );
-                    setSelectedExistingTaskIds((prev) =>
+                    setSelectedExistingItemIds((prev) =>
                       prev.filter((id) => !visibleIds.has(id)),
                     );
                   } else {
-                    const visibleIds = filteredExistingTaskCandidates.map(
-                      (task) => task.id,
+                    const visibleIds = filteredExistingItemCandidates.map(
+                      (item) => item.id,
                     );
-                    setSelectedExistingTaskIds((prev) =>
+                    setSelectedExistingItemIds((prev) =>
                       Array.from(new Set([...prev, ...visibleIds])),
                     );
                   }
                 }}
-                disabled={filteredExistingTaskCandidates.length === 0}
+                disabled={filteredExistingItemCandidates.length === 0}
                 className="h-8 rounded-sm px-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"
               >
-                {allFilteredTasksSelected ? "Deselect all" : "Select all"}
+                {allFilteredItemsSelected ? "Deselect all" : "Select all"}
               </button>
 
               <div className="flex items-center gap-2">
@@ -659,8 +726,8 @@ export function CalendarView({
                 </Button>
                 <Button
                   type="button"
-                  onClick={handleSubmitExistingTasks}
-                  disabled={selectedExistingTaskIds.length === 0}
+                  onClick={handleSubmitExistingItems}
+                  disabled={selectedExistingItemIds.length === 0}
                   className="h-9 min-w-17.5 bg-primary px-4 text-primary-foreground shadow-none hover:bg-primary-hover disabled:opacity-30"
                 >
                   Add
@@ -672,7 +739,7 @@ export function CalendarView({
       </div>
       {isMounted && createPortal(
         <DragOverlay>
-          {activeTask ? (
+          {activeItem ? (
             <div 
               style={{ width: draggedWidth ?? 'auto' }} 
               className="bg-card border border-border rounded-lg overflow-hidden opacity-90"
@@ -680,10 +747,10 @@ export function CalendarView({
               <div className="relative flex items-center gap-2 px-3 py-1.5 text-xs font-medium leading-tight text-foreground">
                 <span
                   className="absolute left-0 top-1/2 h-5.5 w-0.5 -translate-y-1/2 rounded-r-full"
-                  style={{ backgroundColor: resolveStateColor(activeTask.columnId) }}
+                  style={{ backgroundColor: resolveStateColor(activeItem.columnId) }}
                 />
                 <span className="min-w-0 flex-1 truncate">
-                  {activeTask.title}
+                  {activeItem.title}
                 </span>
               </div>
             </div>
@@ -698,7 +765,7 @@ export function CalendarView({
 const CalendarDayCell = memo(({
   dateKey,
   day,
-  dayTasks,
+  dayItems,
   isQuickAdding,
   isCurrentMonth,
   isThisToday,
@@ -706,9 +773,9 @@ const CalendarDayCell = memo(({
   dayCellMinHeight,
   layoutMode,
   onOpenCardDetail,
-  handleOpenAddTaskMenu,
-  addTaskMenuDateKey,
-  onSetAddTaskMenuDateKey,
+  handleOpenAddItemMenu,
+  addItemMenuDateKey,
+  onSetAddItemMenuDateKey,
   onAddWorkItem,
   onAddExistingWorkItem,
   onRemoveFromCycle,
@@ -720,7 +787,7 @@ const CalendarDayCell = memo(({
   isReadOnly,
   quickAddTitle = '',
 }: any) => {
-  const isAddTaskMenuOpen = addTaskMenuDateKey === dateKey;
+  const isAddItemMenuOpen = addItemMenuDateKey === dateKey;
   const isWeekendDay = isWeekend(day);
   const { setNodeRef, isOver } = useDroppable({
     id: dateKey,
@@ -774,10 +841,10 @@ const CalendarDayCell = memo(({
             layoutMode === "week" ? "max-h-175" : "max-h-48"
           )}
         >
-          {dayTasks.map((task: any) => (
+          {dayItems.map((item: any) => (
             <CalendarItem
-              key={task.id}
-              task={task}
+              key={item.id}
+              item={item}
               onOpenCardDetail={onOpenCardDetail}
               onRemoveFromCycle={onRemoveFromCycle}
               isReadOnly={isReadOnly}
@@ -787,19 +854,19 @@ const CalendarDayCell = memo(({
 
         {!isReadOnly && !isQuickAdding && (
           <DropdownMenu
-            open={isAddTaskMenuOpen}
+            open={isAddItemMenuOpen}
             onOpenChange={(open) => {
-              if (!open && isAddTaskMenuOpen) {
-                onSetAddTaskMenuDateKey(null);
+              if (!open && isAddItemMenuOpen) {
+                onSetAddItemMenuDateKey(null);
               }
             }}
           >
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                onClick={() => handleOpenAddTaskMenu(dateKey)}
+                onClick={() => handleOpenAddItemMenu(dateKey)}
                 className={cn(
-                  dayTasks.length > 0 ? "mt-1.5" : "mt-0",
+                  dayItems.length > 0 ? "mt-1.5" : "mt-0",
                   "flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-11 font-medium text-foreground transition-colors hover:bg-muted cursor-pointer",
                   "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto"
                 )}
@@ -883,27 +950,141 @@ const CalendarDayCell = memo(({
   );
 });
 
+interface CalendarSpanningBarProps {
+  item: Item;
+  startIndex: number;
+  span: number;
+  isContinuedFromPrev: boolean;
+  isContinuedToNext: boolean;
+  onOpenCardDetail: (item: Item) => void;
+  onRemoveFromCycle?: (item: Item) => void;
+  isReadOnly?: boolean;
+}
+
+const CalendarSpanningBar = memo(function CalendarSpanningBar({
+  item,
+  startIndex,
+  span,
+  isContinuedFromPrev,
+  isContinuedToNext,
+  onOpenCardDetail,
+  onRemoveFromCycle,
+  isReadOnly,
+}: CalendarSpanningBarProps) {
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const columnColor = resolveStateColor(item.columnId);
+
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: item.id,
+    disabled: isReadOnly,
+    data: {
+      type: "Item",
+      item,
+    },
+  });
+
+  const style: React.CSSProperties = {
+    gridColumnStart: startIndex + 1,
+    gridColumnEnd: `span ${span}`,
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.3 : 1,
+  };
+
+  const handleMouseEnter = () => {
+    hoverTimerRef.current = setTimeout(() => {
+      setIsPreviewOpen(true);
+    }, 450);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    setIsPreviewOpen(false);
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="my-0.5 px-0.5"
+    >
+      <Popover open={isPreviewOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            onClick={() => onOpenCardDetail(item)}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            className={cn(
+              "group relative flex w-full items-center gap-1.5 h-6 px-2 text-left text-11 font-medium leading-tight transition-colors cursor-pointer border select-none",
+              isContinuedFromPrev ? "rounded-l-none border-l-0" : "rounded-l-md",
+              isContinuedToNext ? "rounded-r-none border-r-0" : "rounded-r-md",
+              "border-border bg-card hover:bg-muted text-foreground shadow-2xs",
+              isDragging && "z-50 opacity-40 border-primary"
+            )}
+            style={{
+              borderLeftColor: isContinuedFromPrev ? undefined : columnColor,
+              borderLeftWidth: isContinuedFromPrev ? undefined : '3px',
+            }}
+          >
+            {isContinuedFromPrev && (
+              <ChevronLeft className="size-3 text-muted-foreground shrink-0 -ml-1" />
+            )}
+            {item.identifier && (
+              <span className="font-mono text-10 text-muted-foreground shrink-0 font-semibold">
+                {item.identifier}
+              </span>
+            )}
+            <span className="min-w-0 flex-1 truncate font-medium">
+              {item.title}
+            </span>
+            {isContinuedToNext && (
+              <ChevronRight className="size-3 text-muted-foreground shrink-0 -mr-1" />
+            )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="bottom"
+          align="start"
+          sideOffset={6}
+          className="w-80 border-none bg-transparent p-0 shadow-none z-50"
+          onOpenAutoFocus={(e: Event) => e.preventDefault()}
+        >
+          <div className="pointer-events-none">
+            <CalendarCard card={item} onRemoveFromCycle={onRemoveFromCycle} isReadOnly={isReadOnly} />
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+});
+
 const CalendarItem = memo(({
-  task,
+  item,
   onOpenCardDetail,
   onRemoveFromCycle,
   isReadOnly,
 }: {
-  task: Task;
-  onOpenCardDetail: (task: Task) => void;
-  onRemoveFromCycle?: (task: Task) => void;
+  item: Item;
+  onOpenCardDetail: (item: Item) => void;
+  onRemoveFromCycle?: (item: Item) => void;
   isReadOnly?: boolean;
 }) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const columnColor = resolveStateColor(task.columnId);
+  const columnColor = resolveStateColor(item.columnId);
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: task.id,
+    id: item.id,
     disabled: isReadOnly,
     data: {
-      type: "Task",
-      task,
+      type: "Item",
+      item,
     },
   });
 
@@ -937,7 +1118,7 @@ const CalendarItem = memo(({
         <PopoverTrigger asChild>
           <button
             type="button"
-            onClick={() => onOpenCardDetail(task)}
+            onClick={() => onOpenCardDetail(item)}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             className={cn(
@@ -950,7 +1131,7 @@ const CalendarItem = memo(({
               style={{ backgroundColor: columnColor }}
             />
             <span className="min-w-0 flex-1 truncate transition-colors">
-              {task.title}
+              {item.title}
             </span>
           </button>
         </PopoverTrigger>
@@ -962,12 +1143,12 @@ const CalendarItem = memo(({
           onOpenAutoFocus={(e: Event) => e.preventDefault()}
         >
           <div className="pointer-events-none">
-            <CalendarCard card={task} onRemoveFromCycle={onRemoveFromCycle} isReadOnly={isReadOnly} />
+            <CalendarCard card={item} onRemoveFromCycle={onRemoveFromCycle} isReadOnly={isReadOnly} />
           </div>
         </PopoverContent>
       </Popover>
     </div>
   );
 });
-export const CalendarTaskItem = CalendarItem;
+
 export default CalendarView;

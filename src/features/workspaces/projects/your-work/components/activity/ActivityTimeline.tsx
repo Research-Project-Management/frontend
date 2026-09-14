@@ -7,16 +7,16 @@ import { ActivityFeedList } from '../shared/ActivityFeedList';
 export interface ActivityTimelineProps {
   activities?: any[];
   isLoading?: boolean;
-  onTaskClick?: (taskId: string) => void;
-  taskProjectMap?: Record<string, { id: string; name: string }>;
+  onWorkItemClick?: (workItemId: string) => void;
+  workItemProjectMap?: Record<string, { id: string; name: string }>;
   className?: string;
 }
 
 export function ActivityTimeline({
   activities = [],
   isLoading = false,
-  onTaskClick,
-  taskProjectMap = {},
+  onWorkItemClick,
+  workItemProjectMap = {},
   className,
 }: ActivityTimelineProps) {
   return (
@@ -32,8 +32,8 @@ export function ActivityTimeline({
       <ActivityFeedList
         items={activities}
         isLoading={isLoading}
-        onTaskClick={onTaskClick}
-        taskProjectMap={taskProjectMap}
+        onWorkItemClick={onWorkItemClick}
+        workItemProjectMap={workItemProjectMap}
         emptyPadding="py-12"
       />
     </div>

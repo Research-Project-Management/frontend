@@ -14,10 +14,10 @@ export const updateKeys = {
     projectId
       ? (['item-updates-latest', itemId, projectId] as const)
       : (['item-updates-latest', itemId] as const),
-  task: (taskId: string, projectId?: string) =>
+  workItem: (workItemId: string, projectId?: string) =>
     projectId
-      ? (['task-updates', taskId, projectId] as const)
-      : (['task-updates', taskId] as const),
+      ? (['item-updates', workItemId, projectId] as const)
+      : (['item-updates', workItemId] as const),
 };
 
 export const useUpdatesQuery = (itemId: string, projectId?: string) =>
@@ -28,7 +28,6 @@ export const useUpdatesQuery = (itemId: string, projectId?: string) =>
   });
 
 export const useItemUpdatesQuery = useUpdatesQuery;
-export const useTaskUpdatesQuery = useUpdatesQuery;
 export const useWorkItemUpdatesQuery = useUpdatesQuery;
 
 export const useLatestUpdateQuery = (itemId: string, projectId?: string) =>
@@ -39,7 +38,6 @@ export const useLatestUpdateQuery = (itemId: string, projectId?: string) =>
   });
 
 export const useItemLatestUpdateQuery = useLatestUpdateQuery;
-export const useTaskLatestUpdateQuery = useLatestUpdateQuery;
 export const useWorkItemLatestUpdateQuery = useLatestUpdateQuery;
 
 export const useCreateUpdateMutation = () => {
@@ -49,26 +47,22 @@ export const useCreateUpdateMutation = () => {
       id,
       itemId,
       workItemId,
-      taskId,
       projectId,
       data,
     }: {
       id?: string;
       itemId?: string;
       workItemId?: string;
-      taskId?: string;
       projectId?: string;
       data: { content: string; status?: string; percent?: number };
     }) => {
-      const targetId = (id || itemId || workItemId || taskId) ?? '';
+      const targetId = (id || itemId || workItemId) ?? '';
       return UpdateService.createUpdate(targetId, data, projectId);
     },
     onSuccess: (_, vars) => {
-      const targetId = (vars.id || vars.itemId || vars.workItemId || vars.taskId) ?? '';
+      const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';
       queryClient.invalidateQueries({ queryKey: ['item-updates', targetId] });
       queryClient.invalidateQueries({ queryKey: ['item-updates-latest', targetId] });
-      queryClient.invalidateQueries({ queryKey: ['task-updates', targetId] });
-      queryClient.invalidateQueries({ queryKey: ['task-updates-latest', targetId] });
       toast.success('Progress update posted');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to post update'),
@@ -76,7 +70,6 @@ export const useCreateUpdateMutation = () => {
 };
 
 export const useCreateItemUpdateMutation = useCreateUpdateMutation;
-export const useCreateTaskUpdateMutation = useCreateUpdateMutation;
 export const useCreateWorkItemUpdateMutation = useCreateUpdateMutation;
 
 export const useDeleteUpdateMutation = () => {
@@ -86,26 +79,22 @@ export const useDeleteUpdateMutation = () => {
       id,
       itemId,
       workItemId,
-      taskId,
       updateId,
       projectId,
     }: {
       id?: string;
       itemId?: string;
       workItemId?: string;
-      taskId?: string;
       updateId: string;
       projectId?: string;
     }) => {
-      const targetId = (id || itemId || workItemId || taskId) ?? '';
+      const targetId = (id || itemId || workItemId) ?? '';
       return UpdateService.deleteUpdate(targetId, updateId, projectId);
     },
     onSuccess: (_, vars) => {
-      const targetId = (vars.id || vars.itemId || vars.workItemId || vars.taskId) ?? '';
+      const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';
       queryClient.invalidateQueries({ queryKey: ['item-updates', targetId] });
       queryClient.invalidateQueries({ queryKey: ['item-updates-latest', targetId] });
-      queryClient.invalidateQueries({ queryKey: ['task-updates', targetId] });
-      queryClient.invalidateQueries({ queryKey: ['task-updates-latest', targetId] });
       toast.success('Update deleted');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to delete update'),
@@ -113,5 +102,4 @@ export const useDeleteUpdateMutation = () => {
 };
 
 export const useDeleteItemUpdateMutation = useDeleteUpdateMutation;
-export const useDeleteTaskUpdateMutation = useDeleteUpdateMutation;
 export const useDeleteWorkItemUpdateMutation = useDeleteUpdateMutation;

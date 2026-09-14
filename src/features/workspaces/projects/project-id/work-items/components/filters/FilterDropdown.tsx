@@ -38,10 +38,8 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/shared/components/ui"
 import { cn } from "@/shared/lib/utils";
 import type {
   Column,
-  Task,
   Item,
   Priority,
-  TaskPriority,
   StateGroup,
   DueDateFilterOption,
   Cycle,
@@ -55,10 +53,15 @@ import {
 import type { AssigneeFilterOption } from '../../hooks/use-topbar';
 
 import {
+  StatusIcon,
+  BacklogStatusIcon as StateBacklogIcon,
+  TodoStatusIcon as StateTodoIcon,
+  InProgressStatusIcon as StateInProgressIcon,
+  DoneStatusIcon as StateDoneIcon,
+  CancelledStatusIcon as StateCancelledIcon,
   FilterFunnelIcon,
   TextLinesIcon,
   ItemsIcon,
-  TasksIcon,
   ParentBranchIcon,
   ConcentricCirclesIcon,
   PrioritySignalBarsIcon,
@@ -69,72 +72,21 @@ export {
   FilterFunnelIcon,
   TextLinesIcon,
   ItemsIcon,
-  TasksIcon,
   ParentBranchIcon,
   ConcentricCirclesIcon,
   PrioritySignalBarsIcon,
   WorkItemsIcon,
+  StateBacklogIcon,
+  StateTodoIcon,
+  StateInProgressIcon,
+  StateDoneIcon,
+  StateCancelledIcon,
 };
 
 /** Cycle Icon matching sidebar */
 export const CycleContrastIcon = CycleIcon;
 
 // ── Submenu State Icons ─────────────────────────────────────────────────────
-
-export function StateBacklogIcon({ className }: { className?: string }) {
-  return <CircleDashed className={cn('size-3.5 text-muted-foreground shrink-0 stroke-[2.2]', className)} />;
-}
-
-export function StateTodoIcon({ className }: { className?: string }) {
-  return <Circle className={cn('size-3.5 text-muted-foreground shrink-0 stroke-[2]', className)} />;
-}
-
-export function StateInProgressIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={cn('size-3.5 text-amber-500 shrink-0', className)}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-    >
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="4" fill="currentColor" />
-    </svg>
-  );
-}
-
-export function StateDoneIcon({ className }: { className?: string }) {
-  return (
-    <svg className={cn('size-3.5 text-emerald-500 shrink-0', className)} viewBox="0 0 24 24" fill="currentColor">
-      <circle cx="12" cy="12" r="10" />
-      <path
-        d="M8 12.5l2.5 2.5 5.5-5.5"
-        fill="none"
-        stroke="white"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-export function StateCancelledIcon({ className }: { className?: string }) {
-  return (
-    <svg className={cn('size-3.5 text-rose-500 shrink-0', className)} viewBox="0 0 24 24" fill="currentColor">
-      <circle cx="12" cy="12" r="10" />
-      <path
-        d="M8.5 8.5l7 7M15.5 8.5l-7 7"
-        fill="none"
-        stroke="white"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 export function StateGroupCancelledIcon({ className }: { className?: string }) {
   return (
@@ -155,7 +107,7 @@ export function StateGroupCancelledIcon({ className }: { className?: string }) {
 // ── Submenu Priority Icons ──────────────────────────────────────────────────
 
 export function PriorityUrgentIcon({ className }: { className?: string }) {
-  return <AlertCircle className={cn('size-3.5 text-rose-500 shrink-0 stroke-[2.2]', className)} />;
+  return <AlertCircle className={cn('size-3.5 text-rose-500 shrink-0 stroke-[1.75]', className)} />;
 }
 
 export function PriorityHighIcon({ className }: { className?: string }) {
@@ -225,7 +177,6 @@ function SubmenuSearchBar({
 
 export interface FilterDropdownProps {
   items?: Item[];
-  tasks?: Item[];
   columns: Column[];
   selectedColumnIds?: string[];
   onToggleColumn?: (columnId: string) => void;
@@ -274,8 +225,7 @@ const FILTER_ITEMS: FilterItemConfig[] = [
 ];
 
 export function FilterDropdown({
-  items: propItems,
-  tasks: propTasks = [],
+  items = [],
   columns,
   selectedColumnIds = [],
   onToggleColumn,
@@ -296,8 +246,6 @@ export function FilterDropdown({
   onToggleFilter,
   onRemoveFilter,
 }: FilterDropdownProps) {
-  const items = propItems || propTasks || [];
-  const tasks = items;
   const [filterQuery, setFilterQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [subSearch, setSubSearch] = useState<Record<string, string>>({});
@@ -367,7 +315,7 @@ export function FilterDropdown({
     return false;
   };
 
-  // Extract unique labels from tasks
+  // Extract unique labels from items
   const availableLabels = useMemo(() => {
     const set = new Set<string>();
     for (const t of items) {
@@ -381,7 +329,7 @@ export function FilterDropdown({
       return ['Frontend', 'Backend', 'Bug', 'Feature', 'Research', 'Documentation'];
     }
     return Array.from(set);
-  }, [tasks]);
+  }, [items]);
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -392,7 +340,7 @@ export function FilterDropdown({
               type="button"
               size="icon"
               className={cn(
-                'size-8 rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors relative shrink-0',
+                'size-8 rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors relative shrink-0 shadow-2xs',
                 hasActiveFilters && 'border-primary text-primary font-semibold',
               )}
               aria-label="Filters"
@@ -474,12 +422,12 @@ export function FilterDropdown({
                   );
                 })
                 .slice(0, 30)
-                .map((task: Item) => {
-                  const val = task.identifier || task.id;
+                .map((item: Item) => {
+                  const val = item.identifier || item.id;
                   const isSelected = isItemActive('work_items', val);
                   return (
                     <DropdownMenuItem
-                      key={task.id}
+                      key={item.id}
                       onClick={(e) => {
                         e.preventDefault();
                         handleToggle('work_items', val);
@@ -488,12 +436,12 @@ export function FilterDropdown({
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <WorkItemsIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                        {task.identifier && (
+                        {item.identifier && (
                           <span className="font-mono text-11 text-muted-foreground shrink-0">
-                            {task.identifier}
+                            {item.identifier}
                           </span>
                         )}
-                        <span className="truncate">{task.title}</span>
+                        <span className="truncate">{item.title}</span>
                       </div>
                       {isSelected && <Check className="size-3.5 text-primary shrink-0 ml-2" />}
                     </DropdownMenuItem>
@@ -544,25 +492,25 @@ export function FilterDropdown({
                   );
                 })
                 .slice(0, 30)
-                .map((task: Item) => {
-                  const isSelected = isItemActive('parent', task.id);
+                .map((item: Item) => {
+                  const isSelected = isItemActive('parent', item.id);
                   return (
                     <DropdownMenuItem
-                      key={task.id}
+                      key={item.id}
                       onClick={(e) => {
                         e.preventDefault();
-                        handleToggle('parent', task.id);
+                        handleToggle('parent', item.id);
                       }}
                       className="flex items-center justify-between px-2.5 py-1.5 text-12 cursor-pointer text-foreground hover:bg-muted"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <ParentBranchIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                        {task.identifier && (
+                        {item.identifier && (
                           <span className="font-mono text-11 text-muted-foreground shrink-0">
-                            {task.identifier}
+                            {item.identifier}
                           </span>
                         )}
-                        <span className="truncate">{task.title}</span>
+                        <span className="truncate">{item.title}</span>
                       </div>
                       {isSelected && <Check className="size-3.5 text-primary shrink-0 ml-2" />}
                     </DropdownMenuItem>
@@ -597,14 +545,6 @@ export function FilterDropdown({
                 .map((col) => {
                   const columnId = resolveStateId(col);
                   const isSelected = isItemActive('state', columnId);
-                  const group = (col.group || inferStateGroup(columnId, col.title)).toLowerCase();
-
-                  let StateIconComp = StateTodoIcon;
-                  if (group === 'backlog') StateIconComp = StateBacklogIcon;
-                  else if (group === 'started') StateIconComp = StateInProgressIcon;
-                  else if (group === 'completed') StateIconComp = StateDoneIcon;
-                  else if (group === 'cancelled') StateIconComp = StateCancelledIcon;
-
                   return (
                     <DropdownMenuItem
                       key={columnId}
@@ -615,7 +555,13 @@ export function FilterDropdown({
                       className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <StateIconComp className="size-3.5 shrink-0" />
+                        <StatusIcon
+                          id={columnId}
+                          title={col.title}
+                          group={col.group}
+                          color={col.color || col.accentColor}
+                          className="size-3.5 shrink-0"
+                        />
                         <span className="truncate">{col.title}</span>
                       </div>
                       {isSelected && <Check className="size-3.5 text-primary shrink-0" />}

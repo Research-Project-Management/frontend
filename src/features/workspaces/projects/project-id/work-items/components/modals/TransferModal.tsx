@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useTransferItems } from "../../hooks/use-cycle";
 import { DetailModal } from "./DetailModal";
-import type { Item, Task, Column, Cycle } from "../../types/work-item.types";
+import type { Item, Column, Cycle } from "../../types/work-item.types";
 import { cn } from "@/shared/lib/utils";
 
 export interface TransferModalProps {
@@ -24,7 +24,6 @@ export interface TransferModalProps {
   sourceCycleId: string;
   sourceCycleName: string;
   items?: Item[];
-  tasks?: Item[];
   availableCycles: Cycle[];
   columns: Column[];
   members?: any[];
@@ -37,30 +36,28 @@ export function TransferModal({
   projectId,
   sourceCycleId,
   sourceCycleName,
-  items: propItems,
-  tasks: propTasks = [],
+  items = [],
   availableCycles,
   columns,
   members = [],
   onSuccess,
 }: TransferModalProps) {
+  const displayItems = items;
   const { transferItems, isPending } = useTransferItems(projectId);
-  const tasks = propItems || propTasks || [];
-  const items = tasks;
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [detailItem, setDetailItem] = useState<Item | null>(null);
   const [targetCycleId, setTargetCycleId] = useState<string>("");
 
-  const filteredTasks = useMemo(() => {
+  const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
-    return tasks.filter((task) => {
+    return displayItems.filter((item) => {
       return (
-        task.title.toLowerCase().includes(keyword) ||
-        task.identifier?.toLowerCase().includes(keyword)
+        item.title.toLowerCase().includes(keyword) ||
+        item.identifier?.toLowerCase().includes(keyword)
       );
     });
-  }, [tasks, searchTerm]);
+  }, [displayItems, searchTerm]);
 
   const targetCycles = useMemo(() => {
     return availableCycles.filter(
@@ -70,17 +67,17 @@ export function TransferModal({
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(filteredTasks.map((t) => t.id));
+      setSelectedIds(filteredItems.map((item) => item.id));
     } else {
       setSelectedIds([]);
     }
   };
 
-  const handleToggleSelect = (taskId: string) => {
+  const handleToggleSelect = (itemId: string) => {
     setSelectedIds((prev) =>
-      prev.includes(taskId)
-        ? prev.filter((id) => id !== taskId)
-        : [...prev, taskId]
+      prev.includes(itemId)
+        ? prev.filter((id) => id !== itemId)
+        : [...prev, itemId]
     );
   };
 
@@ -165,14 +162,14 @@ export function TransferModal({
               )}
             </div>
 
-            {/* Task list */}
+            {/* Work item list */}
             <div className="border border-border rounded-sm overflow-hidden bg-background">
               <div className="px-3 py-2 border-b border-border bg-muted flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Checkbox
                     checked={
-                      filteredTasks.length > 0 &&
-                      selectedIds.length === filteredTasks.length
+                      filteredItems.length > 0 &&
+                      selectedIds.length === filteredItems.length
                     }
                     onCheckedChange={handleSelectAll}
                     id="select-all"
@@ -181,7 +178,7 @@ export function TransferModal({
                     htmlFor="select-all"
                     className="text-xs font-semibold text-muted-foreground cursor-pointer"
                   >
-                    Select All ({filteredTasks.length})
+                    Select All ({filteredItems.length})
                   </label>
                 </div>
                 <span className="text-xs font-medium text-primary">
@@ -190,17 +187,17 @@ export function TransferModal({
               </div>
 
               <div className="max-h-56 overflow-y-auto divide-y divide-border">
-                {filteredTasks.length === 0 ? (
+                {filteredItems.length === 0 ? (
                   <div className="py-8 text-center text-xs text-muted-foreground">
                     No work items found matching criteria.
                   </div>
                 ) : (
-                  filteredTasks.map((task) => {
-                    const isSelected = selectedIds.includes(task.id);
+                  filteredItems.map((item) => {
+                    const isSelected = selectedIds.includes(item.id);
                     return (
                       <div
-                        key={task.id}
-                        onClick={() => handleToggleSelect(task.id)}
+                        key={item.id}
+                        onClick={() => handleToggleSelect(item.id)}
                         className={cn(
                           "px-3 py-2 flex items-center gap-3 cursor-pointer hover:bg-muted transition-colors",
                           isSelected && "bg-primary/5"
@@ -208,16 +205,16 @@ export function TransferModal({
                       >
                         <Checkbox
                           checked={isSelected}
-                          onCheckedChange={() => handleToggleSelect(task.id)}
+                          onCheckedChange={() => handleToggleSelect(item.id)}
                           onClick={(e) => e.stopPropagation()}
                         />
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-medium text-foreground truncate">
-                            {task.title}
+                            {item.title}
                           </p>
-                          {task.identifier && (
+                          {item.identifier && (
                             <span className="text-xs text-muted-foreground font-mono">
-                              {task.identifier}
+                              {item.identifier}
                             </span>
                           )}
                         </div>
@@ -227,7 +224,7 @@ export function TransferModal({
                           className="h-6 px-2 text-xs text-foreground"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setDetailItem(task);
+                            setDetailItem(item);
                           }}
                         >
                           View

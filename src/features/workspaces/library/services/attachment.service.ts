@@ -110,6 +110,26 @@ export async function fetchFileContent(_scopeId: string, fileId: string): Promis
   );
 }
 
+export function getAttachmentContentUrl(_scopeId: string, attachmentId: string): string {
+  return `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/content`;
+}
+
+export async function fetchAttachmentContent(_scopeId: string, attachmentId: string): Promise<Blob> {
+  return apiGet<Blob>(
+    `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/content`,
+  );
+}
+
+export async function uploadLibraryAttachment(
+  _scopeId: string | undefined,
+  formData: FormData,
+): Promise<{ fileId: string; url: string; filename: string; size: number; mimeType: string }> {
+  return apiPost(
+    `/api/v1/library/attachments/upload`,
+    formData,
+  );
+}
+
 export const AttachmentsService = {
   getAttachments,
   getAttachment,
@@ -120,7 +140,12 @@ export const AttachmentsService = {
   setPrimaryAttachment,
   getFileContentUrl,
   fetchFileContent,
+  getAttachmentContentUrl,
+  fetchAttachmentContent,
+  streamAttachmentContent: fetchAttachmentContent,
   streamFileContent: fetchFileContent,
+  uploadAttachment: uploadLibraryAttachment,
+  uploadFile: uploadLibraryAttachment,
   addAttachment: createAttachment,
   captureSnapshot,
   // Ergonomic aliases
@@ -134,3 +159,4 @@ export const AttachmentsService = {
 };
 
 export const AttachmentService = AttachmentsService;
+export const uploadAttachment = uploadLibraryAttachment;

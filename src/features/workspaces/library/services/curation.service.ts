@@ -54,30 +54,43 @@ export const QualityService = {
     };
   },
 
-  mergePapers: (
+  mergePapers: async (
     _workspaceId: string,
     masterPaperId: string,
     sourcePaperIds: string[],
     fieldSelections?: Record<string, any>,
-  ) =>
-    apiPost<{
-      success: boolean;
-      data: {
-        masterPaper: Item;
-        mergedCount: number;
-        softDeletedPaperIds: string[];
-      };
-      masterPaper?: Item;
-      mergedCount?: number;
-      softDeletedPaperIds?: string[];
-    }>(
+  ) => {
+    const res = await apiPost<any>(
       `/api/v1/library/curation/merge`,
       {
         primaryItemId: masterPaperId,
         duplicateItemIds: sourcePaperIds,
         fieldSelections,
       },
-    ),
+    );
+
+    const masterPaper = res?.primaryItem || res?.masterPaper || res?.data?.masterPaper;
+    const mergedCount = res?.mergedCount ?? res?.data?.mergedCount ?? sourcePaperIds.length;
+    const softDeletedPaperIds =
+      res?.softDeletedItemIds ||
+      res?.softDeletedPaperIds ||
+      res?.data?.softDeletedPaperIds ||
+      [];
+
+    return {
+      success: true,
+      data: {
+        masterPaper,
+        mergedCount,
+        softDeletedPaperIds,
+      },
+      masterPaper,
+      primaryItem: masterPaper,
+      mergedCount,
+      softDeletedPaperIds,
+      softDeletedItemIds: softDeletedPaperIds,
+    };
+  },
 
   getIntegrityReport: async (
     _workspaceId?: string,

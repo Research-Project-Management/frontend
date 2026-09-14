@@ -39,10 +39,23 @@ import {
   prioritySchema,
 } from '../schemas/work-item.schema';
 import type { AttachCenterData } from '../components/modals/Attachments';
-import { useTaskCycles, useCycles } from './use-cycle';
+import { useCycles } from './use-cycle';
 import { useLabelsQuery } from './use-label';
+import { StateService } from '@/features/workspaces/projects/project-id/settings/services/state.service';
 
 // ── Query Keys ──────────────────────────────────────────────────────────────
+export const stateKeys = {
+  all: (projectId: string) => ['project-states', projectId] as const,
+  counts: (projectId: string) => ['project-state-counts', projectId] as const,
+};
+
+export const useProjectStates = (projectId: string) =>
+  useQuery({
+    queryKey: stateKeys.all(projectId),
+    queryFn: () => StateService.getStates(projectId),
+    enabled: Boolean(projectId),
+    staleTime: 30_000,
+  });
 
 export const itemKeys = {
   all: ['work-items'] as const,
@@ -54,14 +67,6 @@ export const itemKeys = {
 };
 
 export const workItemKeys = itemKeys;
-export const taskKeys = {
-  ...itemKeys,
-  all: ['tasks'] as const,
-  project: (projectId: string, cycleId?: string) => ['tasks', projectId, cycleId] as const,
-  workspace: (_workspaceId?: string) => ['tasks'] as const,
-  comments: (id: string) => ['task-comments', id] as const,
-  activity: (id: string) => ['task-activity', id] as const,
-};
 
 // ── Queries ─────────────────────────────────────────────────────────────────
 
@@ -74,8 +79,6 @@ export const useProjectItems = (projectId: string, cycleId?: string) =>
   });
 
 export const useProjectWorkItems = useProjectItems;
-export const useProjectTasks = useProjectItems;
-export const useTask = useProjectItems;
 export const useWorkItem = useProjectItems;
 export const useItems = useProjectItems;
 
@@ -87,7 +90,6 @@ export const useAllItems = (_workspaceId?: string) =>
   });
 
 export const useAllWorkItems = useAllItems;
-export const useWorkspaceTasks = useAllItems;
 
 export const useProjectDetails = (projectId: string) =>
   useQuery({
@@ -96,7 +98,6 @@ export const useProjectDetails = (projectId: string) =>
     enabled: Boolean(projectId),
     staleTime: 60_000,
   });
-export const useTaskProjectDetails = useProjectDetails;
 
 export const useWorkspaceProjects = (workspaceId?: string) =>
   useQuery({
@@ -111,7 +112,6 @@ export const useWorkspaceProjects = (workspaceId?: string) =>
     },
     enabled: true,
   });
-export const useTaskWorkspaceProjects = useWorkspaceProjects;
 
 // ── Mutations ───────────────────────────────────────────────────────────────
 
@@ -128,7 +128,6 @@ export const useCreateItem = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Work item created');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to create work item'),
@@ -136,14 +135,13 @@ export const useCreateItem = () => {
 };
 
 export const useCreateWorkItem = useCreateItem;
-export const useCreateTask = useCreateItem;
 
 type ProjectItemsCache = Record<string, any>;
 
 export const useUpdateItem = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { id?: string; itemId?: string; workItemId?: string; taskId?: string; projectId?: string } & UpdateItemInput) => {
+    mutationFn: (data: { id?: string; itemId?: string; workItemId?: string; projectId?: string } & UpdateItemInput) => {
       const parsed = updateItemSchema.safeParse(data);
       if (!parsed.success) {
         const errorMsg = parsed.error.issues[0]?.message || 'Invalid work item update';
@@ -152,11 +150,10 @@ export const useUpdateItem = () => {
       return CoreService.update(data);
     },
     onMutate: async (data) => {
-      const targetId = (data.id || data.itemId || data.workItemId || data.taskId) ?? '';
+      const targetId = (data.id || data.itemId || data.workItemId) ?? '';
       if (!targetId) return;
 
       await queryClient.cancelQueries({ queryKey: ['work-items'] });
-      await queryClient.cancelQueries({ queryKey: ['tasks'] });
 
       const previousQueries = queryClient.getQueriesData<ProjectItemsCache>({ queryKey: ['work-items'] });
 
@@ -187,7 +184,6 @@ export const useUpdateItem = () => {
         return {
           ...old,
           items: updateList(old.items),
-          tasks: updateList(old.tasks),
           workItems: updateList(old.workItems),
         };
       });
@@ -204,13 +200,11 @@ export const useUpdateItem = () => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 };
 
 export const useUpdateWorkItem = useUpdateItem;
-export const useUpdateTask = useUpdateItem;
 
 export const useDeleteItem = () => {
   const queryClient = useQueryClient();
@@ -218,20 +212,17 @@ export const useDeleteItem = () => {
     mutationFn: ({
       id,
       workItemId,
-      taskId,
     }: {
       id?: string;
       itemId?: string;
       workItemId?: string;
-      taskId?: string;
       projectId?: string;
-    }) => CoreService.delete((id || workItemId || taskId) ?? ''),
-    onMutate: async ({ id, workItemId, taskId }) => {
-      const targetId = (id || workItemId || taskId) ?? '';
+    }) => CoreService.delete((id || workItemId) ?? ''),
+    onMutate: async ({ id, workItemId }) => {
+      const targetId = (id || workItemId) ?? '';
       if (!targetId) return;
 
       await queryClient.cancelQueries({ queryKey: ['work-items'] });
-      await queryClient.cancelQueries({ queryKey: ['tasks'] });
 
       const previousQueries = queryClient.getQueriesData<ProjectItemsCache>({ queryKey: ['work-items'] });
 
@@ -245,7 +236,6 @@ export const useDeleteItem = () => {
         return {
           ...old,
           items: filterList(old.items),
-          tasks: filterList(old.tasks),
           workItems: filterList(old.workItems),
         };
       });
@@ -265,27 +255,24 @@ export const useDeleteItem = () => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 };
 
 export const useDeleteWorkItem = useDeleteItem;
-export const useDeleteTask = useDeleteItem;
 
 export const useDuplicateItem = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { id?: string; itemId?: string; workItemId?: string; taskId?: string; projectId: string }) =>
+    mutationFn: (vars: { id?: string; itemId?: string; workItemId?: string; projectId: string }) =>
       CoreService.duplicate({
-        id: vars.id || vars.workItemId || vars.taskId,
-        workItemId: vars.id || vars.workItemId || vars.taskId,
-        taskId: vars.id || vars.workItemId || vars.taskId,
+        id: vars.id || vars.workItemId || vars.itemId,
+        workItemId: vars.id || vars.workItemId || vars.itemId,
+        itemId: vars.id || vars.workItemId || vars.itemId,
         projectId: vars.projectId,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Work item duplicated');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to duplicate work item'),
@@ -293,7 +280,6 @@ export const useDuplicateItem = () => {
 };
 
 export const useDuplicateWorkItem = useDuplicateItem;
-export const useDuplicateTask = useDuplicateItem;
 
 export const useBulkUpdate = () => {
   const queryClient = useQueryClient();
@@ -306,11 +292,10 @@ export const useBulkUpdate = () => {
       return CoreService.bulkUpdate(vars);
     },
     onMutate: async (vars) => {
-      const targetIds = new Set(vars.ids || vars.itemIds || vars.workItemIds || vars.taskIds || []);
+      const targetIds = new Set(vars.ids || vars.itemIds || vars.workItemIds || []);
       if (targetIds.size === 0) return;
 
       await queryClient.cancelQueries({ queryKey: ['work-items'] });
-      await queryClient.cancelQueries({ queryKey: ['tasks'] });
 
       const previousQueries = queryClient.getQueriesData<ProjectItemsCache>({ queryKey: ['work-items'] });
 
@@ -332,7 +317,6 @@ export const useBulkUpdate = () => {
         return {
           ...old,
           items: updateList(old.items),
-          tasks: updateList(old.tasks),
           workItems: updateList(old.workItems),
         };
       });
@@ -348,7 +332,7 @@ export const useBulkUpdate = () => {
       toast.error(error.message || 'Failed to update work items');
     },
     onSuccess: (_, vars) => {
-      const count = vars.ids?.length || vars.itemIds?.length || vars.workItemIds?.length || vars.taskIds?.length || 0;
+      const count = vars.ids?.length || vars.itemIds?.length || vars.workItemIds?.length || 0;
       if (count > 0) {
         toast.success(`Updated ${count} items`);
       } else {
@@ -357,14 +341,12 @@ export const useBulkUpdate = () => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 };
 
 export const useBulkUpdateItems = useBulkUpdate;
 export const useBulkUpdateWorkItems = useBulkUpdate;
-export const useBulkUpdateTasks = useBulkUpdate;
 
 export const useBulkDelete = () => {
   const queryClient = useQueryClient();
@@ -373,28 +355,24 @@ export const useBulkDelete = () => {
       ids,
       itemIds,
       workItemIds,
-      taskIds,
       projectId,
     }: {
       ids?: string[];
       itemIds?: string[];
       workItemIds?: string[];
-      taskIds?: string[];
       projectId?: string;
     }) =>
       CoreService.bulkDelete({
-        ids: ids || itemIds || workItemIds || taskIds,
-        itemIds: ids || itemIds || workItemIds || taskIds,
-        workItemIds: ids || itemIds || workItemIds || taskIds,
-        taskIds: ids || itemIds || workItemIds || taskIds,
+        ids: ids || itemIds || workItemIds,
+        itemIds: ids || itemIds || workItemIds,
+        workItemIds: ids || itemIds || workItemIds,
         projectId,
       }),
-    onMutate: async ({ ids, itemIds, workItemIds, taskIds }) => {
-      const targetIds = new Set(ids || itemIds || workItemIds || taskIds || []);
+    onMutate: async ({ ids, itemIds, workItemIds }) => {
+      const targetIds = new Set(ids || itemIds || workItemIds || []);
       if (targetIds.size === 0) return;
 
       await queryClient.cancelQueries({ queryKey: ['work-items'] });
-      await queryClient.cancelQueries({ queryKey: ['tasks'] });
 
       const previousQueries = queryClient.getQueriesData<ProjectItemsCache>({ queryKey: ['work-items'] });
 
@@ -408,7 +386,6 @@ export const useBulkDelete = () => {
         return {
           ...old,
           items: filterList(old.items),
-          tasks: filterList(old.tasks),
           workItems: filterList(old.workItems),
         };
       });
@@ -428,51 +405,46 @@ export const useBulkDelete = () => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 };
 
 export const useBulkDeleteItems = useBulkDelete;
 export const useBulkDeleteWorkItems = useBulkDelete;
-export const useBulkDeleteTasks = useBulkDelete;
 
 export const useCreateSubItem = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, itemId, taskId, ...data }: { id?: string; itemId?: string; taskId?: string } & CreateSubItemInput) => {
-      const targetId = (id || itemId || taskId) ?? '';
+    mutationFn: ({ id, itemId, workItemId, ...data }: { id?: string; itemId?: string; workItemId?: string } & CreateSubItemInput) => {
+      const targetId = (id || itemId || workItemId) ?? '';
       return CoreService.createSubItem(targetId, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Sub-item created');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to create sub-item'),
   });
 };
 
-export const useCreateSubtask = useCreateSubItem;
 export const useCreateSubWorkItem = useCreateSubItem;
 
 export const useConvertSubItemToRoot = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, itemId, taskId }: { id?: string; itemId?: string; taskId?: string }) => {
-      const targetId = (id || itemId || taskId) ?? '';
+    mutationFn: ({ id, itemId, workItemId }: { id?: string; itemId?: string; workItemId?: string }) => {
+      const targetId = (id || itemId || workItemId) ?? '';
       return CoreService.convertToRoot(targetId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Converted to top-level item');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to convert to top-level item'),
   });
 };
 
-export const useConvertSubtaskToRoot = useConvertSubItemToRoot;
+export const useConvertSubWorkItemToRoot = useConvertSubItemToRoot;
 
 export const useReorderItem = () => {
   const queryClient = useQueryClient();
@@ -485,11 +457,10 @@ export const useReorderItem = () => {
       return CoreService.reorder(vars);
     },
     onMutate: async (vars) => {
-      const targetId = (vars.taskId || vars.workItemId || vars.id) ?? '';
+      const targetId = (vars.workItemId || vars.id) ?? '';
       if (!targetId) return;
 
       await queryClient.cancelQueries({ queryKey: ['work-items'] });
-      await queryClient.cancelQueries({ queryKey: ['tasks'] });
 
       const previousQueries = queryClient.getQueriesData<ProjectItemsCache>({ queryKey: ['work-items'] });
 
@@ -512,7 +483,6 @@ export const useReorderItem = () => {
         return {
           ...old,
           items: updateList(old.items),
-          tasks: updateList(old.tasks),
           workItems: updateList(old.workItems),
         };
       });
@@ -529,21 +499,18 @@ export const useReorderItem = () => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 };
 
-export const useReorderTask = useReorderItem;
 export const useReorderWorkItem = useReorderItem;
 
 export const useSubItemNotification = () => {
   const notifySubItemAdded = useCallback((count: number = 1) => {
     toast.success(count === 1 ? 'Sub-item added' : `${count} sub-items added`);
   }, []);
-  return { notifySubItemAdded, notifySubtaskAdded: notifySubItemAdded };
+  return { notifySubItemAdded };
 };
-export const useSubtaskNotification = useSubItemNotification;
 
 export const useCopyItemText = () => {
   return useCallback((itemOrText: Partial<Item> | string, message?: string) => {
@@ -559,7 +526,6 @@ export const useCopyItemText = () => {
     });
   }, []);
 };
-export const useCopyTaskText = useCopyItemText;
 export const useCopyWorkItemText = useCopyItemText;
 
 // ── 5. Main Item Project Hook (useProject) ──────────────────────────────────
@@ -570,13 +536,12 @@ export interface UseProjectOptions {
   workspaceId?: string;
 }
 
-export type UseTaskProjectOptions = UseProjectOptions;
-
 export function useProject({ projectId, cycleId, workspaceId }: UseProjectOptions) {
   const itemsQ = useProjectItems(projectId, cycleId);
   const detailsQ = useProjectDetails(projectId);
+  const statesQ = useProjectStates(projectId);
   const cyclesQ = useCycles(projectId);
-  const labelsQ = useLabelsQuery(workspaceId || '', 'task', projectId);
+  const labelsQ = useLabelsQuery(workspaceId || '', 'work_item', projectId);
 
   const createMut = useCreateItem();
   const updateMut = useUpdateItem();
@@ -586,20 +551,23 @@ export function useProject({ projectId, cycleId, workspaceId }: UseProjectOption
   const reorderMut = useReorderItem();
   const subItemMut = useCreateSubItem();
 
-  const items = useMemo(() => itemsQ.data?.items ?? itemsQ.data?.tasks ?? [], [itemsQ.data]);
+  const items = useMemo(() => itemsQ.data?.items ?? itemsQ.data?.workItems ?? [], [itemsQ.data]);
   const project = useMemo(() => {
     const projectData = detailsQ.data;
     if (!projectData) return undefined;
     return ('project' in projectData && projectData.project ? projectData.project : projectData) as Project | undefined;
   }, [detailsQ.data]);
 
-  const projectTaskColumns = (project as any)?.taskColumns;
+  const projectColumns = (project as any)?.workItemColumns;
   const columns = useMemo(() => {
+    if (Array.isArray(statesQ.data) && statesQ.data.length > 0) {
+      return normalizeStates(statesQ.data);
+    }
     const rawCols = itemsQ.data?.columns || (itemsQ.data as any)?.states;
     if (Array.isArray(rawCols) && rawCols.length > 0) return normalizeStates(rawCols);
-    if (Array.isArray(projectTaskColumns) && projectTaskColumns.length > 0) return normalizeStates(projectTaskColumns);
+    if (Array.isArray(projectColumns) && projectColumns.length > 0) return normalizeStates(projectColumns);
     return [...DEFAULT_STATES];
-  }, [itemsQ.data, projectTaskColumns]);
+  }, [statesQ.data, itemsQ.data, projectColumns]);
   const members = useMemo(() => (project?.members ?? []) as ProjectMember[], [project?.members]);
   const cycles = useMemo(() => {
     if (!cyclesQ.data) return [] as Cycle[];
@@ -617,13 +585,12 @@ export function useProject({ projectId, cycleId, workspaceId }: UseProjectOption
   }, [labels]);
   const isSaving = updateMut.isPending || createMut.isPending;
   const isDeleting = deleteMut.isPending;
-  const isLoading = itemsQ.isLoading || detailsQ.isLoading;
+  const isLoading = itemsQ.isLoading || detailsQ.isLoading || statesQ.isLoading;
   const isError = itemsQ.isError || detailsQ.isError;
   const error = itemsQ.error || detailsQ.error;
 
   const state = {
     items,
-    allTasks: items,
     workItems: items,
     allWorkItems: items,
     columns,
@@ -649,8 +616,6 @@ export function useProject({ projectId, cycleId, workspaceId }: UseProjectOption
     isDeletingItem: isDeleting,
     isSavingWorkItem: isSaving,
     isDeletingWorkItem: isDeleting,
-    isSavingTask: isSaving,
-    isDeletingTask: isDeleting,
   };
 
   const createMutAsync = createMut.mutateAsync;
@@ -665,32 +630,32 @@ export function useProject({ projectId, cycleId, workspaceId }: UseProjectOption
 
   const createAction = useCallback((payload: Parameters<typeof createMutAsync>[0]) => createMutAsync(payload), [createMutAsync]);
   const updateAction = useCallback((payload: Parameters<typeof updateMutAsync>[0]) => updateMutAsync(payload), [updateMutAsync]);
-  const deleteAction = useCallback((target: { id?: string; itemId?: string; taskId?: string; projectId?: string }) => {
+  const deleteAction = useCallback((target: { id?: string; itemId?: string; workItemId?: string; projectId?: string }) => {
     const tid = resolveItemId(target);
     return deleteMutAsync({
       id: tid,
       itemId: tid,
-      taskId: tid,
+      workItemId: tid,
       projectId: target.projectId,
     });
   }, [deleteMutAsync]);
 
   const duplicateAction = useCallback(
-    (target: { id?: string; itemId?: string; taskId?: string; projectId?: string }) => {
+    (target: { id?: string; itemId?: string; workItemId?: string; projectId?: string }) => {
       const tid = resolveItemId(target);
-      return duplicateMutAsync({ projectId: target.projectId || projectId, id: tid, itemId: tid, taskId: tid });
+      return duplicateMutAsync({ projectId: target.projectId || projectId, id: tid, itemId: tid, workItemId: tid });
     },
     [duplicateMutAsync, projectId],
   );
 
   const moveAction = useCallback(
-    (moveInput: { id?: string; itemId?: string; taskId?: string; columnId: string; projectId?: string }) => {
+    (moveInput: { id?: string; itemId?: string; workItemId?: string; columnId: string; projectId?: string }) => {
       const tid = resolveItemId(moveInput);
       return updateMutAsync({
         projectId: moveInput.projectId || projectId,
         id: tid,
         itemId: tid,
-        taskId: tid,
+        workItemId: tid,
         columnId: moveInput.columnId,
       });
     },
@@ -698,13 +663,13 @@ export function useProject({ projectId, cycleId, workspaceId }: UseProjectOption
   );
 
   const reorderAction = useCallback(
-    (reorderInput: { id?: string; itemId?: string; taskId?: string; rank: number; columnId?: string; projectId?: string }) => {
+    (reorderInput: { id?: string; itemId?: string; workItemId?: string; rank: number; columnId?: string; projectId?: string }) => {
       const tid = resolveItemId(reorderInput);
       return reorderMutAsync({
         projectId: reorderInput.projectId || projectId,
         id: tid,
         itemId: tid,
-        taskId: tid,
+        workItemId: tid,
         columnId: reorderInput.columnId,
         rank: reorderInput.rank,
       });
@@ -713,12 +678,12 @@ export function useProject({ projectId, cycleId, workspaceId }: UseProjectOption
   );
 
   const createSubItemAction = useCallback(
-    (subItemInput: { id?: string; itemId?: string; taskId?: string; title: string; columnId?: string; priority?: Priority }) => {
+    (subItemInput: { id?: string; itemId?: string; workItemId?: string; title: string; columnId?: string; priority?: Priority }) => {
       const tid = resolveItemId(subItemInput);
       return subItemMutAsync({
         id: tid,
         itemId: tid,
-        taskId: tid,
+        workItemId: tid,
         title: subItemInput.title,
         columnId: subItemInput.columnId,
         priority: subItemInput.priority,
@@ -738,7 +703,7 @@ export function useProject({ projectId, cycleId, workspaceId }: UseProjectOption
     (itemIds: string[], dueDate: string, quiet = false, startDate?: string | null) => {
       if (itemIds.length === 0) return;
       itemIds.forEach((targetId) => {
-        const payload: any = { id: targetId, workItemId: targetId, taskId: targetId, projectId, dueDate };
+        const payload: any = { id: targetId, workItemId: targetId, projectId, dueDate };
         if (startDate !== undefined) payload.startDate = startDate;
         updateMutAsync(payload);
       });
@@ -751,6 +716,20 @@ export function useProject({ projectId, cycleId, workspaceId }: UseProjectOption
       }
     },
     [updateMutAsync, projectId],
+  );
+
+  const removeFromCycleAction = useCallback(
+    (targetId: string, callback?: () => void) => {
+      updateMutAsync({ id: targetId, workItemId: targetId, projectId, cycleId: null })
+        .then(() => {
+          toast.success('Work item removed from cycle');
+          callback?.();
+        })
+        .catch((err: any) => {
+          toast.error(err?.message || 'Failed to remove work item from cycle');
+        });
+    },
+    [updateMutAsync, projectId]
   );
 
   const actions = {
@@ -773,7 +752,7 @@ export function useProject({ projectId, cycleId, workspaceId }: UseProjectOption
     bulkUpdateItems: bulkAction,
     reorderItem: reorderAction,
 
-    // Backward Compat Aliases
+    // Work Item Action Aliases
     createWorkItem: createAction,
     updateWorkItem: updateAction,
     moveWorkItem: moveAction,
@@ -783,31 +762,9 @@ export function useProject({ projectId, cycleId, workspaceId }: UseProjectOption
     reorderWorkItem: reorderAction,
     createSubWorkItem: createSubItemAction,
 
-    createTask: createAction,
-    updateTask: updateAction,
-    moveTask: moveAction,
-    deleteTask: deleteAction,
-    duplicateTask: duplicateAction,
-    bulkUpdateTasks: bulkAction,
-    reorderTask: reorderAction,
-    createSubtask: createSubItemAction,
-
-    removeFromCycle: useCallback(
-      (targetId: string, callback?: () => void) => {
-        updateMutAsync({ id: targetId, workItemId: targetId, taskId: targetId, projectId, cycleId: null })
-          .then(() => {
-            toast.success('Work item removed from cycle');
-            callback?.();
-          })
-          .catch((err: any) => {
-            toast.error(err?.message || 'Failed to remove work item from cycle');
-          });
-      },
-      [updateMutAsync, projectId]
-    ),
+    removeFromCycle: removeFromCycleAction,
 
     assignItemsToDate: assignItemsToDateAction,
-    assignTasksToDate: assignItemsToDateAction,
     assignWorkItemsToDate: assignItemsToDateAction,
 
     notifyAnalyticsComingSoon: useCallback(() => {
@@ -818,11 +775,9 @@ export function useProject({ projectId, cycleId, workspaceId }: UseProjectOption
   return { state, actions };
 }
 
-export const useTaskProject = useProject;
 export const useItemsProject = useProject;
 export const useWorkItemProject = useProject;
 export const useWorkItems = useProject;
-export const useTasks = useProject;
 
 // ── Work Item Form & Mutation Controller ─────────────────────────────────────
 
@@ -835,8 +790,8 @@ export const createWorkItemFormSchema = z.object({
   startDate: z.string(),
   cycleId: z.string().nullable(),
   parentId: z.string().nullable().optional(),
-  parentTaskId: z.string().nullable().optional(),
   parentItemId: z.string().nullable().optional(),
+  parentWorkItemId: z.string().nullable().optional(),
   labels: z.array(z.string()),
   assigneeId: z.string().nullable(),
   assigneeIds: z.array(z.string()),
@@ -858,7 +813,7 @@ export interface UseWorkItemFormOptions {
 export type UseItemFormOptions = UseWorkItemFormOptions;
 
 export function useWorkItemForm(options: UseWorkItemFormOptions = {}) {
-  const { defaultColumnId = 'todo', defaultCycleId = null, initialValues } = options;
+  const { defaultColumnId = 'backlog', defaultCycleId = null, initialValues } = options;
 
   const defaultValues: CreateWorkItemFormData = useMemo(
     () => ({
@@ -869,9 +824,9 @@ export function useWorkItemForm(options: UseWorkItemFormOptions = {}) {
       dueDate: initialValues?.dueDate ?? '',
       startDate: initialValues?.startDate ?? '',
       cycleId: initialValues?.cycleId ?? defaultCycleId,
-      parentId: initialValues?.parentId ?? initialValues?.parentItemId ?? initialValues?.parentTaskId ?? null,
-      parentTaskId: initialValues?.parentTaskId ?? initialValues?.parentItemId ?? initialValues?.parentId ?? null,
-      parentItemId: initialValues?.parentItemId ?? initialValues?.parentId ?? initialValues?.parentTaskId ?? null,
+      parentId: initialValues?.parentId ?? initialValues?.parentItemId ?? initialValues?.parentWorkItemId ?? null,
+      parentWorkItemId: initialValues?.parentWorkItemId ?? initialValues?.parentItemId ?? initialValues?.parentId ?? null,
+      parentItemId: initialValues?.parentItemId ?? initialValues?.parentId ?? initialValues?.parentWorkItemId ?? null,
       labels: initialValues?.labels ?? [],
       assigneeId: initialValues?.assigneeId ?? null,
       assigneeIds: initialValues?.assigneeIds ?? [],
@@ -923,7 +878,7 @@ export function useWorkItemForm(options: UseWorkItemFormOptions = {}) {
   const setParentId = useCallback(
     (pId: string | null) => {
       setValue('parentId', pId, { shouldDirty: true });
-      setValue('parentTaskId', pId, { shouldDirty: true });
+      setValue('parentWorkItemId', pId, { shouldDirty: true });
       setValue('parentItemId', pId, { shouldDirty: true });
     },
     [setValue]
@@ -965,7 +920,7 @@ export function useWorkItemForm(options: UseWorkItemFormOptions = {}) {
 
   const restoreFromDraft = useCallback(
     (draft: Partial<CreateWorkItemFormData> & { content?: string }) => {
-      const parent = draft.parentId ?? draft.parentItemId ?? draft.parentTaskId ?? null;
+      const parent = draft.parentId ?? draft.parentItemId ?? draft.parentWorkItemId ?? null;
       reset({
         title: draft.title ?? '',
         description: draft.description || draft.content || '',
@@ -975,7 +930,7 @@ export function useWorkItemForm(options: UseWorkItemFormOptions = {}) {
         startDate: draft.startDate ?? '',
         cycleId: draft.cycleId ?? defaultCycleId,
         parentId: parent,
-        parentTaskId: parent,
+        parentWorkItemId: parent,
         parentItemId: parent,
         labels: Array.isArray(draft.labels) ? draft.labels : [],
         assigneeId: draft.assigneeId ?? (draft.assigneeIds?.[0] ?? null),
@@ -1010,7 +965,7 @@ export function useWorkItemForm(options: UseWorkItemFormOptions = {}) {
     setStartDate,
     setCycleId,
     setParentId,
-    setParentTaskId: setParentId,
+    setParentWorkItemId: setParentId,
     setParentItemId: setParentId,
     setLabels,
     setAssignees,

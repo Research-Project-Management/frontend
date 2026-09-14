@@ -34,6 +34,7 @@ import {
   Zap,
   ChevronDown,
   User,
+  Tag,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import { Button } from "@/shared/components/ui";
@@ -44,27 +45,27 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { useKanban, useCard, type TaskCardLabel, type ItemCardLabel } from '../../hooks/use-view';
+import { useKanban, useCard, type ItemCardLabel } from '../../hooks/use-view';
 import { AvatarStack } from '../modals/Popovers';
-import { ItemHelpers, ItemHelpers as TaskHelpers } from '../../utils/work-item.utils';
+import { ItemHelpers } from '../../utils/work-item.utils';
 import {
-  type Task,
   type Item,
   type Column as ColumnType,
   type DisplayOptions,
   type BaseWorkItemViewProps,
   type WorkItemCardHandlers,
 } from '../../types/work-item.types';
-import { resolveColumnId, resolveColumnColor, resolveTaskColumnId, resolveTaskColumnColor } from '../../utils/work-item.utils';
+import { resolveColumnId } from '../../utils/work-item.utils';
+import { StatusIcon } from '@/shared/components/icons';
 
-export type { TaskCardLabel, ItemCardLabel };
+export type { ItemCardLabel };
 
 // ── Card Component ──────────────────────────────────────────────────────────
 
 export interface CardProps {
   card: Item;
   displayOptions?: DisplayOptions;
-  labelMap?: Map<string, TaskCardLabel>;
+  labelMap?: Map<string, ItemCardLabel>;
   currentUserId?: string | null;
   currentUserAvatar?: string;
   members?: any[];
@@ -77,7 +78,7 @@ export interface CardProps {
   isReadOnly?: boolean;
   isDragging?: boolean;
   isSelected?: boolean;
-  onToggleSelect?: (taskId: string) => void;
+  onToggleSelect?: (itemId: string) => void;
 }
 
 export function CardUI({
@@ -99,7 +100,7 @@ export function CardUI({
   onToggleSelect,
 }: CardProps) {
   const resolvedAssignees = useMemo(() => {
-    return TaskHelpers.resolveAssignees(card, members);
+    return ItemHelpers.resolveAssignees(card, members);
   }, [card, members]);
 
   const { state, actions } = useCard({
@@ -271,7 +272,7 @@ export function CardUI({
           {metadataItems
             .filter((meta: any) => {
               if (meta.key === 'priority' && displayOptions?.properties?.priority === false) return false;
-              if (meta.key === 'subtasks' && displayOptions?.properties?.subtaskCount === false) return false;
+              if (meta.key === 'childWorkItems' && displayOptions?.properties?.childWorkItemCount === false) return false;
               if (meta.key === 'attachments' && displayOptions?.properties?.attachmentCount === false) return false;
               if (meta.key === 'due-date' && displayOptions?.properties?.dueDate === false) return false;
               return true;
@@ -332,7 +333,6 @@ export function Card(props: CardProps) {
     data: {
       type: 'Item',
       item: card,
-      task: card,
     },
     disabled: props.isReadOnly,
   });
@@ -357,10 +357,8 @@ export interface ColumnProps extends BaseWorkItemViewProps, Partial<WorkItemCard
   droppableId?: string;
   laneId?: string;
   subGroupBy?: string;
-  labelMap?: Map<string, TaskCardLabel>;
+  labelMap?: Map<string, ItemCardLabel>;
   onAddCard?: (columnId: string, title?: string, swimlaneData?: { subGroupBy?: string; laneId?: string }) => void;
-  onEditColumn?: (column: ColumnType) => void;
-  onDeleteColumn?: (column: ColumnType) => void;
   cycleId?: string;
 }
 
@@ -382,24 +380,18 @@ export function Column({
   onJoinCard,
   onLeaveCard,
   onRemoveFromCycle,
-  onEditColumn,
-  onDeleteColumn,
   cycleId,
   isReadOnly = false,
-  selectedIds: propSelectedIds,
-  selectedTaskIds: propSelectedTaskIds = [],
-  onToggleSelect: propOnToggleSelect,
-  onToggleSelectTask: propOnToggleSelectTask,
+  selectedIds = [],
+  onToggleSelect,
 }: ColumnProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [quickTitle, setQuickTitle] = useState('');
   const [isQuickAdding, setIsQuickAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const selectedTaskIds = propSelectedIds || propSelectedTaskIds;
-  const onToggleSelectTask = propOnToggleSelect || propOnToggleSelectTask;
-  const columnId = resolveTaskColumnId(column);
-  const columnColor = resolveTaskColumnColor(columnId, column.accentColor);
+  const columnId = resolveColumnId(column);
+  const columnColor = column.color || column.accentColor || '#8A9093';
 
   const effectiveDroppableId = droppableId || columnId;
   const { setNodeRef, isOver } = useDroppable({
@@ -446,32 +438,13 @@ export function Column({
       {/* Column Header */}
       <div className="flex items-center justify-between p-3 shrink-0 select-none">
         <div className="flex items-center gap-2 min-w-0">
-          {(() => {
-            const titleLower = (column.title || '').toLowerCase().trim();
-            const groupLower = ((column as any).group || (column as any).category || '').toLowerCase().trim();
-            if (titleLower.includes('done') || titleLower.includes('completed') || groupLower === 'completed') {
-              return (
-                <svg viewBox="0 0 16 16" fill="none" className="size-3.5 shrink-0" aria-label="Done">
-                  <circle cx="8" cy="8" r="7" fill="#10b981" />
-                  <path d="M4.75 8.25L7 10.5L11.5 5.75" stroke="#ffffff" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              );
-            }
-            if (titleLower.includes('cancel') || groupLower === 'cancelled') {
-              return (
-                <svg viewBox="0 0 16 16" fill="none" className="size-3.5 shrink-0" aria-label="Cancelled">
-                  <circle cx="8" cy="8" r="7" fill="#ef4444" />
-                  <path d="M5.5 5.5L10.5 10.5M10.5 5.5L5.5 10.5" stroke="#ffffff" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              );
-            }
-            return (
-              <span
-                className="size-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: columnColor }}
-              />
-            );
-          })()}
+          <StatusIcon
+            id={columnId}
+            title={column.title}
+            group={column.group}
+            color={columnColor}
+            className="size-3.5 shrink-0"
+          />
           {!isCollapsed && (
             <>
               <h3 className="text-xs font-semibold text-foreground truncate">{column.title}</h3>
@@ -563,8 +536,8 @@ export function Column({
                 onLeave={onLeaveCard}
                 onRemoveFromCycle={onRemoveFromCycle}
                 isReadOnly={isReadOnly}
-                isSelected={selectedTaskIds.includes(card.id)}
-                onToggleSelect={onToggleSelectTask}
+                isSelected={selectedIds.includes(card.id)}
+                onToggleSelect={onToggleSelect}
               />
             ))}
           </SortableContext>
@@ -589,16 +562,12 @@ export function Column({
 
 export interface BoardViewProps extends BaseWorkItemViewProps, Partial<WorkItemCardHandlers> {
   items?: Item[];
-  tasks?: Item[];
   itemsByColumnId?: Map<string, Item[]>;
-  tasksByColumnId?: Map<string, Item[]>;
   columns: ColumnType[];
-  labelMap?: Map<string, TaskCardLabel>;
+  labelMap?: Map<string, ItemCardLabel>;
   onAddCard?: (columnId: string, title?: string, swimlaneData?: { subGroupBy?: string; laneId?: string }) => void;
-  onMoveCard?: (taskId: string, newColumnId: string, laneData?: { subGroupBy?: string; laneId?: string }) => void;
-  onReorderCard?: (taskId: string, newColumnId: string, rank: number) => void;
-  onEditColumn?: (column: ColumnType) => void;
-  onDeleteColumn?: (column: ColumnType) => void;
+  onMoveCard?: (itemId: string, newColumnId: string, laneData?: { subGroupBy?: string; laneId?: string }) => void;
+  onReorderCard?: (itemId: string, newColumnId: string, rank: number) => void;
   cycleId?: string;
 }
 
@@ -612,10 +581,8 @@ interface SwimlaneDef {
 }
 
 export function BoardView({
-  items: propItems,
-  tasks: propTasks,
+  items: propItems = [],
   itemsByColumnId: propItemsByColumnId,
-  tasksByColumnId: propTasksByColumnId,
   columns,
   displayOptions,
   labelMap,
@@ -632,21 +599,13 @@ export function BoardView({
   onRemoveFromCycle,
   onMoveCard,
   onReorderCard,
-  onEditColumn,
-  onDeleteColumn,
   cycleId,
   isReadOnly = false,
-  selectedIds: propSelectedIds,
-  selectedTaskIds: propSelectedTaskIds = [],
-  onToggleSelect: propOnToggleSelect,
-  onToggleSelectTask: propOnToggleSelectTask,
+  selectedIds = [],
+  onToggleSelect,
 }: BoardViewProps) {
-  const tasks = propItems || propTasks || [];
-  const items = tasks;
-  const selectedTaskIds = propSelectedIds || propSelectedTaskIds || [];
-  const selectedIds = selectedTaskIds;
-  const onToggleSelectTask = propOnToggleSelect || propOnToggleSelectTask;
-  const onToggleSelect = onToggleSelectTask;
+  const items = propItems;
+  const itemsByColumnId = propItemsByColumnId;
   const subGroupBy = displayOptions?.subGroupBy || 'none';
   const isSwimlanesActive = subGroupBy !== 'none';
 
@@ -656,7 +615,7 @@ export function BoardView({
     setCollapsedLanes((prev) => ({ ...prev, [laneId]: !prev[laneId] }));
   };
 
-  const swimlanes = useMemo<Array<SwimlaneDef & { tasksByColumn: Map<string, Task[]>; count: number }>>(() => {
+  const swimlanes = useMemo<Array<SwimlaneDef & { itemsByColumn: Map<string, Item[]>; count: number; completedCount: number }>>(() => {
     if (!isSwimlanesActive) return [];
 
     let defs: SwimlaneDef[] = [];
@@ -710,29 +669,62 @@ export function BoardView({
           icon: <RotateCcw className="size-3.5 text-muted-foreground shrink-0" />,
         },
       ];
+    } else if (subGroupBy === 'labels') {
+      const allLabels = new Set<string>();
+      items.forEach((t: Item) => {
+        if (Array.isArray(t.labels)) {
+          t.labels.forEach((lbl) => {
+            if (lbl) allLabels.add(lbl);
+          });
+        }
+      });
+      const labelLanes: SwimlaneDef[] = Array.from(allLabels).map((lbl) => {
+        const meta = labelMap?.get(lbl);
+        return {
+          id: lbl,
+          title: meta?.name || lbl,
+          color: meta?.color || '#8b5cf6',
+          icon: <Tag className="size-3.5 text-purple-500 shrink-0" />,
+        };
+      });
+      defs = [
+        ...labelLanes,
+        {
+          id: '__no_label__',
+          title: 'No Label',
+          color: '#9ca3af',
+          icon: <Tag className="size-3.5 text-muted-foreground shrink-0" />,
+        },
+      ];
     } else {
       defs = [{ id: '__all__', title: 'All Items', color: '#6b7280' }];
     }
 
-    const columnIds = columns.map((c) => resolveTaskColumnId(c));
+    const columnIds = columns.map((c) => resolveColumnId(c));
 
     const result = defs.map((lane) => {
-      const laneMap = new Map<string, Task[]>();
+      const laneMap = new Map<string, Item[]>();
       columnIds.forEach((cid) => laneMap.set(cid, []));
       let count = 0;
+      let completedCount = 0;
 
-      tasks.forEach((t: Task) => {
-        let taskLaneId = 'none';
+      items.forEach((t: Item) => {
+        let itemLaneId = 'none';
         if (subGroupBy === 'priority') {
-          taskLaneId = (t.priority || 'none').toLowerCase();
+          itemLaneId = (t.priority || 'none').toLowerCase();
         } else if (subGroupBy === 'assignee') {
-          taskLaneId = TaskHelpers.resolveAssigneeId(t) || '__unassigned__';
+          itemLaneId = ItemHelpers.resolveAssigneeId(t) || '__unassigned__';
         } else if (subGroupBy === 'cycle') {
-          taskLaneId = t.cycleId || '__no_cycle__';
+          itemLaneId = t.cycleId || '__no_cycle__';
+        } else if (subGroupBy === 'labels') {
+          itemLaneId = (t.labels && t.labels.length > 0) ? t.labels[0] : '__no_label__';
         }
 
-        if (taskLaneId === lane.id) {
+        if (itemLaneId === lane.id) {
           count++;
+          if (t.completed || t.columnId === 'done' || t.columnId === 'completed') {
+            completedCount++;
+          }
           const colId = t.columnId || columnIds[0] || 'backlog';
           const list = laneMap.get(colId);
           if (list) {
@@ -745,8 +737,9 @@ export function BoardView({
 
       return {
         ...lane,
-        tasksByColumn: laneMap,
+        itemsByColumn: laneMap,
         count,
+        completedCount,
       };
     });
 
@@ -756,17 +749,18 @@ export function BoardView({
     }
 
     return result;
-  }, [isSwimlanesActive, subGroupBy, members, cycles, columns, tasks, displayOptions?.showEmptyGroups]);
+  }, [isSwimlanesActive, subGroupBy, members, cycles, columns, items, labelMap, displayOptions?.showEmptyGroups]);
 
   const { state: kanbanState, actions: kanbanActions } = useKanban({
-    tasks,
+    items,
     columns,
     onMoveCard,
+    onReorderCard,
     isReadOnly,
     subGroupBy,
   });
 
-  const { tasksByColumn, activeTask, sensors } = kanbanState;
+  const { itemsByColumn, activeItem, sensors } = kanbanState;
   const { dragStart, dragEnd, dragCancel } = kanbanActions;
 
   const [isMounted, setIsMounted] = useState(false);
@@ -836,6 +830,12 @@ export function BoardView({
                       <span className="font-mono text-10 font-medium text-muted-foreground bg-muted px-1.5 py-0.2 rounded-full tabular-nums">
                         {lane.count}
                       </span>
+                      {lane.count > 0 && lane.completedCount > 0 && (
+                        <span className="text-10 text-muted-foreground font-medium flex items-center gap-1">
+                          <span>•</span>
+                          <span>{Math.round((lane.completedCount / lane.count) * 100)}% done</span>
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -843,8 +843,8 @@ export function BoardView({
                   {!isCollapsed && (
                     <div className="flex items-start gap-3 p-3 overflow-x-auto min-w-max">
                       {columns.map((col) => {
-                        const colId = resolveTaskColumnId(col);
-                        const columnCards = lane.tasksByColumn.get(colId) || [];
+                        const colId = resolveColumnId(col);
+                        const columnCards = lane.itemsByColumn.get(colId) || [];
                         return (
                           <Column
                             key={`${lane.id}:::${colId}`}
@@ -865,12 +865,10 @@ export function BoardView({
                             onJoinCard={onJoinCard}
                             onLeaveCard={onLeaveCard}
                             onRemoveFromCycle={onRemoveFromCycle}
-                            onEditColumn={onEditColumn}
-                            onDeleteColumn={onDeleteColumn}
                             cycleId={cycleId}
                             isReadOnly={isReadOnly}
-                            selectedTaskIds={selectedTaskIds}
-                            onToggleSelectTask={onToggleSelectTask}
+                            selectedIds={selectedIds}
+                            onToggleSelect={onToggleSelect}
                           />
                         );
                       })}
@@ -883,8 +881,8 @@ export function BoardView({
         ) : (
           <div className="flex h-full items-start gap-3 min-w-max pb-4">
             {columns.map((col) => {
-              const colId = resolveTaskColumnId(col);
-              const columnCards = tasksByColumn.get(colId) || [];
+              const colId = resolveColumnId(col);
+              const columnCards = itemsByColumn.get(colId) || [];
               return (
                 <Column
                   key={colId}
@@ -902,12 +900,10 @@ export function BoardView({
                   onJoinCard={onJoinCard}
                   onLeaveCard={onLeaveCard}
                   onRemoveFromCycle={onRemoveFromCycle}
-                  onEditColumn={onEditColumn}
-                  onDeleteColumn={onDeleteColumn}
                   cycleId={cycleId}
                   isReadOnly={isReadOnly}
-                  selectedTaskIds={selectedTaskIds}
-                  onToggleSelectTask={onToggleSelectTask}
+                  selectedIds={selectedIds}
+                  onToggleSelect={onToggleSelect}
                 />
               );
             })}
@@ -917,10 +913,10 @@ export function BoardView({
         {isMounted &&
           createPortal(
             <DragOverlay dropAnimation={dropAnimationConfig}>
-              {activeTask ? (
+              {activeItem ? (
                 <div className="w-72 rotate-1 cursor-grabbing opacity-90">
                   <CardUI
-                    card={activeTask}
+                    card={activeItem}
                     displayOptions={displayOptions}
                     labelMap={labelMap}
                     currentUserId={currentUserId}

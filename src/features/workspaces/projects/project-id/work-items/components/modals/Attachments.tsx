@@ -36,7 +36,7 @@ import type {
   AttachLinkItem,
 } from '../../types/work-item.types';
 
-export type TaskAttachment = {
+export type ItemAttachment = {
   id: string;
   name: string;
   type?: string | null;
@@ -49,14 +49,14 @@ export type TaskAttachment = {
 export type AttachCenterData = {
   pages?: AttachPageItem[];
   papers?: AttachPaperItem[];
-  files?: (TaskAttachment | AttachFileItem)[];
+  files?: (ItemAttachment | AttachFileItem)[];
   links?: AttachLinkItem[];
 };
 
 export type AttachmentsProps = {
-  attachments?: AttachCenterData | TaskAttachment[];
+  attachments?: AttachCenterData | ItemAttachment[];
   itemId?: string;
-  taskId?: string;
+  workItemId?: string;
   projectId?: string;
   workspaceId?: string;
   onRenameAttachment?: (attachmentId: string, newName: string) => void;
@@ -69,14 +69,12 @@ export type AttachmentsProps = {
   onDetachFile?: (fileId: string) => void;
   onAttachLink?: (link: { title: string; url: string }) => void;
   onDetachLink?: (linkIndex: number) => void;
-  onCommentAttachment?: (attachment: TaskAttachment) => void;
-  onDownloadAttachment?: (attachment: TaskAttachment) => void;
+  onCommentAttachment?: (attachment: ItemAttachment) => void;
+  onDownloadAttachment?: (attachment: ItemAttachment) => void;
   isReadOnly?: boolean;
 };
 
-export type TaskAttachmentsProps = AttachmentsProps;
-
-function getAttachmentTypeLabel(attachment: TaskAttachment | AttachFileItem) {
+function getAttachmentTypeLabel(attachment: ItemAttachment | AttachFileItem) {
   const name = attachment.name?.trim() || '';
   const extension = name.includes('.') ? name.split('.').pop()?.toUpperCase() : '';
   const mimeType = attachment.type?.split('/')[0] || '';
@@ -108,8 +106,7 @@ function formatAttachmentMeta(dateStr?: string) {
 
 export function Attachments({
   attachments,
-  itemId: propItemId,
-  taskId: propTaskId,
+  itemId,
   projectId,
   workspaceId,
   onRenameAttachment,
@@ -125,8 +122,7 @@ export function Attachments({
   onCommentAttachment,
   onDownloadAttachment,
   isReadOnly = false,
-}: TaskAttachmentsProps) {
-  const taskId = propItemId || propTaskId;
+}: AttachmentsProps) {
   // Normalize attachments input (supporting both structured object and legacy flat array)
   const normalized: AttachCenterData = React.useMemo(() => {
     if (!attachments) return { pages: [], papers: [], files: [], links: [] };
@@ -187,7 +183,7 @@ export function Attachments({
 
   // File rename state
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-  const [renameItem, setRenameItem] = useState<TaskAttachment | null>(null);
+  const [renameItem, setRenameItem] = useState<ItemAttachment | null>(null);
   const [renameValue, setRenameValue] = useState('');
 
   // File direct upload state
@@ -627,7 +623,7 @@ export function Attachments({
                   className="group flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2.5 transition-colors hover:bg-muted"
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-10 font-bold text-muted-foreground border border-border">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-10 font-semibold text-muted-foreground border border-border">
                       {getAttachmentTypeLabel(item)}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -1111,5 +1107,4 @@ export function Attachments({
   );
 }
 
-export const TaskAttachments = Attachments;
 export default Attachments;

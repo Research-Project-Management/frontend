@@ -17,13 +17,11 @@ import { cn } from "@/shared/lib/utils";
 export interface UpdatesProps {
   itemId?: string;
   workItemId?: string;
-  taskId?: string;
   projectId?: string;
   isReadOnly?: boolean;
   onUpdateChanged?: () => void;
 }
 export type WorkItemUpdatesProps = UpdatesProps;
-export type TaskUpdatesProps = UpdatesProps;
 
 const STATUS_CONFIG: Record<string, { label: string; icon: React.ElementType; badgeClass: string }> = {
   on_track: {
@@ -51,12 +49,11 @@ const STATUS_CONFIG: Record<string, { label: string; icon: React.ElementType; ba
 export function WorkItemUpdates({
   itemId,
   workItemId,
-  taskId,
   projectId,
   isReadOnly = false,
   onUpdateChanged,
 }: UpdatesProps) {
-  const effectiveId = (itemId || workItemId || taskId) ?? '';
+  const effectiveId = (itemId || workItemId) ?? '';
   const { data: updates = [], isLoading } = useUpdatesQuery(effectiveId, projectId);
   const createMutation = useCreateUpdateMutation();
   const deleteMutation = useDeleteUpdateMutation();
@@ -93,7 +90,7 @@ export function WorkItemUpdates({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Activity className="size-4 text-muted-foreground" />
-          <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+          <h4 className="text-xs font-semibold text-foreground">
             Progress Updates
           </h4>
         </div>
@@ -204,7 +201,7 @@ export function WorkItemUpdates({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Avatar className="size-5">
+                    <Avatar className="size-5 shrink-0">
                       {u.user?.avatar && <AvatarImage src={u.user.avatar} />}
                       <AvatarFallback className="text-10">
                         {u.user?.name?.slice(0, 2).toUpperCase() || 'U'}
@@ -259,5 +256,4 @@ export function WorkItemUpdates({
 }
 
 export const Updates = WorkItemUpdates;
-export const TaskUpdates = WorkItemUpdates;
 export default WorkItemUpdates;

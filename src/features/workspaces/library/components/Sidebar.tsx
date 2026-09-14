@@ -31,7 +31,6 @@ import Link from 'next/link';
 import { cn } from "@/shared/lib/utils";
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useCollections } from '@/features/workspaces/library/hooks/use-library';
-import { useItems } from '@/features/workspaces/library/hooks/use-items';
 import { useRetraction } from '@/features/workspaces/library/hooks/use-retraction';
 import { useLibrarySidebarStore } from '@/features/workspaces/library/store/sidebar.store';
 import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
@@ -41,7 +40,6 @@ import { Input } from "@/shared/components/ui";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
 import CreateCollectionModal from './modals/CreateCollectionModal';
 import TrashModal, { type MoveToTrashTarget } from './modals/TrashModal';
-import { isUnfiled } from '../utils/filter.util';
 import type { Collection, CollectionInput, Item } from '@/features/workspaces/library/types/library.types';
 
 // ── Tree Builder ──────────────────────────────────────────────────────────────
@@ -204,9 +202,9 @@ function CollectionNode({
               className="flex flex-1 min-w-0 items-center gap-2 py-1 outline-none shrink-0"
             >
               {hasChildren && effectiveIsOpen ? (
-                <FolderOpen className="size-4 shrink-0 text-foreground" />
+                <FolderOpen className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
               ) : (
-                <Folder className="size-4 shrink-0 text-foreground" />
+                <Folder className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
               )}
 
               <span className="flex-1 min-w-0 truncate tracking-tight text-foreground">
@@ -366,8 +364,16 @@ export default function LibrarySideBar() {
   const { workspace } = useWorkspace(workspaceUrl);
   const workspaceId = workspace?.id || workspaceUrl || '';
 
-  const collectionService = useCollections(workspaceId);
-  const { isOpen, setIsOpen, width, setWidth, toggle } = useLibrarySidebarStore();
+  const { activeScope, setActiveScope, isOpen, setIsOpen, width, setWidth, toggle } =
+    useLibrarySidebarStore();
+  const effectiveScopeId = activeScope.type === 'project' ? activeScope.id : 'user';
+
+  const personalCollectionService = useCollections('user');
+  const projectCollectionService = useCollections(
+    activeScope.type === 'project' ? activeScope.id : undefined,
+  );
+  const collectionService =
+    activeScope.type === 'project' ? projectCollectionService : personalCollectionService;
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -451,7 +457,6 @@ export default function LibrarySideBar() {
   const basePath = '/library';
   const currentFilter = searchParams.get('filter');
 
-  const { activeScope, setActiveScope } = useLibrarySidebarStore();
   const { projects } = useProjects();
   const { user } = useAuth();
   const currentUserId = user?.id;
@@ -468,44 +473,61 @@ export default function LibrarySideBar() {
     (pathname === `${basePath}/my-publications` ||
       (pathname === basePath && (currentFilter === 'my-publications' || currentFilter === 'publications')));
 
-  const { stats: retractionStats } = useRetraction(workspaceId);
-  const { allItems } = useItems({ workspaceId });
-  const myPublicationsCount = useMemo(() => {
-    return (allItems || []).filter((it: Item) => Boolean(it.isMyPublication)).length;
-  }, [allItems]);
+  const myPublicationsCount = 0;
+  const unfiledCount = 0;
+  const duplicateCount = 0;
+  const canManageCollections = true;
+  const { stats: retractionStats } = useRetraction(effectiveScopeId);
 
-  const unfiledCount = useMemo(() => {
-    return (allItems || []).filter((it: Item) => isUnfiled(it)).length;
-  }, [allItems]);
+  const personalCollections = useMemo(
+    () => personalCollectionService.state.collections ?? [],
+    [personalCollectionService.state.collections],
+  );
+
+  const projectCollections = useMemo(
+    () => (activeScope.type === 'project' ? projectCollectionService.state.collections ?? [] : []),
+    [activeScope.type, projectCollectionService.state.collections],
+  );
 
   const collections = useMemo(
-    () => collectionService.state.collections ?? [],
-    [collectionService.state.collections],
+    () => (activeScope.type === 'project' ? projectCollections : personalCollections),
+    [activeScope.type, projectCollections, personalCollections],
   );
 
   // Filter collections by search query
-  const filteredCollections = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return collections;
+  const filterCollections = useCallback(
+    (cols: Collection[]) => {
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return cols;
 
-    const matchingIds = new Set<string>();
-    for (const c of collections) {
-      if (c.name.toLowerCase().includes(q)) {
-        matchingIds.add(c.id);
-        let curr = c;
-        const currParentId = curr.parentId || curr.parent;
-        while (currParentId) {
-          matchingIds.add(currParentId);
-          const parentObj = collections.find((p) => p.id === currParentId);
-          if (!parentObj) break;
-          curr = parentObj;
+      const matchingIds = new Set<string>();
+      for (const c of cols) {
+        if (c.name.toLowerCase().includes(q)) {
+          matchingIds.add(c.id);
+          let curr = c;
+          const currParentId = curr.parentId || curr.parent;
+          while (currParentId) {
+            matchingIds.add(currParentId);
+            const parentObj = cols.find((p) => p.id === currParentId);
+            if (!parentObj) break;
+            curr = parentObj;
+          }
         }
       }
-    }
-    return collections.filter((c) => matchingIds.has(c.id));
-  }, [collections, searchQuery]);
+      return cols.filter((c) => matchingIds.has(c.id));
+    },
+    [searchQuery],
+  );
 
-  const tree = buildTree(filteredCollections);
+  const personalTree = useMemo(
+    () => buildTree(filterCollections(personalCollections)),
+    [filterCollections, personalCollections],
+  );
+
+  const projectTree = useMemo(
+    () => buildTree(filterCollections(projectCollections)),
+    [filterCollections, projectCollections],
+  );
 
   const handleCreate = (data: CollectionInput) => {
     const rawParent = data.parentId ?? data.parent ?? createParentId ?? null;
@@ -596,13 +618,12 @@ export default function LibrarySideBar() {
     });
   };
 
-  const sharedNodeProps = {
+  const baseSharedNodeProps = {
     basePath,
     activeId: activeId ?? null,
     navId: id,
     renamingId,
     renameValue,
-    allCollections: collections,
     isSearching: searchQuery.trim().length > 0,
     onStartRename: startRename,
     onSubmitRename: submitRename,
@@ -617,6 +638,16 @@ export default function LibrarySideBar() {
         setIsOpen(false);
       }
     },
+  };
+
+  const personalSharedNodeProps = {
+    ...baseSharedNodeProps,
+    allCollections: personalCollections,
+  };
+
+  const projectSharedNodeProps = {
+    ...baseSharedNodeProps,
+    allCollections: projectCollections,
   };
 
   const handleMobileLinkClick = () => {
@@ -707,18 +738,20 @@ export default function LibrarySideBar() {
               </Tooltip>
 
               {/* New collection button */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={openCreateRoot}
-                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                    aria-label="New collection"
-                  >
-                    <FolderPlus className="size-4 shrink-0 text-foreground" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">New collection</TooltipContent>
-              </Tooltip>
+              {canManageCollections && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={openCreateRoot}
+                      className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      aria-label="New collection"
+                    >
+                      <FolderPlus className="size-4 shrink-0 text-foreground" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">New collection</TooltipContent>
+                </Tooltip>
+              )}
 
               {/* Toggle / Collapse Sidebar Button */}
               <Tooltip>
@@ -772,7 +805,7 @@ export default function LibrarySideBar() {
                   transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                 />
               )}
-              <Library className="relative z-10 size-4 shrink-0 text-foreground" />
+              <Library className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
               <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
                 My Library
               </span>
@@ -799,87 +832,18 @@ export default function LibrarySideBar() {
           {/* Sub-items directly nested under My Library */}
           {isLibraryExpanded && (
             <div className="flex flex-col gap-1 w-full">
-              {/* 1. User Collections Tree */}
-              {tree.map((node) => (
-                <CollectionNode
-                  key={node.id}
-                  node={node}
-                  depth={0}
-                  {...sharedNodeProps}
-                />
-              ))}
-
-              {/* Empty Search Result */}
-              {searchQuery.trim().length > 0 && tree.length === 0 && (
-                <div className="py-6 px-3 text-center text-xs text-muted-foreground select-none">
-                  No collections matching &ldquo;{searchQuery}&rdquo;
-                </div>
-              )}
-
-              {/* 2. Unfiled Items (Inbox for items not filed into any collection) */}
-              <Link
-                href={`${basePath}/unfiled`}
-                onClick={handleMobileLinkClick}
-                className={cn(
-                  "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
-                  isUnfiledActive
-                    ? "bg-muted text-foreground font-medium"
-                    : "text-foreground hover:bg-muted font-normal"
-                )}
-              >
-                {isUnfiledActive && (
-                  <motion.div
-                    layoutId={`library-nav-active-${id}`}
-                    className="absolute inset-0 rounded-md bg-muted"
-                    initial={false}
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                  />
-                )}
-                <Inbox className="relative z-10 size-4 shrink-0 text-foreground" />
-                <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
-                  Unfiled Items
-                </span>
-                {unfiledCount > 0 && (
-                  <span className="relative z-10 text-10 font-mono text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded-full tabular-nums shrink-0">
-                    {unfiledCount}
-                  </span>
-                )}
-              </Link>
-
-              {/* 3. My Publications (User authored works) */}
-              <Link
-                href={`${basePath}?filter=my-publications`}
-                onClick={handleMobileLinkClick}
-                className={cn(
-                  "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
-                  isMyPublicationsActive
-                    ? "bg-muted text-foreground font-medium"
-                    : "text-foreground hover:bg-muted font-normal"
-                )}
-              >
-                {isMyPublicationsActive && (
-                  <motion.div
-                    layoutId={`library-nav-active-${id}`}
-                    className="absolute inset-0 rounded-md bg-muted"
-                    initial={false}
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                  />
-                )}
-                <Award className="relative z-10 size-4 shrink-0 text-foreground" />
-                <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
-                  My Publications
-                </span>
-                {myPublicationsCount > 0 && (
-                  <span className="relative z-10 text-10 font-mono text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded-full tabular-nums shrink-0">
-                    {myPublicationsCount}
-                  </span>
-                )}
-              </Link>
-
-              {/* 4. Recently Read (Reading history/activity) */}
+              {/* 1. Recently Read (Reading history/activity) */}
               <Link
                 href={`${basePath}/recently-read`}
-                onClick={handleMobileLinkClick}
+                onClick={() => {
+                  setActiveScope({
+                    type: 'personal',
+                    id: 'user',
+                    name: 'My Library',
+                    role: 'owner',
+                  });
+                  handleMobileLinkClick();
+                }}
                 className={cn(
                   "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
                   isRecentReadActive
@@ -895,16 +859,79 @@ export default function LibrarySideBar() {
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
-                <History className="relative z-10 size-4 shrink-0 text-foreground" />
+                <History className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                 <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
                   Recently Read
                 </span>
               </Link>
 
-              {/* 5. Duplicate Items (Deduplication engine) */}
+              {/* 2. User Collections Tree */}
+              {personalTree.map((node) => (
+                <CollectionNode
+                  key={node.id}
+                  node={node}
+                  depth={0}
+                  {...personalSharedNodeProps}
+                />
+              ))}
+
+              {/* Empty Search Result */}
+              {searchQuery.trim().length > 0 && personalTree.length === 0 && (
+                <div className="py-6 px-3 text-center text-xs text-muted-foreground select-none">
+                  No collections matching &ldquo;{searchQuery}&rdquo;
+                </div>
+              )}
+
+              {/* 3. Unfiled Items (Inbox for items not filed into any collection) */}
+              <Link
+                href={`${basePath}/unfiled`}
+                onClick={() => {
+                  setActiveScope({
+                    type: 'personal',
+                    id: 'user',
+                    name: 'My Library',
+                    role: 'owner',
+                  });
+                  handleMobileLinkClick();
+                }}
+                className={cn(
+                  "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
+                  isUnfiledActive
+                    ? "bg-muted text-foreground font-medium"
+                    : "text-foreground hover:bg-muted font-normal"
+                )}
+              >
+                {isUnfiledActive && (
+                  <motion.div
+                    layoutId={`library-nav-active-${id}`}
+                    className="absolute inset-0 rounded-md bg-muted"
+                    initial={false}
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <Inbox className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
+                  Unfiled Items
+                </span>
+                {unfiledCount > 0 && (
+                  <span className="relative z-10 text-10 font-mono text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded-full tabular-nums shrink-0">
+                    {unfiledCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* 4. Duplicate Items (Deduplication engine) */}
               <Link
                 href={`${basePath}/duplicates`}
-                onClick={handleMobileLinkClick}
+                onClick={() => {
+                  setActiveScope({
+                    type: 'personal',
+                    id: 'user',
+                    name: 'My Library',
+                    role: 'owner',
+                  });
+                  handleMobileLinkClick();
+                }}
                 className={cn(
                   "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
                   isDuplicatesActive
@@ -920,16 +947,67 @@ export default function LibrarySideBar() {
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
-                <Files className="relative z-10 size-4 shrink-0 text-foreground" />
+                <Files className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                 <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
                   Duplicate Items
                 </span>
+                {duplicateCount > 0 && (
+                  <span className="relative z-10 text-10 font-mono text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded-full tabular-nums shrink-0">
+                    {duplicateCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* 5. My Publications (User authored works) */}
+              <Link
+                href={`${basePath}?filter=my-publications`}
+                onClick={() => {
+                  setActiveScope({
+                    type: 'personal',
+                    id: 'user',
+                    name: 'My Library',
+                    role: 'owner',
+                  });
+                  handleMobileLinkClick();
+                }}
+                className={cn(
+                  "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
+                  isMyPublicationsActive
+                    ? "bg-muted text-foreground font-medium"
+                    : "text-foreground hover:bg-muted font-normal"
+                )}
+              >
+                {isMyPublicationsActive && (
+                  <motion.div
+                    layoutId={`library-nav-active-${id}`}
+                    className="absolute inset-0 rounded-md bg-muted"
+                    initial={false}
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <Award className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
+                  My Publications
+                </span>
+                {myPublicationsCount > 0 && (
+                  <span className="relative z-10 text-10 font-mono text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded-full tabular-nums shrink-0">
+                    {myPublicationsCount}
+                  </span>
+                )}
               </Link>
 
               {/* 6. Retracted Items (Integrity alerts) */}
               <Link
                 href={`${basePath}?filter=retracted`}
-                onClick={handleMobileLinkClick}
+                onClick={() => {
+                  setActiveScope({
+                    type: 'personal',
+                    id: 'user',
+                    name: 'My Library',
+                    role: 'owner',
+                  });
+                  handleMobileLinkClick();
+                }}
                 className={cn(
                   "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
                   isRetractedActive
@@ -945,7 +1023,7 @@ export default function LibrarySideBar() {
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
-                <ShieldAlert className="relative z-10 size-4 shrink-0 text-foreground" />
+                <ShieldAlert className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                 <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground font-normal">
                   Retracted Items
                 </span>
@@ -959,7 +1037,15 @@ export default function LibrarySideBar() {
               {/* 7. Trash */}
               <Link
                 href={`${basePath}/trash`}
-                onClick={handleMobileLinkClick}
+                onClick={() => {
+                  setActiveScope({
+                    type: 'personal',
+                    id: 'user',
+                    name: 'My Library',
+                    role: 'owner',
+                  });
+                  handleMobileLinkClick();
+                }}
                 className={cn(
                   "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
                   isTrashActive
@@ -975,7 +1061,7 @@ export default function LibrarySideBar() {
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
-                <Trash2 className="relative z-10 size-4 shrink-0 text-foreground" />
+                <Trash2 className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                 <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
                   Trash
                 </span>
@@ -998,7 +1084,7 @@ export default function LibrarySideBar() {
                     : "text-foreground hover:bg-muted font-normal"
                 )}
               >
-                <Users className="relative z-10 size-4 shrink-0 text-foreground" />
+                <Users className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                 <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
                   Project Libraries
                 </span>
@@ -1038,46 +1124,61 @@ export default function LibrarySideBar() {
                     const isProjectActive =
                       activeScope.type === 'project' && activeScope.id === project.id;
                     return (
-                      <button
-                        key={project.id}
-                        type="button"
-                        onClick={() => {
-                          const member = (project.members || []).find(
-                            (m: any) => m.userId === currentUserId || m.user?.id === currentUserId,
-                          );
-                          const role =
-                            project.createdById === currentUserId
-                              ? 'owner'
-                              : (member?.role as any) || 'contributor';
-                          setActiveScope({
-                            type: 'project',
-                            id: project.id,
-                            name: project.name,
-                            role,
-                          });
-                          router.push(basePath);
-                          handleMobileLinkClick();
-                        }}
-                        className={cn(
-                          "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md pr-2.5 pl-6 text-13 leading-5 transition-colors outline-none select-none text-left cursor-pointer",
-                          isProjectActive
-                            ? "bg-muted text-foreground font-medium"
-                            : "text-foreground hover:bg-muted font-normal",
+                      <div key={project.id} className="flex flex-col gap-0.5 w-full">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const member = (project.members || []).find(
+                              (m: any) => m.userId === currentUserId || m.user?.id === currentUserId,
+                            );
+                            const role =
+                              project.createdById === currentUserId
+                                ? 'owner'
+                                : (member?.role as any) || 'contributor';
+                            setActiveScope({
+                              type: 'project',
+                              id: project.id,
+                              name: project.name,
+                              role,
+                            });
+                            router.push(basePath);
+                            handleMobileLinkClick();
+                          }}
+                          className={cn(
+                            "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md pr-2.5 pl-6 text-13 leading-5 transition-colors outline-none select-none text-left cursor-pointer",
+                            isProjectActive
+                              ? "bg-muted text-foreground font-medium"
+                              : "text-foreground hover:bg-muted font-normal",
+                          )}
+                        >
+                          {isProjectActive && (
+                            <motion.div
+                              layoutId={`library-project-active-${id}`}
+                              className="absolute inset-0 rounded-md bg-muted"
+                              initial={false}
+                              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                            />
+                          )}
+                          <Folder className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                          <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
+                            {project.name}
+                          </span>
+                        </button>
+
+                        {/* Project Collections Tree (Rendered when this project is active) */}
+                        {isProjectActive && projectTree.length > 0 && (
+                          <div className="flex flex-col gap-0.5 w-full pl-2">
+                            {projectTree.map((node) => (
+                              <CollectionNode
+                                key={node.id}
+                                node={node}
+                                depth={0}
+                                {...projectSharedNodeProps}
+                              />
+                            ))}
+                          </div>
                         )}
-                      >
-                        {isProjectActive && (
-                          <motion.div
-                            layoutId={`library-project-active-${id}`}
-                            className="absolute inset-0 rounded-md bg-muted"
-                            initial={false}
-                            transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                          />
-                        )}
-                        <Folder className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-                        <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
-                          {project.name}
-                        </span>
-                      </button>
+                      </div>
                     );
                   })
                 )}

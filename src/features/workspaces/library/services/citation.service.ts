@@ -269,6 +269,23 @@ export const CitationService = {
       `/api/v1/library/citation/format`,
       { item, styleId, index },
     ),
+  /**
+   * Batch format raw item metadata into citation strings without requiring item persistence
+   * Backed by POST /citation/batch
+   */
+  formatRawBatch: (
+    _scopeId: string | undefined,
+    items: Record<string, any>[],
+    styleId: string = 'apa-7th',
+  ) =>
+    apiPost<{
+      styleId: string;
+      citations: Array<{ id?: string; inText: string; bibliography: string }>;
+      bibliographyText: string;
+    }>(
+      `/api/v1/library/citation/batch`,
+      { items, styleId },
+    ),
 };
 
 // Aliases
@@ -277,5 +294,6 @@ export const formatCslCitation = CitationService.formatCitation;
 export const batchFormatCslCitations = CitationService.batchFormat;
 export const resolveAcademicQuery = CitationService.resolve;
 export const formatRawCitation = CitationService.formatRawItem;
+export const batchFormatRawCitations = CitationService.formatRawBatch;
 
 

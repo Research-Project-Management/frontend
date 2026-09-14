@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Pencil, ChevronDown } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
+import { ProjectAvatar } from "@/shared/components/ui";
 import type { ProjectWorkloadBreakdown, UserProfileData } from '../../schemas/your-work.schema';
 
 export interface ProfileSidebarProps {
@@ -139,9 +140,13 @@ export function ProfileSidebar({
                 className="w-full flex items-center justify-between text-left group cursor-pointer p-1.5 -mx-1.5 rounded-md hover:bg-muted transition-colors"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-base leading-none shrink-0">
-                    {project.projectAvatar || '📁'}
-                  </span>
+                  <ProjectAvatar
+                    avatar={project.projectAvatar}
+                    name={project.projectName}
+                    id={project.projectId}
+                    size="sm"
+                    className="shrink-0"
+                  />
                   <span className="truncate text-sm font-medium text-foreground transition-colors">
                     {project.projectName}
                   </span>

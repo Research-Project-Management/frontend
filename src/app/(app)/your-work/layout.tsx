@@ -10,13 +10,15 @@ import { useSummaryWork } from '@/features/workspaces/projects/your-work/hooks/u
 function YourWorkLayoutContent({ children }: { children: React.ReactNode }) {
   const { state, actions } = useSummaryWork();
   const {
-    categorizedTasks,
+    categorizedWorkItems,
     activities,
     projectBreakdown,
     userData,
     selectedProjectId,
     totalCounts,
   } = state;
+
+  const items = categorizedWorkItems || { assigned: [], created: [], subscribed: [] };
 
   return (
     <div className="h-full flex min-h-0 overflow-hidden bg-background">
@@ -36,9 +38,9 @@ function YourWorkLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Tabs Bar */}
         <YourWorkNavigationBar
           counts={{
-            assigned: selectedProjectId ? categorizedTasks.assigned.length : totalCounts.assigned,
-            created: selectedProjectId ? categorizedTasks.created.length : totalCounts.created,
-            subscribed: selectedProjectId ? categorizedTasks.subscribed.length : totalCounts.subscribed,
+            assigned: selectedProjectId ? items.assigned.length : totalCounts.assigned,
+            created: selectedProjectId ? items.created.length : totalCounts.created,
+            subscribed: selectedProjectId ? items.subscribed.length : totalCounts.subscribed,
             activity: selectedProjectId ? activities.length : totalCounts.activity,
           }}
         />

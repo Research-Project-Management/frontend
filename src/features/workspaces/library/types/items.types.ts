@@ -32,6 +32,7 @@ export type ItemTagRelation = z.infer<typeof itemTagRelationSchema>;
 export type Item = z.infer<typeof itemSchema>;
 /** @deprecated Use Item */
 export type Paper = Item;
+export type ItemDto = Item;
 
 export type CreateItemInput = z.infer<typeof createItemSchema>;
 export type UpdateItemInput = z.infer<typeof updateItemSchema>;

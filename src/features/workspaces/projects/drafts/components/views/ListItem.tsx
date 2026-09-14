@@ -27,7 +27,8 @@ import {
   LowPriorityBoxIcon,
   NonePriorityBoxIcon,
 } from '@/features/workspaces/projects/project-id/work-items/components/modals/Popovers';
-import type { WorkItemDraft, TaskPriority } from '../../types/draft.types';
+import type { WorkItemDraft } from '../../types/draft.types';
+import type { WorkItemPriority } from '@/features/workspaces/projects/project-id/work-items/types/work-item.types';
 
 export interface ListItemProps {
   draft: WorkItemDraft;
@@ -37,7 +38,7 @@ export interface ListItemProps {
   onDelete: (draft: WorkItemDraft) => void;
 }
 
-function PriorityPillIcon({ priority }: { priority?: TaskPriority | string }) {
+function PriorityPillIcon({ priority }: { priority?: WorkItemPriority | string }) {
   switch (priority) {
     case 'urgent':
       return <UrgentPriorityBoxIcon className="size-3.5 shrink-0" />;

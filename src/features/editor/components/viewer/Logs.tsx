@@ -9,6 +9,7 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
+import { usePageStore } from '@/features/editor/store/page.store';
 
 export interface LogEntry {
   message: string;
@@ -99,12 +100,34 @@ type LogTab = 'errors' | 'warnings' | 'badboxes' | 'raw';
 function EntryRow({
   type,
   entry,
+  onClick,
 }: {
   type: 'error' | 'warning' | 'badbox';
   entry: LogEntry;
+  onClick?: () => void;
+  key?: React.Key;
 }) {
+  const isClickable = Boolean(entry.line);
   return (
-    <div className="flex gap-2.5 px-3 py-2.5 border-b border-border last:border-0">
+    <div
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onClick={isClickable ? onClick : undefined}
+      onKeyDown={
+        isClickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
+      className={cn(
+        'flex gap-2.5 px-3 py-2.5 border-b border-border last:border-0 transition-colors',
+        isClickable && 'cursor-pointer hover:bg-muted/60 focus-visible:bg-muted/80 focus-visible:outline-none',
+      )}
+    >
       {type === 'error' && <AlertCircle className="size-3.5 text-destructive shrink-0 mt-0.5" />}
       {type === 'warning' && <AlertTriangle className="size-3.5 text-warning shrink-0 mt-0.5" />}
       {type === 'badbox' && <Info className="size-3.5 text-primary shrink-0 mt-0.5" />}
@@ -116,7 +139,11 @@ function EntryRow({
           <p className="text-xs mt-0.5 text-muted-foreground">
             {entry.file && <span className="text-foreground/70">{entry.file}</span>}
             {entry.file && entry.line !== undefined && <span> · </span>}
-            {entry.line !== undefined && <span>Line {entry.line}</span>}
+            {entry.line !== undefined && (
+              <span className={cn(isClickable && 'underline underline-offset-2 decoration-muted-foreground/40 hover:text-foreground')}>
+                Line {entry.line}
+              </span>
+            )}
           </p>
         )}
         {entry.detail && (
@@ -142,13 +169,22 @@ export interface LogsProps {
 }
 
 export default function Logs({ log, onClose }: LogsProps) {
+  const { scrollToLineRef } = usePageStore();
   const parsed = useMemo(() => parseLatexLog(log), [log]);
-  const [activeTab, setActiveTab] = useState<LogTab>(() => {
-    const p = parseLatexLog(log);
-    if (p.errors.length > 0) return 'errors';
-    if (p.warnings.length > 0) return 'warnings';
+  const defaultTab = useMemo<LogTab>(() => {
+    if (parsed.errors.length > 0) return 'errors';
+    if (parsed.warnings.length > 0) return 'warnings';
+    if (parsed.badBoxes.length > 0) return 'badboxes';
     return 'raw';
-  });
+  }, [parsed]);
+  const [selectedTab, setSelectedTab] = useState<LogTab | null>(null);
+  const activeTab = selectedTab ?? defaultTab;
+
+  const handleEntryClick = (entry: LogEntry) => {
+    if (entry.line && scrollToLineRef.current) {
+      scrollToLineRef.current(entry.line);
+    }
+  };
 
   const countOf = (key: LogTab) => {
     if (key === 'errors') return parsed.errors.length;
@@ -184,15 +220,17 @@ export default function Logs({ log, onClose }: LogsProps) {
   ];
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-20 bg-background/95 backdrop-blur-sm flex flex-col border-t border-border h-70">
+    <div className="absolute bottom-0 left-0 right-0 z-20 bg-background/95 backdrop-blur-sm flex flex-col border-t border-border h-[280px]">
       {/* Tab bar */}
       <div className="flex items-center justify-between border-b border-border bg-muted shrink-0">
-        <div className="flex overflow-x-auto">
+        <div className="flex overflow-x-auto" role="tablist" aria-label="Log tabs">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               type="button"
-              onClick={() => setActiveTab(tab.key)}
+              role="tab"
+              aria-selected={activeTab === tab.key}
+              onClick={() => setSelectedTab(tab.key)}
               className={cn(
                 'flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 shrink-0 transition-colors outline-none',
                 activeTab === tab.key
@@ -235,19 +273,40 @@ export default function Logs({ log, onClose }: LogsProps) {
           (parsed.errors.length === 0 ? (
             <LogEmpty text="No errors" />
           ) : (
-            parsed.errors.map((e, i) => <EntryRow key={i} type="error" entry={e} />)
+            parsed.errors.map((e, i) => (
+              <EntryRow
+                key={i}
+                type="error"
+                entry={e}
+                onClick={() => handleEntryClick(e)}
+              />
+            ))
           ))}
         {activeTab === 'warnings' &&
           (parsed.warnings.length === 0 ? (
             <LogEmpty text="No warnings" />
           ) : (
-            parsed.warnings.map((e, i) => <EntryRow key={i} type="warning" entry={e} />)
+            parsed.warnings.map((e, i) => (
+              <EntryRow
+                key={i}
+                type="warning"
+                entry={e}
+                onClick={() => handleEntryClick(e)}
+              />
+            ))
           ))}
         {activeTab === 'badboxes' &&
           (parsed.badBoxes.length === 0 ? (
             <LogEmpty text="No bad boxes" />
           ) : (
-            parsed.badBoxes.map((e, i) => <EntryRow key={i} type="badbox" entry={e} />)
+            parsed.badBoxes.map((e, i) => (
+              <EntryRow
+                key={i}
+                type="badbox"
+                entry={e}
+                onClick={() => handleEntryClick(e)}
+              />
+            ))
           ))}
       </div>
     </div>

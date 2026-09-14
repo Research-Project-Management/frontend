@@ -43,11 +43,11 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { useCopyItemText, useCopyTaskText } from '../../hooks/use-work-item';
+import { useCopyItemText } from '../../hooks/use-work-item';
 import { StatusIcon } from '@/shared/components/icons';
-import { ItemHelpers, ItemHelpers as TaskHelpers } from '../../utils/work-item.utils';
+import { ItemHelpers } from '../../utils/work-item.utils';
 import { AvatarStack } from '../modals/Popovers';
-import type { Item, Task, Column as ColumnType, Cycle, ProjectMember, Priority, DisplayOptions, BaseWorkItemViewProps, WorkItemCardHandlers } from '../../types/work-item.types';
+import type { Item, Column as ColumnType, Cycle, ProjectMember, Priority, DisplayOptions, BaseWorkItemViewProps, WorkItemCardHandlers } from '../../types/work-item.types';
 
 // ── 1. Table Types ───────────────────────────────────────────────────────────
 
@@ -65,8 +65,8 @@ export type TablePropertyKey =
   | 'updatedOn'
   | 'link'
   | 'attachment'
-  | 'subtask'
-  | 'subWorkItem';
+  | 'childWorkItemCount'
+  | 'subItemCount';
 
 export type TableSortField =
   | 'identifier'
@@ -90,12 +90,16 @@ export interface TablePropertyConfig {
 
 export interface TableViewProps extends BaseWorkItemViewProps, WorkItemCardHandlers {
   items?: Item[];
-  tasks?: Item[];
   columns: ColumnType[];
   projectId?: string;
   workspaceId?: string;
+  cycles?: any[];
+  members?: any[];
+  selectedIds?: string[];
+  onToggleSelect?: (id: string) => void;
+  onSelectAll?: ((ids?: string[]) => void) | (() => void);
   onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
-  onUpdateCard?: (task: { id: string } & Partial<Task>) => void;
+  onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
 }
 
 // ── 2. Table Custom Icons ────────────────────────────────────────────────────
@@ -230,6 +234,26 @@ export function ModulesGridIcon({ className }: { className?: string }) {
 // ── 3. Table Constants ───────────────────────────────────────────────────────
 
 export const TABLE_STORAGE_KEY = 'flux:table_view:columns_v3';
+export const TABLE_WIDTHS_STORAGE_KEY = 'flux:table_view:column_widths_v2';
+
+export const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+  title: 360,
+  state: 130,
+  priority: 110,
+  assignees: 140,
+  labels: 130,
+  attach: 140,
+  cycle: 130,
+  startDate: 120,
+  dueDate: 120,
+  createdOn: 120,
+  createdBy: 130,
+  updatedOn: 120,
+  link: 110,
+  attachment: 120,
+  childWorkItemCount: 130,
+  subItemCount: 130,
+};
 
 export const TABLE_PROPERTIES: TablePropertyConfig[] = [
   { key: 'state', label: 'State', icon: StateHeaderIcon, defaultVisible: true, minWidth: 130 },
@@ -245,8 +269,8 @@ export const TABLE_PROPERTIES: TablePropertyConfig[] = [
   { key: 'updatedOn', label: 'Updated on', icon: Calendar, defaultVisible: false, minWidth: 120 },
   { key: 'link', label: 'Link', icon: Link2, defaultVisible: false, minWidth: 110 },
   { key: 'attachment', label: 'Attachment', icon: Paperclip, defaultVisible: false, minWidth: 120 },
-  { key: 'subtask', label: 'Sub-items', icon: Layers, defaultVisible: false, minWidth: 130 },
-  { key: 'subWorkItem', label: 'Subtasks', icon: Layers, defaultVisible: false, minWidth: 130 },
+  { key: 'childWorkItemCount', label: 'Child items', icon: Layers, defaultVisible: false, minWidth: 130 },
+  { key: 'subItemCount', label: 'Sub-items', icon: Layers, defaultVisible: false, minWidth: 130 },
 ];
 
 export const DEFAULT_VISIBLE_PROPERTIES: Record<TablePropertyKey, boolean> = {
@@ -263,20 +287,20 @@ export const DEFAULT_VISIBLE_PROPERTIES: Record<TablePropertyKey, boolean> = {
   updatedOn: false,
   link: false,
   attachment: false,
-  subtask: false,
-  subWorkItem: false,
+  childWorkItemCount: false,
+  subItemCount: false,
 };
 
 // ── 4. Table Attach Cell ─────────────────────────────────────────────────────
 
 export function TableAttachCell({
-  task,
+  item,
   onEditCard,
 }: {
-  task: Task;
-  onEditCard?: (task: Task) => void;
+  item: Item;
+  onEditCard?: (item: Item) => void;
 }) {
-  const rawAttachments = task.attachments;
+  const rawAttachments = item.attachments;
   const attachmentsList: Array<{ id: string; name: string; url?: string }> = Array.isArray(rawAttachments)
     ? rawAttachments
     : rawAttachments && typeof rawAttachments === 'object'
@@ -314,7 +338,7 @@ export function TableAttachCell({
             type="button"
             className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
-            <ModulesGridIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <ModulesGridIcon className="size-3.5 shrink-0 text-muted-foreground" />
             <span className="font-medium text-11">{attachmentsList.length}</span>
           </button>
         </PopoverTrigger>
@@ -328,7 +352,7 @@ export function TableAttachCell({
             {onEditCard && (
               <button
                 type="button"
-                onClick={() => onEditCard(task)}
+                onClick={() => onEditCard(item)}
                 className="text-11 text-primary hover:underline"
               >
                 View all
@@ -344,7 +368,7 @@ export function TableAttachCell({
                 rel="noreferrer"
                 className="flex items-center gap-1.5 p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground truncate transition-colors"
               >
-                <FileText className="h-3.5 w-3.5 shrink-0" />
+                <FileText className="size-3.5 shrink-0" />
                 <span className="truncate">{attachment.name}</span>
               </a>
             ))}
@@ -358,12 +382,12 @@ export function TableAttachCell({
     <div
       onClick={(event) => {
         event.stopPropagation();
-        if (onEditCard) onEditCard(task);
+        if (onEditCard) onEditCard(item);
       }}
       className="group/attach flex items-center h-6 cursor-pointer text-muted-foreground hover:text-foreground"
     >
       <div className="opacity-0 group-hover/row:opacity-100 group-hover/attach:opacity-100 transition-opacity duration-150 flex items-center gap-1 text-11 text-muted-foreground hover:text-foreground">
-        <Plus className="h-3 w-3 shrink-0" />
+        <Plus className="size-3 shrink-0" />
         <span className="text-10">Attach</span>
       </div>
     </div>
@@ -373,37 +397,37 @@ export function TableAttachCell({
 // ── 5. Table Action Menu ─────────────────────────────────────────────────────
 
 export function TableActionMenu({
-  task,
+  item,
   projectId = '',
   workspaceId = '',
   onEditCard,
   onDuplicateCard,
   onDeleteCard,
 }: {
-  task: Task;
+  item: Item;
   projectId?: string;
   workspaceId?: string;
-  onEditCard: (task: Task) => void;
-  onDuplicateCard: (task: Task) => void;
-  onDeleteCard: (task: Task) => void;
+  onEditCard: (item: Item) => void;
+  onDuplicateCard: (item: Item) => void;
+  onDeleteCard: (item: Item) => void;
 }) {
-  const copyTaskText = useCopyTaskText();
+  const copyItemText = useCopyItemText();
 
   const handleCopyLink = (event: React.MouseEvent) => {
     event.stopPropagation();
     const url =
       typeof window !== 'undefined'
-        ? `${window.location.origin}/projects/${projectId}/work-items?taskId=${task.id}`
+        ? `${window.location.origin}/projects/${projectId}/work-items?itemId=${item.id}`
         : '';
     if (url) {
-      copyTaskText(url, 'Link copied to clipboard');
+      copyItemText(url, 'Link copied to clipboard');
     }
   };
 
   const handleOpenInNewTab = (event: React.MouseEvent) => {
     event.stopPropagation();
     if (typeof window !== 'undefined') {
-      const url = `/projects/${projectId}/work-items?taskId=${task.id}`;
+      const url = `/projects/${projectId}/work-items?itemId=${item.id}`;
       window.open(url, '_blank');
     }
   };
@@ -416,7 +440,7 @@ export function TableActionMenu({
           size="icon"
           className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted p-0 rounded-sm"
         >
-          <MoreHorizontal className="h-4 w-4 shrink-0" />
+          <MoreHorizontal className="size-4 shrink-0" />
           <span className="sr-only">Work item actions</span>
         </Button>
       </DropdownMenuTrigger>
@@ -424,7 +448,7 @@ export function TableActionMenu({
         <DropdownMenuItem
           onClick={(event) => {
             event.stopPropagation();
-            onEditCard(task);
+            onEditCard(item);
           }}
           className="gap-2 cursor-pointer"
         >
@@ -434,11 +458,11 @@ export function TableActionMenu({
         <DropdownMenuItem
           onClick={(event) => {
             event.stopPropagation();
-            onDuplicateCard(task);
+            onDuplicateCard(item);
           }}
           className="gap-2 cursor-pointer"
         >
-          <Copy className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <Copy className="size-3.5 text-muted-foreground shrink-0" />
           <span>Make a copy</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleCopyLink} className="gap-2 cursor-pointer">
@@ -446,7 +470,7 @@ export function TableActionMenu({
           <span>Copy link</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleOpenInNewTab} className="gap-2 cursor-pointer">
-          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <ExternalLink className="size-3.5 text-muted-foreground shrink-0" />
           <span>Open in new tab</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -455,18 +479,18 @@ export function TableActionMenu({
           className="gap-2 text-muted-foreground cursor-not-allowed"
           title="Only completed or cancelled work items can be archived"
         >
-          <Archive className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <Archive className="size-3.5 text-muted-foreground shrink-0" />
           <span>Archive</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={(event) => {
             event.stopPropagation();
-            onDeleteCard(task);
+            onDeleteCard(item);
           }}
           className="gap-2 text-destructive focus:text-destructive cursor-pointer"
         >
-          <Trash2 className="h-3.5 w-3.5 shrink-0" />
+          <Trash2 className="size-3.5 shrink-0" />
           <span>Delete</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -517,13 +541,13 @@ export function TableColumnPropertiesPopover({
             onClick={onResetProperties}
             className="h-6 px-1.5 text-11 text-muted-foreground hover:text-foreground gap-1"
           >
-            <RotateCcw className="h-3 w-3 shrink-0" />
+            <RotateCcw className="size-3 shrink-0" />
             Reset
           </Button>
         </div>
 
         <div className="relative mb-2 px-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0" />
           <Input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
@@ -543,13 +567,13 @@ export function TableColumnPropertiesPopover({
                 className="flex items-center justify-between px-2 py-1.5 rounded-sm text-xs cursor-pointer hover:bg-muted transition-colors text-foreground select-none"
               >
                 <div className="flex items-center gap-2">
-                  <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <Icon className="size-3.5 text-muted-foreground shrink-0" />
                   <span>{propertyItem.label}</span>
                 </div>
                 <Checkbox
                   checked={isChecked}
                   onCheckedChange={() => onToggleProperty(propertyItem.key)}
-                  className="h-3.5 w-3.5"
+                  className="size-3.5"
                 />
               </label>
             );
@@ -564,6 +588,8 @@ export function TableColumnPropertiesPopover({
 
 export function TableHeader({
   visibleProperties,
+  columnWidths,
+  onResizeColumn,
   onToggleProperty,
   onResetProperties,
   isAllSelected,
@@ -574,6 +600,8 @@ export function TableHeader({
   onSort,
 }: {
   visibleProperties: Record<TablePropertyKey, boolean>;
+  columnWidths?: Record<string, number>;
+  onResizeColumn?: (key: string, width: number) => void;
   onToggleProperty: (key: TablePropertyKey) => void;
   onResetProperties: () => void;
   isAllSelected: boolean;
@@ -588,11 +616,36 @@ export function TableHeader({
   const renderSortIndicator = (field: TableSortField) => {
     if (sortField !== field) return null;
     return sortOrder === 'asc' ? (
-      <ArrowUp className="h-3 w-3 text-foreground ml-1 shrink-0" />
+      <ArrowUp className="size-3 text-foreground ml-1 shrink-0" />
     ) : (
-      <ArrowDown className="h-3 w-3 text-foreground ml-1 shrink-0" />
+      <ArrowDown className="size-3 text-foreground ml-1 shrink-0" />
     );
   };
+
+  const handleResizeMouseDown = (colKey: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!onResizeColumn) return;
+
+    const startX = e.clientX;
+    const currentW = (columnWidths && columnWidths[colKey]) || (colKey === 'title' ? 360 : 130);
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const minW = colKey === 'title' ? 180 : 60;
+      onResizeColumn(colKey, Math.max(minW, currentW + deltaX));
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  const titleWidth = (columnWidths && columnWidths.title) || 360;
 
   return (
     <div
@@ -601,19 +654,26 @@ export function TableHeader({
     >
       <div
         role="columnheader"
-        className="relative flex items-center min-w-[320px] max-w-[500px] flex-1 px-3 group/header"
+        style={{ width: `${titleWidth}px`, minWidth: `${titleWidth}px` }}
+        className="relative flex items-center px-3 group/header border-r border-border/40 shrink-0"
       >
         <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center max-sm:opacity-100 sm:opacity-0 sm:group-hover/header:opacity-100 has-[[data-state=checked]]:opacity-100 transition-opacity duration-150">
           <Checkbox
             checked={isAllSelected ? true : isSomeSelected ? 'indeterminate' : false}
             onCheckedChange={onToggleSelectAll}
             aria-label="Select all work items"
-            className="h-3.5 w-3.5 border-border data-[state=checked]:border-primary"
+            className="size-3.5 border-border data-[state=checked]:border-primary"
           />
         </div>
-        <span className="pl-6 text-xs font-normal text-muted-foreground select-none">
+        <span className="pl-6 text-xs font-normal text-muted-foreground select-none truncate">
           Work items
         </span>
+        {/* Resize Handle */}
+        <div
+          className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/50 group-hover/header:bg-border/60 transition-colors z-20"
+          onMouseDown={(e) => handleResizeMouseDown('title', e)}
+          onClick={(e) => e.stopPropagation()}
+        />
       </div>
 
       <div className="flex items-center">
@@ -628,6 +688,8 @@ export function TableHeader({
             'updatedOn',
           ].includes(propertyItem.key);
 
+          const propWidth = (columnWidths && columnWidths[propertyItem.key]) || propertyItem.minWidth || 130;
+
           return (
             <div
               key={propertyItem.key}
@@ -641,15 +703,21 @@ export function TableHeader({
                   onSort?.(propertyItem.key as TableSortField);
                 }
               }}
-              style={{ width: `${propertyItem.minWidth || 130}px` }}
+              style={{ width: `${propWidth}px`, minWidth: `${propWidth}px` }}
               onClick={() => isSortable && onSort?.(propertyItem.key as TableSortField)}
-              className={`flex items-center gap-1.5 px-3 h-9 text-xs text-muted-foreground select-none transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary ${
+              className={`relative flex items-center gap-1.5 px-3 h-9 text-xs text-muted-foreground select-none transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary border-r border-border/40 shrink-0 group/col ${
                 isSortable ? 'cursor-pointer hover:bg-muted hover:text-foreground' : ''
               }`}
             >
-              <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <Icon className="size-3.5 shrink-0 text-muted-foreground" />
               <span className="truncate">{propertyItem.label}</span>
               {isSortable && renderSortIndicator(propertyItem.key as TableSortField)}
+              {/* Resize Handle */}
+              <div
+                className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/50 group-hover/col:bg-border/60 transition-colors z-20"
+                onMouseDown={(e) => handleResizeMouseDown(propertyItem.key, e)}
+                onClick={(e) => e.stopPropagation()}
+              />
             </div>
           );
         })}
@@ -719,7 +787,7 @@ export function TableQuickAddRow({
           onClick={() => setIsAdding(true)}
           className="flex items-center gap-2 px-6 py-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors w-full text-left font-normal select-none"
         >
-          <Plus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <Plus className="size-3.5 text-muted-foreground shrink-0" />
           <span>Add work item</span>
         </button>
       </div>
@@ -742,7 +810,7 @@ export function TableQuickAddRow({
                 title={activeColumn?.title}
                 group={activeColumn?.slug || activeColumn?.title}
                 color={activeColumn?.accentColor}
-                className="h-3.5 w-3.5 shrink-0"
+                className="size-3.5 shrink-0"
               />
               <span className="max-w-[90px] truncate">
                 {activeColumn?.title || 'State'}
@@ -760,7 +828,7 @@ export function TableQuickAddRow({
                   title={columnItem.title}
                   group={columnItem.slug || columnItem.title}
                   color={columnItem.accentColor}
-                  className="h-3.5 w-3.5 shrink-0"
+                  className="size-3.5 shrink-0"
                 />
                 <span>{columnItem.title}</span>
               </DropdownMenuItem>
@@ -796,7 +864,7 @@ export function TableQuickAddRow({
             }}
             className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
           >
-            <X className="h-3.5 w-3.5 shrink-0" />
+            <X className="size-3.5 shrink-0" />
           </Button>
         </div>
       </form>
@@ -807,7 +875,7 @@ export function TableQuickAddRow({
 // ── 9. Table Row ─────────────────────────────────────────────────────────────
 
 export function TableRow({
-  task,
+  item,
   columns,
   visibleProperties,
   isSelected,
@@ -821,38 +889,40 @@ export function TableRow({
   cycles = [],
   projectId = '',
   workspaceId = '',
+  columnWidths,
 }: {
-  task: Task;
+  item: Item;
   columns: ColumnType[];
   visibleProperties: Record<TablePropertyKey, boolean>;
   isSelected: boolean;
   onToggleSelect: (id: string) => void;
-  onEditCard: (task: Task) => void;
-  onDeleteCard: (task: Task) => void;
-  onDuplicateCard: (task: Task) => void;
-  onMoveCard: (taskId: string, newColumnId: string) => void;
-  onUpdateCard?: (task: { id: string } & Partial<Task>) => void;
+  onEditCard: (item: Item) => void;
+  onDeleteCard: (item: Item) => void;
+  onDuplicateCard: (item: Item) => void;
+  onMoveCard: (itemId: string, newColumnId: string) => void;
+  onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
   members?: ProjectMember[];
   cycles?: Cycle[];
   projectId?: string;
   workspaceId?: string;
+  columnWidths?: Record<string, number>;
 }) {
-  const currentColumn = columns.find((columnItem) => columnItem.id === task.columnId);
+  const currentColumn = columns.find((columnItem) => columnItem.id === item.columnId);
   const activeProperties = TABLE_PROPERTIES.filter((propertyItem) => visibleProperties[propertyItem.key]);
 
   const getPriorityIcon = (priority?: Priority) => {
     switch (priority) {
       case 'urgent':
-        return <PriorityUrgentIcon className="h-3.5 w-3.5 shrink-0" />;
+        return <PriorityUrgentIcon className="size-3.5 shrink-0" />;
       case 'high':
-        return <PriorityHighIcon className="h-3.5 w-3.5 shrink-0" />;
+        return <PriorityHighIcon className="size-3.5 shrink-0" />;
       case 'medium':
-        return <PriorityMediumIcon className="h-3.5 w-3.5 shrink-0" />;
+        return <PriorityMediumIcon className="size-3.5 shrink-0" />;
       case 'low':
-        return <PriorityLowIcon className="h-3.5 w-3.5 shrink-0" />;
+        return <PriorityLowIcon className="size-3.5 shrink-0" />;
       case 'none':
       default:
-        return <PriorityNoneIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />;
+        return <PriorityNoneIcon className="size-3.5 shrink-0 text-muted-foreground" />;
     }
   };
 
@@ -877,9 +947,9 @@ export function TableRow({
     }
   };
 
-  const resolvedAssignees = TaskHelpers.resolveAssignees(task, members);
-  const resolvedAssignee = TaskHelpers.resolveAssignee(task);
-  const assigneeId = TaskHelpers.resolveAssigneeId(task);
+  const resolvedAssignees = ItemHelpers.resolveAssignees(item, members);
+  const resolvedAssignee = ItemHelpers.resolveAssignee(item);
+  const assigneeId = ItemHelpers.resolveAssigneeId(item);
   const memberMatch = members.find((member) => member.userId === assigneeId || member.id === assigneeId);
 
   const assigneeName = resolvedAssignee?.name || memberMatch?.name || (resolvedAssignees[0]?.name) || null;
@@ -901,7 +971,7 @@ export function TableRow({
                   title={title}
                   group={currentColumn?.slug || title}
                   color={currentColumn?.accentColor}
-                  className="h-3.5 w-3.5 shrink-0"
+                  className="size-3.5 shrink-0"
                 />
                 <span className="truncate">{title}</span>
               </button>
@@ -910,14 +980,14 @@ export function TableRow({
               {columns.map((columnItem) => (
                 <DropdownMenuItem
                   key={columnItem.id}
-                  onClick={() => columnItem.id && onMoveCard(task.id, columnItem.id)}
+                  onClick={() => columnItem.id && onMoveCard(item.id, columnItem.id)}
                   className="flex items-center gap-2 cursor-pointer"
                 >
                   <StatusIcon
                     title={columnItem.title}
                     group={columnItem.slug || columnItem.title}
                     color={columnItem.accentColor}
-                    className="h-3.5 w-3.5 shrink-0"
+                    className="size-3.5 shrink-0"
                   />
                   <span>{columnItem.title}</span>
                 </DropdownMenuItem>
@@ -928,7 +998,7 @@ export function TableRow({
       }
 
       case 'priority': {
-        const priorityKey = (task.priority || 'none') as Priority;
+        const priorityKey = (item.priority || 'none') as Priority;
 
         return (
           <DropdownMenu>
@@ -945,7 +1015,7 @@ export function TableRow({
               {(['urgent', 'high', 'medium', 'low', 'none'] as Priority[]).map((pKey) => (
                 <DropdownMenuItem
                   key={pKey}
-                  onClick={() => onUpdateCard?.({ id: task.id, priority: pKey })}
+                  onClick={() => onUpdateCard?.({ id: item.id, priority: pKey })}
                   className="flex items-center gap-2 cursor-pointer"
                 >
                   {getPriorityIcon(pKey)}
@@ -967,7 +1037,7 @@ export function TableRow({
               </div>
             ) : assigneeName ? (
               <>
-                <Avatar className="h-4 w-4 shrink-0">
+                <Avatar className="size-4 shrink-0">
                   <AvatarImage src={assigneeAvatar} />
                   <AvatarFallback className="text-9 font-medium">
                     {assigneeName.charAt(0).toUpperCase()}
@@ -983,21 +1053,30 @@ export function TableRow({
       }
 
       case 'labels': {
-        const labelList = Array.isArray(task.labels) ? task.labels : [];
+        const labelList = Array.isArray(item.labels) ? item.labels : [];
         if (labelList.length === 0) {
           return <span className="text-xs text-muted-foreground px-1.5">-</span>;
         }
 
         return (
           <div className="flex items-center gap-1 px-1.5 overflow-hidden">
-            {labelList.slice(0, 2).map((labelId) => (
-              <span
-                key={labelId}
-                className="inline-flex items-center px-1.5 py-0.5 rounded text-10 font-medium bg-muted text-muted-foreground border border-border truncate max-w-[80px]"
-              >
-                {labelId}
-              </span>
-            ))}
+            {labelList.slice(0, 2).map((labelItem: any, idx: number) => {
+              const labelText = typeof labelItem === 'string'
+                ? labelItem
+                : (labelItem?.name || labelItem?.title || labelItem?.id || '');
+              const labelKey = typeof labelItem === 'string'
+                ? labelItem
+                : (labelItem?.id || String(idx));
+
+              return (
+                <span
+                  key={labelKey}
+                  className="inline-flex items-center px-1.5 py-0.5 rounded text-10 font-medium bg-muted text-muted-foreground border border-border truncate max-w-[80px]"
+                >
+                  {labelText}
+                </span>
+              );
+            })}
             {labelList.length > 2 && (
               <span className="text-10 text-muted-foreground font-medium">
                 +{labelList.length - 2}
@@ -1008,11 +1087,11 @@ export function TableRow({
       }
 
       case 'attach': {
-        return <TableAttachCell task={task} onEditCard={onEditCard} />;
+        return <TableAttachCell item={item} onEditCard={onEditCard} />;
       }
 
       case 'cycle': {
-        const currentCycle = cycles.find((cycleItem) => cycleItem.id === task.cycleId);
+        const currentCycle = cycles.find((cycleItem) => cycleItem.id === item.cycleId);
         return (
           <span className="text-xs text-muted-foreground px-1.5 truncate">
             {currentCycle?.name || '-'}
@@ -1023,35 +1102,35 @@ export function TableRow({
       case 'startDate':
         return (
           <span className="text-xs text-muted-foreground px-1.5">
-            {formatDate(task.startDate)}
+            {formatDate(item.startDate)}
           </span>
         );
 
       case 'dueDate':
         return (
           <span className="text-xs text-muted-foreground px-1.5">
-            {formatDate(task.dueDate)}
+            {formatDate(item.dueDate)}
           </span>
         );
 
       case 'createdOn':
         return (
           <span className="text-xs text-muted-foreground px-1.5">
-            {formatDate((task as any).createdAt)}
+            {formatDate((item as any).createdAt)}
           </span>
         );
 
       case 'createdBy':
         return (
           <span className="text-xs text-muted-foreground px-1.5 truncate">
-            {(task as any).author?.name || '-'}
+            {(item as any).author?.name || '-'}
           </span>
         );
 
       case 'updatedOn':
         return (
           <span className="text-xs text-muted-foreground px-1.5">
-            {formatDate((task as any).updatedAt)}
+            {formatDate((item as any).updatedAt)}
           </span>
         );
 
@@ -1061,7 +1140,7 @@ export function TableRow({
         );
 
       case 'attachment': {
-        const count = TaskHelpers.countAttachments(task.attachments);
+        const count = ItemHelpers.countAttachments(item.attachments);
         return (
           <span className="text-xs text-muted-foreground px-1.5">
             {count > 0 ? `${count} file${count > 1 ? 's' : ''}` : '-'}
@@ -1069,12 +1148,12 @@ export function TableRow({
         );
       }
 
-      case 'subtask':
-      case 'subWorkItem': {
-        const subtaskCount = (task as any).subtaskCount ?? (task.subtasks?.length || 0);
+      case 'childWorkItemCount':
+      case 'subItemCount': {
+        const childCount = (item as any).childWorkItemCount ?? (item as any).childWorkItems?.length ?? 0;
         return (
           <span className="text-xs text-muted-foreground px-1.5">
-            {subtaskCount > 0 ? `${subtaskCount} sub-item${subtaskCount > 1 ? 's' : ''}` : '-'}
+            {childCount > 0 ? `${childCount} sub-item${childCount > 1 ? 's' : ''}` : '-'}
           </span>
         );
       }
@@ -1088,21 +1167,25 @@ export function TableRow({
     <div
       role="row"
       tabIndex={0}
-      onClick={() => onEditCard(task)}
+      onClick={() => onEditCard(item)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          onEditCard(task);
+          onEditCard(item);
         }
       }}
-      aria-label={`Work item: ${task.title}`}
+      aria-label={`Work item: ${item.title}`}
       className={`group/row flex items-center h-9 border-b border-border hover:bg-muted transition-colors cursor-pointer w-full text-xs select-none outline-none focus-visible:ring-1 focus-visible:ring-primary ${
         isSelected ? 'bg-muted font-medium' : ''
       }`}
     >
       <div
         role="cell"
-        className="relative flex items-center min-w-[320px] max-w-[500px] flex-1 px-3"
+        style={{
+          width: `${(columnWidths && columnWidths.title) || 360}px`,
+          minWidth: `${(columnWidths && columnWidths.title) || 360}px`,
+        }}
+        className="relative flex items-center px-3 shrink-0 border-r border-border/20"
       >
         <div
           onClick={(event) => event.stopPropagation()}
@@ -1110,46 +1193,49 @@ export function TableRow({
         >
           <Checkbox
             checked={isSelected}
-            onCheckedChange={() => onToggleSelect(task.id)}
-            aria-label={isSelected ? `Deselect ${task.title}` : `Select ${task.title}`}
-            className="h-3.5 w-3.5 border-border data-[state=checked]:border-primary"
+            onCheckedChange={() => onToggleSelect(item.id)}
+            aria-label={isSelected ? `Deselect ${item.title}` : `Select ${item.title}`}
+            className="size-3.5 border-border data-[state=checked]:border-primary"
           />
         </div>
 
         <div className="flex items-center gap-2 pl-6 min-w-0 pr-2">
-          {task.identifier && (
+          {item.identifier && (
             <span className="text-11 font-mono text-muted-foreground shrink-0 select-none">
-              {task.identifier}
+              {item.identifier}
             </span>
           )}
           <span
             className={`truncate font-normal ${
-              task.completed
+              item.completed
                 ? 'line-through text-muted-foreground'
                 : 'text-foreground'
             }`}
           >
-            {task.title}
+            {item.title}
           </span>
         </div>
       </div>
 
       <div className="flex items-center">
-        {activeProperties.map((propertyItem) => (
-          <div
-            key={propertyItem.key}
-            role="cell"
-            style={{ width: `${propertyItem.minWidth || 130}px` }}
-            className="flex items-center h-9 overflow-hidden"
-          >
-            {renderCellContent(propertyItem.key)}
-          </div>
-        ))}
+        {activeProperties.map((propertyItem) => {
+          const propWidth = (columnWidths && columnWidths[propertyItem.key]) || propertyItem.minWidth || 130;
+          return (
+            <div
+              key={propertyItem.key}
+              role="cell"
+              style={{ width: `${propWidth}px`, minWidth: `${propWidth}px` }}
+              className="flex items-center h-9 overflow-hidden shrink-0 border-r border-border/20"
+            >
+              {renderCellContent(propertyItem.key)}
+            </div>
+          );
+        })}
       </div>
 
       <div className="ml-auto pr-3 flex items-center opacity-0 group-hover/row:opacity-100 transition-opacity">
         <TableActionMenu
-          task={task}
+          item={item}
           projectId={projectId}
           workspaceId={workspaceId}
           onEditCard={onEditCard}
@@ -1164,8 +1250,7 @@ export function TableRow({
 // ── 10. Main TableView Component ─────────────────────────────────────────────
 
 export function TableView({
-  items: propItems,
-  tasks: propTasks,
+  items = [],
   columns,
   displayOptions,
   projectId = '',
@@ -1180,17 +1265,9 @@ export function TableView({
   onUpdateCard,
   isReadOnly,
   selectedIds: propSelectedIds,
-  selectedTaskIds: propSelectedTaskIds,
   onToggleSelect: rawOnToggleSelect,
-  onToggleSelectTask: rawOnToggleSelectTask,
   onSelectAll: rawOnSelectAll,
-  onSelectAllTasks: rawOnSelectAllTasks,
 }: TableViewProps) {
-  const tasks = propItems || propTasks || [];
-  const items = tasks;
-  const propOnToggle = rawOnToggleSelect || rawOnToggleSelectTask;
-  const propOnSelectAll = rawOnSelectAll || rawOnSelectAllTasks;
-  const effectiveSelectedIds = propSelectedIds || propSelectedTaskIds;
   const [localVisibleProperties, setLocalVisibleProperties] = useState<Record<TablePropertyKey, boolean>>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -1221,7 +1298,9 @@ export function TableView({
       ...(displayOptions.properties.startDate !== undefined ? { startDate: displayOptions.properties.startDate } : {}),
       ...(displayOptions.properties.dueDate !== undefined ? { dueDate: displayOptions.properties.dueDate } : {}),
       ...(displayOptions.properties.link !== undefined ? { link: displayOptions.properties.link } : {}),
-      ...(displayOptions.properties.subtaskCount !== undefined ? { subtask: displayOptions.properties.subtaskCount } : {}),
+      ...((displayOptions.properties.childWorkItemCount ?? displayOptions.properties.subItemCount) !== undefined
+        ? { childWorkItemCount: Boolean(displayOptions.properties.childWorkItemCount ?? displayOptions.properties.subItemCount) }
+        : {}),
       ...(displayOptions.properties.attachmentCount !== undefined ? { attachment: displayOptions.properties.attachmentCount } : {}),
     };
   }, [localVisibleProperties, displayOptions?.properties]);
@@ -1247,27 +1326,56 @@ export function TableView({
     }
   };
 
-  const [localSelectedTaskIds, setLocalSelectedTaskIds] = useState<string[]>([]);
-  const selectedTaskIds = effectiveSelectedIds ?? localSelectedTaskIds;
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(TABLE_WIDTHS_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && typeof parsed === 'object') {
+            return { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
+          }
+        }
+      } catch {
+        // Ignore localStorage errors
+      }
+    }
+    return DEFAULT_COLUMN_WIDTHS;
+  });
+
+  const handleResizeColumn = (key: string, newWidth: number) => {
+    setColumnWidths((prev) => {
+      const updated = { ...prev, [key]: newWidth };
+      try {
+        localStorage.setItem(TABLE_WIDTHS_STORAGE_KEY, JSON.stringify(updated));
+      } catch {
+        // Ignore localStorage errors
+      }
+      return updated;
+    });
+  };
+
+  const [localSelectedIds, setLocalSelectedIds] = useState<string[]>([]);
+  const selectedIds = propSelectedIds ?? localSelectedIds;
 
   const handleToggleSelect = (id: string) => {
-    if (propOnToggle) {
-      propOnToggle(id);
+    if (rawOnToggleSelect) {
+      rawOnToggleSelect(id);
     } else {
-      setLocalSelectedTaskIds((prev) =>
-        prev.includes(id) ? prev.filter((taskId) => taskId !== id) : [...prev, id]
+      setLocalSelectedIds((prev) =>
+        prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]
       );
     }
   };
 
   const handleSelectAll = () => {
-    const allIds = tasks.map((task: Task) => task.id);
-    const isAllSelected = tasks.length > 0 && selectedTaskIds.length === tasks.length;
+    const allIds = items.map((item: Item) => item.id);
+    const isAllSelected = items.length > 0 && selectedIds.length === items.length;
 
-    if (propOnSelectAll) {
-      propOnSelectAll(isAllSelected ? [] : allIds);
+    if (rawOnSelectAll) {
+      rawOnSelectAll(isAllSelected ? [] : allIds);
     } else {
-      setLocalSelectedTaskIds(isAllSelected ? [] : allIds);
+      setLocalSelectedIds(isAllSelected ? [] : allIds);
     }
   };
 
@@ -1283,30 +1391,30 @@ export function TableView({
     }
   };
 
-  const sortedTasks = useMemo(() => {
-    const list = [...tasks];
-    list.sort((taskA, taskB) => {
+  const sortedItems = useMemo(() => {
+    const list = [...items];
+    list.sort((itemA, itemB) => {
       let comparison = 0;
 
       switch (sortField) {
         case 'identifier': {
-          const numA = (taskA as any).sequenceNumber || 0;
-          const numB = (taskB as any).sequenceNumber || 0;
+          const numA = (itemA as any).sequenceNumber || 0;
+          const numB = (itemB as any).sequenceNumber || 0;
           comparison = numA - numB;
           break;
         }
         case 'title':
-          comparison = (taskA.title || '').localeCompare(taskB.title || '');
+          comparison = (itemA.title || '').localeCompare(itemB.title || '');
           break;
         case 'dueDate': {
-          const timeA = taskA.dueDate ? new Date(taskA.dueDate).getTime() : 0;
-          const timeB = taskB.dueDate ? new Date(taskB.dueDate).getTime() : 0;
+          const timeA = itemA.dueDate ? new Date(itemA.dueDate).getTime() : 0;
+          const timeB = itemB.dueDate ? new Date(itemB.dueDate).getTime() : 0;
           comparison = timeA - timeB;
           break;
         }
         case 'startDate': {
-          const timeA = taskA.startDate ? new Date(taskA.startDate).getTime() : 0;
-          const timeB = taskB.startDate ? new Date(taskB.startDate).getTime() : 0;
+          const timeA = itemA.startDate ? new Date(itemA.startDate).getTime() : 0;
+          const timeB = itemB.startDate ? new Date(itemB.startDate).getTime() : 0;
           comparison = timeA - timeB;
           break;
         }
@@ -1318,8 +1426,8 @@ export function TableView({
             low: 1,
             none: 0,
           };
-          const weightA = weights[taskA.priority || 'none'] || 0;
-          const weightB = weights[taskB.priority || 'none'] || 0;
+          const weightA = weights[itemA.priority || 'none'] || 0;
+          const weightB = weights[itemB.priority || 'none'] || 0;
           comparison = weightA - weightB;
           break;
         }
@@ -1331,10 +1439,10 @@ export function TableView({
     });
 
     return list;
-  }, [tasks, sortField, sortOrder]);
+  }, [items, sortField, sortOrder]);
 
-  const isAllSelected = tasks.length > 0 && selectedTaskIds.length === tasks.length;
-  const isSomeSelected = selectedTaskIds.length > 0 && selectedTaskIds.length < tasks.length;
+  const isAllSelected = items.length > 0 && selectedIds.length === items.length;
+  const isSomeSelected = selectedIds.length > 0 && selectedIds.length < items.length;
 
   return (
     <div className="flex flex-col flex-1 w-full overflow-hidden bg-background">
@@ -1343,6 +1451,8 @@ export function TableView({
           <div role="rowgroup">
             <TableHeader
               visibleProperties={visibleProperties}
+              columnWidths={columnWidths}
+              onResizeColumn={handleResizeColumn}
               onToggleProperty={handleToggleProperty}
               onResetProperties={handleResetProperties}
               isAllSelected={isAllSelected}
@@ -1354,19 +1464,20 @@ export function TableView({
             />
           </div>
 
-          {sortedTasks.length === 0 ? (
+          {sortedItems.length === 0 ? (
             <div className="py-16 text-center text-xs text-muted-foreground select-none">
               No work items found
             </div>
           ) : (
             <div role="rowgroup" className="flex flex-col">
-              {sortedTasks.map((task) => (
+              {sortedItems.map((item) => (
                 <TableRow
-                  key={task.id}
-                  task={task}
+                  key={item.id}
+                  item={item}
                   columns={columns}
                   visibleProperties={visibleProperties}
-                  isSelected={selectedTaskIds.includes(task.id)}
+                  columnWidths={columnWidths}
+                  isSelected={selectedIds.includes(item.id)}
                   onToggleSelect={handleToggleSelect}
                   onEditCard={onEditCard}
                   onDeleteCard={onDeleteCard}

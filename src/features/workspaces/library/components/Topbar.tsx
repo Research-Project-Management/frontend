@@ -266,7 +266,7 @@ export default function Topbar({
         )}
 
         {/* Tag Filter Popover Button */}
-        {showFilter && effectiveWorkspaceId && (
+        {showFilter && (
           <TagFilterPopover workspaceId={effectiveWorkspaceId} />
         )}
 
@@ -285,50 +285,59 @@ export default function Topbar({
               onCloseAutoFocus={(e) => e.preventDefault()}
               className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5"
             >
+              {/* Group 1: Collection / Structure Creation */}
+              {onAddCollection && (
+                <DropdownMenuItem
+                  onClick={onAddCollection}
+                  className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                >
+                  <FolderPlus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span className="text-foreground">{isSubcollection ? "New Subcollection" : "New Collection"}</span>
+                </DropdownMenuItem>
+              )}
+
+              {onAddCollection && (onDirectFilesUpload || onDirectFolderUpload || onAddPaper || onAddLink) && (
+                <DropdownMenuSeparator className="my-1 bg-border" />
+              )}
+
+              {/* Group 2: External Ingestion (File, Folder, Link) */}
               {(onDirectFilesUpload || onAddPaper) && (
                 <DropdownMenuItem
                   onClick={handleAddFileClick}
-                  className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                  className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
-                  <FileText className="size-4 text-foreground shrink-0" />
+                  <FileText className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                   <span className="text-foreground">Add file</span>
                 </DropdownMenuItem>
               )}
               {(onDirectFolderUpload || onAddPaper) && (
                 <DropdownMenuItem
                   onClick={handleAddFolderClick}
-                  className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                  className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
-                  <FolderUp className="size-4 text-foreground shrink-0" />
+                  <FolderUp className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                   <span className="text-foreground">Add folder</span>
-                </DropdownMenuItem>
-              )}
-              {onAddCollection && (
-                <DropdownMenuItem
-                  onClick={onAddCollection}
-                  className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
-                >
-                  <FolderPlus className="size-4 text-foreground shrink-0" />
-                  <span className="text-foreground">{isSubcollection ? "New Subcollection" : "New Collection"}</span>
                 </DropdownMenuItem>
               )}
               {(onAddLink || onAddPaper) && (
                 <DropdownMenuItem
                   onClick={handleAddLinkClick}
-                  className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                  className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
-                  <Link2 className="size-4 text-foreground shrink-0" />
+                  <Link2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                   <span className="text-foreground">Add link</span>
                 </DropdownMenuItem>
               )}
+
+              {/* Group 3: Project Ingestion from Personal Library */}
               {onImportFromPersonal && (
                 <>
                   <DropdownMenuSeparator className="my-1 bg-border" />
                   <DropdownMenuItem
                     onClick={onImportFromPersonal}
-                    className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                    className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   >
-                    <FolderInput className="size-4 text-foreground shrink-0" />
+                    <FolderInput className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                     <span className="text-foreground">Import from My Library...</span>
                   </DropdownMenuItem>
                 </>

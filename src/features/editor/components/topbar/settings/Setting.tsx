@@ -137,6 +137,16 @@ export default function Setting() {
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        toggleSettingsPanel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toggleSettingsPanel]);
+
   const renderToggle = (checked: boolean, onChange: (v: boolean) => void, label: string) => (
     <Switch
       checked={checked}
@@ -149,12 +159,12 @@ export default function Setting() {
     <div className="h-full w-[280px] border-l border-border bg-background flex flex-col shrink-0">
       {/* Header */}
       <div className="flex items-center justify-between px-4 h-11 border-b border-border shrink-0">
-        <span className="text-sm font-semibold">Settings</span>
+        <h2 className="text-sm font-semibold">Settings</h2>
         <button
           type="button"
           onClick={toggleSettingsPanel}
           aria-label="Close settings"
-          className="p-1 rounded-md hover:bg-muted text-foreground transition-colors"
+          className="size-7 min-w-[24px] min-h-[24px] flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors"
         >
           <X className="size-4 shrink-0" />
         </button>
@@ -242,7 +252,7 @@ export default function Setting() {
                 type="button"
                 onClick={() => setFontSize(Math.max(10, fontSize - 1))}
                 aria-label="Decrease font size"
-                className="p-1 rounded-md hover:bg-muted text-foreground transition-colors"
+                className="size-6 min-w-[24px] min-h-[24px] flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors"
               >
                 <Minus className="size-3 shrink-0" />
               </button>
@@ -251,7 +261,7 @@ export default function Setting() {
                 type="button"
                 onClick={() => setFontSize(Math.min(24, fontSize + 1))}
                 aria-label="Increase font size"
-                className="p-1 rounded-md hover:bg-muted text-foreground transition-colors"
+                className="size-6 min-w-[24px] min-h-[24px] flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors"
               >
                 <Plus className="size-3 shrink-0" />
               </button>

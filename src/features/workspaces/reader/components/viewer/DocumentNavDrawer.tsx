@@ -120,19 +120,19 @@ export default function DocumentNavDrawer({
       {/* Header Chrome */}
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-background">
         <div className="flex items-center gap-2">
-          <Layers className="size-4 text-primary shrink-0" />
-          <span className="text-xs font-semibold text-foreground tracking-tight">
+          <Layers className="size-4 text-primary shrink-0" strokeWidth={1.5} />
+          <span className="text-12 font-medium text-foreground tracking-tight">
             Structure & Entities
           </span>
         </div>
         <Button
           variant="ghost"
           size="icon"
-          className="size-7 text-foreground hover:bg-muted rounded-sm cursor-pointer"
+          className="size-7 text-foreground hover:bg-muted rounded-md cursor-pointer"
           onClick={onClose}
           aria-label="Close outline drawer"
         >
-          <X className="size-3.5 shrink-0" />
+          <X className="size-3.5 shrink-0" strokeWidth={1.5} />
         </Button>
       </div>
 
@@ -142,15 +142,15 @@ export default function DocumentNavDrawer({
           type="button"
           onClick={() => setActiveTab('outline')}
           className={cn(
-            'relative flex items-center gap-1.5 h-full px-2 text-xs font-medium transition-colors cursor-pointer border-b-2',
+            'relative flex items-center gap-1.5 h-full px-2 text-12 font-medium transition-colors cursor-pointer border-b-2',
             activeTab === 'outline'
               ? 'border-primary text-foreground'
               : 'border-transparent text-foreground hover:bg-muted',
           )}
         >
-          <ListTree className="size-3.5 shrink-0" />
+          <ListTree className="size-3.5 shrink-0" strokeWidth={1.5} />
           <span>Outline</span>
-          <span className="text-10 font-mono text-muted-foreground">
+          <span className="text-10 font-mono text-muted-foreground tabular-nums">
             ({sections.length})
           </span>
         </button>
@@ -159,15 +159,15 @@ export default function DocumentNavDrawer({
           type="button"
           onClick={() => setActiveTab('figures')}
           className={cn(
-            'relative flex items-center gap-1.5 h-full px-2 text-xs font-medium transition-colors cursor-pointer border-b-2',
+            'relative flex items-center gap-1.5 h-full px-2 text-12 font-medium transition-colors cursor-pointer border-b-2',
             activeTab === 'figures'
               ? 'border-primary text-foreground'
               : 'border-transparent text-foreground hover:bg-muted',
           )}
         >
-          <ImageIcon className="size-3.5 shrink-0" />
+          <ImageIcon className="size-3.5 shrink-0" strokeWidth={1.5} />
           <span>Figures</span>
-          <span className="text-10 font-mono text-muted-foreground">
+          <span className="text-10 font-mono text-muted-foreground tabular-nums">
             ({figures.length})
           </span>
         </button>
@@ -176,15 +176,15 @@ export default function DocumentNavDrawer({
           type="button"
           onClick={() => setActiveTab('tables')}
           className={cn(
-            'relative flex items-center gap-1.5 h-full px-2 text-xs font-medium transition-colors cursor-pointer border-b-2',
+            'relative flex items-center gap-1.5 h-full px-2 text-12 font-medium transition-colors cursor-pointer border-b-2',
             activeTab === 'tables'
               ? 'border-primary text-foreground'
               : 'border-transparent text-foreground hover:bg-muted',
           )}
         >
-          <Table2 className="size-3.5 shrink-0" />
+          <Table2 className="size-3.5 shrink-0" strokeWidth={1.5} />
           <span>Tables</span>
-          <span className="text-10 font-mono text-muted-foreground">
+          <span className="text-10 font-mono text-muted-foreground tabular-nums">
             ({tables.length})
           </span>
         </button>
@@ -193,15 +193,15 @@ export default function DocumentNavDrawer({
           type="button"
           onClick={() => setActiveTab('formulas')}
           className={cn(
-            'relative flex items-center gap-1.5 h-full px-2 text-xs font-medium transition-colors cursor-pointer border-b-2',
+            'relative flex items-center gap-1.5 h-full px-2 text-12 font-medium transition-colors cursor-pointer border-b-2',
             activeTab === 'formulas'
               ? 'border-primary text-foreground'
               : 'border-transparent text-foreground hover:bg-muted',
           )}
         >
-          <Sigma className="size-3.5 shrink-0" />
+          <Sigma className="size-3.5 shrink-0" strokeWidth={1.5} />
           <span>Math</span>
-          <span className="text-10 font-mono text-muted-foreground">
+          <span className="text-10 font-mono text-muted-foreground tabular-nums">
             ({formulas.length})
           </span>
         </button>
@@ -210,20 +210,20 @@ export default function DocumentNavDrawer({
       {/* Filter / Search bar */}
       <div className="p-2 border-b border-border bg-card">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={`Filter ${activeTab}...`}
-            className="h-7 pl-8 text-xs bg-background border-border rounded-sm focus-visible:ring-1 focus-visible:ring-primary"
+            className="h-8 pl-8 text-12 bg-background border-border rounded-md focus-visible:ring-1 focus-visible:ring-primary"
           />
           {searchQuery ? (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground p-0.5 rounded cursor-pointer"
             >
-              <X className="size-3 shrink-0" />
+              <X className="size-3 shrink-0" strokeWidth={1.5} />
             </button>
           ) : null}
         </div>
@@ -322,7 +322,7 @@ export default function DocumentNavDrawer({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <ImageIcon className="size-3.5 text-primary shrink-0" />
+                      <ImageIcon className="size-3.5 text-primary shrink-0" strokeWidth={1.5} />
                       {fig.label || `Figure`}
                     </span>
                     <button
@@ -331,7 +331,7 @@ export default function DocumentNavDrawer({
                       className="inline-flex items-center gap-1 text-11 font-mono text-primary hover:underline cursor-pointer"
                     >
                       <span>p. {fig.page}</span>
-                      <ExternalLink className="size-3 shrink-0" />
+                      <ExternalLink className="size-3 shrink-0" strokeWidth={1.5} />
                     </button>
                   </div>
                   {fig.caption ? (
@@ -369,7 +369,7 @@ export default function DocumentNavDrawer({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <Table2 className="size-3.5 text-primary shrink-0" />
+                      <Table2 className="size-3.5 text-primary shrink-0" strokeWidth={1.5} />
                       {tab.label || `Table`}
                     </span>
                     <button
@@ -378,7 +378,7 @@ export default function DocumentNavDrawer({
                       className="inline-flex items-center gap-1 text-11 font-mono text-primary hover:underline cursor-pointer"
                     >
                       <span>p. {tab.page}</span>
-                      <ExternalLink className="size-3 shrink-0" />
+                      <ExternalLink className="size-3 shrink-0" strokeWidth={1.5} />
                     </button>
                   </div>
 
@@ -395,7 +395,7 @@ export default function DocumentNavDrawer({
                         onClick={() => setExpandedTableId(isExpanded ? null : tab.id)}
                         className="inline-flex items-center gap-1 text-11 font-medium text-foreground cursor-pointer"
                       >
-                        {isExpanded ? <ChevronDown className="size-3 shrink-0" /> : <ChevronRight className="size-3 shrink-0" />}
+                        {isExpanded ? <ChevronDown className="size-3 shrink-0" strokeWidth={1.5} /> : <ChevronRight className="size-3 shrink-0" strokeWidth={1.5} />}
                         <span>{isExpanded ? 'Hide Data Matrix' : 'Preview Data Matrix'}</span>
                         <span className="font-mono text-10">({tab.rows?.length} rows)</span>
                       </button>
@@ -465,7 +465,7 @@ export default function DocumentNavDrawer({
                       className="inline-flex items-center gap-1 text-11 font-mono text-primary hover:underline cursor-pointer"
                     >
                       <span>p. {form.page}</span>
-                      <ExternalLink className="size-3 shrink-0" />
+                      <ExternalLink className="size-3 shrink-0" strokeWidth={1.5} />
                     </button>
                   </div>
                   <div className="p-2 bg-muted rounded border border-border font-mono text-11 text-foreground leading-relaxed overflow-x-auto whitespace-pre-wrap">

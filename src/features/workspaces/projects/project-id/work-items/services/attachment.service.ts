@@ -18,6 +18,9 @@ export const AttachmentService = {
       data,
     ),
 
+  getWorkItemAttachments: (itemId: string) =>
+    apiGet<any>(`/api/work-items/${itemId}/attachments`),
+
   getAttachment: (attachmentId: string) =>
     apiGet<unknown>(`/api/attachments/${attachmentId}`),
 
@@ -28,46 +31,46 @@ export const AttachmentService = {
     apiDelete(`/api/work-items/${itemId}/attachments/${attachmentId}`),
 
   attachPage: (itemId: string, data: AttachPageInput) =>
-    apiPost<{ message: string; task: Item; item?: Item; page: AttachPageItem }>(
+    apiPost<{ message: string; workItem: Item; item?: Item; page: AttachPageItem }>(
       `/api/work-items/${itemId}/attach/pages`,
       data,
     ),
 
   detachPage: (itemId: string, pageId: string) =>
-    apiDelete<{ message: string; task: Item; item?: Item }>(
+    apiDelete<{ message: string; workItem: Item; item?: Item }>(
       `/api/work-items/${itemId}/attach/pages/${pageId}`,
     ),
 
   attachPaper: (itemId: string, data: AttachPaperInput) =>
-    apiPost<{ message: string; task: Item; item?: Item; paper: AttachPaperItem }>(
+    apiPost<{ message: string; workItem: Item; item?: Item; paper: AttachPaperItem }>(
       `/api/work-items/${itemId}/attach/papers`,
       data,
     ),
 
   detachPaper: (itemId: string, paperId: string) =>
-    apiDelete<{ message: string; task: Item; item?: Item }>(
+    apiDelete<{ message: string; workItem: Item; item?: Item }>(
       `/api/work-items/${itemId}/attach/papers/${paperId}`,
     ),
 
   attachFile: (itemId: string, data: AttachFileInput) =>
-    apiPost<{ message: string; task: Item; item?: Item; file: AttachFileItem }>(
+    apiPost<{ message: string; workItem: Item; item?: Item; file: AttachFileItem }>(
       `/api/work-items/${itemId}/attach/files`,
       data,
     ),
 
   detachFile: (itemId: string, fileId: string) =>
-    apiDelete<{ message: string; task: Item; item?: Item }>(
+    apiDelete<{ message: string; workItem: Item; item?: Item }>(
       `/api/work-items/${itemId}/attach/files/${fileId}`,
     ),
 
   attachLink: (itemId: string, data: AttachLinkInput) =>
-    apiPost<{ message: string; task: Item; item?: Item; link: AttachLinkItem }>(
+    apiPost<{ message: string; workItem: Item; item?: Item; link: AttachLinkItem }>(
       `/api/work-items/${itemId}/attach/links`,
       data,
     ),
 
   detachLink: (itemId: string, linkIndex: number) =>
-    apiDelete<{ message: string; task: Item; item?: Item }>(
+    apiDelete<{ message: string; workItem: Item; item?: Item }>(
       `/api/work-items/${itemId}/attach/links/${linkIndex}`,
     ),
 };

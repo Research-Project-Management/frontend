@@ -1,4 +1,4 @@
-export type LabelType = 'sticky' | 'cycle' | 'task';
+export type LabelType = 'sticky' | 'cycle' | 'work-item';
 
 export interface Label {
   id: string;

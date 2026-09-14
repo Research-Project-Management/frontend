@@ -15,7 +15,7 @@ import { CreateModal } from "../components/modals/CreateModal";
 import { DetailModal } from "../components/modals/DetailModal";
 import { DeleteModal } from "../components/modals/DeleteModal";
 import { TransferModal } from "../components/modals/TransferModal";
-import { AddExistingModal, AddExistingModal as AddExistingTaskModal } from "../components/modals/AddExistingModal";
+import { AddExistingModal } from "../components/modals/AddExistingModal";
 import { BulkActionBar } from "../components/layout/BulkActionBar";
 import {
   useProject,
@@ -27,18 +27,17 @@ import {
   useBulkRestore,
   useArchivedItems,
 } from "../hooks/use-archive";
-import { ItemHelpers, TaskHelpers, resolveTaskColumnId, resolveTaskColumnColor } from "../utils/work-item.utils";
+import { ItemHelpers, WorkItemHelpers, resolveColumnId, resolveStateId } from "../utils/work-item.utils";
 import { useTopbar } from "../hooks/use-topbar";
 import { useRealtimeWorkItems } from "../hooks/use-realtime";
 import type {
   Item,
-  Task,
+  WorkItem,
   ItemMutationInput,
-  TaskMutationInput,
+  WorkItemMutationInput,
   Column,
   Priority,
 } from "../types/work-item.types";
-import { resolveStateId, resolveColumnId } from "../utils/work-item.utils";
 import {
   Button,
   Skeleton,
@@ -63,20 +62,15 @@ export type ModalState =
   | { type: 'idle' }
   | { type: 'create'; initialData?: Partial<Item> }
   | { type: 'detail'; card: Item; item?: Item }
-  | { type: 'delete'; item: Item; task?: Item }
-  | { type: 'delete-task'; task: Item; item?: Item }
+  | { type: 'delete'; item: Item }
   | { type: 'add-existing' }
   | { type: 'transfer' };
-
-export type TaskModalState = ModalState;
 
 export interface WorkItemPageProps {
   cycleId?: string;
   isReadOnly?: boolean;
 }
 export type PageProps = WorkItemPageProps;
-export type TaskPageProps = WorkItemPageProps;
-
 export function WorkItemPage({
   cycleId: propCycleId,
   isReadOnly: propIsReadOnly,
@@ -85,16 +79,18 @@ export function WorkItemPage({
   const { user: currentUser } = useAuth();
   const searchParams = useSearchParams();
   const params = useParams() as {
+    workspaceId?: string;
     projectId?: string;
     cycleId?: string;
     viewId?: string;
   };
+  const workspaceId = params.workspaceId || "";
   const projectId = params.projectId || "";
   const cycleId = propCycleId ?? params.cycleId;
   const rawViewId = params.viewId || searchParams?.get('viewId');
   const isReadOnly = propIsReadOnly ?? false;
 
-  // ── 1. Data Domain Layer (useTaskProject) ─────────────────────────────────
+  // ── 1. Data Domain Layer (useProject) ─────────────────────────────────
   const { state: projectState, actions: projectActions } = useProject({
     projectId,
     cycleId,
@@ -127,23 +123,17 @@ export function WorkItemPage({
     return showArchived ? archivedItems : allItems;
   }, [showArchived, archivedItems, allItems]);
 
-  const allTasks = allItems;
-  const displayTasks = displayItems;
-
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const selectedTaskIds = selectedIds;
 
   const handleToggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   }, []);
-  const handleToggleSelectTask = handleToggleSelect;
 
-  const handleSelectAll = useCallback((ids: string[]) => {
-    setSelectedIds(ids);
+  const handleSelectAll = useCallback((ids?: string[]) => {
+    setSelectedIds(ids || []);
   }, []);
-  const handleSelectAllTasks = handleSelectAll;
 
   const handleClearSelection = useCallback(() => {
     setSelectedIds([]);
@@ -152,7 +142,8 @@ export function WorkItemPage({
   const handleBulkUpdateState = useCallback((columnId: string) => {
     if (selectedIds.length === 0) return;
     bulkUpdateMutation.mutate({
-      taskIds: selectedIds,
+      workItemIds: selectedIds,
+      ids: selectedIds,
       data: { columnId },
       projectId,
     }, {
@@ -165,7 +156,8 @@ export function WorkItemPage({
   const handleBulkUpdatePriority = useCallback((priority: any) => {
     if (selectedIds.length === 0) return;
     bulkUpdateMutation.mutate({
-      taskIds: selectedIds,
+      workItemIds: selectedIds,
+      ids: selectedIds,
       data: { priority },
       projectId,
     }, {
@@ -178,7 +170,8 @@ export function WorkItemPage({
   const handleBulkUpdateAssignee = useCallback((assigneeId: string | null) => {
     if (selectedIds.length === 0) return;
     bulkUpdateMutation.mutate({
-      taskIds: selectedIds,
+      workItemIds: selectedIds,
+      ids: selectedIds,
       data: { assigneeId },
       projectId,
     }, {
@@ -191,7 +184,8 @@ export function WorkItemPage({
   const handleBulkUpdateDueDate = useCallback((dueDate: string | null) => {
     if (selectedIds.length === 0) return;
     bulkUpdateMutation.mutate({
-      taskIds: selectedIds,
+      workItemIds: selectedIds,
+      ids: selectedIds,
       data: { dueDate },
       projectId,
     }, {
@@ -204,7 +198,8 @@ export function WorkItemPage({
   const handleBulkUpdateCycle = useCallback((newCycleId: string | null) => {
     if (selectedIds.length === 0) return;
     bulkUpdateMutation.mutate({
-      taskIds: selectedIds,
+      workItemIds: selectedIds,
+      ids: selectedIds,
       data: { cycleId: newCycleId },
       projectId,
     }, {
@@ -217,7 +212,8 @@ export function WorkItemPage({
   const handleBulkDelete = useCallback(() => {
     if (selectedIds.length === 0) return;
     bulkDeleteMutation.mutate({
-      taskIds: selectedIds,
+      workItemIds: selectedIds,
+      ids: selectedIds,
       projectId,
     }, {
       onSuccess: () => {
@@ -229,7 +225,8 @@ export function WorkItemPage({
   const handleBulkArchive = useCallback(() => {
     if (selectedIds.length === 0) return;
     bulkArchiveMutation.mutate({
-      taskIds: selectedIds,
+      workItemIds: selectedIds,
+      ids: selectedIds,
       projectId,
     }, {
       onSuccess: () => {
@@ -241,7 +238,8 @@ export function WorkItemPage({
   const handleBulkRestore = useCallback(() => {
     if (selectedIds.length === 0) return;
     bulkRestoreMutation.mutate({
-      taskIds: selectedIds,
+      workItemIds: selectedIds,
+      ids: selectedIds,
       projectId,
     }, {
       onSuccess: () => {
@@ -253,7 +251,8 @@ export function WorkItemPage({
   const handleBulkAddLabel = useCallback((labelId: string) => {
     if (selectedIds.length === 0) return;
     bulkUpdateMutation.mutate({
-      taskIds: selectedIds,
+      workItemIds: selectedIds,
+      ids: selectedIds,
       data: { addLabel: labelId },
       projectId,
     }, {
@@ -266,7 +265,8 @@ export function WorkItemPage({
   const handleBulkRemoveLabel = useCallback((labelId: string) => {
     if (selectedIds.length === 0) return;
     bulkUpdateMutation.mutate({
-      taskIds: selectedIds,
+      workItemIds: selectedIds,
+      ids: selectedIds,
       data: { removeLabel: labelId },
       projectId,
     }, {
@@ -279,7 +279,8 @@ export function WorkItemPage({
   const handleBulkClearLabels = useCallback(() => {
     if (selectedIds.length === 0) return;
     bulkUpdateMutation.mutate({
-      taskIds: selectedIds,
+      workItemIds: selectedIds,
+      ids: selectedIds,
       data: { clearLabels: true },
       projectId,
     }, {
@@ -308,12 +309,13 @@ export function WorkItemPage({
     displayOpen,
     analyticsOpen,
     totalActiveFilters,
-    filteredTasks,
+    filteredItems,
     assignees,
     savedViews,
     activeViewId,
     filters,
   } = topbarState;
+  const activeFilteredItems: Item[] = filteredItems || [];
 
   const {
     setViewMode,
@@ -407,16 +409,16 @@ export function WorkItemPage({
     return columns;
   }, [displayOptions.groupBy, columns, members, cycles]);
 
-  const groupedTasks = useMemo<Item[]>(() => {
+  const groupedItems = useMemo<Item[]>(() => {
     const groupBy = displayOptions.groupBy;
     if (groupBy === 'priority') {
-      return filteredTasks.map((t) => ({
+      return activeFilteredItems.map((t: Item) => ({
         ...t,
         columnId: (t.priority || 'none').toLowerCase(),
       }));
     }
     if (groupBy === 'assignee') {
-      return filteredTasks.map((t) => {
+      return activeFilteredItems.map((t: Item) => {
         const assigneeId = ItemHelpers.resolveAssigneeId(t);
         return {
           ...t,
@@ -425,43 +427,49 @@ export function WorkItemPage({
       });
     }
     if (groupBy === 'cycle') {
-      return filteredTasks.map((t) => ({
+      return activeFilteredItems.map((t: Item) => ({
         ...t,
         columnId: t.cycleId || '__no_cycle__',
       }));
     }
-    return filteredTasks;
-  }, [displayOptions.groupBy, filteredTasks]);
+    return activeFilteredItems;
+  }, [displayOptions.groupBy, activeFilteredItems]);
 
   // ── 4. Kanban Column Mapping ──────────────────────────────────────────────
-  const tasksByColumnId = useMemo(() => {
+  const itemsByColumnId = useMemo(() => {
     const map = new Map<string, Item[]>();
     for (const column of activeColumns) {
       const colId = resolveColumnId(column);
       if (colId) map.set(colId, []);
     }
-    for (const task of groupedTasks) {
-      const colId = resolveColumnId(task);
-      if (!colId) continue;
-      const list = map.get(colId);
-      if (list) {
-        list.push(task);
-      } else {
-        map.set(colId, [task]);
+
+    const fallbackCol = activeColumns.find((c) => c.isDefault) || activeColumns[0];
+    const fallbackColId = fallbackCol ? resolveColumnId(fallbackCol) : undefined;
+
+    for (const item of groupedItems) {
+      const colId = item.columnId || (item as any).stateId || '';
+      if (colId && map.has(colId)) {
+        map.get(colId)!.push(item);
+      } else if (fallbackColId && map.has(fallbackColId)) {
+        // Fallback: don't let items disappear if their columnId does not match current active columns
+        map.get(fallbackColId)!.push(item);
+      } else if (colId) {
+        map.set(colId, [item]);
       }
     }
     return map;
-  }, [activeColumns, groupedTasks]);
+  }, [activeColumns, groupedItems]);
 
   // ── 4. Unified Discriminated Modal State (Matt Pocock Pattern) ────────────
-  const [modal, setModal] = useState<TaskModalState>({ type: 'idle' });
+  const [modal, setModal] = useState<ModalState>({ type: 'idle' });
   const closeModal = useCallback(() => setModal({ type: 'idle' }), []);
 
   const pathname = usePathname();
 
   useEffect(() => {
     const handleOpenModal = () => {
-      const defaultColumnId = columns[0]?.id || 'backlog';
+      const defaultCol = columns.find((c) => c.isDefault) || columns[0];
+      const defaultColumnId = defaultCol ? resolveStateId(defaultCol) : 'backlog';
       setModal({
         type: 'create',
         initialData: {
@@ -500,7 +508,8 @@ export function WorkItemPage({
       quickTitleParam?.trim() ||
       (typeof dueDateOrSwimlane === 'string' ? undefined : title?.trim());
 
-    const defaultColumnId = columns[0]?.id || 'backlog';
+    const defaultCol = columns.find((c) => c.isDefault) || columns[0];
+    const defaultColumnId = defaultCol ? resolveStateId(defaultCol) : 'backlog';
     let targetColumnId = columnId;
     let targetPriority: Priority = 'none';
     let targetAssigneeId: string | null = null;
@@ -528,8 +537,8 @@ export function WorkItemPage({
     }
 
     if (quickTitle) {
-      if (projectState.isSavingTask) return;
-      projectActions.createTask({
+      if (projectState.isSaving) return;
+      (projectActions.createWorkItem || projectActions.create)({
         projectId,
         columnId: targetColumnId,
         title: quickTitle,
@@ -559,31 +568,34 @@ export function WorkItemPage({
   };
 
   const handleMoveCard = (
-    taskId: string,
+    workItemId: string,
     newColumnId: string,
     laneData?: { subGroupBy?: string; laneId?: string }
   ) => {
-    if (!taskId || !newColumnId) return;
+    if (!workItemId || !newColumnId) return;
 
     if (displayOptions.groupBy === 'priority') {
-      projectActions.updateTask({
-        taskId,
+      projectActions.updateWorkItem({
+        workItemId,
+        id: workItemId,
         projectId,
         priority: (newColumnId === 'none' ? 'none' : newColumnId) as Priority,
       });
       return;
     }
     if (displayOptions.groupBy === 'assignee') {
-      projectActions.updateTask({
-        taskId,
+      projectActions.updateWorkItem({
+        workItemId,
+        id: workItemId,
         projectId,
         assigneeId: newColumnId === '__unassigned__' ? null : newColumnId,
       });
       return;
     }
     if (displayOptions.groupBy === 'cycle') {
-      projectActions.updateTask({
-        taskId,
+      projectActions.updateWorkItem({
+        workItemId,
+        id: workItemId,
         projectId,
         cycleId: newColumnId === '__no_cycle__' ? null : newColumnId,
       });
@@ -598,61 +610,69 @@ export function WorkItemPage({
         updatePayload.assigneeId = laneData.laneId === '__unassigned__' ? null : laneData.laneId;
       } else if (laneData.subGroupBy === 'cycle') {
         updatePayload.cycleId = laneData.laneId === '__no_cycle__' ? null : laneData.laneId;
+      } else if (laneData.subGroupBy === 'labels') {
+        updatePayload.labels = laneData.laneId === '__no_label__' ? [] : [laneData.laneId];
       }
     }
 
     if (Object.keys(updatePayload).length > 1) {
-      projectActions.updateTask({
-        taskId,
+      projectActions.updateWorkItem({
+        workItemId,
+        id: workItemId,
         projectId,
         ...updatePayload,
       });
     } else {
-      projectActions.moveTask({
-        taskId,
+      projectActions.moveWorkItem({
+        workItemId,
+        id: workItemId,
         columnId: newColumnId,
         projectId,
       });
     }
   };
 
-  const handleReorderCard = (taskId: string, newColumnId: string, rank: number) => {
-    if (!taskId) return;
+  const handleReorderCard = (workItemId: string, newColumnId: string, rank: number) => {
+    if (!workItemId) return;
 
     if (displayOptions.groupBy === 'priority') {
-      projectActions.updateTask({
-        taskId,
+      projectActions.updateWorkItem({
+        workItemId,
+        id: workItemId,
         projectId,
         priority: (newColumnId === 'none' ? 'none' : newColumnId) as Priority,
       });
       return;
     }
     if (displayOptions.groupBy === 'assignee') {
-      projectActions.updateTask({
-        taskId,
+      projectActions.updateWorkItem({
+        workItemId,
+        id: workItemId,
         projectId,
         assigneeId: newColumnId === '__unassigned__' ? null : newColumnId,
       });
       return;
     }
     if (displayOptions.groupBy === 'cycle') {
-      projectActions.updateTask({
-        taskId,
+      projectActions.updateWorkItem({
+        workItemId,
+        id: workItemId,
         projectId,
         cycleId: newColumnId === '__no_cycle__' ? null : newColumnId,
       });
       return;
     }
 
-    projectActions.reorderTask({
-      taskId,
+    projectActions.reorderWorkItem({
+      workItemId,
+      id: workItemId,
       columnId: newColumnId,
       rank,
       projectId,
     });
   };
 
-  const handleCreateTask = async (formData: ItemMutationInput & { createMore?: boolean }) => {
+  const handleCreateItem = async (formData: ItemMutationInput & { createMore?: boolean }) => {
     if (!formData.title?.trim()) {
       return;
     }
@@ -666,8 +686,8 @@ export function WorkItemPage({
     };
 
     try {
-      const result: any = await projectActions.createTask(payload);
-      const createdItem = result?.task || result?.workItem || result?.WorkItem || result?.item;
+      const result: any = await (projectActions.createWorkItem || projectActions.create)(payload);
+      const createdItem = result?.subItem || result?.workItem || result?.item;
       if (createMore) {
         setModal({
           type: 'create',
@@ -694,11 +714,12 @@ export function WorkItemPage({
       title: formData.title.trim(),
       cycleId: formData.cycleId !== undefined ? formData.cycleId : cycleId,
       projectId,
-      taskId: modal.card.id,
-    };
+      id: modal.card.id,
+      workItemId: modal.card.id,
+      };
 
     try {
-      await projectActions.updateTask(payload);
+      await projectActions.updateWorkItem(payload);
     } catch {
       // Error is handled by mutation hook
     }
@@ -706,20 +727,20 @@ export function WorkItemPage({
 
   const handleDeleteCard = () => {
     if (modal.type === 'detail' && modal.card.id) {
-      setModal({ type: 'delete-task', task: modal.card });
+      setModal({ type: 'delete', item: modal.card });
     }
   };
 
-  const handleTaskDeleteConfirm = () => {
-    if ((modal.type === 'delete-task' || modal.type === 'delete') && ((modal as any).task?.id || (modal as any).item?.id)) {
-      projectActions.deleteItem({ id: ((modal as any).item?.id || (modal as any).task?.id), projectId }).then(() => {
+  const handleItemDeleteConfirm = () => {
+    if (modal.type === 'delete' && modal.item?.id) {
+      projectActions.deleteItem({ id: modal.item.id, projectId }).then(() => {
         closeModal();
       });
     }
   };
 
   const handleDuplicateCard = (card: Item) => {
-    projectActions.duplicateTask({ projectId, taskId: card.id });
+    projectActions.duplicateWorkItem({ projectId, workItemId: card.id, id: card.id });
   };
 
   const handleJoinCard = (card: Item) => {
@@ -727,8 +748,9 @@ export function WorkItemPage({
     const currentAssigneeId = ItemHelpers.resolveAssigneeId(card);
     if (currentAssigneeId === currentUser.id) return;
 
-    projectActions.updateTask({
-      taskId: card.id,
+    projectActions.updateWorkItem({
+      workItemId: card.id,
+      id: card.id,
       projectId,
       assigneeId: currentUser.id,
     });
@@ -739,8 +761,9 @@ export function WorkItemPage({
     const currentAssigneeId = ItemHelpers.resolveAssigneeId(card);
     if (currentAssigneeId !== currentUser.id) return;
 
-    projectActions.updateTask({
-      taskId: card.id,
+    projectActions.updateWorkItem({
+      workItemId: card.id,
+      id: card.id,
       projectId,
       assigneeId: null,
     });
@@ -750,18 +773,18 @@ export function WorkItemPage({
     projectActions.removeFromCycle(card.id, callback);
   };
 
-  const handleAssignExistingTasksToDate = (
-    taskIds: string[],
+  const handleAssignExistingItemsToDate = (
+    itemIds: string[],
     dueDate: string,
     quiet = false,
     startDate?: string | null,
   ) => {
-    projectActions.assignTasksToDate(taskIds, dueDate, quiet, startDate);
+    projectActions.assignWorkItemsToDate(itemIds, dueDate, quiet, startDate);
   };
 
-  const handleQuickUpdateTask = useCallback(
-    (taskId: string, data: any) => {
-      projectActions.updateTask({ taskId, projectId, ...data });
+  const handleQuickUpdateItem = useCallback(
+    (itemId: string, data: any) => {
+      projectActions.updateWorkItem({ workItemId: itemId, id: itemId, projectId, ...data });
     },
     [projectActions, projectId],
   );
@@ -802,7 +825,7 @@ export function WorkItemPage({
         onSaveCurrentView={() => setIsSaveViewOpen(true)}
         showArchived={showArchived}
         onToggleArchived={() => setShowArchived((prev) => !prev)}
-        title={showArchived ? "Archived items" : "Work items"}
+        title={showArchived ? "Archived items" : "Work Items"}
         Icon={showArchived ? Archive : WorkItemsIcon}
         count={displayItems.length}
         cycleId={cycleId}
@@ -836,12 +859,7 @@ export function WorkItemPage({
         onDisplayOpenChange={setDisplayOpen}
         onOpenAnalytics={() => setAnalyticsOpen(true)}
         onAddItem={() => setModal({ type: 'create' })}
-        onAddTask={() => {
-          const firstCol = columns[0];
-          handleOpenAddDialog(firstCol ? resolveStateId(firstCol) : "");
-        }}
         onAddExistingItem={cycleId ? () => setModal({ type: 'add-existing' }) : undefined}
-        onAddExistingTask={cycleId ? () => setModal({ type: 'add-existing' }) : undefined}
         isLoading={isLoading}
         isReadOnly={isReadOnly}
       />
@@ -953,7 +971,7 @@ export function WorkItemPage({
                 onClick={() => setModal({ type: 'add-existing' })}
                 className="gap-2 rounded-md"
               >
-                <ArrowRightLeft className="w-4 h-4 shrink-0" />
+                <ArrowRightLeft className="size-4 shrink-0" />
                 <span>Add Existing Work Items</span>
               </Button>
               <Button
@@ -964,14 +982,14 @@ export function WorkItemPage({
                 }}
                 className="gap-2 rounded-md"
               >
-                <Plus className="w-4 h-4 shrink-0" />
+                <Plus className="size-4 shrink-0" />
                 <span>Create Work Item</span>
               </Button>
             </div>
           </div>
         ) : isProjectEmpty && viewMode !== 'calendar' ? (
           <EmptyState
-            onCreateTask={() => {
+            onCreateItem={() => {
               const firstCol = columns[0];
               handleOpenAddDialog(firstCol ? resolveStateId(firstCol) : "");
             }}
@@ -982,7 +1000,7 @@ export function WorkItemPage({
             {viewMode === 'list' && (
               <ListView
                 projectId={projectId}
-                tasksByColumnId={tasksByColumnId}
+                itemsByColumnId={itemsByColumnId}
                 columns={activeColumns}
                 currentUserId={currentUser?.id}
                 currentUserAvatar={currentUser?.avatar ?? undefined}
@@ -994,11 +1012,11 @@ export function WorkItemPage({
                 onLeaveCard={handleLeaveCard}
                 onRemoveFromCycle={handleRemoveFromCycle}
                 onMoveCard={handleMoveCard}
-                onUpdateTask={handleQuickUpdateTask}
+                onUpdateItem={handleQuickUpdateItem}
                 isReadOnly={isReadOnly}
-                selectedIds={selectedIds} selectedTaskIds={selectedIds}
-                onToggleSelect={handleToggleSelect} onToggleSelectTask={handleToggleSelect}
-                onSelectAll={handleSelectAll} onSelectAllTasks={handleSelectAll}
+                selectedIds={selectedIds}
+                onToggleSelect={handleToggleSelect}
+                onSelectAll={handleSelectAll}
                 displayOptions={displayOptions}
                 members={members}
                 cycles={cycles}
@@ -1006,26 +1024,26 @@ export function WorkItemPage({
             )}
             {viewMode === 'calendar' && (
               <CalendarView
-                items={filteredTasks} tasks={filteredTasks}
+                items={activeFilteredItems}
                 columns={columns}
-                workspaceId=""
+                workspaceId={workspaceId}
                 projectId={projectId}
                 onAddCard={handleOpenAddDialog}
                 onOpenCardDetail={handleOpenEditDialog}
-                onAssignExistingTasks={handleAssignExistingTasksToDate}
+                onAssignExistingItems={handleAssignExistingItemsToDate}
                 onRemoveFromCycle={cycleId ? handleRemoveFromCycle : undefined}
                 isReadOnly={isReadOnly}
               />
             )}
             {viewMode === 'table' && (
               <TableView
-                items={groupedTasks} tasks={groupedTasks}
+                items={groupedItems}
                 columns={activeColumns}
                 displayOptions={displayOptions}
                 currentUserId={currentUser?.id}
                 currentUserAvatar={currentUser?.avatar ?? undefined}
                 projectId={projectId}
-                workspaceId=""
+                workspaceId={workspaceId}
                 members={members}
                 cycles={cycles}
                 onAddCard={handleOpenAddDialog}
@@ -1041,12 +1059,12 @@ export function WorkItemPage({
             )}
             {viewMode === 'timeline' && (
               <TimelineView
-                items={filteredTasks} tasks={filteredTasks}
+                items={activeFilteredItems}
                 columns={columns}
                 currentUserId={currentUser?.id}
                 currentUserAvatar={currentUser?.avatar ?? undefined}
                 projectId={projectId}
-                workspaceId=""
+                workspaceId={workspaceId}
                 members={members}
                 cycles={cycles}
                 onAddCard={handleOpenAddDialog}
@@ -1057,14 +1075,14 @@ export function WorkItemPage({
                 onLeaveCard={handleLeaveCard}
                 onRemoveFromCycle={handleRemoveFromCycle}
                 onMoveCard={handleMoveCard}
-                onUpdateCard={(task) => handleQuickUpdateTask(task.id, task)}
+                onUpdateCard={(item) => handleQuickUpdateItem(item.id, item)}
                 isReadOnly={isReadOnly}
               />
             )}
             {(viewMode === 'board' || !['list', 'calendar', 'table', 'timeline'].includes(viewMode)) && (
               <BoardView
-                items={groupedTasks} tasks={groupedTasks}
-                tasksByColumnId={tasksByColumnId}
+                items={groupedItems}
+                itemsByColumnId={itemsByColumnId}
                 columns={activeColumns}
                 labelMap={labelMap}
                 currentUserId={currentUser?.id}
@@ -1094,12 +1112,12 @@ export function WorkItemPage({
         isOpen={analyticsOpen}
         onClose={() => setAnalyticsOpen(false)}
         project={project || undefined}
-        items={filteredTasks} tasks={filteredTasks}
+        items={activeFilteredItems}
         columns={columns}
         assignees={assignees}
       />
 
-      {/* Task Create Dialog */}
+      {/* Work Item Create Dialog */}
       <CreateModal
         open={modal.type === 'create'}
         onOpenChange={(open) => {
@@ -1111,12 +1129,12 @@ export function WorkItemPage({
         cycleId={cycleId}
         project={project || undefined}
         cycles={cycles}
-        availableTasks={allItems}
-        onSubmit={handleCreateTask}
+        availableItems={allItems}
+        onSubmit={handleCreateItem}
         isSubmitting={projectState.isSaving}
       />
 
-      {/* Task Detail Dialog */}
+      {/* Work Item Detail Dialog */}
       {modal.type === 'detail' && (
         <DetailModal
           open={true}
@@ -1145,7 +1163,7 @@ export function WorkItemPage({
 
       {/* Floating Bulk Actions Bar */}
       <BulkActionBar
-        selectedIds={selectedIds} selectedTaskIds={selectedIds}
+        selectedIds={selectedIds}
         totalCount={displayItems.length}
         columns={columns}
         members={members}
@@ -1172,13 +1190,12 @@ export function WorkItemPage({
         }
       />
 
-      {/* Task Delete Confirmation Modal */}
+      {/* Work Item Delete Confirmation Modal */}
       <DeleteModal
-        open={modal.type === 'delete-task' || modal.type === 'delete'}
+        open={modal.type === 'delete'}
         onOpenChange={(open) => !open && closeModal()}
-        item={(modal as any).item || (modal as any).task || null}
-        task={(modal as any).task || (modal as any).item || null}
-        onConfirm={handleTaskDeleteConfirm}
+        item={modal.type === 'delete' ? modal.item : null}
+        onConfirm={handleItemDeleteConfirm}
         isDeleting={projectState.status.isDeleting}
       />
 
@@ -1200,7 +1217,7 @@ export function WorkItemPage({
             projectId={projectId}
             sourceCycleId={cycleId}
             sourceCycleName={currentCycle?.name || "Current Cycle"}
-            tasks={allItems}
+            items={allItems}
             availableCycles={cycles}
             columns={columns}
             members={members}
@@ -1269,6 +1286,5 @@ export function WorkItemPage({
 }
 
 export const Page = WorkItemPage;
-export const TaskPage = WorkItemPage;
 export default WorkItemPage;
 

@@ -22,20 +22,9 @@ import { DeleteModal } from '../components/modals/DeleteModal';
 import { CycleModal } from '../components/modals/CycleModal';
 import { StatusModal, type StatusModalType } from '../components/modals/StatusModal';
 import CycleTopBarActions from '../components/layout/Topbar';
-import { Switcher } from '@/features/workspaces/projects/project-id/components/layout';
+import { Switcher } from '@/features/workspaces/projects/project-id/components/layout/Switcher';
 import { logger } from "@/shared/lib/utils";
-
-const PHASE_CONFIG: Record<string, any> = {
-  todo: { label: "To Do", color: "#64748b" },
-  in_progress: { label: "In Progress", color: "#3b82f6" },
-  done: { label: "Done", color: "#22c55e" },
-};
 import { Button } from "@/shared/components/ui";
-
-const PHASES = Object.entries(PHASE_CONFIG).map(([id, config]) => ({
-  id,
-  ...config
-}));
 
 export function CyclePage() {
   const { projectId } = useParams() as { projectId: string };
@@ -58,7 +47,6 @@ export function CyclePage() {
   const { workspaceLabels: allLabels } = useLabels("", "cycle", projectId);
 
   // UI Local States
-  const [phases, setPhases] = useState(PHASES);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCycle, setEditingCycle] = useState<Cycle | null>(null);
   const [labelDetailsCycleIds, setLabelDetailsCycleIds] = useState<Set<string>>(() => new Set<string>());
@@ -123,7 +111,6 @@ export function CyclePage() {
     defaultValues: {
       name: "",
       description: "",
-      phase: PHASES[0].id,
       status: "planned",
       startDate: "",
       endDate: "",
@@ -175,7 +162,6 @@ export function CyclePage() {
     form.reset({
       name: "",
       description: "",
-      phase: PHASES[0].id,
       status: "planned",
       startDate: "",
       endDate: "",
@@ -189,7 +175,6 @@ export function CyclePage() {
     form.reset({
       name: cycle.name,
       description: cycle.description || "",
-      phase: cycle.phase || 'custom',
       status: (cycle.status as any) || "planned",
       startDate: cycle.startDate ? cycle.startDate.split("T")[0] : "",
       endDate: cycle.endDate ? cycle.endDate.split("T")[0] : "",
@@ -237,7 +222,6 @@ export function CyclePage() {
     const payload = {
       name: values.name.trim(),
       description: values.description?.trim(),
-      phase: values.phase as any,
       startDate: values.startDate || undefined,
       endDate: values.endDate || undefined,
       labels: values.labels,
@@ -323,7 +307,7 @@ export function CyclePage() {
       }, {
         onSuccess: (res: any) => {
           const count = res?.transferredCount ?? 0;
-          const extra = count > 0 ? ` (${count} task(s) processed)` : '';
+          const extra = count > 0 ? ` (${count} work item(s) processed)` : '';
           toast.success(`Cycle completed successfully${extra}`);
           setStatusModalOpen(false);
           setTargetCycle(null);
@@ -368,7 +352,7 @@ export function CyclePage() {
                   <CycleIcon className="size-10 text-muted-foreground mb-4 shrink-0" />
                   <h3 className="text-base font-semibold text-foreground mb-1.5">No cycles found</h3>
                   <p className="text-xs text-muted-foreground max-w-[400px] mb-6 leading-relaxed">
-                    Research cycles help you track progress over time. Create your first cycle to start organizing your tasks.
+                    Research cycles help you track progress over time. Create your first cycle to start organizing your work items.
                   </p>
                   <Button onClick={openCreate} className="h-8 px-4 bg-primary hover:bg-primary-hover text-primary-foreground rounded-md gap-2 cursor-pointer text-xs">
                     <Plus className="size-4 shrink-0" />
@@ -393,7 +377,6 @@ export function CyclePage() {
                         key={cycle.id}
                         cycle={cycle}
                         status={status}
-                        phases={phases}
                         isReadOnly={status === "completed"}
                         isExpanded={expandedCycleId === cycle.id}
                         onToggleExpand={() =>
@@ -425,9 +408,7 @@ export function CyclePage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         mode={editingCycle ? 'edit' : 'create'}
-        form={form}
-        phases={phases}
-        setPhases={setPhases}
+        form={form as any}
         projectData={projectData}
         onSave={handleSave}
         isReadOnly={editingCycle ? deriveStatus(editingCycle) === "completed" : false}

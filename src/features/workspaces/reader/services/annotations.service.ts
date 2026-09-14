@@ -13,6 +13,8 @@ export interface CreateAnnotationDTO {
   quoteText?: string;
   comment?: string;
   rectCoords?: unknown;
+  rects?: unknown;
+  boundingRect?: unknown;
 }
 
 export interface UpdateAnnotationDTO {
@@ -20,6 +22,8 @@ export interface UpdateAnnotationDTO {
   quoteText?: string;
   comment?: string;
   rectCoords?: unknown;
+  rects?: unknown;
+  boundingRect?: unknown;
   expectedVersion?: number;
 }
 
@@ -33,6 +37,8 @@ export interface UpsertBatchItem {
   quoteText?: string;
   comment?: string;
   rectCoords?: unknown;
+  rects?: unknown;
+  boundingRect?: unknown;
   expectedVersion?: number;
 }
 

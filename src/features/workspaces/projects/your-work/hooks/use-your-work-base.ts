@@ -8,7 +8,7 @@ import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-proj
 import { getYourWork } from '../services/your-work.service';
 import {
   yourWorkSummaryResponseSchema,
-  type YourWorkTask,
+  type YourWorkItem,
   type YourWorkActivityEvent,
 } from '../schemas/your-work.schema';
 import {
@@ -49,17 +49,17 @@ export function useYourWork() {
     return (rawData as any)?.data ? (rawData as any).data : rawData;
   }, [rawData]);
 
-  const assigned: YourWorkTask[] = useMemo(
+  const assigned: YourWorkItem[] = useMemo(
     () => payload?.assigned || [],
     [payload],
   );
 
-  const created: YourWorkTask[] = useMemo(
+  const created: YourWorkItem[] = useMemo(
     () => payload?.created || [],
     [payload],
   );
 
-  const subscribed: YourWorkTask[] = useMemo(
+  const subscribed: YourWorkItem[] = useMemo(
     () => payload?.subscribed || [],
     [payload],
   );
@@ -74,11 +74,11 @@ export function useYourWork() {
     [payload],
   );
 
-  const allTasks: YourWorkTask[] = useMemo(() => {
-    const map = new Map<string, YourWorkTask>();
-    [...assigned, ...created, ...subscribed].forEach((task) => {
-      if (task.id && !map.has(task.id)) {
-        map.set(task.id, task);
+  const allWorkItems: YourWorkItem[] = useMemo(() => {
+    const map = new Map<string, YourWorkItem>();
+    [...assigned, ...created, ...subscribed].forEach((item) => {
+      if (item.id && !map.has(item.id)) {
+        map.set(item.id, item);
       }
     });
     return Array.from(map.values());
@@ -137,7 +137,7 @@ export function useYourWork() {
     return [];
   }, [payload, projects]);
 
-  const taskProjectMap: ProjectMap = useMemo(
+  const workItemProjectMap: ProjectMap = useMemo(
     () => createProjectMap(projects),
     [projects],
   );
@@ -180,17 +180,17 @@ export function useYourWork() {
     subscribed,
     activities,
     recent,
-    allTasks,
+    allWorkItems,
     categories,
     statusBreakdown,
     subscribedStatusBreakdown,
     priorityBreakdown,
     projectBreakdown,
-    taskProjectMap,
+    workItemProjectMap,
     userData,
     isLoading: isLoadingYourWork || isLoadingProjects,
     isLoadingYourWork,
-    isLoadingTasks: isLoadingYourWork,
+    isLoadingWorkItems: isLoadingYourWork,
     isLoadingProjects,
     isRefetching,
     refetch,
@@ -198,6 +198,5 @@ export function useYourWork() {
   };
 }
 
-// Backward-compatibility alias
 export const useYourWorkBase = useYourWork;
 export default useYourWork;

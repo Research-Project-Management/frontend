@@ -119,7 +119,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
             onClick={this.reset}
             className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 rounded-md transition-colors cursor-pointer"
           >
-            <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+            <RefreshCw className="size-3.5 shrink-0" />
             Thử lại
           </button>
         </div>

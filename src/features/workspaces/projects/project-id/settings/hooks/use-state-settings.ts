@@ -33,7 +33,7 @@ export function useStateSettings(projectId: string) {
     qc.invalidateQueries({ queryKey: stateKeys.all(projectId) });
     qc.invalidateQueries({ queryKey: stateKeys.counts(projectId) });
     qc.invalidateQueries({ queryKey: ['work-items'] });
-    qc.invalidateQueries({ queryKey: ['tasks'] });
+    qc.invalidateQueries({ queryKey: ['work-items'] });
     qc.invalidateQueries({ queryKey: ['project-details', projectId] });
     qc.invalidateQueries({ queryKey: ['projects'] });
   };
@@ -90,11 +90,12 @@ export function useStateSettings(projectId: string) {
       ? statesQ.data
       : DEFAULT_WORK_ITEM_STATES;
 
-  const taskCounts: Record<string, number> = countsQ.data || {};
+  const itemCounts: Record<string, number> = countsQ.data || {};
 
   return {
     states,
-    taskCounts,
+    itemCounts,
+    workItemCounts: itemCounts,
     isLoading: statesQ.isLoading || countsQ.isLoading,
     isError: statesQ.isError || countsQ.isError,
     error: statesQ.error || countsQ.error,

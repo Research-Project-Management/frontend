@@ -18,7 +18,8 @@ import { ListView } from '../components/views/ListView';
 import { EditorModal } from '../components/modals/EditorModal';
 import { MoveToProjectModal } from '../components/modals/MoveToProjectModal';
 import { DeleteModal } from '../components/modals/DeleteModal';
-import type { WorkItemDraft, TaskPriority } from '../types/draft.types';
+import type { WorkItemDraft } from '../types/draft.types';
+import type { WorkItemPriority } from '@/features/workspaces/projects/project-id/work-items/types/work-item.types';
 
 export default function DraftsPage() {
   const { workspace } = useWorkspace();
@@ -75,7 +76,7 @@ export default function DraftsPage() {
   const handleSaveDraft = async (formData: {
     title: string;
     description: string;
-    priority: TaskPriority;
+    priority: WorkItemPriority;
     columnId?: string;
     projectId?: string;
     labels?: string[];

@@ -51,14 +51,14 @@ const CATEGORY_SURFACE: Record<ToolCategory, string> = {
 };
 
 const AGENT_LABELS: Record<string, { label: string }> = {
-  task_agent: { label: 'Task Agent' },
+  work_item_agent: { label: 'Work Item Agent' },
   project_agent: { label: 'Project Agent' },
   cycle_agent: { label: 'Cycle Agent' },
   workspace_agent: { label: 'Workspace Agent' },
 };
 
 function getToolIcon(tool: string, category: ToolCategory) {
-  if (tool.includes('task')) return ListTodo;
+  if (tool.includes('work_item') || tool.includes('item')) return ListTodo;
   if (tool.includes('project')) return FolderKanban;
   if (tool.includes('cycle')) return Layers3;
   if (tool.includes('page')) return FileText;

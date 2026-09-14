@@ -2,22 +2,22 @@
 
 import React from 'react';
 import { useAssignedWork } from '../hooks/use-assigned-work';
-import { AssignedTaskList } from '../components/assigned/AssignedTaskList';
+import { AssignedWorkItemList } from '../components/assigned/AssignedWorkItemList';
 import { YourWorkPageLayout } from '../components/shared/YourWorkPageLayout';
 
 export function AssignedPage() {
   const { state } = useAssignedWork();
-  const { allTasks, assignedTasks, taskProjectMap, isLoading } = state;
+  const { allWorkItems, assignedWorkItems, workItemProjectMap, isLoading } = state;
 
   return (
     <YourWorkPageLayout
       isLoading={isLoading}
-      allTasks={allTasks}
-      renderList={(handleOpenTask) => (
-        <AssignedTaskList
-          tasks={assignedTasks}
-          onTaskClick={handleOpenTask}
-          taskProjectMap={taskProjectMap}
+      allWorkItems={allWorkItems}
+      renderList={(handleOpenItem) => (
+        <AssignedWorkItemList
+          workItems={assignedWorkItems}
+          onWorkItemClick={handleOpenItem}
+          workItemProjectMap={workItemProjectMap}
         />
       )}
     />

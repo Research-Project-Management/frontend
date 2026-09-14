@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { ArrowDownAZ, ArrowUpZA, ChevronDown, Search } from 'lucide-react';
+import { ArrowDownAZ, ArrowUpZA, ChevronDown, Search, Users, Plus, Upload } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +14,7 @@ import { Input } from "@/shared/components/ui";
 import { Skeleton } from "@/shared/components/ui";
 import { DeleteModal } from '@/features/workspaces/settings/components/modal/DeleteModal';
 import { toast } from 'sonner';
+import TopBar from '../components/layout/TopBar';
 import { Assignee } from '../components/member/Assignee';
 import { Item } from '../components/member/Item';
 import { Filter } from '../components/member/Filter';
@@ -100,7 +101,6 @@ export default function MemberPage() {
     currentUser,
     isOwnerOrAdmin,
     defaultAssigneeId,
-    defaultAssigneeMember,
     search,
     roleFilter,
     sortField,
@@ -137,166 +137,183 @@ export default function MemberPage() {
     toast.info('Importing members from CSV is coming soon');
   };
 
-  // Adapter: convert (field, asc) → hook's toggleSort
   const handleSort = (field: SortFieldType, asc: boolean) => {
     if (sortField !== field) {
-      toggleSort(field);          // switch field → defaults to true (asc)
-      if (!asc) toggleSort(field); // flip once → desc
+      toggleSort(field);
+      if (!asc) toggleSort(field);
     } else if (sortAsc !== asc) {
-      toggleSort(field);           // same field, flip direction
+      toggleSort(field);
     }
   };
 
   if (isLoading) {
     return (
-      <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
-        <Skeleton className="h-8 w-44 rounded-md" />
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-full rounded-md" />
-          <Skeleton className="h-10 w-full rounded-md" />
-          <Skeleton className="h-10 w-full rounded-md" />
+      <div className="flex flex-col h-full w-full bg-background">
+        <TopBar
+          title="Members"
+          description="Manage project researchers and collaborators"
+          Icon={Users}
+        />
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
+            <Skeleton className="h-10 w-full rounded-md" />
+            <Skeleton className="h-10 w-full rounded-md" />
+            <Skeleton className="h-64 w-full rounded-md" />
+          </div>
         </div>
-        <Skeleton className="h-64 w-full rounded-md" />
       </div>
     );
   }
 
   if (isError || !project) {
     return (
-      <div className="max-w-5xl mx-auto p-6 md:p-8 text-sm text-muted-foreground">
-        Error loading project members.
+      <div className="flex flex-col h-full w-full bg-background">
+        <TopBar
+          title="Members"
+          description="Manage project researchers and collaborators"
+          Icon={Users}
+        />
+        <div className="flex-1 p-5 md:p-6 text-sm text-muted-foreground">
+          Error loading project members.
+        </div>
       </div>
     );
   }
 
+  const topBarActions = (
+    <div className="flex items-center gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleImport}
+        className="h-8 gap-1.5 px-3 text-xs font-medium border-border bg-background hover:bg-muted text-foreground cursor-pointer rounded-md shrink-0"
+      >
+        <Upload className="size-3.5 text-muted-foreground shrink-0" />
+        Import
+      </Button>
+
+      {isOwnerOrAdmin && (
+        <Button
+          size="sm"
+          onClick={() => setAddDialogOpen(true)}
+          className="h-8 gap-1.5 px-3 text-xs font-medium bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer rounded-md shadow-none shrink-0"
+        >
+          <Plus className="size-3.5 text-primary-foreground shrink-0" />
+          Add member
+        </Button>
+      )}
+    </div>
+  );
+
   return (
-    <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">Members</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage researchers, principal investigators, and collaboration roles in this project.
-          </p>
-        </div>
-      </div>
+    <div className="flex flex-col h-full w-full bg-background">
+      <TopBar
+        title="Members"
+        description="Manage project researchers, collaborators and roles"
+        Icon={Users}
+        actions={topBarActions}
+      />
 
-      {/* Top Settings */}
-      <div className="space-y-5">
-        <Assignee members={members} defaultAssigneeId={defaultAssigneeId} onSelect={setDefaultAssignee} disabled={!isOwnerOrAdmin} />
-      </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
+          {/* Top Settings: Default Assignee */}
+          <Assignee
+            members={members}
+            defaultAssigneeId={defaultAssigneeId}
+            onSelect={setDefaultAssignee}
+            disabled={!isOwnerOrAdmin}
+          />
 
-      {/* Members Table Section */}
-      <div className="space-y-4 pt-2">
-        {/* Action Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-foreground">Members</h2>
+          {/* Members Table Section */}
+          <div className="space-y-3">
+            {/* Filter toolbar */}
+            <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+              <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-xs">
+                <div className="relative w-full">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0" />
+                  <Input
+                    placeholder="Search members..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-8 h-8 text-xs border-border bg-background focus:ring-0 focus:outline-none rounded-md"
+                  />
+                </div>
+              </div>
 
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-            {/* Search */}
-            <div className="relative w-44">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0" />
-              <Input
-                placeholder="Search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-8 h-8 text-xs border-border bg-background focus:ring-0 focus:outline-none rounded-md"
-              />
+              <div className="flex items-center gap-2 shrink-0">
+                <Filter currentRole={roleFilter} onSelectRole={setRoleFilter} />
+              </div>
             </div>
 
-            {/* Role filter */}
-            <Filter currentRole={roleFilter} onSelectRole={setRoleFilter} />
+            {/* Table */}
+            <div className="rounded-md border border-border overflow-hidden bg-card">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/60 text-muted-foreground select-none">
+                      <th className="py-2.5 px-4 font-medium" aria-sort={sortField === 'name' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
+                        <SortableHeader label="Full name" field="name" sortField={sortField} sortAsc={sortAsc} onSort={handleSort} />
+                      </th>
+                      <th className="py-2.5 px-4 font-medium" aria-sort={sortField === 'displayName' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
+                        <SortableHeader label="Display name" field="displayName" sortField={sortField} sortAsc={sortAsc} onSort={handleSort} />
+                      </th>
+                      <th className="py-2.5 px-4 font-medium" aria-sort={sortField === 'email' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
+                        <SortableHeader label="Email" field="email" sortField={sortField} sortAsc={sortAsc} onSort={handleSort} />
+                      </th>
+                      <th className="py-2.5 px-4 font-medium" aria-sort={sortField === 'role' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
+                        <SortableHeader
+                          label="Role"
+                          field="role"
+                          sortField={sortField}
+                          sortAsc={sortAsc}
+                          onSort={handleSort}
+                          ascLabel="Viewer → Owner"
+                          descLabel="Owner → Viewer"
+                        />
+                      </th>
+                      <th className="py-2.5 px-4 font-medium" aria-sort={sortField === 'date' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
+                        <SortableHeader
+                          label="Joining date"
+                          field="date"
+                          sortField={sortField}
+                          sortAsc={sortAsc}
+                          onSort={handleSort}
+                          ascLabel="Old → New"
+                          descLabel="New → Old"
+                        />
+                      </th>
+                      <th className="py-2.5 px-2 w-10 pr-4" />
+                    </tr>
+                  </thead>
 
-            {/* Import */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleImport}
-              className="h-8 px-3 text-xs font-medium border-border bg-background hover:bg-muted text-foreground cursor-pointer rounded-md shrink-0"
-            >
-              Import
-            </Button>
-
-            {/* Add member */}
-            {isOwnerOrAdmin && (
-              <Button
-                size="sm"
-                onClick={() => setAddDialogOpen(true)}
-                className="h-8 px-3.5 text-xs font-medium bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer rounded-md shadow-none shrink-0"
-              >
-                Add member
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="rounded-md border border-border overflow-hidden bg-background">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-border bg-muted text-muted-foreground select-none">
-                  <th className="py-2.5 px-4 font-medium" aria-sort={sortField === 'name' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
-                    <SortableHeader label="Full name" field="name" sortField={sortField} sortAsc={sortAsc} onSort={handleSort} />
-                  </th>
-                  <th className="py-2.5 px-4 font-medium" aria-sort={sortField === 'displayName' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
-                    <SortableHeader label="Display name" field="displayName" sortField={sortField} sortAsc={sortAsc} onSort={handleSort} />
-                  </th>
-                  <th className="py-2.5 px-4 font-medium" aria-sort={sortField === 'email' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
-                    <SortableHeader label="Email" field="email" sortField={sortField} sortAsc={sortAsc} onSort={handleSort} />
-                  </th>
-                  <th className="py-2.5 px-4 font-medium" aria-sort={sortField === 'role' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
-                    <SortableHeader
-                      label="Role"
-                      field="role"
-                      sortField={sortField}
-                      sortAsc={sortAsc}
-                      onSort={handleSort}
-                      ascLabel="Viewer → Owner"
-                      descLabel="Owner → Viewer"
-                    />
-                  </th>
-                  <th className="py-2.5 px-4 font-medium" aria-sort={sortField === 'date' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
-                    <SortableHeader
-                      label="Joining date"
-                      field="date"
-                      sortField={sortField}
-                      sortAsc={sortAsc}
-                      onSort={handleSort}
-                      ascLabel="Old → New"
-                      descLabel="New → Old"
-                    />
-                  </th>
-                  <th className="py-2.5 px-2 w-10 pr-4" />
-                </tr>
-              </thead>
-
-              <tbody>
-                {filteredMembers.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-xs text-muted-foreground">
-                      {search || roleFilter
-                        ? 'No members found matching your search.'
-                        : 'No members in this project.'}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredMembers.map((member: any) => {
-                    const isCurrentUser = currentUser?.id === member.userId;
-                    return (
-                      <Item
-                        key={member.userId}
-                        member={member}
-                        canManage={isOwnerOrAdmin}
-                        isCurrentUser={isCurrentUser}
-                        onUpdateRole={(newRole) => updateRole(member.userId, newRole)}
-                        onRemove={() => setDeletingMember(member)}
-                      />
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                  <tbody className="divide-y divide-border/60">
+                    {filteredMembers.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-xs text-muted-foreground">
+                          {search || roleFilter
+                            ? 'No members found matching your search.'
+                            : 'No members in this project.'}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredMembers.map((member: any) => {
+                        const isCurrentUser = currentUser?.id === member.userId;
+                        return (
+                          <Item
+                            key={member.userId}
+                            member={member}
+                            canManage={isOwnerOrAdmin}
+                            isCurrentUser={isCurrentUser}
+                            onUpdateRole={(newRole) => updateRole(member.userId, newRole)}
+                            onRemove={() => setDeletingMember(member)}
+                          />
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       </div>

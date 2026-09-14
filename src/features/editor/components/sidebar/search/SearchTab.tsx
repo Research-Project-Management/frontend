@@ -52,14 +52,17 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
 
     lines.forEach((lineText, idx) => {
       re.lastIndex = 0;
-      const m = re.exec(lineText);
-      if (m) {
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(lineText)) !== null) {
         results.push({
           line: idx + 1,
           text: lineText,
           matchStart: m.index,
           matchEnd: m.index + m[0].length,
         });
+        if (m[0].length === 0) {
+          re.lastIndex++;
+        }
       }
     });
 
@@ -95,7 +98,16 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
       return;
     }
 
-    model.setValue(content.replace(re, replaceText));
+    const fullRange = model.getFullModelRange();
+    const replaced = content.replace(re, replaceText);
+    editor.executeEdits("search-replace", [
+      {
+        range: fullRange,
+        text: replaced,
+        forceMoveMarkers: true,
+      },
+    ]);
+    editor.pushUndoStop();
     editor.focus();
   };
 
@@ -113,6 +125,8 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
           <button
             type="button"
             title="Toggle replace"
+            aria-label="Toggle replace"
+            aria-expanded={showReplace}
             onClick={() => setShowReplace(!showReplace)}
             className={cn(
               "flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer",
@@ -124,7 +138,8 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
           {onClose && (
             <button
               type="button"
-              title="Close"
+              title="Close search"
+              aria-label="Close search"
               onClick={onClose}
               className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer"
             >
@@ -172,6 +187,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
               type="button"
               onClick={handleReplaceAll}
               disabled={!debouncedQuery}
+              aria-label="Replace all occurrences"
               className="h-8 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
             >
               All
@@ -228,7 +244,11 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
       <div className="flex-1 overflow-y-auto">
         {debouncedQuery ? (
           <>
-            <div className="border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground">
+            <div
+              role="status"
+              aria-live="polite"
+              className="border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground"
+            >
               {matches.length} result{matches.length !== 1 ? "s" : ""} in{" "}
               {fileName}
             </div>
@@ -238,6 +258,8 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                   <button
                     type="button"
                     onClick={() => setIsExpanded((v) => !v)}
+                    aria-expanded={isExpanded}
+                    aria-label={`Toggle results for ${fileName}`}
                     className="flex h-9 w-full items-center gap-1.5 px-3 text-left text-xs transition-colors hover:bg-muted cursor-pointer outline-none"
                   >
                     {isExpanded ? (
@@ -256,26 +278,27 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                   {isExpanded && (
                     <ul className="divide-y divide-border/20">
                       {matches.map((match, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => handleNavigate(match.line)}
-                          className="flex w-full cursor-pointer items-start gap-2 px-3 py-1.5 pl-10 text-left text-xs transition-colors hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                        >
-                          <span className="text-muted-foreground w-8 text-right shrink-0 font-mono">
-                            {match.line}
-                          </span>
-                          <span className="truncate">
-                            {match.text.slice(0, match.matchStart)}
-                            <span className="bg-primary/20 text-primary font-semibold rounded px-0.5">
-                              {match.text.slice(
-                                match.matchStart,
-                                match.matchEnd,
-                              )}
+                        <li key={idx}>
+                          <button
+                            type="button"
+                            onClick={() => handleNavigate(match.line)}
+                            className="flex w-full cursor-pointer items-start gap-2 px-3 py-1.5 pl-10 text-left text-xs transition-colors hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                          >
+                            <span className="text-muted-foreground w-8 text-right shrink-0 font-mono">
+                              {match.line}
                             </span>
-                            {match.text.slice(match.matchEnd)}
-                          </span>
-                        </button>
+                            <span className="truncate">
+                              {match.text.slice(0, match.matchStart)}
+                              <span className="bg-primary/20 text-primary font-semibold rounded px-0.5">
+                                {match.text.slice(
+                                  match.matchStart,
+                                  match.matchEnd,
+                                )}
+                              </span>
+                              {match.text.slice(match.matchEnd)}
+                            </span>
+                          </button>
+                        </li>
                       ))}
                     </ul>
                   )}

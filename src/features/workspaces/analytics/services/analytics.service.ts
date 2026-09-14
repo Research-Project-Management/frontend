@@ -3,7 +3,7 @@ import { apiGet } from '@/shared/lib/api';
 export interface WorkspaceAnalyticsStats {
   members: number;
   projects: number;
-  tasks: number;
+  workItems: number;
   papers: number;
   pages: number;
   files: number;

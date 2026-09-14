@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useUpload } from "@/shared/hooks/use-upload";
 import { AttachmentService } from '../services/attachment.service';
@@ -21,8 +21,8 @@ import {
 export const useAttachPage = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, itemId, taskId, pageId, title }: { id?: string; itemId?: string; taskId?: string } & AttachPageInput) => {
-      const targetId = (id || itemId || taskId) ?? '';
+    mutationFn: ({ id, itemId, workItemId, pageId, title }: { id?: string; itemId?: string; workItemId?: string } & AttachPageInput) => {
+      const targetId = (id || itemId || workItemId) ?? '';
       const parsed = attachPageInputSchema.safeParse({ pageId, title });
       if (!parsed.success) {
         throw new Error(parsed.error.issues[0]?.message || 'Invalid page attachment input');
@@ -31,7 +31,6 @@ export const useAttachPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Page attached to work item');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to attach page'),
@@ -41,13 +40,12 @@ export const useAttachPage = () => {
 export const useDetachPage = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, itemId, taskId, pageId }: { id?: string; itemId?: string; taskId?: string; pageId: string }) => {
-      const targetId = (id || itemId || taskId) ?? '';
+    mutationFn: ({ id, itemId, workItemId, pageId }: { id?: string; itemId?: string; workItemId?: string; pageId: string }) => {
+      const targetId = (id || itemId || workItemId) ?? '';
       return AttachmentService.detachPage(targetId, pageId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Page detached');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to detach page'),
@@ -60,7 +58,7 @@ export const useAttachPaper = () => {
     mutationFn: ({
       id,
       itemId,
-      taskId,
+      workItemId,
       paperId,
       title,
       doi,
@@ -68,9 +66,9 @@ export const useAttachPaper = () => {
     }: {
       id?: string;
       itemId?: string;
-      taskId?: string;
+      workItemId?: string;
     } & AttachPaperInput) => {
-      const targetId = (id || itemId || taskId) ?? '';
+      const targetId = (id || itemId || workItemId) ?? '';
       const parsed = attachPaperInputSchema.safeParse({ paperId, title, doi, citationKey });
       if (!parsed.success) {
         throw new Error(parsed.error.issues[0]?.message || 'Invalid paper attachment input');
@@ -79,7 +77,6 @@ export const useAttachPaper = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Paper attached to work item');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to attach paper'),
@@ -89,13 +86,12 @@ export const useAttachPaper = () => {
 export const useDetachPaper = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, itemId, taskId, paperId }: { id?: string; itemId?: string; taskId?: string; paperId: string }) => {
-      const targetId = (id || itemId || taskId) ?? '';
+    mutationFn: ({ id, itemId, workItemId, paperId }: { id?: string; itemId?: string; workItemId?: string; paperId: string }) => {
+      const targetId = (id || itemId || workItemId) ?? '';
       return AttachmentService.detachPaper(targetId, paperId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Paper detached');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to detach paper'),
@@ -108,7 +104,7 @@ export const useAttachFile = () => {
     mutationFn: ({
       id,
       itemId,
-      taskId,
+      workItemId,
       name,
       url,
       size,
@@ -116,9 +112,9 @@ export const useAttachFile = () => {
     }: {
       id?: string;
       itemId?: string;
-      taskId?: string;
+      workItemId?: string;
     } & AttachFileInput) => {
-      const targetId = (id || itemId || taskId) ?? '';
+      const targetId = (id || itemId || workItemId) ?? '';
       const parsed = attachFileInputSchema.safeParse({ name, url, size, type });
       if (!parsed.success) {
         throw new Error(parsed.error.issues[0]?.message || 'Invalid file attachment input');
@@ -127,7 +123,6 @@ export const useAttachFile = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('File attached');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to attach file'),
@@ -137,13 +132,12 @@ export const useAttachFile = () => {
 export const useDetachFile = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, itemId, taskId, fileId }: { id?: string; itemId?: string; taskId?: string; fileId: string }) => {
-      const targetId = (id || itemId || taskId) ?? '';
+    mutationFn: ({ id, itemId, workItemId, fileId }: { id?: string; itemId?: string; workItemId?: string; fileId: string }) => {
+      const targetId = (id || itemId || workItemId) ?? '';
       return AttachmentService.detachFile(targetId, fileId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('File removed');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to remove file'),
@@ -153,8 +147,8 @@ export const useDetachFile = () => {
 export const useAttachLink = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, itemId, taskId, title, url }: { id?: string; itemId?: string; taskId?: string } & AttachLinkInput) => {
-      const targetId = (id || itemId || taskId) ?? '';
+    mutationFn: ({ id, itemId, workItemId, title, url }: { id?: string; itemId?: string; workItemId?: string } & AttachLinkInput) => {
+      const targetId = (id || itemId || workItemId) ?? '';
       const parsed = attachLinkInputSchema.safeParse({ title, url });
       if (!parsed.success) {
         throw new Error(parsed.error.issues[0]?.message || 'Invalid link attachment input');
@@ -163,7 +157,6 @@ export const useAttachLink = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Link attached');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to attach link'),
@@ -173,13 +166,12 @@ export const useAttachLink = () => {
 export const useDetachLink = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, itemId, taskId, linkIndex }: { id?: string; itemId?: string; taskId?: string; linkIndex: number }) => {
-      const targetId = (id || itemId || taskId) ?? '';
+    mutationFn: ({ id, itemId, workItemId, linkIndex }: { id?: string; itemId?: string; workItemId?: string; linkIndex: number }) => {
+      const targetId = (id || itemId || workItemId) ?? '';
       return AttachmentService.detachLink(targetId, linkIndex);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Link removed');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to remove link'),
@@ -227,3 +219,12 @@ export const useUploadAttachmentWithToast = () => {
     [uploadFiles]
   );
 };
+
+export const useWorkItemAttachments = (workItemId?: string | null) => {
+  return useQuery({
+    queryKey: ['work-items', workItemId, 'attachments'],
+    queryFn: () => (workItemId ? AttachmentService.getWorkItemAttachments(workItemId) : Promise.resolve(null)),
+    enabled: Boolean(workItemId),
+  });
+};
+export const useItemAttachments = useWorkItemAttachments;

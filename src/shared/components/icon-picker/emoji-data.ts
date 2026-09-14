@@ -351,7 +351,7 @@ export const EMOJI_CATEGORIES: EmojiCategory[] = [
       { emoji: '📂', name: 'Open File Folder', keywords: ['directory', 'files'] },
       { emoji: '📅', name: 'Calendar', keywords: ['date', 'schedule', 'event'] },
       { emoji: '🗓️', name: 'Spiral Calendar', keywords: ['planner', 'date'] },
-      { emoji: '📋', name: 'Clipboard', keywords: ['tasks', 'survey', 'checklist'] },
+      { emoji: '📋', name: 'Clipboard', keywords: ['work items', 'survey', 'checklist'] },
       { emoji: '📌', name: 'Pushpin', keywords: ['pin', 'note', 'board'] },
       { emoji: '📍', name: 'Round Pushpin', keywords: ['location', 'map'] },
       { emoji: '📎', name: 'Paperclip', keywords: ['attachment', 'link'] },

@@ -12,20 +12,18 @@ export * from "./update.schema";
 export * from "./property.schema";
 
 import {
-  taskPrioritySchema,
+  workItemPrioritySchema,
   createWorkItemDtoSchema,
   updateWorkItemDtoSchema,
 } from "./core.schema";
 import { relationTypeSchema } from "./relation.schema";
 
 // ── Domain Enums & Aliases ───────────────────────────────────────────────────
-export const itemPrioritySchema = taskPrioritySchema;
-export const workItemPrioritySchema = taskPrioritySchema;
-export const taskPriorityEnumSchema = taskPrioritySchema;
+export const itemPrioritySchema = workItemPrioritySchema;
+export { workItemPrioritySchema };
 
 export const itemRelationTypeSchema = relationTypeSchema;
 export const workItemRelationTypeSchema = relationTypeSchema;
-export const taskRelationTypeSchema = relationTypeSchema;
 
 export const stateGroupSchema = z.enum([
   "backlog",
@@ -55,20 +53,18 @@ export const parentItemMinimalSchema = z.object({
   identifier: z.string().nullable().optional(),
 });
 export const parentWorkItemMinimalSchema = parentItemMinimalSchema;
-export const parentTaskMinimalSchema = parentItemMinimalSchema;
 
 export const relationSchema = z.object({
   id: z.string(),
   type: relationTypeSchema,
   targetId: z.string().optional(),
-  targetTaskId: z.string().optional(),
+  targetWorkItemId: z.string().optional(),
   targetTitle: z.string().optional(),
   targetIdentifier: z.string().optional(),
   targetColumnId: z.string().optional(),
 });
 export const itemRelationSchema = relationSchema;
 export const workItemRelationSchema = relationSchema;
-export const taskRelationSchema = relationSchema;
 
 export const subItemSchema = z.object({
   id: z.string(),
@@ -81,7 +77,6 @@ export const subItemSchema = z.object({
   assignee: userMinimalSchema.nullable().optional(),
   dueDate: z.string().nullable().optional(),
 });
-export const subtaskItemSchema = subItemSchema;
 
 // ── Attach Center Schemas (Pages, Papers, Files, Links) ─────────────────────
 export const attachPageSchema = z.object({
@@ -127,7 +122,6 @@ export const workItemAttachmentsSchema = attachmentsSchema;
 export const attachmentSchema = attachFileSchema;
 export const itemAttachmentSchema = attachmentSchema;
 export const workItemAttachmentSchema = attachmentSchema;
-export const taskAttachmentSchema = attachmentSchema;
 
 export const attachPageInputSchema = z.object({
   pageId: z.string().min(1, "Page ID is required"),
@@ -162,7 +156,7 @@ export const itemSchema = z.object({
   content: z.string().default(""),
   description: z.string().default(""),
   columnId: z.string(),
-  priority: taskPrioritySchema.default("none"),
+  priority: workItemPrioritySchema.default("none"),
   relations: z.array(relationSchema).default([]),
   startDate: z.string().nullable().optional(),
   dueDate: z.string().nullable().optional(),
@@ -186,28 +180,29 @@ export const itemSchema = z.object({
   subscriberIds: z.array(z.string()).default([]),
   cycleId: z.string().nullable().optional(),
   cycle: z.union([cycleMinimalSchema, z.string()]).nullable().optional(),
+  parentId: z.string().nullable().optional(),
   parentItemId: z.string().nullable().optional(),
-  parentTaskId: z.string().nullable().optional(),
+  parentWorkItemId: z.string().nullable().optional(),
   parentItem: parentItemMinimalSchema.nullable().optional(),
-  parentTask: parentTaskMinimalSchema.nullable().optional(),
+  parentWorkItem: parentWorkItemMinimalSchema.nullable().optional(),
   subItems: z.array(subItemSchema).default([]),
-  subtasks: z.array(subtaskItemSchema).default([]),
+  childWorkItems: z.array(subItemSchema).default([]),
   subItemCount: z.number().optional(),
-  subtaskCount: z.number().optional(),
+  childWorkItemCount: z.number().optional(),
   subItemCompletedCount: z.number().optional(),
-  subtaskCompletedCount: z.number().optional(),
+  childWorkItemCompletedCount: z.number().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });
 export const workItemSchema = itemSchema;
-export const taskSchema = itemSchema;
 
 // ── Mutation Schema Aliases ──────────────────────────────────────────────────
+export const createItemSchema = createWorkItemDtoSchema;
 export const createWorkItemSchema = createWorkItemDtoSchema;
+export const updateItemSchema = updateWorkItemDtoSchema;
 export const updateWorkItemSchema = updateWorkItemDtoSchema;
 export const itemMutationInputSchema = updateWorkItemDtoSchema;
 export const workItemMutationInputSchema = updateWorkItemDtoSchema;
-export const taskMutationInputSchema = updateWorkItemDtoSchema;
 
 // ── State & Column Schemas ──────────────────────────────────────────────────
 export const stateSchema = z.object({
@@ -223,20 +218,12 @@ export const stateSchema = z.object({
   description: z.string().nullable().optional(),
 });
 
-export const stateFormSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  color: z.string().min(1, "Color is required"),
-  group: stateGroupSchema,
-  description: z.string().optional(),
-});
-export const columnFormSchema = stateFormSchema;
-
 // ── Filter & Display Schemas ────────────────────────────────────────────────
 export const filtersSchema = z.object({
   search: z.string().default(""),
   state: z.array(z.string()).default([]),
   state_group: z.array(z.string()).default([]),
-  priority: z.array(taskPrioritySchema).default([]),
+  priority: z.array(workItemPrioritySchema).default([]),
   assignees: z.array(z.string()).default([]),
   mentions: z.array(z.string()).default([]),
   created_by: z.array(z.string()).default([]),
@@ -245,7 +232,6 @@ export const filtersSchema = z.object({
   attach: z.array(z.string()).default([]),
   items: z.array(z.string()).default([]),
   work_items: z.array(z.string()).default([]),
-  tasks: z.array(z.string()).default([]),
   parent: z.array(z.string()).default([]),
   due_date: z.array(z.string()).default([]),
   start_date: z.array(z.string()).default([]),

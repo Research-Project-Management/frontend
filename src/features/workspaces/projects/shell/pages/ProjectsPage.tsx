@@ -369,7 +369,7 @@ export function ProjectsPage() {
                   {/* Left: Avatar + Title + Key + Description */}
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="size-8 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden font-semibold text-foreground">
-                      <ProjectAvatar avatar={project.avatar} name={project.name} size="md" />
+                      <ProjectAvatar avatar={project.avatar} name={project.name} id={projectId} size="md" />
                     </div>
 
                     <div className="min-w-0 flex-1">
@@ -487,7 +487,7 @@ export function ProjectsPage() {
             <div className="space-y-1 max-w-sm px-4">
               <h3 className="text-sm font-medium text-foreground tracking-tight">No projects yet</h3>
               <p className="text-xs text-muted-foreground/80 leading-relaxed">
-                Projects organize research tasks, cycles, and collaborative notes in your workspace.
+                Projects organize research work items, cycles, and collaborative notes in your workspace.
               </p>
             </div>
           </div>

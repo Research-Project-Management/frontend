@@ -10,28 +10,29 @@ import type {
 } from '../types/library.types';
 
 export const savedSearchKeys = {
-  all: (workspaceId: string) => ['saved-searches', workspaceId] as const,
-  byId: (workspaceId: string, id: string) => ['saved-searches', workspaceId, id] as const,
-  results: (workspaceId: string, id: string, params?: Record<string, any>) =>
-    ['saved-searches', workspaceId, id, 'results', params] as const,
+  all: (workspaceId?: string) => ['saved-searches', workspaceId || 'user'] as const,
+  byId: (workspaceId: string | undefined, id: string) => ['saved-searches', workspaceId || 'user', id] as const,
+  results: (workspaceId: string | undefined, id: string, params?: Record<string, any>) =>
+    ['saved-searches', workspaceId || 'user', id, 'results', params] as const,
 };
 
-export const invalidateSavedSearches = (qc: QueryClient, workspaceId: string) => {
+export const invalidateSavedSearches = (qc: QueryClient, workspaceId?: string) => {
   qc.invalidateQueries({ queryKey: savedSearchKeys.all(workspaceId) });
 };
 
-export function useSavedSearches(workspaceId: string) {
+export function useSavedSearches(workspaceId?: string) {
   const queryClient = useQueryClient();
+  const effectiveScope = workspaceId || 'user';
 
   const savedSearchesQuery = useQuery({
     queryKey: savedSearchKeys.all(workspaceId),
     queryFn: () => SavedSearchService.getAll(workspaceId),
-    enabled: Boolean(workspaceId),
+    enabled: true,
   });
 
   const createMutation = useMutation({
     mutationFn: (data: CreateSavedSearchInput) =>
-      SavedSearchService.create(workspaceId, data),
+      SavedSearchService.create(effectiveScope, data),
     onSuccess: () => {
       invalidateSavedSearches(queryClient, workspaceId);
       toast.success('Smart collection created', { id: 'saved-search-mutation' });
@@ -46,7 +47,7 @@ export function useSavedSearches(workspaceId: string) {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateSavedSearchInput }) =>
-      SavedSearchService.update(workspaceId, id, data),
+      SavedSearchService.update(effectiveScope, id, data),
     onSuccess: (_, variables) => {
       invalidateSavedSearches(queryClient, workspaceId);
       queryClient.invalidateQueries({
@@ -63,7 +64,7 @@ export function useSavedSearches(workspaceId: string) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => SavedSearchService.delete(workspaceId, id),
+    mutationFn: (id: string) => SavedSearchService.delete(effectiveScope, id),
     onSuccess: () => {
       invalidateSavedSearches(queryClient, workspaceId);
       toast.success('Smart collection deleted', { id: 'saved-search-mutation' });
@@ -78,7 +79,7 @@ export function useSavedSearches(workspaceId: string) {
 
   const previewMutation = useMutation({
     mutationFn: (conditions: SavedSearchConditionGroup) =>
-      SavedSearchService.preview(workspaceId, conditions),
+      SavedSearchService.preview(effectiveScope, conditions),
   });
 
   return {
@@ -99,7 +100,7 @@ export function useSavedSearches(workspaceId: string) {
 }
 
 export function useSavedSearchResults(
-  workspaceId: string,
+  workspaceId: string | undefined,
   id: string | null,
   params?: {
     limit?: number;
@@ -110,7 +111,7 @@ export function useSavedSearchResults(
 ) {
   return useQuery({
     queryKey: savedSearchKeys.results(workspaceId, id || '', params),
-    queryFn: () => SavedSearchService.getResults(workspaceId, id!, params),
-    enabled: Boolean(workspaceId && id),
+    queryFn: () => SavedSearchService.getResults(workspaceId || 'user', id!, params),
+    enabled: Boolean(id),
   });
 }

@@ -12,9 +12,9 @@ export function useSummaryWork() {
 
   const state = useMemo(
     () => ({
-      tasks: source.allTasks,
+      workItems: source.allWorkItems,
       activities: source.activities,
-      categorizedTasks: {
+      categorizedWorkItems: {
         assigned: source.assigned,
         created: source.created,
         subscribed: source.subscribed,
@@ -25,7 +25,7 @@ export function useSummaryWork() {
       subscribedStatusBreakdown: source.subscribedStatusBreakdown,
       priorityBreakdown: source.priorityBreakdown,
       projectBreakdown: source.projectBreakdown,
-      taskProjectMap: source.taskProjectMap,
+      workItemProjectMap: source.workItemProjectMap,
       userData: source.userData,
       selectedProjectId: context?.selectedProjectId || null,
       selectedProject: context?.selectedProject || null,
@@ -37,12 +37,12 @@ export function useSummaryWork() {
       },
       isLoading: source.isLoading,
       isLoadingYourWork: source.isLoadingYourWork,
-      isLoadingTasks: source.isLoadingTasks,
+      isLoadingWorkItems: source.isLoadingWorkItems,
       isLoadingProjects: source.isLoadingProjects,
       isRefetching: source.isRefetching,
     }),
     [
-      source.allTasks,
+      source.allWorkItems,
       source.activities,
       source.assigned,
       source.created,
@@ -51,11 +51,11 @@ export function useSummaryWork() {
       source.subscribedStatusBreakdown,
       source.priorityBreakdown,
       source.projectBreakdown,
-      source.taskProjectMap,
+      source.workItemProjectMap,
       source.userData,
       source.isLoading,
       source.isLoadingYourWork,
-      source.isLoadingTasks,
+      source.isLoadingWorkItems,
       source.isLoadingProjects,
       source.isRefetching,
       context?.selectedProjectId,

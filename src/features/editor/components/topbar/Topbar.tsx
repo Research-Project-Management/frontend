@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowUpLeft } from 'lucide-react';
+import { ArrowUpLeft, PanelLeft } from 'lucide-react';
 
 import { Menubar, MenubarMenu, MenubarTrigger } from "@/shared/components/ui";
 
@@ -15,6 +15,7 @@ import FormatMenu from './format/FormatMenu';
 import DocumentBreadcrumb from './breadcrumb/DocumentBreadcrumb';
 import LayoutSwitcher from './view/LayoutSwitcher';
 import Trigger from './settings/Trigger';
+import { EditorEventBus } from '@/features/editor/utils/editor.util';
 
 export default function Topbar() {
   const params = useParams<{ projectId?: string }>();
@@ -27,6 +28,17 @@ export default function Topbar() {
     >
       {/* ── Left: Main Menubar (Home, File, Edit, View, Insert, Format) ── */}
       <div className="flex items-center min-w-0 shrink-0">
+        {/* Mobile sidebar drawer trigger */}
+        <button
+          type="button"
+          onClick={() => EditorEventBus.emit('flux:toggle-sidebar')}
+          title="Open Explorer & Tools"
+          aria-label="Open Explorer & Tools"
+          className="md:hidden flex items-center justify-center p-1.5 rounded text-foreground hover:bg-muted transition-colors mr-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        >
+          <PanelLeft className="size-4 shrink-0" />
+        </button>
+
         <Menubar className="h-8 border-none bg-transparent p-0 gap-0.5 shadow-none">
           {/* Back to workspace / Home link */}
           <MenubarMenu>

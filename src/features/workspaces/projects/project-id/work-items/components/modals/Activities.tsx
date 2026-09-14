@@ -92,7 +92,7 @@ export type ActivityEntry = {
   };
 };
 
-export type TaskActivitiesProps = {
+export type ActivitiesProps = {
   commentText: string;
   setCommentText: (text: string) => void;
   commentTextareaRef?: React.RefObject<HTMLTextAreaElement | null>;
@@ -136,7 +136,7 @@ export function Activities({
   activityError = false,
   activities,
   isReadOnly = false,
-}: TaskActivitiesProps) {
+}: ActivitiesProps) {
   const [showCommentActions, setShowCommentActions] = useState(false);
   const [isCommentSubmitRequested, setIsCommentSubmitRequested] = useState(false);
   const [isEditCommentSubmitRequested, setIsEditCommentSubmitRequested] = useState(false);
@@ -568,5 +568,4 @@ export function Activities({
   );
 }
 
-export const TaskActivities = Activities;
 export default Activities;

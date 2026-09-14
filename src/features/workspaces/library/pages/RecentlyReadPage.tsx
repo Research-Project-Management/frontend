@@ -59,6 +59,7 @@ export default function RecentlyReadPage() {
   const { state, actions } = useLibrary();
   const {
     workspaceId,
+    effectiveScopeId,
     selectedItemId,
     selectedItem,
     selectedCollection,
@@ -84,7 +85,7 @@ export default function RecentlyReadPage() {
 
   const [search, setSearch] = useState('');
 
-  const { data: viewData, isLoading } = useViewItems(workspaceId, 'recent', search);
+  const { data: viewData, isLoading } = useViewItems(effectiveScopeId || workspaceId, 'recent', search);
   const recentlyReadItems: Item[] = Array.isArray(viewData)
     ? viewData
     : (viewData as { items?: Item[] } | undefined)?.items || [];
@@ -231,7 +232,7 @@ export default function RecentlyReadPage() {
                           onColumnSort('title');
                         }
                       }}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer min-w-0 truncate focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
+                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer min-w-0 truncate outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
                     >
                       <div className="flex items-center">
                         <span className="truncate">Title</span>
@@ -250,7 +251,7 @@ export default function RecentlyReadPage() {
                           onColumnSort('authors');
                         }
                       }}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer truncate focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
+                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer truncate outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
                     >
                       <div className="flex items-center">
                         <span className="truncate">Creator</span>
@@ -269,7 +270,7 @@ export default function RecentlyReadPage() {
                           onColumnSort('lastReadAt');
                         }
                       }}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
+                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
                     >
                       <div className="flex items-center">
                         <span className="whitespace-nowrap">Last Read</span>
@@ -342,24 +343,24 @@ export default function RecentlyReadPage() {
                                   <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
                                     <DropdownMenuItem
                                       onClick={() => router.push(`/library/papers/${paper.id}`)}
-                                      className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                      className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
-                                      <BookOpen className="size-3.5 text-foreground shrink-0" />
+                                      <BookOpen className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                                       <span>Open in Reader</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => handleSelectItem(paper)}
-                                      className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                      className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
-                                      <Quote className="size-3.5 text-foreground shrink-0" />
+                                      <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                                       <span>Cite</span>
                                     </DropdownMenuItem>
                                     {handleDeleteItem && (
                                       <DropdownMenuItem
                                         onClick={() => handleDeleteItem(paper.id)}
-                                        className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                        className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                       >
-                                        <Trash2 className="size-3.5 text-foreground shrink-0" />
+                                        <Trash2 className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                                         <span>Move to Trash</span>
                                       </DropdownMenuItem>
                                     )}

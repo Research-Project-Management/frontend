@@ -85,13 +85,12 @@ export const usePublishDraft = () => {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: PublishDraftInput }) =>
       DraftService.publishDraft(id, input),
-    onSuccess: (data) => {
-      const taskIdentifier =
-        data?.task?.identifier || (data?.task?.id ? `#${data.task.id.slice(0, 6)}` : 'Work item');
-      toast.success(`Published as ${taskIdentifier}`);
+    onSuccess: (data: any) => {
+      const itemIdentifier =
+        data?.workItem?.identifier || data?.item?.identifier || (data?.workItem?.id || data?.item?.id ? `#${(data.workItem?.id || data.item?.id).slice(0, 6)}` : 'Work item');
+      toast.success(`Published as ${itemIdentifier}`);
       queryClient.invalidateQueries({ queryKey: draftKeys.lists() });
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
     onError: (err: any) => {
       toast.error(err?.message || 'Failed to move draft to project');

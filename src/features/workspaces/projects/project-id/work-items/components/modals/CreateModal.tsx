@@ -25,22 +25,22 @@ import { useUpload } from "@/shared/hooks/use-upload";
 
 import type {
   Item,
-  Task,
   Column,
   ItemMutationInput,
-  TaskMutationInput,
   Priority,
-  TaskPriority,
   ProjectMember,
+  ItemAttachment,
   AttachPageItem,
   AttachPaperItem,
+  AttachFileItem,
   AttachLinkItem,
   Cycle,
 } from '../../types/work-item.types';
 import {
-  resolveColumnId, resolveColumnColor,
+  resolveColumnId,
   resolveStateId,
-  TaskHelpers, resolveTaskColumnId, resolveTaskColumnColor,
+  ItemHelpers,
+  WorkItemHelpers,
 } from '../../utils/work-item.utils';
 import { useLabelsQuery } from '../../hooks/use-label';
 import {
@@ -50,11 +50,9 @@ import {
 import { useWatch } from 'react-hook-form';
 import { Form } from '@/shared/components/ui';
 import { useItemForm, type CreateWorkItemFormData } from '../../hooks/use-work-item';
-import { ItemHelpers } from '../../utils/work-item.utils';
 
 import {
   Attachments,
-  type TaskAttachment,
   type AttachCenterData,
 } from './Attachments';
 import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
@@ -87,7 +85,6 @@ export interface CreateModalProps {
   } | null;
   cycles?: Cycle[];
   availableItems?: Item[];
-  availableTasks?: Item[];
   onSubmit: (data: ItemMutationInput & { createMore?: boolean }) => Promise<void> | void;
   isSubmitting?: boolean;
 }
@@ -112,8 +109,7 @@ export function CreateModal({
   cycleId,
   project,
   cycles = [],
-  availableItems: propAvailableItems,
-  availableTasks: propAvailableTasks = [],
+  availableItems = [],
   onSubmit,
   isSubmitting = false,
 }: CreateModalProps) {
@@ -136,13 +132,11 @@ export function CreateModal({
     return project || (projects.length > 0 ? projects[0] : null);
   }, [effectiveProjectId, projects, project]);
 
-  const availableItems = propAvailableItems || propAvailableTasks;
-  const availableTasks = availableItems;
   const currentProjectId = activeProject?.id || effectiveProjectId;
   const isCyclesEnabled = true;
 
   const { uploadFile } = useUpload();
-  const { data: rawLabels } = useLabelsQuery(workspaceId || '', 'task', currentProjectId);
+  const { data: rawLabels } = useLabelsQuery(workspaceId || '', 'work-item', currentProjectId);
 
   const workspaceLabels = useMemo(() => {
     if (Array.isArray(rawLabels)) return rawLabels;
@@ -152,8 +146,11 @@ export function CreateModal({
 
   const defaultColumnId = useMemo(() => {
     if (initialData?.columnId) return initialData.columnId;
-    if (columns.length > 0) return resolveStateId(columns[0]);
-    return 'todo';
+    if (Array.isArray(columns) && columns.length > 0) {
+      const defaultCol = columns.find((c) => c.isDefault) || columns[0];
+      return resolveStateId(defaultCol);
+    }
+    return 'backlog';
   }, [initialData?.columnId, columns]);
 
   // React Hook Form Integration (Skills: react-hook-form, formcfg-default-values, sub-usewatch-over-watch)
@@ -166,7 +163,8 @@ export function CreateModal({
       dueDate: initialData?.dueDate || '',
       startDate: initialData?.startDate || '',
       cycleId: initialData?.cycleId || cycleId || null,
-      parentTaskId: initialData?.parentTaskId || null,
+      parentId: initialData?.parentId || initialData?.parentWorkItemId || null,
+      parentWorkItemId: initialData?.parentWorkItemId || initialData?.parentId || null,
       labels: initialData?.labels ? ItemHelpers.uniqueLabels(initialData.labels) : [],
     },
   });
@@ -200,7 +198,7 @@ export function CreateModal({
   const dueDate = useWatch({ control, name: 'dueDate' }) ?? '';
   const startDate = useWatch({ control, name: 'startDate' }) ?? '';
   const selectedCycleId = useWatch({ control, name: 'cycleId' }) ?? (cycleId || null);
-  const parentTaskId = useWatch({ control, name: 'parentTaskId' }) ?? null;
+  const parentId = (useWatch({ control, name: 'parentId' as any }) as string | null) ?? null;
   const watchedLabels = useWatch({ control, name: 'labels' });
   const labels = watchedLabels ?? DEFAULT_EMPTY_ARRAY;
   const assigneeId = useWatch({ control, name: 'assigneeId' }) ?? null;
@@ -334,7 +332,8 @@ export function CreateModal({
         dueDate: initialData?.dueDate || '',
         startDate: initialData?.startDate || '',
         cycleId: initialData?.cycleId || cycleId || null,
-        parentTaskId: initialData?.parentTaskId || null,
+        parentId: initialData?.parentId || initialData?.parentWorkItemId || null,
+        parentWorkItemId: initialData?.parentWorkItemId || initialData?.parentId || null,
         labels: initialData?.labels ? ItemHelpers.uniqueLabels(initialData.labels) : [],
         assigneeIds: initialAssigneeIds,
         assigneeId: initialAssigneeIds[0] ?? null,
@@ -410,7 +409,7 @@ export function CreateModal({
     size?: number;
     type?: string;
   }) => {
-    const newFile: TaskAttachment = {
+    const newFile: AttachFileItem = {
       id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       name: file.name,
       url: file.url,
@@ -476,7 +475,7 @@ export function CreateModal({
       return;
     }
 
-    const payload: TaskMutationInput & { createMore?: boolean } = {
+    const payload: ItemMutationInput & { createMore?: boolean } = {
       title: trimmedTitle,
       content: formData.description.trim(),
       description: formData.description.trim(),
@@ -489,7 +488,8 @@ export function CreateModal({
       assigneeId: formData.assigneeIds[0] ?? formData.assigneeId ?? null,
       assigneeIds: formData.assigneeIds,
       cycleId: formData.cycleId || null,
-      parentTaskId: formData.parentTaskId || null,
+      parentId: formData.parentId || formData.parentWorkItemId || null,
+      parentWorkItemId: formData.parentWorkItemId || formData.parentId || null,
       attachments: {
         pages: formData.attachments?.pages || [],
         papers: formData.attachments?.papers || [],
@@ -514,9 +514,6 @@ export function CreateModal({
   };
 
   const handleSubmit = handleFormSubmit(onValidSubmit);
-
-  const activeCol = columns.find((c) => resolveColumnId(c) === columnId);
-  const activeColColor = resolveColumnColor(columnId, activeCol?.accentColor);
 
   const { ref: titleFormRef, ...titleRegisterRest } = register('title');
 
@@ -708,9 +705,9 @@ export function CreateModal({
             <ParentItemPopover
               open={openParentPopover}
               onOpenChange={setOpenParentPopover}
-              parentId={parentTaskId}
+              parentId={parentId}
               setParentId={setParentId}
-              items={availableItems} tasks={availableItems}
+              items={availableItems}
               actionBtnClass={pillBtnClass}
             />
 

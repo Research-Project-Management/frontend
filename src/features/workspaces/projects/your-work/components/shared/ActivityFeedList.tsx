@@ -6,16 +6,16 @@ import { ActivityFeedItem } from './ActivityFeedItem';
 export interface ActivityFeedListProps {
   items: any[];
   isLoading?: boolean;
-  onTaskClick?: (taskId: string) => void;
-  taskProjectMap?: Record<string, { id: string; name: string }>;
+  onWorkItemClick?: (workItemId: string) => void;
+  workItemProjectMap?: Record<string, { id: string; name: string }>;
   emptyPadding?: string;
 }
 
 export function ActivityFeedList({
   items,
   isLoading = false,
-  onTaskClick,
-  taskProjectMap = {},
+  onWorkItemClick,
+  workItemProjectMap = {},
   emptyPadding = 'py-8',
 }: ActivityFeedListProps) {
   return (
@@ -33,8 +33,8 @@ export function ActivityFeedList({
           <ActivityFeedItem
             key={activity.id || idx}
             activity={activity}
-            onTaskClick={onTaskClick}
-            taskProjectMap={taskProjectMap}
+            onWorkItemClick={onWorkItemClick}
+            workItemProjectMap={workItemProjectMap}
           />
         ))
       )}

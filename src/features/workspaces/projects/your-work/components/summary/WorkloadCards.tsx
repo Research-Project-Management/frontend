@@ -6,16 +6,16 @@ import { getWorkloadStates, type WorkloadStateItem } from '../../utils/workload.
 
 export interface WorkloadCardsProps {
   statusBreakdown?: Record<string, number>;
-  assignedTasks?: any[];
-  onTaskClick?: (taskId: string) => void;
-  taskProjectMap?: Record<string, { id: string; name: string }>;
+  assignedWorkItems?: any[];
+  onWorkItemClick?: (workItemId: string) => void;
+  workItemProjectMap?: Record<string, { id: string; name: string }>;
 }
 
 export function WorkloadCards({
   statusBreakdown = {},
-  assignedTasks,
-  onTaskClick,
-  taskProjectMap,
+  assignedWorkItems,
+  onWorkItemClick,
+  workItemProjectMap,
 }: WorkloadCardsProps) {
   const workloadStates = getWorkloadStates(statusBreakdown);
 

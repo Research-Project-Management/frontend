@@ -6,33 +6,34 @@ import { RetractionService } from '../services/retraction.service';
 import type { FlagRetractionInput } from '../types/library.types';
 
 export const retractionKeys = {
-  all: (workspaceId: string) => ['retraction', workspaceId] as const,
-  stats: (workspaceId: string) => ['retraction', workspaceId, 'stats'] as const,
-  items: (workspaceId: string) => ['retraction', workspaceId, 'items'] as const,
+  all: (workspaceId?: string) => ['retraction', workspaceId || 'user'] as const,
+  stats: (workspaceId?: string) => ['retraction', workspaceId || 'user', 'stats'] as const,
+  items: (workspaceId?: string) => ['retraction', workspaceId || 'user', 'items'] as const,
 };
 
-export const invalidateRetraction = (qc: QueryClient, workspaceId: string) => {
+export const invalidateRetraction = (qc: QueryClient, workspaceId?: string) => {
   qc.invalidateQueries({ queryKey: retractionKeys.all(workspaceId) });
-  qc.invalidateQueries({ queryKey: ['items', workspaceId] });
+  qc.invalidateQueries({ queryKey: ['items', workspaceId || 'user'] });
 };
 
-export function useRetraction(workspaceId: string) {
+export function useRetraction(workspaceId?: string) {
   const queryClient = useQueryClient();
+  const effectiveScope = workspaceId || 'user';
 
   const statsQuery = useQuery({
     queryKey: retractionKeys.stats(workspaceId),
-    queryFn: () => RetractionService.getStats(workspaceId),
-    enabled: Boolean(workspaceId),
+    queryFn: () => RetractionService.getStats(effectiveScope),
+    enabled: true,
   });
 
   const itemsQuery = useQuery({
     queryKey: retractionKeys.items(workspaceId),
-    queryFn: () => RetractionService.getRetractedItems(workspaceId),
-    enabled: Boolean(workspaceId),
+    queryFn: () => RetractionService.getRetractedItems(effectiveScope),
+    enabled: true,
   });
 
   const checkItemMutation = useMutation({
-    mutationFn: (itemId: string) => RetractionService.checkItem(workspaceId, itemId),
+    mutationFn: (itemId: string) => RetractionService.checkItem(effectiveScope, itemId),
     onSuccess: (data) => {
       invalidateRetraction(queryClient, workspaceId);
       if (data.isRetracted) {
@@ -51,7 +52,7 @@ export function useRetraction(workspaceId: string) {
   });
 
   const checkWorkspaceMutation = useMutation({
-    mutationFn: (itemIds?: string[]) => RetractionService.checkWorkspace(workspaceId, itemIds),
+    mutationFn: (itemIds?: string[]) => RetractionService.checkWorkspace(effectiveScope, itemIds),
     onSuccess: (res) => {
       invalidateRetraction(queryClient, workspaceId);
       if (res.newlyRetracted > 0) {
@@ -71,7 +72,7 @@ export function useRetraction(workspaceId: string) {
 
   const flagMutation = useMutation({
     mutationFn: ({ itemId, data }: { itemId: string; data: FlagRetractionInput }) =>
-      RetractionService.flagItem(workspaceId, itemId, data),
+      RetractionService.flagItem(effectiveScope, itemId, data),
     onSuccess: () => {
       invalidateRetraction(queryClient, workspaceId);
       toast.warning('Item flagged as retracted');
@@ -82,7 +83,7 @@ export function useRetraction(workspaceId: string) {
   });
 
   const unflagMutation = useMutation({
-    mutationFn: (itemId: string) => RetractionService.unflagItem(workspaceId, itemId),
+    mutationFn: (itemId: string) => RetractionService.unflagItem(effectiveScope, itemId),
     onSuccess: () => {
       invalidateRetraction(queryClient, workspaceId);
       toast.success('Retraction flag removed');

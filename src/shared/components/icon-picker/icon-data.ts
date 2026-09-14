@@ -147,7 +147,7 @@ export const ICONS: IconItem[] = [
   { id: 'layers', name: 'Layers', icon: Layers, category: 'work', keywords: ['stack', 'tier', 'levels'] },
   { id: 'grid', name: 'Grid', icon: LayoutGrid, category: 'work', keywords: ['dashboard', 'layout', 'tiles'] },
   { id: 'kanban', name: 'Kanban', icon: Kanban, category: 'work', keywords: ['board', 'columns', 'scrum'] },
-  { id: 'tasks', name: 'Tasks', icon: ListTodo, category: 'work', keywords: ['todo', 'checklist', 'work items'] },
+  { id: 'work-items', name: 'Work Items', icon: ListTodo, category: 'work', keywords: ['todo', 'checklist', 'work items'] },
   { id: 'check-square', name: 'Check Square', icon: CheckSquare, category: 'work', keywords: ['done', 'verify'] },
   { id: 'calendar', name: 'Calendar', icon: Calendar, category: 'work', keywords: ['date', 'schedule', 'events'] },
   { id: 'clock', name: 'Clock', icon: Clock, category: 'work', keywords: ['time', 'history', 'deadline'] },

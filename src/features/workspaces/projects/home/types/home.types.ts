@@ -17,7 +17,7 @@ export interface RecentItemProject {
 
 export interface RecentItem {
   id: string;
-  type: 'project' | 'page' | 'file' | 'task' | 'paper' | string;
+  type: 'project' | 'page' | 'file' | 'work-item' | 'paper' | string;
   title?: string;
   name?: string;
   emoji?: string | null;

@@ -112,7 +112,7 @@ export function useItems({ workspaceId, scopeId, collectionId, paperId, itemId }
       }
       queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
       queryClient.invalidateQueries({ queryKey: ['tags'] });
-      invalidateCollections(queryClient, workspaceId);
+      invalidateCollections(queryClient, targetScope);
       if (!variables?.silent) {
         toast.success('Document added', {
           description: 'Added to your library.',
@@ -144,6 +144,7 @@ export function useItems({ workspaceId, scopeId, collectionId, paperId, itemId }
       }
       queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
       queryClient.setQueryData(itemKeys.byId(targetScope, id), updatedItem);
+      invalidateCollections(queryClient, targetScope);
       if (!silent) {
         toast.success('Metadata updated', { id: 'item-mutation-toast' });
       }

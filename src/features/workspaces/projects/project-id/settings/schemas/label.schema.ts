@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const labelTypeEnum = z.enum(["project", "task", "cycle", "paper"]);
+export const labelTypeEnum = z.enum(["project", "work-item", "cycle", "paper"]);
 export type LabelType = z.infer<typeof labelTypeEnum>;
 
 // ── Create Project Label DTO Schema (Matches CreateProjectLabelDto) ──────────
@@ -14,7 +14,7 @@ export const createProjectLabelDtoSchema = z.object({
   description: z.string().max(1000, "Description is too long").optional(),
   parentId: z.string().uuid().nullable().optional(),
   sortOrder: z.number().optional(),
-  type: labelTypeEnum.optional().default("task"),
+  type: labelTypeEnum.optional().default("work-item"),
 });
 export type CreateProjectLabelDtoInput = z.infer<typeof createProjectLabelDtoSchema>;
 

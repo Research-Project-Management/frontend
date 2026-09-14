@@ -48,6 +48,7 @@ export default function DuplicatesPage() {
   const { state, actions } = useLibrary();
   const {
     workspaceId,
+    effectiveScopeId,
     search,
     selectedItemId,
     selectedItem,
@@ -72,8 +73,8 @@ export default function DuplicatesPage() {
     handleBatchMoveItems,
   } = actions;
 
-  const { data: duplicateData, isLoading: isDupLoading } = useDuplicateGroups(workspaceId);
-  const mergeMutation = useMergePapers(workspaceId);
+  const { data: duplicateData, isLoading: isDupLoading } = useDuplicateGroups(effectiveScopeId || workspaceId);
+  const mergeMutation = useMergePapers(effectiveScopeId || workspaceId);
 
   const duplicateGroups: DuplicateGroup[] = useMemo(
     () =>
@@ -407,24 +408,24 @@ export default function DuplicatesPage() {
                                   <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
                                     <DropdownMenuItem
                                       onClick={() => router.push(`/library/papers/${paper.id}`)}
-                                      className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                      className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
-                                      <BookOpen className="size-3.5 text-foreground shrink-0" />
+                                      <BookOpen className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                                       <span>Open in Reader</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => handleSelectItem(paper)}
-                                      className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                      className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
-                                      <Quote className="size-3.5 text-foreground shrink-0" />
+                                      <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                                       <span>Cite</span>
                                     </DropdownMenuItem>
                                     {handleDeleteItem && (
                                       <DropdownMenuItem
                                         onClick={() => handleDeleteItem(paper.id)}
-                                        className="h-8.5 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                        className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                       >
-                                        <Trash2 className="size-3.5 text-foreground shrink-0" />
+                                        <Trash2 className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                                         <span>Move to Trash</span>
                                       </DropdownMenuItem>
                                     )}

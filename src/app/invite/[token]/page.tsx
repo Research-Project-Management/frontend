@@ -1,9 +1,9 @@
 import { Metadata } from 'next';
-import { InviteAcceptPage } from '@/features/workspaces/invitation';
+import { InviteAcceptPage } from '@/features/workspaces/projects/invitation/pages/InviteAcceptPage';
 
 export const metadata: Metadata = {
-  title: 'Workspace Invitation · Flux',
-  description: 'You have been invited to collaborate on Flux',
+  title: 'Project Invitation · Flux',
+  description: 'You have been invited to collaborate on a research project in Flux',
 };
 
 interface PageProps {

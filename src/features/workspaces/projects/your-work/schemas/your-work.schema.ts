@@ -1,15 +1,15 @@
 import { z } from 'zod';
 
-export const yourWorkItemSchema = z.object({
+export const yourWorkItemSchemaType = z.object({
   id: z.string(),
-  type: z.enum(['task', 'page', 'file']),
+  type: z.enum(['work_item', 'page', 'file']),
   title: z.string(),
   projectId: z.string().optional(),
   projectName: z.string().optional(),
   updatedAt: z.string(),
 });
 
-export const yourWorkSubtaskSchema = z.object({
+export const yourWorkChildItemSchema = z.object({
   id: z.string().optional(),
   title: z.string().optional(),
   completed: z.boolean().optional(),
@@ -24,7 +24,7 @@ export const yourWorkUserRefSchema = z.object({
   avatar: z.string().nullable().optional(),
 });
 
-export const yourWorkTaskSchema = z.object({
+export const yourWorkItemSchema = z.object({
   id: z.string().optional(),
   identifier: z.string().optional(),
   title: z.string(),
@@ -47,13 +47,18 @@ export const yourWorkTaskSchema = z.object({
   }).optional(),
   comments: z.array(z.object({ id: z.string() })).optional().default([]),
   commentCount: z.number().optional().default(0),
-  subtasks: z.array(yourWorkSubtaskSchema).optional().default([]),
-  subtaskCount: z.number().optional(),
-  subtaskCompletedCount: z.number().optional(),
+  childWorkItems: z.array(yourWorkChildItemSchema).optional().default([]),
+  childWorkItemCount: z.number().optional(),
+  childWorkItemCompletedCount: z.number().optional(),
   completed: z.boolean().optional().default(false),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });
+
+export type YourWorkItem = z.infer<typeof yourWorkItemSchema>;
+export type YourWorkChildItem = z.infer<typeof yourWorkChildItemSchema>;
+
+
 
 export const yourWorkActivityEventSchema = z.object({
   id: z.string().optional(),
@@ -105,9 +110,9 @@ export const userProfileDataSchema = z.object({
 });
 
 export const yourWorkSummaryResponseSchema = z.object({
-  assigned: z.array(yourWorkTaskSchema).optional().default([]),
-  created: z.array(yourWorkTaskSchema).optional().default([]),
-  subscribed: z.array(yourWorkTaskSchema).optional().default([]),
+  assigned: z.array(yourWorkItemSchema).optional().default([]),
+  created: z.array(yourWorkItemSchema).optional().default([]),
+  subscribed: z.array(yourWorkItemSchema).optional().default([]),
   activity: z.array(yourWorkActivityEventSchema).optional().default([]),
   recent: z.array(z.any()).optional().default([]),
   stateGroupBreakdown: z.record(z.string(), z.number()).optional(),
@@ -118,9 +123,6 @@ export const yourWorkSummaryResponseSchema = z.object({
   success: z.boolean().optional(),
 });
 
-export type YourWorkItem = z.infer<typeof yourWorkItemSchema>;
-export type YourWorkTask = z.infer<typeof yourWorkTaskSchema>;
-export type YourWorkSubtask = z.infer<typeof yourWorkSubtaskSchema>;
 export type YourWorkActivityEvent = z.infer<typeof yourWorkActivityEventSchema>;
 export type ProjectWorkloadBreakdown = z.infer<typeof projectWorkloadBreakdownSchema>;
 export type UserProfileData = z.infer<typeof userProfileDataSchema>;

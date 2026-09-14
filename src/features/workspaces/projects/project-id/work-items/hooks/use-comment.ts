@@ -6,7 +6,6 @@ import { CommentService } from '../services/comment.service';
 
 export const commentKeys = {
   item: (id: string) => ['comments', id] as const,
-  task: (id: string) => ['comments', id] as const,
   workItem: (id: string) => ['work-item-comments', id] as const,
 };
 
@@ -23,22 +22,20 @@ export const useComments = (id: string) =>
     enabled: Boolean(id),
   });
 
-export const useTaskComments = useComments;
 export const useWorkItemComments = useComments;
 
 export const useAddComment = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, itemId, workItemId, taskId, content }: { id?: string; itemId?: string; workItemId?: string; taskId?: string; content: string }) => {
-      const targetId = (id || itemId || workItemId || taskId) ?? '';
+    mutationFn: ({ id, itemId, workItemId, content }: { id?: string; itemId?: string; workItemId?: string; content: string }) => {
+      const targetId = (id || itemId || workItemId) ?? '';
       return CommentService.addComment(targetId, content);
     },
     onSuccess: (_, vars) => {
-      const targetId = (vars.id || vars.itemId || vars.workItemId || vars.taskId) ?? '';
+      const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';
       queryClient.invalidateQueries({ queryKey: ['comments', targetId] });
       queryClient.invalidateQueries({ queryKey: ['work-item-comments', targetId] });
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to add comment'),
   });
@@ -47,16 +44,15 @@ export const useAddComment = () => {
 export const useDeleteComment = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, itemId, workItemId, taskId, commentId }: { id?: string; itemId?: string; workItemId?: string; taskId?: string; commentId: string }) => {
-      const targetId = (id || itemId || workItemId || taskId) ?? '';
+    mutationFn: ({ id, itemId, workItemId, commentId }: { id?: string; itemId?: string; workItemId?: string; commentId: string }) => {
+      const targetId = (id || itemId || workItemId) ?? '';
       return CommentService.deleteComment(targetId, commentId);
     },
     onSuccess: (_, vars) => {
-      const targetId = (vars.id || vars.itemId || vars.workItemId || vars.taskId) ?? '';
+      const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';
       queryClient.invalidateQueries({ queryKey: ['comments', targetId] });
       queryClient.invalidateQueries({ queryKey: ['work-item-comments', targetId] });
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to delete comment'),
   });
@@ -69,26 +65,23 @@ export const useUpdateComment = () => {
       id,
       itemId,
       workItemId,
-      taskId,
       commentId,
       content,
     }: {
       id?: string;
       itemId?: string;
       workItemId?: string;
-      taskId?: string;
       commentId: string;
       content: string;
     }) => {
-      const targetId = (id || itemId || workItemId || taskId) ?? '';
+      const targetId = (id || itemId || workItemId) ?? '';
       return CommentService.updateComment(targetId, commentId, content);
     },
     onSuccess: (_, vars) => {
-      const targetId = (vars.id || vars.itemId || vars.workItemId || vars.taskId) ?? '';
+      const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';
       queryClient.invalidateQueries({ queryKey: ['comments', targetId] });
       queryClient.invalidateQueries({ queryKey: ['work-item-comments', targetId] });
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to update comment'),
   });
@@ -101,26 +94,23 @@ export const useReactComment = () => {
       id,
       itemId,
       workItemId,
-      taskId,
       commentId,
       emoji,
     }: {
       id?: string;
       itemId?: string;
       workItemId?: string;
-      taskId?: string;
       commentId: string;
       emoji: string;
     }) => {
-      const targetId = (id || itemId || workItemId || taskId) ?? '';
+      const targetId = (id || itemId || workItemId) ?? '';
       return CommentService.reactComment(targetId, commentId, emoji);
     },
     onSuccess: (_, vars) => {
-      const targetId = (vars.id || vars.itemId || vars.workItemId || vars.taskId) ?? '';
+      const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';
       queryClient.invalidateQueries({ queryKey: ['comments', targetId] });
       queryClient.invalidateQueries({ queryKey: ['work-item-comments', targetId] });
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to react to comment'),
   });

@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import {
   sourceItemSchema,
-  taskItemSchema,
-  taskOverviewWidgetSchema,
+  workItemItemSchema,
+  workItemOverviewWidgetSchema,
   metricSummaryWidgetSchema,
   responseWidgetSchema,
   chatMessageSchema,
@@ -16,8 +16,8 @@ import {
 // ── Inferred Types from Zod ───────────────────────────────────────────────────
 
 export type SourceItem = z.infer<typeof sourceItemSchema>;
-export type TaskItem = z.infer<typeof taskItemSchema>;
-export type TaskOverviewWidget = z.infer<typeof taskOverviewWidgetSchema>;
+export type WorkItemItem = z.infer<typeof workItemItemSchema>;
+export type WorkItemOverviewWidget = z.infer<typeof workItemOverviewWidgetSchema>;
 export type MetricSummaryWidget = z.infer<typeof metricSummaryWidgetSchema>;
 export type ResponseWidget = z.infer<typeof responseWidgetSchema>;
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
@@ -76,13 +76,13 @@ export type ToolCategory = 'read' | 'create' | 'update' | 'delete' | 'analyze';
 
 /** Pretty labels for tools displayed in ActionCard */
 export const TOOL_LABELS: Record<string, { label: string; icon: string; category: ToolCategory }> = {
-  // ─── Task management ──────────────────────────────────────────────────────
-  list_tasks:             { label: 'Listing Tasks',           icon: '📋', category: 'read' },
-  get_my_tasks:           { label: 'Getting My Tasks',        icon: '📋', category: 'read' },
-  summarize_member_tasks: { label: 'Summarizing Workload',    icon: '📊', category: 'analyze' },
-  create_task:            { label: 'Creating Task',           icon: '✅', category: 'create' },
-  update_task:            { label: 'Updating Task',           icon: '✏️', category: 'update' },
-  delete_task:            { label: 'Deleting Task',           icon: '🗑️', category: 'delete' },
+  // ─── Work item management ────────────────────────────────────────────────
+  list_work_items:             { label: 'Listing Work Items',      icon: '📋', category: 'read' },
+  get_my_work_items:           { label: 'Getting My Work Items',   icon: '📋', category: 'read' },
+  summarize_member_work_items: { label: 'Summarizing Workload',    icon: '📊', category: 'analyze' },
+  create_work_item:            { label: 'Creating Work Item',      icon: '✅', category: 'create' },
+  update_work_item:            { label: 'Updating Work Item',      icon: '✏️', category: 'update' },
+  delete_work_item:            { label: 'Deleting Work Item',      icon: '🗑️', category: 'delete' },
 
   // ─── Projects ─────────────────────────────────────────────────────────────
   list_projects:          { label: 'Listing Projects',        icon: '📁', category: 'read' },
@@ -127,8 +127,8 @@ export const TOOL_LABELS: Record<string, { label: string; icon: string; category
   delete_sticky:          { label: 'Deleting Sticky',         icon: '🗑️', category: 'delete' },
 
   // ─── Comments ─────────────────────────────────────────────────────────────
-  get_task_comments:      { label: 'Task Comments',           icon: '💬', category: 'read' },
-  add_task_comment:       { label: 'Adding Comment',          icon: '💬', category: 'create' },
+  get_work_item_comments: { label: 'Work Item Comments',      icon: '💬', category: 'read' },
+  add_work_item_comment:  { label: 'Adding Comment',          icon: '💬', category: 'create' },
   get_page_comments:      { label: 'Page Comments',           icon: '💬', category: 'read' },
   add_page_comment:       { label: 'Adding Comment',          icon: '💬', category: 'create' },
 
@@ -169,16 +169,16 @@ export const AGENT_CONFIGS: AgentConfig[] = [
   {
     id: 'action',
     label: 'Action',
-    description: 'Manage tasks, projects, and pages in your workspace',
+    description: 'Manage work items, projects, and pages in your workspace',
     icon: '',
     color: 'text-primary',
     bg: 'bg-primary/10 hover:bg-primary/15',
     border: 'border-primary/20',
     quickPrompts: [
-      'Show my tasks',
+      'Show my work items',
       'Show project overview',
       'Who\'s in my team?',
-      'Create a new task',
+      'Create a new work item',
       'What happened recently?',
     ],
   },
@@ -239,9 +239,9 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     ],
   },
   {
-    id: 'task',
-    label: 'Task Planner',
-    description: 'Break down work into actionable tasks',
+    id: 'work_item',
+    label: 'Work Item Planner',
+    description: 'Break down work into actionable work items',
     icon: '',
     color: 'text-destructive',
     bg: 'bg-destructive/8 hover:bg-destructive/14',

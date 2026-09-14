@@ -89,7 +89,7 @@ const ForgotPasswordPage = () => {
             className='w-full h-9 mt-1 rounded-md cursor-pointer'
             disabled={isPending}
           >
-            {isPending && <Loader2 className='mr-2 h-4 w-4 animate-spin shrink-0' />}
+            {isPending && <Loader2 className='mr-2 size-4 animate-spin shrink-0' />}
             {isPending ? 'Sending...' : 'Send reset link'}
           </Button>
         </form>

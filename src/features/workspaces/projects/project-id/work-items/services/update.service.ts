@@ -4,7 +4,6 @@ export interface ItemUpdateRecord {
   id: string;
   itemId?: string;
   workItemId: string;
-  taskId?: string;
   userId: string;
   content: string;
   status?: string | null;

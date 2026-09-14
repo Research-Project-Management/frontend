@@ -46,7 +46,7 @@ export function SelectionContextBadge({
         <span className="text-xs font-mono text-primary/80 shrink-0">
           {rangeLabel}
         </span>
-        <span className="text-xs text-muted-foreground/45 shrink-0">
+        <span className="text-xs text-muted-foreground shrink-0">
           {wordCount}w
         </span>
         <button
@@ -54,12 +54,12 @@ export function SelectionContextBadge({
           onClick={onTogglePin}
           title={isPinned ? 'Clear selection context' : 'Pin selection context'}
           aria-label={isPinned ? 'Clear selection context' : 'Pin selection context'}
-          className="ml-auto p-px rounded text-foreground hover:bg-muted transition-colors"
+          className="ml-auto size-6 min-w-[24px] min-h-[24px] flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors"
         >
           {isPinned ? (
-            <X className="size-2.5 shrink-0" />
+            <X className="size-3 shrink-0" />
           ) : (
-            <Pin className="size-2.5 shrink-0" />
+            <Pin className="size-3 shrink-0" />
           )}
         </button>
       </div>
@@ -76,9 +76,9 @@ export function SelectionContextBadge({
                 \{context.environment}
               </span>
             )}
-            <span className="ml-auto text-muted-foreground/40">{charCount}ch</span>
+            <span className="ml-auto text-muted-foreground">{charCount}ch</span>
           </div>
-          <pre className="text-muted-foreground/70 max-h-28 overflow-auto whitespace-pre-wrap leading-relaxed">
+          <pre className="text-muted-foreground max-h-28 overflow-auto whitespace-pre-wrap leading-relaxed">
             {text}
           </pre>
         </div>
@@ -148,16 +148,16 @@ export function ActiveCommandChip({
         <Zap className="size-2.5 shrink-0" />
         {command.cmd}
       </span>
-      <span className="text-xs text-muted-foreground/50">
+      <span className="text-xs text-muted-foreground">
         {command.description}
       </span>
       <button
         type="button"
         onClick={onRemove}
         aria-label="Remove active command"
-        className="ml-auto text-foreground hover:bg-muted"
+        className="ml-auto size-6 min-w-[24px] min-h-[24px] flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
       >
-        <X className="size-2.5 shrink-0" />
+        <X className="size-3 shrink-0" />
       </button>
     </div>
   );

@@ -4,7 +4,7 @@ import AnalyticsPage from '@/features/workspaces/analytics/pages/AnalyticsPage';
 
 export const metadata: Metadata = {
   title: 'Analytics · Flux',
-  description: 'Research and project performance, task distributions, and delivery metrics across all projects.',
+  description: 'Research and project performance, work item distributions, and delivery metrics across all projects.',
 };
 
 export default function ProjectsAnalyticsRoute() {

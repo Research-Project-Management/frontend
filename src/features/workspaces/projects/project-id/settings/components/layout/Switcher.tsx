@@ -2,37 +2,17 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, Check, Search, FolderOpen, ChevronsUpDown, X } from 'lucide-react';
+import { Check, Search, ChevronsUpDown, X } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { useClickOutside, useHotkeys } from "@/shared/hooks";
+import { ProjectAvatar } from "@/shared/components/ui";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface SwitcherProps {
   currentProject: any;
   projects: any[];
-  workspaceId?: string;
   currentProjectId: string;
-  role?: string;
-}
-
-// ── Avatar helper ─────────────────────────────────────────────────────────────
-
-function ProjectAvatar({ project, size = 'md' }: { project: any; size?: 'sm' | 'md' }) {
-  const dim = size === 'sm' ? 'size-5 text-sm' : 'size-7 text-base';
-  return (
-    <div className={cn('flex items-center justify-center rounded-md shrink-0 overflow-hidden', dim)}>
-      {project?.avatar ? (
-        project.avatar.startsWith('http') || project.avatar.startsWith('/') ? (
-          <img src={project.avatar} alt="" className="size-full object-cover" />
-        ) : (
-          <span className="leading-none">{project.avatar}</span>
-        )
-      ) : (
-        <span className="leading-none">📁</span>
-      )}
-    </div>
-  );
 }
 
 // ── Switcher ──────────────────────────────────────────────────────────────────
@@ -40,9 +20,7 @@ function ProjectAvatar({ project, size = 'md' }: { project: any; size?: 'sm' | '
 export default function Switcher({
   currentProject,
   projects,
-  workspaceId,
   currentProjectId,
-  role,
 }: SwitcherProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -84,17 +62,22 @@ export default function Switcher({
   };
 
   return (
-    <div ref={ref} className="relative px-2 mb-1">
+    <div ref={ref} className="relative px-1 mb-1">
       {/* ── Trigger ── */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          'group flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors cursor-pointer',
-          open ? 'bg-muted' : 'hover:bg-muted',
+          'group flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 transition-colors cursor-pointer border border-border/70 bg-card hover:bg-muted',
+          open && 'bg-muted border-border',
         )}
       >
-        <ProjectAvatar project={currentProject} size="sm" />
+        <ProjectAvatar
+          avatar={currentProject?.avatar}
+          name={currentProject?.name}
+          id={currentProject?.id}
+          size="sm"
+        />
         <span className="flex-1 min-w-0 text-left font-medium text-xs text-foreground truncate">
           {currentProject?.name ?? 'Select project…'}
         </span>
@@ -105,15 +88,15 @@ export default function Switcher({
       {open && (
         <div
           className={cn(
-            'absolute left-2 right-2 top-full z-50 mt-1.5',
-            'rounded-md border border-border bg-popover text-popover-foreground ',
+            'absolute left-1 right-1 top-full z-50 mt-1.5',
+            'rounded-md border border-border bg-popover text-popover-foreground shadow-md',
             'animate-in fade-in-0 zoom-in-95 duration-100',
             'flex flex-col overflow-hidden',
           )}
           style={{ maxHeight: '340px' }}
         >
           {/* Search box */}
-          <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+          <div className="flex items-center gap-2 border-b border-border px-3 py-2 bg-background">
             <Search className="size-3.5 text-muted-foreground shrink-0" />
             <input
               ref={searchRef}
@@ -135,7 +118,7 @@ export default function Switcher({
           </div>
 
           {/* Project List */}
-          <div className="overflow-y-auto p-1.5 space-y-0.5 max-h-56">
+          <div className="overflow-y-auto p-1 space-y-0.5 max-h-56">
             {filtered.length === 0 ? (
               <div className="flex items-center justify-center py-6 text-center">
                 <span className="text-xs text-muted-foreground">
@@ -151,13 +134,18 @@ export default function Switcher({
                     type="button"
                     onClick={() => handleSelect(proj)}
                     className={cn(
-                      'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors cursor-pointer',
+                      'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors cursor-pointer',
                       isCurrent
                         ? 'bg-muted font-medium text-foreground'
                         : 'hover:bg-muted text-foreground',
                     )}
                   >
-                    <ProjectAvatar project={proj} size="sm" />
+                    <ProjectAvatar
+                      avatar={proj?.avatar}
+                      name={proj?.name}
+                      id={proj?.id}
+                      size="xs"
+                    />
                     <span className="flex-1 min-w-0 truncate text-left">{proj.name}</span>
                     {isCurrent && <Check className="size-3.5 shrink-0 text-foreground" />}
                   </button>

@@ -346,6 +346,7 @@ export interface EditorEventMap {
   'flux:insert-citation': { bibKey: string };
   'flux:open-citation-picker': undefined;
   'flux:focus-editor': undefined;
+  'flux:toggle-sidebar': undefined;
 }
 
 export const EditorEventBus = {

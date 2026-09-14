@@ -12,7 +12,7 @@ export interface WorkItemDraftRecord {
   dueDate?: string | null;
   startDate?: string | null;
   cycleId?: string | null;
-  parentTaskId?: string | null;
+  parentWorkItemId?: string | null;
   labels?: string[];
   assigneeId?: string | null;
   attachments?: Record<string, unknown> | null;
@@ -40,7 +40,7 @@ export const DraftService = {
     apiPut<WorkItemDraftRecord>(`/api/work-items/drafts/${id}`, data),
 
   publishDraft: (id: string, options?: { columnId?: string }) =>
-    apiPost<{ message: string; task: Item; item?: Item }>(`/api/work-items/drafts/${id}/publish`, options || {}),
+    apiPost<{ message: string; workItem: Item; item?: Item }>(`/api/work-items/drafts/${id}/publish`, options || {}),
 
   duplicateDraft: (id: string) =>
     apiPost<WorkItemDraftRecord>(`/api/work-items/drafts/${id}/duplicate`),

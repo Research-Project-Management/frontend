@@ -27,8 +27,8 @@ import {
 } from 'lucide-react';
 
 import { ViewService, type SavedViewRecord } from '../services/view.service';
-import type { Item, Task, Column } from '../types/work-item.types';
-import { resolveColumnId, resolveTaskColumnId } from '../utils/work-item.utils';
+import type { Item, WorkItem, Column } from '../types/work-item.types';
+import { resolveColumnId, resolveWorkItemColumnId } from '../utils/work-item.utils';
 import { ItemHelpers, WorkItemHelpers } from '../utils/work-item.utils';
 
 // ── 1. Query Keys & Server State Hooks (matching backend view module) ───────────
@@ -141,7 +141,6 @@ export type ItemCardLabel = {
   name: string;
   color?: string;
 };
-export type TaskCardLabel = ItemCardLabel;
 
 export type CardMetadataItem = {
   key: string;
@@ -154,23 +153,24 @@ export type CardMetadataItem = {
 
 export interface UseKanbanOptions {
   items?: Item[];
-  tasks?: Item[];
+  workItems?: Item[];
   columns: Column[];
   onMoveCard?: (cardId: string, targetColumnId: string, laneData?: { subGroupBy?: string; laneId?: string }) => void;
+  onReorderCard?: (workItemId: string, targetColumnId: string, rank: number) => void;
   isReadOnly?: boolean;
   subGroupBy?: string;
 }
 
 export function useKanban({
   items: propItems,
-  tasks: propTasks = [],
+  workItems: propWorkItems,
   columns = [],
   onMoveCard,
+  onReorderCard,
   isReadOnly = false,
   subGroupBy = 'none',
 }: UseKanbanOptions) {
-  const items = propItems || propTasks || [];
-  const tasks = items;
+  const items = propItems || propWorkItems || [];
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const mouseSensor = useSensor(MouseSensor, {
@@ -184,29 +184,29 @@ export function useKanban({
   const validColumnIds = useMemo(() => {
     return new Set(
       columns
-        .map((column) => resolveTaskColumnId(column))
+        .map((column) => resolveColumnId(column))
         .filter((id): id is string => Boolean(id)),
     );
   }, [columns]);
 
-  const tasksByColumn = useMemo(() => {
-    const map = new Map<string, Task[]>();
+  const itemsByColumn = useMemo(() => {
+    const map = new Map<string, Item[]>();
     for (const column of columns) {
-      const columnId = resolveTaskColumnId(column);
+      const columnId = resolveColumnId(column);
       if (columnId) map.set(columnId, []);
     }
-    for (const task of tasks) {
-      if (!task.columnId) continue;
-      const list = map.get(task.columnId);
-      if (list) list.push(task);
+    for (const item of items) {
+      if (!item.columnId) continue;
+      const list = map.get(item.columnId);
+      if (list) list.push(item);
     }
     return map;
-  }, [tasks, columns]);
+  }, [items, columns]);
 
-  const activeTask = useMemo(() => {
+  const activeItem = useMemo(() => {
     if (!activeId) return null;
-    return tasks.find((task) => task.id === activeId) ?? null;
-  }, [activeId, tasks]);
+    return items.find((item) => item.id === activeId) ?? null;
+  }, [activeId, items]);
 
   const dragStart = useCallback((event: DragStartEvent) => {
     setActiveId(String(event.active.id));
@@ -218,11 +218,12 @@ export function useKanban({
       setActiveId(null);
       if (!over || isReadOnly) return;
 
-      const activeTaskId = String(active.id);
+      const activeItemId = String(active.id);
       const overId = String(over.id);
 
       let targetColumnId: string | null = null;
       let targetLaneId: string | null = null;
+      let isOverCard = false;
 
       if (validColumnIds.has(overId)) {
         targetColumnId = overId;
@@ -231,21 +232,48 @@ export function useKanban({
         targetLaneId = parts[0];
         targetColumnId = parts[1];
       } else {
-        const overTask = tasks.find((task) => task.id === overId);
-        if (overTask?.columnId) {
-          targetColumnId = overTask.columnId;
+        const overItem = items.find((item) => item.id === overId);
+        if (overItem?.columnId) {
+          targetColumnId = overItem.columnId;
+          isOverCard = true;
+          if (subGroupBy && subGroupBy !== 'none') {
+            if (subGroupBy === 'priority') {
+              targetLaneId = (overItem.priority || 'none').toLowerCase();
+            } else if (subGroupBy === 'assignee') {
+              targetLaneId = ItemHelpers.resolveAssigneeId(overItem) || '__unassigned__';
+            } else if (subGroupBy === 'cycle') {
+              targetLaneId = overItem.cycleId || '__no_cycle__';
+            } else if (subGroupBy === 'labels') {
+              targetLaneId = (overItem.labels && overItem.labels.length > 0) ? overItem.labels[0] : '__no_label__';
+            }
+          }
         }
       }
 
-      if (targetColumnId && onMoveCard) {
-        onMoveCard(
-          activeTaskId,
-          targetColumnId,
-          targetLaneId ? { subGroupBy, laneId: targetLaneId } : undefined,
-        );
+      if (!targetColumnId) return;
+
+      if (targetLaneId) {
+        if (onMoveCard) {
+          onMoveCard(activeItemId, targetColumnId, { subGroupBy, laneId: targetLaneId });
+        }
+        return;
+      }
+
+      if (isOverCard && onReorderCard) {
+        if (activeItemId === overId) return;
+        const columnCards = itemsByColumn.get(targetColumnId) || [];
+        const overIndex = columnCards.findIndex((item) => item.id === overId);
+        if (overIndex !== -1) {
+          onReorderCard(activeItemId, targetColumnId, overIndex);
+          return;
+        }
+      }
+
+      if (onMoveCard) {
+        onMoveCard(activeItemId, targetColumnId);
       }
     },
-    [validColumnIds, isReadOnly, tasks, onMoveCard, subGroupBy],
+    [validColumnIds, isReadOnly, items, itemsByColumn, onMoveCard, onReorderCard, subGroupBy],
   );
 
   const dragCancel = useCallback(() => {
@@ -255,8 +283,10 @@ export function useKanban({
   return {
     state: {
       activeId,
-      activeTask,
-      tasksByColumn,
+      activeItem,
+      activeWorkItem: activeItem,
+      itemsByColumn,
+      workItemsByColumn: itemsByColumn,
       sensors,
     },
     actions: {
@@ -271,7 +301,7 @@ export function useKanban({
 
 export interface UseCardOptions {
   card: Item;
-  labelMap?: Map<string, TaskCardLabel>;
+  labelMap?: Map<string, ItemCardLabel>;
   currentUserId?: string | null;
   currentUserAvatar?: string;
   onEdit?: (card: Item) => void;
@@ -327,10 +357,17 @@ export function useCard({
   }, [card]);
 
   const comments = (card as any).commentCount ?? (card as any).comments?.length ?? 0;
-  const attachments = (card as any).attachmentCount ?? (card as any).attachments?.length ?? 0;
-  const subtasks = (card as any).subtasks ?? [];
-  const subtaskTotal = subtasks.length;
-  const subtaskDone = subtasks.filter((st: any) => st.completed || st.columnId === 'done').length;
+  const attachments = (card as any).attachmentCount ?? (
+    Array.isArray((card as any).attachments)
+      ? (card as any).attachments.length
+      : ((card as any).attachments?.files?.length ?? 0) +
+        ((card as any).attachments?.pages?.length ?? 0) +
+        ((card as any).attachments?.papers?.length ?? 0) +
+        ((card as any).attachments?.links?.length ?? 0)
+  );
+  const childWorkItems = (card as any).childWorkItems ?? (card as any).subItems ?? (card as any).children ?? [];
+  const childWorkItemTotal = childWorkItems.length;
+  const childWorkItemDone = childWorkItems.filter((st: any) => st.completed || st.columnId === 'done').length;
 
   const labels = useMemo(() => {
     const raw = card.labels || [];
@@ -375,12 +412,12 @@ export function useCard({
       });
     }
 
-    if (subtaskTotal > 0) {
+    if (childWorkItemTotal > 0) {
       items.push({
-        key: 'subtasks',
+        key: 'childWorkItems',
         icon: CheckSquare,
-        label: `${subtaskDone}/${subtaskTotal} subtasks`,
-        text: `${subtaskDone}/${subtaskTotal}`,
+        label: `${childWorkItemDone}/${childWorkItemTotal} sub-items`,
+        text: `${childWorkItemDone}/${childWorkItemTotal}`,
       });
     }
 
@@ -412,12 +449,12 @@ export function useCard({
     }
 
     return items;
-  }, [card.priority, priorityMeta, hasDesc, subtaskTotal, subtaskDone, comments, attachments, card.relations]);
+  }, [card.priority, priorityMeta, hasDesc, childWorkItemTotal, childWorkItemDone, comments, attachments, card.relations]);
 
   const state = {
     priority: priorityMeta,
     dates,
-    counts: { comments, attachments, subtaskTotal, subtaskDone },
+    counts: { comments, attachments, childWorkItemTotal, childWorkItemDone },
     labels,
     assignee: { user, initials, isCurrentUser, avatar: user?.avatar },
     hasDescription: hasDesc,

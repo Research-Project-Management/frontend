@@ -20,7 +20,7 @@ export function useModules(projectId: string) {
   const serverModules: string[] = useMemo(() => {
     const raw = project?.modules;
     if (!raw || raw.length === 0) return DEFAULT_MODULES;
-    const normalized = raw.map((m: string) => (m === 'tasks' ? 'work-items' : m));
+    const normalized = raw.map((m: string) => m);
     return normalized.filter(
       (m: string) =>
         m !== 'overview' &&

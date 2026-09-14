@@ -22,7 +22,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     <aside className='w-60 shrink-0 border-r border-border bg-background flex flex-col'>
       {/* Header Profile Info */}
       <div className='flex items-center gap-3 p-4'>
-        <Avatar className='size-8'>
+        <Avatar className='size-8 shrink-0'>
       {user.avatar ? <AvatarImage src={user.avatar} alt={String(user.name || '')} referrerPolicy="no-referrer" /> : null}
       <AvatarFallback>{String(user.name || '').substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
     </Avatar>

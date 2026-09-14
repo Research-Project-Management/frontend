@@ -3,25 +3,25 @@
 import React from 'react';
 import { Skeleton } from "@/shared/components/ui";
 import { useSummaryWork } from '../hooks/use-summary-work';
-import { useTaskModal } from '../hooks/use-task-modal';
+import { useWorkItemModal } from '../hooks/use-work-item-modal';
 import { OverviewCards } from '../components/summary/OverviewCards';
 import { WorkloadCards } from '../components/summary/WorkloadCards';
 import { PriorityBreakdown } from '../components/summary/PriorityBreakdown';
 import { StateBreakdown } from '../components/summary/StateBreakdown';
 import { RecentActivityFeed } from '../components/summary/RecentActivityFeed';
-import { TaskModalHost } from '../components/shared/TaskModalHost';
+import { WorkItemModalHost } from '../components/shared/WorkItemModalHost';
 
 export function SummaryPage() {
   const { state } = useSummaryWork();
   const {
-    tasks,
+    workItems,
     activities,
-    categorizedTasks,
-    taskProjectMap,
+    categorizedWorkItems,
+    workItemProjectMap,
     isLoading,
   } = state;
 
-  const { selectedTask, handleOpenTask, handleCloseTask } = useTaskModal(tasks);
+  const { selectedWorkItem, handleOpenWorkItem, handleCloseWorkItem } = useWorkItemModal(workItems);
 
   if (isLoading) {
     return (
@@ -55,37 +55,37 @@ export function SummaryPage() {
     <div className="space-y-6 max-w-6xl mx-auto p-6">
       {/* 1. Overview: 3 Cards */}
       <OverviewCards
-        createdCount={categorizedTasks.created.length}
-        assignedCount={categorizedTasks.assigned.length}
-        subscribedCount={categorizedTasks.subscribed.length}
+        createdCount={categorizedWorkItems.created.length}
+        assignedCount={categorizedWorkItems.assigned.length}
+        subscribedCount={categorizedWorkItems.subscribed.length}
       />
 
       {/* 2. Workload: 5 Status Boxes */}
       <WorkloadCards
-        statusBreakdown={categorizedTasks.statusBreakdown}
+        statusBreakdown={categorizedWorkItems.statusBreakdown}
       />
 
       {/* 3. Breakdown Graphs: Priority on Left, State on Right */}
       <div className="grid gap-4 md:grid-cols-2">
         <PriorityBreakdown
-          priorityBreakdown={categorizedTasks.priorityBreakdown}
-          totalAssigned={categorizedTasks.assigned.length}
+          priorityBreakdown={categorizedWorkItems.priorityBreakdown}
+          totalAssigned={categorizedWorkItems.assigned.length}
         />
         <StateBreakdown
-          statusBreakdown={categorizedTasks.statusBreakdown}
-          totalAssigned={categorizedTasks.assigned.length}
+          statusBreakdown={categorizedWorkItems.statusBreakdown}
+          totalAssigned={categorizedWorkItems.assigned.length}
         />
       </div>
 
       {/* 4. Recent activity */}
       <RecentActivityFeed
         activities={activities}
-        onTaskClick={handleOpenTask}
-        taskProjectMap={taskProjectMap}
+        onWorkItemClick={handleOpenWorkItem}
+        workItemProjectMap={workItemProjectMap}
       />
 
-      {/* Task detail dialog */}
-      <TaskModalHost selectedTask={selectedTask} onClose={handleCloseTask} />
+      {/* Work item detail dialog */}
+      <WorkItemModalHost selectedWorkItem={selectedWorkItem} onClose={handleCloseWorkItem} />
     </div>
   );
 }

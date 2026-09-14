@@ -32,8 +32,8 @@ export function useRealtimeWorkItems({
         try {
           const payload = JSON.parse(event.data) as { projectId?: string };
           if (payload?.projectId === projectId) {
+            queryClient.invalidateQueries({ queryKey: ['work-items'] });
             queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
-            queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
           }
         } catch {
           // ignore non-json messages

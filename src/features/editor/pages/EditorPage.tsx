@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react';
 import { TooltipProvider } from "@/shared/components/ui";
 import { Skeleton } from "@/shared/components/ui";
-import { FileImage, AlertCircle, FileCode2, LayoutGrid } from 'lucide-react';
+import { FileImage, AlertCircle, FileCode2, LayoutGrid, X } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { editor } from 'monaco-editor';
 
@@ -13,7 +13,7 @@ import Setting from '../components/topbar/settings/Setting';
 import Tabs from '../components/editor/Tabs';
 
 import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { resolveFileUrl } from '@/features/editor/utils/editor.util';
+import { resolveFileUrl, EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useActiveDocument } from '@/features/editor/hooks/use-page';
 import type { AssetInfo } from '@/features/editor/store/page.store';
 import { cn } from "@/shared/lib/utils";
@@ -31,6 +31,9 @@ interface ResizeHandleProps {
   onKeyDown?: (e: React.KeyboardEvent) => void;
   isDragging?: boolean;
   label?: string;
+  valueNow?: number;
+  valueMin?: number;
+  valueMax?: number;
 }
 
 function ResizeHandle({
@@ -40,6 +43,9 @@ function ResizeHandle({
   onKeyDown,
   isDragging = false,
   label = "Resize pane",
+  valueNow,
+  valueMin,
+  valueMax,
 }: ResizeHandleProps) {
   return (
     <div
@@ -47,6 +53,9 @@ function ResizeHandle({
       tabIndex={0}
       aria-orientation="vertical"
       aria-label={label}
+      aria-valuenow={valueNow}
+      aria-valuemin={valueMin}
+      aria-valuemax={valueMax}
       onMouseDown={onMouseDown}
       onTouchStart={onTouchStart}
       onDoubleClick={onDoubleClick}
@@ -419,15 +428,62 @@ function EditorShell() {
     }
   }, [MIN_EDITOR_FLEX, MAX_EDITOR_FLEX, setEditorFlex, handleSplitterReset]);
 
-  const showEditor = layout !== 'viewer-only';
-  const showViewer = layout !== 'editor-only';
+  const [mobileTab, setMobileTab] = useState<'editor' | 'viewer'>('editor');
+
+  useEffect(() => {
+    return EditorEventBus.on('flux:toggle-sidebar', () => {
+      setActiveSidebarPanel((prev) => (prev ? null : 'Files'));
+    });
+  }, []);
+
+  const showEditor = isNarrowScreen
+    ? (layout === 'viewer-only' ? false : (layout === 'editor-only' ? true : mobileTab === 'editor'))
+    : layout !== 'viewer-only';
+
+  const showViewer = isNarrowScreen
+    ? (layout === 'editor-only' ? false : (layout === 'viewer-only' ? true : mobileTab === 'viewer'))
+    : layout !== 'editor-only';
+
   const showDivider = layout === 'split' && !isNarrowScreen;
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background">
+    <div className="flex flex-col h-dvh overflow-hidden bg-background">
       <Topbar />
+
+      {/* Mobile Tab Switcher for Split Layout */}
+      {isNarrowScreen && layout === 'split' && (
+        <div className="flex items-center justify-center p-1.5 bg-secondary/70 border-b border-border shrink-0 z-10">
+          <div className="flex items-center rounded-lg bg-muted p-0.5 text-xs font-medium">
+            <button
+              type="button"
+              onClick={() => setMobileTab('editor')}
+              className={cn(
+                "px-3 py-1 rounded-md transition-all cursor-pointer",
+                mobileTab === 'editor'
+                  ? "bg-background text-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              LaTeX Code
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab('viewer')}
+              className={cn(
+                "px-3 py-1 rounded-md transition-all cursor-pointer",
+                mobileTab === 'viewer'
+                  ? "bg-background text-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              PDF Preview
+            </button>
+          </div>
+        </div>
+      )}
+
       <div ref={containerRef} className="flex-1 flex overflow-hidden relative">
-        {/* Sidebar */}
+        {/* Desktop Sidebar */}
         <div
           style={{ width: isNarrowScreen ? '100%' : (isSidebarCollapsed ? 52 : localSidebarWidth) }}
           className={cn(
@@ -439,6 +495,33 @@ function EditorShell() {
           <SideBar activePanel={activeSidebarPanel} onActivePanelChange={setActiveSidebarPanel} />
         </div>
 
+        {/* Mobile Slide-over Drawer for Sidebar */}
+        {isNarrowScreen && activeSidebarPanel && (
+          <div className="fixed inset-0 z-50 flex animate-in fade-in duration-200">
+            <div
+              className="fixed inset-0 bg-background/80 backdrop-blur-xs"
+              onClick={() => setActiveSidebarPanel(null)}
+              aria-label="Close drawer"
+            />
+            <div className="relative z-10 w-[85vw] max-w-[340px] h-full bg-card border-r border-border shadow-2xl flex flex-col">
+              <div className="flex items-center justify-between px-3 h-11 border-b border-border shrink-0">
+                <span className="text-xs font-semibold text-foreground">Explorer & Tools</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveSidebarPanel(null)}
+                  aria-label="Close sidebar"
+                  className="p-1 rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
+                >
+                  <X className="size-4 shrink-0" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <SideBar activePanel={activeSidebarPanel} onActivePanelChange={setActiveSidebarPanel} />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Sidebar <-> Editor Splitter */}
         {!isNarrowScreen && !isSidebarCollapsed && (
           <ResizeHandle
@@ -447,6 +530,9 @@ function EditorShell() {
             onDoubleClick={handleSidebarReset}
             onKeyDown={handleSidebarKeyDown}
             isDragging={isDraggingSidebar}
+            valueNow={localSidebarWidth}
+            valueMin={MIN_SIDEBAR}
+            valueMax={MAX_SIDEBAR}
             label="Resize sidebar pane (Double-click to reset)"
           />
         )}
@@ -472,6 +558,9 @@ function EditorShell() {
             onDoubleClick={handleSplitterReset}
             onKeyDown={handleEditorViewerKeyDown}
             isDragging={isDraggingSplitter}
+            valueNow={Math.round(localEditorFlex * 100)}
+            valueMin={Math.round(MIN_EDITOR_FLEX * 100)}
+            valueMax={Math.round(MAX_EDITOR_FLEX * 100)}
             label="Resize editor and PDF preview panes (Double-click to reset 50/50)"
           />
         )}

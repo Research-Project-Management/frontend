@@ -70,7 +70,7 @@ export const TemplateService = {
     templateId: string,
     data?: { title?: string; overrides?: Record<string, unknown> },
   ) =>
-    apiPost<{ message: string; task: Item; item?: Item }>(
+    apiPost<{ message: string; workItem: Item; item?: Item }>(
       `/api/work-items/projects/${projectId}/templates/${templateId}/instantiate`,
       data || {},
     ),

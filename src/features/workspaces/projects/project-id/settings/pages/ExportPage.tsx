@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Download, FileText, Clock, FileDown, Layers } from 'lucide-react';
 import { Button } from "@/shared/components/ui";
 import { toast } from 'sonner';
+import TopBar from '../components/layout/TopBar';
 import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from '@/shared/lib/token-storage';
 
@@ -64,7 +65,7 @@ export default function ExportPage() {
           `- **Total Work Items**: ${totalItems}`,
           '',
           '## Cycles & Modules',
-          `- **Active Modules**: ${(p.modules || []).join(', ') || 'tasks'}`,
+          `- **Active Modules**: ${(p.modules || []).join(', ') || 'work-items'}`,
           `- **Default Duration**: ${p.settings?.cycles?.defaultDurationDays || 14} days`,
           '',
           '---',
@@ -88,88 +89,86 @@ export default function ExportPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-            Export & Reports
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Export project work items, progress milestone summaries, and raw dataset dossiers.
-          </p>
-        </div>
-      </div>
+    <div className="flex flex-col h-full w-full bg-background">
+      <TopBar
+        title="Export"
+        description="Export project work items, progress milestone summaries, and raw datasets"
+        Icon={Download}
+      />
 
-      {/* ── Project Reports & Work Items Export ── */}
-      <div className="rounded-md border border-border bg-card p-5 space-y-4">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <FileText className="size-4 text-foreground shrink-0" />
-            Project Reports & Work Items
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Download consolidated documents for university research committees and milestone audits.
-          </p>
-        </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
+          {/* ── Project Reports & Work Items Export ── */}
+          <div className="rounded-md border border-border bg-card p-5 space-y-4">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <FileText className="size-4 text-foreground shrink-0" />
+                Project Reports & Work Items
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Download consolidated documents for university research committees and milestone audits.
+              </p>
+            </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-          {[
-            {
-              id: 'progress',
-              title: 'Progress Milestone Report',
-              desc: 'Completed work items, research cycles progress, and deliverables.',
-              ext: 'md',
-              icon: Layers,
-            },
-            {
-              id: 'timesheet',
-              title: 'Contributor Effort Timesheet',
-              desc: 'Detailed log of hours contributed by each researcher and supervisor.',
-              ext: 'csv',
-              icon: Clock,
-            },
-            {
-              id: 'full-dossier',
-              title: 'Executive Research Dossier',
-              desc: 'Comprehensive project summary, methodology notes, and publications.',
-              ext: 'json',
-              icon: FileDown,
-            },
-          ].map((item) => {
-            const Icon = item.icon;
-            const isLoading = isExporting === item.id;
-            return (
-              <div
-                key={item.id}
-                className="flex flex-col justify-between p-4 rounded-md border border-border bg-background space-y-3"
-              >
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <Icon className="size-4 text-foreground shrink-0" />
-                    <span className="text-11 font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                      .{item.ext}
-                    </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              {[
+                {
+                  id: 'progress',
+                  title: 'Progress Milestone Report',
+                  desc: 'Completed work items, research cycles progress, and deliverables.',
+                  ext: 'md',
+                  icon: Layers,
+                },
+                {
+                  id: 'timesheet',
+                  title: 'Contributor Effort Timesheet',
+                  desc: 'Detailed log of hours contributed by each researcher and supervisor.',
+                  ext: 'csv',
+                  icon: Clock,
+                },
+                {
+                  id: 'full-dossier',
+                  title: 'Executive Research Dossier',
+                  desc: 'Comprehensive project summary, methodology notes, and publications.',
+                  ext: 'json',
+                  icon: FileDown,
+                },
+              ].map((item) => {
+                const Icon = item.icon;
+                const isLoading = isExporting === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    className="flex flex-col justify-between p-4 rounded-md border border-border bg-background space-y-3"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Icon className="size-4 text-foreground shrink-0" />
+                        <span className="text-11 font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                          .{item.ext}
+                        </span>
+                      </div>
+                      <h3 className="text-13 font-semibold text-foreground">{item.title}</h3>
+                      <p className="text-11 text-muted-foreground leading-relaxed">
+                        {item.desc}
+                      </p>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleExportReport(item.id, item.ext)}
+                      disabled={isLoading}
+                      className="w-full h-8 text-xs font-medium cursor-pointer rounded-md hover:bg-muted"
+                    >
+                      <Download className="mr-1.5 size-3.5 shrink-0" />
+                      {isLoading ? 'Exporting...' : 'Export'}
+                    </Button>
                   </div>
-                  <h3 className="text-13 font-semibold text-foreground">{item.title}</h3>
-                  <p className="text-11 text-muted-foreground leading-relaxed">
-                    {item.desc}
-                  </p>
-                </div>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleExportReport(item.id, item.ext)}
-                  disabled={isLoading}
-                  className="w-full h-8 text-xs font-medium cursor-pointer"
-                >
-                  <Download className="mr-1.5 size-3.5 shrink-0" />
-                  {isLoading ? 'Exporting...' : 'Export'}
-                </Button>
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </div>

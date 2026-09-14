@@ -9,7 +9,7 @@ export const sourceItemSchema = z.object({
   year: z.number().optional(),
 });
 
-export const taskItemSchema = z.object({
+export const workItemItemSchema = z.object({
   id: z.string().optional(),
   title: z.string(),
   priority: z.string().optional(),
@@ -26,8 +26,8 @@ export const taskItemSchema = z.object({
     .optional(),
 });
 
-export const taskOverviewWidgetSchema = z.object({
-  type: z.literal('task_overview'),
+export const workItemOverviewWidgetSchema = z.object({
+  type: z.literal('work_item_overview'),
   title: z.string(),
   subtitle: z.string().optional(),
   total: z.number(),
@@ -37,7 +37,7 @@ export const taskOverviewWidgetSchema = z.object({
   groups: z.array(
     z.object({
       label: z.string(),
-      tasks: z.array(taskItemSchema),
+      workItems: z.array(workItemItemSchema),
     }),
   ),
 });
@@ -55,7 +55,7 @@ export const metricSummaryWidgetSchema = z.object({
 });
 
 export const responseWidgetSchema = z.discriminatedUnion('type', [
-  taskOverviewWidgetSchema,
+  workItemOverviewWidgetSchema,
   metricSummaryWidgetSchema,
 ]);
 
@@ -124,5 +124,5 @@ export const agentIdSchema = z.enum([
   'latex',
   'web_search',
   'chat',
-  'task',
+  'work_item',
 ]);

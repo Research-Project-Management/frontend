@@ -76,47 +76,47 @@ export function TrashModal({
   return (
     <Dialog open={open} onOpenChange={loading ? undefined : onOpenChange}>
       <DialogContent
-        className="max-w-[520px] p-6 !rounded-md"
+        className="max-w-[480px] p-5 rounded-md border border-border bg-background shadow-none"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
-        <DialogHeader className="flex flex-row items-start gap-4 space-y-0 text-left">
+        <DialogHeader className="flex flex-row items-start gap-3.5 space-y-0 text-left">
           <div
             className={cn(
-              'mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
+              'mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full',
               isRed
                 ? 'bg-destructive/10 text-destructive'
                 : 'bg-primary/10 text-primary'
             )}
           >
-            <Trash2 className="h-5 w-5 shrink-0" />
+            <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
           </div>
 
           <div className="min-w-0 flex-1">
-            <DialogTitle className="text-base font-semibold text-foreground">
+            <DialogTitle className="text-14 font-medium text-foreground">
               Move to trash
             </DialogTitle>
             {description && (
-              <DialogDescription className="mt-1 text-sm text-muted-foreground leading-relaxed">
+              <DialogDescription className="mt-1 text-12 text-muted-foreground leading-normal">
                 {description}
               </DialogDescription>
             )}
 
             {/* Single item title preview */}
             {!isMultiple && !isCollection && target.title && (
-              <div className="mt-3 px-3 py-2 rounded-md bg-muted border border-border text-xs text-foreground truncate font-normal leading-relaxed">
+              <div className="mt-2.5 px-2.5 py-1.5 rounded-md bg-muted border border-border text-12 text-foreground truncate font-normal leading-normal">
                 {target.title}
               </div>
             )}
           </div>
         </DialogHeader>
 
-        <DialogFooter className="mt-6 flex w-full flex-row items-center justify-end gap-2 sm:justify-end">
+        <DialogFooter className="mt-5 flex w-full flex-row items-center justify-end gap-2 sm:justify-end">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={loading}
-            className="cursor-pointer !rounded-md"
+            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md hover:bg-muted"
           >
             Cancel
           </Button>
@@ -125,7 +125,7 @@ export function TrashModal({
             onClick={handleConfirm}
             disabled={loading}
             className={cn(
-              'cursor-pointer shadow-none !rounded-md',
+              'h-8 px-3 text-12 font-medium cursor-pointer shadow-none rounded-md',
               isRed
                 ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
                 : 'bg-primary text-primary-foreground hover:bg-primary-hover'

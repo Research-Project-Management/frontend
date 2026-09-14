@@ -18,7 +18,6 @@ export const useCycles = (projectId: string) =>
     enabled: Boolean(projectId),
   });
 
-export const useTaskCycles = useCycles;
 export const useWorkItemCycles = useCycles;
 
 export const useTransferItems = (projectId: string) => {
@@ -75,12 +74,10 @@ export const useTransferItems = (projectId: string) => {
 
   return {
     transferItems,
-    transferTasks: transferItems,
     isPending: mutation.isPending,
   };
 };
 
-export const useTransferTasks = useTransferItems;
 export const useTransferWorkItems = useTransferItems;
 
 export const useAddExistingItemsToCycle = (projectId: string, currentCycleId: string) => {
@@ -125,10 +122,8 @@ export const useAddExistingItemsToCycle = (projectId: string, currentCycleId: st
 
   return {
     addItems,
-    addTasks: addItems,
     isPending: mutation.isPending,
   };
 };
 
-export const useAddExistingTasksToCycle = useAddExistingItemsToCycle;
 export const useAddExistingWorkItemsToCycle = useAddExistingItemsToCycle;

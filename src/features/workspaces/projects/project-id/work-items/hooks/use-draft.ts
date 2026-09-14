@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { DraftService } from '../services/draft.service';
-import type { CreateTaskInput } from '../types/work-item.types';
+import type { CreateItemInput } from '../types/work-item.types';
 
 export const draftKeys = {
   all: ['drafts'] as const,
@@ -21,7 +21,7 @@ export const useDraftsQuery = (projectId?: string) =>
 export const useCreateDraftMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<CreateTaskInput> & { projectId: string }) =>
+    mutationFn: (data: Partial<CreateItemInput> & { projectId: string }) =>
       DraftService.createDraft(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['drafts'] });
@@ -34,7 +34,7 @@ export const useCreateDraftMutation = () => {
 export const useUpdateDraftMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CreateTaskInput> }) =>
+    mutationFn: ({ id, data }: { id: string; data: Partial<CreateItemInput> }) =>
       DraftService.updateDraft(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['drafts'] });
@@ -51,7 +51,6 @@ export const usePublishDraftMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['drafts'] });
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Draft published to project');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to publish draft'),

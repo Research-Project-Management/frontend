@@ -1,9 +1,10 @@
-import type { YourWorkTask } from '../schemas/your-work.schema';
-import { inferStateGroup, type StateGroup } from './workload.util';
+import type { YourWorkItem } from '../schemas/your-work.schema';
+import { inferStateGroup } from './workload.util';
 
 export interface ProjectInfo {
   id: string;
   name: string;
+  avatar?: string | null;
 }
 
 export type ProjectMap = Record<string, ProjectInfo>;
@@ -12,65 +13,64 @@ export type ProjectMap = Record<string, ProjectInfo>;
  * Creates a lookup map from project ID to project metadata.
  */
 export function createProjectMap(
-  projects: Array<{ id: string; name: string }>,
+  projects: Array<{ id: string; name: string; avatar?: string | null }>,
 ): ProjectMap {
   const map: ProjectMap = {};
   projects.forEach((p) => {
     const pid = p.id;
     if (pid) {
-      map[pid] = { id: pid, name: p.name };
+      map[pid] = { id: pid, name: p.name, avatar: p.avatar || null };
     }
   });
   return map;
 }
 
-// Backward compatibility alias
-export const createTaskProjectMap = createProjectMap;
-
 /**
- * Safely extracts the project ID from a task or activity event.
+ * Safely extracts the project ID from a work item or activity event.
  */
-export function getTaskProjectId(task: any): string | null {
-  if (!task) return null;
-  if (typeof task.projectId === 'string' && task.projectId.trim().length > 0) {
-    return task.projectId;
+export function getWorkItemProjectId(workItem: any): string | null {
+  if (!workItem) return null;
+  if (typeof workItem.projectId === 'string' && workItem.projectId.trim().length > 0) {
+    return workItem.projectId;
   }
-  if (typeof task.projectId === 'object' && task.projectId !== null) {
-    const projectId = task.projectId.id;
+  if (typeof workItem.projectId === 'object' && workItem.projectId !== null) {
+    const projectId = workItem.projectId.id;
     if (projectId) return projectId;
   }
-  if (task.project) {
-    if (typeof task.project === 'string') return task.project;
-    const projectId = task.project.id;
+  if (workItem.project) {
+    if (typeof workItem.project === 'string') return workItem.project;
+    const projectId = workItem.project.id;
     if (projectId) return projectId;
   }
   return null;
 }
 
 /**
- * Resolves project name/info for a task using embedded task metadata or the workspace project map.
+ * Resolves project name/info for a work item using embedded metadata or the workspace project map.
  */
-export function getTaskProject(task: any, projectMap: ProjectMap = {}): ProjectInfo | null {
-  if (!task) return null;
+export function getWorkItemProject(workItem: any, projectMap: ProjectMap = {}): ProjectInfo | null {
+  if (!workItem) return null;
 
   // 1. Direct embedded project object with name
-  if (task.project && typeof task.project === 'object' && task.project.name) {
+  if (workItem.project && typeof workItem.project === 'object' && workItem.project.name) {
     return {
-      id: task.project.id || '',
-      name: task.project.name,
+      id: workItem.project.id || '',
+      name: workItem.project.name,
+      avatar: workItem.project.avatar || null,
     };
   }
 
   // 2. Embedded projectId object with name
-  if (task.projectId && typeof task.projectId === 'object' && task.projectId.name) {
+  if (workItem.projectId && typeof workItem.projectId === 'object' && workItem.projectId.name) {
     return {
-      id: task.projectId.id || '',
-      name: task.projectId.name,
+      id: workItem.projectId.id || '',
+      name: workItem.projectId.name,
+      avatar: (workItem.projectId as any).avatar || null,
     };
   }
 
   // 3. Lookup in projectMap by extracted projectId
-  const projectId = getTaskProjectId(task);
+  const projectId = getWorkItemProjectId(workItem);
   if (projectId && projectMap[projectId]) {
     return projectMap[projectId];
   }
@@ -78,10 +78,10 @@ export function getTaskProject(task: any, projectMap: ProjectMap = {}): ProjectI
   return null;
 }
 
-export interface CategorizedTasksResult {
-  assigned: YourWorkTask[];
-  created: YourWorkTask[];
-  subscribed: YourWorkTask[];
+export interface CategorizedWorkItemsResult {
+  assigned: YourWorkItem[];
+  created: YourWorkItem[];
+  subscribed: YourWorkItem[];
   statusBreakdown: Record<string, number>;
   priorityBreakdown: Record<string, number>;
 }
@@ -93,10 +93,8 @@ export function getDefaultStatusBreakdown(): Record<string, number> {
     started: 0,
     completed: 0,
     cancelled: 0,
-    // backwards-compatibility aliases
     todo: 0,
-    doing: 0,
-    review: 0,
+    in_progress: 0,
     done: 0,
   };
 }
@@ -111,9 +109,9 @@ export function getDefaultPriorityBreakdown(): Record<string, number> {
   };
 }
 
-export function calculateStatusBreakdown(tasks: any[] = []): Record<string, number> {
+export function calculateStatusBreakdown(workItems: any[] = []): Record<string, number> {
   const breakdown = getDefaultStatusBreakdown();
-  tasks.forEach((t) => {
+  workItems.forEach((t) => {
     const rawCol = (t.columnId || 'todo').toLowerCase();
     const group = inferStateGroup(rawCol, rawCol);
     breakdown[group] = (breakdown[group] || 0) + 1;
@@ -122,9 +120,9 @@ export function calculateStatusBreakdown(tasks: any[] = []): Record<string, numb
   return breakdown;
 }
 
-export function calculatePriorityBreakdown(tasks: any[] = []): Record<string, number> {
+export function calculatePriorityBreakdown(workItems: any[] = []): Record<string, number> {
   const breakdown = getDefaultPriorityBreakdown();
-  tasks.forEach((t) => {
+  workItems.forEach((t) => {
     const prio = (t.priority || 'none').toLowerCase();
     breakdown[prio] = (breakdown[prio] || 0) + 1;
   });
@@ -132,13 +130,13 @@ export function calculatePriorityBreakdown(tasks: any[] = []): Record<string, nu
 }
 
 /**
- * Categorizes a list of workspace tasks for a specific user into assigned, created, and subscribed,
+ * Categorizes a list of workspace work items for a specific user into assigned, created, and subscribed,
  * alongside calculating status and priority distributions.
  */
-export function categorizeTasks(
-  tasks: any[] = [],
+export function categorizeWorkItems(
+  workItems: any[] = [],
   currentUserId?: string | null,
-): CategorizedTasksResult {
+): CategorizedWorkItemsResult {
   const statusBreakdown = getDefaultStatusBreakdown();
   const priorityBreakdown = getDefaultPriorityBreakdown();
 
@@ -152,11 +150,11 @@ export function categorizeTasks(
     };
   }
 
-  const assigned: YourWorkTask[] = [];
-  const created: YourWorkTask[] = [];
-  const subscribed: YourWorkTask[] = [];
+  const assigned: YourWorkItem[] = [];
+  const created: YourWorkItem[] = [];
+  const subscribed: YourWorkItem[] = [];
 
-  tasks.forEach((t) => {
+  workItems.forEach((t) => {
     const assigneeId =
       typeof t.assignee === 'object' && t.assignee !== null
         ? t.assignee?.id
@@ -199,3 +197,6 @@ export function categorizeTasks(
     priorityBreakdown,
   };
 }
+
+
+

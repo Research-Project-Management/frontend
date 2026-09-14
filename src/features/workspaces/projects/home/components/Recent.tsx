@@ -90,7 +90,7 @@ export default function Recent() {
 
                 <div className="flex items-center -space-x-1 shrink-0 ml-auto">
                   {(Array.isArray(item.users) ? item.users : (item.updatedBy ? [item.updatedBy] : [])).slice(0, 2).map((user: RecentItemUser, i: number) => (
-                    <Avatar key={user.id || i} className="size-5 rounded-full border border-background">
+                    <Avatar key={user.id || i} className="size-5 rounded-full border border-background shrink-0">
                       <AvatarImage src={user.avatar || user.image || undefined} />
                       <AvatarFallback className="bg-muted text-9 font-medium text-foreground">
                         {((user.name || user.email || 'U') as string).substring(0, 1).toUpperCase()}

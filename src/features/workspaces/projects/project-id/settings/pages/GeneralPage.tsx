@@ -2,7 +2,9 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
+import { Settings } from 'lucide-react';
 import { Skeleton } from "@/shared/components/ui";
+import TopBar from '../components/layout/TopBar';
 import { GeneralBanner } from '../components/general/Banner';
 import { GeneralDetails } from '../components/general/Details';
 import { GeneralDanger } from '../components/general/Danger';
@@ -46,63 +48,89 @@ export default function GeneralPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
-        <Skeleton className="h-48 w-full rounded-md" />
-        <Skeleton className="h-10 w-full rounded-md" />
-        <Skeleton className="h-28 w-full rounded-md" />
-        <Skeleton className="h-10 w-full rounded-md" />
+      <div className="flex flex-col h-full w-full bg-background">
+        <TopBar
+          title="General"
+          description="Basic project details, identifier and visual cover"
+          Icon={Settings}
+        />
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
+            <Skeleton className="h-44 w-full rounded-md" />
+            <Skeleton className="h-10 w-full rounded-md" />
+            <Skeleton className="h-28 w-full rounded-md" />
+            <Skeleton className="h-10 w-full rounded-md" />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (isError || !project) {
     return (
-      <div className="max-w-5xl mx-auto p-6 md:p-8 text-sm text-muted-foreground">
-        Error loading project details.
+      <div className="flex flex-col h-full w-full bg-background">
+        <TopBar
+          title="General"
+          description="Basic project details, identifier and visual cover"
+          Icon={Settings}
+        />
+        <div className="flex-1 p-5 md:p-6 text-sm text-muted-foreground">
+          Error loading project details.
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
-      {/* ── Visual Banner & Icon (Image 1) ── */}
-      <GeneralBanner
-        name={name}
-        identifier={identifier}
-        isPrivate={isPrivate}
-        avatar={avatar}
-        cover={cover}
-        isUploading={isUploading}
-        onSelectAvatar={handleSelectAvatar}
-        onSelectCover={handleSelectCover}
-        onUploadCustomCover={handleUploadCustomCover}
+    <div className="flex flex-col h-full w-full bg-background">
+      <TopBar
+        title="General"
+        description="Basic project details, identifier and visual cover"
+        Icon={Settings}
       />
 
-      {/* ── Core Details Form & Update Action (Image 1 & 2) ── */}
-      <GeneralDetails
-        name={name}
-        identifier={identifier}
-        description={description}
-        isPrivate={isPrivate}
-        createdAt={createdAt}
-        isSaving={isSaving}
-        hasChanges={hasChanges}
-        errors={errors}
-        onNameChange={setName}
-        onIdentifierChange={setIdentifier}
-        onDescriptionChange={setDescription}
-        onPrivateChange={setIsPrivate}
-        onSubmit={save}
-      />
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
+          {/* ── Visual Banner & Icon ── */}
+          <GeneralBanner
+            name={name}
+            identifier={identifier}
+            isPrivate={isPrivate}
+            avatar={avatar}
+            cover={cover}
+            isUploading={isUploading}
+            onSelectAvatar={handleSelectAvatar}
+            onSelectCover={handleSelectCover}
+            onUploadCustomCover={handleUploadCustomCover}
+          />
 
-      {/* ── Danger Zone: Archive & Delete (Image 2) ── */}
-      <GeneralDanger
-        projectName={project.name || name}
-        isArchived={isArchived}
-        onToggleArchive={toggleArchive}
-        onDeleteProject={deleteProj}
-        isDeleting={isDeleting}
-      />
+          {/* ── Core Details Form & Update Action ── */}
+          <GeneralDetails
+            name={name}
+            identifier={identifier}
+            description={description}
+            isPrivate={isPrivate}
+            createdAt={createdAt}
+            isSaving={isSaving}
+            hasChanges={hasChanges}
+            errors={errors}
+            onNameChange={setName}
+            onIdentifierChange={setIdentifier}
+            onDescriptionChange={setDescription}
+            onPrivateChange={setIsPrivate}
+            onSubmit={save}
+          />
+
+          {/* ── Danger Zone: Archive & Delete ── */}
+          <GeneralDanger
+            projectName={project.name || name}
+            isArchived={isArchived}
+            onToggleArchive={toggleArchive}
+            onDeleteProject={deleteProj}
+            isDeleting={isDeleting}
+          />
+        </div>
+      </div>
     </div>
   );
 }

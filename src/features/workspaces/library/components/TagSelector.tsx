@@ -365,7 +365,7 @@ export function TagFilterPopover({
                           ? "bg-foreground border-foreground text-background"
                           : "border-border bg-background"
                       )}>
-                        {isActive && <Check className="size-2.5 text-background stroke-[2.5]" />}
+                        {isActive && <Check className="size-2.5 text-background stroke-[1.75] shrink-0" />}
                       </div>
                       <span className="truncate tracking-tight">{tag.name}</span>
                     </div>
@@ -385,7 +385,7 @@ export function TagFilterPopover({
           {/* 5. Advanced Options Collapsible */}
           {isAdvancedOpen && (
             <div className="p-3 space-y-2.5 border-t border-border bg-muted/20 text-12 select-none">
-              <div className="text-10 font-semibold text-muted-foreground uppercase tracking-wider">
+              <div className="text-11 font-medium text-muted-foreground tracking-tight">
                 Advanced options
               </div>
 

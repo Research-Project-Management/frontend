@@ -58,26 +58,26 @@ export function MergeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto bg-background border border-border shadow-none rounded-lg">
+      <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto bg-background border border-border shadow-none rounded-md p-5 font-sans">
         <DialogHeader>
           <div className="flex items-center gap-2 text-foreground">
-            <Files className="size-5 text-foreground shrink-0" />
-            <DialogTitle className="text-base font-medium text-foreground">Merge Duplicate Papers</DialogTitle>
+            <Files className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+            <DialogTitle className="text-14 font-medium text-foreground">Merge Duplicate Papers</DialogTitle>
           </div>
-          <DialogDescription className="text-xs text-muted-foreground">
+          <DialogDescription className="text-12 text-muted-foreground leading-relaxed">
             Select the primary master paper to keep. All notes, attachments, and metadata from other records will be merged into this paper, and duplicate entries will be cleaned up.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <Label className="text-xs font-medium text-muted-foreground">
+        <div className="space-y-3 py-2">
+          <Label className="text-11 font-medium text-muted-foreground">
             Select Primary (Master) Record:
           </Label>
 
           <RadioGroup
             value={selectedMasterId || duplicates[0]?.id}
             onValueChange={setSelectedMasterId}
-            className="space-y-2.5"
+            className="space-y-2"
           >
             {duplicates.map((paper) => {
               const isSelected = (selectedMasterId || duplicates[0]?.id) === paper.id;
@@ -88,7 +88,7 @@ export function MergeModal({
                   className={`flex items-start gap-3 p-3 rounded-md border transition-colors cursor-pointer ${
                     isSelected
                       ? 'border-border bg-muted shadow-none'
-                      : 'border-border hover:border-border hover:bg-muted'
+                      : 'border-border hover:border-border hover:bg-muted/50'
                   }`}
                 >
                   <RadioGroupItem value={paper.id} id={`paper-${paper.id}`} className="mt-0.5" />
@@ -96,24 +96,24 @@ export function MergeModal({
                     <div className="flex items-center justify-between gap-2">
                       <Label
                         htmlFor={`paper-${paper.id}`}
-                        className="font-medium text-xs text-foreground cursor-pointer line-clamp-2"
+                        className="font-medium text-12 text-foreground cursor-pointer line-clamp-2"
                       >
                         {paper.title || 'Untitled Item'}
                       </Label>
                       {isSelected && (
-                        <Badge variant="secondary" className="text-xs h-5 px-2 shrink-0 font-medium rounded-sm">
+                        <Badge variant="secondary" className="text-10 h-5 px-1.5 shrink-0 font-medium rounded-sm">
                           Master
                         </Badge>
                       )}
                     </div>
 
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className="text-11 text-muted-foreground truncate">
                       {Array.isArray(paper.authors) ? paper.authors.join(', ') : 'Unknown Authors'}
                       {paper.year ? ` (${paper.year})` : ''}
                     </p>
 
                     {paper.doi && (
-                      <p className="text-xs text-muted-foreground font-mono truncate">
+                      <p className="text-11 text-muted-foreground font-mono truncate">
                         DOI: {paper.doi}
                       </p>
                     )}
@@ -124,13 +124,13 @@ export function MergeModal({
           </RadioGroup>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="gap-2 sm:justify-end pt-2">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isMerging}
-            className="text-foreground rounded-md border-border"
+            className="h-8 px-3 text-12 font-medium text-foreground rounded-md border-border"
           >
             Cancel
           </Button>
@@ -138,12 +138,12 @@ export function MergeModal({
             type="button"
             onClick={handleConfirmMerge}
             disabled={isMerging || !masterPaper}
-            className="gap-1.5 rounded-md"
+            className="h-8 px-3 text-12 font-medium gap-1.5 rounded-md"
           >
             {isMerging ? (
-              <Loader2 className="size-4 animate-spin text-background shrink-0" />
+              <Loader2 className="size-3.5 animate-spin text-background shrink-0" />
             ) : (
-              <Check className="size-4 text-background shrink-0" />
+              <Check className="size-3.5 text-background shrink-0" />
             )}
             <span>{isMerging ? 'Merging...' : 'Confirm & Merge Records'}</span>
           </Button>

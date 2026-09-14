@@ -11,15 +11,15 @@ export function useActivityFeed() {
   return {
     state: {
       workspaceId: source.workspaceId,
-      allTasks: source.allTasks,
+      allWorkItems: source.allWorkItems,
       activities: source.activities,
       count: source.activities.length,
-      taskProjectMap: source.taskProjectMap,
+      workItemProjectMap: source.workItemProjectMap,
       selectedProjectId: context?.selectedProjectId || null,
       selectedProject: context?.selectedProject || null,
       isLoading: source.isLoading,
       isLoadingActivity: source.isLoadingYourWork,
-      isLoadingTasks: source.isLoadingYourWork,
+      isLoadingWorkItems: source.isLoadingYourWork,
       isLoadingProjects: source.isLoadingProjects,
     },
     actions: {

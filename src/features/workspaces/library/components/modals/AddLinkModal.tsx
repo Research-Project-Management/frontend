@@ -75,8 +75,24 @@ export default function AddLinkModal({
     if (!trimmedUrl) return;
 
     const trimmedTitle = data.title?.trim();
-    const derivedName = trimmedUrl.split('/').pop()?.split('?')[0] || 'linked-document.pdf';
-    const finalFilename = derivedName.endsWith('.pdf') ? derivedName : `${derivedName}.pdf`;
+    let isPdf = false;
+    let derivedName = 'linked-document';
+    try {
+      const parsed = new URL(trimmedUrl);
+      const pathname = parsed.pathname;
+      const lastSeg = pathname.split('/').filter(Boolean).pop() || '';
+      if (lastSeg) derivedName = decodeURIComponent(lastSeg);
+      isPdf = pathname.toLowerCase().endsWith('.pdf') || pathname.toLowerCase().includes('/pdf/');
+    } catch {
+      const simpleName = trimmedUrl.split('/').pop()?.split('?')[0] || '';
+      if (simpleName) derivedName = simpleName;
+      isPdf = trimmedUrl.toLowerCase().includes('.pdf');
+    }
+
+    const mimeType = isPdf ? 'application/pdf' : 'text/html';
+    const finalFilename = isPdf
+      ? (derivedName.toLowerCase().endsWith('.pdf') ? derivedName : `${derivedName}.pdf`)
+      : (derivedName || 'webpage');
 
     try {
       await onSubmit({
@@ -84,7 +100,7 @@ export default function AddLinkModal({
         title: trimmedTitle || undefined,
         fileUrl: trimmedUrl,
         filename: finalFilename,
-        mimeType: 'application/pdf',
+        mimeType,
         size: 0,
       });
 
@@ -111,52 +127,52 @@ export default function AddLinkModal({
           <form onSubmit={handleSubmit(onValidSubmit)} className="space-y-4 pt-2">
             {/* Link Field */}
             <div className="space-y-1.5">
-              <Label htmlFor="link-url-input" className="text-sm font-medium text-foreground">
+              <Label htmlFor="link-url-input" className="text-11 font-medium text-muted-foreground">
                 Link
               </Label>
               <Input
                 id="link-url-input"
                 {...register('url')}
                 placeholder="https://..."
-                className="h-9 text-sm font-mono text-foreground rounded-md border-border"
+                className="h-8 text-12 font-mono text-foreground rounded-md border-border"
                 autoFocus
               />
               {errors.url && (
-                <p className="text-xs text-destructive font-medium">{errors.url.message}</p>
+                <p className="text-11 text-destructive font-medium">{errors.url.message}</p>
               )}
             </div>
 
             {/* Title Field */}
             <div className="space-y-1.5">
-              <Label htmlFor="link-title-input" className="text-sm font-medium text-foreground">
+              <Label htmlFor="link-title-input" className="text-11 font-medium text-muted-foreground">
                 Title
               </Label>
               <Input
                 id="link-title-input"
                 placeholder="(Optional)"
                 {...register('title')}
-                className="h-9 text-sm text-foreground rounded-md border-border"
+                className="h-8 text-12 text-foreground rounded-md border-border"
               />
             </div>
 
             {/* Footer */}
-            <DialogFooter className="flex justify-end gap-2 pt-4">
+            <DialogFooter className="flex justify-end gap-2 pt-3">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => handleOpenChange(false)}
                 disabled={isPending}
-                className="h-9 px-4 text-sm font-medium cursor-pointer text-foreground rounded-md"
+                className="h-8 px-3 text-12 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isPending}
-                className="h-9 px-4 text-sm font-medium cursor-pointer min-w-[80px] rounded-md"
+                className="h-8 px-3 text-12 font-medium cursor-pointer min-w-[70px] rounded-md"
               >
                 {isPending ? (
-                  <Loader2 className="size-4 animate-spin text-background shrink-0" />
+                  <Loader2 className="size-3.5 animate-spin text-primary-foreground shrink-0" />
                 ) : (
                   'Confirm'
                 )}

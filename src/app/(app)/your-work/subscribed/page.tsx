@@ -1,4 +1,4 @@
-import SubscribedPage from '@/features/workspaces/projects/your-work/pages/SubscribedPage';
+import SubscribedPage from '@/features/projects/your-work/pages/SubscribedPage';
 
 export default function Page() {
   return <SubscribedPage />;

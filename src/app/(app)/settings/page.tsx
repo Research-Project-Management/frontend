@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import ProfilePage from '@/features/workspaces/settings/pages/ProfilePage';
+import ProfilePage from '@/features/settings/pages/ProfilePage';
 
 export const metadata: Metadata = { title: 'Profile · Flux' };
 

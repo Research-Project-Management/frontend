@@ -12,9 +12,9 @@ import {
 import { Badge } from "@/shared/components/ui";
 import { BookOpen, FileText } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
-import type { Item } from '@/features/workspaces/library/types/library.types';
+import type { Item } from '@/features/library/types/library.types';
 import { formatCitationSnippet, formatItemAuthorSummary } from '../../utils/citation.util';
-import { generateCitationKey } from '@/features/workspaces/library/utils/bibtex.util';
+import { generateCitationKey } from '@/features/library/utils/bibtex.util';
 
 export type CitationStyle =
   | 'latex-cite'

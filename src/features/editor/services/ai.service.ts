@@ -30,6 +30,7 @@ function getHeaders(extra?: Record<string, string>): Record<string, string> {
 
 export interface StreamEditorChatOptions {
   chatId?: string | null;
+  pageId?: string | null;
   projectId?: string | null;
   documentIds?: string[] | null;
   filename?: string | null;
@@ -70,6 +71,7 @@ export async function* streamEditorChat(
     body: JSON.stringify({
       messages: aiMessages,
       chat_id: options?.chatId ?? null,
+      page_id: options?.pageId ?? null,
       project_id: options?.projectId ?? null,
       document_ids: options?.documentIds ?? null,
       filename: options?.filename ?? null,

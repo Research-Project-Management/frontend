@@ -17,8 +17,8 @@ import { Badge } from "@/shared/components/ui";
 import { usePageStore } from '@/features/editor/store/page.store';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useEditorCitations } from '@/features/editor/hooks/use-editor-citations';
-import { generateCitationKey } from '@/features/workspaces/library/utils/bibtex.util';
-import type { Item } from '@/features/workspaces/library/types/library.types';
+import { generateCitationKey } from '@/features/library/utils/bibtex.util';
+import type { Item } from '@/features/library/types/library.types';
 
 interface CitationTabProps {
   onClose?: () => void;

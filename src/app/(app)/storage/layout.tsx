@@ -1,13 +1,13 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import Sidebar from '@/features/workspaces/storage/components/layout/Sidebar';
+import Sidebar from '@/features/storage/components/layout/Sidebar';
 
-import { usePreviewStore } from '@/features/workspaces/storage/store/use-preview-store';
+import { usePreviewStore } from '@/features/storage/store/use-preview-store';
 import { cn } from "@/shared/lib/utils";
 
 const Preview = dynamic(
-  () => import('@/features/workspaces/storage/components/preview/Preview'),
+  () => import('@/features/storage/components/preview/Preview'),
   { ssr: false }
 );
 

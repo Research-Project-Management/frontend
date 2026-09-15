@@ -1,4 +1,4 @@
-import ActivityPage from '@/features/workspaces/projects/your-work/pages/ActivityPage';
+import ActivityPage from '@/features/projects/your-work/pages/ActivityPage';
 
 export default function Page() {
   return <ActivityPage />;

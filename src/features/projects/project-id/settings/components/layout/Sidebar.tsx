@@ -1,0 +1,157 @@
+'use client';
+
+import React from 'react';
+import Link from 'next/link';
+import { useParams, usePathname } from 'next/navigation';
+import {
+  ArrowLeft,
+  Settings,
+  Users,
+  LayoutGrid,
+  Sparkles,
+  Tag,
+  Layers,
+  Download,
+  SlidersHorizontal,
+  type LucideIcon,
+} from 'lucide-react';
+import { CycleIcon } from "@/shared/components/ui";
+import { useProjectDetails, useProjects } from '@/features/projects/shell/hooks/use-project';
+import { cn } from "@/shared/lib/utils";
+import { ScrollArea } from "@/shared/components/ui";
+import Switcher from './Switcher';
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+interface NavItem {
+  id: string;
+  label: string;
+  icon: LucideIcon | React.ComponentType<{ className?: string }>;
+  to: string;
+  exact?: boolean;
+  aliases?: string[];
+}
+
+interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+
+export default function Sidebar() {
+  const params = useParams<{ projectId: string }>();
+  const pathname = usePathname();
+  const projectId = params?.projectId || '';
+
+  const { data: projectData } = useProjectDetails(projectId);
+  const project = (projectData as any)?.project || projectData;
+  const { projects = [] } = useProjects();
+
+  const base = `/projects/${projectId}/settings`;
+
+  const navGroups: NavGroup[] = [
+    {
+      title: 'General',
+      items: [
+        { id: 'general', label: 'General', icon: Settings, to: base, exact: true },
+        { id: 'members', label: 'Members', icon: Users, to: `${base}/members` },
+        { id: 'modules', label: 'Modules', icon: LayoutGrid, to: `${base}/modules` },
+        { id: 'ai', label: 'AI Assistant', icon: Sparkles, to: `${base}/ai` },
+      ],
+    },
+    {
+      title: 'Workflow & Data',
+      items: [
+        { id: 'cycles', label: 'Cycles', icon: CycleIcon, to: `${base}/cycles` },
+        { id: 'states', label: 'States', icon: Layers, to: `${base}/states` },
+        { id: 'labels', label: 'Labels', icon: Tag, to: `${base}/labels` },
+        { id: 'views', label: 'Views', icon: SlidersHorizontal, to: `${base}/views` },
+        { id: 'export', label: 'Export', icon: Download, to: `${base}/export` },
+      ],
+    },
+  ];
+
+  const isItemActive = (item: NavItem) => {
+    if (item.exact) return pathname === item.to || pathname === `${item.to}/general`;
+    return (
+      pathname === item.to ||
+      pathname.startsWith(`${item.to}/`) ||
+      (item.aliases?.some((a) => pathname.startsWith(a)) ?? false)
+    );
+  };
+
+  return (
+    <aside className="h-full w-60 shrink-0 border-r border-border bg-transparent select-none max-md:w-full max-md:border-r-0 max-md:border-b">
+      <ScrollArea type="scroll" scrollHideDelay={600} className="h-full w-full">
+        <div className="w-full p-2.5 py-4">
+          {/* Back to Project */}
+          <div className="mb-2.5 px-1">
+            <Link
+              href={`/projects/${projectId}/work-items`}
+              className="group flex h-8 w-full items-center gap-2 rounded-md px-2 text-13 leading-5 font-normal text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+            >
+              <ArrowLeft className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-transform group-hover:-translate-x-0.5" />
+              <span className="tracking-tight font-medium">Back to project</span>
+            </Link>
+          </div>
+
+          {/* Project Switcher */}
+          <Switcher
+            currentProject={project}
+            projects={projects}
+            currentProjectId={projectId}
+          />
+
+          {/* Nav groups */}
+          <div className="mt-4 flex flex-col gap-4">
+            {navGroups.map((group) => (
+              <GroupSection key={group.title} group={group} isItemActive={isItemActive} />
+            ))}
+          </div>
+        </div>
+      </ScrollArea>
+    </aside>
+  );
+}
+
+// ── GroupSection ──────────────────────────────────────────────────────────────
+
+function GroupSection({
+  group,
+  isItemActive,
+}: {
+  group: NavGroup;
+  isItemActive: (item: NavItem) => boolean;
+}) {
+  return (
+    <div>
+      <div className="px-2 pb-1.5 pt-0.5 text-11 font-medium text-muted-foreground select-none">
+        {group.title}
+      </div>
+      <nav className="flex flex-col gap-0.5">
+        {group.items.map((item) => {
+          const active = isItemActive(item);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.id}
+              href={item.to}
+              className={cn(
+                'group flex h-8 items-center gap-2 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none shrink-0',
+                active
+                  ? 'bg-muted text-foreground font-medium'
+                  : 'text-foreground hover:bg-muted font-normal'
+              )}
+            >
+              <Icon
+                className="size-4 shrink-0 text-foreground"
+              />
+              <span className="min-w-0 truncate tracking-tight">{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import RecentlyReadPage from '@/features/workspaces/library/pages/RecentlyReadPage';
+import RecentlyReadPage from '@/features/library/pages/RecentlyReadPage';
 
 export const metadata: Metadata = { title: 'Recently Read · Library · Flux' };
 

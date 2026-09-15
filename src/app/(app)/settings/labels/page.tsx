@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import LabelsPage from '@/features/workspaces/settings/pages/LabelsPage';
+import LabelsPage from '@/features/settings/pages/LabelsPage';
 
 export const metadata: Metadata = { title: 'Labels · Settings · Flux' };
 

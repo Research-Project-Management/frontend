@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo, useCallback } from 'react';
-import { useViewItems } from '@/features/workspaces/library/hooks/use-items';
-import type { Item } from '@/features/workspaces/library/types/library.types';
+import { useViewItems } from '@/features/library/hooks/use-items';
+import type { Item } from '@/features/library/types/library.types';
 import {
   extractCitationKeys,
   formatCitationSnippet,

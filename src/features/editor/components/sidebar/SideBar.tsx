@@ -5,6 +5,7 @@ import {
   MessageSquareQuote,
   Search,
   BookMarked,
+  ListTree,
 } from "lucide-react";
 import React, { useEffect, useState, useCallback } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
@@ -12,6 +13,7 @@ import { cn } from "@/shared/lib/utils";
 
 import SearchTab from "./search/SearchTab";
 import FilesTab from "./explorer/FilesTab";
+import OutlineTab from "./outline/OutlineTab";
 import AiTab from "./ai/AiTab";
 import ReviewTab from "./review/ReviewTab";
 import HistoryTab from "./history/HistoryTab";
@@ -21,6 +23,7 @@ import { logger } from "@/shared/lib/utils";
 
 const sideBarItems = [
   { name: "Files", icon: FileText },
+  { name: "Outline", icon: ListTree },
   { name: "Search", icon: Search },
   { name: "Citations", icon: BookMarked },
   { name: "Review", icon: MessageSquareQuote },
@@ -32,6 +35,7 @@ export type SidebarTab = (typeof sideBarItems)[number]["name"];
 
 function PanelContent({ tab, onClose }: { tab: SidebarTab; onClose: () => void }) {
   if (tab === "Files") return <FilesTab onClose={onClose} />;
+  if (tab === "Outline") return <OutlineTab onClose={onClose} />;
   if (tab === "Search") return <SearchTab onClose={onClose} />;
   if (tab === "Citations") return <CitationTab onClose={onClose} />;
   if (tab === "AI") return <AiTab onClose={onClose} />;

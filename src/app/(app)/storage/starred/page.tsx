@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import StarredPage from '@/features/workspaces/storage/pages/StarredPage';
+import StarredPage from '@/features/storage/pages/StarredPage';
 
 export const metadata: Metadata = { title: 'Starred · Storage · Flux' };
 

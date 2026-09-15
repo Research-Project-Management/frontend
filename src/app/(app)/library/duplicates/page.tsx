@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import DuplicatesPage from '@/features/workspaces/library/pages/DuplicatesPage';
+import DuplicatesPage from '@/features/library/pages/DuplicatesPage';
 
 export const metadata: Metadata = { title: 'Duplicate Items · Library · Flux' };
 

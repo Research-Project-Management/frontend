@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { UserStar } from 'lucide-react';
-import YourWorkNavigationBar from '@/features/workspaces/projects/your-work/components/layout/NavigationBar';
-import ProfileSidebar from '@/features/workspaces/projects/your-work/components/profile/ProfileSidebar';
-import { YourWorkProvider } from '@/features/workspaces/projects/your-work/context/your-work.context';
-import { useSummaryWork } from '@/features/workspaces/projects/your-work/hooks/use-summary-work';
+import YourWorkNavigationBar from '@/features/projects/your-work/components/layout/NavigationBar';
+import ProfileSidebar from '@/features/projects/your-work/components/profile/ProfileSidebar';
+import { YourWorkProvider } from '@/features/projects/your-work/context/your-work.context';
+import { useSummaryWork } from '@/features/projects/your-work/hooks/use-summary-work';
 
 function YourWorkLayoutContent({ children }: { children: React.ReactNode }) {
   const { state, actions } = useSummaryWork();
@@ -62,7 +62,7 @@ function YourWorkLayoutContent({ children }: { children: React.ReactNode }) {
   );
 }
 
-import ProjectLayout from '@/features/workspaces/projects/shell/components/ProjectLayout';
+import ProjectLayout from '@/features/projects/shell/components/ProjectLayout';
 
 export default function YourWorkLayout({ children }: { children: React.ReactNode }) {
   return (

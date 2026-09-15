@@ -1,15 +1,18 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
+  FileText,
   Loader2,
   Terminal,
 } from 'lucide-react';
 import type { CompileStatus } from '@/features/editor/store/compile.store';
 import type { ParsedLog } from './Logs';
+import { fetchWordCount } from '@/features/editor/services/document.service';
+import { usePageStore } from '@/features/editor/store/page.store';
 
 export interface StatusProps {
   compileStatus: CompileStatus;
@@ -26,6 +29,23 @@ export default function Status({
   parsedLog,
   onToggleLog,
 }: StatusProps) {
+  const { getEditorContent } = usePageStore();
+  const [wordCount, setWordCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (compileStatus === 'done') {
+      const src = getEditorContent.current?.();
+      if (src && src.trim().length > 0) {
+        fetchWordCount(src)
+          .then((res) => {
+            if (res.success && res.stats) {
+              setWordCount(res.stats.wordsInText);
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, [compileStatus, getEditorContent]);
   return (
     <div className="flex items-center justify-between px-3 py-1 border-t border-border bg-secondary text-xs text-muted-foreground shrink-0">
       <div
@@ -86,7 +106,16 @@ export default function Status({
           </button>
         )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
+        {wordCount !== null && (
+          <span
+            className="flex items-center gap-1 text-muted-foreground"
+            title="Academic words in text (Overleaf texcount parity)"
+          >
+            <FileText className="size-3 shrink-0" />
+            {wordCount.toLocaleString()} words
+          </span>
+        )}
         {pdfUrl && compileStatus !== 'compiling' && (
           <span className="text-success font-medium">PDF ready</span>
         )}

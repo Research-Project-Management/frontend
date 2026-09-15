@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { InviteAcceptPage } from '@/features/workspaces/projects/invitation/pages/InviteAcceptPage';
+import { InviteAcceptPage } from '@/features/projects/invitation/pages/InviteAcceptPage';
 
 export const metadata: Metadata = {
   title: 'Project Invitation · Flux',

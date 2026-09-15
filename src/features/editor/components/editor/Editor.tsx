@@ -36,9 +36,10 @@ import {
   Circle,
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import { usePageActions } from '@/features/editor/hooks/use-page';
+import { useQuery } from "@tanstack/react-query";
+import { filesQuery, usePageActions } from '@/features/editor/hooks/use-page';
 import { usePageComments } from '@/features/editor/services/comment.service';
-import { ItemService } from '@/features/workspaces/library/services/item.service';
+import { ItemService } from '@/features/library/services/items.service';
 import type { Page, PageComment } from "@/features/editor/types/document.types";
 import { useActionsStore } from '@/features/editor/store/actions.store';
 import { useDebounce } from "@/shared/hooks";
@@ -50,12 +51,13 @@ import { EditorEventBus } from "@/features/editor/utils/editor.util";
 const FluxIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
 );
-import { generateCitationKey } from '@/features/workspaces/library/utils/library.util';
+import { generateCitationKey } from '@/features/library/utils/library.util';
 import Format from "./Format";
 import CitationPickerModal from "./CitationPickerModal";
 import { registerCitationCompletion } from "./citation-completion.provider";
-import { useViewItems } from '@/features/workspaces/library/hooks/use-items';
-import type { Item } from '@/features/workspaces/library/types/library.types';
+import { registerLabelCompletion } from "./label-completion.provider";
+import { useViewItems } from '@/features/library/hooks/use-items';
+import type { Item } from '@/features/library/types/library.types';
 
 // Register LaTeX language and custom theme before Monaco loads
 if (typeof window !== 'undefined') {
@@ -180,7 +182,8 @@ const extractStringContent = (c: any): string =>
 export default function Editor({ page }: EditorProps) {
   const { editorRef, compileRef, scrollToLineRef, scrollToPdfLineRef, isAiPreviewingRef } =
     usePageStore();
-  const { markDirty } = useCompileStore();
+  const { markDirty, compileErrors } = useCompileStore();
+  const monacoRef = useRef<any>(null);
   const { editorTheme, autoCompile, fontSize, wordWrap, lineNumbers } = useSettingsStore();
   const pageRef = useRef(page);
   pageRef.current = page;
@@ -231,6 +234,13 @@ export default function Editor({ page }: EditorProps) {
   const libraryItems = libraryData?.items ?? [];
   const libraryItemsRef = useRef<Item[]>([]);
   libraryItemsRef.current = libraryItems;
+
+  const { data: pageFiles = [] } = useQuery({
+    ...filesQuery(pageIdParam ?? ""),
+    enabled: !!pageIdParam,
+  });
+  const pageFilesRef = useRef<any[]>([]);
+  pageFilesRef.current = pageFiles;
 
   useEffect(() => {
     const unsubOpen = EditorEventBus.on('flux:open-citation-picker', () => {
@@ -643,8 +653,38 @@ export default function Editor({ page }: EditorProps) {
   const openRenameDialogLatestRef = useRef(openRenameDialog);
   openRenameDialogLatestRef.current = openRenameDialog;
 
+  // Synchronize compilation errors with Monaco inline squiggles & markers
+  useEffect(() => {
+    const ed = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!ed || !monaco) return;
+    const model = ed.getModel();
+    if (!model) return;
+
+    if (!compileErrors || compileErrors.length === 0) {
+      monaco.editor.setModelMarkers(model, 'latex-compiler', []);
+      return;
+    }
+
+    const markers: editor.IMarkerData[] = compileErrors.map((err) => {
+      const line = Math.max(1, Math.min(err.line || 1, model.getLineCount()));
+      const lineContent = model.getLineContent(line);
+      return {
+        severity: monaco.MarkerSeverity.Error,
+        startLineNumber: line,
+        startColumn: 1,
+        endLineNumber: line,
+        endColumn: Math.max(1, lineContent.length + 1),
+        message: err.message || 'LaTeX compilation error',
+      };
+    });
+
+    monaco.editor.setModelMarkers(model, 'latex-compiler', markers);
+  }, [compileErrors, editorMounted]);
+
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
+    monacoRef.current = monaco;
     setEditorMounted(true);
 
     const domNode = editor.getDomNode();
@@ -659,6 +699,9 @@ export default function Editor({ page }: EditorProps) {
 
     const citationDisposable = registerCitationCompletion(monaco, () => libraryItemsRef.current);
     disposablesRef.current.push(citationDisposable);
+
+    const labelDisposable = registerLabelCompletion(monaco, () => pageFilesRef.current);
+    disposablesRef.current.push(labelDisposable);
 
     disposablesRef.current.push(
       editor.onContextMenu((e) => {

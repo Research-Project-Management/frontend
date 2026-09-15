@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import SecurityPage from '@/features/workspaces/settings/pages/SecurityPage';
+import SecurityPage from '@/features/settings/pages/SecurityPage';
 
 export const metadata: Metadata = { title: 'Security · Flux' };
 

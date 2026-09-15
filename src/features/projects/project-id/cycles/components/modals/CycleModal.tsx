@@ -1,0 +1,174 @@
+'use client';
+
+import React, { useMemo } from "react";
+import { type UseFormReturn, useWatch } from "react-hook-form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogFooter, Form } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
+import { CalendarDays, Plus, X, Lock, ArrowRight, PlayCircle, CheckCircle2 } from "lucide-react";
+import { format, parseISO } from "date-fns";
+
+// Internal Sections
+import { DatesSection } from "../dialog/Dates";
+import { useParams } from "next/navigation";
+import type { CycleFormData } from "../../schemas/cycle.schema";
+
+import { cn } from "@/shared/lib/utils";
+
+export interface CycleModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  mode: 'create' | 'edit';
+  form: UseFormReturn<CycleFormData>;
+  projectData?: any;
+  onSave: (values: CycleFormData) => void;
+  onComplete?: () => void;
+  isReadOnly?: boolean;
+  isSaving?: boolean;
+}
+
+export const CycleModal = ({
+  open,
+  onOpenChange,
+  mode,
+  form,
+  projectData,
+  onSave,
+  onComplete,
+  isReadOnly = false,
+  isSaving = false,
+}: CycleModalProps) => {
+  const formName = useWatch({ control: form.control, name: 'name' });
+  const formDescription = useWatch({ control: form.control, name: 'description' });
+  const formStart = useWatch({ control: form.control, name: 'startDate' });
+  const formEnd = useWatch({ control: form.control, name: 'endDate' });
+
+  const setFormStart = (v: string) => form.setValue('startDate', v, { shouldValidate: true });
+  const setFormEnd = (v: string) => form.setValue('endDate', v, { shouldValidate: true });
+
+  const { register, handleSubmit, formState: { errors } } = form;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        showCloseButton={false}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="sm:max-w-[720px] flex flex-col p-0 overflow-hidden rounded-sm border-0 bg-popover max-h-[90vh]"
+      >
+        <Form {...form}>
+          <div className="flex items-center justify-between pl-5 pr-5 py-4 border-b border-border">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-foreground">
+                  {mode === 'create' ? 'Create Cycle' : (isReadOnly ? 'Cycle Details' : 'Edit Cycle')}
+                </span>
+                {isReadOnly && (
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted rounded-sm text-xs font-semibold text-foreground border border-border">
+                    <Lock className="size-2.5 text-foreground shrink-0" /> Read Only
+                  </div>
+                )}
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" className="size-8 text-foreground hover:bg-muted cursor-pointer" onClick={() => onOpenChange(false)} aria-label="Close dialog">
+              <X className="size-5 text-foreground shrink-0" />
+            </Button>
+          </div>
+
+          <div className={`px-9 pt-3 pb-1 ${isReadOnly ? 'opacity-90' : ''}`}>
+            <div className={`w-full rounded-sm border border-transparent px-3 py-1.5 transition-all ${isReadOnly ? 'cursor-default' : 'hover:bg-muted focus-within:bg-background focus-within:border-border'}`}>
+              <textarea
+                rows={1}
+                {...register('name')}
+                readOnly={isReadOnly}
+                onInput={(e) => {
+                  const target = e.currentTarget;
+                  target.style.height = "auto";
+                  target.style.height = `${target.scrollHeight}px`;
+                }}
+                placeholder="Enter cycle title..."
+                className="w-full resize-none bg-transparent p-0 text-2xl font-semibold leading-tight text-foreground outline-none placeholder:text-muted-foreground block"
+                autoFocus={mode === 'create' && !isReadOnly}
+                style={{ height: 'auto' }}
+              />
+            </div>
+            {errors.name && (
+              <p className="text-xs text-destructive px-3 pt-1">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div className={`px-9 space-y-5 max-h-[500px] overflow-y-auto custom-scrollbar pb-5 pt-1 ${isReadOnly ? 'opacity-95' : ''}`}>
+            {/* Quick-add action buttons row */}
+            {!isReadOnly && (
+              <div className="flex flex-wrap items-center gap-2">
+                <DatesSection formStart={formStart} formEnd={formEnd} setFormStart={setFormStart} setFormEnd={setFormEnd} />
+              </div>
+            )}
+
+          {/* Details row — Dates */}
+          <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
+
+
+            {/* Dates */}
+            {(formStart || formEnd) && (
+              <div className="flex shrink-0 flex-col gap-1.5">
+                <span className="text-xs font-semibold text-muted-foreground">Dates</span>
+                <DatesSection formStart={formStart} formEnd={formEnd} setFormStart={setFormStart} setFormEnd={setFormEnd} trigger={
+                  <div className={`inline-flex h-9 w-fit items-center gap-2 rounded-sm bg-muted px-3 text-sm font-medium text-foreground ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-muted'} transition-colors whitespace-nowrap`}>
+                    <CalendarDays className="size-3.5 shrink-0 text-foreground" />
+                    <div className="flex items-center gap-2">
+                      {formStart && formEnd ? (
+                        <>
+                          <span>{format(parseISO(formStart), 'dd MMM yyyy')}</span>
+                          <ArrowRight className="size-3 text-muted-foreground shrink-0" />
+                          <span>{format(parseISO(formEnd), 'dd MMM yyyy')}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-muted-foreground">Start date</span>
+                          <ArrowRight className="size-3 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground">End date</span>
+                        </>
+                      )}
+                    </div>
+                    {!isReadOnly && (
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setFormStart(""); setFormEnd(""); }} className="ml-0.5 size-4 rounded-full hover:bg-foreground/10 flex items-center justify-center transition-colors cursor-pointer" aria-label="Clear dates">
+                        <X className="size-2.5 text-foreground shrink-0" />
+                      </button>
+                    )}
+                  </div>
+                } />
+              </div>
+            )}
+          </div>
+
+          {/* Description */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-foreground"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="15" y1="12" x2="3" y2="12"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>
+              <h3 className="text-base font-semibold text-foreground">Description</h3>
+            </div>
+            <textarea
+              {...register('description')}
+              readOnly={isReadOnly}
+              placeholder={isReadOnly ? "No description provided." : "Add a more detailed description..."}
+              className={`min-h-[120px] w-full resize-none rounded-sm border border-border px-4 py-3 text-base text-foreground outline-none ${isReadOnly ? 'bg-transparent cursor-default' : 'hover:bg-muted focus:bg-background focus:border-border'} transition-all`}
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="px-9 py-4 flex items-center justify-end gap-2 border-t border-border bg-popover shrink-0">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving} className="h-9 px-4 text-foreground hover:bg-muted transition-colors cursor-pointer">
+            {isReadOnly ? 'Close' : 'Cancel'}
+          </Button>
+          {!isReadOnly && (
+            <Button onClick={handleSubmit(onSave)} disabled={!formName?.trim() || isSaving} className="h-9 bg-primary px-6 text-primary-foreground hover:bg-primary-hover shadow-none font-medium transition-all active:scale-95 cursor-pointer">
+              {isSaving ? (mode === 'create' ? "Creating..." : "Saving...") : (mode === 'create' ? "Create" : "Save")}
+            </Button>
+          )}
+        </DialogFooter>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+};

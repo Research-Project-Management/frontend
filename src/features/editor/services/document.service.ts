@@ -152,22 +152,63 @@ export const syncIncremental = async (
   });
 };
 
+export interface CompilerDiagnostic {
+  file: string;
+  line: number | null;
+  message: string;
+  context: string;
+  severity: 'error' | 'warning' | 'info';
+  code?: string;
+  suggestion?: string;
+}
+
 export type CompileLatexPayload = {
   project_id: string;
   main_file: string | null;
   engine: string;
   draft: boolean;
   use_cache: boolean;
+  source?: string;
+  files?: Record<string, string>;
 };
 
 export const compileLatex = async (
   payload: CompileLatexPayload,
-): Promise<{ pdf: string; logs: string; synctex?: string }> => {
-  return await apiPost<{ pdf: string; logs: string; synctex?: string }>(
-    '/api/latex/compile',
-    payload,
-  );
+): Promise<{
+  success?: boolean;
+  pdf: string;
+  logs: string;
+  synctex?: string;
+  error?: string;
+  diagnostics?: CompilerDiagnostic[];
+}> => {
+  return await apiPost<{
+    success?: boolean;
+    pdf: string;
+    logs: string;
+    synctex?: string;
+    error?: string;
+    diagnostics?: CompilerDiagnostic[];
+  }>('/api/latex/compile', payload);
 };
+
+export interface WordCountResponse {
+  success: boolean;
+  stats?: {
+    wordsInText: number;
+    wordsInHeaders: number;
+    wordsInCaptions: number;
+    headers: number;
+    floats: number;
+    mathInlines: number;
+    mathDisplayed: number;
+  };
+  error?: string;
+}
+
+export async function fetchWordCount(source: string): Promise<WordCountResponse> {
+  return await apiPost<WordCountResponse>('/api/latex/word-count', { source });
+}
 
 export interface PreviewCompileResult {
   success: boolean;
@@ -225,6 +266,7 @@ export const compileService = {
   syncIncremental,
   compileLatex,
   compilePreview,
+  fetchWordCount,
 };
 
 export const DocumentCompileService = compileService;

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Sidebar from '@/features/workspaces/projects/project-id/settings/components/layout/Sidebar';
+import Sidebar from '@/features/projects/project-id/settings/components/layout/Sidebar';
 
 export default function ProjectSettingLayout({
   children,

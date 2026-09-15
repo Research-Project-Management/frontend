@@ -549,6 +549,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
     try {
       for await (const chunk of streamEditorChat(newMessages, {
         chatId,
+        pageId,
         projectId,
         fileContent: richCtx?.fileContent ?? currentFileContent,
         filename: (activeFilePage ?? currentPage)?.title ?? "main.tex",
@@ -568,6 +569,9 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
         cursorLine,
         cursorColumn,
         signal: controller.signal,
+        onMeta: (meta: any) => {
+          if (meta?.chatId) setChatId(meta.chatId);
+        },
       })) {
         streamRef.current += chunk;
         setStreamContent(streamRef.current);

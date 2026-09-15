@@ -1,5 +1,5 @@
 ﻿import type { Metadata } from 'next';
-import ArchivePage from '@/features/workspaces/projects/shell/pages/ArchivePage';
+import ArchivePage from '@/features/projects/shell/pages/ArchivePage';
 
 export const metadata: Metadata = {
   title: 'Archived Projects · Flux',

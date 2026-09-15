@@ -1,8 +1,8 @@
 'use client';
 
 import { use } from 'react';
-import WorkItemPage from '@/features/workspaces/projects/project-id/work-items/pages/WorkItemPage';
-import { useProjectCycles, deriveStatus } from '@/features/workspaces/projects/project-id/cycles/hooks/use-cycle';
+import WorkItemPage from '@/features/projects/project-id/work-items/pages/WorkItemPage';
+import { useProjectCycles, deriveStatus } from '@/features/projects/project-id/cycles/hooks/use-cycle';
 
 interface Props {
   params: Promise<{ projectId: string; cycleId: string }>;

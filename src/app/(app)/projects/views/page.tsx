@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
+import { useProjects } from '@/features/projects/shell/hooks/use-project';
 
 export default function WorkspaceViewsRedirectPage() {
   const router = useRouter();

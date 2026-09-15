@@ -7,12 +7,12 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 
 const Topbar = dynamic(
-  () => import('@/features/workspaces/shell/components/Topbar'),
+  () => import('@/features/shell/components/Topbar'),
   { ssr: true, loading: () => null }
 );
 
 const Sidebar = dynamic(
-  () => import('@/features/workspaces/shell/components/Sidebar'),
+  () => import('@/features/shell/components/Sidebar'),
   { ssr: true, loading: () => null }
 );
 

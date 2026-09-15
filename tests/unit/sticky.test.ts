@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   stripHtml,
   isStickyEmpty,
-} from '@/features/workspaces/projects/stickies/utils/sticky.utils';
+} from '@/features/projects/stickies/utils/sticky.utils';
 import {
   normalizeSticky,
-} from '@/features/workspaces/projects/stickies/services/sticky.service';
+} from '@/features/projects/stickies/services/sticky.service';
 
 describe('Sticky Frontend Utilities', () => {
   describe('stripHtml', () => {

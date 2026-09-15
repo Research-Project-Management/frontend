@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import ViewsPage from '@/features/workspaces/projects/project-id/settings/pages/ViewsPage';
+import ViewsPage from '@/features/projects/project-id/settings/pages/ViewsPage';
 
 export const metadata: Metadata = { title: 'Saved Views · Flux' };
 

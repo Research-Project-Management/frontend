@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import NotificationsPage from '@/features/workspaces/settings/pages/NotificationsPage';
+import NotificationsPage from '@/features/settings/pages/NotificationsPage';
 
 export const metadata: Metadata = { title: 'Notifications · Flux' };
 

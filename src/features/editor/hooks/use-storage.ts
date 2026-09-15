@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { storageKeys } from '@/features/workspaces/storage/constants/storage.keys';
+import { storageKeys } from '@/features/storage/constants/storage.keys';
 import { StorageService as EditorStorageService, type EditorStorageItem } from '../services/storage.service';
 
 export function useEditorStorage(pageId: string | null | undefined, parentId?: string | null) {

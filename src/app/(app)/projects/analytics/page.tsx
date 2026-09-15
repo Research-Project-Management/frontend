@@ -1,6 +1,6 @@
 ﻿import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import AnalyticsPage from '@/features/workspaces/analytics/pages/AnalyticsPage';
+import AnalyticsPage from '@/features/analytics/pages/AnalyticsPage';
 
 export const metadata: Metadata = {
   title: 'Analytics · Flux',

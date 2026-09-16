@@ -215,7 +215,7 @@ export function Topbar({
   return (
     <header
       className={cn(
-        'h-12 border-b border-border px-4 flex items-center justify-between gap-3 bg-background shrink-0 text-13 w-full min-w-0 overflow-x-auto scrollbar-none',
+        'h-11 border-b border-border px-4 flex items-center justify-between gap-3 bg-background shrink-0 text-13 w-full min-w-0 overflow-x-auto scrollbar-none',
         className,
       )}
     >

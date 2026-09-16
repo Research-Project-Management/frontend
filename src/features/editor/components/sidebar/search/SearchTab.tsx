@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { usePageStore } from "@/features/editor/store/page.store";
+import { usePageStore } from "@/features/editor/store";
 import { useDebounce } from "@/shared/hooks";
 
 interface MatchEntry {

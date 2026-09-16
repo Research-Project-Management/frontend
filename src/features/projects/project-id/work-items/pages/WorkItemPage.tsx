@@ -358,7 +358,7 @@ export function WorkItemPage({
     }
   }, [rawViewId, savedViews, selectSavedView]);
 
-  // ── 3. Dynamic GroupBy Adapter ───────────────────────────────────────────
+  // ── 3. Dynamic GroupBy Adapter (Plane.so matching architecture) ──────────
   const activeColumns = useMemo<Column[]>(() => {
     const groupBy = displayOptions.groupBy;
     if (groupBy === 'priority') {
@@ -406,11 +406,60 @@ export function WorkItemPage({
         { id: '__no_cycle__', name: 'No Cycle', title: 'No Cycle', color: '#9ca3af', accentColor: '#9ca3af', group: 'backlog', sequence: 999, isDefault: false },
       ];
     }
+    if (groupBy === 'labels') {
+      const labelCols: Column[] = (labels || []).map((l: any, idx: number) => {
+        const id = l.id || l.name;
+        const name = l.name || l.title || 'Label';
+        const color = l.color || '#3b82f6';
+        return {
+          id,
+          name,
+          title: name,
+          color,
+          accentColor: color,
+          group: 'unstarted',
+          sequence: idx,
+          isDefault: false,
+        };
+      });
+      return [
+        ...labelCols,
+        { id: '__no_label__', name: 'No Label', title: 'No Label', color: '#9ca3af', accentColor: '#9ca3af', group: 'backlog', sequence: 999, isDefault: false },
+      ];
+    }
+    if (groupBy === 'createdBy') {
+      const authorCols: Column[] = (members || []).map((m: any, idx: number) => {
+        const userId = m.userId || m.user?.id || m.id || `author-${idx}`;
+        const name = m.name || m.user?.name || 'Member';
+        return {
+          id: userId,
+          name,
+          title: name,
+          color: '#8b5cf6',
+          accentColor: '#8b5cf6',
+          group: 'unstarted',
+          sequence: idx,
+          isDefault: false,
+        };
+      });
+      return [
+        ...authorCols,
+        { id: '__unknown__', name: 'Unknown Creator', title: 'Unknown Creator', color: '#9ca3af', accentColor: '#9ca3af', group: 'backlog', sequence: 999, isDefault: false },
+      ];
+    }
+    if (groupBy === 'none') {
+      return [
+        { id: '__all__', name: 'All Work Items', title: 'All Work Items', color: '#6366f1', accentColor: '#6366f1', group: 'unstarted', sequence: 0, isDefault: true },
+      ];
+    }
     return columns;
-  }, [displayOptions.groupBy, columns, members, cycles]);
+  }, [displayOptions.groupBy, columns, members, cycles, labels]);
 
   // Helper to determine which bucket key in activeColumns an item belongs to, without mutating item.columnId
   const getItemBucketKey = useCallback((item: Item, groupBy?: string): string => {
+    if (groupBy === 'none') {
+      return '__all__';
+    }
     if (groupBy === 'priority') {
       return (item.priority || 'none').toLowerCase();
     }
@@ -420,6 +469,20 @@ export function WorkItemPage({
     if (groupBy === 'cycle') {
       const cId = item.cycleId || (typeof item.cycle === 'object' ? (item.cycle as any)?.id : null);
       return cId || '__no_cycle__';
+    }
+    if (groupBy === 'labels') {
+      const itemLabels = Array.isArray(item.labels) ? item.labels : [];
+      if (itemLabels.length === 0) return '__no_label__';
+      const first = itemLabels[0] as any;
+      const firstLabel =
+        typeof first === 'object' && first !== null
+          ? first.id || first.name
+          : first;
+      return firstLabel || '__no_label__';
+    }
+    if (groupBy === 'createdBy') {
+      const authorId = item.authorId || (item as any).createdBy || (item as any).author?.id;
+      return authorId || '__unknown__';
     }
     return item.columnId || (item as any).stateId || '';
   }, []);
@@ -440,7 +503,6 @@ export function WorkItemPage({
       if (bucketKey && map.has(bucketKey)) {
         map.get(bucketKey)!.push(item);
       } else if (fallbackColId && map.has(fallbackColId)) {
-        // Fallback: don't let items disappear if their bucket key does not match current active columns
         map.get(fallbackColId)!.push(item);
       } else if (bucketKey) {
         map.set(bucketKey, [item]);
@@ -448,6 +510,19 @@ export function WorkItemPage({
     }
     return map;
   }, [activeColumns, activeFilteredItems, displayOptions.groupBy, getItemBucketKey]);
+
+  // Display visible columns respecting showEmptyGroups
+  const visibleColumns = useMemo(() => {
+    if (displayOptions.showEmptyGroups === false && displayOptions.groupBy !== 'none') {
+      const filtered = activeColumns.filter((col) => {
+        const colId = resolveColumnId(col);
+        const count = itemsByColumnId.get(colId)?.length ?? 0;
+        return count > 0;
+      });
+      return filtered.length > 0 ? filtered : activeColumns;
+    }
+    return activeColumns;
+  }, [activeColumns, itemsByColumnId, displayOptions.showEmptyGroups, displayOptions.groupBy]);
 
   // ── 4. Unified Discriminated Modal State (Matt Pocock Pattern) ────────────
   const [modal, setModal] = useState<ModalState>({ type: 'idle' });
@@ -590,6 +665,18 @@ export function WorkItemPage({
       });
       return;
     }
+    if (displayOptions.groupBy === 'labels') {
+      projectActions.updateWorkItem({
+        workItemId,
+        id: workItemId,
+        projectId,
+        labels: newColumnId === '__no_label__' ? [] : [newColumnId],
+      });
+      return;
+    }
+    if (displayOptions.groupBy === 'none') {
+      return;
+    }
 
     const updatePayload: any = { columnId: newColumnId };
     if (laneData?.subGroupBy && laneData?.laneId) {
@@ -649,6 +736,18 @@ export function WorkItemPage({
         projectId,
         cycleId: newColumnId === '__no_cycle__' ? null : newColumnId,
       });
+      return;
+    }
+    if (displayOptions.groupBy === 'labels') {
+      projectActions.updateWorkItem({
+        workItemId,
+        id: workItemId,
+        projectId,
+        labels: newColumnId === '__no_label__' ? [] : [newColumnId],
+      });
+      return;
+    }
+    if (displayOptions.groupBy === 'none') {
       return;
     }
 
@@ -919,6 +1018,8 @@ export function WorkItemPage({
         filters={filters}
         onToggleFilter={toggleFilterItem}
         onRemoveFilter={removeFilterItem}
+        items={allItems}
+        cycles={cycles}
       />
 
       {/* Main View Area */}
@@ -991,7 +1092,7 @@ export function WorkItemPage({
               <ListView
                 projectId={projectId}
                 itemsByColumnId={itemsByColumnId}
-                columns={activeColumns}
+                columns={visibleColumns}
                 projectStates={columns}
                 currentUserId={currentUser?.id}
                 currentUserAvatar={currentUser?.avatar ?? undefined}
@@ -1029,7 +1130,7 @@ export function WorkItemPage({
             {viewMode === 'table' && (
               <TableView
                 items={activeFilteredItems}
-                columns={activeColumns}
+                columns={visibleColumns}
                 projectStates={columns}
                 displayOptions={displayOptions}
                 currentUserId={currentUser?.id}
@@ -1047,6 +1148,7 @@ export function WorkItemPage({
                 onRemoveFromCycle={handleRemoveFromCycle}
                 onMoveCard={handleMoveCard}
                 isReadOnly={isReadOnly}
+                onToggleDisplayProperty={updateDisplayProperty}
               />
             )}
             {viewMode === 'timeline' && (
@@ -1075,7 +1177,7 @@ export function WorkItemPage({
               <BoardView
                 items={activeFilteredItems}
                 itemsByColumnId={itemsByColumnId}
-                columns={activeColumns}
+                columns={visibleColumns}
                 projectStates={columns}
                 labelMap={labelMap}
                 currentUserId={currentUser?.id}

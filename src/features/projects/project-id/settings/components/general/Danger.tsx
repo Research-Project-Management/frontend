@@ -25,12 +25,12 @@ export function GeneralDanger({
   return (
     <div className="pt-6">
       {/* Container Card with Divider */}
-      <div className="rounded-md border border-border bg-background divide-y divide-border/60 overflow-hidden shadow-none">
+      <div className="rounded-lg border border-border bg-background divide-y divide-border/60 overflow-hidden shadow-none">
         {/* Row 1: Archive */}
-        <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1 max-w-xl">
-            <h4 className="text-xs font-semibold text-foreground">Archive</h4>
-            <p className="text-xs text-muted-foreground leading-relaxed">
+            <h4 className="text-13 font-semibold text-foreground">Archive</h4>
+            <p className="text-12 text-muted-foreground leading-relaxed">
               Archiving a project will unlist your project from your side navigation although you will still be able to access it from your projects page. You can restore the project or delete it whenever you want.
             </p>
           </div>
@@ -46,10 +46,10 @@ export function GeneralDanger({
         </div>
 
         {/* Row 2: Delete */}
-        <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1 max-w-xl">
-            <h4 className="text-xs font-semibold text-foreground">Delete</h4>
-            <p className="text-xs text-muted-foreground leading-relaxed">
+            <h4 className="text-13 font-semibold text-foreground">Delete</h4>
+            <p className="text-12 text-muted-foreground leading-relaxed">
               When deleting a project, all of the data and resources within that project will be permanently removed and cannot be recovered.
             </p>
           </div>

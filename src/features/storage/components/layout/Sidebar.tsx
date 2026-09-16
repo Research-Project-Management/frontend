@@ -2,7 +2,7 @@
 
 import { useId } from 'react';
 import Link from 'next/link';
-import { useParams, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { motion, LayoutGroup } from 'framer-motion';
 import {
   Home,
@@ -11,10 +11,8 @@ import {
   Star,
   Trash,
   PanelLeftClose,
-  Cloud,
 } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
-import { StorageQuotaWidget } from './StorageQuotaWidget';
 
 export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const pathname = usePathname();
@@ -86,11 +84,6 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
             })}
           </nav>
         </LayoutGroup>
-      </div>
-
-      {/* Storage Quota Footer */}
-      <div className="mt-auto pt-3 border-t border-border/40 max-md:hidden">
-        <StorageQuotaWidget />
       </div>
     </aside>
   );

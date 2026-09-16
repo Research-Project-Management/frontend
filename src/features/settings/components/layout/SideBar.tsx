@@ -1,15 +1,16 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Tag, User, SlidersHorizontal, Bell, Lock } from 'lucide-react';
+import { Tag, User, SlidersHorizontal, Bell, Lock, ArrowLeft } from 'lucide-react';
 import React, { useId } from 'react';
 import { motion, LayoutGroup } from 'framer-motion';
 import Link from 'next/link';
 import { cn } from "@/shared/lib/utils";
+import { ScrollArea } from "@/shared/components/ui";
 
 interface NavItem {
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }>;
   to: string;
 }
 
@@ -24,7 +25,7 @@ export function SideBar() {
     { label: 'Security', icon: Lock, to: '/settings/security' },
   ];
 
-  const systemItems: NavItem[] = [
+  const workspaceItems: NavItem[] = [
     { label: 'Labels', icon: Tag, to: '/settings/labels' },
   ];
 
@@ -56,6 +57,7 @@ export function SideBar() {
         )}
         <item.icon
           className="relative z-10 size-4 shrink-0 text-foreground"
+          strokeWidth={1.5}
         />
         <span className="relative z-10 min-w-0 truncate tracking-tight">
           {item.label}
@@ -65,37 +67,52 @@ export function SideBar() {
   };
 
   return (
-    <aside className="h-full w-60 shrink-0 border-r border-border bg-transparent p-2.5 py-4 select-none max-md:w-full max-md:border-r-0 max-md:border-b max-md:py-2">
-      {/* Header */}
-      <div className="mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground max-md:hidden">
-        <span>Settings</span>
-      </div>
-
-      {/* Navigation */}
-      <LayoutGroup id={`settings-nav-${id}`}>
-        <nav
-          aria-label="Settings Navigation"
-          className="flex flex-col gap-4 max-md:flex-row max-md:overflow-x-auto"
-        >
-          <div>
-            <div className="px-2 pb-1.5 pt-0.5 text-11 font-medium text-muted-foreground select-none max-md:hidden">
-              Account
-            </div>
-            <div className="flex flex-col gap-0.5 max-md:flex-row">
-              {accountItems.map(renderItem)}
-            </div>
+    <aside className="h-full w-60 shrink-0 border-r border-border bg-transparent select-none max-md:w-full max-md:border-r-0 max-md:border-b">
+      <ScrollArea type="scroll" scrollHideDelay={600} className="h-full w-full">
+        <div className="w-full p-2.5 py-4 max-md:py-2">
+          {/* Back to Workspace */}
+          <div className="mb-2 px-1">
+            <Link
+              href="/home"
+              className="group flex h-8 w-full items-center gap-2 rounded-md px-2 text-13 leading-5 font-normal text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+            >
+              <ArrowLeft className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-transform group-hover:-translate-x-0.5" strokeWidth={1.5} />
+              <span className="tracking-tight font-medium">Back to workspace</span>
+            </Link>
           </div>
 
-          <div>
-            <div className="px-2 pb-1.5 pt-0.5 text-11 font-medium text-muted-foreground select-none max-md:hidden">
-              System
-            </div>
-            <div className="flex flex-col gap-0.5 max-md:flex-row">
-              {systemItems.map(renderItem)}
-            </div>
+          {/* Header */}
+          <div className="mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground max-md:hidden">
+            <span>Settings</span>
           </div>
-        </nav>
-      </LayoutGroup>
+
+          {/* Navigation */}
+          <LayoutGroup id={`settings-nav-${id}`}>
+            <nav
+              aria-label="Settings Navigation"
+              className="flex flex-col gap-4 max-md:flex-row max-md:overflow-x-auto"
+            >
+              <div>
+                <div className="px-2 pb-1.5 pt-0.5 text-11 font-medium text-muted-foreground select-none max-md:hidden">
+                  Account
+                </div>
+                <div className="flex flex-col gap-0.5 max-md:flex-row">
+                  {accountItems.map(renderItem)}
+                </div>
+              </div>
+
+              <div>
+                <div className="px-2 pb-1.5 pt-0.5 text-11 font-medium text-muted-foreground select-none max-md:hidden">
+                  Workspace
+                </div>
+                <div className="flex flex-col gap-0.5 max-md:flex-row">
+                  {workspaceItems.map(renderItem)}
+                </div>
+              </div>
+            </nav>
+          </LayoutGroup>
+        </div>
+      </ScrollArea>
     </aside>
   );
 }

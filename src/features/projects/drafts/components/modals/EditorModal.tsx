@@ -138,6 +138,14 @@ export const EditorModal: React.FC<EditorModalProps> = ({
 
   const currentProject = projects.find((p) => p.id === selectedProjectId) || projects[0];
 
+  const availableStates = React.useMemo(() => {
+    const projCols = currentProject?.workItemColumns || currentProject?.columns;
+    if (projCols && projCols.length > 0) {
+      return projCols.map((c) => ({ key: c.id, label: c.name }));
+    }
+    return STATE_OPTIONS;
+  }, [currentProject]);
+
   const handleSave = async () => {
     const finalTitle = title.trim();
     if (!finalTitle) return;
@@ -266,7 +274,7 @@ export const EditorModal: React.FC<EditorModalProps> = ({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-40 bg-background border border-border">
-                {STATE_OPTIONS.map((col) => (
+                {availableStates.map((col) => (
                   <DropdownMenuItem
                     key={col.key}
                     onClick={() => {

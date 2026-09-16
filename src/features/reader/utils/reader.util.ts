@@ -1,4 +1,16 @@
 import type { ReaderAnnotation, AnnotationRect, ReaderDocument, DocumentCreator } from '../types/reader.types';
+import {
+  generateCitationKey as libGenerateCitationKey,
+  getBibTeXEntryType as libGetBibTeXEntryType,
+  convertToBibTeX as libConvertToBibTeX,
+  downloadBibTeXFile as libDownloadBibTeXFile,
+  convertToRIS as libConvertToRIS,
+  downloadRISFile as libDownloadRISFile,
+} from '@/features/library/utils/bibtex.util';
+import {
+  normalizeAuthors as libNormalizeAuthors,
+  cleanDoi as libCleanDoi,
+} from '@/features/library/utils/author-doi.util';
 
 export const ANNOTATION_COLORS = {
   yellow: { id: 'yellow', name: 'Yellow', bg: 'rgba(250, 204, 21, 0.35)', border: '#eab308' },
@@ -94,185 +106,35 @@ export const PdfAnnotationEngine = {
 };
 
 export function cleanDoi(doi?: string | null): string | null {
-  if (!doi || !doi.trim()) return null;
-  const cleaned = doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, '').replace(/^doi:\s*/i, '').trim();
-  return cleaned || null;
+  return libCleanDoi(doi) || null;
 }
 
 export function normalizeAuthors(authors?: string[], creators?: DocumentCreator[]): string[] {
-  if (Array.isArray(authors) && authors.length > 0) {
-    return authors.filter(Boolean);
-  }
-  if (Array.isArray(creators) && creators.length > 0) {
-    return creators
-      .map((c) => c.fullName || c.name || [c.firstName, c.lastName].filter(Boolean).join(' '))
-      .filter(Boolean);
-  }
-  return [];
+  return libNormalizeAuthors(authors, creators as any);
 }
 
 export function generateCitationKey(paper: ReaderDocument): string {
-  if (paper.citationKey && paper.citationKey.trim()) {
-    return paper.citationKey.trim().replace(/\s+/g, '');
-  }
-
-  const authors = normalizeAuthors(paper.authors, paper.creators);
-  let authorPart = 'unknown';
-  if (authors.length > 0) {
-    const firstAuthor = authors[0]!.trim();
-    const parts = firstAuthor.split(/\s+/);
-    authorPart = (parts[parts.length - 1] || firstAuthor).toLowerCase();
-  }
-  authorPart = authorPart.replace(/[^a-z0-9]/gi, '');
-
-  const yearPart = paper.year ? String(paper.year) : '';
-  const STOPWORDS = new Set(['a', 'an', 'the', 'on', 'in', 'for', 'of', 'and', 'with', 'via', 'to', 'is', 'are']);
-  let titlePart = '';
-  if (paper.title) {
-    for (const word of paper.title.trim().split(/\s+/)) {
-      const clean = word.replace(/[^a-z0-9]/gi, '').toLowerCase();
-      if (clean && !STOPWORDS.has(clean)) {
-        titlePart = clean;
-        break;
-      }
-    }
-  }
-
-  return `${authorPart || 'ref'}${yearPart}${titlePart || 'doc'}`;
+  return libGenerateCitationKey(paper as any);
 }
 
 export function getBibTeXEntryType(paper: ReaderDocument): string {
-  const itemType = (paper.itemType || '').toLowerCase();
-  switch (itemType) {
-    case 'book':
-    case 'booksection':
-      return 'book';
-    case 'conferencepaper':
-    case 'proceedings':
-    case 'inproceedings':
-      return 'inproceedings';
-    case 'thesis':
-    case 'phdthesis':
-    case 'mastersthesis':
-      return 'phdthesis';
-    case 'techreport':
-    case 'report':
-      return 'techreport';
-    case 'webpage':
-    case 'website':
-    case 'dataset':
-    case 'software':
-    case 'misc':
-      return 'misc';
-    case 'journalarticle':
-    case 'article':
-    case 'preprint':
-    default:
-      if (itemType && !['journalarticle', 'article', 'preprint'].includes(itemType) && !paper.journal && !paper.publicationTitle) {
-        return 'misc';
-      }
-      return 'article';
-  }
+  return libGetBibTeXEntryType(paper as any);
 }
 
 export function convertToBibTeX(paper: ReaderDocument): string {
-  const entryType = getBibTeXEntryType(paper);
-  const citationKey = generateCitationKey(paper);
-  const fields: string[] = [];
-
-  if (paper.title) {
-    fields.push(`  title = {${paper.title}}`);
-  }
-
-  const authors = normalizeAuthors(paper.authors, paper.creators);
-  if (authors.length > 0) {
-    fields.push(`  author = {${authors.join(' and ')}}`);
-  }
-
-  const journal = paper.journal || paper.publicationTitle;
-  if (journal) {
-    if (entryType === 'inproceedings') {
-      fields.push(`  booktitle = {${journal}}`);
-    } else {
-      fields.push(`  journal = {${journal}}`);
-    }
-  }
-
-  if (paper.year) fields.push(`  year = {${paper.year}}`);
-  if (paper.volume) fields.push(`  volume = {${paper.volume}}`);
-  if (paper.issue) fields.push(`  number = {${paper.issue}}`);
-  if (paper.pages) fields.push(`  pages = {${paper.pages}}`);
-  if (paper.publisher) fields.push(`  publisher = {${paper.publisher}}`);
-
-  const doi = cleanDoi(paper.doi);
-  if (doi) fields.push(`  doi = {${doi}}`);
-  if (paper.url) fields.push(`  url = {${paper.url}}`);
-
-  return `@${entryType}{${citationKey},\n${fields.join(',\n')}\n}`;
+  return libConvertToBibTeX(paper as any);
 }
 
 export function downloadBibTeXFile(paper: ReaderDocument, filename?: string): void {
-  const content = convertToBibTeX(paper);
-  const name = filename || `${generateCitationKey(paper)}.bib`;
-  const blob = new Blob([content], { type: 'application/x-bibtex;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  libDownloadBibTeXFile(paper as any, filename);
 }
 
 export function convertToRIS(paper: ReaderDocument): string {
-  const itemType = (paper.itemType || '').toLowerCase();
-  let type = 'JOUR';
-  if (itemType.includes('book')) type = 'BOOK';
-  else if (itemType.includes('conf') || itemType.includes('proc')) type = 'CONF';
-  else if (itemType.includes('thesis')) type = 'THES';
-  else if (itemType.includes('report')) type = 'RPRT';
-
-  const lines: string[] = [`TY  - ${type}`];
-  if (paper.title) lines.push(`TI  - ${paper.title}`);
-
-  const authors = normalizeAuthors(paper.authors, paper.creators);
-  for (const a of authors) {
-    lines.push(`AU  - ${a}`);
-  }
-
-  const journal = paper.journal || paper.publicationTitle;
-  if (journal) lines.push(`JO  - ${journal}`);
-  if (paper.year) lines.push(`PY  - ${paper.year}`);
-  if (paper.volume) lines.push(`VL  - ${paper.volume}`);
-  if (paper.issue) lines.push(`IS  - ${paper.issue}`);
-  if (paper.pages) {
-    const parts = String(paper.pages).split(/[-–]/);
-    if (parts[0]) lines.push(`SP  - ${parts[0].trim()}`);
-    if (parts[1]) lines.push(`EP  - ${parts[1].trim()}`);
-  }
-  if (paper.publisher) lines.push(`PB  - ${paper.publisher}`);
-  const doi = cleanDoi(paper.doi);
-  if (doi) lines.push(`DO  - ${doi}`);
-  if (paper.url) lines.push(`UR  - ${paper.url}`);
-  if (paper.abstract) lines.push(`AB  - ${paper.abstract}`);
-  lines.push('ER  - ');
-
-  return lines.join('\n');
+  return libConvertToRIS(paper as any);
 }
 
 export function downloadRISFile(paper: ReaderDocument, filename?: string): void {
-  const content = convertToRIS(paper);
-  const name = filename || `${generateCitationKey(paper)}.ris`;
-  const blob = new Blob([content], { type: 'application/x-research-info-systems;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  libDownloadRISFile(paper as any, filename);
 }
 
 export function formatInTextCitation(paper: ReaderDocument, pageNumber?: number): string {

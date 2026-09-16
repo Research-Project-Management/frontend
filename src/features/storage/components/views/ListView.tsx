@@ -366,7 +366,7 @@ export default function ListView({
                   }}
                   {...createFolderDropHandlers(item, isReadOnly, onDropOnFolder, setDragOverFolderId)}
                   className={`grid grid-cols-12 gap-3 items-center px-4 py-2 hover:bg-muted cursor-pointer group transition-colors select-none ${
-                    isSelected ? "bg-accent font-medium" : ""
+                    isSelected ? "bg-muted font-medium text-foreground" : ""
                   } ${dragOverFolderId === item.id ? "bg-muted ring-1 ring-muted-foreground/30" : ""}`}
                   onClick={(e: React.MouseEvent) => {
                     if (!isReadOnly && (e.shiftKey || e.ctrlKey || e.metaKey)) {

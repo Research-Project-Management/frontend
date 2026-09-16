@@ -210,7 +210,7 @@ export function AnalyticsDrawer({
                   const aPct = totalItems > 0 ? Math.round((a.count / totalItems) * 100) : 0;
                   return (
                     <div key={a.userId} className="flex items-center gap-2.5">
-                      <Avatar className="size-6 text-[10px]">
+                      <Avatar className="size-6 text-10">
                         {a.avatar && <AvatarImage src={a.avatar} alt={a.name} />}
                         <AvatarFallback>{a.name?.slice(0, 2).toUpperCase() || 'U'}</AvatarFallback>
                       </Avatar>

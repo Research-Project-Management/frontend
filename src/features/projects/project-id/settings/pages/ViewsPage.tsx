@@ -10,11 +10,9 @@ import {
   Table as TableIcon,
   Calendar,
   Clock,
-  ExternalLink,
   Shield,
   Eye,
   Lock,
-  Loader2,
 } from 'lucide-react';
 import { Button } from "@/shared/components/ui";
 import { Skeleton } from "@/shared/components/ui";
@@ -84,7 +82,6 @@ export default function ViewsPage() {
       <div className="flex flex-col h-full w-full bg-background">
         <TopBar
           title="Views"
-          description="Configure default layouts, view presentation, and permissions"
           Icon={SlidersHorizontal}
         />
         <div className="flex-1 overflow-y-auto">
@@ -101,10 +98,9 @@ export default function ViewsPage() {
     <div className="flex items-center gap-2">
       <Link
         href={`/projects/${projectId}/views`}
-        className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-medium text-foreground hover:bg-muted border border-border rounded-md transition-colors"
+        className="inline-flex items-center h-8 px-3 text-xs font-medium text-foreground hover:bg-muted border border-border rounded-md transition-colors"
       >
         <span>Manage views</span>
-        <ExternalLink className="size-3.5 text-muted-foreground" />
       </Link>
 
       <Button
@@ -114,7 +110,6 @@ export default function ViewsPage() {
         size="sm"
         className="h-8 px-3.5 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-none shrink-0"
       >
-        {isSaving && <Loader2 className="mr-1.5 size-3.5 animate-spin shrink-0" />}
         Save changes
       </Button>
     </div>
@@ -124,7 +119,6 @@ export default function ViewsPage() {
     <div className="flex flex-col h-full w-full bg-background">
       <TopBar
         title="Views"
-        description="Configure default layouts, view presentation, and permissions"
         Icon={SlidersHorizontal}
         actions={topBarActions}
       />

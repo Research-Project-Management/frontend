@@ -38,6 +38,14 @@ export {
   hasAuthToken,
 };
 
+export function getEffectiveBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const override = window.localStorage.getItem('FLUX_API_BASE_URL');
+    if (override && override.trim()) return override.trim().replace(/\/$/, '');
+  }
+  return API_BASE_URL;
+}
+
 interface RefreshTokenResult {
   readonly success: boolean;
   readonly accessToken: string | null;
@@ -48,7 +56,7 @@ let refreshPromise: Promise<RefreshTokenResult> | null = null;
 
 async function silentRefresh(): Promise<RefreshTokenResult> {
   try {
-    const refreshEndpointUrl = `${API_BASE_URL}/auth/refresh`;
+    const refreshEndpointUrl = `${getEffectiveBaseUrl()}/auth/refresh`;
     const storedRefreshToken = getRefreshToken();
     const requestPayload = storedRefreshToken
       ? JSON.stringify({ refreshToken: storedRefreshToken })
@@ -120,7 +128,7 @@ const inFlightRequests = new Map<string, Promise<unknown>>();
 // ─── 4. Query String Builder ──────────────────────────────────────────────────
 
 function buildUrl(path: string, params?: RequestOptions['params']): string {
-  const base = path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
+  const base = path.startsWith('http') ? path : `${getEffectiveBaseUrl()}${path}`;
   if (!params) return base;
 
   const query = new URLSearchParams();

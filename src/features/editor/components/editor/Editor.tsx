@@ -24,7 +24,6 @@ import {
   X,
   Search,
   Sigma,
-  Sparkles,
   Strikethrough,
   Subscript,
   Superscript,
@@ -34,28 +33,27 @@ import {
   Check,
   Plus,
   Circle,
+  FileCheck,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { filesQuery, usePageActions } from '@/features/editor/hooks/use-page';
-import { usePageComments } from '@/features/editor/services/comment.service';
+import { filesQuery, usePageActions } from '@/features/editor/hooks/use-core';
+import { usePageComments } from '@/features/editor/hooks/use-comment';
 import { ItemService } from '@/features/library/services/items.service';
-import type { Page, PageComment } from "@/features/editor/types/document.types";
-import { useActionsStore } from '@/features/editor/store/actions.store';
+import type { Page, PageComment, PageFile } from "@/features/editor/types";
+import { useActionsStore, usePageStore, useSettingsStore, useCompileStore } from "@/features/editor/store";
 import { useDebounce } from "@/shared/hooks";
-import { usePageStore } from "@/features/editor/store/page.store";
-import { useSettingsStore } from "@/features/editor/store/settings.store";
-import { useCompileStore } from "@/features/editor/store/compile.store";
 import { cn } from "@/shared/lib/utils";
 import { EditorEventBus } from "@/features/editor/utils/editor.util";
-const FluxIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-);
 import { generateCitationKey } from '@/features/library/utils/library.util';
 import Format from "./Format";
 import CitationPickerModal from "./CitationPickerModal";
+import VisualEditor from "./VisualEditor";
 import { registerCitationCompletion } from "./citation-completion.provider";
 import { registerLabelCompletion } from "./label-completion.provider";
+import { registerLatexSnippets } from "./latex-snippets.provider";
+import { usePageSuggestions, useCreateSuggestion } from '@/features/editor/hooks/use-suggestion';
+import { useCollaborationStream } from '@/features/editor/hooks/use-collaboration';
 import { useViewItems } from '@/features/library/hooks/use-items';
 import type { Item } from '@/features/library/types/library.types';
 
@@ -156,7 +154,7 @@ loader.init().then((monaco) => {
 } // end typeof window !== 'undefined'
 
 interface EditorProps {
-  page: Page;
+  page: Page | PageFile;
 }
 
 type CtxPos = { x: number; y: number };
@@ -184,7 +182,15 @@ export default function Editor({ page }: EditorProps) {
     usePageStore();
   const { markDirty, compileErrors } = useCompileStore();
   const monacoRef = useRef<any>(null);
-  const { editorTheme, autoCompile, fontSize, wordWrap, lineNumbers } = useSettingsStore();
+  const {
+    editorTheme,
+    autoCompile,
+    fontSize,
+    wordWrap,
+    lineNumbers,
+    editorMode,
+    reviewMode,
+  } = useSettingsStore();
   const pageRef = useRef(page);
   pageRef.current = page;
   const activePageIdRef = useRef(page.id);
@@ -204,8 +210,20 @@ export default function Editor({ page }: EditorProps) {
   const activeProjectId = projectIdParam || storeProjectId || 'me';
   const projectIdRef = useRef(activeProjectId);
   projectIdRef.current = activeProjectId;
-  const { setPendingComment, setPendingAiText, setPendingAiContext } = useActionsStore();
+  const { setPendingComment } = useActionsStore();
   const { data: comments = [] } = usePageComments(pageIdParam ?? null);
+  const { data: suggestions = [] } = usePageSuggestions(page.id, 'pending');
+  const createSuggestionMutation = useCreateSuggestion();
+  useCollaborationStream(projectIdRef.current, page.id);
+  const suggestionDecorationsRef = useRef<any>(null);
+  const [suggestModal, setSuggestModal] = useState<{
+    originalText: string;
+    suggestedText: string;
+    fromLine: number;
+    toLine: number;
+    type: 'replace' | 'insert' | 'delete';
+    description: string;
+  } | null>(null);
   const [ctxMenu, setCtxMenu] = useState<CtxPos | null>(null);
   const [ctxPos, setCtxPos] = useState<CtxPos | null>(null);
   const [ctxStartLine, setCtxStartLine] = useState<number | null>(null);
@@ -621,17 +639,17 @@ export default function Editor({ page }: EditorProps) {
         },
       },
       {
-        icon: FluxIcon,
-        label: "Ask AI about this",
+        icon: FileCheck,
+        label: "Suggest Edit (Track Changes)",
         action: () => {
-          if (ctxSelText) {
-            setPendingAiContext({
-              selectedText: ctxSelText,
-              startLine: ctxStartLine ?? 1,
-              endLine: ctxEndLine ?? ctxStartLine ?? 1,
-            });
-          }
-          EditorEventBus.emit("flux:open-ai-panel");
+          setSuggestModal({
+            originalText: ctxSelText,
+            suggestedText: ctxSelText,
+            fromLine: ctxStartLine ?? 1,
+            toLine: ctxEndLine ?? ctxStartLine ?? 1,
+            type: ctxSelText ? "replace" : "insert",
+            description: "",
+          });
           closeMenu();
         },
       },
@@ -682,6 +700,52 @@ export default function Editor({ page }: EditorProps) {
     monaco.editor.setModelMarkers(model, 'latex-compiler', markers);
   }, [compileErrors, editorMounted]);
 
+  // Synchronize Track Changes (Suggestions) with Monaco inline decorations
+  useEffect(() => {
+    const ed = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!ed || !monaco) return;
+
+    if (!suggestionDecorationsRef.current) {
+      suggestionDecorationsRef.current = ed.createDecorationsCollection([]);
+    }
+
+    if (!suggestions || suggestions.length === 0) {
+      suggestionDecorationsRef.current.set([]);
+      return;
+    }
+
+    const newDecs = suggestions.map((s) => {
+      const isDelete = s.type === 'delete';
+      const isInsert = s.type === 'insert';
+
+      return {
+        range: new monaco.Range(
+          s.fromLine,
+          s.fromColumn || 1,
+          s.toLine,
+          s.toColumn || 1000,
+        ),
+        options: {
+          isWholeLine: false,
+          className: isDelete
+            ? 'bg-rose-500/20 line-through text-rose-600 dark:text-rose-400 font-mono'
+            : isInsert
+              ? 'bg-emerald-500/20 underline decoration-emerald-500 text-emerald-600 dark:text-emerald-400 font-medium'
+              : 'bg-amber-500/20 underline decoration-amber-500 text-amber-600 dark:text-amber-400',
+          hoverMessage: {
+            value: `**Suggested ${s.type.toUpperCase()} by ${s.author.name}**\n\n*Original:* \`${s.originalText || '(none)'}\`\n\n*Suggested:* \`${s.suggestedText || '(none)'}\`${s.description ? `\n\n*Note:* ${s.description}` : ''}`,
+          },
+          linesDecorationsClassName: isDelete
+            ? 'border-l-2 border-rose-500'
+            : 'border-l-2 border-emerald-500',
+        },
+      };
+    });
+
+    suggestionDecorationsRef.current.set(newDecs);
+  }, [suggestions, editorMounted]);
+
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
@@ -702,6 +766,9 @@ export default function Editor({ page }: EditorProps) {
 
     const labelDisposable = registerLabelCompletion(monaco, () => pageFilesRef.current);
     disposablesRef.current.push(labelDisposable);
+
+    const snippetDisposable = registerLatexSnippets(monaco);
+    disposablesRef.current.push(snippetDisposable);
 
     disposablesRef.current.push(
       editor.onContextMenu((e) => {
@@ -726,6 +793,20 @@ export default function Editor({ page }: EditorProps) {
       editor.revealLineInCenter(line);
       editor.setPosition({ lineNumber: line, column: 1 });
       editor.focus();
+
+      // SyncTeX Flash Highlight: temporary visual accent on jumped line
+      const flashColl = editor.createDecorationsCollection([
+        {
+          range: new monaco.Range(line, 1, line, 1),
+          options: {
+            isWholeLine: true,
+            className: 'bg-primary/25 border-l-4 border-primary transition-all duration-700',
+          },
+        },
+      ]);
+      setTimeout(() => {
+        flashColl.clear();
+      }, 1500);
     };
 
     decorationCollRef.current = editor.createDecorationsCollection([]);
@@ -887,25 +968,42 @@ export default function Editor({ page }: EditorProps) {
     <div className="h-full w-full flex flex-col">
       <Format />
       <div className="flex-1 w-full relative min-h-0">
-        <MonacoEditor
-          height="100%"
-          defaultLanguage="latex"
-          value={
-            contentPayload.pageId === page.id
-              ? contentPayload.text
-              : extractStringContent(page.content)
-          }
-          onChange={(value) =>
-            setContentPayload({
-              pageId: pageRef.current.id,
-              text: value || "",
-            })
-          }
-          theme={editorTheme === "dark" ? "latex-dark" : "latex-light"}
-          className=""
-          onMount={handleEditorMount}
-          options={{ automaticLayout: true }}
-        />
+        {editorMode === "visual" ? (
+          <VisualEditor
+            value={
+              contentPayload.pageId === page.id
+                ? contentPayload.text
+                : extractStringContent(page.content)
+            }
+            onChange={(value) =>
+              setContentPayload({
+                pageId: pageRef.current.id,
+                text: value || "",
+              })
+            }
+            theme={editorTheme === "dark" ? "dark" : "light"}
+          />
+        ) : (
+          <MonacoEditor
+            height="100%"
+            defaultLanguage="latex"
+            value={
+              contentPayload.pageId === page.id
+                ? contentPayload.text
+                : extractStringContent(page.content)
+            }
+            onChange={(value) =>
+              setContentPayload({
+                pageId: pageRef.current.id,
+                text: value || "",
+              })
+            }
+            theme={editorTheme === "dark" ? "latex-dark" : "latex-light"}
+            className=""
+            onMount={handleEditorMount}
+            options={{ automaticLayout: true }}
+          />
+        )}
       </div>
 
       {/* Glyph comment tooltip */}
@@ -981,21 +1079,21 @@ export default function Editor({ page }: EditorProps) {
             <div className="w-px h-4 bg-border mx-0.5" />
             <button
               onClick={() => {
-                if (selFloating.text) {
-                  setPendingAiContext({
-                    selectedText: selFloating.text,
-                    startLine: selFloating.startLine,
-                    endLine: selFloating.endLine,
-                  });
-                }
-                EditorEventBus.emit("flux:open-ai-panel");
+                setSuggestModal({
+                  originalText: selFloating.text,
+                  suggestedText: selFloating.text,
+                  fromLine: selFloating.startLine,
+                  toLine: selFloating.endLine,
+                  type: selFloating.text ? 'replace' : 'insert',
+                  description: '',
+                });
                 setSelFloating(null);
               }}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-primary hover:bg-primary/10 transition-colors cursor-pointer"
-              title="Ask AI"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer"
+              title="Suggest Edit (Track Changes)"
             >
-              <img src="/Flux.svg" alt="Flux" className="size-3.5" />
-              <span>Ask AI</span>
+              <FileCheck className="size-3.5 shrink-0" />
+              <span>Suggest</span>
             </button>
           </div>,
           document.body,
@@ -1119,6 +1217,152 @@ export default function Editor({ page }: EditorProps) {
                   className="px-3 py-1.5 rounded-md text-xs bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   Rename
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {/* Suggestion (Track Changes) modal dialog */}
+      {suggestModal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="suggest-dialog-title"
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/50 backdrop-blur-xs"
+          >
+            <div className="w-full max-w-lg rounded-xl border border-border bg-card p-5 space-y-4 shadow-raised-200">
+              <div className="flex items-center justify-between pb-2 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <div className="size-7 rounded-md bg-amber-500/15 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                    <FileCheck className="size-4" />
+                  </div>
+                  <div>
+                    <h2
+                      id="suggest-dialog-title"
+                      className="text-sm font-semibold text-foreground"
+                    >
+                      Suggest Edit (Track Changes)
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      Propose an edit on lines {suggestModal.fromLine} - {suggestModal.toLine}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSuggestModal(null)}
+                  className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              {/* Type selection */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground">Action:</span>
+                <div className="inline-flex rounded-md p-0.5 bg-muted text-xs">
+                  {(['replace', 'insert', 'delete'] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setSuggestModal((prev) => prev ? { ...prev, type: t } : null)}
+                      className={cn(
+                        "px-2.5 py-1 rounded capitalize font-medium transition-colors",
+                        suggestModal.type === t
+                          ? "bg-background text-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Original text preview */}
+              {suggestModal.originalText && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Original Code / Text:
+                  </label>
+                  <div className="max-h-24 overflow-y-auto rounded-md border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs font-mono text-rose-700 dark:text-rose-400">
+                    {suggestModal.originalText}
+                  </div>
+                </div>
+              )}
+
+              {/* Suggested text input */}
+              {suggestModal.type !== 'delete' && (
+                <div className="space-y-1">
+                  <label htmlFor="suggested-text" className="text-xs font-medium text-muted-foreground">
+                    Suggested Code / Text:
+                  </label>
+                  <textarea
+                    id="suggested-text"
+                    value={suggestModal.suggestedText}
+                    onChange={(e) =>
+                      setSuggestModal((prev) =>
+                        prev ? { ...prev, suggestedText: e.target.value } : null
+                      )
+                    }
+                    rows={3}
+                    placeholder="Type proposed LaTeX or text change..."
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-ring"
+                    spellCheck={false}
+                  />
+                </div>
+              )}
+
+              {/* Optional reason / description */}
+              <div className="space-y-1">
+                <label htmlFor="suggest-note" className="text-xs font-medium text-muted-foreground">
+                  Reason / Note (optional):
+                </label>
+                <input
+                  id="suggest-note"
+                  value={suggestModal.description}
+                  onChange={(e) =>
+                    setSuggestModal((prev) =>
+                      prev ? { ...prev, description: e.target.value } : null
+                    )
+                  }
+                  placeholder="e.g., Fix equation index, improve clarity..."
+                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setSuggestModal(null)}
+                  className="px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!suggestModal) return;
+                    await createSuggestionMutation.mutateAsync({
+                      pageId: page.id,
+                      type: suggestModal.type,
+                      originalText: suggestModal.originalText,
+                      suggestedText: suggestModal.type === 'delete' ? '' : suggestModal.suggestedText,
+                      fromLine: suggestModal.fromLine,
+                      toLine: suggestModal.toLine,
+                      description: suggestModal.description || undefined,
+                    });
+                    setSuggestModal(null);
+                    EditorEventBus.emit("flux:open-panel", "Review");
+                  }}
+                  disabled={createSuggestionMutation.isPending}
+                  className="px-4 py-1.5 rounded-md text-xs font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 transition-colors shadow-xs"
+                >
+                  {createSuggestionMutation.isPending ? "Submitting..." : "Submit Suggestion"}
                 </button>
               </div>
             </div>

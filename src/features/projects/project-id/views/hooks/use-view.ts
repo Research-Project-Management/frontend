@@ -9,6 +9,8 @@ import type {
   CreateViewInput,
   UpdateViewInput,
   QueryViewInput,
+  TViewFiltersSortKey,
+  TViewFiltersSortBy,
 } from '../types/view.types';
 
 export const viewKeys = {
@@ -22,20 +24,25 @@ export const viewKeys = {
 export function useProjectViews(projectId: string) {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [accessFilter, setAccessFilter] = useState<'all' | 'public' | 'private' | 'favorites'>('all');
+  const [accessFilter, setAccessFilter] = useState<'all' | 'public' | 'private'>('all');
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<TViewFiltersSortKey>('name');
+  const [sortBy, setSortBy] = useState<TViewFiltersSortBy>('asc');
 
   const queryParams: QueryViewInput | undefined = useMemo(() => {
     const params: QueryViewInput = {};
     if (accessFilter === 'public' || accessFilter === 'private') {
       params.access = accessFilter;
-    } else if (accessFilter === 'favorites') {
+    }
+    if (onlyFavorites) {
       params.isFavorite = true;
     }
     if (search.trim()) {
       params.search = search.trim();
     }
     return Object.keys(params).length > 0 ? params : undefined;
-  }, [accessFilter, search]);
+  }, [accessFilter, onlyFavorites, search]);
 
   const {
     data: views = [],
@@ -93,8 +100,58 @@ export function useProjectViews(projectId: string) {
     },
   });
 
+  const duplicateView = async (view: WorkItemViewItem) => {
+    try {
+      await createMutation.mutateAsync({
+        name: `Copy of ${view.name}`,
+        description: view.description || undefined,
+        layout: view.layout,
+        filters: view.filters,
+        displayProperties: view.displayProperties,
+        access: view.access,
+      });
+    } catch {
+      // Handled by onError in mutation
+    }
+  };
+
+  const clearAllFilters = () => {
+    setSearch('');
+    setAccessFilter('all');
+    setOnlyFavorites(false);
+    setCreatorFilter(null);
+  };
+
+  const isFiltersApplied = useMemo(() => {
+    return Boolean(search.trim() || accessFilter !== 'all' || onlyFavorites || creatorFilter);
+  }, [search, accessFilter, onlyFavorites, creatorFilter]);
+
+  // Client-side filtering and sorting for instant responsiveness
+  const sortedAndFilteredViews = useMemo(() => {
+    let result = [...views];
+
+    if (creatorFilter) {
+      result = result.filter(v => v.createdById === creatorFilter || v.createdBy?.id === creatorFilter);
+    }
+
+    result.sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === 'name') {
+        cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+      } else if (sortKey === 'createdAt') {
+        cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      } else if (sortKey === 'updatedAt') {
+        cmp = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+      }
+      return sortBy === 'asc' ? cmp : -cmp;
+    });
+
+    return result;
+  }, [views, creatorFilter, sortKey, sortBy]);
+
   return {
     views,
+    sortedViews: sortedAndFilteredViews,
     isLoading,
     isError,
     error,
@@ -103,6 +160,17 @@ export function useProjectViews(projectId: string) {
     setSearch,
     accessFilter,
     setAccessFilter,
+    onlyFavorites,
+    setOnlyFavorites,
+    creatorFilter,
+    setCreatorFilter,
+    sortKey,
+    setSortKey,
+    sortBy,
+    setSortBy,
+    clearAllFilters,
+    isFiltersApplied,
+    duplicateView,
     createView: createMutation.mutateAsync,
     isCreating: createMutation.isPending,
     updateView: updateMutation.mutateAsync,
@@ -116,3 +184,4 @@ export function useProjectViews(projectId: string) {
 
 export const useViewSettings = useProjectViews;
 export default useProjectViews;
+

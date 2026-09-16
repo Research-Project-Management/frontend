@@ -28,6 +28,8 @@ import {
   User,
   Tag,
   ChevronDown,
+  Paperclip,
+  Link2,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import { Button } from "@/shared/components/ui";
@@ -293,6 +295,31 @@ export function CardUI({
     st.completed || st.stateGroup === 'completed' || st.state?.group === 'completed' || st.columnId === 'done'
   ).length;
 
+  // Attachments count
+  const attachmentsCount = useMemo(() => {
+    if (typeof (card as any).attachmentCount === 'number') return (card as any).attachmentCount;
+    if (Array.isArray(card.attachments)) return card.attachments.length;
+    const attachObj = card.attachments || (card as any).attach;
+    if (attachObj && typeof attachObj === 'object') {
+      const files = Array.isArray((attachObj as any).files) ? (attachObj as any).files.length : 0;
+      const pages = Array.isArray((attachObj as any).pages) ? (attachObj as any).pages.length : 0;
+      const papers = Array.isArray((attachObj as any).papers) ? (attachObj as any).papers.length : 0;
+      return files + pages + papers;
+    }
+    return 0;
+  }, [card.attachments, (card as any).attach, (card as any).attachmentCount]);
+
+  // Links count
+  const linksCount = useMemo(() => {
+    if (typeof (card as any).linkCount === 'number') return (card as any).linkCount;
+    if (Array.isArray((card as any).links)) return (card as any).links.length;
+    const attachObj = card.attachments || (card as any).attach;
+    if (attachObj && typeof attachObj === 'object' && Array.isArray((attachObj as any).links)) {
+      return (attachObj as any).links.length;
+    }
+    return 0;
+  }, [(card as any).links, card.attachments, (card as any).attach, (card as any).linkCount]);
+
   return (
     <div
       role="button"
@@ -394,7 +421,7 @@ export function CardUI({
       {/* Row 2: Title */}
       <p
         className={cn(
-          'mt-1 text-[13px] font-medium text-foreground leading-snug line-clamp-2 select-text',
+          'mt-1 text-13 font-medium text-foreground leading-snug line-clamp-2 select-text',
           isDone && 'line-through text-muted-foreground'
         )}
       >
@@ -582,87 +609,121 @@ export function CardUI({
         )}
       </div>
 
-      {/* Row 4: Secondary Badges (Modules, Cycle, Labels, Subitems) */}
-      {(hasModules || cycleName || labels.length > 0 || childWorkItemTotal > 0) && (
-        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-          {/* Module Badge */}
-          {hasModules && (
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit?.(card);
-              }}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border/70 bg-muted/20 text-[11px] text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors cursor-pointer shrink-0"
-              title={moduleText}
-            >
-              <ModuleGridIcon className="size-3.5 shrink-0" />
-              <span className="truncate max-w-[130px]">{moduleText}</span>
-            </div>
-          )}
+      {/* Row 4: Secondary Badges (Modules, Cycle, Labels, Subitems, Attachments, Links) */}
+      {(() => {
+        const showCycle = Boolean(displayOptions?.properties?.cycle) && Boolean(cycleName);
+        const showLabels = displayOptions?.properties?.labels !== false && labels.length > 0;
+        const showSubItems = Boolean(displayOptions?.properties?.childWorkItemCount ?? displayOptions?.properties?.subItemCount) && childWorkItemTotal > 0;
+        const showAttach = Boolean(displayOptions?.properties?.attachmentCount ?? displayOptions?.properties?.attach) && attachmentsCount > 0;
+        const showLinks = Boolean(displayOptions?.properties?.link) && linksCount > 0;
 
-          {/* Cycle Badge */}
-          {cycleName && (
-            <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-              <CyclePopover
-                open={cycleOpen}
-                onOpenChange={setCycleOpen}
-                cycleId={card.cycleId || ''}
-                setCycleId={(cId) => onUpdateItem?.(card.id, { cycleId: cId || null })}
-                cycles={cycles}
-                isReadOnly={isReadOnly}
-                actionBtnClass="h-6 px-2 text-[11px] font-normal rounded-md border border-border/70 bg-muted/20 hover:bg-muted/60 text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors cursor-pointer"
-              />
-            </div>
-          )}
+        if (!hasModules && !showCycle && !showLabels && !showSubItems && !showAttach && !showLinks) {
+          return null;
+        }
 
-          {/* Label Badges */}
-          {displayOptions?.properties?.labels !== false && (
-            <>
-              {labels.map((lbl: any) => {
-                const lblName = lbl.title || lbl.name || lbl.id || '';
-                const lblColor = lbl.color || '#8b5cf6';
-                return (
-                  <span
-                    key={lbl.id || lblName}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border/70 bg-muted/20 text-[11px] text-muted-foreground font-normal hover:bg-muted/50 transition-colors shrink-0"
-                  >
-                    <span
-                      className="size-2 rounded-full shrink-0"
-                      style={{ backgroundColor: lblColor }}
-                    />
-                    <span className="truncate max-w-[90px]">{lblName}</span>
-                  </span>
-                );
-              })}
+        return (
+          <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+            {/* Module Badge */}
+            {hasModules && (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit?.(card);
+                }}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border/70 bg-muted/20 text-11 text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors cursor-pointer shrink-0"
+                title={moduleText}
+              >
+                <ModuleGridIcon className="size-3.5 shrink-0" />
+                <span className="truncate max-w-[130px]">{moduleText}</span>
+              </div>
+            )}
 
+            {/* Cycle Badge */}
+            {showCycle && (
               <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                <LabelPopover
-                  open={labelOpen}
-                  onOpenChange={setLabelOpen}
-                  labels={card.labels || []}
-                  setLabels={(updater) => {
-                    const current = card.labels || [];
-                    const next = typeof updater === 'function' ? updater(current) : updater;
-                    onUpdateItem?.(card.id, { labels: next });
-                  }}
-                  actionBtnClass="size-6 p-0 rounded-md border border-border/70 bg-transparent hover:bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                <CyclePopover
+                  open={cycleOpen}
+                  onOpenChange={setCycleOpen}
+                  cycleId={card.cycleId || ''}
+                  setCycleId={(cId) => onUpdateItem?.(card.id, { cycleId: cId || null })}
+                  cycles={cycles}
+                  isReadOnly={isReadOnly}
+                  actionBtnClass="h-6 px-2 text-11 font-normal rounded-md border border-border/70 bg-muted/20 hover:bg-muted/60 text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors cursor-pointer"
                 />
               </div>
-            </>
-          )}
+            )}
 
-          {/* Subitem Indicator */}
-          {childWorkItemTotal > 0 && (
-            <div
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] text-muted-foreground border border-border/70 bg-muted/20 shrink-0"
-              title={`${childWorkItemDone}/${childWorkItemTotal} sub-items`}
-            >
-              <CycleHalfIcon className="size-3 shrink-0" />
-              <span className="tabular-nums font-mono">{childWorkItemDone}/{childWorkItemTotal}</span>
-            </div>
-          )}
-        </div>
-      )}
+            {/* Label Badges */}
+            {displayOptions?.properties?.labels !== false && (
+              <>
+                {labels.map((lbl: any) => {
+                  const lblName = lbl.title || lbl.name || lbl.id || '';
+                  const lblColor = lbl.color || '#8b5cf6';
+                  return (
+                    <span
+                      key={lbl.id || lblName}
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border/70 bg-muted/20 text-11 text-muted-foreground font-normal hover:bg-muted/50 transition-colors shrink-0"
+                    >
+                      <span
+                        className="size-2 rounded-full shrink-0"
+                        style={{ backgroundColor: lblColor }}
+                      />
+                      <span className="truncate max-w-[90px]">{lblName}</span>
+                    </span>
+                  );
+                })}
+
+                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <LabelPopover
+                    open={labelOpen}
+                    onOpenChange={setLabelOpen}
+                    labels={card.labels || []}
+                    setLabels={(updater) => {
+                      const current = card.labels || [];
+                      const next = typeof updater === 'function' ? updater(current) : updater;
+                      onUpdateItem?.(card.id, { labels: next });
+                    }}
+                    actionBtnClass="size-6 p-0 rounded-md border border-border/70 bg-transparent hover:bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Subitem Indicator */}
+            {showSubItems && (
+              <div
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-11 text-muted-foreground border border-border/70 bg-muted/20 shrink-0"
+                title={`${childWorkItemDone}/${childWorkItemTotal} sub-items`}
+              >
+                <CycleHalfIcon className="size-3 shrink-0" />
+                <span className="tabular-nums font-mono">{childWorkItemDone}/{childWorkItemTotal}</span>
+              </div>
+            )}
+
+            {/* Attachments Indicator */}
+            {showAttach && (
+              <div
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-11 text-muted-foreground border border-border/70 bg-muted/20 shrink-0"
+                title={`${attachmentsCount} attachment${attachmentsCount > 1 ? 's' : ''}`}
+              >
+                <Paperclip className="size-3 shrink-0" />
+                <span className="tabular-nums font-mono">{attachmentsCount}</span>
+              </div>
+            )}
+
+            {/* Links Indicator */}
+            {showLinks && (
+              <div
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-11 text-muted-foreground border border-border/70 bg-muted/20 shrink-0"
+                title={`${linksCount} link${linksCount > 1 ? 's' : ''}`}
+              >
+                <Link2 className="size-3 shrink-0" />
+                <span className="tabular-nums font-mono">{linksCount}</span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -1191,6 +1252,18 @@ export function BoardView({
   const { itemsByColumn, activeItem, sensors } = kanbanState;
   const { dragStart, dragEnd, dragCancel } = kanbanActions;
 
+  const visibleColumns = useMemo(() => {
+    if (displayOptions?.showEmptyGroups === false) {
+      const nonEmpty = columns.filter((col) => {
+        const colId = resolveColumnId(col);
+        const colCards = itemsByColumn.get(colId) || [];
+        return colCards.length > 0;
+      });
+      return nonEmpty.length > 0 ? nonEmpty : columns;
+    }
+    return columns;
+  }, [columns, itemsByColumn, displayOptions?.showEmptyGroups]);
+
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
     setIsMounted(true);
@@ -1313,7 +1386,7 @@ export function BoardView({
           </div>
         ) : (
           <div className="flex h-full items-start gap-3.5 min-w-max pb-4">
-            {columns.map((col) => {
+            {visibleColumns.map((col) => {
               const colId = resolveColumnId(col);
               const columnCards = itemsByColumn.get(colId) || [];
               return (

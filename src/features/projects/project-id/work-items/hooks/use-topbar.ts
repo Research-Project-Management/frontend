@@ -410,11 +410,22 @@ export function useTopbar({
       });
     }
 
-    // 8. Labels filter
+    // 8. Labels filter (supports both string[] and object[] labels)
     if (filters.labels.length > 0) {
       result = result.filter((item) => {
         if (!Array.isArray(item.labels) || item.labels.length === 0) return false;
-        return item.labels.some((label) => filters.labels.includes(label));
+        return item.labels.some((labelItem: any) => {
+          if (typeof labelItem === 'string') {
+            return filters.labels.includes(labelItem);
+          }
+          if (typeof labelItem === 'object' && labelItem !== null) {
+            return (
+              (labelItem.id && filters.labels.includes(labelItem.id)) ||
+              (labelItem.name && filters.labels.includes(labelItem.name))
+            );
+          }
+          return false;
+        });
       });
     }
 

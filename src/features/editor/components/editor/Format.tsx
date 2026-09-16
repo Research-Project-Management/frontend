@@ -1,9 +1,7 @@
 'use client';
 
 import React from 'react';
-import { usePageStore } from '@/features/editor/store/page.store';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { useActionsStore } from '@/features/editor/store/actions.store';
+import { usePageStore, useSettingsStore } from '@/features/editor/store';
 import {
   Bold,
   Italic,
@@ -27,7 +25,6 @@ import {
   ZoomOut,
   MoreHorizontal,
   Settings,
-  Sparkles,
 } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/shared/components/ui";
@@ -128,7 +125,6 @@ function ToolbarButton({
 
 export default function Format() {
   const { editorRef } = usePageStore();
-  const { setPendingAiContext } = useActionsStore();
   const {
     wordWrap,
     setWordWrap,
@@ -178,24 +174,6 @@ export default function Format() {
 
   const handleInsert = (snippet: string) => {
     EditorCommandBus.insertSnippet(editorRef.current, snippet);
-  };
-
-  const handleAiAsk = () => {
-    const ed = editorRef.current;
-    if (ed) {
-      const sel = ed.getSelection();
-      if (sel) {
-        const text = ed.getModel()?.getValueInRange(sel) ?? '';
-        if (text.trim()) {
-          setPendingAiContext({
-            selectedText: text,
-            startLine: sel.startLineNumber,
-            endLine: sel.endLineNumber,
-          });
-        }
-      }
-    }
-    EditorEventBus.emit('flux:open-ai-panel');
   };
 
   const handleFontSizeChange = (direction: 'in' | 'out') => {
@@ -396,17 +374,8 @@ export default function Format() {
           )}
         </div>
 
-        {/* Right Side: AI & Quick-Settings */}
+        {/* Right Side: Quick-Settings */}
         <div className="flex items-center gap-1.5 shrink-0 pl-3 border-l border-border">
-          <ToolbarButton
-            onClick={handleAiAsk}
-            icon={Sparkles}
-            tooltip="Ask AI"
-            variant="ai"
-          />
-
-          <div className="h-4 w-px bg-border/80 mx-1" />
-
           {showQuickSettings ? (
             <>
               <ToolbarButton

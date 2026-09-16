@@ -255,7 +255,7 @@ export default function LabelsPage() {
       />
 
       <div className="flex-1 overflow-y-auto p-6 md:p-8">
-        <div className="w-full max-w-5xl mx-auto space-y-5">
+        <div className="w-full max-w-4xl mx-auto space-y-5">
           {/* ── Toolbar ── */}
           <div className="flex items-center justify-between gap-4">
             <div className="relative w-full max-w-xs">
@@ -469,14 +469,14 @@ export default function LabelsPage() {
               <Form {...form}>
                 <form onSubmit={handleSubmit(handleSaveLabel)} className="space-y-4 pt-2">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-foreground">Label Name *</label>
+                    <label className="text-12 font-medium text-foreground">Label Name *</label>
                     <Input
                       placeholder="e.g. Theoretical Physics, Quantum Optics, Clinical Trials"
                       {...register('name')}
                       maxLength={255}
                       autoFocus
                       className={cn(
-                        "h-8.5 text-xs bg-background border-border",
+                        "h-8 text-12 bg-background border-border shadow-2xs",
                         errors.name && "border-destructive focus-visible:ring-destructive/30"
                       )}
                     />
@@ -487,7 +487,7 @@ export default function LabelsPage() {
 
                   {/* Color Palette */}
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-foreground">Color Palette</label>
+                    <label className="text-12 font-medium text-foreground">Color Palette</label>
                     <div className="grid grid-cols-5 gap-2">
                       {COLOR_PALETTE.map((c) => (
                         <button
@@ -495,7 +495,7 @@ export default function LabelsPage() {
                           type="button"
                           onClick={() => setValue('color', c.hex, { shouldValidate: true })}
                           className={cn(
-                            'h-7 rounded flex items-center justify-center gap-1.5 text-xs font-medium text-white transition-transform cursor-pointer shadow-none',
+                            'h-7 rounded-md flex items-center justify-center gap-1.5 text-11 font-medium text-white transition-transform cursor-pointer shadow-none',
                             formColor.toLowerCase() === c.hex.toLowerCase() &&
                               'ring-2 ring-primary ring-offset-1 ring-offset-background scale-105',
                           )}
@@ -506,12 +506,12 @@ export default function LabelsPage() {
                       ))}
                     </div>
                     <div className="flex items-center gap-2 pt-1">
-                      <span className="text-xs text-muted-foreground">Custom Hex:</span>
+                      <span className="text-12 text-muted-foreground">Custom Hex:</span>
                       <Input
                         value={formColor}
                         onChange={(e) => setValue('color', e.target.value, { shouldValidate: true })}
                         className={cn(
-                          "h-7 w-28 text-xs font-mono bg-background border-border",
+                          "h-7 w-28 text-12 font-mono bg-background border-border shadow-2xs",
                           errors.color && "border-destructive"
                         )}
                         placeholder="#000000"
@@ -524,23 +524,23 @@ export default function LabelsPage() {
 
                   {/* Description */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-foreground">Description (Optional)</label>
+                    <label className="text-12 font-medium text-foreground">Description (Optional)</label>
                     <Input
                       placeholder="Context or criteria for applying this label"
                       {...register('description')}
                       maxLength={1000}
-                      className="h-8.5 text-xs bg-background border-border"
+                      className="h-8 text-12 bg-background border-border shadow-2xs"
                     />
                   </div>
 
                   {/* Parent Selection (Strict 1-Level Nesting) */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-foreground">Parent Group (Optional)</label>
+                    <label className="text-12 font-medium text-foreground">Parent Group (Optional)</label>
                     <select
                       value={formParentId || ''}
                       onChange={(e) => setValue('parentId', e.target.value || null)}
                       disabled={Boolean(editingLabel && childMap[editingLabel.id]?.length > 0)}
-                      className="w-full h-8.5 text-xs rounded-md border border-border bg-background px-3 text-foreground outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                      className="w-full h-8 text-12 rounded-md border border-border bg-background px-3 text-foreground outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 shadow-2xs"
                     >
                       <option value="">None (Independent Root Label)</option>
                       {rootLabels
@@ -564,7 +564,7 @@ export default function LabelsPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setIsFormOpen(false)}
-                      className="h-8 text-xs"
+                      className="h-8 text-12"
                     >
                       Cancel
                     </Button>
@@ -572,7 +572,7 @@ export default function LabelsPage() {
                       type="submit"
                       size="sm"
                       disabled={createMutation.isPending || updateMutation.isPending}
-                      className="h-8 text-xs px-4"
+                      className="h-8 text-12 px-4"
                     >
                       {editingLabel ? 'Save Changes' : 'Create Label'}
                     </Button>

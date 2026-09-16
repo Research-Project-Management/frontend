@@ -9,10 +9,10 @@ import {
   Loader2,
   Terminal,
 } from 'lucide-react';
-import type { CompileStatus } from '@/features/editor/store/compile.store';
+import { useCompileStore, usePageStore, type CompileStatus } from '@/features/editor/store';
 import type { ParsedLog } from './Logs';
-import { fetchWordCount } from '@/features/editor/services/document.service';
-import { usePageStore } from '@/features/editor/store/page.store';
+import { fetchWordCount } from '@/features/editor/services/compiler.service';
+import RawLogModal from './RawLogModal';
 
 export interface StatusProps {
   compileStatus: CompileStatus;
@@ -30,7 +30,9 @@ export default function Status({
   onToggleLog,
 }: StatusProps) {
   const { getEditorContent } = usePageStore();
+  const compileLog = useCompileStore((s) => s.compileLog);
   const [wordCount, setWordCount] = useState<number | null>(null);
+  const [rawLogOpen, setRawLogOpen] = useState(false);
 
   useEffect(() => {
     if (compileStatus === 'done') {
@@ -46,6 +48,7 @@ export default function Status({
       }
     }
   }, [compileStatus, getEditorContent]);
+
   return (
     <div className="flex items-center justify-between px-3 py-1 border-t border-border bg-secondary text-xs text-muted-foreground shrink-0">
       <div
@@ -105,6 +108,19 @@ export default function Status({
             )}
           </button>
         )}
+
+        {/* Overleaf Parity: Raw Logs Modal Trigger */}
+        {(compileStatus === 'error' || compileStatus === 'done') && compileLog && (
+          <button
+            type="button"
+            onClick={() => setRawLogOpen(true)}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+            title="View Raw LaTeX Engine Log"
+          >
+            <Terminal className="size-3 text-muted-foreground" />
+            <span>Raw Logs</span>
+          </button>
+        )}
       </div>
       <div className="flex items-center gap-3">
         {wordCount !== null && (
@@ -120,6 +136,14 @@ export default function Status({
           <span className="text-success font-medium">PDF ready</span>
         )}
       </div>
+
+      {/* Raw Logs Modal */}
+      <RawLogModal
+        open={rawLogOpen}
+        onOpenChange={setRawLogOpen}
+        logs={compileLog || ''}
+        hasErrors={compileStatus === 'error'}
+      />
     </div>
   );
 }

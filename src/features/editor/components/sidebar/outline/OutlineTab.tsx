@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger, Input } from "@/shared/components/ui";
 import { cn, logger } from "@/shared/lib/utils";
-import { usePageStore } from '@/features/editor/store/page.store';
+import { usePageStore } from '@/features/editor/store';
 
 export interface OutlineEntry {
   level: number;

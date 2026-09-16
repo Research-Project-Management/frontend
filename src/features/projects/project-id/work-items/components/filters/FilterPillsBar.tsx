@@ -131,6 +131,30 @@ export function FilterPillsBar({
   const activeUpdatedAt = filters ? filters.updated_at : [];
   const activeSearch = filters?.search || '';
 
+  // Resolve label names and colors from items
+  const labelsMap = React.useMemo(() => {
+    const map = new Map<string, { name: string; color?: string }>();
+    if (Array.isArray(items)) {
+      for (const t of items) {
+        if (Array.isArray(t.labels)) {
+          for (const l of t.labels) {
+            if (!l) continue;
+            if (typeof l === 'string') {
+              if (!map.has(l)) map.set(l, { name: l });
+            } else if (typeof l === 'object') {
+              const id = (l as any).id || (l as any).name;
+              const name = (l as any).name || (l as any).title || id;
+              if (id && !map.has(id)) {
+                map.set(id, { name, color: (l as any).color });
+              }
+            }
+          }
+        }
+      }
+    }
+    return map;
+  }, [items]);
+
   return (
     <div className="flex items-center gap-2 px-4 py-1.5 border-b border-border bg-background text-xs text-foreground overflow-x-auto select-none shrink-0 min-h-9">
       {/* Active Filter Chips */}
@@ -333,23 +357,36 @@ export function FilterPillsBar({
         })}
 
         {/* 8. Labels Pills */}
-        {activeLabels.map((lbl) => (
-          <span
-            key={`lbl-${lbl}`}
-            className="inline-flex items-center gap-1.5 px-2 py-0.5 h-7 rounded-md bg-background border border-border text-12 text-foreground shadow-2xs shrink-0 select-none"
-          >
-            <Tag className="size-3 text-muted-foreground shrink-0" />
-            <span className="truncate max-w-40 font-medium">{lbl}</span>
-            <button
-              type="button"
-              onClick={() => onRemoveFilter?.('labels', lbl)}
-              className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
-              aria-label={`Remove label ${lbl} filter`}
+        {activeLabels.map((lbl) => {
+          const info = labelsMap.get(lbl);
+          const displayName = info?.name || lbl;
+          const color = info?.color;
+
+          return (
+            <span
+              key={`lbl-${lbl}`}
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 h-7 rounded-md bg-background border border-border text-12 text-foreground shadow-2xs shrink-0 select-none"
             >
-              <X className="size-3 shrink-0" />
-            </button>
-          </span>
-        ))}
+              {color ? (
+                <span
+                  className="size-2 rounded-full shrink-0"
+                  style={{ backgroundColor: color }}
+                />
+              ) : (
+                <Tag className="size-3 text-muted-foreground shrink-0" />
+              )}
+              <span className="truncate max-w-40 font-medium">{displayName}</span>
+              <button
+                type="button"
+                onClick={() => onRemoveFilter?.('labels', lbl)}
+                className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+                aria-label={`Remove label ${displayName} filter`}
+              >
+                <X className="size-3 shrink-0" />
+              </button>
+            </span>
+          );
+        })}
 
         {/* 9. Cycle Pills */}
         {activeCycles.map((cId) => {

@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePageStore } from '@/features/editor/store/page.store';
-import { usePageActions } from '@/features/editor/hooks/use-page';
-import { renameItemSchema } from '@/features/editor/schemas/document.schema';
+import { usePageStore } from '@/features/editor/store';
+import { usePageActions } from '@/features/editor/hooks/use-core';
+import { renameItemSchema } from '@/features/editor/schemas';
 
 export default function DocumentBreadcrumb() {
   const router = useRouter();

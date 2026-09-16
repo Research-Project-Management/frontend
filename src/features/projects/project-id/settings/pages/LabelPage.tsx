@@ -2,50 +2,234 @@
 
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { useForm, useWatch } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useProjectDetails } from '@/features/projects/shell/hooks/use-project';
-import { Button, Form, Input, Skeleton, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/components/ui";
+import { Button, Input, Skeleton } from '@/shared/components/ui';
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from '@/shared/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/shared/components/ui/dropdown-menu';
 import { DeleteModal } from '@/features/settings/components/modal/DeleteModal';
 import TopBar from '../components/layout/TopBar';
 import {
   Tag,
   Search,
-  Plus,
-  ChevronRight,
-  ChevronDown,
+  GripVertical,
+  MoreHorizontal,
   Pencil,
   Trash2,
-  GitBranch,
-  CornerDownRight,
-  AlertTriangle,
-  X,
+  ArrowUpRight,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from "@/shared/lib/utils";
+import { cn } from '@/shared/lib/utils';
 import {
   useProjectLabels,
   useCreateProjectLabel,
   useUpdateProjectLabel,
   useDeleteProjectLabel,
+  useReorderProjectLabels,
 } from '../hooks/use-label';
-import { labelFormSchema, type LabelFormValues } from '../schemas/label.schema';
 import type { Label } from '../types/label.types';
 
 // ── Color Preset Palette ──────────────────────────────────────────────────
 
 export const COLOR_PALETTE = [
   { name: 'Red', hex: '#ef4444' },
+  { name: 'Rose', hex: '#f43f5e' },
   { name: 'Orange', hex: '#f97316' },
   { name: 'Amber', hex: '#f59e0b' },
   { name: 'Emerald', hex: '#10b981' },
+  { name: 'Teal', hex: '#14b8a6' },
   { name: 'Cyan', hex: '#06b6d4' },
-  { name: 'Blue', hex: '#3b82f6' },
+  { name: 'Blue', hex: '#0c66e4' },
   { name: 'Indigo', hex: '#6366f1' },
   { name: 'Violet', hex: '#8b5cf6' },
   { name: 'Pink', hex: '#ec4899' },
   { name: 'Slate', hex: '#64748b' },
 ];
+
+// ── Empty State 3D Illustration ──────────────────────────────────────────
+
+function EmptyStateIllustration({ className }: { className?: string }) {
+  return (
+    <svg
+      width="96"
+      height="96"
+      viewBox="0 0 96 96"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      {/* Back card */}
+      <rect
+        x="36"
+        y="14"
+        width="44"
+        height="56"
+        rx="8"
+        className="stroke-border/50 fill-muted/30"
+        strokeWidth="1.5"
+      />
+      {/* Middle card */}
+      <rect
+        x="28"
+        y="22"
+        width="44"
+        height="56"
+        rx="8"
+        className="stroke-border fill-card"
+        strokeWidth="1.5"
+      />
+      {/* Front card */}
+      <rect
+        x="20"
+        y="30"
+        width="44"
+        height="56"
+        rx="8"
+        className="stroke-border fill-background"
+        strokeWidth="1.5"
+      />
+      {/* Front card Tag Icon */}
+      <g transform="translate(34, 48) scale(0.68)">
+        <path
+          d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8 8a2 2 0 0 0 2.828 0l7.172-7.172a2 2 0 0 0 0-2.828l-8-8z"
+          className="stroke-muted-foreground/50"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+        <circle
+          cx="7"
+          cy="7"
+          r="1.5"
+          className="fill-muted-foreground/50"
+        />
+      </g>
+    </svg>
+  );
+}
+
+// ── Inline Form Component (for Add & Edit) ───────────────────────────────
+
+interface LabelInlineFormProps {
+  initialName?: string;
+  initialColor?: string;
+  submitLabel?: string;
+  onSubmit: (name: string, color: string) => Promise<void> | void;
+  onCancel: () => void;
+  isSubmitting?: boolean;
+}
+
+function LabelInlineForm({
+  initialName = '',
+  initialColor = '#0c66e4',
+  submitLabel = 'Add',
+  onSubmit,
+  onCancel,
+  isSubmitting = false,
+}: LabelInlineFormProps) {
+  const [name, setName] = useState(initialName);
+  const [color, setColor] = useState(initialColor);
+  const [isColorOpen, setIsColorOpen] = useState(false);
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!name.trim() || isSubmitting) return;
+    onSubmit(name.trim(), color);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex items-center gap-2.5 w-full">
+      {/* Color Picker Popover */}
+      <Popover open={isColorOpen} onOpenChange={setIsColorOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="size-8.5 rounded-lg border border-input bg-background flex items-center justify-center hover:bg-muted/50 cursor-pointer shrink-0 transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
+            title="Choose color"
+          >
+            <span
+              className="size-3.5 rounded-full ring-1 ring-border/30 shrink-0"
+              style={{ backgroundColor: color }}
+            />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-auto p-2.5 bg-popover border-border">
+          <div className="grid grid-cols-6 gap-2">
+            {COLOR_PALETTE.map((c) => (
+              <button
+                key={c.hex}
+                type="button"
+                onClick={() => {
+                  setColor(c.hex);
+                  setIsColorOpen(false);
+                }}
+                className={cn(
+                  "size-6 rounded-full transition-transform hover:scale-110 cursor-pointer flex items-center justify-center ring-offset-background",
+                  color.toLowerCase() === c.hex.toLowerCase() && "ring-2 ring-primary ring-offset-2 scale-105"
+                )}
+                style={{ backgroundColor: c.hex }}
+                title={c.name}
+              >
+                {color.toLowerCase() === c.hex.toLowerCase() && (
+                  <Check className="size-3 text-white stroke-[3]" />
+                )}
+              </button>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* Title Input */}
+      <Input
+        autoFocus
+        placeholder="Label title"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            onCancel();
+          }
+        }}
+        maxLength={255}
+        className="flex-1 h-8.5 text-xs sm:text-sm bg-background border-input rounded-md px-3"
+      />
+
+      {/* Cancel Button */}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={onCancel}
+        className="h-8.5 px-3 text-xs sm:text-sm font-normal text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+      >
+        Cancel
+      </Button>
+
+      {/* Submit Button */}
+      <Button
+        type="submit"
+        size="sm"
+        disabled={!name.trim() || isSubmitting}
+        className="h-8.5 px-4 text-xs sm:text-sm font-medium bg-[#0c66e4] hover:bg-[#0052cc] text-white rounded-md cursor-pointer disabled:opacity-50 shadow-none transition-colors"
+      >
+        {submitLabel}
+      </Button>
+    </form>
+  );
+}
+
+// ── Main Page Component ──────────────────────────────────────────────────
 
 export default function LabelPage() {
   const { projectId } = useParams() as { projectId: string };
@@ -56,162 +240,77 @@ export default function LabelPage() {
   const createMutation = useCreateProjectLabel(projectId);
   const updateMutation = useUpdateProjectLabel(projectId);
   const deleteMutation = useDeleteProjectLabel(projectId);
+  const reorderMutation = useReorderProjectLabels(projectId);
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Collapsed Parent Groups
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-
-  // Modals state
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingLabel, setEditingLabel] = useState<Label | null>(null);
-  const [parentPresetId, setParentPresetId] = useState<string | null>(null);
-
-  // Form Setup using React Hook Form & Zod
-  const form = useForm<LabelFormValues>({
-    resolver: zodResolver(labelFormSchema),
-    defaultValues: {
-      name: '',
-      color: '#3b82f6',
-      description: '',
-      parentId: null,
-    },
-  });
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    setError,
-    control,
-    formState: { errors },
-  } = form;
-
-  const formColor = useWatch({ control, name: 'color' });
-  const formParentId = useWatch({ control, name: 'parentId' });
+  // Creation & Editing States
+  const [isCreating, setIsCreating] = useState(false);
+  const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
 
   // Delete State
   const [deletingLabel, setDeletingLabel] = useState<Label | null>(null);
 
-  // ── Hierarchical Label Processing ──────────────────────────────────────────
+  // Drag-and-drop reorder state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [localLabels, setLocalLabels] = useState<Label[] | null>(null);
 
-  const { rootLabels, childMap, allLabelsCount } = useMemo(() => {
-    const roots: Label[] = [];
-    const childrenByParent: Record<string, Label[]> = {};
+  // Sync local labels with server rawLabels when not actively dragging
+  const labelsToDisplay = localLabels !== null ? localLabels : rawLabels;
 
-    rawLabels.forEach((label) => {
-      if (label.parentId) {
-        if (!childrenByParent[label.parentId]) {
-          childrenByParent[label.parentId] = [];
-        }
-        childrenByParent[label.parentId].push(label);
-      } else {
-        roots.push(label);
-      }
-    });
-
-    // Also attach children from server if present
-    roots.forEach((root) => {
-      if (root.children && root.children.length > 0) {
-        if (!childrenByParent[root.id]) {
-          childrenByParent[root.id] = root.children;
-        }
-      }
-    });
-
-    return {
-      rootLabels: roots,
-      childMap: childrenByParent,
-      allLabelsCount: rawLabels.length,
-    };
-  }, [rawLabels]);
-
-  const filteredRoots = useMemo(() => {
-    if (!searchQuery.trim()) return rootLabels;
+  const filteredLabels = useMemo(() => {
+    if (!searchQuery.trim()) return labelsToDisplay;
     const q = searchQuery.toLowerCase().trim();
+    return labelsToDisplay.filter((l) => l.name.toLowerCase().includes(q));
+  }, [labelsToDisplay, searchQuery]);
 
-    return rootLabels.filter((root) => {
-      const matchRoot = root.name.toLowerCase().includes(q);
-      const matchChildren = (childMap[root.id] || []).some((c) =>
-        c.name.toLowerCase().includes(q)
-      );
-      return matchRoot || matchChildren;
-    });
-  }, [rootLabels, childMap, searchQuery]);
+  // ── Actions ─────────────────────────────────────────────────────────────
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
+  const handleCreateLabel = async (name: string, color: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
 
-  const toggleGroup = (id: string) => {
-    setCollapsedGroups((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const openCreateModal = (parentId?: string) => {
-    setEditingLabel(null);
-    reset({
-      name: '',
-      color: COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)].hex,
-      description: '',
-      parentId: parentId || null,
-    });
-    setIsFormOpen(true);
-  };
-
-  const openEditModal = (label: Label) => {
-    setEditingLabel(label);
-    reset({
-      name: label.name,
-      color: label.color || '#3b82f6',
-      description: label.description || '',
-      parentId: label.parentId || null,
-    });
-    setIsFormOpen(true);
-  };
-
-  const handleSaveLabel = async (values: LabelFormValues) => {
-    // Duplicate check
-    const normalized = values.name.trim().toLowerCase();
     const isDuplicate = rawLabels.some(
-      (l) => l.name.toLowerCase() === normalized && l.id !== editingLabel?.id
+      (l) => l.name.toLowerCase() === trimmed.toLowerCase()
     );
     if (isDuplicate) {
-      setError('name', { message: `A label with name "${values.name.trim()}" already exists in this project` });
+      toast.error(`A label with name "${trimmed}" already exists in this project`);
       return;
     }
 
     try {
-      if (editingLabel) {
-        await updateMutation.mutateAsync({
-          labelId: editingLabel.id,
-          name: values.name.trim(),
-          color: values.color,
-          description: values.description.trim() || null,
-          parentId: values.parentId,
-        });
-      } else {
-        await createMutation.mutateAsync({
-          name: values.name.trim(),
-          color: values.color,
-          description: values.description.trim() || undefined,
-          parentId: values.parentId || undefined,
-        });
-      }
-      setIsFormOpen(false);
+      await createMutation.mutateAsync({
+        name: trimmed,
+        color,
+      });
+      setIsCreating(false);
     } catch {
-      // Handled by mutation
+      // Handled by mutation onError
     }
   };
 
-  const handleUngroup = async (label: Label) => {
+  const handleUpdateLabel = async (labelId: string, name: string, color: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    const isDuplicate = rawLabels.some(
+      (l) => l.name.toLowerCase() === trimmed.toLowerCase() && l.id !== labelId
+    );
+    if (isDuplicate) {
+      toast.error(`A label with name "${trimmed}" already exists in this project`);
+      return;
+    }
+
     try {
       await updateMutation.mutateAsync({
-        labelId: label.id,
-        parentId: null,
+        labelId,
+        name: trimmed,
+        color,
       });
-      toast.success(`Ungrouped "${label.name}"`);
+      setEditingLabelId(null);
     } catch {
-      // Handled
+      // Handled by mutation onError
     }
   };
 
@@ -221,22 +320,61 @@ export default function LabelPage() {
       await deleteMutation.mutateAsync(deletingLabel.id);
       setDeletingLabel(null);
     } catch {
-      // Handled
+      // Handled by mutation onError
     }
   };
+
+  // ── Drag & Drop Reordering ──────────────────────────────────────────────
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const currentList = [...labelsToDisplay];
+    const item = currentList[draggedIndex];
+    currentList.splice(draggedIndex, 1);
+    currentList.splice(index, 0, item);
+
+    setDraggedIndex(index);
+    setLocalLabels(currentList);
+  };
+
+  const handleDragEnd = async () => {
+    if (localLabels) {
+      const itemsToReorder = localLabels.map((l, idx) => ({
+        id: l.id,
+        sortOrder: idx,
+      }));
+      try {
+        await reorderMutation.mutateAsync(itemsToReorder);
+      } catch {
+        // Handled
+      }
+      setLocalLabels(null);
+    }
+    setDraggedIndex(null);
+  };
+
+  // ── Loading & Error States ──────────────────────────────────────────────
 
   if (isLoadingLabels || isLoadingProject) {
     return (
       <div className="flex flex-col h-full w-full bg-background">
-        <TopBar
-          title="Labels"
-          description="Organize, categorize, and group work items within this project"
-          Icon={Tag}
-        />
+        <TopBar title="Labels" Icon={Tag} />
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
-            <Skeleton className="h-10 w-full rounded-md" />
-            <Skeleton className="h-48 w-full rounded-md" />
+          <div className="max-w-4xl mx-auto p-6 md:p-8 space-y-6">
+            <Skeleton className="h-8 w-48 rounded" />
+            <Skeleton className="h-4 w-80 rounded" />
+            <div className="flex justify-between gap-4">
+              <Skeleton className="h-8.5 w-64 rounded-md" />
+              <Skeleton className="h-8.5 w-24 rounded-md" />
+            </div>
+            <Skeleton className="h-48 w-full rounded-lg" />
           </div>
         </div>
       </div>
@@ -246,367 +384,208 @@ export default function LabelPage() {
   if (isError || !project) {
     return (
       <div className="flex flex-col h-full w-full bg-background">
-        <TopBar
-          title="Labels"
-          description="Organize, categorize, and group work items within this project"
-          Icon={Tag}
-        />
-        <div className="flex-1 p-5 md:p-6 text-sm text-muted-foreground">
+        <TopBar title="Labels" Icon={Tag} />
+        <div className="flex-1 p-6 md:p-8 text-sm text-muted-foreground">
           Error loading project.
         </div>
       </div>
     );
   }
 
-  const topBarActions = (
-    <Button
-      size="sm"
-      onClick={() => openCreateModal()}
-      className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-none gap-1.5 shrink-0"
-    >
-      <Plus className="size-3.5 shrink-0" />
-      <span>Add label</span>
-    </Button>
-  );
+  const hasLabels = rawLabels.length > 0;
 
   return (
     <div className="flex flex-col h-full w-full bg-background">
-      <TopBar
-        title="Labels"
-        description="Organize, categorize, and group work items within this project"
-        Icon={Tag}
-        actions={topBarActions}
-      />
+      {/* ── TopBar: only icon + title as in screenshots ── */}
+      <TopBar title="Labels" Icon={Tag} />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
-
-      {/* ── Search Bar ── */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="relative w-full max-w-sm">
-          <Search className="size-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0" />
-          <Input
-            placeholder="Search labels..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8.5 pl-8 text-xs rounded-md border-border bg-background"
-          />
-        </div>
-      </div>
-
-      {/* ── Labels Hierarchical List ── */}
-      {filteredRoots.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 text-center rounded-md border border-dashed border-border bg-card">
-          <Tag className="size-9 text-muted-foreground/60 mb-3 shrink-0" />
-          <h3 className="text-sm font-semibold text-foreground">No labels found</h3>
-          <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-            {searchQuery
-              ? `No labels matching "${searchQuery}".`
-              : 'Create labels to categorize, differentiate, and group work items in this project.'}
-          </p>
-          {!searchQuery && (
-            <Button
-              size="sm"
-              onClick={() => openCreateModal()}
-              className="mt-4 h-8 text-xs font-medium px-3.5 rounded-md bg-primary text-primary-foreground"
-            >
-              Create your first label
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {filteredRoots.map((root) => {
-            const children = childMap[root.id] || [];
-            const hasChildren = children.length > 0;
-            const isCollapsed = collapsedGroups[root.id] ?? false;
-
-            return (
-              <div
-                key={root.id}
-                className="rounded-md border border-border bg-card overflow-hidden transition-colors shadow-none"
+        <div className="max-w-4xl mx-auto p-6 md:p-8 space-y-6">
+          {/* ── Page Header ── */}
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Labels
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+              <span>Labels help you group and filter work items in this project.</span>{' '}
+              <a
+                href="https://support.atlassian.com/jira-software-cloud/docs/label-and-tag-issues/"
+                target="_blank"
+                rel="noreferrer"
+                className="text-foreground font-medium hover:underline inline-flex items-center gap-0.5 ml-0.5"
               >
-                {/* Root Row */}
-                <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 hover:bg-muted/40 transition-colors group">
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    {hasChildren ? (
-                      <button
-                        type="button"
-                        onClick={() => toggleGroup(root.id)}
-                        className="size-5 rounded flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
-                        title={isCollapsed ? 'Expand group' : 'Collapse group'}
-                      >
-                        {isCollapsed ? (
-                          <ChevronRight className="size-3.5 shrink-0" />
-                        ) : (
-                          <ChevronDown className="size-3.5 shrink-0" />
-                        )}
-                      </button>
-                    ) : (
-                      <div className="size-5" />
-                    )}
+                Docs <ArrowUpRight className="size-3.5 inline" />
+              </a>
+            </p>
+          </div>
 
-                    <span
-                      className="size-3.5 rounded-full shrink-0 ring-1 ring-border"
-                      style={{ backgroundColor: root.color || '#3b82f6' }}
-                    />
+          {/* ── Toolbar: Search & Add Label Button ── */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="relative w-64 sm:w-72">
+              <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0" />
+              <Input
+                placeholder="Search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8.5 pl-9 text-xs sm:text-sm rounded-md border-border bg-background"
+              />
+            </div>
+            <Button
+              type="button"
+              onClick={() => {
+                setIsCreating(true);
+                setEditingLabelId(null);
+              }}
+              className="h-8.5 px-3.5 text-xs sm:text-sm font-medium bg-[#0c66e4] hover:bg-[#0052cc] text-white rounded-md cursor-pointer transition-colors shadow-none"
+            >
+              Add label
+            </Button>
+          </div>
 
-                    <span className="text-sm font-semibold text-foreground truncate">
-                      {root.name}
-                    </span>
-
-                    {hasChildren && (
-                      <span className="text-11 font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
-                        {children.length} {children.length === 1 ? 'sub-label' : 'sub-labels'}
-                      </span>
-                    )}
-
-                    {root.description && (
-                      <span className="text-xs text-muted-foreground truncate hidden md:inline max-w-md">
-                        — {root.description}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openCreateModal(root.id)}
-                      className="h-7 text-xs px-2 text-muted-foreground hover:text-foreground cursor-pointer gap-1"
-                      title="Add sub-label inside this group"
-                    >
-                      <Plus className="size-3.5 shrink-0" />
-                      <span className="hidden sm:inline">Add sub-label</span>
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => openEditModal(root)}
-                      className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
-                      title="Edit label"
-                    >
-                      <Pencil className="size-3.5 shrink-0" />
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeletingLabel(root)}
-                      className="size-7 text-muted-foreground hover:text-destructive cursor-pointer"
-                      title="Delete label"
-                    >
-                      <Trash2 className="size-3.5 shrink-0" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Indented Sub-labels (if expanded) */}
-                {hasChildren && !isCollapsed && (
-                  <div className="border-t border-border/60 bg-muted/20 pl-8 pr-3.5 divide-y divide-border/40">
-                    {children.map((child) => (
-                      <div
-                        key={child.id}
-                        className="flex items-center justify-between gap-3 py-2 text-xs hover:bg-muted/40 transition-colors group/sub px-2 rounded-sm"
-                      >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <CornerDownRight className="size-3.5 text-muted-foreground/50 shrink-0" />
-                          <span
-                            className="size-2.5 rounded-full shrink-0 ring-1 ring-border"
-                            style={{ backgroundColor: child.color || '#3b82f6' }}
-                          />
-                          <span className="font-medium text-foreground truncate">
-                            {child.name}
-                          </span>
-                          {child.description && (
-                            <span className="text-muted-foreground truncate hidden md:inline">
-                              — {child.description}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 transition-opacity shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleUngroup(child)}
-                            className="h-6 text-11 px-2 text-muted-foreground hover:text-foreground cursor-pointer"
-                            title="Ungroup into independent label"
-                          >
-                            Ungroup
-                          </Button>
-
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditModal(child)}
-                            className="size-6 text-muted-foreground hover:text-foreground cursor-pointer"
-                            title="Edit sub-label"
-                          >
-                            <Pencil className="size-3 shrink-0" />
-                          </Button>
-
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeletingLabel(child)}
-                            className="size-6 text-muted-foreground hover:text-destructive cursor-pointer"
-                            title="Delete sub-label"
-                          >
-                            <Trash2 className="size-3 shrink-0" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-        </div>
-      </div>
-
-      {/* ── Create / Edit Label Modal ── */}
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-md p-5 bg-card border-border">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold text-foreground">
-              {editingLabel ? 'Edit Label' : formParentId ? 'Add Sub-label' : 'Create Label'}
-            </DialogTitle>
-          </DialogHeader>
-
-          <Form {...form}>
-            <form onSubmit={handleSubmit(handleSaveLabel)} className="space-y-4 pt-2">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">Label Name *</label>
-                <Input
-                  placeholder="e.g. Frontend, API, Urgent Fix"
-                  {...register('name')}
-                  maxLength={255}
-                  autoFocus
-                  className={cn(
-                    "h-8.5 text-xs bg-background border-border",
-                    errors.name && "border-destructive focus-visible:ring-destructive/30"
-                  )}
-                />
-                {errors.name && (
-                  <p className="text-11 text-destructive pl-0.5">{errors.name.message}</p>
-                )}
-              </div>
-
-              {/* Color Palette */}
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-foreground">Color Palette</label>
-                <div className="grid grid-cols-5 gap-2">
-                  {COLOR_PALETTE.map((c) => (
-                    <button
-                      key={c.hex}
-                      type="button"
-                      onClick={() => setValue('color', c.hex, { shouldValidate: true })}
-                      className={cn(
-                        'h-7 rounded flex items-center justify-center gap-1.5 text-xs font-medium text-white transition-transform cursor-pointer shadow-none',
-                        formColor.toLowerCase() === c.hex.toLowerCase() && 'ring-2 ring-primary ring-offset-1 ring-offset-background scale-105'
-                      )}
-                      style={{ backgroundColor: c.hex }}
-                    >
-                      <span>{c.name}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2 pt-1">
-                  <span className="text-xs text-muted-foreground">Custom Hex:</span>
-                  <Input
-                    value={formColor}
-                    onChange={(e) => setValue('color', e.target.value, { shouldValidate: true })}
-                    className={cn(
-                      "h-7 w-28 text-xs font-mono bg-background border-border",
-                      errors.color && "border-destructive"
-                    )}
-                    placeholder="#000000"
+          {/* ── Main Content Area ── */}
+          {!hasLabels && !isCreating ? (
+            /* ── Image 1: Empty State ── */
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <EmptyStateIllustration className="size-24 mb-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold text-foreground">No labels yet</h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm leading-relaxed">
+                Create personalized labels to effectively categorize and manage your work items.
+              </p>
+              <Button
+                type="button"
+                onClick={() => setIsCreating(true)}
+                className="mt-4 h-8.5 px-3.5 text-xs sm:text-sm font-medium bg-[#0c66e4] hover:bg-[#0052cc] text-white rounded-md cursor-pointer shadow-none transition-colors"
+              >
+                Create your first label
+              </Button>
+            </div>
+          ) : !hasLabels && isCreating ? (
+            /* ── Image 2: Inline Form when creating first label ── */
+            <div className="rounded-lg border border-border/80 bg-card p-3.5 sm:p-4 shadow-2xs">
+              <LabelInlineForm
+                initialName=""
+                initialColor="#0c66e4"
+                submitLabel="Add"
+                onSubmit={handleCreateLabel}
+                onCancel={() => setIsCreating(false)}
+                isSubmitting={createMutation.isPending}
+              />
+            </div>
+          ) : (
+            /* ── Image 3 & 4: Labels List ── */
+            <div className="rounded-lg border border-border/80 bg-card p-3 sm:p-4 space-y-2 shadow-2xs">
+              {/* If user clicked "Add label" while labels exist, show inline form at top */}
+              {isCreating && (
+                <div className="rounded-md border border-border/70 bg-background p-2.5 px-3.5 mb-2">
+                  <LabelInlineForm
+                    initialName=""
+                    initialColor="#0c66e4"
+                    submitLabel="Add"
+                    onSubmit={handleCreateLabel}
+                    onCancel={() => setIsCreating(false)}
+                    isSubmitting={createMutation.isPending}
                   />
                 </div>
-                {errors.color && (
-                  <p className="text-11 text-destructive pl-0.5">{errors.color.message}</p>
-                )}
-              </div>
+              )}
 
-              {/* Description */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">Description (Optional)</label>
-                <Input
-                  placeholder="Guidelines or context for when to apply this label"
-                  {...register('description')}
-                  maxLength={1000}
-                  className="h-8.5 text-xs bg-background border-border"
-                />
-              </div>
+              {/* Filtered labels list */}
+              {filteredLabels.length === 0 ? (
+                <div className="py-8 text-center text-xs text-muted-foreground">
+                  No labels matching &ldquo;{searchQuery}&rdquo;
+                </div>
+              ) : (
+                filteredLabels.map((label, index) =>
+                  editingLabelId === label.id ? (
+                    /* Inline Edit Row */
+                    <div
+                      key={label.id}
+                      className="rounded-md border border-border/80 bg-background p-2.5 px-3.5"
+                    >
+                      <LabelInlineForm
+                        initialName={label.name}
+                        initialColor={label.color || '#ef4444'}
+                        submitLabel="Save"
+                        onSubmit={(name, color) =>
+                          handleUpdateLabel(label.id, name, color)
+                        }
+                        onCancel={() => setEditingLabelId(null)}
+                        isSubmitting={updateMutation.isPending}
+                      />
+                    </div>
+                  ) : (
+                    /* Normal Label Item Row (Image 3 & Image 4) */
+                    <div
+                      key={label.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDragEnd={handleDragEnd}
+                      className={cn(
+                        "rounded-md border border-border/70 bg-background hover:bg-muted/20 px-3.5 py-2.5 flex items-center justify-between transition-colors group select-none",
+                        draggedIndex === index && "opacity-50 border-dashed"
+                      )}
+                    >
+                      {/* Left: Grip Handle + Filled Tag Icon + Label Title */}
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <GripVertical className="size-4 text-muted-foreground/40 group-hover:text-muted-foreground cursor-grab active:cursor-grabbing shrink-0 transition-colors" />
+                        <Tag
+                          className="size-4 shrink-0 fill-current"
+                          style={{ color: label.color || '#ef4444' }}
+                        />
+                        <span className="text-sm font-medium text-foreground truncate">
+                          {label.name}
+                        </span>
+                      </div>
 
-              {/* Parent Selection (Strict 1-Level Nesting) */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">Parent Group (Optional)</label>
-                <select
-                  value={formParentId || ''}
-                  onChange={(e) => setValue('parentId', e.target.value || null)}
-                  disabled={Boolean(editingLabel && childMap[editingLabel.id]?.length > 0)}
-                  className="w-full h-8.5 text-xs rounded-md border border-border bg-background px-3 text-foreground outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                >
-                  <option value="">None (Independent Root Label)</option>
-                  {rootLabels
-                    .filter((r) => r.id !== editingLabel?.id)
-                    .map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
-                </select>
-                {editingLabel && childMap[editingLabel.id]?.length > 0 && (
-                  <p className="text-11 text-muted-foreground">
-                    This label contains sub-labels. Nesting is limited to 1 level deep so it cannot have a parent.
-                  </p>
-                )}
-              </div>
+                      {/* Right: Three Dots Action Menu (Image 4) */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="size-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none"
+                            title="More options"
+                          >
+                            <MoreHorizontal className="size-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-36 p-1">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setEditingLabelId(label.id);
+                              setIsCreating(false);
+                            }}
+                            className="cursor-pointer gap-2 text-xs py-1.5"
+                          >
+                            <Pencil className="size-3.5 text-muted-foreground" />
+                            <span>Edit label</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setDeletingLabel(label)}
+                            className="cursor-pointer gap-2 text-xs py-1.5 text-destructive focus:text-destructive focus:bg-destructive/10"
+                          >
+                            <Trash2 className="size-3.5 text-destructive" />
+                            <span>Delete label</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )
+                )
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
-              <DialogFooter className="pt-3 gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsFormOpen(false)}
-                  className="h-8 text-xs"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="h-8 text-xs px-4"
-                >
-                  {editingLabel ? 'Save Changes' : 'Create Label'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Safe Cascade Delete Modal ── */}
+      {/* ── Delete Confirmation Modal ── */}
       <DeleteModal
         isOpen={Boolean(deletingLabel)}
         onClose={() => setDeletingLabel(null)}
         onConfirm={confirmDelete}
         loading={deleteMutation.isPending}
         title="Delete label"
-        description={
-          deletingLabel && childMap[deletingLabel.id]?.length > 0
-            ? `Warning: "${deletingLabel.name}" contains ${childMap[deletingLabel.id].length} sub-labels. Deleting this parent group will delete all sub-labels and detach them from all work items in this project.`
-            : `Are you sure you want to delete "${deletingLabel?.name || ''}"? This label will be detached from all work items.`
-        }
-        confirmText="Delete permanently"
+        description={`Are you sure you want to delete "${deletingLabel?.name || ''}"? This label will be removed from all work items.`}
+        confirmText="Delete label"
         cancelText="Cancel"
       />
     </div>

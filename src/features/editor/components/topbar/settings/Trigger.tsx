@@ -4,7 +4,7 @@ import React from 'react';
 import { Settings } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { useSettingsStore } from '@/features/editor/store';
 
 export default function Trigger() {
   const { settingsPanelOpen, toggleSettingsPanel } = useSettingsStore();

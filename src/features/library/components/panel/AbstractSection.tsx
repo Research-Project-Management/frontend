@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Copy, Check, Sparkles, AlignJustify, AlignLeft } from 'lucide-react';
+import { Copy, Check, Wand2, AlignJustify, AlignLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCopyToClipboard } from "@/shared/hooks";
 import { cleanAbstractText } from '@/features/library/utils/library.util';
@@ -132,7 +132,7 @@ export default function AbstractSection({
                 title="Clean artifacts (years, prefixes) and format paragraph lines"
                 aria-label="Clean and format abstract text"
               >
-                <Sparkles className="size-3 text-foreground shrink-0" />
+                <Wand2 className="size-3 text-foreground shrink-0" />
                 <span>Format</span>
               </button>
 

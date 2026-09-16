@@ -14,9 +14,9 @@ import {
 import { toast } from 'sonner';
 import { Input } from "@/shared/components/ui";
 import { Badge } from "@/shared/components/ui";
-import { usePageStore } from '@/features/editor/store/page.store';
+import { usePageStore } from '@/features/editor/store';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
-import { useEditorCitations } from '@/features/editor/hooks/use-editor-citations';
+import { useEditorCitations } from '@/features/editor/hooks/use-citation';
 import { generateCitationKey } from '@/features/library/utils/bibtex.util';
 import type { Item } from '@/features/library/types/library.types';
 

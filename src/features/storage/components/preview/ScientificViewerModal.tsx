@@ -212,7 +212,7 @@ export default function ScientificViewerModal({
                   {filename}
                 </DialogTitle>
                 <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                  <span className="font-mono uppercase text-[10px] px-1.5 py-0.2 rounded bg-muted text-muted-foreground border border-border">
+                  <span className="font-mono uppercase text-10 px-1.5 py-0.2 rounded bg-muted text-muted-foreground border border-border">
                     {ext || 'file'}
                   </span>
                   {parsedCsv && (
@@ -305,7 +305,7 @@ export default function ScientificViewerModal({
                 <table className="w-full text-xs border-collapse">
                   <thead className="bg-muted/50 sticky top-0 border-b border-border z-10">
                     <tr>
-                      <th className="px-3 py-2 text-left font-mono text-[11px] text-muted-foreground/60 border-r border-border/60 w-12 bg-muted/50">
+                      <th className="px-3 py-2 text-left font-mono text-11 text-muted-foreground/60 border-r border-border/60 w-12 bg-muted/50">
                         #
                       </th>
                       {parsedCsv.headers.map((h, i) => (
@@ -321,7 +321,7 @@ export default function ScientificViewerModal({
                   <tbody className="divide-y divide-border/40 font-mono">
                     {paginatedRows.map((row, rIdx) => (
                       <tr key={rIdx} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-3 py-1.5 text-muted-foreground/50 border-r border-border/40 text-[11px]">
+                        <td className="px-3 py-1.5 text-muted-foreground/50 border-r border-border/40 text-11">
                           {(currentPage - 1) * pageSize + rIdx + 1}
                         </td>
                         {row.map((cell, cIdx) => (
@@ -347,13 +347,13 @@ export default function ScientificViewerModal({
                   key={cell.id}
                   className="rounded-md border border-border/80 bg-card overflow-hidden text-xs"
                 >
-                  <div className="px-3 py-1.5 bg-muted/30 border-b border-border/60 flex items-center justify-between text-[11px] text-muted-foreground font-mono">
+                  <div className="px-3 py-1.5 bg-muted/30 border-b border-border/60 flex items-center justify-between text-11 text-muted-foreground font-mono">
                     <span>
                       {cell.type === 'code'
                         ? `In [${cell.executionCount ?? ' '}]`
                         : `Markdown Cell #${idx + 1}`}
                     </span>
-                    <span className="uppercase text-[10px]">{cell.type}</span>
+                    <span className="uppercase text-10">{cell.type}</span>
                   </div>
 
                   <div className="p-3">
@@ -370,7 +370,7 @@ export default function ScientificViewerModal({
 
                   {cell.outputs && cell.outputs.length > 0 && (
                     <div className="border-t border-border/60 bg-muted/10 p-3 space-y-2">
-                      <span className="text-[10px] font-mono text-muted-foreground/70 uppercase">
+                      <span className="text-10 font-mono text-muted-foreground/70 uppercase">
                         Output:
                       </span>
                       {cell.outputs.map((out: any, oIdx: number) => (
@@ -382,7 +382,7 @@ export default function ScientificViewerModal({
                               className="max-w-full rounded border border-border"
                             />
                           ) : (
-                            <pre className="font-mono text-[11px] text-muted-foreground bg-muted/30 p-2 rounded overflow-x-auto">
+                            <pre className="font-mono text-11 text-muted-foreground bg-muted/30 p-2 rounded overflow-x-auto">
                               {out.text}
                             </pre>
                           )}

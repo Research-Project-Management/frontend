@@ -317,18 +317,33 @@ export function FilterDropdown({
 
   // Extract unique labels from items
   const availableLabels = useMemo(() => {
-    const set = new Set<string>();
+    const map = new Map<string, { id: string; name: string; color?: string }>();
     for (const t of items) {
       if (Array.isArray(t.labels)) {
         for (const l of t.labels) {
-          if (l) set.add(l);
+          if (!l) continue;
+          if (typeof l === 'string') {
+            if (!map.has(l)) map.set(l, { id: l, name: l, color: '#3b82f6' });
+          } else if (typeof l === 'object') {
+            const id = (l as any).id || (l as any).name;
+            const name = (l as any).name || (l as any).title || id;
+            if (id && !map.has(id)) {
+              map.set(id, { id, name, color: (l as any).color || '#3b82f6' });
+            }
+          }
         }
       }
     }
-    if (set.size === 0) {
-      return ['Frontend', 'Backend', 'Bug', 'Feature', 'Research', 'Documentation'];
+    if (map.size === 0) {
+      return [
+        { id: 'Bug', name: 'Bug', color: '#ef4444' },
+        { id: 'Feature', name: 'Feature', color: '#3b82f6' },
+        { id: 'Frontend', name: 'Frontend', color: '#10b981' },
+        { id: 'Backend', name: 'Backend', color: '#f59e0b' },
+        { id: 'Documentation', name: 'Documentation', color: '#8b5cf6' },
+      ];
     }
-    return Array.from(set);
+    return Array.from(map.values());
   }, [items]);
 
   return (
@@ -428,7 +443,7 @@ export function FilterDropdown({
                   return (
                     <DropdownMenuItem
                       key={item.id}
-                      onClick={(e) => {
+                      onSelect={(e) => {
                         e.preventDefault();
                         handleToggle('work_items', val);
                       }}
@@ -468,7 +483,7 @@ export function FilterDropdown({
                 placeholder="Search"
               />
               <DropdownMenuItem
-                onClick={(e) => {
+                onSelect={(e) => {
                   e.preventDefault();
                   handleToggle('parent', '__none__');
                 }}
@@ -497,7 +512,7 @@ export function FilterDropdown({
                   return (
                     <DropdownMenuItem
                       key={item.id}
-                      onClick={(e) => {
+                      onSelect={(e) => {
                         e.preventDefault();
                         handleToggle('parent', item.id);
                       }}
@@ -548,7 +563,7 @@ export function FilterDropdown({
                   return (
                     <DropdownMenuItem
                       key={columnId}
-                      onClick={(e) => {
+                      onSelect={(e) => {
                         e.preventDefault();
                         handleToggle('state', columnId);
                       }}
@@ -608,7 +623,7 @@ export function FilterDropdown({
                   return (
                     <DropdownMenuItem
                       key={item.id}
-                      onClick={(e) => {
+                      onSelect={(e) => {
                         e.preventDefault();
                         handleToggle('state_group', item.id as StateGroup);
                       }}
@@ -643,7 +658,7 @@ export function FilterDropdown({
                 placeholder="Search"
               />
               <DropdownMenuItem
-                onClick={(e) => {
+                onSelect={(e) => {
                   e.preventDefault();
                   handleToggle('assignees', '__unassigned__');
                 }}
@@ -670,7 +685,7 @@ export function FilterDropdown({
                   return (
                     <DropdownMenuItem
                       key={user.id}
-                      onClick={(e) => {
+                      onSelect={(e) => {
                         e.preventDefault();
                         handleToggle('assignees', user.id);
                       }}
@@ -726,7 +741,7 @@ export function FilterDropdown({
                   return (
                     <DropdownMenuItem
                       key={user.id}
-                      onClick={(e) => {
+                      onSelect={(e) => {
                         e.preventDefault();
                         handleToggle('subscribers', user.id);
                       }}
@@ -791,7 +806,7 @@ export function FilterDropdown({
                   return (
                     <DropdownMenuItem
                       key={p.id}
-                      onClick={(e) => {
+                      onSelect={(e) => {
                         e.preventDefault();
                         handleToggle('priority', p.id as Priority);
                       }}
@@ -845,7 +860,7 @@ export function FilterDropdown({
                   return (
                     <DropdownMenuItem
                       key={user.id}
-                      onClick={(e) => {
+                      onSelect={(e) => {
                         e.preventDefault();
                         handleToggle('mentions', user.id);
                       }}
@@ -895,22 +910,25 @@ export function FilterDropdown({
                 .filter((l) => {
                   const q = getSubSearch('label').toLowerCase().trim();
                   if (!q) return true;
-                  return l.toLowerCase().includes(q);
+                  return l.name.toLowerCase().includes(q) || l.id.toLowerCase().includes(q);
                 })
                 .map((label) => {
-                  const isSelected = isItemActive('labels', label);
+                  const isSelected = isItemActive('labels', label.id) || isItemActive('labels', label.name);
                   return (
                     <DropdownMenuItem
-                      key={label}
-                      onClick={(e) => {
+                      key={label.id}
+                      onSelect={(e) => {
                         e.preventDefault();
-                        handleToggle('labels', label);
+                        handleToggle('labels', label.id);
                       }}
                       className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="size-2 rounded-full bg-primary shrink-0" />
-                        <span className="truncate">{label}</span>
+                        <span
+                          className="size-2 rounded-full shrink-0"
+                          style={{ backgroundColor: label.color || '#3b82f6' }}
+                        />
+                        <span className="truncate">{label.name}</span>
                       </div>
                       {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
                     </DropdownMenuItem>
@@ -937,7 +955,7 @@ export function FilterDropdown({
                 placeholder="Search"
               />
               <DropdownMenuItem
-                onClick={(e) => {
+                onSelect={(e) => {
                   e.preventDefault();
                   handleToggle('cycle', '__no_cycle__');
                 }}
@@ -965,7 +983,7 @@ export function FilterDropdown({
                     return (
                       <DropdownMenuItem
                         key={c.id}
-                        onClick={(e) => {
+                        onSelect={(e) => {
                           e.preventDefault();
                           handleToggle('cycle', c.id);
                         }}
@@ -1020,7 +1038,7 @@ export function FilterDropdown({
                   return (
                     <DropdownMenuItem
                       key={item.id}
-                      onClick={(e) => {
+                      onSelect={(e) => {
                         e.preventDefault();
                         handleToggle('attach', item.id);
                       }}
@@ -1073,7 +1091,7 @@ export function FilterDropdown({
                   return (
                     <DropdownMenuItem
                       key={d.id}
-                      onClick={(e) => {
+                      onSelect={(e) => {
                         e.preventDefault();
                         handleToggle('start_date', d.id);
                       }}
@@ -1124,7 +1142,7 @@ export function FilterDropdown({
                   return (
                     <DropdownMenuItem
                       key={opt.id}
-                      onClick={(e) => {
+                      onSelect={(e) => {
                         e.preventDefault();
                         handleToggle('due_date', opt.id);
                       }}
@@ -1167,7 +1185,7 @@ export function FilterDropdown({
                   return (
                     <DropdownMenuItem
                       key={d}
-                      onClick={(e) => {
+                      onSelect={(e) => {
                         e.preventDefault();
                         handleToggle('created_at', val);
                       }}
@@ -1210,7 +1228,7 @@ export function FilterDropdown({
                   return (
                     <DropdownMenuItem
                       key={d}
-                      onClick={(e) => {
+                      onSelect={(e) => {
                         e.preventDefault();
                         handleToggle('updated_at', val);
                       }}
@@ -1261,7 +1279,7 @@ export function FilterDropdown({
                   return (
                     <DropdownMenuItem
                       key={user.id}
-                      onClick={(e) => {
+                      onSelect={(e) => {
                         e.preventDefault();
                         handleToggle('created_by', user.id);
                       }}

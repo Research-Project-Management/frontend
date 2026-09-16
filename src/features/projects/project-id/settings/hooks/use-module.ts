@@ -47,19 +47,30 @@ export function useModules(projectId: string) {
     }
   }, [serverModulesKey, serverModules]);
 
+  const updateProject = updateMutation.mutate;
+
   const toggle = useCallback((id: string) => {
-    setActive((prev) =>
-      prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id],
-    );
-  }, []);
+    setActive((prev) => {
+      const next = prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id];
+      updateProject(
+        { projectId, modules: next },
+        {
+          onSuccess: () => toast.success('Modules updated'),
+          onError: () => {
+            setActive(prev);
+            toast.error('Failed to update modules');
+          },
+        },
+      );
+      return next;
+    });
+  }, [projectId, updateProject]);
 
   const hasChanges = useMemo(() => {
     const a = [...active].sort().join(',');
     const b = [...serverModules].sort().join(',');
     return a !== b;
   }, [active, serverModules]);
-
-  const updateProject = updateMutation.mutate;
 
   const save = useCallback(() => {
     updateProject(

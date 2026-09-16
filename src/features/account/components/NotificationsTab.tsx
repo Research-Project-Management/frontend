@@ -39,12 +39,12 @@ export default function NotificationsTab() {
   }, [form, onSubmit]);
 
   return (
-    <div className='p-6 md:px-8 w-full max-w-4xl mx-auto space-y-6'>
+    <div className='w-full max-w-3xl mx-auto p-6 md:p-8 space-y-6'>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
           <div className='rounded-md border border-border bg-card overflow-hidden'>
-            <div className='px-4 py-3 border-b border-border bg-muted/25'>
-              <h3 className='text-13 font-medium text-foreground'>Email & Activity Notifications</h3>
+            <div className='px-5 py-3.5 border-b border-border bg-card'>
+              <h3 className='text-13 font-semibold text-foreground tracking-tight'>Email & Activity Notifications</h3>
               <p className='text-12 text-muted-foreground mt-0.5'>
                 Stay in the loop on work items you are subscribed to. Choose when you receive email alerts.
               </p>
@@ -56,7 +56,7 @@ export default function NotificationsTab() {
                 control={form.control}
                 name="propertyChanges"
                 render={({ field }) => (
-                  <FormItem className='flex items-center justify-between p-4 space-y-0 gap-4'>
+                  <FormItem className='flex items-center justify-between px-5 py-3.5 space-y-0 gap-4'>
                     <div className='flex flex-col gap-0.5 pr-2'>
                       <span className='text-13 font-medium text-foreground'>Property changes</span>
                       <span className='text-12 text-muted-foreground'>
@@ -69,7 +69,7 @@ export default function NotificationsTab() {
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className='text-11' />
                   </FormItem>
                 )}
               />
@@ -79,7 +79,7 @@ export default function NotificationsTab() {
                 control={form.control}
                 name="stateChange"
                 render={({ field }) => (
-                  <FormItem className='flex items-center justify-between p-4 space-y-0 gap-4'>
+                  <FormItem className='flex items-center justify-between px-5 py-3.5 space-y-0 gap-4'>
                     <div className='flex flex-col gap-0.5 pr-2'>
                       <span className='text-13 font-medium text-foreground'>State change</span>
                       <span className='text-12 text-muted-foreground'>
@@ -92,7 +92,7 @@ export default function NotificationsTab() {
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className='text-11' />
                   </FormItem>
                 )}
               />
@@ -102,7 +102,7 @@ export default function NotificationsTab() {
                 control={form.control}
                 name="workItemCompleted"
                 render={({ field }) => (
-                  <FormItem className='flex items-center justify-between pl-8 pr-4 py-3.5 bg-muted/15 space-y-0 gap-4'>
+                  <FormItem className='flex items-center justify-between pl-9 pr-5 py-3 bg-muted/30 space-y-0 gap-4'>
                     <div className='flex flex-col gap-0.5 pr-2'>
                       <div className='flex items-center gap-2'>
                         <span className='size-1.5 rounded-full bg-muted-foreground/50 shrink-0' />
@@ -118,7 +118,7 @@ export default function NotificationsTab() {
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className='text-11' />
                   </FormItem>
                 )}
               />
@@ -128,7 +128,7 @@ export default function NotificationsTab() {
                 control={form.control}
                 name="comments"
                 render={({ field }) => (
-                  <FormItem className='flex items-center justify-between p-4 space-y-0 gap-4'>
+                  <FormItem className='flex items-center justify-between px-5 py-3.5 space-y-0 gap-4'>
                     <div className='flex flex-col gap-0.5 pr-2'>
                       <span className='text-13 font-medium text-foreground'>Comments</span>
                       <span className='text-12 text-muted-foreground'>
@@ -141,7 +141,7 @@ export default function NotificationsTab() {
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className='text-11' />
                   </FormItem>
                 )}
               />
@@ -151,7 +151,7 @@ export default function NotificationsTab() {
                 control={form.control}
                 name="mentions"
                 render={({ field }) => (
-                  <FormItem className='flex items-center justify-between p-4 space-y-0 gap-4'>
+                  <FormItem className='flex items-center justify-between px-5 py-3.5 space-y-0 gap-4'>
                     <div className='flex flex-col gap-0.5 pr-2'>
                       <span className='text-13 font-medium text-foreground'>Mentions</span>
                       <span className='text-12 text-muted-foreground'>
@@ -164,7 +164,7 @@ export default function NotificationsTab() {
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className='text-11' />
                   </FormItem>
                 )}
               />

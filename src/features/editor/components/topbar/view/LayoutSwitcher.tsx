@@ -7,7 +7,7 @@ import { cn } from "@/shared/lib/utils";
 import {
   useSettingsStore,
   type LayoutMode,
-} from '@/features/editor/store/settings.store';
+} from '@/features/editor/store';
 
 const LAYOUT_OPTIONS: {
   value: LayoutMode;

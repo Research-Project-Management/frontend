@@ -23,3 +23,7 @@ export * from './quota.service';
 
 // ── Re-export Stream Service (StreamController) ──────────────────────────────
 export * from './stream.service';
+
+// ── Re-export Version Service (VersionController) ────────────────────────────
+export * from './version.service';
+

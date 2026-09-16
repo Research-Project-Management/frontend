@@ -18,15 +18,17 @@ import {
   Minus,
   Plus,
   ChevronDown,
+  Download,
 } from 'lucide-react';
 
 import {
   useSettingsStore,
+  usePageStore,
   type CompileMode,
   type LaTeXEngine,
-} from '@/features/editor/store/settings.store';
-import { usePageStore } from '@/features/editor/store/page.store';
-import { filesQuery, useFileActions } from '@/features/editor/hooks/use-page';
+} from '@/features/editor/store';
+import { filesQuery, useFileActions } from '@/features/editor/hooks/use-core';
+import { useExportDocument } from '@/features/editor/hooks/use-export';
 import { Separator } from "@/shared/components/ui";
 import { Switch } from "@/shared/components/ui";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui";
@@ -98,6 +100,7 @@ export default function Setting() {
 
   const { texFiles, currentPage } = usePageStore();
   const { setMainFile: setMainFileMutation } = useFileActions();
+  const exportMutation = useExportDocument();
 
   const { data: files } = useQuery({
     ...filesQuery(currentPage?.id ?? ''),
@@ -274,6 +277,49 @@ export default function Setting() {
 
           <SettingRow icon={Hash} label="Line numbers">
             {renderToggle(lineNumbers, setLineNumbers, 'Line numbers')}
+          </SettingRow>
+        </div>
+
+        <Separator />
+
+        {/* Export & Download Section (Overleaf Parity) */}
+        <div className="space-y-1">
+          <h3 className="text-xs font-medium text-muted-foreground px-4">Export & Download</h3>
+
+          <SettingRow icon={Download} label="Download Project (ZIP)" description="Complete LaTeX source and assets">
+            <button
+              type="button"
+              disabled={exportMutation.isPending || !currentPage?.id}
+              onClick={() => {
+                if (currentPage?.id) {
+                  exportMutation.mutate({
+                    pageId: currentPage.id,
+                    format: 'latex_bundle',
+                  });
+                }
+              }}
+              className="px-2.5 py-1 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50 transition-colors cursor-pointer"
+            >
+              {exportMutation.isPending ? 'Exporting...' : 'ZIP'}
+            </button>
+          </SettingRow>
+
+          <SettingRow icon={FileText} label="Download PDF" description="Compiled PDF manuscript">
+            <button
+              type="button"
+              disabled={exportMutation.isPending || !currentPage?.id}
+              onClick={() => {
+                if (currentPage?.id) {
+                  exportMutation.mutate({
+                    pageId: currentPage.id,
+                    format: 'pdf',
+                  });
+                }
+              }}
+              className="px-2.5 py-1 rounded-md text-xs font-medium border border-border hover:bg-muted transition-colors cursor-pointer text-foreground"
+            >
+              PDF
+            </button>
           </SettingRow>
         </div>
       </div>

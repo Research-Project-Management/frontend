@@ -8,7 +8,6 @@ import React, {
 } from "react";
 import { useParams, useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { useTabsStore } from "@/features/editor/store/tabs.store";
 import { logger } from "@/shared/lib/utils";
 import { useEditorStorage } from '@/features/editor/hooks/use-storage';
 import {
@@ -42,14 +41,14 @@ import {
   createFileSchema,
   createFolderSchema,
   renameItemSchema,
-} from "@/features/editor/schemas/document.schema";
-import { usePageStore, type AssetInfo } from "@/features/editor/store/page.store";
+} from "@/features/editor/schemas";
+import { usePageStore, useTabsStore, type AssetInfo } from "@/features/editor/store";
 import {
   pageQuery,
   filesQuery,
   usePageActions,
   useFileActions,
-} from '@/features/editor/hooks/use-page';
+} from '@/features/editor/hooks/use-core';
 import { useQuery } from '@tanstack/react-query';
 
 import type { EditorStorageItem as StorageItem } from '@/features/editor/services/storage.service';

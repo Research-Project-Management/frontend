@@ -526,9 +526,9 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           onOpenChange={setOverviewSectionOpen}
           className="select-none"
         >
-          <div className="group flex items-center justify-between h-8 px-2.5 rounded-md text-13 font-medium text-muted-foreground hover:bg-muted transition-colors duration-200 cursor-pointer">
+          <div className="flex items-center justify-between h-7 px-2.5 text-11 font-medium text-muted-foreground select-none">
             <CollapsibleTrigger asChild>
-              <button className="flex-1 text-left text-13 font-medium text-inherit cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors duration-200">
+              <button className="flex-1 text-left text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer outline-none transition-colors">
                 Overview
               </button>
             </CollapsibleTrigger>
@@ -540,11 +540,11 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                     <button
                       type="button"
                       aria-label={overviewSectionOpen ? "Collapse overview" : "Expand overview"}
-                      className="size-6 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-sidebar-accent transition-all duration-150 active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none"
                     >
                       <ChevronDown
                         className={cn(
-                          "size-3.5 text-inherit transition-transform duration-200",
+                          "size-3 text-inherit transition-transform duration-200",
                           overviewSectionOpen ? "" : "-rotate-90"
                         )}
                       />
@@ -645,10 +645,10 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
             onOpenChange={setFavoritesSectionOpen}
             className="select-none"
           >
-            <div className="group flex items-center justify-between h-8 px-2.5 rounded-md text-13 font-medium text-muted-foreground hover:bg-muted transition-colors duration-200 cursor-pointer">
+            <div className="flex items-center justify-between h-7 px-2.5 text-11 font-medium text-muted-foreground select-none">
               <Link
                 href="/projects/favorite"
-                className="flex-1 text-left text-13 font-medium text-inherit hover:text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors duration-200"
+                className="flex-1 text-left text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer outline-none transition-colors"
               >
                 Favorites
               </Link>
@@ -660,11 +660,11 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                       <button
                         type="button"
                         aria-label={favoritesSectionOpen ? "Collapse favorites" : "Expand favorites"}
-                        className="size-6 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-sidebar-accent transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none"
                       >
                         <ChevronDown
                           className={cn(
-                            "size-3.5 text-inherit transition-transform duration-200",
+                            "size-3 text-inherit transition-transform duration-200",
                             favoritesSectionOpen ? "" : "-rotate-90"
                           )}
                         />
@@ -692,9 +692,9 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           onOpenChange={setProjectsSectionOpen}
           className="select-none"
         >
-          <div className="group flex items-center justify-between h-8 px-2.5 rounded-md text-13 font-medium text-muted-foreground hover:bg-muted transition-colors duration-200 cursor-pointer">
+          <div className="group/proj-header flex items-center justify-between h-7 px-2.5 text-11 font-medium text-muted-foreground select-none">
             <CollapsibleTrigger asChild>
-              <button className="flex-1 text-left text-13 font-medium text-inherit cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors duration-200">
+              <button className="flex-1 text-left text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer outline-none transition-colors">
                 Projects
               </button>
             </CollapsibleTrigger>
@@ -710,13 +710,13 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                       aria-label="Create project"
                       onClick={() => setCreateProjectOpen(true)}
                       className={cn(
-                        "size-6 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-sidebar-accent transition-all duration-150 active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                        "size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none",
                         createProjectOpen
-                          ? "opacity-100 bg-sidebar-accent !text-foreground"
-                          : "opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          ? "bg-muted text-foreground"
+                          : "opacity-0 group-hover/proj-header:opacity-100 focus:opacity-100"
                       )}
                     >
-                      <Plus className="size-3.5 text-inherit shrink-0" />
+                      <Plus className="size-3 text-inherit shrink-0" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" sideOffset={6}>
@@ -733,11 +733,11 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                       <button
                         type="button"
                         aria-label={projectsSectionOpen ? "Collapse projects" : "Expand projects"}
-                        className="size-6 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-sidebar-accent transition-all duration-150 active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none"
                       >
                         <ChevronDown
                           className={cn(
-                            "size-3.5 text-inherit transition-transform duration-200",
+                            "size-3 text-inherit transition-transform duration-200",
                             projectsSectionOpen ? "" : "-rotate-90"
                           )}
                         />

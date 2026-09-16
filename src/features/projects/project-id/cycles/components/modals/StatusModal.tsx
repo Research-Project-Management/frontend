@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui";
 import { Button } from "@/shared/components/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui";
@@ -31,6 +31,14 @@ export const StatusModal = ({
   const [targetCycleId, setTargetCycleId] = useState<string>(
     availableCycles[0]?.id || ''
   );
+
+  useEffect(() => {
+    if (open && availableCycles.length > 0) {
+      if (!targetCycleId || !availableCycles.some((c) => c.id === targetCycleId)) {
+        setTargetCycleId(availableCycles[0]?.id || '');
+      }
+    }
+  }, [open, availableCycles, targetCycleId]);
 
   const handleConfirm = () => {
     if (type === 'complete') {

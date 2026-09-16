@@ -11,7 +11,7 @@ import {
   Sparkles,
   Tag,
   Layers,
-  Download,
+  CircleDot,
   SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react';
@@ -64,10 +64,9 @@ export default function Sidebar() {
       title: 'Workflow & Data',
       items: [
         { id: 'cycles', label: 'Cycles', icon: CycleIcon, to: `${base}/cycles` },
-        { id: 'states', label: 'States', icon: Layers, to: `${base}/states` },
+        { id: 'states', label: 'States', icon: CircleDot, to: `${base}/states` },
         { id: 'labels', label: 'Labels', icon: Tag, to: `${base}/labels` },
         { id: 'views', label: 'Views', icon: SlidersHorizontal, to: `${base}/views` },
-        { id: 'export', label: 'Export', icon: Download, to: `${base}/export` },
       ],
     },
   ];

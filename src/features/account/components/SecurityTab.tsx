@@ -60,126 +60,128 @@ export default function SecurityTab() {
   };
 
   return (
-    <div className='p-6 md:px-8 w-full max-w-4xl mx-auto space-y-6'>
+    <div className='w-full max-w-3xl mx-auto p-6 md:p-8 space-y-6'>
       {isOAuth ? (
-        <div className='rounded-md border border-border bg-muted/20 p-4 flex items-start gap-3'>
-          <ShieldAlert className='size-4 text-muted-foreground mt-0.5 shrink-0' />
+        <div className='rounded-md border border-border bg-muted/30 p-4 flex items-start gap-3'>
+          <ShieldAlert className='size-4 text-muted-foreground mt-0.5 shrink-0' strokeWidth={1.5} />
           <div>
-            <h4 className='text-13 font-medium text-foreground'>Managed by external provider</h4>
+            <h4 className='text-13 font-semibold text-foreground tracking-tight'>Managed by external provider</h4>
             <p className='text-12 text-muted-foreground mt-0.5'>
               Your account is authenticated via Google or GitHub. Password changes are managed directly with your identity provider.
             </p>
           </div>
         </div>
       ) : (
-        <div className='rounded-md border border-border bg-card p-5 space-y-5'>
-          <div className='border-b border-border pb-3'>
-            <h3 className='text-13 font-medium text-foreground'>Password Management</h3>
+        <div className='rounded-md border border-border bg-card overflow-hidden'>
+          <div className='px-5 py-3.5 border-b border-border bg-card'>
+            <h3 className='text-13 font-semibold text-foreground tracking-tight'>Password Management</h3>
             <p className='text-12 text-muted-foreground mt-0.5'>
               Ensure your account is using a long, random password to stay secure.
             </p>
           </div>
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
-              <FormField
-                control={form.control}
-                name="currentPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className='text-12 font-medium text-foreground'>Current password</FormLabel>
-                    <FormControl>
-                      <div className='relative max-w-md'>
-                        <Input
-                          type={showCurrent ? 'text' : 'password'}
-                          placeholder='Enter current password'
-                          className='h-8 text-13 pr-9 shadow-2xs'
-                          {...field}
-                        />
-                        <button
-                          type='button'
-                          onClick={() => setShowCurrent(!showCurrent)}
-                          className='absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer'
-                        >
-                          {showCurrent ? <EyeOff className='size-3.5 shrink-0' /> : <Eye className='size-3.5 shrink-0' />}
-                        </button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl'>
+          <div className='p-5'>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
                 <FormField
                   control={form.control}
-                  name="newPassword"
+                  name="currentPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className='text-12 font-medium text-foreground'>New password</FormLabel>
+                      <FormLabel className='text-12 font-medium text-foreground'>Current password</FormLabel>
                       <FormControl>
-                        <div className='relative'>
+                        <div className='relative max-w-md'>
                           <Input
-                            type={showNew ? 'text' : 'password'}
-                            placeholder='Enter new password'
+                            type={showCurrent ? 'text' : 'password'}
+                            placeholder='Enter current password'
                             className='h-8 text-13 pr-9 shadow-2xs'
                             {...field}
                           />
                           <button
                             type='button'
-                            onClick={() => setShowNew(!showNew)}
+                            onClick={() => setShowCurrent(!showCurrent)}
                             className='absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer'
                           >
-                            {showNew ? <EyeOff className='size-3.5 shrink-0' /> : <Eye className='size-3.5 shrink-0' />}
+                            {showCurrent ? <EyeOff className='size-3.5 shrink-0' strokeWidth={1.5} /> : <Eye className='size-3.5 shrink-0' strokeWidth={1.5} />}
                           </button>
                         </div>
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className='text-11' />
                     </FormItem>
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="confirmPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className='text-12 font-medium text-foreground'>Confirm password</FormLabel>
-                      <FormControl>
-                        <div className='relative'>
-                          <Input
-                            type={showConfirm ? 'text' : 'password'}
-                            placeholder='Confirm password'
-                            className='h-8 text-13 pr-9 shadow-2xs'
-                            {...field}
-                          />
-                          <button
-                            type='button'
-                            onClick={() => setShowConfirm(!showConfirm)}
-                            className='absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer'
-                          >
-                            {showConfirm ? <EyeOff className='size-3.5 shrink-0' /> : <Eye className='size-3.5 shrink-0' />}
-                          </button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl'>
+                  <FormField
+                    control={form.control}
+                    name="newPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className='text-12 font-medium text-foreground'>New password</FormLabel>
+                        <FormControl>
+                          <div className='relative'>
+                            <Input
+                              type={showNew ? 'text' : 'password'}
+                              placeholder='Enter new password'
+                              className='h-8 text-13 pr-9 shadow-2xs'
+                              {...field}
+                            />
+                            <button
+                              type='button'
+                              onClick={() => setShowNew(!showNew)}
+                              className='absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer'
+                            >
+                              {showNew ? <EyeOff className='size-3.5 shrink-0' strokeWidth={1.5} /> : <Eye className='size-3.5 shrink-0' strokeWidth={1.5} />}
+                            </button>
+                          </div>
+                        </FormControl>
+                        <FormMessage className='text-11' />
+                      </FormItem>
+                    )}
+                  />
 
-              <div className='pt-2 flex justify-start'>
-                <Button
-                  type="submit"
-                  size="sm"
-                  className='h-8 px-4 text-13 font-medium shadow-2xs cursor-pointer'
-                  disabled={!form.formState.isDirty || changePasswordMutation.isPending}
-                >
-                  {changePasswordMutation.isPending ? 'Updating...' : 'Update password'}
-                </Button>
-              </div>
-            </form>
-          </Form>
+                  <FormField
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className='text-12 font-medium text-foreground'>Confirm password</FormLabel>
+                        <FormControl>
+                          <div className='relative'>
+                            <Input
+                              type={showConfirm ? 'text' : 'password'}
+                              placeholder='Confirm password'
+                              className='h-8 text-13 pr-9 shadow-2xs'
+                              {...field}
+                            />
+                            <button
+                              type='button'
+                              onClick={() => setShowConfirm(!showConfirm)}
+                              className='absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer'
+                            >
+                              {showConfirm ? <EyeOff className='size-3.5 shrink-0' strokeWidth={1.5} /> : <Eye className='size-3.5 shrink-0' strokeWidth={1.5} />}
+                            </button>
+                          </div>
+                        </FormControl>
+                        <FormMessage className='text-11' />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className='pt-2 flex justify-start'>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className='h-8 px-4 text-13 font-medium bg-primary hover:bg-primary-hover text-primary-foreground shadow-none cursor-pointer'
+                    disabled={!form.formState.isDirty || changePasswordMutation.isPending}
+                  >
+                    {changePasswordMutation.isPending ? 'Updating...' : 'Update password'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </div>
         </div>
       )}
     </div>

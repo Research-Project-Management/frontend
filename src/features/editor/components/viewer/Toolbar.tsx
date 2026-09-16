@@ -21,8 +21,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Separator } from "@/shared/components/ui";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import type { CompileStatus } from '@/features/editor/store/compile.store';
-import type { LaTeXEngine } from '@/features/editor/store/settings.store';
+import type { CompileStatus, LaTeXEngine } from '@/features/editor/store';
 
 // ── Toolbar Button Helper ───────────────────────────────────────────────────
 

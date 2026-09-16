@@ -421,34 +421,6 @@ export async function extractMetadata(file: File): Promise<PdfMetadata> {
     } catch {
       // ignore
     }
-
-    if (!detectedDoi && !detectedArxiv && typeof window !== 'undefined') {
-      try {
-        const { previewServices } = await import('@/features/storage/services/preview.service');
-        const arrayBuffer = await file.arrayBuffer();
-        const previewRes = await previewServices.extractMetadata(arrayBuffer);
-        if (previewRes?.doi) {
-          detectedDoi = previewRes.doi;
-        }
-        if (
-          previewRes?.metadata?.title &&
-          (!cleanTitle ||
-            cleanTitle.length < 5 ||
-            /^(document|paper|untitled)/i.test(cleanTitle))
-        ) {
-          metadata.title = previewRes.metadata.title;
-        }
-        if (
-          previewRes?.metadata?.author &&
-          (!metadata.authors || metadata.authors.length === 0)
-        ) {
-          metadata.authors = [previewRes.metadata.author];
-          metadata.author = previewRes.metadata.author;
-        }
-      } catch {
-        // ignore preview extraction errors
-      }
-    }
   }
 
   const queryCandidate = detectedDoi || detectedArxiv || (cleanTitle.length > 5 ? cleanTitle : '');

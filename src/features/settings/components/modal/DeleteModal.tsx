@@ -37,48 +37,46 @@ export function DeleteModal({
 }: DeleteModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[520px] p-0 overflow-hidden border border-border shadow-raised-200">
-        <div className="p-6">
-          <DialogHeader className="flex flex-row items-start gap-4 space-y-0">
-            <div className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-              <AlertTriangle className="size-5 shrink-0" />
-            </div>
+      <DialogContent className="max-w-md p-5 overflow-hidden border border-border bg-card">
+        <DialogHeader className="flex flex-row items-start gap-3.5 space-y-0 text-left">
+          <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+            <AlertTriangle className="size-4 shrink-0" strokeWidth={1.5} />
+          </div>
 
-            <div className="min-w-0 flex-1">
-              <DialogTitle className="text-base font-semibold text-foreground">
-                {title}
-              </DialogTitle>
-              {description && (
-                <DialogDescription className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
-                  {description}
-                </DialogDescription>
-              )}
-            </div>
-          </DialogHeader>
-        </div>
+          <div className="min-w-0 flex-1">
+            <DialogTitle className="text-14 font-semibold text-foreground">
+              {title}
+            </DialogTitle>
+            {description && (
+              <DialogDescription className="mt-1.5 text-12 text-muted-foreground leading-normal">
+                {description}
+              </DialogDescription>
+            )}
+          </div>
+        </DialogHeader>
 
-        <div className="px-6 py-4 bg-muted/50 border-t border-border">
-          <DialogFooter className="flex w-full flex-row items-center justify-end gap-2 sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={loading}
-              className="cursor-pointer shadow-2xs"
-            >
-              {cancelText}
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={onConfirm}
-              disabled={loading}
-              className="cursor-pointer shadow-2xs"
-            >
-              {confirmText}
-            </Button>
-          </DialogFooter>
-        </div>
+        <DialogFooter className="flex items-center justify-end gap-2 pt-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onClose}
+            disabled={loading}
+            className="h-8 text-12 cursor-pointer shadow-2xs"
+          >
+            {cancelText}
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            onClick={onConfirm}
+            disabled={loading}
+            className="h-8 text-12 cursor-pointer shadow-2xs"
+          >
+            {confirmText}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

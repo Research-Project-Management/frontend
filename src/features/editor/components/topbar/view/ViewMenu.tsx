@@ -5,7 +5,7 @@ import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem } from "@/shar
 import {
   useSettingsStore,
   type LayoutMode,
-} from '@/features/editor/store/settings.store';
+} from '@/features/editor/store';
 
 export default function ViewMenu() {
   const { layout, setLayout } = useSettingsStore();

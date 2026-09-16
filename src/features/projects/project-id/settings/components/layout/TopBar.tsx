@@ -33,11 +33,6 @@ export function TopBar({
         <h1 className="text-sm font-semibold text-foreground tracking-tight truncate">
           {title}
         </h1>
-        {description && (
-          <span className="hidden sm:inline-block text-11 text-muted-foreground truncate border-l border-border pl-2.5 ml-1">
-            {description}
-          </span>
-        )}
       </div>
 
       {(actions || children) && (

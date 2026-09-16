@@ -1,43 +1,37 @@
-import { create } from "zustand";
+/**
+ * tabs.store.ts
+ *
+ * Store for multi-file tab navigation within projects.
+ */
+
+import { create } from 'zustand';
 
 export interface EditorTab {
-  id: string;    // pageId
-  title: string; // filename
-  fileUrl?: string; // Back-end URL path
+  id: string;
+  title: string;
+  isDirty?: boolean;
+  fileUrl?: string;
 }
 
-interface TabsState {
-  /** Tabs grouped by projectId */
+export interface DocumentTabsState {
   tabsByProject: Record<string, EditorTab[]>;
-  /** Currently active pageId per projectId */
-  activeByProject: Record<string, string>;
+  activeByProject: Record<string, string | null>;
 
-  /** Open a tab (noop if already open). Always sets it as active. */
   openTab: (projectId: string, tab: EditorTab) => void;
-  /**
-   * Close a tab.
-   * @param router - called with the next pageId to activate, or null when no tabs remain.
-   */
   closeTab: (
     projectId: string,
     tabId: string,
     router: (pageId: string | null) => void,
   ) => void;
-  /** Set active tab without adding/removing. */
   setActive: (projectId: string, tabId: string) => void;
-  /** Get tab list for a project (empty array if none). */
   getTabs: (projectId: string) => EditorTab[];
-  /** Get currently active pageId for a project. */
   getActive: (projectId: string) => string | null;
-  /** Remove all tabs for a project (e.g. on unmount). */
   closeAllForProject: (projectId: string) => void;
-  /** Update the title of an existing tab (e.g. after rename). */
   updateTabTitle: (projectId: string, tabId: string, title: string) => void;
-  /** Clear all tabs (used when switching projects) */
   clearAll: () => void;
 }
 
-export const useTabsStore = create<TabsState>()((set, get) => ({
+export const useDocumentTabsStore = create<DocumentTabsState>()((set, get) => ({
   tabsByProject: {},
   activeByProject: {},
 
@@ -62,41 +56,41 @@ export const useTabsStore = create<TabsState>()((set, get) => ({
 
   closeTab(projectId, tabId, router) {
     const state = get();
-    const tabs = state.tabsByProject[projectId] ?? [];
-    const activeId = state.activeByProject[projectId] ?? null;
-    const idx = tabs.findIndex((t) => t.id === tabId);
+    const currentTabs = state.tabsByProject[projectId] ?? [];
+    const idx = currentTabs.findIndex((t) => t.id === tabId);
     if (idx === -1) return;
 
-    const newTabs = tabs.filter((t) => t.id !== tabId);
-
-    // Determine next active tab
+    const remaining = currentTabs.filter((t) => t.id !== tabId);
     let nextActive: string | null = null;
-    if (activeId === tabId) {
-      if (newTabs.length > 0) {
-        // Prefer left neighbour, fall back to new last
-        nextActive = newTabs[Math.max(0, idx - 1)].id;
+
+    if (state.activeByProject[projectId] === tabId) {
+      if (remaining.length > 0) {
+        const nextIdx = Math.min(idx, remaining.length - 1);
+        nextActive = remaining[nextIdx].id;
       }
-      // else null → router away
-    } else {
-      nextActive = activeId;
-    }
-
-    set((s) => ({
-      tabsByProject: { ...s.tabsByProject, [projectId]: newTabs },
-      activeByProject: {
-        ...s.activeByProject,
-        [projectId]: nextActive ?? s.activeByProject[projectId],
-      },
-    }));
-
-    if (activeId === tabId) {
       router(nextActive);
+    } else {
+      nextActive = state.activeByProject[projectId] ?? null;
     }
+
+    set({
+      tabsByProject: {
+        ...state.tabsByProject,
+        [projectId]: remaining,
+      },
+      activeByProject: {
+        ...state.activeByProject,
+        [projectId]: nextActive,
+      },
+    });
   },
 
   setActive(projectId, tabId) {
-    set((s) => ({
-      activeByProject: { ...s.activeByProject, [projectId]: tabId },
+    set((state) => ({
+      activeByProject: {
+        ...state.activeByProject,
+        [projectId]: tabId,
+      },
     }));
   },
 
@@ -109,33 +103,36 @@ export const useTabsStore = create<TabsState>()((set, get) => ({
   },
 
   closeAllForProject(projectId) {
-    set((s) => {
-      const tabs = { ...s.tabsByProject };
-      const active = { ...s.activeByProject };
-      delete tabs[projectId];
-      delete active[projectId];
-      return { tabsByProject: tabs, activeByProject: active };
+    set((state) => {
+      const { [projectId]: _tabs, ...remainingTabs } = state.tabsByProject;
+      const { [projectId]: _active, ...remainingActive } = state.activeByProject;
+      return {
+        tabsByProject: remainingTabs,
+        activeByProject: remainingActive,
+      };
     });
   },
 
   updateTabTitle(projectId, tabId, title) {
-    set((s) => ({
-      tabsByProject: {
-        ...s.tabsByProject,
-        [projectId]: (s.tabsByProject[projectId] ?? []).map((t) =>
-          t.id === tabId ? { ...t, title } : t,
-        ),
-      },
-    }));
+    set((state) => {
+      const currentTabs = state.tabsByProject[projectId] ?? [];
+      return {
+        tabsByProject: {
+          ...state.tabsByProject,
+          [projectId]: currentTabs.map((t) =>
+            t.id === tabId ? { ...t, title } : t,
+          ),
+        },
+      };
+    });
   },
 
   clearAll() {
-    set(() => ({
-      tabsByProject: {},
-      activeByProject: {},
-    }));
+    set({ tabsByProject: {}, activeByProject: {} });
   },
 }));
 
-/** @deprecated alias for backward compatibility */
-export const useEditorTabsStore = useTabsStore;
+// Aliases for seamless backward compatibility
+export const useTabsStore = useDocumentTabsStore;
+export const useEditorTabsStore = useDocumentTabsStore;
+export type TabsState = DocumentTabsState;

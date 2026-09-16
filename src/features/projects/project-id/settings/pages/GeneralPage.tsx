@@ -51,7 +51,6 @@ export default function GeneralPage() {
       <div className="flex flex-col h-full w-full bg-background">
         <TopBar
           title="General"
-          description="Basic project details, identifier and visual cover"
           Icon={Settings}
         />
         <div className="flex-1 overflow-y-auto">
@@ -71,7 +70,6 @@ export default function GeneralPage() {
       <div className="flex flex-col h-full w-full bg-background">
         <TopBar
           title="General"
-          description="Basic project details, identifier and visual cover"
           Icon={Settings}
         />
         <div className="flex-1 p-5 md:p-6 text-sm text-muted-foreground">
@@ -85,7 +83,6 @@ export default function GeneralPage() {
     <div className="flex flex-col h-full w-full bg-background">
       <TopBar
         title="General"
-        description="Basic project details, identifier and visual cover"
         Icon={Settings}
       />
 
@@ -109,7 +106,6 @@ export default function GeneralPage() {
             name={name}
             identifier={identifier}
             description={description}
-            isPrivate={isPrivate}
             createdAt={createdAt}
             isSaving={isSaving}
             hasChanges={hasChanges}
@@ -117,7 +113,6 @@ export default function GeneralPage() {
             onNameChange={setName}
             onIdentifierChange={setIdentifier}
             onDescriptionChange={setDescription}
-            onPrivateChange={setIsPrivate}
             onSubmit={save}
           />
 

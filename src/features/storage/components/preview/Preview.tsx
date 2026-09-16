@@ -1,92 +1,137 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import {
-  X, Download, FileText, Calendar, User, Fingerprint,
-  Maximize2, Search, Save, Loader2, RefreshCw,
-  CheckCircle2, ChevronDown, ChevronUp,
-  BookMarked, Building2, FileDigit, ScrollText, CircleDot,
-  BookOpen, Sparkles, AlertCircle, Layers,
-  FileCode2, FileSpreadsheet, Table2
+  X,
+  Download,
+  FileText,
+  Calendar,
+  User,
+  Maximize2,
+  Save,
+  Loader2,
+  FileCode2,
+  FileSpreadsheet,
+  Table2,
+  History,
+  Folder,
+  HardDrive,
+  Clock,
+  Star,
+  Tag,
 } from 'lucide-react';
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
-import { Label } from "@/shared/components/ui";
-import LibraryPopover from './LibraryPopover';
-import PaperChatModal from './PaperChatModal';
+import { Button } from '@/shared/components/ui';
+import { Textarea } from '@/shared/components/ui';
 import ScientificViewerModal from './ScientificViewerModal';
+import VersionHistoryModal from '../modal/VersionHistoryModal';
 import {
-  getFileType, getFileIcon, getFileColor,
-  formatFileSize, formatDate, formatMimeType,
+  getFileType,
+  getFileIcon,
+  getFileColor,
+  formatFileSize,
+  formatMimeType,
 } from '../../utils/file';
-import { resolveFileUrl } from "@/shared/lib/file-client";
+import {
+  formatDetailedSize,
+  formatFileLocation,
+  formatDetailedDate,
+} from '../../utils/preview.util';
+import { resolveFileUrl, downloadFileUrl } from '@/shared/lib/file-client';
 import { usePreview } from '../../hooks/use-preview';
 import { usePreviewStore } from '../../store/use-preview-store';
-import { downloadFileUrl } from "@/shared/lib/file-client";
-
 
 export default function Preview() {
   const params = useParams();
   const projectId = (params?.projectId as string) || (params?.id as string) || '';
   const { selectedItem: item, setSelectedItem } = usePreviewStore();
   const [imageError, setImageError] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
   const [scientificViewerOpen, setScientificViewerOpen] = useState(false);
-
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
 
   useEffect(() => {
     setImageError(false);
   }, [item?.id, item?.url]);
 
   const {
-    metadata, setMetadata,
     previewDataUrl,
     loading: pdfLoading,
-    crossrefLoading, crossrefStatus,
-    searchOpen, setSearchOpen,
-    searchQuery, setSearchQuery,
-    searchResults,
-    searchLoading,
-    saved, setSaved,
-    abstractExpanded, setAbstractExpanded,
-    handleSearch, handleSelectCrossref, handleRetryLookup, handleSaveMetadata,
+    description,
+    setDescription,
+    isSaved,
+    isSavingDescription,
+    handleSaveDescription,
   } = usePreview(item);
 
   if (!item) return null;
 
-  const fileType    = getFileType(item as any);
-  const isImage     = fileType === 'image';
-  const isPdf       = item.filename.toLowerCase().endsWith('.pdf') || item.mimeType === 'application/pdf';
-  const ext         = item.filename.split('.').pop()?.toLowerCase() || '';
-  const isScientificText = ['csv', 'tsv', 'ipynb', 'tex', 'md', 'json', 'py', 'txt', 'bib'].includes(ext);
+  const fileType = getFileType(item as any);
+  const isImage = fileType === 'image';
+  const isPdf =
+    item.filename.toLowerCase().endsWith('.pdf') ||
+    item.mimeType === 'application/pdf';
+  const ext = item.filename.split('.').pop()?.toLowerCase() || '';
+  const isScientificText = [
+    'csv',
+    'tsv',
+    'ipynb',
+    'tex',
+    'md',
+    'json',
+    'py',
+    'txt',
+    'bib',
+  ].includes(ext);
   const resolvedUrl = resolveFileUrl(item.url);
-  const color       = getFileColor(fileType);   // oklch string
-  const unsaved     = metadata && !saved;
+  const color = getFileColor(fileType);
 
   const handleDownload = async () => {
     if (!resolvedUrl) return;
-    try { await downloadFileUrl(resolvedUrl, item.filename); } catch { /* ignore */ }
+    try {
+      await downloadFileUrl(resolvedUrl, item.filename);
+    } catch {
+      // ignore
+    }
   };
 
-  // ── Crossref badge config ───────────────────────────────────────────
-  const crossrefBadge = {
-    found:       { label: 'Crossref matched', cls: 'bg-success/10 text-success' },
-    'not-found': { label: 'Not on Crossref',  cls: 'bg-muted text-muted-foreground' },
-    error:       { label: 'Lookup failed',    cls: 'bg-destructive/10 text-destructive' },
-    idle:        { label: 'Checking…',        cls: 'bg-muted text-muted-foreground' },
-  }[crossrefStatus];
+  const fileDetails = [
+    {
+      icon: <Tag className="size-3.5 text-muted-foreground/70 shrink-0" />,
+      label: 'Loại tệp',
+      value: formatMimeType(item as any),
+    },
+    {
+      icon: <HardDrive className="size-3.5 text-muted-foreground/70 shrink-0" />,
+      label: 'Kích thước',
+      value: formatDetailedSize(item.size),
+    },
+    {
+      icon: <Folder className="size-3.5 text-muted-foreground/70 shrink-0" />,
+      label: 'Vị trí',
+      value: formatFileLocation(item, item.project?.name),
+    },
+    {
+      icon: <User className="size-3.5 text-muted-foreground/70 shrink-0" />,
+      label: 'Chủ sở hữu',
+      value: item.author?.name || 'Researcher',
+    },
+    {
+      icon: <Calendar className="size-3.5 text-muted-foreground/70 shrink-0" />,
+      label: 'Đã tạo',
+      value: formatDetailedDate(item.createdAt),
+    },
+    {
+      icon: <Clock className="size-3.5 text-muted-foreground/70 shrink-0" />,
+      label: 'Sửa đổi lần cuối',
+      value: formatDetailedDate(item.updatedAt),
+    },
+  ];
 
   return (
-    <div className="w-[308px] shrink-0 h-full border-l border-border bg-background flex flex-col overflow-hidden animate-in slide-in-from-right-3 duration-200 ease-out">
-
+    <div className="w-[320px] shrink-0 h-full border-l border-border bg-background flex flex-col overflow-hidden animate-in slide-in-from-right-3 duration-200 ease-out">
       {/* ─── Header ──────────────────────────────────────────────────── */}
-      <div className="flex items-start gap-3 px-4 py-4 border-b border-border">
-        {/* File-type icon — colored icon only, no background box */}
-        <span
-          className="mt-0.5 shrink-0 [&>svg]:size-5"
-          style={{ color }}
-        >
+      <div className="flex items-start gap-3 px-4 py-3.5 border-b border-border bg-muted/20">
+        <span className="mt-0.5 shrink-0 [&>svg]:size-5" style={{ color }}>
           {getFileIcon(fileType, 4)}
         </span>
 
@@ -97,30 +142,35 @@ export default function Preview() {
           >
             {item.filename}
           </p>
-          <p className="text-xs text-muted-foreground/60 mt-0.5 truncate">
-            {formatMimeType(item as any)}
-          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-xs text-muted-foreground/70 truncate">
+              {formatMimeType(item as any)}
+            </span>
+            {item.starred && (
+              <Star className="size-3 fill-amber-400 text-amber-400 shrink-0" />
+            )}
+          </div>
         </div>
 
         <button
           onClick={() => setSelectedItem(null)}
           aria-label="Close preview"
-          className="mt-0.5 shrink-0 size-5 flex items-center justify-center rounded hover:bg-muted transition-colors text-muted-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
+          className="mt-0.5 shrink-0 size-6 flex items-center justify-center rounded hover:bg-muted transition-colors text-muted-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
         >
-          <X className="size-3.5 shrink-0" />
+          <X className="size-4 shrink-0" />
         </button>
       </div>
 
       {/* ─── Scrollable body ─────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
-
-        {/* Thumbnail zone — fixed height so it doesn't shift layout */}
+        {/* Thumbnail preview zone */}
         <div
           className="relative border-b border-border flex items-center justify-center h-44 overflow-hidden shrink-0"
           style={{
-            background: isImage && !imageError && resolvedUrl
-              ? 'repeating-conic-gradient(var(--color-muted) 0% 25%, var(--color-background) 0% 50%) 0 0 / 14px 14px'
-              : 'color-mix(in oklch, var(--color-muted) 30%, transparent)',
+            background:
+              isImage && !imageError && resolvedUrl
+                ? 'repeating-conic-gradient(var(--color-muted) 0% 25%, var(--color-background) 0% 50%) 0 0 / 14px 14px'
+                : 'color-mix(in oklch, var(--color-muted) 30%, transparent)',
           }}
         >
           {isImage ? (
@@ -129,7 +179,7 @@ export default function Preview() {
                 src={resolvedUrl}
                 alt={item.filename}
                 onError={() => setImageError(true)}
-                className="w-full h-full object-contain "
+                className="w-full h-full object-contain"
               />
             ) : (
               <div className="flex flex-col items-center gap-2 py-8">
@@ -139,41 +189,38 @@ export default function Preview() {
                 >
                   {getFileIcon('image', 10)}
                 </div>
-                <span className="text-xs text-muted-foreground/50">Preview unavailable</span>
+                <span className="text-xs text-muted-foreground/50">
+                  Không thể hiển thị xem trước
+                </span>
               </div>
             )
           ) : isPdf ? (
             pdfLoading ? (
-              /* Shimmer skeleton for PDF loading */
-              <div className="relative w-[calc(100%-32px)] mx-4 my-6 rounded-md overflow-hidden bg-muted h-36">
-                <div
-                  className="absolute inset-0 -translate-x-full animate-shimmer"
-                  style={{
-                    background: 'linear-gradient(90deg, transparent, color-mix(in oklch, var(--color-muted-foreground) 8%, transparent), transparent)',
-                  }}
-                />
-                <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-xs text-muted-foreground/50">
-                  <Loader2 className="size-3 animate-spin shrink-0" />
-                  Rendering…
+              <div className="relative w-[calc(100%-32px)] mx-4 my-6 rounded-md overflow-hidden bg-muted h-32 flex items-center justify-center">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
+                  <Loader2 className="size-3.5 animate-spin shrink-0" />
+                  Đang tải hình xem trước…
                 </div>
               </div>
             ) : previewDataUrl ? (
               <img
                 src={previewDataUrl}
                 alt={`${item.filename} preview`}
-                className="w-full max-h-52 object-contain animate-in fade-in duration-300"
+                className="w-full max-h-44 object-contain animate-in fade-in duration-300"
               />
             ) : (
               <div className="flex flex-col items-center gap-2 py-8">
                 <FileText className="size-9 text-muted-foreground/20 shrink-0" />
-                <span className="text-xs text-muted-foreground/40">No preview available</span>
+                <span className="text-xs text-muted-foreground/50">
+                  Tài liệu PDF
+                </span>
               </div>
             )
           ) : isScientificText ? (
             <div
               onClick={() => setScientificViewerOpen(true)}
               className="flex flex-col items-center gap-2.5 py-6 px-4 cursor-pointer hover:bg-muted/40 rounded-lg transition-all group"
-              title="Nhấp để xem bảng dữ liệu và mã nguồn khoa học"
+              title="Nhấp để xem bảng dữ liệu và mã nguồn"
             >
               <div className="size-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-105 transition-transform shadow-xs">
                 {ext === 'csv' || ext === 'tsv' ? (
@@ -183,425 +230,148 @@ export default function Preview() {
                 )}
               </div>
               <div className="text-center">
-                <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors uppercase tracking-wider">
-                  {ext} Data
+                <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
+                  Dữ liệu {ext.toUpperCase()}
                 </span>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Bấm để mở trình xem dữ liệu khoa học
+                <p className="text-11 text-muted-foreground mt-0.5">
+                  Bấm để xem dữ liệu khoa học
                 </p>
               </div>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2 py-8">
               <div
-                className="opacity-15 transition-opacity hover:opacity-25"
+                className="opacity-20 transition-opacity hover:opacity-30"
                 style={{ color }}
               >
                 {getFileIcon(fileType, 10)}
               </div>
-              <span className="text-xs text-muted-foreground/40">No preview</span>
+              <span className="text-xs text-muted-foreground/40">
+                {item.isFolder ? 'Thư mục' : 'Tập tin'}
+              </span>
             </div>
           )}
         </div>
 
-        {/* Quick actions */}
-        <div className="flex gap-1.5 px-3.5 pt-2 pb-2.5 border-b border-border">
+        {/* Quick actions toolbar */}
+        <div className="flex gap-1.5 px-3 py-2 border-b border-border bg-muted/10">
           <button
             onClick={handleDownload}
             className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
+            title="Tải tệp xuống máy tính"
           >
-            <Download className="size-3 shrink-0" />
-            Download
+            <Download className="size-3.5 shrink-0" />
+            Tải xuống
           </button>
+
+          {!item.isFolder && (
+            <button
+              onClick={() => setVersionHistoryOpen(true)}
+              className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
+              title="Lịch sử phiên bản & Tải bản mới lên"
+            >
+              <History className="size-3.5 shrink-0 text-muted-foreground" />
+              Phiên bản
+            </button>
+          )}
+
           {isScientificText && (
             <button
               onClick={() => setScientificViewerOpen(true)}
               className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-xs text-primary font-medium bg-primary/10 hover:bg-primary/20 transition-colors cursor-pointer"
               title="Xem bảng tính & mã nguồn nghiên cứu"
             >
-              <Table2 className="size-3 shrink-0" />
-              Xem dữ liệu
+              <Table2 className="size-3.5 shrink-0" />
+              Dữ liệu
             </button>
           )}
+
           {(isPdf || isImage) && (
             <button
               onClick={() => window.open(resolvedUrl || item.url, '_blank')}
               className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
+              title="Mở toàn màn hình trong tab mới"
             >
-              <Maximize2 className="size-3 shrink-0" />
-              Open full
+              <Maximize2 className="size-3.5 shrink-0" />
+              Mở rộng
             </button>
-          )}
-          {isPdf && (
-            <button
-              onClick={() => setChatOpen(true)}
-              className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-xs text-primary font-medium bg-primary/10 hover:bg-primary/20 transition-colors cursor-pointer"
-              title="Hỏi bài báo với Trợ lý AI"
-            >
-              <Sparkles className="size-3 shrink-0" />
-              Hỏi AI
-            </button>
-          )}
-          {isPdf && (
-            <LibraryPopover
-              item={item}
-              projectId={projectId}
-              metadata={metadata}
-              trigger={
-                <button
-                  className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
-                  title="Add to Research Library"
-                >
-                  <BookOpen className="size-3 shrink-0" />
-                  Library
-                </button>
-              }
-            />
           )}
         </div>
 
-
-        {/* ── File details ─────────────────────────────────────────── */}
-        <div className="px-3.5 pt-3 pb-3 border-b border-border">
-          <p className="text-xs font-semibold text-muted-foreground mb-2">
-            File details
+        {/* ─── Google Drive: Chi tiết tệp (File details) ──────────────── */}
+        <div className="px-3.5 py-3.5 border-b border-border">
+          <p className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
+            Chi tiết tệp
           </p>
           <div className="divide-y divide-border/30">
-            {[
-              { label: 'Type',     value: formatMimeType(item as any) },
-              { label: 'Size',     value: formatFileSize(item.size) },
-              { label: 'Added',    value: formatDate(item.createdAt) },
-              ...(item.updatedAt !== item.createdAt
-                ? [{ label: 'Modified', value: formatDate(item.updatedAt) }]
-                : []),
-            ].map(({ label, value }) => (
-              <div key={label} className="flex items-baseline justify-between gap-3 py-1.5">
-                <span className="text-xs text-muted-foreground/50 shrink-0">{label}</span>
-                <span className="text-xs font-medium text-foreground text-right break-all">{value}</span>
+            {fileDetails.map(({ icon, label, value }) => (
+              <div
+                key={label}
+                className="flex items-start justify-between gap-3 py-2 text-xs"
+              >
+                <div className="flex items-center gap-2 text-muted-foreground shrink-0">
+                  {icon}
+                  <span>{label}</span>
+                </div>
+                <span className="font-medium text-foreground text-right break-words max-w-[160px]">
+                  {value}
+                </span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* ── AI Assistant Knowledge Grounding ─────────────────────── */}
-        {isPdf && (
-          <div className="px-3.5 pt-3 pb-3 border-b border-border bg-muted/20">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <Sparkles className="size-3.5 text-primary shrink-0" />
-                <p className="text-xs font-semibold text-foreground">
-                  AI Assistant RAG
-                </p>
-              </div>
-              {item.metaData?.ragStatus === 'indexed' ? (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  <CheckCircle2 className="size-3" />
-                  Indexed
-                </span>
-              ) : item.metaData?.ragStatus === 'processing' ? (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                  <Loader2 className="size-3 animate-spin" />
-                  Indexing…
-                </span>
-              ) : item.metaData?.ragStatus === 'failed' ? (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-                  <AlertCircle className="size-3" />
-                  Offline
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
-                  <Sparkles className="size-3 opacity-60" />
-                  Ready to Index
-                </span>
-              )}
-            </div>
+        {/* ─── Google Drive: Mô tả tệp (Description / Notes) ───────────── */}
+        <div className="px-3.5 py-3.5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-foreground">
+              Mô tả tệp
+            </p>
+            {!isSaved && (
+              <span className="text-11 text-amber-500 font-medium">
+                Chưa lưu
+              </span>
+            )}
+          </div>
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Thêm mô tả về tài liệu này..."
+            rows={3}
+            className="text-xs resize-none bg-muted/20 border-border placeholder:text-muted-foreground/40 focus-visible:ring-1"
+          />
 
-            <div className="rounded-md border border-border/60 bg-card/60 p-2.5 text-xs space-y-1.5">
-              <p className="text-muted-foreground leading-relaxed">
-                {item.metaData?.ragStatus === 'indexed'
-                  ? `Grounding active: ${item.metaData.chunkCount || 1} semantic IMRaD chunks embedded for AI paper Q&A.`
-                  : item.metaData?.ragStatus === 'processing'
-                  ? 'Extracting academic sections and generating vector embeddings…'
-                  : 'Scientific PDF is ready for AI literature synthesis and multi-turn querying.'}
-              </p>
-              {item.metaData?.chunkCount ? (
-                <div className="flex items-center gap-3 pt-1 text-[11px] text-muted-foreground/70 font-mono">
-                  <span className="flex items-center gap-1">
-                    <Layers className="size-3 text-primary/70" />
-                    {item.metaData.chunkCount} chunks
-                  </span>
-                  {item.metaData.pageCount ? (
-                    <span className="flex items-center gap-1">
-                      <FileDigit className="size-3 text-primary/70" />
-                      {item.metaData.pageCount} pages
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
-
+          {!isSaved && (
+            <div className="mt-2 flex justify-end">
               <Button
-                variant="outline"
                 size="sm"
-                onClick={() => setChatOpen(true)}
-                className="w-full mt-2 h-7 text-xs flex items-center justify-center gap-1.5 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer"
+                onClick={handleSaveDescription}
+                disabled={isSavingDescription}
+                className="h-7 text-xs gap-1.5 px-3 cursor-pointer"
               >
-                <Sparkles className="size-3" />
-                Hỏi Trợ lý AI về Bài báo này
+                {isSavingDescription ? (
+                  <Loader2 className="size-3 animate-spin shrink-0" />
+                ) : (
+                  <Save className="size-3 shrink-0" />
+                )}
+                Lưu mô tả
               </Button>
             </div>
-          </div>
-        )}
-
-        {/* ── Academic metadata ────────────────────────────────────── */}
-        {metadata && (
-          <div className="px-3.5 pt-3.5 pb-6">
-
-            {/* Section header + Crossref badge */}
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-muted-foreground">
-                Academic metadata
-              </p>
-              <div className="flex items-center gap-1.5">
-                {crossrefLoading ? (
-                  <Loader2 className="size-3 animate-spin text-muted-foreground/30 shrink-0" />
-                ) : (
-                  <span className={`text-xs font-medium px-1.5 py-px rounded-full leading-none ${crossrefBadge.cls}`}>
-                    {crossrefBadge.label}
-                  </span>
-                )}
-                <button
-                  onClick={handleRetryLookup}
-                  disabled={crossrefLoading}
-                  className="text-muted-foreground/25 hover:bg-muted transition-colors disabled:opacity-30"
-                  title="Retry Crossref lookup"
-                >
-                  <RefreshCw className="size-3 transition-transform duration-300 hover:rotate-180 shrink-0" />
-                </button>
-              </div>
-            </div>
-
-            {/* Manual search trigger */}
-            {crossrefStatus !== 'found' && !crossrefLoading && (
-              <button
-                onClick={() => setSearchOpen(!searchOpen)}
-                className="mb-4 text-xs text-primary hover:underline transition-colors flex items-center gap-1.5 group"
-              >
-                <Search className="size-3 group-hover:scale-110 transition-transform duration-150 shrink-0" />
-                {searchOpen ? 'Cancel' : 'Search Crossref manually'}
-              </button>
-            )}
-
-            {/* Search panel */}
-            {searchOpen && (
-              <div className="mb-4 rounded-lg border border-border bg-muted overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="flex gap-1.5 p-2 border-b border-border">
-                  <Input
-                    placeholder="Title, DOI, authors…"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    className="h-7 text-xs bg-background/80"
-                  />
-                  <Button
-                    size="sm"
-                    className="h-7 w-7 px-0 shrink-0"
-                    onClick={handleSearch}
-                    disabled={searchLoading}
-                  >
-                    {searchLoading
-                      ? <Loader2 className="size-3 animate-spin shrink-0" />
-                      : <Search className="size-3 shrink-0" />}
-                  </Button>
-                </div>
-                {searchResults.length > 0 && (
-                  <div className="max-h-48 overflow-y-auto divide-y divide-border/20">
-                    {searchResults.map((work: any, idx: number) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleSelectCrossref(work)}
-                        className="w-full text-left px-2.5 py-2 text-xs hover:bg-muted transition-colors cursor-pointer"
-                      >
-                        <p className="font-medium line-clamp-2 leading-snug mb-0.5">{work.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {work.authors?.join(', ') || 'Unknown authors'}
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground/50">
-                          <span className="bg-muted px-1.5 py-px rounded-sm font-medium">{work.year || 'N/A'}</span>
-                          {work.journal && <span className="truncate">{work.journal}</span>}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── Metadata form fields ─────────────────────────── */}
-            <div className="space-y-3">
-
-              {/* Title */}
-              <div>
-                <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
-                  <FileText className="size-3 shrink-0" />Title
-                </Label>
-                <Input
-                  value={metadata.title || ''}
-                  onChange={(e) => { setMetadata({ ...metadata, title: e.target.value }); setSaved(false); }}
-                  placeholder="Paper title…"
-                  className="h-8 text-xs bg-transparent border-border hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
-                />
-              </div>
-
-              {/* Authors */}
-              <div>
-                <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
-                  <User className="size-3 shrink-0" />Authors
-                </Label>
-                <Input
-                  value={metadata.author || metadata.authors?.join(', ') || ''}
-                  onChange={(e) => { setMetadata({ ...metadata, author: e.target.value }); setSaved(false); }}
-                  placeholder="Last, First; Last, First…"
-                  className="h-8 text-xs bg-transparent border-border hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
-                />
-              </div>
-
-              {/* DOI */}
-              <div>
-                <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
-                  <Fingerprint className="size-3 shrink-0" />DOI
-                </Label>
-                <Input
-                  value={metadata.doi || ''}
-                  onChange={(e) => { setMetadata({ ...metadata, doi: e.target.value }); setSaved(false); }}
-                  placeholder="10.xxxx/xxxxx"
-                  className="h-[30px] text-xs bg-transparent border-border hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25 font-mono"
-                />
-              </div>
-
-              {/* Year + Pages side by side */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
-                    <Calendar className="size-3 shrink-0" />Year
-                  </Label>
-                  <Input
-                    value={metadata.year ? String(metadata.year) : ''}
-                    onChange={(e) => { setMetadata({ ...metadata, year: e.target.value ? parseInt(e.target.value) : undefined }); setSaved(false); }}
-                    placeholder="2024"
-                    className="h-8 text-xs bg-transparent border-border hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
-                  />
-                </div>
-                <div>
-                  <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
-                    <FileDigit className="size-3 shrink-0" />Pages
-                  </Label>
-                  <Input
-                    value={metadata.pages || ''}
-                    onChange={(e) => { setMetadata({ ...metadata, pages: e.target.value }); setSaved(false); }}
-                    placeholder="1–12"
-                    className="h-8 text-xs bg-transparent border-border hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
-                  />
-                </div>
-              </div>
-
-              {/* Journal */}
-              <div>
-                <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
-                  <BookMarked className="size-3 shrink-0" />Journal
-                </Label>
-                <Input
-                  value={metadata.journal || ''}
-                  onChange={(e) => { setMetadata({ ...metadata, journal: e.target.value }); setSaved(false); }}
-                  placeholder="Journal name…"
-                  className="h-8 text-xs bg-transparent border-border hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
-                />
-              </div>
-
-              {/* Publisher */}
-              <div>
-                <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
-                  <Building2 className="size-3 shrink-0" />Publisher
-                </Label>
-                <Input
-                  value={metadata.publisher || ''}
-                  onChange={(e) => { setMetadata({ ...metadata, publisher: e.target.value }); setSaved(false); }}
-                  placeholder="Publisher…"
-                  className="h-8 text-xs bg-transparent border-border hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
-                />
-              </div>
-
-              {/* Abstract — collapsible */}
-              {metadata.abstract && (
-                <div>
-                  <button
-                    className="flex items-center gap-1.5 w-full text-left mb-1.5 text-xs font-semibold text-muted-foreground/60 hover:bg-muted transition-colors"
-                    onClick={() => setAbstractExpanded(!abstractExpanded)}
-                  >
-                    <ScrollText className="size-3 shrink-0" />
-                    <span>Abstract</span>
-                    <span className="ml-auto opacity-60">
-                      {abstractExpanded
-                        ? <ChevronUp className="size-3 shrink-0" />
-                        : <ChevronDown className="size-3 shrink-0" />}
-                    </span>
-                  </button>
-                  <div
-                    className={`relative text-xs leading-relaxed text-muted-foreground bg-muted rounded-lg px-3 py-2.5 border border-border overflow-hidden transition-all duration-300 ${abstractExpanded ? 'max-h-[600px]' : 'max-h-[68px]'}`}
-                  >
-                    {metadata.abstract}
-                    {!abstractExpanded && (
-                      <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-background/60 to-transparent" />
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ─── Save footer ─────────────────────────────────────────────── */}
-      {metadata && (
-        <div className="px-3.5 pt-2.5 pb-3 border-t border-border shrink-0">
-          <button
-            disabled={saved || !item}
-            onClick={handleSaveMetadata}
-            className={`relative w-full h-8 rounded-sm flex items-center justify-center gap-2 text-xs font-medium transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed ${
-              saved
-                ? 'bg-success/8 text-success cursor-default'
-                : 'bg-primary text-primary-foreground hover:opacity-90'
-            }`}
-          >
-            {saved ? (
-              <>
-                <CheckCircle2 className="size-3.5 shrink-0" />
-                Saved
-              </>
-            ) : (
-              <>
-                <Save className="size-3.5 shrink-0" />
-                Save metadata
-                {unsaved && (
-                  <span className="absolute right-3 size-1.5 rounded-full bg-primary-foreground/60 animate-pulse" />
-                )}
-              </>
-            )}
-          </button>
+          )}
         </div>
-      )}
-
-      {/* ─── Paper AI Q&A Modal ─────────────────────────────────────── */}
-      <PaperChatModal
-        open={chatOpen}
-        onOpenChange={setChatOpen}
-        file={item as any}
-        projectId={projectId}
-      />
+      </div>
 
       {/* ─── Scientific Data & Code Viewer Modal ───────────────────── */}
       <ScientificViewerModal
         open={scientificViewerOpen}
         onOpenChange={setScientificViewerOpen}
+        file={item as any}
+      />
+
+      {/* ─── Version History Modal ─────────────────────────────────── */}
+      <VersionHistoryModal
+        open={versionHistoryOpen}
+        onOpenChange={setVersionHistoryOpen}
         file={item as any}
       />
     </div>

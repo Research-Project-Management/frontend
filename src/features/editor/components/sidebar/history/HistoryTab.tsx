@@ -20,16 +20,16 @@ import {
 import {
   createSnapshotSchema,
   type CreateSnapshotInput,
-} from "@/features/editor/schemas/document.schema";
+} from "@/features/editor/schemas";
 import { useQuery } from "@tanstack/react-query";
 import {
   versionsQuery,
   historyQuery,
   useVersionActions,
   useHistoryActions,
-} from '@/features/editor/hooks/use-page';
-import type { PageEvent } from "@/features/editor/types/document.types";
-import { usePageStore } from "@/features/editor/store/page.store";
+} from '@/features/editor/hooks/use-history';
+import type { PageEvent } from "@/features/editor/types";
+import { usePageStore } from "@/features/editor/store";
 import { cn } from "@/shared/lib/utils";
 import { Input, Form } from "@/shared/components/ui";
 

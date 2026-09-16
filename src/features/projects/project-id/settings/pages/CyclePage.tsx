@@ -4,7 +4,7 @@ import React from 'react';
 import { useParams } from 'next/navigation';
 import { Button } from "@/shared/components/ui";
 import { Skeleton } from "@/shared/components/ui";
-import { Loader2, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { CycleIcon } from "@/shared/components/ui";
 import TopBar from '../components/layout/TopBar';
 import { Duration } from '../components/cycle/Duration';
@@ -31,7 +31,6 @@ export default function CyclePage() {
       <div className="flex flex-col h-full w-full bg-background">
         <TopBar
           title="Cycles"
-          description="Configure research sprint iterations and automation defaults"
           Icon={CycleIcon}
         />
         <div className="flex-1 overflow-y-auto">
@@ -49,7 +48,6 @@ export default function CyclePage() {
       <div className="flex flex-col h-full w-full bg-background">
         <TopBar
           title="Cycles"
-          description="Configure research sprint iterations and automation defaults"
           Icon={CycleIcon}
         />
         <div className="flex-1 p-5 md:p-6 text-sm text-muted-foreground">
@@ -66,7 +64,6 @@ export default function CyclePage() {
       disabled={!hasChanges || isSaving}
       className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-none shrink-0"
     >
-      {isSaving && <Loader2 className="mr-1.5 size-3.5 animate-spin shrink-0" />}
       Save changes
     </Button>
   );
@@ -75,7 +72,6 @@ export default function CyclePage() {
     <div className="flex flex-col h-full w-full bg-background">
       <TopBar
         title="Cycles"
-        description="Configure research sprint iterations and automation defaults"
         Icon={CycleIcon}
         actions={topBarActions}
       />

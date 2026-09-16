@@ -2,9 +2,8 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { Button } from "@/shared/components/ui";
 import { Skeleton } from "@/shared/components/ui";
-import { Loader2, FileText, SlidersHorizontal, LayoutGrid } from 'lucide-react';
+import { FileText, SlidersHorizontal, LayoutGrid } from 'lucide-react';
 import { WorkItemsIcon, CycleIcon } from "@/shared/components/ui";
 import TopBar from '../components/layout/TopBar';
 import { Item } from '../components/module/Item';
@@ -24,14 +23,13 @@ const MODULES: ModuleDef[] = [
 
 export default function ModulesPage() {
   const { projectId } = useParams() as { projectId: string };
-  const { active, toggle, hasChanges, save, isSaving, isLoading, isError, project } = useModules(projectId);
+  const { active, toggle, isSaving, isLoading, isError, project } = useModules(projectId);
 
   if (isLoading) {
     return (
       <div className="flex flex-col h-full w-full bg-background">
         <TopBar
           title="Modules"
-          description="Enable or disable feature modules for this project"
           Icon={LayoutGrid}
         />
         <div className="flex-1 overflow-y-auto">
@@ -48,7 +46,6 @@ export default function ModulesPage() {
       <div className="flex flex-col h-full w-full bg-background">
         <TopBar
           title="Modules"
-          description="Enable or disable feature modules for this project"
           Icon={LayoutGrid}
         />
         <div className="flex-1 p-5 md:p-6 text-sm text-muted-foreground">
@@ -58,25 +55,11 @@ export default function ModulesPage() {
     );
   }
 
-  const topBarActions = (
-    <Button
-      size="sm"
-      onClick={save}
-      disabled={!hasChanges || isSaving}
-      className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-none shrink-0"
-    >
-      {isSaving && <Loader2 className="mr-1.5 size-3.5 animate-spin shrink-0" />}
-      Save changes
-    </Button>
-  );
-
   return (
     <div className="flex flex-col h-full w-full bg-background">
       <TopBar
         title="Modules"
-        description="Enable or disable feature modules for this project"
         Icon={LayoutGrid}
-        actions={topBarActions}
       />
 
       <div className="flex-1 overflow-y-auto">

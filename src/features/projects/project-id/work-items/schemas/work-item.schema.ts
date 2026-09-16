@@ -223,6 +223,7 @@ export const stateSchema = z.object({
   slug: z.string().optional(),
   color: z.string(),
   accentColor: z.string().optional(),
+  icon: z.string().optional(),
   group: stateGroupSchema,
   sequence: z.number().default(0),
   isDefault: z.boolean().default(false),

@@ -4,10 +4,8 @@ import React, { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Archive, Loader2 } from 'lucide-react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from "@/shared/components/ui";
-import { usePageStore } from '@/features/editor/store/page.store';
-import { useCompileStore } from '@/features/editor/store/compile.store';
-import { getExportFilename } from '@/features/editor/utils/topbar.util';
-import { exportProjectAsZip } from '@/features/editor/utils/export-zip.util';
+import { usePageStore, useCompileStore } from '@/features/editor/store';
+import { getExportFilename, exportProjectAsZip } from '@/features/editor/utils';
 
 export default function FileMenu() {
   const router = useRouter();

@@ -1,0 +1,74 @@
+/**
+ * collaboration.service.ts
+ *
+ * Frontend service mirroring Backend `modules/document/collaboration/`:
+ *  - Real-time SSE Collaboration Stream (`/api/projects/:projectId/pages/:pageId/collaboration/stream`)
+ *  - Presence & Active Collaborators
+ *  - Heartbeat & Cursor Position
+ */
+
+import { apiGet, apiPost } from '@/shared/lib/api';
+
+export interface CollaborationPresence {
+  userId: string;
+  name: string;
+  avatar?: string | null;
+  cursor?: { line: number; column: number };
+  lastActiveAt: number;
+}
+
+export interface CollaborationEvent {
+  pageId: string;
+  type: string;
+  suggestion?: any;
+  comment?: any;
+  user?: CollaborationPresence;
+  timestamp: number;
+}
+
+export const collaborationService = {
+  getPresence: async (pageId: string): Promise<CollaborationPresence[]> => {
+    const res = await apiGet<{ presence: CollaborationPresence[] }>(
+      `/api/pages/${pageId}/collaboration/presence`,
+    );
+    return res.presence || [];
+  },
+
+  sendHeartbeat: async (
+    pageId: string,
+    cursor?: { line: number; column: number },
+  ): Promise<void> => {
+    await apiPost(`/api/pages/${pageId}/collaboration/heartbeat`, { cursor });
+  },
+
+  createCollaborationStream: (
+    projectId: string,
+    pageId: string,
+    onEvent: (event: CollaborationEvent) => void,
+    onError?: (err: any) => void,
+  ): (() => void) => {
+    if (typeof window === 'undefined') return () => {};
+
+    const url = `/api/projects/${projectId}/pages/${pageId}/collaboration/stream`;
+    const eventSource = new EventSource(url, { withCredentials: true });
+
+    eventSource.onmessage = (e) => {
+      try {
+        const parsed = JSON.parse(e.data);
+        onEvent(parsed as CollaborationEvent);
+      } catch (err) {
+        // non-json message, ignore
+      }
+    };
+
+    if (onError) {
+      eventSource.onerror = (err) => onError(err);
+    }
+
+    return () => {
+      eventSource.close();
+    };
+  },
+};
+
+export const DocumentCollaborationService = collaborationService;

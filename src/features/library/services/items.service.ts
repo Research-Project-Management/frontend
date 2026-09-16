@@ -375,18 +375,35 @@ export const ItemsService = {
   ) => AttachmentsService.deleteAttachment(scopeId, attachmentId),
 
   importFromStorage: (
-    _scopeId: string,
-    data: { fileId: string; collectionId?: string | null; title?: string; authors?: string[] }
+    scopeId: string,
+    data: {
+      fileId: string;
+      filename?: string;
+      collectionId?: string | null;
+      title?: string;
+      authors?: string[];
+      year?: string | number;
+      doi?: string;
+      abstract?: string;
+    },
   ) => {
-    return apiPost<{ item: Item }>(
-      `/api/v1/library/ingestion`,
-      {
-        fileId: data.fileId,
-        collectionIds: data.collectionId ? [data.collectionId] : [],
+    const url = scopeId
+      ? `/api/v1/library/ingestion/submit?projectId=${encodeURIComponent(scopeId)}`
+      : `/api/v1/library/ingestion/submit`;
+    return apiPost<{ item: Item }>(url, {
+      kind: 'FILE',
+      fileId: data.fileId,
+      filename: data.filename,
+      collectionIds: data.collectionId ? [data.collectionId] : undefined,
+      projectId: scopeId || undefined,
+      overrides: {
         title: data.title,
         authors: data.authors,
-      }
-    );
+        year: data.year,
+        doi: data.doi,
+        abstract: data.abstract,
+      },
+    });
   },
 
   reindex: (scopeId: string, itemId: string) =>

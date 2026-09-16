@@ -1,6 +1,9 @@
 export type ViewLayoutMode = 'board' | 'list' | 'calendar' | 'table' | 'timeline';
 export type ViewAccessType = 'public' | 'private';
 
+export type TViewFiltersSortKey = 'name' | 'createdAt' | 'updatedAt';
+export type TViewFiltersSortBy = 'asc' | 'desc';
+
 export interface ViewCreator {
   id: string;
   name: string;

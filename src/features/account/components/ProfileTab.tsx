@@ -132,7 +132,7 @@ export default function ProfileTab() {
                 size='sm'
                 onClick={() => fileRef.current?.click()}
                 disabled={isUploading || updateProfileMutation.isPending}
-                className='h-7.5 px-3 text-12 font-medium shadow-2xs cursor-pointer'
+                className='h-8 px-3 text-12 font-medium shadow-2xs cursor-pointer'
               >
                 {isUploading ? (
                   <>
@@ -141,7 +141,7 @@ export default function ProfileTab() {
                   </>
                 ) : (
                   <>
-                    <Upload className='size-3.5 mr-1.5 shrink-0 text-muted-foreground' />
+                    <Upload className='size-3.5 mr-1.5 shrink-0 text-muted-foreground' strokeWidth={1.5} />
                     <span>Upload new picture</span>
                   </>
                 )}
@@ -166,17 +166,18 @@ export default function ProfileTab() {
       </div>
 
       {/* ── Section 2: Personal Information Form ── */}
-      <div className='rounded-md border border-border bg-card p-5'>
-        <div className='mb-4'>
+      <div className='rounded-md border border-border bg-card overflow-hidden'>
+        <div className='px-5 py-3.5 border-b border-border bg-card'>
           <h3 className='text-13 font-semibold text-foreground tracking-tight'>Personal Details</h3>
           <p className='text-12 text-muted-foreground mt-0.5'>
             Manage your personal profile and display credentials across research projects.
           </p>
         </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
-            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+        <div className='p-5'>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
               <FormField
                 control={form.control}
                 name="firstName"
@@ -263,13 +264,14 @@ export default function ProfileTab() {
             </div>
           </form>
         </Form>
+        </div>
       </div>
 
       {/* ── Section 3: Account Deactivation (Danger Zone) ── */}
       <div className='rounded-md border border-destructive/20 bg-destructive/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
         <div className='space-y-0.5'>
           <div className='flex items-center gap-1.5'>
-            <AlertTriangle className='size-4 text-destructive shrink-0' />
+            <AlertTriangle className='size-4 text-destructive shrink-0' strokeWidth={1.5} />
             <h3 className='text-13 font-semibold text-destructive'>Deactivate Account</h3>
           </div>
           <p className='text-11 text-muted-foreground max-w-lg'>

@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import { toast } from 'sonner';
-import { fileService, documentService } from '../services/document.service';
+import { fileService, documentService } from '../services/core.service';
 import { StorageService } from '../services/storage.service';
 import { resolveFileUrl } from './editor.util';
 
@@ -90,7 +90,7 @@ export async function exportProjectAsZip({
     // 4. Download and embed media/storage assets (images, pdfs, bibs, etc.)
     if (storageFiles && storageFiles.length > 0) {
       await Promise.all(
-        storageFiles.map(async (item) => {
+        storageFiles.map(async (item: any) => {
           if (item.isFolder) return;
           if (!item.url) return;
 

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from "@/shared/components/ui";
-import { usePageStore } from '@/features/editor/store/page.store';
+import { usePageStore } from '@/features/editor/store';
 
 export default function EditMenu() {
   const { editorRef } = usePageStore();

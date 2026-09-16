@@ -14,7 +14,6 @@ import { cn } from "@/shared/lib/utils";
 import SearchTab from "./search/SearchTab";
 import FilesTab from "./explorer/FilesTab";
 import OutlineTab from "./outline/OutlineTab";
-import AiTab from "./ai/AiTab";
 import ReviewTab from "./review/ReviewTab";
 import HistoryTab from "./history/HistoryTab";
 import CitationTab from "./citation/CitationTab";
@@ -28,7 +27,6 @@ const sideBarItems = [
   { name: "Citations", icon: BookMarked },
   { name: "Review", icon: MessageSquareQuote },
   { name: "History", icon: History },
-  { name: "AI", imageSrc: "/Chat.svg" },
 ] as const;
 
 export type SidebarTab = (typeof sideBarItems)[number]["name"];
@@ -38,7 +36,6 @@ function PanelContent({ tab, onClose }: { tab: SidebarTab; onClose: () => void }
   if (tab === "Outline") return <OutlineTab onClose={onClose} />;
   if (tab === "Search") return <SearchTab onClose={onClose} />;
   if (tab === "Citations") return <CitationTab onClose={onClose} />;
-  if (tab === "AI") return <AiTab onClose={onClose} />;
   if (tab === "Review") return <ReviewTab onClose={onClose} />;
   if (tab === "History") return <HistoryTab onClose={onClose} />;
   return null;
@@ -145,7 +142,7 @@ export default function SideBar({
                   >
                     {"imageSrc" in item ? (
                       <img
-                        src={item.imageSrc}
+                        src={(item as any).imageSrc}
                         alt={item.name}
                         className={cn(
                           "size-4 shrink-0 transition-all hover:grayscale-0 hover:opacity-100",

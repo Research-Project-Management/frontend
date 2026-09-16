@@ -21,6 +21,7 @@ export const createStateDtoSchema = z.object({
     .optional()
     .default("#6366F1"),
   accentColor: z.string().optional(),
+  icon: z.string().optional(),
   description: z.string().max(500, "Description is too long").optional(),
   sequence: z.number().optional(),
   isDefault: z.boolean().optional().default(false),

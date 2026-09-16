@@ -3,15 +3,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { usePageStore } from '@/features/editor/store/page.store';
-import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { useCompileStore } from '@/features/editor/store/compile.store';
+import { usePageStore, useSettingsStore, useCompileStore } from '@/features/editor/store';
 import {
   LatexCompilerEngine,
   type SyncTeXMap,
 } from '@/features/editor/utils/viewer.util';
-import { filesQuery, usePageActions } from '@/features/editor/hooks/use-page';
-import type { Page as ProjectPage } from '@/features/editor/types/document.types';
+import { filesQuery, usePageActions } from '@/features/editor/hooks/use-core';
+import type { Page as ProjectPage } from '@/features/editor/types';
 
 import Toolbar from './Toolbar';
 import Surface, { type SurfaceHandle } from './Surface';

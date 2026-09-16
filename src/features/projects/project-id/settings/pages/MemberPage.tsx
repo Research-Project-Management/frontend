@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { ArrowDownAZ, ArrowUpZA, ChevronDown, Search, Users, Plus, Upload } from 'lucide-react';
+import { ArrowDownAZ, ArrowUpZA, ChevronDown, Search, Users } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -150,7 +150,6 @@ export default function MemberPage() {
       <div className="flex flex-col h-full w-full bg-background">
         <TopBar
           title="Members"
-          description="Manage project researchers and collaborators"
           Icon={Users}
         />
         <div className="flex-1 overflow-y-auto">
@@ -169,7 +168,6 @@ export default function MemberPage() {
       <div className="flex flex-col h-full w-full bg-background">
         <TopBar
           title="Members"
-          description="Manage project researchers and collaborators"
           Icon={Users}
         />
         <div className="flex-1 p-5 md:p-6 text-sm text-muted-foreground">
@@ -185,9 +183,8 @@ export default function MemberPage() {
         variant="outline"
         size="sm"
         onClick={handleImport}
-        className="h-8 gap-1.5 px-3 text-xs font-medium border-border bg-background hover:bg-muted text-foreground cursor-pointer rounded-md shrink-0"
+        className="h-8 px-3 text-xs font-medium border-border bg-background hover:bg-muted text-foreground cursor-pointer rounded-md shrink-0"
       >
-        <Upload className="size-3.5 text-muted-foreground shrink-0" />
         Import
       </Button>
 
@@ -195,9 +192,8 @@ export default function MemberPage() {
         <Button
           size="sm"
           onClick={() => setAddDialogOpen(true)}
-          className="h-8 gap-1.5 px-3 text-xs font-medium bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer rounded-md shadow-none shrink-0"
+          className="h-8 px-3 text-xs font-medium bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer rounded-md shadow-none shrink-0"
         >
-          <Plus className="size-3.5 text-primary-foreground shrink-0" />
           Add member
         </Button>
       )}
@@ -208,7 +204,6 @@ export default function MemberPage() {
     <div className="flex flex-col h-full w-full bg-background">
       <TopBar
         title="Members"
-        description="Manage project researchers, collaborators and roles"
         Icon={Users}
         actions={topBarActions}
       />

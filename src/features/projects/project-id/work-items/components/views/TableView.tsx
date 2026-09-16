@@ -101,6 +101,7 @@ export interface TableViewProps extends BaseWorkItemViewProps, WorkItemCardHandl
   onSelectAll?: ((ids?: string[]) => void) | (() => void);
   onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
   onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
+  onToggleDisplayProperty?: (key: any, value: boolean) => void;
 }
 
 // ── 2. Table Custom Icons ────────────────────────────────────────────────────
@@ -1306,6 +1307,7 @@ export function TableView({
   selectedIds: propSelectedIds,
   onToggleSelect: rawOnToggleSelect,
   onSelectAll: rawOnSelectAll,
+  onToggleDisplayProperty,
 }: TableViewProps) {
   const [localVisibleProperties, setLocalVisibleProperties] = useState<Record<TablePropertyKey, boolean>>(() => {
     if (typeof window !== 'undefined') {
@@ -1345,8 +1347,9 @@ export function TableView({
   }, [localVisibleProperties, displayOptions?.properties]);
 
   const handleToggleProperty = (key: TablePropertyKey) => {
+    const nextVal = !visibleProperties[key];
     setLocalVisibleProperties((prev) => {
-      const updated = { ...prev, [key]: !prev[key] };
+      const updated = { ...prev, [key]: nextVal };
       try {
         localStorage.setItem(TABLE_STORAGE_KEY, JSON.stringify(updated));
       } catch {
@@ -1354,6 +1357,27 @@ export function TableView({
       }
       return updated;
     });
+
+    if (onToggleDisplayProperty) {
+      const keyMap: Partial<Record<TablePropertyKey, any>> = {
+        state: 'state',
+        priority: 'priority',
+        assignees: 'assignee',
+        labels: 'labels',
+        attach: 'attach',
+        cycle: 'cycle',
+        startDate: 'startDate',
+        dueDate: 'dueDate',
+        link: 'link',
+        attachment: 'attachmentCount',
+        childWorkItemCount: 'childWorkItemCount',
+        subItemCount: 'subItemCount',
+      };
+      const displayKey = keyMap[key];
+      if (displayKey) {
+        onToggleDisplayProperty(displayKey, nextVal);
+      }
+    }
   };
 
   const handleResetProperties = () => {

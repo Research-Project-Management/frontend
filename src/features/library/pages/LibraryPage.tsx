@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   BookOpen,
   FolderOpen,
@@ -58,6 +58,7 @@ import type { Item } from '../types/library.types';
 
 export default function LibraryPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { state, actions } = useLibrary();
   const {
     workspaceId,
@@ -201,7 +202,9 @@ export default function LibraryPage() {
       return;
     }
     if (item.id) {
-      router.push(`/library/papers/${item.id}`);
+      const isSandbox = pathname?.includes('library-sandbox');
+      const prefix = isSandbox ? '/library-sandbox/papers' : '/library/papers';
+      router.push(`${prefix}/${item.id}`);
     }
   };
 

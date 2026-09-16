@@ -93,7 +93,7 @@ export function GeneralBanner({
   const networkLabel = isPrivate ? 'Private' : 'Public';
 
   return (
-    <div className="relative w-full rounded-md border border-border overflow-hidden bg-muted h-44 sm:h-52 flex flex-col justify-end p-5 ">
+    <div className="relative w-full rounded-lg border border-border overflow-hidden bg-muted h-44 sm:h-52 flex flex-col justify-end p-5">
       {/* Background Cover Image or Default Gradient */}
       {cover ? (
         <img
@@ -127,12 +127,12 @@ export function GeneralBanner({
             </button>
           </IconPicker>
 
-          <div className="min-w-0 text-white ">
+          <div className="min-w-0 text-white">
             <h2 className="text-base font-semibold truncate leading-tight tracking-tight">
               {name || 'Untitled project'}
             </h2>
             <p className="text-xs text-white/85 font-medium mt-0.5 tracking-wide">
-              {displayId} &nbsp;.&nbsp; {networkLabel}
+              {displayId}
             </p>
           </div>
         </div>

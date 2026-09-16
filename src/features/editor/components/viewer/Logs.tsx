@@ -9,7 +9,7 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
-import { usePageStore } from '@/features/editor/store/page.store';
+import { usePageStore } from '@/features/editor/store';
 
 export interface LogEntry {
   message: string;

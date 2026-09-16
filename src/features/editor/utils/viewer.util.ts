@@ -7,10 +7,12 @@ import {
   syncIncremental,
   compileLatex,
   type CompileLatexPayload,
+} from "../services/compiler.service";
+import {
   fetchLookupDoi,
   fetchSearchCrossref,
   type CrossrefWork,
-} from "../services/document.service";
+} from "../services/citation.service";
 import { parseCompileErrors, type ParsedCompileError } from "./editor.util";
 import { logger } from "@/shared/lib/utils";
 
@@ -208,7 +210,7 @@ export const LatexCompilerEngine = {
       try {
         await Promise.all(
           dirtyFiles.map(({ fileId, content }) =>
-            flushPageContent(fileId, content).catch((err) => {
+            flushPageContent(fileId, content).catch((err: unknown) => {
               logger.warn(`[LatexCompilerEngine] Flush error on ${fileId}`, { error: err });
             }),
           ),

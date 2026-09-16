@@ -1,14 +1,21 @@
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
+/**
+ * settings.store.ts
+ *
+ * Store for editor user preferences, compiler settings, layout sizing, and typography.
+ * Persisted in localStorage.
+ */
 
-export type LaTeXEngine = "pdflatex" | "xelatex" | "lualatex";
-/** "full" = complete compile with images · "draft" = skip image rendering (faster) */
-export type CompileMode = "full" | "draft";
-export type LayoutMode = "split" | "editor-only" | "viewer-only";
-export type EditorTheme = "light" | "dark";
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import type { CompilerEngine, CompileMode } from '../types/compiler.types';
 
-interface SettingsState {
-  engine: LaTeXEngine;
+export type LaTeXEngine = CompilerEngine;
+export type { CompileMode };
+export type LayoutMode = 'split' | 'editor-only' | 'viewer-only';
+export type EditorTheme = 'light' | 'dark';
+
+export interface DocumentSettingsState {
+  engine: CompilerEngine;
   compileMode: CompileMode;
   autoCompile: boolean;
   layout: LayoutMode;
@@ -21,7 +28,10 @@ interface SettingsState {
   fontSize: number;
   wordWrap: boolean;
   lineNumbers: boolean;
-  setEngine: (engine: LaTeXEngine) => void;
+  editorMode: 'code' | 'visual';
+  reviewMode: boolean;
+
+  setEngine: (engine: CompilerEngine) => void;
   setCompileMode: (compileMode: CompileMode) => void;
   setAutoCompile: (autoCompile: boolean) => void;
   setLayout: (layout: LayoutMode) => void;
@@ -35,24 +45,31 @@ interface SettingsState {
   setFontSize: (fontSize: number) => void;
   setWordWrap: (wordWrap: boolean) => void;
   setLineNumbers: (lineNumbers: boolean) => void;
+  setEditorMode: (mode: 'code' | 'visual') => void;
+  toggleEditorMode: () => void;
+  setReviewMode: (reviewMode: boolean) => void;
+  toggleReviewMode: () => void;
 }
 
-export const useSettingsStore = create<SettingsState>()(
+export const useDocumentSettingsStore = create<DocumentSettingsState>()(
   persist(
     (set) => ({
-      engine: "pdflatex",
-      compileMode: "full",
+      engine: 'pdflatex',
+      compileMode: 'full',
       autoCompile: true,
-      layout: "split",
-      editorTheme: "light",
+      layout: 'split',
+      editorTheme: 'light',
       sidebarWidth: 320,
       editorFlex: 0.5,
       useCache: true,
       settingsPanelOpen: false,
-      mainFile: "main.tex",
+      mainFile: 'main.tex',
       fontSize: 15,
       wordWrap: true,
       lineNumbers: true,
+      editorMode: 'code',
+      reviewMode: false,
+
       setEngine: (engine) => set({ engine }),
       setCompileMode: (compileMode) => set({ compileMode }),
       setAutoCompile: (autoCompile) => set({ autoCompile }),
@@ -68,9 +85,14 @@ export const useSettingsStore = create<SettingsState>()(
       setFontSize: (fontSize) => set({ fontSize }),
       setWordWrap: (wordWrap) => set({ wordWrap }),
       setLineNumbers: (lineNumbers) => set({ lineNumbers }),
+      setEditorMode: (editorMode) => set({ editorMode }),
+      toggleEditorMode: () =>
+        set((s) => ({ editorMode: s.editorMode === 'code' ? 'visual' : 'code' })),
+      setReviewMode: (reviewMode) => set({ reviewMode }),
+      toggleReviewMode: () => set((s) => ({ reviewMode: !s.reviewMode })),
     }),
     {
-      name: "flux-editor-settings",
+      name: 'flux-editor-settings',
       partialize: (state) => {
         // Don't persist transient UI state or auto-compile (always on by default)
         const { settingsPanelOpen, autoCompile, ...rest } = state;
@@ -80,5 +102,7 @@ export const useSettingsStore = create<SettingsState>()(
   ),
 );
 
-/** @deprecated alias for backward compatibility */
-export const useEditorSettingsStore = useSettingsStore;
+// Aliases for seamless backward compatibility
+export const useSettingsStore = useDocumentSettingsStore;
+export const useEditorSettingsStore = useDocumentSettingsStore;
+export type SettingsState = DocumentSettingsState;

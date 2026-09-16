@@ -12,10 +12,9 @@ import Topbar from '../components/topbar/Topbar';
 import Setting from '../components/topbar/settings/Setting';
 import Tabs from '../components/editor/Tabs';
 
-import { useSettingsStore } from '@/features/editor/store/settings.store';
+import { useSettingsStore, type AssetInfo } from '@/features/editor/store';
 import { resolveFileUrl, EditorEventBus } from '@/features/editor/utils/editor.util';
-import { useActiveDocument } from '@/features/editor/hooks/use-page';
-import type { AssetInfo } from '@/features/editor/store/page.store';
+import { useActiveDocument } from '@/features/editor/hooks/use-core';
 import { cn } from "@/shared/lib/utils";
 import { useTheme } from "@/shared/providers";
 
@@ -192,7 +191,7 @@ function EditorColumn() {
         {isAssetTab ? (
           <ImagePanel asset={selectedAsset!} />
         ) : displayPage ? (
-          <Editor page={displayPage} />
+          <Editor page={displayPage as any} />
         ) : (
           <EmptyEditorState />
         )}

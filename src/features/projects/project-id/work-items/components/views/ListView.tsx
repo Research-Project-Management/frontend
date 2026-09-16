@@ -15,6 +15,8 @@ import {
   ChevronDown,
   Check,
   CornerDownRight,
+  Link2,
+  Paperclip,
 } from 'lucide-react';
 import {
   Button,
@@ -216,8 +218,20 @@ export const ItemRow = ({
   const showDueDate = propsConfig?.dueDate !== false;
   const showAssignee = propsConfig?.assignee !== false;
   const showAttach = propsConfig?.attach !== false;
-  const showCycle = propsConfig?.cycle !== false;
+  const showCycle = Boolean(propsConfig?.cycle);
   const showLabels = propsConfig?.labels !== false;
+  const showSubIssues = Boolean(propsConfig?.childWorkItemCount ?? propsConfig?.subItemCount);
+  const showLinks = Boolean(propsConfig?.link);
+
+  const linksCount = useMemo(() => {
+    if (typeof (item as any).linkCount === 'number') return (item as any).linkCount;
+    if (Array.isArray((item as any).links)) return (item as any).links.length;
+    const attachObj = item.attachments || (item as any).attach;
+    if (attachObj && typeof attachObj === 'object' && Array.isArray((attachObj as any).links)) {
+      return (attachObj as any).links.length;
+    }
+    return 0;
+  }, [(item as any).links, item.attachments, (item as any).attach, (item as any).linkCount]);
 
   const priorityKey = (item.priority || 'none').toLowerCase() as Priority;
 
@@ -392,18 +406,20 @@ export const ItemRow = ({
                   )}
                 />
               </button>
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleExpandChildren?.(item.id);
-                }}
-                title={`${completedCount} of ${childList.length} sub-items completed`}
-                className="font-mono text-10 font-medium text-muted-foreground bg-muted px-1.5 py-0.2 rounded-full tabular-nums shrink-0 cursor-pointer hover:bg-muted/80"
-              >
-                {completedCount}/{childList.length}
-              </span>
+              {showSubIssues && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleExpandChildren?.(item.id);
+                  }}
+                  title={`${completedCount} of ${childList.length} sub-items completed`}
+                  className="font-mono text-10 font-medium text-muted-foreground bg-muted px-1.5 py-0.2 rounded-full tabular-nums shrink-0 cursor-pointer hover:bg-muted/80"
+                >
+                  {completedCount}/{childList.length}
+                </span>
+              )}
             </div>
           );
         })()}
@@ -641,6 +657,19 @@ export const ItemRow = ({
           >
             <LayoutGrid className="size-3 shrink-0" />
             <span className="truncate max-w-[100px]">{attachLabel}</span>
+          </button>
+        )}
+
+        {/* 6b. Links Pill */}
+        {showLinks && linksCount > 0 && (
+          <button
+            type="button"
+            onClick={() => onEditCard(item)}
+            className="h-6 px-2 text-11 font-normal rounded-full border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground hidden xl:flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+            title={`${linksCount} links`}
+          >
+            <Link2 className="size-3 shrink-0" />
+            <span className="tabular-nums font-mono">{linksCount}</span>
           </button>
         )}
 
@@ -1520,7 +1549,7 @@ export function ListView({
 
   const groups = useMemo(() => {
     if (!Array.isArray(columns)) return [];
-    return columns.map((col) => {
+    const rawGroups = columns.map((col) => {
       const colId = resolveColumnId(col);
       const colColor = col.color || col.accentColor || '#8A9093';
 
@@ -1539,7 +1568,13 @@ export function ListView({
             : (itemsByColumnId as Record<string, Item[]>)?.[colId] ?? [],
       };
     });
-  }, [columns, itemsByColumnId]);
+
+    if (displayOptions?.showEmptyGroups === false && displayOptions?.groupBy !== 'none') {
+      const filtered = rawGroups.filter((g) => g.items.length > 0);
+      return filtered.length > 0 ? filtered : rawGroups;
+    }
+    return rawGroups;
+  }, [columns, itemsByColumnId, displayOptions?.showEmptyGroups, displayOptions?.groupBy]);
 
   const projectPrefix = useMemo(() => {
     for (const group of groups) {

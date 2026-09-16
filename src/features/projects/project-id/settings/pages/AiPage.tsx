@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { Sparkles, Save, Check, Loader2 } from 'lucide-react';
+import { Sparkles, Check } from 'lucide-react';
 import { Button, Textarea, Switch, Skeleton } from "@/shared/components/ui";
 import { toast } from 'sonner';
 import TopBar from '../components/layout/TopBar';
@@ -83,7 +83,6 @@ export default function AiPage() {
       <div className="flex flex-col h-full w-full bg-background">
         <TopBar
           title="AI Assistant"
-          description="Configure research context, models, and collaboration guardrails"
           Icon={Sparkles}
         />
         <div className="flex-1 overflow-y-auto">
@@ -101,7 +100,6 @@ export default function AiPage() {
       <div className="flex flex-col h-full w-full bg-background">
         <TopBar
           title="AI Assistant"
-          description="Configure research context, models, and collaboration guardrails"
           Icon={Sparkles}
         />
         <div className="flex-1 p-5 md:p-6 text-sm text-muted-foreground">
@@ -118,11 +116,6 @@ export default function AiPage() {
       disabled={!hasChanges || updateMutation.isPending}
       className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-none shrink-0"
     >
-      {updateMutation.isPending ? (
-        <Loader2 className="mr-1.5 size-3.5 animate-spin shrink-0" />
-      ) : (
-        <Save className="mr-1.5 size-3.5 shrink-0" />
-      )}
       Save settings
     </Button>
   );
@@ -131,7 +124,6 @@ export default function AiPage() {
     <div className="flex flex-col h-full w-full bg-background">
       <TopBar
         title="AI Assistant"
-        description="Configure research context, models, and collaboration guardrails"
         Icon={Sparkles}
         actions={topBarActions}
       />

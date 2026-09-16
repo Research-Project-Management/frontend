@@ -191,12 +191,12 @@ export function CyclePage() {
     if (editingCycle) {
       updateMutation.mutate({ cycleId: editingCycle.id, projectId: projectId!, ...payload }, {
         onSuccess: () => { setDialogOpen(false); toast.success("Cycle updated"); },
-        onError: (err: any) => toast.error(err?.response?.data?.message || "Something went wrong"),
+        onError: (err: any) => toast.error(err?.message || err?.response?.data?.message || "Something went wrong"),
       });
     } else {
       createMutation.mutate({ projectId: projectId!, ...payload }, {
         onSuccess: () => { setDialogOpen(false); toast.success("Cycle created"); },
-        onError: (err: any) => toast.error(err?.response?.data?.message || "Something went wrong"),
+        onError: (err: any) => toast.error(err?.message || err?.response?.data?.message || "Something went wrong"),
       });
     }
   };
@@ -214,7 +214,7 @@ export function CyclePage() {
         setIsDeleteModalOpen(false);
         setCycleToDelete(null);
       },
-      onError: (err: any) => toast.error(err?.response?.data?.message || "Failed to delete cycle"),
+      onError: (err: any) => toast.error(err?.message || err?.response?.data?.message || "Failed to delete cycle"),
     });
   };
 

@@ -3,39 +3,49 @@ import type { ItemStateData } from '../types/library.types';
 export type { ItemStateData };
 
 export const StateService = {
-  getState: (_workspaceId: string, itemId: string) =>
-    apiGet<{ success: boolean; data: ItemStateData }>(
+  getState: async (_workspaceId: string, itemId: string): Promise<ItemStateData | null> => {
+    const res = await apiGet<ItemStateData | { data: ItemStateData }>(
       `/api/v1/library/items/${encodeURIComponent(itemId)}/state`,
-    ),
+    );
+    return (res as any)?.data ?? res ?? null;
+  },
 
-  updateState: (
+  updateState: async (
     _workspaceId: string,
     itemId: string,
     data: {
       readStatus?: 'unread' | 'reading' | 'completed';
       rating?: number;
     },
-  ) =>
-    apiPatch<{ success: boolean; data: ItemStateData }>(
+  ): Promise<ItemStateData> => {
+    const res = await apiPatch<ItemStateData | { data: ItemStateData }>(
       `/api/v1/library/items/${encodeURIComponent(itemId)}/state`,
       data,
-    ),
+    );
+    return (res as any)?.data ?? res;
+  },
 
-  markAsRead: (_workspaceId: string, itemId: string) =>
-    apiPost<{ success: boolean; data: ItemStateData }>(
+  markAsRead: async (_workspaceId: string, itemId: string): Promise<ItemStateData> => {
+    const res = await apiPost<ItemStateData | { data: ItemStateData }>(
       `/api/v1/library/items/${encodeURIComponent(itemId)}/state/read`,
       {},
-    ),
+    );
+    return (res as any)?.data ?? res;
+  },
 
   /**
    * Batch-fetch reading states for multiple items.
    * Backed by POST /api/v1/library/items/state/batch
    */
-  batchStates: (_workspaceId: string, itemIds: string[]) =>
-    apiPost<{ success: boolean; data: Record<string, ItemStateData> }>(
-      `/api/v1/library/items/state/batch`,
-      { itemIds },
-    ),
+  batchStates: async (
+    _workspaceId: string,
+    itemIds: string[],
+  ): Promise<Record<string, ItemStateData>> => {
+    const res = await apiPost<
+      Record<string, ItemStateData> | { data: Record<string, ItemStateData> }
+    >(`/api/v1/library/items/state/batch`, { itemIds });
+    return (res as any)?.data ?? res ?? {};
+  },
 };
 
 // Canonical Aliases

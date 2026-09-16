@@ -18,10 +18,10 @@ export default function Trigger() {
           title="Editor settings"
           aria-label="Toggle editor settings"
           className={cn(
-            'p-1.5 rounded transition-colors outline-none',
+            'p-1.5 rounded-md transition-colors outline-none cursor-pointer',
             settingsPanelOpen
-              ? 'text-primary bg-primary/10'
-              : 'text-muted-foreground hover:bg-muted',
+              ? 'text-primary bg-primary/15'
+              : 'text-foreground hover:bg-sidebar-hover',
           )}
         >
           <Settings className="size-4 shrink-0" />

@@ -8,8 +8,7 @@ import { IconPicker, ProjectAvatar, Form, getRandomProjectEmoji } from "@/shared
 import { toast } from 'sonner';
 import {
   X,
-  Globe,
-  Lock,
+  CalendarDays,
   Info,
   Check,
   Loader2,
@@ -25,7 +24,7 @@ import { Button } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
 import { Textarea } from "@/shared/components/ui";
 import { Switch } from "@/shared/components/ui";
-import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui";
+import { Calendar } from "@/shared/components/ui";
 import { Popover, PopoverTrigger, PopoverContent } from "@/shared/components/ui";
 import {
   Tooltip,
@@ -33,18 +32,60 @@ import {
   TooltipContent,
   TooltipProvider,
 } from "@/shared/components/ui";
-import { useClickOutside } from "@/shared/hooks";
+import {
+  NonePriorityBoxIcon,
+  LowPriorityBoxIcon,
+  MediumPriorityBoxIcon,
+  HighPriorityBoxIcon,
+  UrgentPriorityBoxIcon,
+} from "@/shared/components/icons";
 import { cn } from "@/shared/lib/utils";
-import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useCreateProject, useUpdateProject } from '../../hooks/use-project';
 import { CoverModal } from '@/features/projects/project-id/settings/components/general/CoverModal';
 import { uploadGenericFile } from '@/features/storage/services/file.service';
 import { createProjectFormSchema, type CreateProjectFormValues } from '../../schemas/project.schema';
-import type { Project } from '../../types/project.types';
+import type { Project, ProjectState, ProjectPriority } from '../../types/project.types';
 
 // ── Default Cover Photo ──────────────────────────────────────────────────────
 const DEFAULT_COVER =
   'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1200&auto=format&fit=crop&q=80';
+
+// ── Project Lifecycle States & Priority Catalogs ─────────────────────────────
+export const PROJECT_STATE_OPTIONS: Array<{
+  value: ProjectState;
+  label: string;
+  dotColor: string;
+}> = [
+  { value: 'planning', label: 'Planning', dotColor: 'bg-blue-500' },
+  { value: 'draft', label: 'Draft', dotColor: 'bg-slate-400' },
+  { value: 'execution', label: 'In Execution', dotColor: 'bg-amber-500' },
+  { value: 'monitoring', label: 'Monitoring', dotColor: 'bg-purple-500' },
+  { value: 'completed', label: 'Completed', dotColor: 'bg-emerald-500' },
+  { value: 'cancelled', label: 'Cancelled', dotColor: 'bg-rose-500' },
+];
+
+export const PROJECT_PRIORITY_OPTIONS: Array<{
+  value: ProjectPriority;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}> = [
+  { value: 'none', label: 'None', icon: NonePriorityBoxIcon },
+  { value: 'low', label: 'Low', icon: LowPriorityBoxIcon },
+  { value: 'medium', label: 'Medium', icon: MediumPriorityBoxIcon },
+  { value: 'high', label: 'High', icon: HighPriorityBoxIcon },
+  { value: 'urgent', label: 'Urgent', icon: UrgentPriorityBoxIcon },
+];
+
+function formatDateLabel(dateStr: string | null | undefined, fallback: string): string {
+  if (!dateStr) return fallback;
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return fallback;
+    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(d);
+  } catch {
+    return fallback;
+  }
+}
 
 // ── Project Modules Config (Matching Flux Settings) ──────────────────────────
 export interface ProjectModuleOption {
@@ -83,17 +124,25 @@ const PROJECT_MODULE_OPTIONS: ProjectModuleOption[] = [
 
 // ── Helper: Derive Short Project Identifier ─────────────────────────────────
 function generateIdentifier(name: string): string {
-  const trimmed = name.trim();
+  const normalized = name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D');
+  const trimmed = normalized.trim();
   if (!trimmed) return '';
   const words = trimmed.split(/\s+/).filter(Boolean);
+  let raw = '';
   if (words.length === 1) {
-    return words[0].slice(0, 4).toUpperCase();
+    raw = words[0].slice(0, 4).toUpperCase();
+  } else {
+    raw = words
+      .slice(0, 4)
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase();
   }
-  return words
-    .slice(0, 4)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase();
+  return raw.replace(/[^A-Z0-9_-]/g, '').slice(0, 10);
 }
 
 // ── Props ────────────────────────────────────────────────────────────────────
@@ -122,14 +171,17 @@ export function CreateProjectModal({
 
   // Step 1 Form Setup using React Hook Form & Zod
   const form = useForm<CreateProjectFormValues>({
-    resolver: zodResolver(createProjectFormSchema),
+    resolver: zodResolver(createProjectFormSchema) as any,
     defaultValues: {
       name: '',
       identifier: '',
       description: '',
       avatar: getRandomProjectEmoji(),
       cover: DEFAULT_COVER,
-      isPrivate: false,
+      state: 'planning',
+      priority: 'none',
+      startDate: null,
+      targetDate: null,
     },
   });
 
@@ -147,15 +199,35 @@ export function CreateProjectModal({
   const avatar = useWatch({ control, name: 'avatar' });
   const cover = useWatch({ control, name: 'cover' });
   const description = useWatch({ control, name: 'description' });
-  const isPrivate = useWatch({ control, name: 'isPrivate' });
+  const state = useWatch({ control, name: 'state' }) || 'planning';
+  const priority = useWatch({ control, name: 'priority' }) || 'none';
+  const startDate = useWatch({ control, name: 'startDate' });
+  const targetDate = useWatch({ control, name: 'targetDate' });
 
   const setCover = (val: string) => setValue('cover', val, { shouldDirty: true });
   const setAvatar = (val: string) => setValue('avatar', val, { shouldDirty: true });
   const setDescription = (val: string) => setValue('description', val, { shouldDirty: true });
-  const setIsPrivate = (val: boolean) => setValue('isPrivate', val, { shouldDirty: true });
+  const setState = (val: ProjectState) => setValue('state', val, { shouldDirty: true });
+  const setPriority = (val: ProjectPriority) => setValue('priority', val, { shouldDirty: true });
+  const setStartDate = (val: string | null) => setValue('startDate', val, { shouldDirty: true });
+  const setTargetDate = (val: string | null) => setValue('targetDate', val, { shouldDirty: true });
+
+  const [openStatePopover, setOpenStatePopover] = useState(false);
+  const [openPriorityPopover, setOpenPriorityPopover] = useState(false);
+  const [openStartDatePopover, setOpenStartDatePopover] = useState(false);
+  const [openTargetDatePopover, setOpenTargetDatePopover] = useState(false);
+
+  const activeStateOption = useMemo(
+    () => PROJECT_STATE_OPTIONS.find((s) => s.value === state) || PROJECT_STATE_OPTIONS[0],
+    [state]
+  );
+  const activePriorityOption = useMemo(
+    () => PROJECT_PRIORITY_OPTIONS.find((p) => p.value === priority) || PROJECT_PRIORITY_OPTIONS[0],
+    [priority]
+  );
+  const ActivePriorityIcon = activePriorityOption.icon;
 
   const [hasManuallyEditedIdentifier, setHasManuallyEditedIdentifier] = useState(false);
-  const { user } = useAuth();
   const [isUploadingCover, setIsUploadingCover] = useState(false);
 
   // Step 2 State
@@ -165,19 +237,28 @@ export function CreateProjectModal({
   );
 
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const identifierInputRef = useRef<HTMLInputElement>(null);
 
   // Handlers
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setValue('name', val, { shouldValidate: true });
     if (!hasManuallyEditedIdentifier) {
-      setValue('identifier', generateIdentifier(val));
+      setValue('identifier', generateIdentifier(val), { shouldValidate: true });
     }
   };
 
   const handleIdentifierChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setHasManuallyEditedIdentifier(true);
-    setValue('identifier', e.target.value.toUpperCase().replace(/[^A-Z0-9-_]/g, '').slice(0, 12));
+    const sanitized = e.target.value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .toUpperCase()
+      .replace(/[^A-Z0-9-_]/g, '')
+      .slice(0, 10);
+    setValue('identifier', sanitized, { shouldValidate: true });
   };
 
   const handleUploadCustomCover = async (file: File) => {
@@ -211,12 +292,23 @@ export function CreateProjectModal({
         description: '',
         avatar: getRandomProjectEmoji(),
         cover: DEFAULT_COVER,
-        isPrivate: false,
+        state: 'planning',
+        priority: 'none',
+        startDate: null,
+        targetDate: null,
       });
       setHasManuallyEditedIdentifier(false);
       setCreatedProject(null);
       setActiveModules(PROJECT_MODULE_OPTIONS.filter((m) => m.defaultOn).map((m) => m.id));
     }, 200);
+  };
+
+  const onInvalidStep1 = (formErrors: any) => {
+    if (formErrors.name) {
+      nameInputRef.current?.focus();
+    } else if (formErrors.identifier) {
+      identifierInputRef.current?.focus();
+    }
   };
 
   const onSubmitStep1 = (values: CreateProjectFormValues) => {
@@ -231,7 +323,10 @@ export function CreateProjectModal({
         avatar: values.avatar,
         cover: values.cover,
         description: values.description.trim() || undefined,
-        isPrivate: values.isPrivate,
+        state: values.state,
+        priority: values.priority,
+        startDate: values.startDate ? new Date(values.startDate).toISOString() : undefined,
+        targetDate: values.targetDate ? new Date(values.targetDate).toISOString() : undefined,
         modules: initialModules,
       },
       {
@@ -292,7 +387,7 @@ export function CreateProjectModal({
         {step === 1 ? (
           /* ── STEP 1: CREATE PROJECT ─────────────────────────────────────── */
           <Form {...form}>
-            <form onSubmit={handleSubmit(onSubmitStep1)} className="flex flex-col">
+            <form onSubmit={handleSubmit(onSubmitStep1, onInvalidStep1)} className="flex flex-col">
             {/* Cover Banner Section (Symmetric margins to modal edge) */}
             <div className="relative mx-3 mt-3 sm:mx-4 sm:mt-3.5">
               {/* Inset Banner Image Container with rounded corners & overflow-hidden */}
@@ -372,33 +467,45 @@ export function CreateProjectModal({
                   )}
                 </div>
 
-                <div className="relative w-44 sm:w-52 shrink-0">
-                  <Input
-                    value={identifier}
-                    onChange={handleIdentifierChange}
-                    placeholder="Project ID"
-                    maxLength={10}
-                    className="h-10 pr-9 text-13 font-normal rounded-md border border-border bg-background focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground"
-                  />
-                  <TooltipProvider delayDuration={150}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-help p-0.5 outline-none"
+                <div className="w-44 sm:w-52 shrink-0 space-y-1">
+                  <div className="relative">
+                    <Input
+                      ref={(e) => {
+                        register('identifier').ref(e);
+                        identifierInputRef.current = e;
+                      }}
+                      value={identifier}
+                      onChange={handleIdentifierChange}
+                      placeholder="Project ID"
+                      maxLength={10}
+                      className={cn(
+                        'h-10 pr-9 text-13 font-normal rounded-md border border-border bg-background focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground',
+                        errors.identifier && 'border-destructive focus-visible:ring-destructive/30'
+                      )}
+                    />
+                    <TooltipProvider delayDuration={150}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-help p-0.5 outline-none"
+                          >
+                            <Info className="size-4 shrink-0" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="top"
+                          align="end"
+                          className="bg-popover text-foreground border border-border rounded-md text-11 px-3 py-1.5 max-w-[280px] font-normal leading-relaxed"
                         >
-                          <Info className="size-4 shrink-0" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent
-                        side="top"
-                        align="end"
-                        className="bg-popover text-foreground border border-border rounded-md text-11 px-3 py-1.5 max-w-[280px] font-normal leading-relaxed"
-                      >
-                        Helps you identify work items in the project uniquely. Max 10 characters.
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                          Helps you identify work items in the project uniquely. Max 10 characters.
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  {errors.identifier && (
+                    <p className="text-11 text-destructive pl-0.5">{errors.identifier.message}</p>
+                  )}
                 </div>
               </div>
 
@@ -413,93 +520,182 @@ export function CreateProjectModal({
                 />
               </div>
 
-                {/* Row 3: Pills (Public / Private + Lead) */}
-                <div className="flex items-center gap-2 pt-1">
-                  {/* Public / Private Pill */}
-                  <Popover>
+                {/* Row 3: Domain Pills (State, Priority, Start Date, Target Date) */}
+                <div className="flex items-center flex-wrap gap-2 pt-1">
+                  {/* 1. Project State Popover */}
+                  <Popover open={openStatePopover} onOpenChange={setOpenStatePopover}>
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border bg-background hover:bg-muted text-13 font-normal text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 font-medium text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       >
-                        {isPrivate ? (
-                          <>
-                            <Lock className="size-4 shrink-0 text-muted-foreground" />
-                            <span>Private</span>
-                          </>
-                        ) : (
-                          <>
-                            <Globe className="size-4 shrink-0 text-muted-foreground" />
-                            <span>Public</span>
-                          </>
+                        <span className={cn('size-2 rounded-full shrink-0', activeStateOption.dotColor)} />
+                        <span>{activeStateOption.label}</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      className="w-52 p-1 rounded-md border border-border bg-popover z-100 space-y-0.5 shadow-md"
+                    >
+                      {PROJECT_STATE_OPTIONS.map((opt) => {
+                        const isSelected = state === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => {
+                              setState(opt.value);
+                              setOpenStatePopover(false);
+                            }}
+                            className={cn(
+                              'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-12 transition-colors cursor-pointer text-left',
+                              isSelected
+                                ? 'bg-muted font-medium text-foreground'
+                                : 'hover:bg-muted text-foreground'
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className={cn('size-2 rounded-full shrink-0', opt.dotColor)} />
+                              <span>{opt.label}</span>
+                            </div>
+                            {isSelected && <Check className="size-3.5 shrink-0 text-primary" />}
+                          </button>
+                        );
+                      })}
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* 2. Priority Popover */}
+                  <Popover open={openPriorityPopover} onOpenChange={setOpenPriorityPopover}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 font-medium text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      >
+                        <ActivePriorityIcon className="size-3.5 shrink-0" />
+                        <span>{activePriorityOption.label}</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      className="w-44 p-1 rounded-md border border-border bg-popover z-100 space-y-0.5 shadow-md"
+                    >
+                      {PROJECT_PRIORITY_OPTIONS.map((opt) => {
+                        const isSelected = priority === opt.value;
+                        const IconComp = opt.icon;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => {
+                              setPriority(opt.value);
+                              setOpenPriorityPopover(false);
+                            }}
+                            className={cn(
+                              'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-12 transition-colors cursor-pointer text-left',
+                              isSelected
+                                ? 'bg-muted font-medium text-foreground'
+                                : 'hover:bg-muted text-foreground'
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <IconComp className="size-3.5 shrink-0" />
+                              <span>{opt.label}</span>
+                            </div>
+                            {isSelected && <Check className="size-3.5 shrink-0 text-primary" />}
+                          </button>
+                        );
+                      })}
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* 3. Start Date Popover */}
+                  <Popover open={openStartDatePopover} onOpenChange={setOpenStartDatePopover}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(
+                          'inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 font-normal text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                          startDate && 'font-medium'
+                        )}
+                      >
+                        <CalendarDays className="size-3.5 shrink-0 text-muted-foreground" />
+                        <span>{formatDateLabel(startDate, 'Start date')}</span>
+                        {startDate && (
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setStartDate(null);
+                            }}
+                            className="size-3.5 rounded-full hover:bg-muted-foreground/20 flex items-center justify-center -mr-0.5 text-muted-foreground hover:text-foreground"
+                          >
+                            <X className="size-2.5" />
+                          </span>
                         )}
                       </button>
                     </PopoverTrigger>
                     <PopoverContent
                       align="start"
-                      className="w-56 p-1 rounded-md border border-border bg-popover z-100 space-y-0.5 "
+                      className="w-auto p-0 rounded-md border border-border bg-popover z-100 shadow-md"
                     >
-                      <button
-                        type="button"
-                        onClick={() => setIsPrivate(false)}
-                        className={cn(
-                          'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-13 transition-colors cursor-pointer text-left',
-                          !isPrivate
-                            ? 'bg-muted font-medium text-foreground'
-                            : 'hover:bg-muted text-foreground'
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Globe className="size-4 shrink-0" />
-                          <div>
-                            <div>Public</div>
-                            <div className="text-11 text-muted-foreground font-normal">
-                              Visible to everyone
-                            </div>
-                          </div>
-                        </div>
-                        {!isPrivate && <Check className="size-4 shrink-0 text-primary" />}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setIsPrivate(true)}
-                        className={cn(
-                          'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-13 transition-colors cursor-pointer text-left',
-                          isPrivate
-                            ? 'bg-muted font-medium text-foreground'
-                            : 'hover:bg-muted text-foreground'
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Lock className="size-4 shrink-0" />
-                          <div>
-                            <div>Private</div>
-                            <div className="text-11 text-muted-foreground font-normal">
-                              Only invited members
-                            </div>
-                          </div>
-                        </div>
-                        {isPrivate && <Check className="size-4 shrink-0 text-primary" />}
-                      </button>
+                      <Calendar
+                        mode="single"
+                        selected={startDate ? new Date(startDate) : undefined}
+                        onSelect={(date) => {
+                          setStartDate(date ? date.toISOString().split('T')[0] : null);
+                          setOpenStartDatePopover(false);
+                        }}
+                        className="p-3 text-xs"
+                      />
                     </PopoverContent>
                   </Popover>
 
-                  {/* Lead Indicator (Creator is Project PI / Owner) */}
-                  <div className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border bg-muted/50 text-13 font-normal text-foreground select-none">
-                    <Avatar className="size-4.5 shrink-0">
-                      {user?.avatar && (
-                        <AvatarImage src={user.avatar} />
-                      )}
-                      <AvatarFallback className="text-10 font-semibold">
-                        {user?.name?.charAt(0).toUpperCase() || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate max-w-[140px]">
-                      {user?.name || 'Lead (PI)'}
-                    </span>
-                  </div>
+                  {/* 4. Target Date Popover */}
+                  <Popover open={openTargetDatePopover} onOpenChange={setOpenTargetDatePopover}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(
+                          'inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 font-normal text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                          targetDate && 'font-medium'
+                        )}
+                      >
+                        <CalendarDays className="size-3.5 shrink-0 text-muted-foreground" />
+                        <span>{formatDateLabel(targetDate, 'Target date')}</span>
+                        {targetDate && (
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTargetDate(null);
+                            }}
+                            className="size-3.5 rounded-full hover:bg-muted-foreground/20 flex items-center justify-center -mr-0.5 text-muted-foreground hover:text-foreground"
+                          >
+                            <X className="size-2.5" />
+                          </span>
+                        )}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      className="w-auto p-0 rounded-md border border-border bg-popover z-100 shadow-md"
+                    >
+                      <Calendar
+                        mode="single"
+                        selected={targetDate ? new Date(targetDate) : undefined}
+                        onSelect={(date) => {
+                          setTargetDate(date ? date.toISOString().split('T')[0] : null);
+                          setOpenTargetDatePopover(false);
+                        }}
+                        className="p-3 text-xs"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
+
               </div>
 
             {/* Footer */}

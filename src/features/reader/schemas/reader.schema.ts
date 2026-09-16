@@ -208,7 +208,9 @@ export const readerDocumentSchema = z.object({
   creators: z.array(documentCreatorSchema).optional(),
   publicationDate: z.string().nullable().optional(),
   citationCount: z.number().optional(),
+  referenceCount: z.number().nullable().optional(),
   citationKey: z.string().nullable().optional(),
+  bibtex: z.string().nullable().optional(),
   url: z.string().nullable().optional(),
   filename: z.string().nullable().optional(),
   ragDocId: z.string().nullable().optional(),
@@ -343,6 +345,20 @@ export const documentFormulaSchema = z.object({
   coords: documentBoundingBoxSchema.optional(),
 });
 
+export const documentReferenceSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().optional(),
+  authors: z.array(z.string()).default([]),
+  year: z.number().optional(),
+  journal: z.string().optional(),
+  volume: z.string().optional(),
+  issue: z.string().optional(),
+  pages: z.string().optional(),
+  doi: z.string().optional(),
+  arxivId: z.string().optional(),
+  rawCitation: z.string().optional(),
+});
+
 export const documentFulltextSchema = z.object({
   title: z.string().optional(),
   abstract: z.string().optional(),
@@ -350,9 +366,11 @@ export const documentFulltextSchema = z.object({
   figures: z.array(documentFigureSchema).default([]),
   tables: z.array(documentTableSchema).default([]),
   formulas: z.array(documentFormulaSchema).default([]),
+  references: z.array(documentReferenceSchema).default([]),
   sectionCount: z.number().optional(),
   figureCount: z.number().optional(),
   tableCount: z.number().optional(),
   formulaCount: z.number().optional(),
+  referenceCount: z.number().optional(),
 });
 

@@ -72,8 +72,8 @@ export default function AiPage() {
         settings: newSettings,
       } as any,
       {
-        onSuccess: () => toast.success('AI configuration saved'),
-        onError: (err: any) => toast.error(err?.message || 'Failed to save AI configuration'),
+        onSuccess: () => toast.success('AI configuration saved', { id: 'settings-ai' }),
+        onError: (err: any) => toast.error(err?.message || 'Failed to save AI configuration', { id: 'settings-ai' }),
       },
     );
   };

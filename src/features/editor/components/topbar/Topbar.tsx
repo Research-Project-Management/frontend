@@ -3,9 +3,15 @@
 import React from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowUpLeft, PanelLeft } from 'lucide-react';
+import { Home, PanelLeft } from 'lucide-react';
 
-import { Menubar, MenubarMenu, MenubarTrigger } from "@/shared/components/ui";
+import {
+  Menubar,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/shared/components/ui";
 
 import FileMenu from './file/FileMenu';
 import EditMenu from './edit/EditMenu';
@@ -24,35 +30,48 @@ export default function Topbar() {
   return (
     <nav
       aria-label="Editor toolbar"
-      className="flex h-11 items-center justify-between gap-2 px-2 py-1 border-b border-border bg-background shrink-0 z-10"
+      className="flex h-11 items-center justify-between gap-2 px-2 py-1 border-b border-border bg-muted shrink-0 z-10 select-none"
     >
-      {/* ── Left: Main Menubar (Home, File, Edit, View, Insert, Format) ── */}
-      <div className="flex items-center min-w-0 shrink-0">
+      {/* ── Left: Logo (Back to project / Home), Main Menubar ── */}
+      <div className="flex items-center min-w-0 shrink-0 gap-1">
         {/* Mobile sidebar drawer trigger */}
         <button
           type="button"
           onClick={() => EditorEventBus.emit('flux:toggle-sidebar')}
           title="Open Explorer & Tools"
           aria-label="Open Explorer & Tools"
-          className="md:hidden flex items-center justify-center p-1.5 rounded text-foreground hover:bg-muted transition-colors mr-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className="md:hidden flex items-center justify-center p-1.5 rounded text-foreground hover:bg-sidebar-hover transition-colors mr-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
         >
           <PanelLeft className="size-4 shrink-0" />
         </button>
 
-        <Menubar className="h-8 border-none bg-transparent p-0 gap-0.5 shadow-none">
-          {/* Back to workspace / Home link */}
-          <MenubarMenu>
-            <MenubarTrigger asChild>
+        <TooltipProvider delayDuration={150}>
+          {/* Single Logo button: click to go back to project, hover transforms to Home icon */}
+          <Tooltip>
+            <TooltipTrigger asChild>
               <Link
                 href={homeHref}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-foreground transition-colors cursor-pointer rounded-sm hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0"
+                aria-label="Back to your project"
+                className="group relative flex size-8 items-center justify-center rounded-md hover:bg-sidebar-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 cursor-pointer"
               >
-                <ArrowUpLeft className="size-3.5 shrink-0" />
-                <span>Home</span>
+                <img
+                  src="/Flux.svg"
+                  className="size-5 shrink-0 transition-[opacity,transform] duration-150 group-hover:scale-0 group-hover:opacity-0"
+                  alt="Flux"
+                />
+                <Home
+                  className="size-4 shrink-0 text-foreground transition-[opacity,transform] duration-150 absolute scale-0 opacity-0 group-hover:scale-100 group-hover:opacity-100"
+                  strokeWidth={1.75}
+                />
               </Link>
-            </MenubarTrigger>
-          </MenubarMenu>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6}>
+              Back to your project
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
+        <Menubar className="h-8 border-none bg-transparent p-0 gap-0.5 shadow-none">
           {/* Sub-menu Tabs */}
           <FileMenu />
           <EditMenu />

@@ -2,64 +2,60 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Maximize2, Minimize2, Plus } from 'lucide-react';
-import { Button } from "@/shared/components/ui";
 import { StatusIcon } from '@/shared/components/icons';
 import { cn } from "@/shared/lib/utils";
 import { toast } from 'sonner';
 import { RelationService } from '../../services/relation.service';
-import type { Item, Column as ColumnType, Cycle, ProjectMember, BaseWorkItemViewProps, WorkItemCardHandlers } from '../../types/work-item.types';
+import type { Item, Column as ColumnType, BaseWorkItemViewProps, WorkItemCardHandlers } from '../../types/work-item.types';
 
-// ==========================================
+// ============================================================================
 // TYPES
-// ==========================================
+// ============================================================================
 
 export type TimelineZoom = 'week' | 'month' | 'quarter';
 
-export interface TimelineDayColumn {
-  date: Date;
-  dateStr: string; // YYYY-MM-DD
-  dayNumber: number; // 1..31
-  dayOfWeek: string; // 'M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'
-  isToday: boolean;
-  isWeekend: boolean;
-  weekNumber: number;
-  monthYearKey: string; // e.g. 'Sept 2026'
+export interface TimelineColumn {
+  id: string;
+  startDate: Date;
+  endDate: Date;
+  isCurrent: boolean;
+  isWeekend?: boolean;
+  primaryLabel: string;
+  secondaryLabel?: string;
+  width: number;
 }
 
-export interface TimelineHeaderGroup {
-  key: string;
+export interface TimelineTier1Group {
+  id: string;
   label: string;
+  subLabel?: string;
+  isCurrent?: boolean;
   startIndex: number;
   spanCount: number;
+  width: number;
 }
 
 export interface TimelineBarData {
   item: Item;
-  startIndex: number;
-  endIndex: number;
   hasDates: boolean;
+  pixelLeft: number;
+  pixelWidth: number;
   durationDays: number;
   durationLabel: string;
+  effectiveStart?: Date;
+  effectiveDue?: Date;
 }
 
-/** Finish-to-Start: B can't start until A finishes (blocks/blocked_by) */
-/** Start-to-Start: B can't start until A starts (starts_before/starts_after) */
-/** Finish-to-Finish: B can't finish until A finishes (finishes_before/finishes_after) */
 export type DepLineType = 'FS' | 'SS' | 'FF';
 
 export interface DependencyLine {
   fromItemId: string;
   toItemId: string;
-  /** x pixel from canvas left where line starts */
   fromX: number;
-  /** row center y of the source bar */
   fromY: number;
-  /** x pixel where line ends */
   toX: number;
-  /** row center y of the target bar */
   toY: number;
   type: DepLineType;
-  /** true when dependency is violated (dates conflict) */
   violated: boolean;
 }
 
@@ -72,33 +68,28 @@ export interface TimelineViewProps extends BaseWorkItemViewProps, WorkItemCardHa
   onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
 }
 
-// ==========================================
+// ============================================================================
 // CONSTANTS & UTILITIES
-// ==========================================
+// ============================================================================
 
-export const DAY_WIDTHS: Record<TimelineZoom, number> = {
-  week: 46,
-  month: 36,
-  quarter: 28,
+export const ROW_HEIGHT = 38;
+export const HEADER_HEIGHT = 60;
+export const SIDEBAR_WIDTH = 320;
+
+export const COLUMN_WIDTHS: Record<TimelineZoom, number> = {
+  week: 48,
+  month: 84,
+  quarter: 110,
 };
 
-export const SIDEBAR_WIDTH = 340;
-export const ROW_HEIGHT = 40;
-export const HEADER_HEIGHT = 56;
+export const MONTH_NAMES_SHORT = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec',
+];
 
-export const MONTH_NAMES = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sept',
-  'Oct',
-  'Nov',
-  'Dec',
+export const MONTH_NAMES_FULL = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
 export const DAY_OF_WEEK_ABBR = ['Su', 'M', 'T', 'W', 'Th', 'F', 'Sa'];
@@ -141,122 +132,23 @@ export function getISOWeekNumber(targetDate: Date): number {
   );
 }
 
-export function getTimelineDays(
-  centerDate: Date = new Date(),
-  zoom: TimelineZoom = 'week'
-): TimelineDayColumn[] {
-  const todayStr = formatToDateStr(new Date());
-
-  let pastDays = 25;
-  let futureDays = 65;
-
-  if (zoom === 'month') {
-    pastDays = 45;
-    futureDays = 120;
-  } else if (zoom === 'quarter') {
-    pastDays = 60;
-    futureDays = 240;
-  }
-
-  const start = new Date(centerDate.getTime());
-  start.setDate(start.getDate() - pastDays);
-  start.setHours(0, 0, 0, 0);
-
-  const totalDays = pastDays + futureDays;
-  const days: TimelineDayColumn[] = [];
-
-  for (let index = 0; index < totalDays; index++) {
-    const currentDate = new Date(start.getTime());
-    currentDate.setDate(currentDate.getDate() + index);
-
-    const dateStr = formatToDateStr(currentDate);
-    const dayOfWeekIndex = currentDate.getDay();
-
-    days.push({
-      date: currentDate,
-      dateStr,
-      dayNumber: currentDate.getDate(),
-      dayOfWeek: DAY_OF_WEEK_ABBR[dayOfWeekIndex],
-      isToday: dateStr === todayStr,
-      isWeekend: dayOfWeekIndex === 0 || dayOfWeekIndex === 6,
-      weekNumber: getISOWeekNumber(currentDate),
-      monthYearKey: `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}`,
-    });
-  }
-
-  return days;
+/** Get Monday of the week containing targetDate */
+export function getStartOfWeek(targetDate: Date): Date {
+  const date = new Date(targetDate.getTime());
+  date.setHours(0, 0, 0, 0);
+  const day = date.getDay();
+  const diff = (day === 0 ? -6 : 1) - day;
+  date.setDate(date.getDate() + diff);
+  return date;
 }
 
-export function getMonthYearGroups(days: TimelineDayColumn[]): TimelineHeaderGroup[] {
-  const groups: TimelineHeaderGroup[] = [];
-  if (days.length === 0) return groups;
-
-  let currentKey = days[0].monthYearKey;
-  let startIndex = 0;
-  let count = 0;
-
-  for (let index = 0; index < days.length; index++) {
-    if (days[index].monthYearKey === currentKey) {
-      count++;
-    } else {
-      groups.push({
-        key: currentKey,
-        label: currentKey,
-        startIndex,
-        spanCount: count,
-      });
-      currentKey = days[index].monthYearKey;
-      startIndex = index;
-      count = 1;
-    }
-  }
-
-  if (count > 0) {
-    groups.push({
-      key: currentKey,
-      label: currentKey,
-      startIndex,
-      spanCount: count,
-    });
-  }
-
-  return groups;
-}
-
-export function getWeekGroups(days: TimelineDayColumn[]): TimelineHeaderGroup[] {
-  const groups: TimelineHeaderGroup[] = [];
-  if (days.length === 0) return groups;
-
-  let currentWeek = days[0].weekNumber;
-  let startIndex = 0;
-  let count = 0;
-
-  for (let index = 0; index < days.length; index++) {
-    if (days[index].weekNumber === currentWeek) {
-      count++;
-    } else {
-      groups.push({
-        key: `week-${currentWeek}-${startIndex}`,
-        label: `Week ${currentWeek}`,
-        startIndex,
-        spanCount: count,
-      });
-      currentWeek = days[index].weekNumber;
-      startIndex = index;
-      count = 1;
-    }
-  }
-
-  if (count > 0) {
-    groups.push({
-      key: `week-${currentWeek}-${startIndex}`,
-      label: `Week ${currentWeek}`,
-      startIndex,
-      spanCount: count,
-    });
-  }
-
-  return groups;
+/** Get Sunday of the week containing targetDate */
+export function getEndOfWeek(targetDate: Date): Date {
+  const start = getStartOfWeek(targetDate);
+  const end = new Date(start.getTime());
+  end.setDate(end.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return end;
 }
 
 export function calculateDuration(
@@ -267,31 +159,292 @@ export function calculateDuration(
   const due = parseDateOnly(dueDate);
 
   if (!start && !due) {
-    return { days: 0, label: '-' };
+    return { days: 0, label: '' };
   }
 
-  if (start && due) {
-    const diffMs = due.getTime() - start.getTime();
-    const diffDays = Math.max(1, Math.round(diffMs / 86400000) + 1);
-    if (diffDays === 1) return { days: 1, label: '1 day' };
-    if (diffDays === 7) return { days: 7, label: '1 week' };
-    if (diffDays === 14) return { days: 14, label: '2 weeks' };
-    if (diffDays % 7 === 0 && diffDays <= 28) {
-      return { days: diffDays, label: `${diffDays / 7} weeks` };
+  const effectiveStart = start || due!;
+  const effectiveDue = due || start!;
+  const diffMs = effectiveDue.getTime() - effectiveStart.getTime();
+  const diffDays = Math.max(1, Math.round(diffMs / 86400000) + 1);
+
+  if (diffDays === 1) return { days: 1, label: '1 day' };
+  if (diffDays === 7) return { days: 7, label: '1 week' };
+  if (diffDays === 14) return { days: 14, label: '2 weeks' };
+  if (diffDays % 7 === 0 && diffDays <= 28) {
+    return { days: diffDays, label: `${diffDays / 7} weeks` };
+  }
+  if (diffDays >= 30) {
+    const months = Math.round(diffDays / 30);
+    return { days: diffDays, label: `${months} ${months === 1 ? 'month' : 'months'}` };
+  }
+  return { days: diffDays, label: `${diffDays} days` };
+}
+
+// ============================================================================
+// TIMELINE COLUMN & HEADER BUILDERS
+// ============================================================================
+
+export function buildTimelineData(zoom: TimelineZoom, centerDate: Date = new Date()): {
+  columns: TimelineColumn[];
+  tier1Groups: TimelineTier1Group[];
+  currentColumnIndex: number;
+} {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = formatToDateStr(today);
+
+  if (zoom === 'week') {
+    // ------------------------------------------------------------------------
+    // WEEK ZOOM (Days granularity)
+    // Tier 1: Weeks (Month + "Week XX")
+    // Tier 2: Days ("8 W", "9 Th", "16 Th" with blue badge)
+    // ------------------------------------------------------------------------
+    const colWidth = COLUMN_WIDTHS.week;
+    const startMonday = getStartOfWeek(centerDate);
+    // 3 weeks prior, 11 weeks future = 14 full weeks (98 days)
+    startMonday.setDate(startMonday.getDate() - 21);
+
+    const totalWeeks = 14;
+    const columns: TimelineColumn[] = [];
+    const tier1Groups: TimelineTier1Group[] = [];
+
+    let currentColumnIndex = -1;
+
+    for (let w = 0; w < totalWeeks; w++) {
+      const weekStart = new Date(startMonday.getTime());
+      weekStart.setDate(weekStart.getDate() + w * 7);
+      const weekNumber = getISOWeekNumber(weekStart);
+      const monthYearKey = `${MONTH_NAMES_SHORT[weekStart.getMonth()]} ${weekStart.getFullYear()}`;
+
+      tier1Groups.push({
+        id: `w-group-${w}-${weekNumber}`,
+        label: monthYearKey,
+        subLabel: `Week ${weekNumber}`,
+        startIndex: w * 7,
+        spanCount: 7,
+        width: 7 * colWidth,
+      });
+
+      for (let d = 0; d < 7; d++) {
+        const dayDate = new Date(weekStart.getTime());
+        dayDate.setDate(dayDate.getDate() + d);
+        const dateStr = formatToDateStr(dayDate);
+        const isToday = dateStr === todayStr;
+        const dayOfWeekIndex = dayDate.getDay();
+
+        if (isToday) {
+          currentColumnIndex = columns.length;
+        }
+
+        columns.push({
+          id: dateStr,
+          startDate: new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), 0, 0, 0, 0),
+          endDate: new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), 23, 59, 59, 999),
+          isCurrent: isToday,
+          isWeekend: dayOfWeekIndex === 0 || dayOfWeekIndex === 6,
+          primaryLabel: String(dayDate.getDate()),
+          secondaryLabel: DAY_OF_WEEK_ABBR[dayOfWeekIndex],
+          width: colWidth,
+        });
+      }
     }
-    if (diffDays >= 30) {
-      const months = Math.round(diffDays / 30);
-      return { days: diffDays, label: `${months} ${months === 1 ? 'month' : 'months'}` };
-    }
-    return { days: diffDays, label: `${diffDays} days` };
+
+    return { columns, tier1Groups, currentColumnIndex };
   }
 
-  return { days: 1, label: '1 day' };
+  if (zoom === 'month') {
+    // ------------------------------------------------------------------------
+    // MONTH ZOOM (Weeks granularity)
+    // Tier 1: Months ("August 2026", "September 2026 [Current]", "October 2026")
+    // Tier 2: Weeks ("W34 23-29", "W37 13-19" with blue badge)
+    // ------------------------------------------------------------------------
+    const colWidth = COLUMN_WIDTHS.month;
+    const startMonday = getStartOfWeek(centerDate);
+    // 8 weeks prior, 20 weeks future = 28 weeks
+    startMonday.setDate(startMonday.getDate() - 56);
+    const totalWeeks = 28;
+
+    const columns: TimelineColumn[] = [];
+    let currentColumnIndex = -1;
+
+    for (let w = 0; w < totalWeeks; w++) {
+      const weekStart = new Date(startMonday.getTime());
+      weekStart.setDate(weekStart.getDate() + w * 7);
+      const weekEnd = new Date(weekStart.getTime());
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+
+      const weekNumber = getISOWeekNumber(weekStart);
+      const isCurrentWeek = today >= weekStart && today <= weekEnd;
+
+      if (isCurrentWeek) {
+        currentColumnIndex = columns.length;
+      }
+
+      columns.push({
+        id: `week-${w}-${weekNumber}`,
+        startDate: weekStart,
+        endDate: weekEnd,
+        isCurrent: isCurrentWeek,
+        primaryLabel: `W${weekNumber}`,
+        secondaryLabel: `${weekStart.getDate()}-${weekEnd.getDate()}`,
+        width: colWidth,
+      });
+    }
+
+    // Group weeks into Months based on Thursday of each week (ISO-8601 month rule)
+    const tier1Groups: TimelineTier1Group[] = [];
+    let currentMonthKey = '';
+    let currentGroup: TimelineTier1Group | null = null;
+
+    columns.forEach((col, idx) => {
+      const midWeek = new Date(col.startDate.getTime());
+      midWeek.setDate(midWeek.getDate() + 3);
+      const monthKey = `${MONTH_NAMES_FULL[midWeek.getMonth()]} ${midWeek.getFullYear()}`;
+      const isThisMonthCurrent =
+        today.getMonth() === midWeek.getMonth() &&
+        today.getFullYear() === midWeek.getFullYear();
+
+      if (monthKey !== currentMonthKey) {
+        currentMonthKey = monthKey;
+        currentGroup = {
+          id: `m-group-${monthKey}-${idx}`,
+          label: monthKey,
+          isCurrent: isThisMonthCurrent,
+          startIndex: idx,
+          spanCount: 1,
+          width: colWidth,
+        };
+        tier1Groups.push(currentGroup);
+      } else if (currentGroup) {
+        currentGroup.spanCount++;
+        currentGroup.width += colWidth;
+        if (isThisMonthCurrent) {
+          currentGroup.isCurrent = true;
+        }
+      }
+    });
+
+    return { columns, tier1Groups, currentColumnIndex };
+  }
+
+  // --------------------------------------------------------------------------
+  // QUARTER ZOOM (Months granularity)
+  // Tier 1: Quarters ("Q3 2026 [Current]", "Q4 2026")
+  // Tier 2: Months ("August", "September" with blue badge)
+  // --------------------------------------------------------------------------
+  const colWidth = COLUMN_WIDTHS.quarter;
+  const startMonthDate = new Date(centerDate.getFullYear(), centerDate.getMonth() - 5, 1);
+  const totalMonths = 22;
+
+  const columns: TimelineColumn[] = [];
+  const tier1Groups: TimelineTier1Group[] = [];
+  let currentColumnIndex = -1;
+
+  let currentQuarterKey = '';
+  let currentGroup: TimelineTier1Group | null = null;
+
+  for (let m = 0; m < totalMonths; m++) {
+    const monthDate = new Date(startMonthDate.getFullYear(), startMonthDate.getMonth() + m, 1);
+    const monthEndDate = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59, 999);
+    const isCurrentMonth =
+      today.getMonth() === monthDate.getMonth() &&
+      today.getFullYear() === monthDate.getFullYear();
+
+    if (isCurrentMonth) {
+      currentColumnIndex = columns.length;
+    }
+
+    columns.push({
+      id: `month-${monthDate.getFullYear()}-${monthDate.getMonth()}`,
+      startDate: monthDate,
+      endDate: monthEndDate,
+      isCurrent: isCurrentMonth,
+      primaryLabel: MONTH_NAMES_FULL[monthDate.getMonth()],
+      width: colWidth,
+    });
+
+    const quarterNumber = Math.floor(monthDate.getMonth() / 3) + 1;
+    const quarterKey = `Q${quarterNumber} ${monthDate.getFullYear()}`;
+    const isCurrentQuarter =
+      Math.floor(today.getMonth() / 3) + 1 === quarterNumber &&
+      today.getFullYear() === monthDate.getFullYear();
+
+    if (quarterKey !== currentQuarterKey) {
+      currentQuarterKey = quarterKey;
+      currentGroup = {
+        id: `q-group-${quarterKey}-${m}`,
+        label: quarterKey,
+        isCurrent: isCurrentQuarter,
+        startIndex: m,
+        spanCount: 1,
+        width: colWidth,
+      };
+      tier1Groups.push(currentGroup);
+    } else if (currentGroup) {
+      currentGroup.spanCount++;
+      currentGroup.width += colWidth;
+      if (isCurrentQuarter) {
+        currentGroup.isCurrent = true;
+      }
+    }
+  }
+
+  return { columns, tier1Groups, currentColumnIndex };
+}
+
+// ============================================================================
+// PIXEL & DATE COORDINATE HELPERS
+// ============================================================================
+
+export function getPixelRange(
+  start: Date,
+  due: Date,
+  columns: TimelineColumn[],
+  zoom: TimelineZoom
+): { left: number; width: number } {
+  if (columns.length === 0) return { left: 0, width: 0 };
+
+  const minTime = columns[0].startDate.getTime();
+  const maxTime = columns[columns.length - 1].endDate.getTime();
+
+  const effectiveStart = new Date(Math.max(minTime, Math.min(maxTime, start.getTime())));
+  const effectiveDue = new Date(Math.max(minTime, Math.min(maxTime, due.getTime())));
+
+  const getPixelForTime = (time: number, isEnd = false) => {
+    for (let i = 0; i < columns.length; i++) {
+      const col = columns[i];
+      const colStart = col.startDate.getTime();
+      const colEnd = col.endDate.getTime();
+      if (time >= colStart && time <= colEnd) {
+        const span = Math.max(1, colEnd - colStart);
+        const frac = Math.min(1, Math.max(0, (time - colStart) / span));
+        let x = i * col.width + frac * col.width;
+        if (isEnd) {
+          x = Math.max(x, i * col.width + col.width);
+        }
+        return x;
+      }
+    }
+    if (time < minTime) return 0;
+    return columns.length * (columns[0]?.width || COLUMN_WIDTHS[zoom]);
+  };
+
+  const left = getPixelForTime(effectiveStart.getTime(), false);
+  const dueEndOfDay = new Date(effectiveDue.getTime());
+  dueEndOfDay.setHours(23, 59, 59, 999);
+  const right = getPixelForTime(dueEndOfDay.getTime(), true);
+
+  const minWidth = Math.max(24, Math.min(columns[0]?.width || 36, 40));
+  const width = Math.max(minWidth, right - left);
+
+  return { left, width };
 }
 
 export function mapItemToBar(
   item: Item,
-  days: TimelineDayColumn[]
+  columns: TimelineColumn[],
+  zoom: TimelineZoom
 ): TimelineBarData {
   const start = parseDateOnly(item.startDate);
   const due = parseDateOnly(item.dueDate);
@@ -300,79 +453,39 @@ export function mapItemToBar(
   if (!start && !due) {
     return {
       item,
-      startIndex: -1,
-      endIndex: -1,
       hasDates: false,
+      pixelLeft: 0,
+      pixelWidth: 0,
       durationDays: 0,
-      durationLabel: '-',
+      durationLabel: '',
     };
   }
 
   const effectiveStart = start || due!;
   const effectiveDue = due || start!;
-
-  const startStr = formatToDateStr(effectiveStart);
-  const dueStr = formatToDateStr(effectiveDue);
-
-  let startIndex = days.findIndex((columnDay) => columnDay.dateStr === startStr);
-  let endIndex = days.findIndex((columnDay) => columnDay.dateStr === dueStr);
-
-  if (startIndex === -1 && endIndex === -1) {
-    const minDay = days[0].date;
-    const maxDay = days[days.length - 1].date;
-
-    if (effectiveDue < minDay || effectiveStart > maxDay) {
-      return {
-        item,
-        startIndex: -1,
-        endIndex: -1,
-        hasDates: true,
-        durationDays: duration.days,
-        durationLabel: duration.label,
-      };
-    }
-  }
-
-  if (startIndex === -1) startIndex = 0;
-  if (endIndex === -1) endIndex = days.length - 1;
-
-  if (startIndex > endIndex) {
-    const tempIndex = startIndex;
-    startIndex = endIndex;
-    endIndex = tempIndex;
-  }
+  const { left, width } = getPixelRange(effectiveStart, effectiveDue, columns, zoom);
 
   return {
     item,
-    startIndex,
-    endIndex,
     hasDates: true,
+    pixelLeft: left,
+    pixelWidth: width,
     durationDays: duration.days,
     durationLabel: duration.label,
+    effectiveStart,
+    effectiveDue,
   };
 }
 
-// ==========================================
-// DEPENDENCY LINE COMPUTATION
-// ==========================================
+// ============================================================================
+// DEPENDENCY LINES
+// ============================================================================
 
-/**
- * Compute SVG connector lines for work item relations visible in the current viewport.
- * Supported relation types:
- *   FS (Finish-to-Start):  blocks / blocked_by
- *   SS (Start-to-Start):   starts_before / starts_after
- *   FF (Finish-to-Finish): finishes_before / finishes_after
- *
- * Each line goes from the source anchor on the "from" bar to the target anchor
- * on the "to" bar, rendered as an elbow path in SVG.
- */
 export function computeDependencyLines(
   items: Item[],
   barDataMap: Map<string, TimelineBarData>,
-  dayWidth: number,
 ): DependencyLine[] {
   const lines: DependencyLine[] = [];
-
   const itemMap = new Map<string, Item>(items.map((t) => [t.id, t]));
   const rowIndexMap = new Map<string, number>(items.map((t, i) => [t.id, i]));
 
@@ -393,7 +506,6 @@ export function computeDependencyLines(
       const toItemId = rel?.targetWorkItemId || rel?.targetId;
       if (!relType || !toItemId) continue;
 
-      // Skip non-timeline relations
       if (!FS_TYPES.has(relType) && !SS_TYPES.has(relType) && !FF_TYPES.has(relType)) continue;
 
       const toItem = itemMap.get(toItemId);
@@ -401,7 +513,6 @@ export function computeDependencyLines(
       const toRowIdx = rowIndexMap.get(toItemId);
       if (!toItem || !toBar || toRowIdx === undefined) continue;
       if (!fromBar.hasDates || !toBar.hasDates) continue;
-      if (fromBar.startIndex === -1 || toBar.startIndex === -1) continue;
 
       let depType: DepLineType;
       let fromX: number;
@@ -410,34 +521,27 @@ export function computeDependencyLines(
 
       if (FS_TYPES.has(relType)) {
         depType = 'FS';
-        // Line exits right side of from-bar, enters left side of to-bar
-        fromX = (fromBar.endIndex + 1) * dayWidth;
-        toX = toBar.startIndex * dayWidth;
-        // Violated: toItem starts before fromItem ends
+        fromX = fromBar.pixelLeft + fromBar.pixelWidth;
+        toX = toBar.pixelLeft;
         const toStart = parseDateOnly(toItem.startDate);
         const fromDue = parseDateOnly(fromItem.dueDate);
         violated = !!(toStart && fromDue && toStart < fromDue);
       } else if (SS_TYPES.has(relType)) {
         depType = 'SS';
-        // Line exits left side of from-bar, enters left side of to-bar
-        fromX = fromBar.startIndex * dayWidth;
-        toX = toBar.startIndex * dayWidth;
-        // Violated: toItem starts before fromItem starts
+        fromX = fromBar.pixelLeft;
+        toX = toBar.pixelLeft;
         const toStart = parseDateOnly(toItem.startDate);
         const fromStart = parseDateOnly(fromItem.startDate);
         violated = !!(toStart && fromStart && toStart < fromStart);
       } else {
         depType = 'FF';
-        // Line exits right side of from-bar, enters right side of to-bar
-        fromX = (fromBar.endIndex + 1) * dayWidth;
-        toX = (toBar.endIndex + 1) * dayWidth;
-        // Violated: toItem ends before fromItem ends
+        fromX = fromBar.pixelLeft + fromBar.pixelWidth;
+        toX = toBar.pixelLeft + toBar.pixelWidth;
         const toDue = parseDateOnly(toItem.dueDate);
         const fromDue = parseDateOnly(fromItem.dueDate);
         violated = !!(toDue && fromDue && toDue < fromDue);
       }
 
-      // Y = center of the row (header not included — offset handled in SVG)
       const fromY = fromRowIdx * ROW_HEIGHT + ROW_HEIGHT / 2;
       const toY = toRowIdx * ROW_HEIGHT + ROW_HEIGHT / 2;
 
@@ -448,9 +552,9 @@ export function computeDependencyLines(
   return lines;
 }
 
-// ==========================================
-// SUB-COMPONENTS
-// ==========================================
+// ============================================================================
+// TOP CONTROLS
+// ============================================================================
 
 interface TimelineTopControlsProps {
   totalCount: number;
@@ -478,55 +582,62 @@ function TimelineTopControls({
   return (
     <div className="flex items-center justify-end gap-3 px-4 py-2 border-b border-border bg-background select-none shrink-0">
       {/* 1. Work items Count */}
-      <span className="text-xs text-muted-foreground font-normal">
+      <span className="text-xs text-muted-foreground font-normal tabular-nums">
         {totalCount} {totalCount === 1 ? 'Work item' : 'Work items'}
       </span>
 
-      {/* 2. Zoom Selector: Week | Month | Quarter */}
-      <div className="inline-flex items-center p-0.5 rounded-md bg-muted border border-border text-xs">
-        {zoomOptions.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            onClick={() => onZoomChange(option.id)}
-            className={`px-2.5 py-1 rounded-sm text-xs transition-all ${
-              zoom === option.id
-                ? 'bg-background text-foreground font-medium shadow-none'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
+      {/* 2. Zoom Options (Plane segmented style) */}
+      <div className="inline-flex items-center gap-0.5 text-xs">
+        {zoomOptions.map((option) => {
+          const isActive = zoom === option.id;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => onZoomChange(option.id)}
+              className={cn(
+                'px-2.5 py-1 rounded text-xs transition-colors cursor-pointer select-none',
+                isActive
+                  ? 'bg-muted text-foreground font-medium'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {option.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* 3. Today Button */}
-      <Button
-        variant="outline"
-        size="sm"
+      <button
+        type="button"
         onClick={onTodayClick}
-        className="h-7 px-3 text-xs font-normal border-border text-foreground hover:bg-muted"
+        className="px-2.5 py-1 text-xs font-normal text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors cursor-pointer select-none"
       >
         Today
-      </Button>
+      </button>
 
       {/* 4. Fullscreen Button */}
-      <Button
-        variant="outline"
-        size="icon"
+      <button
+        type="button"
         onClick={onToggleFullscreen}
-        className="h-7 w-7 p-0 border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+        className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors cursor-pointer select-none"
         title={isFullscreen ? 'Exit full screen' : 'Full screen'}
+        aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}
       >
         {isFullscreen ? (
           <Minimize2 className="size-3.5 shrink-0" />
         ) : (
           <Maximize2 className="size-3.5 shrink-0" />
         )}
-      </Button>
+      </button>
     </div>
   );
 }
+
+// ============================================================================
+// SIDEBAR (FROZEN WORK ITEMS LIST)
+// ============================================================================
 
 interface TimelineSidebarProps {
   items: Item[];
@@ -549,34 +660,30 @@ function TimelineSidebar({
 }: TimelineSidebarProps) {
   const defaultColumnId = columns[0]?.id || '';
 
-  const getColumnForItem = (item: Item) => {
-    return columns.find((column) => column.id === item.columnId);
-  };
-
   return (
     <div
-      className="shrink-0 border-r border-border flex flex-col bg-background select-none z-20 h-full overflow-hidden w-[200px] sm:w-[260px] md:w-[340px]"
+      style={{ width: `${SIDEBAR_WIDTH}px` }}
+      className="shrink-0 border-r border-border flex flex-col bg-background select-none z-20 h-full overflow-hidden"
     >
-      {/* Fixed Sidebar Header (56px) */}
+      {/* 60px Sidebar Header matching 2-tier timeline header */}
       <div
-        className="flex items-center justify-between px-3 border-b border-border bg-background/95 backdrop-blur text-muted-foreground font-medium text-xs shrink-0"
+        className="flex items-end justify-between px-4 pb-2 border-b border-border bg-background text-muted-foreground text-xs font-normal shrink-0"
         style={{ height: `${HEADER_HEIGHT}px` }}
       >
-        <span className="font-semibold text-foreground">Work items</span>
-        <span className="text-11 font-medium text-muted-foreground pr-1">Duration</span>
+        <span className="text-muted-foreground">Work items</span>
+        <span className="text-muted-foreground">Duration</span>
       </div>
 
-      {/* Scrollable Rows Container (Synced with Canvas vertical scroll, hidden scrollbar) */}
+      {/* Scrollable Work Item Rows */}
       <div
         ref={sidebarScrollRef}
         onScroll={onScroll}
         className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       >
         {items.map((item) => {
-          const column = getColumnForItem(item);
           const identifier =
             item.identifier ||
-            (item.sequenceNumber ? `TIEPT-${item.sequenceNumber}` : item.id.slice(0, 6));
+            (item.sequenceNumber ? `PLO-${item.sequenceNumber}` : `PLO-${item.id.slice(0, 4)}`);
           const duration = calculateDuration(item.startDate, item.dueDate);
 
           return (
@@ -592,51 +699,43 @@ function TimelineSidebar({
                   onEditCard(item);
                 }
               }}
-              className="flex items-center justify-between px-3 border-b border-border hover:bg-muted cursor-pointer transition-colors group text-xs shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="flex items-center justify-between px-4 border-b border-border hover:bg-muted/50 cursor-pointer transition-colors group text-xs shrink-0 outline-none focus-visible:bg-muted"
               style={{ height: `${ROW_HEIGHT}px` }}
               title={item.title}
             >
-              {/* Left: Status Icon, Identifier, Title */}
-              <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
-                <StatusIcon
-                  title={column?.title || 'Backlog'}
-                  group={column?.slug || column?.title || 'backlog'}
-                  color={column?.accentColor}
-                  className="size-3.5 shrink-0"
-                />
-                <span className="text-11 font-mono text-muted-foreground shrink-0">
+              {/* Left: Identifier + Title */}
+              <div className="flex items-center gap-2 min-w-0 flex-1 pr-3">
+                <span className="text-xs text-muted-foreground font-normal shrink-0 min-w-[48px]">
                   {identifier}
                 </span>
-                <span className="truncate text-foreground font-normal group-hover:text-primary transition-colors">
+                <span className="truncate text-xs text-foreground font-normal group-hover:text-primary transition-colors">
                   {item.title}
                 </span>
               </div>
 
-              {/* Right: Duration or No-dates badge */}
-              <div className="shrink-0 pl-2">
-                {duration.label === '-' ? (
-                  <span className="text-10 text-muted-foreground/60 font-normal border border-dashed border-muted-foreground/30 rounded px-1.5 py-0.5 whitespace-nowrap">
-                    No dates
+              {/* Right: Duration (Blank when no dates, clean string when set) */}
+              <div className="shrink-0 text-right">
+                {duration.label ? (
+                  <span className="text-xs text-muted-foreground font-normal">
+                    {duration.label}
                   </span>
-                ) : (
-                  <span className="text-11 text-muted-foreground font-mono">{duration.label}</span>
-                )}
+                ) : null}
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Pinned Bottom "+ New work item" (40px) */}
+      {/* Pinned Bottom "+ New work item" row */}
       {!isReadOnly && (
         <div
-          className="border-t border-border flex items-center px-3 bg-background shrink-0"
+          className="border-t border-border flex items-center px-4 bg-background shrink-0 select-none"
           style={{ height: `${ROW_HEIGHT}px` }}
         >
           <button
             type="button"
             onClick={() => onAddCard(defaultColumnId)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors w-full text-left py-1"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer w-full text-left"
           >
             <Plus className="size-3.5 shrink-0" />
             <span>New work item</span>
@@ -647,13 +746,16 @@ function TimelineSidebar({
   );
 }
 
+// ============================================================================
+// TIMELINE GANTT BAR
+// ============================================================================
+
 interface TimelineBarProps {
   item: Item;
-  startIndex: number;
-  endIndex: number;
-  dayWidth: number;
-  days: TimelineDayColumn[];
-  column?: ColumnType;
+  barData: TimelineBarData;
+  columns: TimelineColumn[];
+  zoom: TimelineZoom;
+  stateColumn?: ColumnType;
   rowIndex?: number;
   onEditCard: (item: Item) => void;
   onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
@@ -665,11 +767,9 @@ interface TimelineBarProps {
 
 function TimelineBar({
   item,
-  startIndex,
-  endIndex,
-  dayWidth,
-  days,
-  column,
+  barData,
+  zoom,
+  stateColumn,
   rowIndex = 0,
   onEditCard,
   onUpdateCard,
@@ -680,12 +780,10 @@ function TimelineBar({
 }: TimelineBarProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [dragging, setDragging] = useState<'move' | 'start' | 'end' | null>(null);
-  const [dragOffset, setDragOffset] = useState<number>(0);
+  const [dragOffsetPx, setDragOffsetPx] = useState<number>(0);
   const startXRef = useRef<number>(0);
-  const originalStartIndexRef = useRef<number>(startIndex);
-  const originalEndIndexRef = useRef<number>(endIndex);
 
-  // Drag interaction
+  // Drag logic
   const handlePointerDown = (
     event: React.PointerEvent,
     mode: 'move' | 'start' | 'end'
@@ -696,14 +794,11 @@ function TimelineBar({
 
     setDragging(mode);
     startXRef.current = event.clientX;
-    originalStartIndexRef.current = startIndex;
-    originalEndIndexRef.current = endIndex;
-    setDragOffset(0);
+    setDragOffsetPx(0);
 
     const onPointerMove = (moveEvent: PointerEvent) => {
       const deltaX = moveEvent.clientX - startXRef.current;
-      const deltaDays = Math.round(deltaX / dayWidth);
-      setDragOffset(deltaDays);
+      setDragOffsetPx(deltaX);
     };
 
     const onPointerUp = (upEvent: PointerEvent) => {
@@ -711,55 +806,64 @@ function TimelineBar({
       window.removeEventListener('pointerup', onPointerUp);
 
       const deltaX = upEvent.clientX - startXRef.current;
-      const deltaDays = Math.round(deltaX / dayWidth);
       setDragging(null);
-      setDragOffset(0);
+      setDragOffsetPx(0);
 
+      if (Math.abs(deltaX) < 4) return;
+
+      const pixelsPerDay =
+        zoom === 'week'
+          ? COLUMN_WIDTHS.week
+          : zoom === 'month'
+          ? COLUMN_WIDTHS.month / 7
+          : COLUMN_WIDTHS.quarter / 30;
+
+      const deltaDays = Math.round(deltaX / pixelsPerDay);
       if (deltaDays === 0) return;
 
-      let newStartIndex = originalStartIndexRef.current;
-      let newEndIndex = originalEndIndexRef.current;
+      const currentStart = barData.effectiveStart || new Date();
+      const currentDue = barData.effectiveDue || new Date();
+
+      let newStart = new Date(currentStart.getTime());
+      let newDue = new Date(currentDue.getTime());
 
       if (mode === 'move') {
-        newStartIndex = Math.max(0, Math.min(days.length - 1, newStartIndex + deltaDays));
-        newEndIndex = Math.max(0, Math.min(days.length - 1, newEndIndex + deltaDays));
+        newStart.setDate(newStart.getDate() + deltaDays);
+        newDue.setDate(newDue.getDate() + deltaDays);
       } else if (mode === 'start') {
-        newStartIndex = Math.max(0, Math.min(newEndIndex, newStartIndex + deltaDays));
+        newStart.setDate(newStart.getDate() + deltaDays);
+        if (newStart > newDue) newStart = new Date(newDue.getTime());
       } else if (mode === 'end') {
-        newEndIndex = Math.max(newStartIndex, Math.min(days.length - 1, newEndIndex + deltaDays));
+        newDue.setDate(newDue.getDate() + deltaDays);
+        if (newDue < newStart) newDue = new Date(newStart.getTime());
       }
 
-      const newStartDate = days[newStartIndex]?.dateStr;
-      const newDueDate = days[newEndIndex]?.dateStr;
-
-      if (newStartDate && newDueDate) {
-        onUpdateCard({
-          id: item.id,
-          startDate: newStartDate,
-          dueDate: newDueDate,
-        });
-      }
+      onUpdateCard({
+        id: item.id,
+        startDate: formatToDateStr(newStart),
+        dueDate: formatToDateStr(newDue),
+      });
     };
 
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
   };
 
-  // Compute live visual coordinates during drag
-  let visualStart = startIndex;
-  let visualEnd = endIndex;
+  let visualLeft = barData.pixelLeft;
+  let visualWidth = barData.pixelWidth;
+
   if (dragging === 'move') {
-    visualStart = Math.max(0, Math.min(days.length - 1, startIndex + dragOffset));
-    visualEnd = Math.max(0, Math.min(days.length - 1, endIndex + dragOffset));
+    visualLeft = Math.max(0, barData.pixelLeft + dragOffsetPx);
   } else if (dragging === 'start') {
-    visualStart = Math.max(0, Math.min(endIndex, startIndex + dragOffset));
+    const rawLeft = barData.pixelLeft + dragOffsetPx;
+    const maxLeft = barData.pixelLeft + barData.pixelWidth - 24;
+    visualLeft = Math.min(maxLeft, Math.max(0, rawLeft));
+    visualWidth = barData.pixelLeft + barData.pixelWidth - visualLeft;
   } else if (dragging === 'end') {
-    visualEnd = Math.max(startIndex, Math.min(days.length - 1, endIndex + dragOffset));
+    visualWidth = Math.max(24, barData.pixelWidth + dragOffsetPx);
   }
 
-  const visualLeft = Math.max(0, visualStart * dayWidth);
-  const visualWidth = Math.max(dayWidth, (visualEnd - visualStart + 1) * dayWidth);
-  const accentColor = column?.accentColor || 'hsl(var(--primary))';
+  const accentColor = stateColumn?.accentColor || '#3B82F6';
 
   return (
     <div
@@ -775,14 +879,14 @@ function TimelineBar({
       style={{
         left: `${visualLeft}px`,
         width: `${visualWidth}px`,
-        height: '28px',
+        height: '26px',
         top: '6px',
         backgroundColor: accentColor,
       }}
       className={cn(
-        'absolute z-10 rounded-md flex items-center px-2 text-white select-none transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary',
+        'absolute z-10 rounded-md flex items-center px-2 text-white select-none transition-all outline-none shadow-xs',
         dragging ? 'opacity-90 ring-2 ring-primary cursor-grabbing' : 'cursor-pointer hover:brightness-105',
-        isConnectTarget && 'ring-2 ring-primary ring-offset-2 scale-[1.02] shadow-raised-200',
+        isConnectTarget && 'ring-2 ring-primary ring-offset-2 scale-[1.02] shadow-md',
         isConnecting && 'ring-2 ring-primary opacity-80'
       )}
       onMouseEnter={() => setIsHovered(true)}
@@ -793,14 +897,14 @@ function TimelineBar({
           onEditCard(item);
         }
       }}
-      title={`${item.title} (${item.startDate || 'No start'} -> ${item.dueDate || 'No due'})`}
+      title={`${item.title} (${item.startDate || 'No start'} → ${item.dueDate || 'No due'})`}
     >
-      {/* Left connector handle (Blocked by) */}
+      {/* Left connector handle */}
       {!isReadOnly && onStartConnect && (
         <div
           role="button"
           tabIndex={-1}
-          title="Drag to create dependency (Blocked by)"
+          title="Drag to create dependency"
           onPointerDown={(event) => {
             event.stopPropagation();
             event.preventDefault();
@@ -819,26 +923,26 @@ function TimelineBar({
       {!isReadOnly && onUpdateCard && (
         <div
           onPointerDown={(event) => handlePointerDown(event, 'start')}
-          className={`absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize rounded-l-md hover:bg-black/20 flex items-center justify-center transition-opacity ${
+          className={`absolute left-0 top-0 bottom-0 w-2.5 cursor-ew-resize rounded-l-md hover:bg-black/20 flex items-center justify-center transition-opacity ${
             isHovered || dragging === 'start' ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          <div className="w-0.5 h-3 bg-primary-foreground rounded-full" />
+          <div className="w-0.5 h-3 bg-white/70 rounded-full" />
         </div>
       )}
 
-      {/* Main bar content (clickable & draggable for moving) */}
+      {/* Main Bar Content */}
       <div
         className="flex items-center gap-1.5 min-w-0 flex-1 h-full cursor-pointer px-1"
         onPointerDown={(event) => handlePointerDown(event, 'move')}
       >
         <StatusIcon
-          title={column?.title || 'Backlog'}
-          group={column?.slug || column?.title || 'backlog'}
-          color={column?.accentColor}
-          className="size-3 shrink-0 text-primary-foreground"
+          title={stateColumn?.title || 'Backlog'}
+          group={stateColumn?.slug || stateColumn?.title || 'backlog'}
+          color={stateColumn?.accentColor}
+          className="size-3 shrink-0 text-white"
         />
-        <span className="text-11 font-medium truncate text-primary-foreground">
+        <span className="text-11 font-medium truncate text-white">
           {item.title}
         </span>
       </div>
@@ -847,20 +951,20 @@ function TimelineBar({
       {!isReadOnly && onUpdateCard && (
         <div
           onPointerDown={(event) => handlePointerDown(event, 'end')}
-          className={`absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize rounded-r-md hover:bg-black/20 flex items-center justify-center transition-opacity ${
+          className={`absolute right-0 top-0 bottom-0 w-2.5 cursor-ew-resize rounded-r-md hover:bg-black/20 flex items-center justify-center transition-opacity ${
             isHovered || dragging === 'end' ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          <div className="w-0.5 h-3 bg-primary-foreground rounded-full" />
+          <div className="w-0.5 h-3 bg-white/70 rounded-full" />
         </div>
       )}
 
-      {/* Right connector handle (Blocks) */}
+      {/* Right connector handle */}
       {!isReadOnly && onStartConnect && (
         <div
           role="button"
           tabIndex={-1}
-          title="Drag to create dependency (Blocks)"
+          title="Drag to create dependency"
           onPointerDown={(event) => {
             event.stopPropagation();
             event.preventDefault();
@@ -878,9 +982,9 @@ function TimelineBar({
   );
 }
 
-// ==========================================
-// DEPENDENCY OVERLAY (Phase 3)
-// ==========================================
+// ============================================================================
+// DEPENDENCY SVG OVERLAY
+// ============================================================================
 
 interface DependencyOverlayProps {
   lines: DependencyLine[];
@@ -888,15 +992,9 @@ interface DependencyOverlayProps {
   totalHeight: number;
 }
 
-/**
- * Renders SVG elbow connector lines for work item dependencies.
- * Positioned absolutely over the rows section of the canvas (below header).
- * An "elbow" path: horizontal → vertical → horizontal, with a small arrowhead at the end.
- */
 function DependencyOverlay({ lines, totalWidth, totalHeight }: DependencyOverlayProps) {
   if (lines.length === 0) return null;
-
-  const ELBOW_OFFSET = 12; // horizontal offset before turning vertical
+  const ELBOW_OFFSET = 12;
 
   return (
     <svg
@@ -915,7 +1013,7 @@ function DependencyOverlay({ lines, totalWidth, totalHeight }: DependencyOverlay
           refY="3"
           orient="auto"
         >
-          <path d="M0,0 L0,6 L6,3 z" fill="hsl(var(--primary) / 0.7)" />
+          <path d="M0,0 L0,6 L6,3 z" fill="#0070F3" />
         </marker>
         <marker
           id="dep-arrow-violated"
@@ -925,28 +1023,24 @@ function DependencyOverlay({ lines, totalWidth, totalHeight }: DependencyOverlay
           refY="3"
           orient="auto"
         >
-          <path d="M0,0 L0,6 L6,3 z" fill="hsl(var(--destructive) / 0.9)" />
+          <path d="M0,0 L0,6 L6,3 z" fill="#EF4444" />
         </marker>
       </defs>
 
       {lines.map((line, idx) => {
         const { fromX, fromY, toX, toY, violated } = line;
-        const stroke = violated ? 'hsl(var(--destructive) / 0.9)' : 'hsl(var(--primary) / 0.6)';
+        const stroke = violated ? '#EF4444' : '#0070F3';
         const markerId = violated ? 'dep-arrow-violated' : 'dep-arrow-normal';
 
-        // Build elbow path: from → elbow → vertical → to
         let d: string;
         const midX1 = fromX + ELBOW_OFFSET;
         const midX2 = toX - ELBOW_OFFSET;
 
         if (Math.abs(fromY - toY) < 2) {
-          // Same row: straight line
           d = `M ${fromX} ${fromY} L ${toX} ${toY}`;
         } else if (midX1 <= midX2) {
-          // Normal routing: right then down/up then right
           d = `M ${fromX} ${fromY} H ${midX1} V ${toY} H ${toX}`;
         } else {
-          // Reverse routing (to-bar is to the left): go further right to avoid overlap
           const detourX = Math.max(fromX, toX) + ELBOW_OFFSET * 2;
           d = `M ${fromX} ${fromY} H ${detourX} V ${toY} H ${toX}`;
         }
@@ -968,12 +1062,17 @@ function DependencyOverlay({ lines, totalWidth, totalHeight }: DependencyOverlay
   );
 }
 
+// ============================================================================
+// TIMELINE CANVAS
+// ============================================================================
+
 interface TimelineCanvasProps {
   items: Item[];
   columns: ColumnType[];
-  days: TimelineDayColumn[];
+  timelineColumns: TimelineColumn[];
+  tier1Groups: TimelineTier1Group[];
+  currentColumnIndex: number;
   zoom: TimelineZoom;
-  dayWidth: number;
   onEditCard: (item: Item) => void;
   onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
   isReadOnly?: boolean;
@@ -983,54 +1082,52 @@ interface TimelineCanvasProps {
 
 function TimelineCanvas({
   items,
-  columns,
-  days,
+  columns: stateColumns,
+  timelineColumns,
+  tier1Groups,
+  currentColumnIndex,
   zoom,
-  dayWidth,
   onEditCard,
   onUpdateCard,
   isReadOnly = false,
   canvasScrollRef,
   onScroll,
 }: TimelineCanvasProps) {
-  const totalWidth = days.length * dayWidth;
-  const monthGroups = getMonthYearGroups(days);
-  const weekGroups = getWeekGroups(days);
+  const totalWidth = timelineColumns.reduce((acc, col) => acc + col.width, 0);
+  const totalRowsHeight = items.length * ROW_HEIGHT;
 
-  const getColumnForItem = (item: Item) => {
-    return columns.find((column) => column.id === item.columnId);
+  const getStateColumn = (item: Item) => {
+    return stateColumns.find((col) => col.id === item.columnId);
   };
 
-  // Quick-add dates by clicking on empty row
-  const handleEmptyRowClick = (item: Item, day: TimelineDayColumn) => {
-    if (isReadOnly || !onUpdateCard) return;
-    onUpdateCard({
-      id: item.id,
-      startDate: day.dateStr,
-      dueDate: day.dateStr,
-    });
-  };
-
-  // ── Phase 2: Today line position ──────────────────────────────────────────
-  const todayIndex = days.findIndex((d) => d.isToday);
-  const todayLineX = todayIndex >= 0 ? todayIndex * dayWidth + dayWidth / 2 : null;
-
-  // ── Phase 3: Compute bar data map for dependency lines ────────────────────
+  // Map item bar data
   const barDataMap = useMemo(() => {
     const map = new Map<string, TimelineBarData>();
     for (const item of items) {
-      map.set(item.id, mapItemToBar(item, days));
+      map.set(item.id, mapItemToBar(item, timelineColumns, zoom));
     }
     return map;
-  }, [items, days]);
+  }, [items, timelineColumns, zoom]);
 
+  // Compute dependency lines
   const depLines = useMemo(
-    () => computeDependencyLines(items, barDataMap, dayWidth),
-    [items, barDataMap, dayWidth],
+    () => computeDependencyLines(items, barDataMap),
+    [items, barDataMap]
   );
 
-  const totalRowsHeight = items.length * ROW_HEIGHT;
+  // Quick schedule when clicking empty row cell
+  const handleEmptyCellClick = (item: Item, col: TimelineColumn) => {
+    if (isReadOnly || !onUpdateCard) return;
+    const startStr = formatToDateStr(col.startDate);
+    const dueStr = formatToDateStr(col.endDate);
+    onUpdateCard({
+      id: item.id,
+      startDate: startStr,
+      dueDate: dueStr,
+    });
+  };
 
+  // Active dependency dragging state
   interface ActiveConnectionDrag {
     sourceItemId: string;
     sourceType: 'blocks' | 'blocked_by';
@@ -1113,7 +1210,7 @@ function TimelineCanvas({
             type: 'blocks',
           })
             .then(() => {
-              toast.success('Created dependency relation');
+              toast.success('Created dependency relation', { id: 'work-item-relation' });
               if (onUpdateCard) {
                 const src = items.find((t) => t.id === fromId);
                 if (src) {
@@ -1128,7 +1225,7 @@ function TimelineCanvas({
               }
             })
             .catch((err: any) => {
-              toast.error(err?.message || 'Failed to create relation');
+              toast.error(err?.message || 'Failed to create relation', { id: 'work-item-relation' });
             });
         }
         return null;
@@ -1139,6 +1236,14 @@ function TimelineCanvas({
     window.addEventListener('pointerup', onPointerUp);
   };
 
+  // Current highlighted column bounds
+  const currentCol = currentColumnIndex >= 0 ? timelineColumns[currentColumnIndex] : null;
+  const currentColLeft =
+    currentColumnIndex >= 0
+      ? timelineColumns.slice(0, currentColumnIndex).reduce((acc, c) => acc + c.width, 0)
+      : 0;
+  const currentColWidth = currentCol?.width || 0;
+
   return (
     <div
       ref={canvasScrollRef}
@@ -1148,100 +1253,140 @@ function TimelineCanvas({
       <div style={{ width: `${totalWidth}px` }} className="min-w-full relative flex flex-col">
         {/* Sticky Dual-tier Header */}
         <div
-          className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border select-none"
+          className="sticky top-0 z-30 bg-background border-b border-border select-none shrink-0"
           style={{ height: `${HEADER_HEIGHT}px` }}
         >
-          {/* Tier 1: Month / Year / Week groups (28px) */}
-          <div className="flex h-7 border-b border-border text-xs font-medium text-muted-foreground overflow-hidden">
-            {zoom === 'quarter' ? (
-              // Quarter zoom: show Month groups
-              monthGroups.map((group) => (
-                <div
-                  key={group.key}
-                  style={{ width: `${group.spanCount * dayWidth}px` }}
-                  className="shrink-0 px-2.5 flex items-center border-r border-border text-foreground font-semibold truncate text-11"
-                >
-                  {group.label}
-                </div>
-              ))
-            ) : (
-              // Week & Month zoom: show Month-Year & Week groups
-              weekGroups.map((group) => (
-                <div
-                  key={group.key}
-                  style={{ width: `${group.spanCount * dayWidth}px` }}
-                  className="shrink-0 px-2 flex items-center justify-between border-r border-border text-11 truncate"
-                >
-                  <span className="font-semibold text-foreground">{group.label}</span>
-                  <span className="text-10 text-muted-foreground">
-                    {days[group.startIndex]?.monthYearKey}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Tier 2: Days (28px) e.g. "4 Sa", "5 Su", "11 Sa" */}
-          <div className="flex h-7">
-            {days.map((day) => (
+          {/* Tier 1 Header (30px) */}
+          <div className="flex h-[30px] border-b border-border text-xs text-muted-foreground overflow-hidden">
+            {tier1Groups.map((group) => (
               <div
-                key={day.dateStr}
-                style={{ width: `${dayWidth}px` }}
-                className={`shrink-0 flex items-center justify-center border-r border-border text-11 font-medium transition-colors ${
-                  day.isWeekend ? 'bg-secondary' : ''
-                } ${day.isToday ? 'font-semibold' : 'text-muted-foreground'}`}
+                key={group.id}
+                style={{ width: `${group.width}px` }}
+                className="shrink-0 px-3 flex items-center justify-between border-r border-border text-xs truncate"
               >
-                {day.isToday ? (
-                  <div className="flex items-center gap-1">
-                    <span className="bg-primary text-primary-foreground rounded-full size-5 flex items-center justify-center font-semibold text-10 shadow-none">
-                      {day.dayNumber}
+                <div className="flex items-center gap-1.5 truncate">
+                  <span className="font-normal text-foreground truncate">
+                    {group.label}
+                  </span>
+                  {group.isCurrent && (
+                    <span className="bg-[#0070F3] text-white text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0">
+                      Current
                     </span>
-                    <span className="text-10 text-primary font-semibold">{day.dayOfWeek}</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-0.5 text-foreground">
-                    <span className="text-11 font-normal">{day.dayNumber}</span>
-                    <span className="text-10 text-muted-foreground font-normal">{day.dayOfWeek}</span>
-                  </div>
+                  )}
+                </div>
+                {group.subLabel && (
+                  <span className="text-11 text-muted-foreground font-normal shrink-0">
+                    {group.subLabel}
+                  </span>
                 )}
               </div>
             ))}
           </div>
+
+          {/* Tier 2 Header (30px) */}
+          <div className="flex h-[30px]">
+            {timelineColumns.map((col) => {
+              if (zoom === 'week') {
+                return (
+                  <div
+                    key={col.id}
+                    style={{ width: `${col.width}px` }}
+                    className="shrink-0 flex items-center justify-center border-r border-border text-xs font-normal transition-colors"
+                  >
+                    {col.isCurrent ? (
+                      <div className="flex items-center">
+                        <span className="bg-[#0070F3] text-white font-medium text-xs rounded-[4px] px-1 min-w-[20px] h-[18px] inline-flex items-center justify-center mr-1">
+                          {col.primaryLabel}
+                        </span>
+                        <span className="text-[#0070F3] font-medium text-xs">
+                          {col.secondaryLabel}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 text-foreground">
+                        <span className="font-normal text-xs">{col.primaryLabel}</span>
+                        <span className="text-muted-foreground text-xs font-normal">
+                          {col.secondaryLabel}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              if (zoom === 'month') {
+                return (
+                  <div
+                    key={col.id}
+                    style={{ width: `${col.width}px` }}
+                    className="shrink-0 px-2 flex items-center justify-between border-r border-border text-xs transition-colors"
+                  >
+                    <span
+                      className={cn(
+                        'text-xs font-normal',
+                        col.isCurrent ? 'text-[#0070F3] font-semibold' : 'text-foreground'
+                      )}
+                    >
+                      {col.primaryLabel}
+                    </span>
+                    {col.isCurrent ? (
+                      <span className="bg-[#0070F3] text-white font-medium text-xs px-1.5 py-0.5 rounded-[4px]">
+                        {col.secondaryLabel}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs font-normal">
+                        {col.secondaryLabel}
+                      </span>
+                    )}
+                  </div>
+                );
+              }
+
+              // Quarter Zoom
+              return (
+                <div
+                  key={col.id}
+                  style={{ width: `${col.width}px` }}
+                  className="shrink-0 px-2 flex items-center justify-center border-r border-border text-xs transition-colors"
+                >
+                  {col.isCurrent ? (
+                    <span className="bg-[#0070F3] text-white font-medium text-xs px-2 py-0.5 rounded-[4px]">
+                      {col.primaryLabel}
+                    </span>
+                  ) : (
+                    <span className="text-foreground text-xs font-normal">
+                      {col.primaryLabel}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Grid Background & Rows */}
+        {/* Grid Body */}
         <div className="relative flex-1">
-          {/* Vertical grid lines and Today Highlight Column */}
+          {/* Vertical Grid Lines */}
           <div className="absolute inset-0 flex pointer-events-none z-0">
-            {days.map((day) => (
+            {timelineColumns.map((col) => (
               <div
-                key={`col-bg-${day.dateStr}`}
-                style={{ width: `${dayWidth}px` }}
-                className={`shrink-0 border-r border-border h-full ${
-                  day.isWeekend ? 'bg-secondary' : ''
-                } ${day.isToday ? 'bg-muted' : ''}`}
+                key={`grid-${col.id}`}
+                style={{ width: `${col.width}px` }}
+                className="shrink-0 border-r border-border/40 h-full"
               />
             ))}
           </div>
 
-          {/* Phase 2: Today vertical dashed line */}
-          {todayLineX !== null && (
+          {/* Full-height Soft Blue Highlight Column for Today / Current */}
+          {currentCol && (
             <div
               aria-hidden="true"
-              className="absolute top-0 bottom-0 pointer-events-none z-25"
-              style={{ left: `${todayLineX}px`, transform: 'translateX(-50%)' }}
-            >
-              <div className="h-full border-l-2 border-dashed border-primary/50" />
-              <span
-                className="absolute top-1 left-1 text-10 font-semibold text-primary/70 bg-background/80 px-1 rounded whitespace-nowrap select-none"
-                style={{ fontSize: '10px' }}
-              >
-                Today
-              </span>
-            </div>
+              style={{ left: `${currentColLeft}px`, width: `${currentColWidth}px` }}
+              className="absolute top-0 bottom-0 bg-[#0070F3]/10 dark:bg-[#0070F3]/15 pointer-events-none z-0"
+            />
           )}
 
-          {/* Phase 3: Dependency connector lines SVG overlay */}
+          {/* Dependency lines SVG overlay */}
           <DependencyOverlay
             lines={depLines}
             totalWidth={totalWidth}
@@ -1266,14 +1411,14 @@ function TimelineCanvas({
                   refY="4"
                   orient="auto"
                 >
-                  <path d="M0,1 L8,4 L0,7 z" fill="hsl(var(--primary))" />
+                  <path d="M0,1 L8,4 L0,7 z" fill="#0070F3" />
                 </marker>
               </defs>
               <circle
                 cx={activeDrag.startX}
                 cy={activeDrag.startY}
                 r="4"
-                fill="hsl(var(--primary))"
+                fill="#0070F3"
               />
               <path
                 d={`M ${activeDrag.startX} ${activeDrag.startY} C ${
@@ -1282,7 +1427,7 @@ function TimelineCanvas({
                   activeDrag.startX + (activeDrag.currentX - activeDrag.startX) / 2
                 } ${activeDrag.currentY}, ${activeDrag.currentX} ${activeDrag.currentY}`}
                 fill="none"
-                stroke="hsl(var(--primary))"
+                stroke="#0070F3"
                 strokeWidth="2.5"
                 strokeDasharray="5 3"
                 markerEnd="url(#live-arrow)"
@@ -1291,18 +1436,18 @@ function TimelineCanvas({
                 cx={activeDrag.currentX}
                 cy={activeDrag.currentY}
                 r="5"
-                fill={activeDrag.hoveredItemId ? 'hsl(var(--primary))' : 'none'}
-                stroke="hsl(var(--primary))"
+                fill={activeDrag.hoveredItemId ? '#0070F3' : 'none'}
+                stroke="#0070F3"
                 strokeWidth="2"
               />
             </svg>
           )}
 
-          {/* Work item rows */}
+          {/* Work Item Rows */}
           <div className="relative z-10 flex flex-col">
             {items.map((item, rowIndex) => {
-              const column = getColumnForItem(item);
-              const barData = barDataMap.get(item.id) ?? mapItemToBar(item, days);
+              const stateCol = getStateColumn(item);
+              const barData = barDataMap.get(item.id) ?? mapItemToBar(item, timelineColumns, zoom);
               const isConnectTarget = activeDrag?.hoveredItemId === item.id;
 
               return (
@@ -1310,18 +1455,17 @@ function TimelineCanvas({
                   key={item.id}
                   style={{ height: `${ROW_HEIGHT}px` }}
                   className={cn(
-                    'border-b border-border relative flex items-center group/row hover:bg-muted transition-colors',
+                    'border-b border-border/60 relative flex items-center group/row hover:bg-muted/30 transition-colors',
                     isConnectTarget && 'bg-primary/10 ring-1 ring-inset ring-primary'
                   )}
                 >
                   {barData.hasDates ? (
                     <TimelineBar
                       item={item}
-                      startIndex={barData.startIndex}
-                      endIndex={barData.endIndex}
-                      dayWidth={dayWidth}
-                      days={days}
-                      column={column}
+                      barData={barData}
+                      columns={timelineColumns}
+                      zoom={zoom}
+                      stateColumn={stateCol}
                       rowIndex={rowIndex}
                       onEditCard={onEditCard}
                       onUpdateCard={onUpdateCard}
@@ -1331,25 +1475,17 @@ function TimelineCanvas({
                       isReadOnly={isReadOnly}
                     />
                   ) : (
-                    // Phase 4: Empty row — clickable cells + dashed placeholder hint
+                    /* Empty row: clickable cells to schedule */
                     <div className="absolute inset-0 flex">
-                      {days.map((day) => (
+                      {timelineColumns.map((col) => (
                         <div
-                          key={`cell-${item.id}-${day.dateStr}`}
-                          style={{ width: `${dayWidth}px` }}
-                          onClick={() => handleEmptyRowClick(item, day)}
-                          className="h-full cursor-pointer hover:bg-primary/5 transition-colors group/cell flex items-center justify-center relative"
-                          title="Click to set start date"
+                          key={`empty-cell-${item.id}-${col.id}`}
+                          style={{ width: `${col.width}px` }}
+                          onClick={() => handleEmptyCellClick(item, col)}
+                          className="h-full cursor-pointer hover:bg-primary/5 transition-colors"
+                          title="Click to schedule dates"
                         />
                       ))}
-                      {/* Centered "No dates" dashed placeholder — visible on row hover */}
-                      {!isReadOnly && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover/row:opacity-100 transition-opacity">
-                          <div className="border border-dashed border-muted-foreground/40 rounded-md px-3 h-6 flex items-center text-10 text-muted-foreground/60 font-normal whitespace-nowrap select-none">
-                            Click to set date
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -1357,7 +1493,7 @@ function TimelineCanvas({
             })}
           </div>
 
-          {/* Bottom spacing row matching sidebar "+ New work item" */}
+          {/* Bottom spacer row matching sidebar's "+ New work item" */}
           <div
             style={{ height: `${ROW_HEIGHT}px` }}
             className="border-t border-border relative z-10 bg-background"
@@ -1368,19 +1504,18 @@ function TimelineCanvas({
   );
 }
 
-// ==========================================
-// MAIN COMPONENT
-// ==========================================
+// ============================================================================
+// MAIN TIMELINE VIEW COMPONENT
+// ============================================================================
 
 export function TimelineView({
-  items: propItems = [],
+  items = [],
   columns,
   onAddCard,
   onEditCard,
   onUpdateCard,
   isReadOnly = false,
 }: TimelineViewProps) {
-  const items = propItems;
   // Zoom state with localStorage persistence
   const [zoom, setZoom] = useState<TimelineZoom>(() => {
     if (typeof window !== 'undefined') {
@@ -1398,8 +1533,6 @@ export function TimelineView({
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
   const isSyncingRef = useRef(false);
 
-  const dayWidth = DAY_WIDTHS[zoom];
-
   const handleZoomChange = (newZoom: TimelineZoom) => {
     setZoom(newZoom);
     if (typeof window !== 'undefined') {
@@ -1407,30 +1540,32 @@ export function TimelineView({
     }
   };
 
-  // Generate calendar days
-  const days = useMemo(() => {
-    return getTimelineDays(new Date(), zoom);
+  // Generate timeline columns and header groups based on zoom
+  const { columns: timelineColumns, tier1Groups, currentColumnIndex } = useMemo(() => {
+    return buildTimelineData(zoom, new Date());
   }, [zoom]);
 
-  // Center timeline on "Today"
+  // Center timeline on "Today" or current period
   const scrollToToday = useCallback(() => {
     if (!canvasScrollRef.current) return;
-    const todayIndex = days.findIndex((columnDay) => columnDay.isToday);
-    if (todayIndex !== -1) {
-      const containerWidth = canvasScrollRef.current.clientWidth;
-      const targetLeft = todayIndex * dayWidth - containerWidth / 2 + dayWidth / 2;
+    if (currentColumnIndex !== -1) {
+      const colWidth = COLUMN_WIDTHS[zoom];
+      const targetLeft =
+        currentColumnIndex * colWidth -
+        canvasScrollRef.current.clientWidth / 2 +
+        colWidth / 2;
       canvasScrollRef.current.scrollTo({
         left: Math.max(0, targetLeft),
         behavior: 'smooth',
       });
     }
-  }, [days, dayWidth]);
+  }, [currentColumnIndex, zoom]);
 
-  // Initial scroll to today
+  // Scroll to Today on initial load or zoom switch
   useEffect(() => {
     const timer = setTimeout(() => {
       scrollToToday();
-    }, 100);
+    }, 80);
     return () => clearTimeout(timer);
   }, [zoom, scrollToToday]);
 
@@ -1457,6 +1592,7 @@ export function TimelineView({
     }
   };
 
+  // Fullscreen toggling
   const handleToggleFullscreen = () => {
     if (!containerRef.current) return;
     if (!isFullscreen) {
@@ -1472,7 +1608,6 @@ export function TimelineView({
     }
   };
 
-  // Listen to external fullscreen exit (e.g. Escape key)
   useEffect(() => {
     const onFullscreenChange = () => {
       setIsFullscreen(Boolean(document.fullscreenElement));
@@ -1484,11 +1619,12 @@ export function TimelineView({
   return (
     <div
       ref={containerRef}
-      className={`flex flex-col h-full w-full bg-background select-none ${
-        isFullscreen ? 'fixed inset-0 z-50 p-4 bg-background' : 'p-4'
-      }`}
+      className={cn(
+        'flex flex-col h-full w-full bg-background select-none',
+        isFullscreen && 'fixed inset-0 z-50 bg-background'
+      )}
     >
-      {/* Top Controls: Work item count, Zoom selector (Week | Month | Quarter), Today, Fullscreen */}
+      {/* Top Controls: 7 Work items, Week | Month | Quarter, Today, Fullscreen */}
       <TimelineTopControls
         totalCount={items.length}
         zoom={zoom}
@@ -1498,8 +1634,8 @@ export function TimelineView({
         isFullscreen={isFullscreen}
       />
 
-      {/* Main Gantt Grid: Frozen Sidebar (Work items + Duration + New) & Scrollable Canvas */}
-      <div className="flex-1 flex min-h-0 overflow-hidden border border-border rounded-lg bg-background ">
+      {/* Main Grid: Frozen Sidebar + Scrollable Canvas */}
+      <div className="flex-1 flex min-h-0 overflow-hidden bg-background">
         <TimelineSidebar
           items={items}
           columns={columns}
@@ -1513,9 +1649,10 @@ export function TimelineView({
         <TimelineCanvas
           items={items}
           columns={columns}
-          days={days}
+          timelineColumns={timelineColumns}
+          tier1Groups={tier1Groups}
+          currentColumnIndex={currentColumnIndex}
           zoom={zoom}
-          dayWidth={dayWidth}
           onEditCard={onEditCard}
           onUpdateCard={onUpdateCard}
           isReadOnly={isReadOnly}

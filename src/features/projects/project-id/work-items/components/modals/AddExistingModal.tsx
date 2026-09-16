@@ -103,7 +103,7 @@ export function AddExistingModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-xl p-0 overflow-hidden border border-border bg-background rounded-lg">
+        <DialogContent className="max-w-xl p-0 overflow-hidden border border-border bg-background rounded-lg shadow-lg">
           {/* Header */}
           <DialogHeader className="px-6 py-5 border-b border-border bg-background text-left">
             <DialogTitle className="flex items-center gap-2 text-foreground font-semibold text-base">
@@ -227,7 +227,7 @@ export function AddExistingModal({
               size="sm"
               onClick={() => onOpenChange(false)}
               disabled={isPending}
-              className="text-xs"
+              className="h-8 px-3 text-13 font-medium bg-background border border-border text-foreground hover:bg-muted shadow-2xs rounded-md cursor-pointer"
             >
               Cancel
             </Button>
@@ -235,7 +235,7 @@ export function AddExistingModal({
               size="sm"
               onClick={handleAddItems}
               disabled={selectedIds.length === 0 || isPending}
-              className="text-xs font-semibold"
+              className="h-8 px-4 text-13 font-medium bg-primary text-primary-foreground hover:bg-primary-hover shadow-none rounded-md cursor-pointer"
             >
               {isPending ? "Adding..." : "Add to Cycle"}
             </Button>

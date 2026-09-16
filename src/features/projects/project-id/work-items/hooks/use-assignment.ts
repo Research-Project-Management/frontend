@@ -24,9 +24,9 @@ export const useJoinItemMutation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Joined work item');
+      toast.success('Joined work item', { id: 'work-item-assignment' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to join work item'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to join work item', { id: 'work-item-assignment' }),
   });
 };
 
@@ -41,9 +41,9 @@ export const useLeaveItemMutation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Left work item');
+      toast.success('Left work item', { id: 'work-item-assignment' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to leave work item'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to leave work item', { id: 'work-item-assignment' }),
   });
 };
 
@@ -69,7 +69,7 @@ export const useSetAssigneesMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to update assignees'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to update assignees', { id: 'work-item-assignment' }),
   });
 };
 
@@ -82,9 +82,9 @@ export const useSubscribeItemMutation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Subscribed to notifications');
+      toast.success('Subscribed to notifications', { id: 'work-item-assignment' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to subscribe'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to subscribe', { id: 'work-item-assignment' }),
   });
 };
 
@@ -97,8 +97,8 @@ export const useUnsubscribeItemMutation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Unsubscribed from notifications');
+      toast.success('Unsubscribed from notifications', { id: 'work-item-assignment' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to unsubscribe'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to unsubscribe', { id: 'work-item-assignment' }),
   });
 };

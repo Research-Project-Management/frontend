@@ -1,5 +1,4 @@
-import type { Paper, Item, Collection, Note, ReferenceData } from '../types/library.types';
-import { resolveAcademicQuery, fetchReferenceByDoi } from '../services/citation.service';
+import type { Paper, Item, Note } from '../types/library.types';
 import {
   INSTITUTION_KEYWORDS,
   PREFIX_PARTICLES,
@@ -31,7 +30,7 @@ export {
  * and avoids falling back to DOI landing page URLs.
  */
 export function getPaperFileUrl(
-  paper?: Partial<Paper> | null | undefined,
+  paper?: Partial<Paper> | Partial<Item> | Record<string, any> | null | undefined,
   workspaceId?: string,
 ): string {
   if (!paper) return '';
@@ -280,240 +279,15 @@ export function normalizeNotes(notes?: Array<string | Note | { id?: string; cont
   });
 }
 
-// ── 4. Library Filter Engine ─────────────────────────────────────────────────
+// ── 3. Citation Key & Identifier Resolution ──────────────────────────────────
+export { generateCitationKey, getPaperCitationKey } from './bibtex.util';
 
-export {
-  LibraryFilterEngine,
-  filterItems,
-  filterPapers,
-  isPaperInCollection,
-  type LibraryFilterOptions,
-  type SortOptions,
-} from './filter.util';
-
-export function getUniqueTags(items: Item[]): string[] {
-  const tagSet = new Set<string>();
-  for (const paper of items) {
-    for (const tag of normalizeTags(paper)) {
-      tagSet.add(tag);
-    }
-  }
-  return Array.from(tagSet).sort();
-}
-
-// ── 5. BibTeX Citation Engine ────────────────────────────────────────────────
-export {
-  generateCitationKey,
-  getPaperCitationKey,
-  getBibTeXEntryType,
-  escapeLatexChars,
-  unescapeLatexChars,
-  convertToBibTeX,
-  parseBibTeX,
-  downloadBibTeXFile,
-  BibtexEngine,
-  formatCiteCommand,
-  formatApaCitation,
-  formatIeeeCitation,
-} from './bibtex.util';
-
-// ── 6. DOI & CrossRef Metadata Engine ────────────────────────────────────────
-
-export type PdfMetadata = {
-  title?: string;
-  author?: string;
-  subject?: string;
-  creator?: string;
-  producer?: string;
-  creationDate?: string;
-  modDate?: string;
-  pageCount?: number;
-  keywords?: string[];
-  doi?: string;
-  journal?: string;
-  publisher?: string;
-  issn?: string;
-  isbn?: string;
-  volume?: string;
-  issue?: string;
-  pages?: string;
-  publicationDate?: string;
-  abstract?: string;
-  language?: string;
-  copyright?: string;
-  year?: number | string;
-  authors?: string[];
-  editors?: string[];
-  type?: string;
-  itemType?: string;
-  url?: string;
-  crossrefEnriched?: boolean;
-  extraFields?: Record<string, string>;
-  journalAbbr?: string;
-  shortTitle?: string;
-  rights?: string;
-  license?: string;
-  publicationTitle?: string;
-  place?: string;
-  keywordsList?: string[];
-};
-
-export const DOI_REGEX = /\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9<>+=[\]~]+)\b/;
 export const ARXIV_REGEX = /\b(?:arXiv:\s*)?(\d{4}\.\d{4,5}(?:v\d+)?)\b/i;
-
-export function extractDoiFromText(text: string): string | null {
-  if (!text) return null;
-  const sanitized = text.replace(/\.pdf$/i, '');
-
-  const match = sanitized.match(DOI_REGEX);
-  if (!match) {
-    const cleaned = cleanDoi(sanitized);
-    return cleaned || null;
-  }
-  let s = match[1].replace(/[.,;:]+$/, '');
-  return trimUnmatchedClosingBrackets(s).replace(/[.,;:]+$/, '');
-}
-
-export function normalizeDoi(doi?: string | null): string | null {
-  if (!doi || !doi.trim()) return null;
-  const cleaned = cleanDoi(doi);
-  return cleaned || null;
-}
 
 export function extractArxivId(text: string): string | null {
   if (!text) return null;
   const match = text.match(ARXIV_REGEX);
   return match ? match[1] : null;
-}
-
-export class DoiMetadataEngine {
-  static extractDoi(text: string): string | null {
-    return extractDoiFromText(text);
-  }
-  static normalize(doi: string): string | null {
-    return normalizeDoi(doi);
-  }
-  static extractArxiv(text: string): string | null {
-    return extractArxivId(text);
-  }
-}
-
-export async function extractMetadata(file: File): Promise<PdfMetadata> {
-  let detectedDoi = extractDoiFromText(file.name);
-  let detectedArxiv = extractArxivId(file.name);
-  const rawTitle = file.name.replace(/\.pdf$/i, '').trim();
-  const cleanTitle = detectedDoi && rawTitle.includes(detectedDoi)
-    ? rawTitle
-    : rawTitle.replace(/[-_]/g, ' ').trim();
-  const metadata: PdfMetadata = {
-    title: cleanTitle,
-    doi: detectedDoi ? normalizeDoi(detectedDoi) ?? undefined : undefined,
-    extraFields: {},
-  };
-
-  // If no identifier in filename, inspect first 128KB of PDF buffer to find embedded DOI or arXiv ID
-  if (!detectedDoi && !detectedArxiv && file.size > 0) {
-    try {
-      const slice = file.slice(0, Math.min(file.size, 128 * 1024));
-      const text = await slice.text();
-      detectedDoi = extractDoiFromText(text);
-      detectedArxiv = extractArxivId(text);
-    } catch {
-      // ignore
-    }
-  }
-
-  const queryCandidate = detectedDoi || detectedArxiv || (cleanTitle.length > 5 ? cleanTitle : '');
-
-  if (queryCandidate) {
-    try {
-      const res = await resolveAcademicQuery(queryCandidate);
-      const ref = res?.metadata || (res as any)?.work || (res as any)?.data;
-      if (ref && ref.title) {
-        return {
-          // Keep the provider record intact; only add aliases used by the
-          // upload form so metadata fields are not silently discarded.
-          ...ref,
-          title: ref.title || cleanTitle,
-          authors: ref.authors?.length ? ref.authors : metadata.authors,
-          author: ref.authors?.[0] || metadata.author,
-          keywords: ref.keywords,
-          journal: ref.journal || ref.publicationTitle || ref.publisher,
-          publicationTitle:
-            ref.publicationTitle || ref.journal || ref.publisher,
-          doi: ref.doi || (detectedDoi ? normalizeDoi(detectedDoi) ?? undefined : undefined),
-          url: ref.url || (ref.doi ? `https://doi.org/${ref.doi}` : undefined),
-          type: ref.itemType || ref.type || 'journalArticle',
-          itemType: ref.itemType || ref.type || 'journalArticle',
-          crossrefEnriched: true,
-          extraFields: {
-            ...(metadata.extraFields || {}),
-            ...(ref.extraFields || {}),
-            provider: res.provider,
-            queryType: res.queryType,
-          },
-        };
-      }
-    } catch {
-      // Provider misses (especially CrossRef 404) must not abort file upload.
-      // Try the direct DOI path only when a DOI was detected and differed from queryCandidate.
-      if (detectedDoi && queryCandidate !== detectedDoi) {
-        const enriched = await enrichPaperWithCrossref(detectedDoi).catch(
-          () => ({}),
-        );
-        return { ...metadata, ...enriched };
-      }
-    }
-  }
-
-  return metadata;
-}
-
-export async function enrichPaperWithCrossref(doi: string): Promise<Partial<PdfMetadata>> {
-  try {
-    const clean = normalizeDoi(doi) || doi.trim();
-    if (!clean) return {};
-    const res = await resolveAcademicQuery(clean);
-    const ref = res?.metadata || (res as any)?.work || (res as any)?.data;
-    if (ref && ref.title) {
-      return {
-        ...ref,
-        title: ref.title,
-        authors: ref.authors,
-        author: ref.authors?.[0],
-        journal: ref.journal || ref.publicationTitle || ref.publisher,
-        publicationTitle: ref.publicationTitle || ref.journal || ref.publisher,
-        year: ref.year,
-        volume: ref.volume,
-        issue: ref.issue,
-        pages: ref.pages,
-        doi: ref.doi || clean,
-        url: ref.url,
-        abstract: ref.abstract,
-        crossrefEnriched: true,
-      };
-    }
-    const fallback = await fetchReferenceByDoi(clean);
-    if (!fallback) return {};
-
-    return {
-      title: fallback.title,
-      authors: fallback.authors,
-      author: fallback.authors?.[0],
-      journal: fallback.journal || fallback.publisher,
-      publicationTitle: fallback.journal || fallback.publisher,
-      year: fallback.year,
-      volume: fallback.volume,
-      issue: fallback.issue,
-      pages: fallback.pages,
-      doi: fallback.doi,
-      url: fallback.url,
-      abstract: fallback.abstract,
-      crossrefEnriched: true,
-    };
-  } catch {
-    return {};
-  }
 }
 
 // ── 4. Extra Metadata Sanitization & Zotero Formatting ────────────────────────

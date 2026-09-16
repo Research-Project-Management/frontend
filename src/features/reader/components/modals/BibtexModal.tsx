@@ -7,13 +7,7 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/components/ui";
 import { Button } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import {
-  convertToBibTeX,
-  downloadBibTeXFile,
-  convertToRIS,
-  downloadRISFile,
-  generateCitationKey,
-} from '../../utils/reader.util';
+import { generateCitationKey } from '../../utils/reader.util';
 import { ExportService } from '@/features/library/services/exports.service';
 import type { ReaderDocument } from '../../types/reader.types';
 
@@ -30,14 +24,17 @@ export default function PaperBibtexDialog({
 }: PaperBibtexDialogProps) {
   const [format, setFormat] = useState<'bibtex' | 'ris'>('bibtex');
   const [remoteContent, setRemoteContent] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const { copy, isCopied } = useCopyToClipboard();
 
   React.useEffect(() => {
     if (!open || !paper?.id) {
       setRemoteContent(null);
+      setIsLoading(false);
       return;
     }
     let cancelled = false;
+    setIsLoading(true);
     ExportService.exportLibrary(paper.projectId, {
       format,
       itemIds: [paper.id],
@@ -48,7 +45,10 @@ export default function PaperBibtexDialog({
         }
       })
       .catch((err) => {
-        console.warn('Backend export failed, falling back to local format', err);
+        console.warn('Backend export failed', err);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
       });
     return () => {
       cancelled = true;
@@ -56,12 +56,11 @@ export default function PaperBibtexDialog({
   }, [open, paper?.id, paper?.projectId, format]);
 
   const citationKey = generateCitationKey(paper);
-  const bibTeXString = convertToBibTeX(paper);
-  const risString = convertToRIS(paper);
-  const fallbackString = format === 'bibtex' ? bibTeXString : risString;
-  const contentString = remoteContent || fallbackString;
+  const fallbackString = format === 'bibtex' ? ((paper as any)?.bibtex || '') : '';
+  const contentString = remoteContent || fallbackString || (isLoading ? 'Loading citation from server…' : '');
 
   const handleCopy = async () => {
+    if (!contentString || isLoading) return;
     const ok = await copy(contentString);
     if (ok) {
       toast.success(`${format === 'bibtex' ? 'BibTeX' : 'RIS'} copied to clipboard`, { id: 'reader-clipboard' });
@@ -69,28 +68,22 @@ export default function PaperBibtexDialog({
   };
 
   const handleDownload = () => {
-    if (remoteContent) {
-      const ext = format === 'bibtex' ? 'bib' : 'ris';
-      const mime = format === 'bibtex' ? 'application/x-bibtex' : 'application/x-research-info-systems';
-      const blob = new Blob([remoteContent], { type: `${mime};charset=utf-8` });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${citationKey || 'citation'}.${ext}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast.success(`Downloaded .${ext} file`, { id: 'reader-clipboard' });
+    if (!contentString || isLoading) {
+      toast.error('No citation content available to download', { id: 'reader-clipboard' });
       return;
     }
-    if (format === 'bibtex') {
-      downloadBibTeXFile(paper);
-      toast.success('Downloaded .bib file', { id: 'reader-clipboard' });
-    } else {
-      downloadRISFile(paper);
-      toast.success('Downloaded .ris file', { id: 'reader-clipboard' });
-    }
+    const ext = format === 'bibtex' ? 'bib' : 'ris';
+    const mime = format === 'bibtex' ? 'application/x-bibtex' : 'application/x-research-info-systems';
+    const blob = new Blob([contentString], { type: `${mime};charset=utf-8` });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${citationKey || 'citation'}.${ext}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(`Downloaded .${ext} file`, { id: 'reader-clipboard' });
   };
 
   return (

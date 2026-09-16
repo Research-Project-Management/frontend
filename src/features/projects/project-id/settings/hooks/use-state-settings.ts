@@ -42,9 +42,9 @@ export function useStateSettings(projectId: string) {
     mutationFn: (data: CreateStateInput) => StateService.createState(projectId, data),
     onSuccess: () => {
       invalidateWorkflowCache();
-      toast.success('Workflow state created');
+      toast.success('Workflow state created', { id: 'settings-state' });
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to create state'),
+    onError: (err: Error) => toast.error(err.message || 'Failed to create state', { id: 'settings-state' }),
   });
 
   const updateMut = useMutation({
@@ -52,18 +52,18 @@ export function useStateSettings(projectId: string) {
       StateService.updateState(projectId, stateId, data),
     onSuccess: () => {
       invalidateWorkflowCache();
-      toast.success('Workflow state updated');
+      toast.success('Workflow state updated', { id: 'settings-state' });
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to update state'),
+    onError: (err: Error) => toast.error(err.message || 'Failed to update state', { id: 'settings-state' }),
   });
 
   const reorderMut = useMutation({
     mutationFn: (states: ReorderStateItem[]) => StateService.reorderStates(projectId, states),
     onSuccess: () => {
       invalidateWorkflowCache();
-      toast.success('Workflow states reordered');
+      toast.success('Workflow states reordered', { id: 'settings-state' });
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to reorder states'),
+    onError: (err: Error) => toast.error(err.message || 'Failed to reorder states', { id: 'settings-state' }),
   });
 
   const deleteMut = useMutation({
@@ -71,18 +71,18 @@ export function useStateSettings(projectId: string) {
       StateService.deleteState(projectId, stateId, fallbackStateId),
     onSuccess: () => {
       invalidateWorkflowCache();
-      toast.success('Workflow state deleted');
+      toast.success('Workflow state deleted', { id: 'settings-state' });
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to delete state'),
+    onError: (err: Error) => toast.error(err.message || 'Failed to delete state', { id: 'settings-state' }),
   });
 
   const resetMut = useMutation({
     mutationFn: () => StateService.resetStates(projectId),
     onSuccess: () => {
       invalidateWorkflowCache();
-      toast.success('Workflow states reset to default');
+      toast.success('Workflow states reset to default', { id: 'settings-state' });
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to reset states'),
+    onError: (err: Error) => toast.error(err.message || 'Failed to reset states', { id: 'settings-state' }),
   });
 
   const states: WorkItemState[] =

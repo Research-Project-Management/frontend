@@ -1,8 +1,7 @@
 import type { Item } from '../types/library.types';
 import { normalizeAuthors, cleanDoi } from './author-doi.util';
-import { getDuplicateIds } from './duplicates.util';
+export { getDuplicateIds } from './duplicates.util';
 
-export { getDuplicateIds };
 
 export interface LibraryFilterOptions {
   searchQuery?: string;
@@ -33,26 +32,98 @@ export function isPaperInCollection(paper: Item, collectionId: string): boolean 
   return false;
 }
 
+function normalizeSearchText(text: string): string {
+  return (text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export class LibraryFilterEngine {
   static filterBySearch(items: Item[], query: string): Item[] {
     if (!query || !query.trim()) return items;
-    const q = query.toLowerCase().trim();
+    const normQuery = normalizeSearchText(query);
+    const tokens = normQuery.split(' ').filter(Boolean);
+    if (tokens.length === 0) return items;
 
-    return items.filter((paper) => {
-      const p = paper as { creators?: Array<{ name?: string }>; tags?: unknown[]; labels?: unknown[]; keywords?: unknown[] };
-      const authors = normalizeAuthors(paper.authors, p.creators);
-      const inTitle = paper.title?.toLowerCase().includes(q) ?? false;
-      const inAuthors = authors.some((a) => a.toLowerCase().includes(q));
-      const inAbstract = paper.abstract?.toLowerCase().includes(q) ?? false;
-      const inJournal = (paper.journal || paper.publicationTitle || paper.publisher)?.toLowerCase().includes(q) ?? false;
-      const inDoi = paper.doi?.toLowerCase().includes(q) ?? false;
+    const scoredItems: Array<{ paper: Item; score: number }> = [];
+
+    for (const paper of items) {
+      const p = paper as {
+        creators?: Array<{ name?: string }>;
+        tags?: unknown[];
+        labels?: unknown[];
+        keywords?: unknown[];
+      };
+      const authors = normalizeAuthors(paper.authors, p.creators).map(normalizeSearchText);
+      const title = normalizeSearchText(paper.title || '');
+      const abs = normalizeSearchText(paper.abstract || '');
+      const journal = normalizeSearchText(paper.journal || paper.publicationTitle || paper.publisher || '');
+      const doi = normalizeSearchText(paper.doi || '');
+      const yearStr = String(paper.year || '');
       const rawTags = p.tags || p.labels || p.keywords || [];
-      const inTags = rawTags.some((t) =>
-        (typeof t === 'string' ? t : (t as { name?: string })?.name || '').toLowerCase().includes(q)
+      const tags = rawTags.map((t) =>
+        normalizeSearchText(typeof t === 'string' ? t : (t as { name?: string })?.name || '')
       );
 
-      return inTitle || inAuthors || inAbstract || inJournal || inDoi || inTags;
-    });
+      let totalScore = 0;
+      let allTokensMatch = true;
+
+      for (const token of tokens) {
+        let tokenScore = 0;
+
+        // Title match (highest weight)
+        if (title.includes(token)) {
+          tokenScore = Math.max(tokenScore, title.startsWith(token) ? 100 : 80);
+        }
+
+        // Author match (high weight)
+        if (authors.some((a) => a.includes(token))) {
+          tokenScore = Math.max(tokenScore, 70);
+        }
+
+        // Tag match (high weight)
+        if (tags.some((t) => t.includes(token))) {
+          tokenScore = Math.max(tokenScore, 70);
+        }
+
+        // Year match
+        if (yearStr === token) {
+          tokenScore = Math.max(tokenScore, 65);
+        }
+
+        // Journal / Publisher match
+        if (journal.includes(token)) {
+          tokenScore = Math.max(tokenScore, 50);
+        }
+
+        // DOI match
+        if (doi.includes(token)) {
+          tokenScore = Math.max(tokenScore, 50);
+        }
+
+        // Abstract match
+        if (abs.includes(token)) {
+          tokenScore = Math.max(tokenScore, 30);
+        }
+
+        if (tokenScore === 0) {
+          allTokensMatch = false;
+          break;
+        }
+
+        totalScore += tokenScore;
+      }
+
+      if (allTokensMatch) {
+        scoredItems.push({ paper, score: totalScore });
+      }
+    }
+
+    return scoredItems.sort((a, b) => b.score - a.score).map((s) => s.paper);
   }
 
   static filter(items: Item[], options: LibraryFilterOptions): Item[] {
@@ -199,6 +270,9 @@ export function filterItems(
 
 export const filterPapers = filterItems;
 
+export type LibraryFileFilter = 'all' | 'has-pdf' | 'missing-pdf' | 'has-notes';
+export type LibraryReadStatusFilter = 'all' | 'unread' | 'reading' | 'completed';
+
 export interface FilterItemsOptions {
   items: Item[];
   searchQuery?: string;
@@ -208,6 +282,15 @@ export interface FilterItemsOptions {
   activeCollectionId?: string | null;
   collectionIds?: Set<string>;
   duplicateItemIds?: Set<string>;
+  fileStatus?: LibraryFileFilter | null;
+  readStatus?: LibraryReadStatusFilter | string | null;
+  itemTypes?: string[];
+  fromYear?: number | null;
+  toYear?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  isRetractedOnly?: boolean | null;
+  isMyPublicationOnly?: boolean | null;
 }
 
 export type FilterPapersOptions = FilterItemsOptions;
@@ -239,6 +322,15 @@ export function sortFilterItems({
   activeCollectionId = null,
   collectionIds,
   duplicateItemIds = new Set<string>(),
+  fileStatus = null,
+  readStatus = null,
+  itemTypes = [],
+  fromYear = null,
+  toYear = null,
+  startDate = null,
+  endDate = null,
+  isRetractedOnly = null,
+  isMyPublicationOnly = null,
 }: FilterItemsOptions): Item[] {
   let result = items;
 
@@ -273,6 +365,11 @@ export function sortFilterItems({
     }
   } else if (activeFilter === 'unfiled') {
     result = result.filter((item) => !item.collectionId);
+  } else if (activeFilter === 'starred' || activeFilter === 'favorites') {
+    result = result.filter((item) => {
+      const p = item as { rating?: number; isStarred?: boolean; states?: Array<{ rating?: number }> };
+      return (typeof p.rating === 'number' && p.rating > 0) || Boolean(p.isStarred) || Boolean(p.states?.[0]?.rating && p.states[0].rating > 0);
+    });
   } else if (activeFilter === 'duplicates') {
     result = result.filter((item) => duplicateItemIds.has(item.id));
   } else if (activeFilter === 'retracted') {
@@ -297,6 +394,71 @@ export function sortFilterItems({
       );
       return effectiveTags.every((t) => itemTags.includes(t.toLowerCase()));
     });
+  }
+
+  // 1. File Status Filter (Has PDF / Missing PDF / Has Notes)
+  if (fileStatus && fileStatus !== 'all') {
+    result = result.filter((item) => {
+      const p = item as { fileUrl?: string; primaryFile?: { url?: string }; hasPdf?: boolean; attachments?: unknown[]; notesList?: unknown[]; notes?: unknown };
+      const hasFile = Boolean(p.fileUrl || p.primaryFile?.url || p.hasPdf || (Array.isArray(p.attachments) && p.attachments.length > 0));
+      const hasNotes = Boolean((Array.isArray(p.notesList) && p.notesList.length > 0) || p.notes);
+      if (fileStatus === 'has-pdf') return hasFile;
+      if (fileStatus === 'missing-pdf') return !hasFile;
+      if (fileStatus === 'has-notes') return hasNotes;
+      return true;
+    });
+  }
+
+  // 2. Read Status Filter (Supports single or multi-select checkbox)
+  if (readStatus && readStatus !== 'all') {
+    const targetStatuses = readStatus
+      .toLowerCase()
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (targetStatuses.length > 0) {
+      result = result.filter((item) => {
+        const p = item as { readStatus?: string; states?: Array<{ readStatus?: string }> };
+        const currentReadStatus = (p.readStatus || p.states?.[0]?.readStatus || 'unread').toLowerCase();
+        return targetStatuses.includes(currentReadStatus);
+      });
+    }
+  }
+
+  // 3. Item Types Filter
+  if (itemTypes && itemTypes.length > 0) {
+    const lowerTypes = itemTypes.map((t) => t.toLowerCase());
+    result = result.filter((item) => {
+      const p = item as { type?: string; itemType?: string };
+      const it = (item.itemType || p.type || '').toLowerCase();
+      return lowerTypes.includes(it);
+    });
+  }
+
+  // 4. Date Range Filter (Year / Start Date / End Date)
+  const effectiveFromYear = fromYear ?? (startDate ? parseInt(startDate.split('-')[0], 10) : null);
+  const effectiveToYear = toYear ?? (endDate ? parseInt(endDate.split('-')[0], 10) : null);
+
+  if (effectiveFromYear !== null && !isNaN(effectiveFromYear)) {
+    result = result.filter((item) => {
+      const y = typeof item.year === 'number' ? item.year : parseInt(String(item.year || 0), 10);
+      return y >= effectiveFromYear;
+    });
+  }
+  if (effectiveToYear !== null && !isNaN(effectiveToYear)) {
+    result = result.filter((item) => {
+      const y = typeof item.year === 'number' ? item.year : parseInt(String(item.year || 0), 10);
+      return y <= effectiveToYear;
+    });
+  }
+
+  // 5. Special Flags
+  if (isRetractedOnly) {
+    result = result.filter((item) => Boolean(item.isRetracted));
+  }
+  if (isMyPublicationOnly) {
+    result = result.filter((item) => Boolean(item.isMyPublication));
   }
 
   if (searchQuery.trim()) {

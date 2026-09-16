@@ -19,6 +19,7 @@ import {
   Plus,
   ChevronDown,
   Download,
+  Keyboard,
 } from 'lucide-react';
 
 import {
@@ -93,6 +94,8 @@ export default function Setting() {
     setWordWrap,
     lineNumbers,
     setLineNumbers,
+    keybinding,
+    setKeybinding,
     toggleSettingsPanel,
   } = useSettingsStore();
 
@@ -277,6 +280,18 @@ export default function Setting() {
 
           <SettingRow icon={Hash} label="Line numbers">
             {renderToggle(lineNumbers, setLineNumbers, 'Line numbers')}
+          </SettingRow>
+
+          <SettingRow icon={Keyboard} label="Keybindings" description="Standard or Vim emulation">
+            <Tabs
+              value={keybinding}
+              onValueChange={(v) => setKeybinding(v as 'standard' | 'vim')}
+            >
+              <TabsList className="h-7 p-0.5 border-none bg-secondary">
+                <TabsTrigger value="standard" className="text-xs px-2 py-1">Standard</TabsTrigger>
+                <TabsTrigger value="vim" className="text-xs px-2 py-1">Vim</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </SettingRow>
         </div>
 

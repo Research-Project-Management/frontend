@@ -20,6 +20,7 @@ import {
   Search,
   ShieldAlert,
   Award,
+  Star,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -35,6 +36,7 @@ import ImportFromPersonalModal from '../components/modals/ImportFromPersonalModa
 import { useRetraction } from '../hooks/use-retraction';
 import { ItemService } from '../services/items.service';
 import BatchBar from '../components/table/BatchBar';
+import { type LibraryDisplayOptions, type LibraryOrderBy } from '../components/LibraryDisplayPopover';
 import { Button } from "@/shared/components/ui";
 import { Checkbox } from "@/shared/components/ui";
 import { Skeleton } from "@/shared/components/ui";
@@ -53,7 +55,9 @@ import {
 import { useLibrary } from '../hooks/use-library';
 import { useItemTable, type SortField } from '../hooks/use-items';
 import { normalizeAuthors, formatCreatorCompact } from '../utils/library.util';
-import { cn } from "@/shared/lib/utils";
+import { cn, copyToClipboard } from "@/shared/lib/utils";
+import { CitationService } from '../services/citation.service';
+import { generateCitationKey } from '../utils/bibtex.util';
 import type { Item } from '../types/library.types';
 
 export default function LibraryPage() {
@@ -118,12 +122,32 @@ export default function LibraryPage() {
         isMyPublication
           ? 'Added to My Publications'
           : 'Removed from My Publications',
+        { id: 'authorship-status' }
       );
       queryClient.invalidateQueries({ queryKey: ['items', workspaceId] });
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to update publication status');
+      toast.error('Failed to update publication status', {
+        description: err?.message,
+        id: 'authorship-status',
+      });
     } finally {
       setIsUpdatingAuthorship(false);
+    }
+  };
+
+  const handleToggleStar = async (paper: Item) => {
+    const isStarred =
+      (typeof paper.rating === 'number' && paper.rating > 0) ||
+      Boolean((paper as any).isStarred) ||
+      Boolean((paper as any).states?.[0]?.rating > 0);
+    const newRating = isStarred ? 0 : 5;
+    try {
+      await ItemService.updateItem(effectiveScopeId || workspaceId, paper.id, { rating: newRating });
+      toast.success(isStarred ? 'Removed from Starred' : 'Added to Starred', { id: 'star-status' });
+      queryClient.invalidateQueries({ queryKey: ['items'] });
+      queryClient.invalidateQueries({ queryKey: ['library'] });
+    } catch (err: any) {
+      toast.error('Failed to update star status', { description: err?.message, id: 'star-status' });
     }
   };
 
@@ -165,6 +189,8 @@ export default function LibraryPage() {
     sortField,
     sortOrder,
     handleSort,
+    setSortField,
+    setSortOrder,
     selectedIds,
     isAllSelected,
     isPartiallySelected,
@@ -176,6 +202,30 @@ export default function LibraryPage() {
     initialSortField: 'createdAt',
     initialSortOrder: 'desc',
   });
+
+  const [displayOptions, setDisplayOptions] = useState<LibraryDisplayOptions>({
+    columns: {
+      authors: true,
+      year: true,
+      publication: true,
+      citations: false,
+      dateAdded: false,
+      collection: !isProjectScope && activeFilter !== 'unfiled',
+    },
+    orderBy: 'createdAt',
+    orderDirection: 'desc',
+    density: 'comfortable',
+  });
+
+  const handleDisplayOptionsChange = useCallback((newOpts: LibraryDisplayOptions) => {
+    setDisplayOptions(newOpts);
+    if (newOpts.orderBy !== sortField) {
+      setSortField(newOpts.orderBy as SortField);
+    }
+    if (newOpts.orderDirection !== sortOrder) {
+      setSortOrder(newOpts.orderDirection);
+    }
+  }, [sortField, sortOrder, setSortField, setSortOrder]);
 
   const handleSelectItem = (item: Item) => {
     const itemId = item.id;
@@ -239,6 +289,81 @@ export default function LibraryPage() {
     setTrashTarget(null);
   };
 
+  const handleQuickCopyCitation = useCallback(
+    async (itemsToCopy?: Item[]) => {
+      const targetItems =
+        itemsToCopy && itemsToCopy.length > 0
+          ? itemsToCopy
+          : selectedIds.size > 0
+            ? sortedItems.filter((i) => selectedIds.has(i.id))
+            : selectedItem
+              ? [selectedItem]
+              : [];
+
+      if (targetItems.length === 0) {
+        toast.info('Select a reference to copy citation (Ctrl+Shift+C)', {
+          id: 'quick-cite-shortcut',
+        });
+        return;
+      }
+
+      const itemIds = targetItems.map((p) => p.id).filter(Boolean);
+      try {
+        const res = await CitationService.batchFormat(
+          effectiveScopeId || workspaceId,
+          itemIds,
+          'apa',
+        );
+        const text = res.citations
+          .map((c) => c.citation?.bibliography)
+          .filter(Boolean)
+          .join('\n\n');
+
+        if (text) {
+          await copyToClipboard(text);
+          toast.success(
+            targetItems.length === 1
+              ? 'Copied APA citation to clipboard'
+              : `Copied ${targetItems.length} APA citations to clipboard`,
+            { id: 'quick-cite-shortcut' },
+          );
+          return;
+        }
+      } catch {
+        // Fallback to in-text or cite command
+      }
+
+      const keys = targetItems.map((p) => generateCitationKey(p)).filter(Boolean);
+      const citeCmd = `\\cite{${keys.join(', ')}}`;
+      await copyToClipboard(citeCmd);
+      toast.success(`Copied citation key ${citeCmd} to clipboard`, {
+        id: 'quick-cite-shortcut',
+      });
+    },
+    [selectedIds, sortedItems, selectedItem, effectiveScopeId, workspaceId],
+  );
+
+  // Global Zotero Hotkey: Ctrl+Shift+C / Cmd+Shift+C to Quick Copy Citation
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+        const target = e.target as HTMLElement | null;
+        if (
+          target &&
+          (target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.isContentEditable)
+        ) {
+          return;
+        }
+        e.preventDefault();
+        handleQuickCopyCitation();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleQuickCopyCitation]);
+
   const [hasUserSorted, setHasUserSorted] = useState(false);
 
   const onColumnSort = (field: SortField) => {
@@ -271,6 +396,9 @@ export default function LibraryPage() {
         return { title: 'Recently Read', icon: History };
       case 'unfiled':
         return { title: 'Unfiled Items', icon: Inbox };
+      case 'starred':
+      case 'favorites':
+        return { title: 'Starred Items', icon: Star };
       case 'duplicates':
         return { title: 'Duplicate Items', icon: Files };
       case 'trash':
@@ -303,7 +431,10 @@ export default function LibraryPage() {
           search={search}
           onSearchChange={setSearch}
           workspaceId={workspaceId}
+          items={state.items}
           showFilter={activeFilter !== 'trash'}
+          displayOptions={displayOptions}
+          onDisplayOptionsChange={handleDisplayOptionsChange}
           onDirectFilesUpload={canEdit && activeFilter !== 'trash' ? handleDirectFilesUpload : undefined}
           onDirectFolderUpload={canEdit && activeFilter !== 'trash' ? handleDirectFolderUpload : undefined}
           onAddCollection={canEdit && activeFilter !== 'trash' ? () => setCreateCollectionOpen(true) : undefined}
@@ -358,12 +489,40 @@ export default function LibraryPage() {
           ) : filteredItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 h-full min-h-[300px] text-center p-8 select-none">
               <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                <BookOpen className="size-6 text-muted-foreground shrink-0" />
+                {activeFilter === 'my-publications' || activeFilter === 'publications' ? (
+                  <Award className="size-6 text-muted-foreground shrink-0" />
+                ) : activeFilter === 'retracted' ? (
+                  <ShieldAlert className="size-6 text-muted-foreground shrink-0" />
+                ) : activeFilter === 'saved-search' ? (
+                  <Search className="size-6 text-muted-foreground shrink-0" />
+                ) : activeFilter === 'starred' || activeFilter === 'favorites' ? (
+                  <Star className="size-6 text-muted-foreground shrink-0" />
+                ) : (
+                  <BookOpen className="size-6 text-muted-foreground shrink-0" />
+                )}
               </div>
-              <h2 className="text-sm font-semibold text-foreground">No references found</h2>
+              <h2 className="text-sm font-semibold text-foreground">
+                {activeFilter === 'my-publications' || activeFilter === 'publications'
+                  ? 'No publications listed'
+                  : activeFilter === 'retracted'
+                  ? 'No retracted items'
+                  : activeFilter === 'saved-search'
+                  ? 'No matching results'
+                  : activeFilter === 'starred' || activeFilter === 'favorites'
+                  ? 'No starred items'
+                  : 'No references found'}
+              </h2>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm">
                 {search.trim()
                   ? 'No references matching your search query.'
+                  : activeFilter === 'my-publications' || activeFilter === 'publications'
+                  ? 'No authored publications yet. Flag items with your authorship to list them here.'
+                  : activeFilter === 'retracted'
+                  ? 'No retracted items detected in your library. All items appear clear.'
+                  : activeFilter === 'saved-search'
+                  ? 'No references currently match the conditions of this saved search.'
+                  : activeFilter === 'starred' || activeFilter === 'favorites'
+                  ? "You haven't starred any references yet. Rate or star references to easily access your key papers."
                   : 'Add references, PDFs, or BibTeX entries to build your research library.'}
               </p>
               {search.trim() ? (
@@ -381,21 +540,28 @@ export default function LibraryPage() {
               <table className="w-full table-fixed text-left border-collapse">
                 <colgroup>
                   <col className="w-10" />
-                  <col className={isProjectScope ? 'w-4/12' : activeFilter === 'unfiled' ? 'w-5/12' : 'w-4/12'} />
-                  <col className={isProjectScope ? 'w-3/12' : activeFilter === 'unfiled' ? 'w-4/12' : 'w-3/12'} />
-                  <col className="w-[70px]" />
-                  {activeFilter !== 'unfiled' && (
+                  <col className="min-w-[200px]" />
+                  {displayOptions.columns.authors && <col className="w-[180px] sm:w-[220px]" />}
+                  {displayOptions.columns.year && <col className="w-[70px]" />}
+                  {displayOptions.columns.publication && <col className="w-[160px] sm:w-[200px]" />}
+                  {displayOptions.columns.citations && <col className="w-[75px]" />}
+                  {displayOptions.columns.collection && activeFilter !== 'unfiled' && (
                     <col className={isProjectScope ? 'w-2/12' : 'w-3/12'} />
                   )}
                   {isProjectScope && (
                     <col className="w-[120px]" />
                   )}
-                  <col className={activeFilter === 'unfiled' ? 'w-[120px]' : 'w-[110px]'} />
+                  {displayOptions.columns.dateAdded && (
+                    <col className={activeFilter === 'unfiled' ? 'w-[120px]' : 'w-[110px]'} />
+                  )}
                   <col className="w-10" />
                 </colgroup>
                 <thead className="sticky top-0 z-20 bg-background border-b border-border select-none">
-                  <tr className="h-9 type-dense font-normal text-foreground [&_th]:font-normal [&_th]:text-foreground">
-                    <th scope="col" className="w-10 px-2.5 py-1.5 text-center align-middle">
+                  <tr className={cn(
+                    "type-dense font-normal text-foreground [&_th]:font-normal [&_th]:text-foreground",
+                    displayOptions.density === 'compact' ? "h-8" : "h-9"
+                  )}>
+                    <th scope="col" className="w-10 px-2.5 py-1 text-center align-middle">
                       <Checkbox
                         checked={isAllSelected ? true : isPartiallySelected ? 'indeterminate' : false}
                         onCheckedChange={toggleSelectAll}
@@ -414,81 +580,129 @@ export default function LibraryPage() {
                           onColumnSort('title');
                         }
                       }}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer min-w-0 truncate outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
+                      className="group/th px-3.5 py-1 align-middle cursor-pointer min-w-0 truncate outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
                     >
                       <div className="flex items-center">
                         <span className="truncate">Title</span>
                         {renderSortIcon('title')}
                       </div>
                     </th>
-                    <th
-                      scope="col"
-                      role="columnheader"
-                      aria-sort={hasUserSorted && sortField === 'authors' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-                      tabIndex={0}
-                      onClick={() => onColumnSort('authors')}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          onColumnSort('authors');
-                        }
-                      }}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer truncate outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
-                    >
-                      <div className="flex items-center">
-                        <span className="truncate">Creator</span>
-                        {renderSortIcon('authors')}
-                      </div>
-                    </th>
-                    <th
-                      scope="col"
-                      role="columnheader"
-                      aria-sort={hasUserSorted && sortField === 'year' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-                      tabIndex={0}
-                      onClick={() => onColumnSort('year')}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          onColumnSort('year');
-                        }
-                      }}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
-                    >
-                      <div className="flex items-center">
-                        <span className="whitespace-nowrap">Year</span>
-                        {renderSortIcon('year')}
-                      </div>
-                    </th>
-                    {activeFilter !== 'unfiled' && (
-                      <th scope="col" className="px-3.5 py-1.5 align-middle truncate">
+                    {displayOptions.columns.authors && (
+                      <th
+                        scope="col"
+                        role="columnheader"
+                        aria-sort={hasUserSorted && sortField === 'authors' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        tabIndex={0}
+                        onClick={() => onColumnSort('authors')}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onColumnSort('authors');
+                          }
+                        }}
+                        className="group/th px-3.5 py-1 align-middle cursor-pointer truncate outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
+                      >
+                        <div className="flex items-center">
+                          <span className="truncate">Creator</span>
+                          {renderSortIcon('authors')}
+                        </div>
+                      </th>
+                    )}
+                    {displayOptions.columns.year && (
+                      <th
+                        scope="col"
+                        role="columnheader"
+                        aria-sort={hasUserSorted && sortField === 'year' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        tabIndex={0}
+                        onClick={() => onColumnSort('year')}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onColumnSort('year');
+                          }
+                        }}
+                        className="group/th px-3.5 py-1 align-middle cursor-pointer whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
+                      >
+                        <div className="flex items-center">
+                          <span className="whitespace-nowrap">Year</span>
+                          {renderSortIcon('year')}
+                        </div>
+                      </th>
+                    )}
+                    {displayOptions.columns.publication && (
+                      <th
+                        scope="col"
+                        role="columnheader"
+                        aria-sort={hasUserSorted && sortField === 'journal' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        tabIndex={0}
+                        onClick={() => onColumnSort('journal')}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onColumnSort('journal');
+                          }
+                        }}
+                        className="group/th px-3.5 py-1 align-middle cursor-pointer truncate outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
+                      >
+                        <div className="flex items-center">
+                          <span className="truncate">Publication</span>
+                          {renderSortIcon('journal')}
+                        </div>
+                      </th>
+                    )}
+                    {displayOptions.columns.citations && (
+                      <th
+                        scope="col"
+                        role="columnheader"
+                        aria-sort={hasUserSorted && sortField === 'citationCount' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        tabIndex={0}
+                        onClick={() => onColumnSort('citationCount')}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onColumnSort('citationCount');
+                          }
+                        }}
+                        className="group/th px-3.5 py-1 align-middle cursor-pointer whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
+                      >
+                        <div className="flex items-center">
+                          <span className="whitespace-nowrap">Citations</span>
+                          {renderSortIcon('citationCount')}
+                        </div>
+                      </th>
+                    )}
+                    {displayOptions.columns.collection && activeFilter !== 'unfiled' && (
+                      <th scope="col" className="px-3.5 py-1 align-middle truncate">
                         <span className="truncate">Collection</span>
                       </th>
                     )}
                     {isProjectScope && (
-                      <th scope="col" className="px-3.5 py-1.5 align-middle truncate">
+                      <th scope="col" className="px-3.5 py-1 align-middle truncate">
                         <span className="truncate">Added By</span>
                       </th>
                     )}
-                    <th
-                      scope="col"
-                      role="columnheader"
-                      aria-sort={hasUserSorted && sortField === 'createdAt' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-                      tabIndex={0}
-                      onClick={() => onColumnSort('createdAt')}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          onColumnSort('createdAt');
-                        }
-                      }}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
-                    >
-                      <div className="flex items-center">
-                        <span className="whitespace-nowrap">Date Added</span>
-                        {renderSortIcon('createdAt')}
-                      </div>
-                    </th>
-                    <th scope="col" className="w-10 px-2 py-1.5" />
+                    {displayOptions.columns.dateAdded && (
+                      <th
+                        scope="col"
+                        role="columnheader"
+                        aria-sort={hasUserSorted && sortField === 'createdAt' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        tabIndex={0}
+                        onClick={() => onColumnSort('createdAt')}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onColumnSort('createdAt');
+                          }
+                        }}
+                        className="group/th px-3.5 py-1 align-middle cursor-pointer whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
+                      >
+                        <div className="flex items-center">
+                          <span className="whitespace-nowrap">Date Added</span>
+                          {renderSortIcon('createdAt')}
+                        </div>
+                      </th>
+                    )}
+                    <th scope="col" className="w-10 px-2 py-1" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/30">
@@ -508,12 +722,24 @@ export default function LibraryPage() {
                           <tr
                             onClick={(clickEvent) => handleRowClick(clickEvent, paper)}
                             onDoubleClick={(clickEvent) => handleRowDoubleClick(clickEvent, paper)}
+                            draggable={canEdit}
+                            onDragStart={(e) => {
+                              const idsToMove = selectedIds.has(paper.id)
+                                ? Array.from(selectedIds)
+                                : [paper.id];
+                              e.dataTransfer.setData(
+                                'application/x-flux-items',
+                                JSON.stringify({ ids: idsToMove, title: paper.title })
+                              );
+                              e.dataTransfer.effectAllowed = 'move';
+                            }}
                             className={cn(
-                              'group h-9 transition-colors cursor-pointer border-b border-border',
+                              'group transition-colors cursor-pointer border-b border-border',
+                              displayOptions.density === 'compact' ? 'h-7.5 text-11' : 'h-9 text-12',
                               isSelected ? 'bg-muted' : isActive ? 'bg-muted' : 'hover:bg-muted',
                             )}
                           >
-                            <td className="w-10 px-2.5 py-1.5 text-center align-middle" onClick={(clickEvent) => clickEvent.stopPropagation()}>
+                            <td className={cn("w-10 px-2.5 text-center align-middle", displayOptions.density === 'compact' ? "py-0.5" : "py-1.5")} onClick={(clickEvent) => clickEvent.stopPropagation()}>
                               <Checkbox
                                 checked={isSelected}
                                 onCheckedChange={() => toggleSelect(paper.id)}
@@ -521,7 +747,7 @@ export default function LibraryPage() {
                               />
                             </td>
 
-                            <td className="px-3.5 py-1.5 align-middle min-w-0 max-w-0 truncate">
+                            <td className={cn("px-3.5 align-middle min-w-0 max-w-0 truncate", displayOptions.density === 'compact' ? "py-0.5" : "py-1.5")}>
                               <div className="flex items-center gap-2 min-w-0">
                                 {paper.isMyPublication && (
                                   <span
@@ -541,53 +767,84 @@ export default function LibraryPage() {
                                     Retracted
                                   </span>
                                 )}
+                                {((typeof paper.rating === 'number' && paper.rating > 0) || Boolean((paper as any).isStarred) || Boolean((paper as any).states?.[0]?.rating > 0)) && (
+                                  <Star className="size-3 fill-amber-400 text-amber-500 shrink-0 select-none" />
+                                )}
                                 <span className="truncate block type-dense font-normal text-foreground" title={paper.title || 'Untitled Reference'}>
                                   {paper.title || 'Untitled Reference'}
                                 </span>
                               </div>
                             </td>
 
-                            <td className="px-3.5 py-1.5 align-middle max-w-0 truncate">
-                              <span className="truncate block type-dense font-normal text-foreground" title={authorFull}>
-                                {authorCompact}
-                              </span>
-                            </td>
+                            {displayOptions.columns.authors && (
+                              <td className={cn("px-3.5 align-middle max-w-0 truncate", displayOptions.density === 'compact' ? "py-0.5" : "py-1.5")}>
+                                <span className="truncate block type-dense font-normal text-foreground" title={authorFull}>
+                                  {authorCompact}
+                                </span>
+                              </td>
+                            )}
 
-                            <td className="px-3.5 py-1.5 align-middle type-dense font-normal text-foreground tabular-nums truncate">
-                              {paper.year || '—'}
-                            </td>
+                            {displayOptions.columns.year && (
+                              <td className={cn("px-3.5 align-middle type-dense font-normal text-foreground tabular-nums truncate", displayOptions.density === 'compact' ? "py-0.5" : "py-1.5")}>
+                                {paper.year || '—'}
+                              </td>
+                            )}
 
-                            {activeFilter !== 'unfiled' && (
-                              <td className="px-3.5 py-1.5 align-middle type-dense font-normal text-foreground truncate">
-                                {collection?.name || '—'}
+                            {displayOptions.columns.publication && (
+                              <td className={cn("px-3.5 align-middle max-w-0 truncate", displayOptions.density === 'compact' ? "py-0.5" : "py-1.5")}>
+                                <span className="truncate block type-dense font-normal text-foreground" title={paper.publicationTitle || paper.journal || paper.publisher || '—'}>
+                                  {paper.publicationTitle || paper.journal || paper.publisher || '—'}
+                                </span>
+                              </td>
+                            )}
+
+                            {displayOptions.columns.citations && (
+                              <td className={cn("px-3.5 align-middle type-dense font-normal text-foreground tabular-nums truncate", displayOptions.density === 'compact' ? "py-0.5" : "py-1.5")}>
+                                {paper.citationCount ?? '—'}
+                              </td>
+                            )}
+
+                            {displayOptions.columns.collection && activeFilter !== 'unfiled' && (
+                              <td className={cn("px-3.5 align-middle max-w-0 truncate", displayOptions.density === 'compact' ? "py-0.5" : "py-1.5")}>
+                                <span className="truncate block type-dense font-normal text-foreground" title={collection?.name || 'Unfiled'}>
+                                  {collection?.name || 'Unfiled'}
+                                </span>
                               </td>
                             )}
 
                             {isProjectScope && (
-                              <td className="px-3.5 py-1.5 align-middle type-dense font-normal text-muted-foreground truncate">
-                                <span className="truncate block" title={addedByUser?.email ? `${addedByName} (${addedByUser.email})` : addedByName}>
+                              <td className={cn("px-3.5 align-middle max-w-0 truncate", displayOptions.density === 'compact' ? "py-0.5" : "py-1.5")}>
+                                <span className="truncate block type-dense font-normal text-foreground" title={addedByName}>
                                   {addedByName}
                                 </span>
                               </td>
                             )}
 
-                            <td className="px-3.5 py-1.5 align-middle type-dense font-normal text-foreground tabular-nums whitespace-nowrap">
-                              {paper.createdAt ? new Date(paper.createdAt).toLocaleDateString('en-US') : '—'}
-                            </td>
+                            {displayOptions.columns.dateAdded && (
+                              <td className={cn("px-3.5 align-middle type-dense font-normal text-muted-foreground whitespace-nowrap", displayOptions.density === 'compact' ? "py-0.5" : "py-1.5")}>
+                                {paper.createdAt ? new Date(paper.createdAt).toLocaleDateString() : '—'}
+                              </td>
+                            )}
 
-                            <td className="w-10 px-2 py-1.5 align-middle text-right" onClick={(clickEvent) => clickEvent.stopPropagation()}>
-                              <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                            {/* Row options menu */}
+                            <td className={cn("w-10 px-2 text-right align-middle", displayOptions.density === 'compact' ? "py-0.5" : "py-1.5")} onClick={(clickEvent) => clickEvent.stopPropagation()}>
+                              <div className="flex items-center justify-end">
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <button
-                                      type="button"
-                                      className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                                      aria-label="Actions"
+                                      className="flex size-7 shrink-0 items-center justify-center rounded-sm text-foreground opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-muted transition-opacity cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                      aria-label={`Options for ${paper.title || 'reference'}`}
                                     >
-                                      <MoreVertical className="size-4 text-foreground shrink-0" />
+                                      <MoreVertical className="size-3.5 text-foreground shrink-0" />
                                     </button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
+                                  <DropdownMenuContent
+                                    side="bottom"
+                                    align="end"
+                                    sideOffset={4}
+                                    collisionPadding={12}
+                                    className="w-52 p-1 rounded-md border border-border bg-popover text-popover-foreground z-50 text-xs shadow-none space-y-0.5"
+                                  >
                                     <DropdownMenuItem
                                       onClick={() => router.push(`/library/papers/${paper.id}`)}
                                       className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
@@ -596,11 +853,28 @@ export default function LibraryPage() {
                                       <span>Open in Reader</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
+                                      onClick={() => handleQuickCopyCitation([paper])}
+                                      className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary justify-between"
+                                    >
+                                      <div className="flex items-center gap-2.5">
+                                        <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                                        <span>Copy Citation</span>
+                                      </div>
+                                      <span className="text-10 text-muted-foreground font-mono">Ctrl+Shift+C</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handleToggleStar(paper)}
+                                      className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                    >
+                                      <Star className={cn("size-3.5 shrink-0", ((typeof paper.rating === 'number' && paper.rating > 0) || Boolean((paper as any).isStarred) || Boolean((paper as any).states?.[0]?.rating > 0)) ? "fill-amber-400 text-amber-500" : "text-foreground")} strokeWidth={1.5} />
+                                      <span>{((typeof paper.rating === 'number' && paper.rating > 0) || Boolean((paper as any).isStarred) || Boolean((paper as any).states?.[0]?.rating > 0)) ? 'Remove from Starred' : 'Add to Starred'}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
                                       onClick={() => handleSelectItem(paper)}
                                       className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
                                       <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                                      <span>Cite</span>
+                                      <span>Cite in Inspector</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => setAuthorshipModalItem(paper)}
@@ -631,14 +905,25 @@ export default function LibraryPage() {
                             </td>
                           </tr>
                         </ContextMenuTrigger>
-                        <ContextMenuContent className="w-48 text-12 font-sans">
+                        <ContextMenuContent className="w-56 text-12 font-sans">
                           <ContextMenuItem onClick={() => router.push(`/library/papers/${paper.id}`)} className="gap-2 text-foreground">
                             <BookOpen className="size-3.5 text-foreground shrink-0" />
                             <span>Open in Reader</span>
                           </ContextMenuItem>
+                          <ContextMenuItem onClick={() => handleQuickCopyCitation([paper])} className="gap-2 text-foreground justify-between">
+                            <div className="flex items-center gap-2">
+                              <Quote className="size-3.5 text-foreground shrink-0" />
+                              <span>Copy Citation</span>
+                            </div>
+                            <span className="text-10 text-muted-foreground font-mono">Ctrl+Shift+C</span>
+                          </ContextMenuItem>
+                          <ContextMenuItem onClick={() => handleToggleStar(paper)} className="gap-2 text-foreground">
+                            <Star className={cn("size-3.5 shrink-0", ((typeof paper.rating === 'number' && paper.rating > 0) || Boolean((paper as any).isStarred) || Boolean((paper as any).states?.[0]?.rating > 0)) ? "fill-amber-400 text-amber-500" : "text-foreground")} />
+                            <span>{((typeof paper.rating === 'number' && paper.rating > 0) || Boolean((paper as any).isStarred) || Boolean((paper as any).states?.[0]?.rating > 0)) ? 'Remove from Starred' : 'Add to Starred'}</span>
+                          </ContextMenuItem>
                           <ContextMenuItem onClick={() => handleSelectItem(paper)} className="gap-2 text-foreground">
                             <Quote className="size-3.5 text-foreground shrink-0" />
-                            <span>Cite</span>
+                            <span>Cite in Inspector</span>
                           </ContextMenuItem>
                           <ContextMenuItem onClick={() => setAuthorshipModalItem(paper)} className="gap-2 text-foreground">
                             <Award className="size-3.5 text-foreground shrink-0" />

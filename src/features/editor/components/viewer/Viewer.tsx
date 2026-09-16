@@ -8,15 +8,24 @@ import {
   LatexCompilerEngine,
   type SyncTeXMap,
 } from '@/features/editor/utils/viewer.util';
+import { ViewerBroadcastBridge } from '@/features/editor/utils/popout-channel.util';
 import { filesQuery, usePageActions } from '@/features/editor/hooks/use-core';
+import { versionService } from '@/features/editor/services/history.service';
 import type { Page as ProjectPage } from '@/features/editor/types';
+import {
+  extractPdfBookmarks,
+  extractOutlineFromContent,
+  type PdfOutlineItem,
+} from '@/features/editor/utils/pdf-outline.util';
 
 import Toolbar from './Toolbar';
 import Surface, { type SurfaceHandle } from './Surface';
 import Logs, { parseLatexLog } from './Logs';
 import Status from './Status';
+import DetachedViewerPlaceholder from './DetachedViewerPlaceholder';
 
 export default function Viewer() {
+  const lastCheckpointTimeRef = useRef<number>(0);
   const {
     getEditorContent,
     compileRef,
@@ -28,7 +37,16 @@ export default function Viewer() {
     activeFilePage,
     setActiveFilePage,
   } = usePageStore();
-  const { engine, compileMode, setCompileMode, mainFile, useCache } = useSettingsStore();
+  const {
+    engine,
+    setEngine,
+    compileMode,
+    setCompileMode,
+    mainFile,
+    useCache,
+    autoCompile,
+    setAutoCompile,
+  } = useSettingsStore();
 
   const {
     compileStatus,
@@ -43,7 +61,10 @@ export default function Viewer() {
     pendingCompile,
     setPendingCompile,
     getDirtyFiles,
+    clearDirty,
     clearAllDirty,
+    isViewerPoppedOut,
+    setIsViewerPoppedOut,
   } = useCompileStore();
 
   const { updateThumbnail: saveThumbnailMutation } = usePageActions();
@@ -55,12 +76,15 @@ export default function Viewer() {
   const parentPageIdRef = useRef<string | null>(null);
   parentPageIdRef.current = urlPageId ?? null;
   const prevPdfUrlRef = useRef<string | null>(null);
+  const popupWinRef = useRef<Window | null>(null);
+  const bridgeRef = useRef<ViewerBroadcastBridge | null>(null);
 
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
   const [showLog, setShowLog] = useState(false);
   const [scrollMode] = useState(true);
+  const [pdfOutline, setPdfOutline] = useState<PdfOutlineItem[]>([]);
 
   const [autoFit, setAutoFit] = useState(true);
   const [containerWidth, setContainerWidth] = useState(600);
@@ -120,12 +144,11 @@ export default function Viewer() {
   };
 
   const handleToggleAutoFit = () => {
-    if (!autoFit) {
-      setAutoFit(true);
-      setScale(fittedScale);
-    } else {
-      setAutoFit(false);
-    }
+    setAutoFit((prev) => {
+      const next = !prev;
+      if (next) setScale(fittedScale);
+      return next;
+    });
   };
 
   const showZoomGroup = containerWidth >= 480;
@@ -143,12 +166,19 @@ export default function Viewer() {
   });
 
   const findPageByBasename = (basename: string) => {
-    const base = basename.replace(/\.tex$/, '').toLowerCase();
-    return pageFiles.find((p: any) => p.title.replace(/\.tex$/, '').toLowerCase() === base);
+    const cleanName = basename.replace(/^\.\//, '').toLowerCase();
+    const baseNoExt = cleanName.replace(/\.(tex|bib|sty|cls)$/i, '');
+    return pageFiles.find((p: any) => {
+      const titleLower = (p.title || '').toLowerCase();
+      return (
+        titleLower === cleanName ||
+        titleLower.replace(/\.(tex|bib|sty|cls)$/i, '') === baseNoExt
+      );
+    });
   };
 
   // Compile runner using unified LatexCompilerEngine
-  const handleCompile = async () => {
+  const handleCompile = async (options?: { forceClean?: boolean }) => {
     const rootId = parentPageIdRef.current;
     if (!rootId) return;
 
@@ -161,12 +191,14 @@ export default function Viewer() {
       else dirtyFiles.push({ fileId: activeFilePage.id, content: currentVal });
     }
 
+    const effectiveProjectId = currentPage?.projectId || projectId || '';
     const res = await LatexCompilerEngine.compile({
-      projectId: rootId,
+      projectId: effectiveProjectId,
+      pageId: rootId,
       mainFile: mainFile || 'main.tex',
       engine: engine || 'pdflatex',
       draft: compileMode === 'draft',
-      useCache,
+      useCache: options?.forceClean ? false : useCache,
       dirtyFiles,
       onPhaseChange: setCompileStatus,
       onThumbnailGenerated: (base64) => {
@@ -193,11 +225,37 @@ export default function Viewer() {
       setCompileStatus('done');
       setLastCompiledAt(res.compiledAt);
       setCompileErrors([]);
-      clearAllDirty();
+
+      // Granular dirty clearing: only clear files that were successfully saved
+      if (res.flushedFileIds && res.flushedFileIds.length > 0) {
+        res.flushedFileIds.forEach((fid) => clearDirty(fid));
+
+        // Auto-checkpoint on successful compile (throttled to at most once per 60s)
+        const now = Date.now();
+        if (now - lastCheckpointTimeRef.current > 60000 && activeFilePage?.id) {
+          lastCheckpointTimeRef.current = now;
+          versionService
+            .save({
+              pageId: activeFilePage.id,
+              label: 'Compile checkpoint',
+              eventType: 'auto_save',
+              fileName: activeFilePage.title || 'main.tex',
+              rootPageId: rootId,
+            })
+            .catch(() => {});
+        }
+      } else if (!res.flushErrors || res.flushErrors.length === 0) {
+        clearAllDirty();
+      }
     } else {
       setCompileStatus('error');
       setCompileLog(res.logs);
       setCompileErrors(res.errors || []);
+
+      // If any files were successfully flushed, clear their dirty state; failed ones stay dirty
+      if (res.flushedFileIds && res.flushedFileIds.length > 0) {
+        res.flushedFileIds.forEach((fid) => clearDirty(fid));
+      }
     }
   };
 
@@ -260,58 +318,299 @@ export default function Viewer() {
 
   // SyncTeX forward sync (Code cursor -> PDF highlight)
   useEffect(() => {
-    scrollToPdfLineRef.current = (line: number) => {
-      const targetPage = LatexCompilerEngine.resolveForward(
+    scrollToPdfLineRef.current = async (line: number) => {
+      const rootId = parentPageIdRef.current || projectId || 'default';
+      const filename = activeFilePage?.title || 'main.tex';
+
+      // 1. Try Backend Single Source of Truth
+      const remotePage = await LatexCompilerEngine.resolveForwardRemote(
+        rootId,
+        filename,
         line,
-        synctexMapRef.current,
-        activeFilePage?.title,
-        numPages || 1,
       );
+
+      const targetPage =
+        remotePage ??
+        LatexCompilerEngine.resolveForward(
+          line,
+          synctexMapRef.current,
+          activeFilePage?.title,
+          numPages || 1,
+        );
 
       if (targetPage !== null) {
         setPageNumber(targetPage);
         pdfSurfaceRef.current?.scrollToPage(targetPage);
+
+        if (bridgeRef.current) {
+          bridgeRef.current.postMessage({
+            type: 'FORWARD_SYNC',
+            page: targetPage,
+            line,
+          });
+        }
       }
     };
     return () => {
       scrollToPdfLineRef.current = null;
     };
-  }, [numPages, activeFilePage, scrollToPdfLineRef]);
+  }, [numPages, activeFilePage, scrollToPdfLineRef, projectId]);
 
   // SyncTeX reverse search (PDF double-click -> Code jump)
-  const handleJumpToSource = (sourcePath: string | null, line: number) => {
+  const handleJumpToSource = async (
+    sourcePath: string | null,
+    line: number,
+    pageNum?: number,
+    x?: number,
+    y?: number,
+  ) => {
+    const rootId = parentPageIdRef.current || projectId || 'default';
+
+    // 1. Try Backend Reverse Sync if coordinates provided
+    if (pageNum !== undefined && x !== undefined && y !== undefined) {
+      const remoteJump = await LatexCompilerEngine.resolveReverseRemote(
+        rootId,
+        pageNum,
+        x,
+        y,
+      );
+      if (remoteJump) {
+        sourcePath = remoteJump.sourcePath;
+        line = remoteJump.line;
+      }
+    }
+
     if (sourcePath) {
-      const match = sourcePath.match(/(?:.*\/)?([^/]+\.tex)$/i);
+      const match = sourcePath.match(/(?:.*\/)?([^/]+\.[a-zA-Z0-9]+)$/i);
       const filename = match ? match[1] : sourcePath;
       const matchedPage = findPageByBasename(filename);
 
-      if (matchedPage && matchedPage.id !== activeFilePage?.id) {
-        const rootId = parentPageIdRef.current;
-        if (rootId) {
-          const redirectUrl =
-            projectId
-              ? `/projects/${projectId}/pages/${rootId}?file=${matchedPage.id}`
-              : `/editor/${rootId}?file=${matchedPage.id}`;
+      if (matchedPage && matchedPage.id !== activeFilePage?.id && rootId) {
+        const redirectUrl = projectId
+          ? `/projects/${projectId}/pages/${rootId}?file=${matchedPage.id}`
+          : `/editor/${rootId}?file=${matchedPage.id}`;
 
-          setActiveFilePage(matchedPage as unknown as ProjectPage);
-          router.push(redirectUrl);
-          setTimeout(() => scrollToLineRef.current?.(line), 250);
-          return;
-        }
+        setActiveFilePage(matchedPage as unknown as ProjectPage);
+        router.push(redirectUrl);
+        setTimeout(() => scrollToLineRef.current?.(line), 250);
+        return;
       }
     }
 
     scrollToLineRef.current?.(line);
   };
 
+  const handleJumpToFirstError = () => {
+    const firstErr = parsedLog?.errors.find((e) => e.line !== undefined);
+    if (firstErr && firstErr.line) {
+      handleJumpToSource(firstErr.file || null, firstErr.line);
+    } else {
+      setShowLog(true);
+    }
+  };
+
+  const handlePopoutWindow = () => {
+    const rootId = parentPageIdRef.current;
+    if (!rootId) return;
+
+    const url = projectId
+      ? `/projects/${projectId}/pages/${rootId}/popout`
+      : `/editor/${rootId}/popout`;
+
+    const width = Math.min(1000, window.screen.availWidth - 100);
+    const height = Math.min(1100, window.screen.availHeight - 100);
+    const left = window.screenX + 60;
+    const top = window.screenY + 40;
+
+    const popup = window.open(
+      url,
+      `FluxPdfViewer_${rootId}`,
+      `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,resizable=yes`,
+    );
+
+    if (popup) {
+      popupWinRef.current = popup;
+      setIsViewerPoppedOut(true);
+    }
+  };
+
+  const handleReattach = () => {
+    bridgeRef.current?.postMessage({ type: 'REATTACH_REQUEST' });
+    if (popupWinRef.current && !popupWinRef.current.closed) {
+      try {
+        popupWinRef.current.close();
+      } catch {
+        // ignore
+      }
+    }
+    popupWinRef.current = null;
+    setIsViewerPoppedOut(false);
+  };
+
+  const handleFocusPopout = () => {
+    if (popupWinRef.current && !popupWinRef.current.closed) {
+      popupWinRef.current.focus();
+    }
+  };
+
+  // Cross-window communication bridge setup
+  useEffect(() => {
+    const rootId = parentPageIdRef.current;
+    if (!rootId) return;
+
+    const bridge = new ViewerBroadcastBridge(rootId);
+    bridgeRef.current = bridge;
+
+    const unsubscribe = bridge.subscribe((msg) => {
+      if (msg.type === 'VIEWER_READY') {
+        bridge.postMessage({
+          type: 'SYNC_STATE',
+          state: {
+            pdfUrl,
+            compileStatus,
+            compileLog,
+            lastCompiledAt: lastCompiledAt ? lastCompiledAt.toISOString() : null,
+            engine,
+            compileMode,
+          },
+        });
+      } else if (msg.type === 'REQUEST_COMPILE') {
+        handleCompile();
+      } else if (msg.type === 'REQUEST_FORCE_SYNC') {
+        handleForceSync();
+      } else if (msg.type === 'REVERSE_SYNC') {
+        handleJumpToSource(msg.sourcePath, msg.line, msg.pageNum, msg.x, msg.y);
+      } else if (msg.type === 'REATTACH_REQUEST' || msg.type === 'WINDOW_CLOSED') {
+        setIsViewerPoppedOut(false);
+        popupWinRef.current = null;
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      bridge.destroy();
+      bridgeRef.current = null;
+    };
+  }, [parentPageIdRef.current, engine, compileMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Broadcast latest compile state to popout window
+  useEffect(() => {
+    if (bridgeRef.current && isViewerPoppedOut) {
+      bridgeRef.current.postMessage({
+        type: 'SYNC_STATE',
+        state: {
+          pdfUrl,
+          compileStatus,
+          compileLog,
+          lastCompiledAt: lastCompiledAt ? lastCompiledAt.toISOString() : null,
+          engine,
+          compileMode,
+        },
+      });
+    }
+  }, [pdfUrl, compileStatus, compileLog, lastCompiledAt, isViewerPoppedOut, engine, compileMode]);
+
+  // Monitor popup window closure
+  useEffect(() => {
+    if (!isViewerPoppedOut) return;
+
+    const interval = setInterval(() => {
+      if (popupWinRef.current && popupWinRef.current.closed) {
+        setIsViewerPoppedOut(false);
+        popupWinRef.current = null;
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isViewerPoppedOut, setIsViewerPoppedOut]);
+
   const parsedLog = useMemo(
     () => (compileLog ? parseLatexLog(compileLog) : null),
     [compileLog],
   );
 
-  const onDocumentLoadSuccess = (pdf: any) => {
+  const onDocumentLoadSuccess = async (pdf: any) => {
     pdfDocRef.current = pdf;
+
+    try {
+      const bookmarks = await extractPdfBookmarks(pdf);
+      if (bookmarks && bookmarks.length > 0) {
+        setPdfOutline(bookmarks);
+        return;
+      }
+    } catch {
+      // fallback below
+    }
+
+    const content = getEditorContent.current?.() || activeFilePage?.content || '';
+    const fallback = extractOutlineFromContent(content, pdf.numPages || 1, synctexMapRef.current as any);
+    setPdfOutline(fallback);
   };
+
+  const handleJumpToPage = (targetPage: number) => {
+    const p = Math.max(1, Math.min(targetPage, numPages || 1));
+    setPageNumber(p);
+    pdfSurfaceRef.current?.scrollToPage(p);
+  };
+
+  // If detached, show placeholder with toolbar controls
+  if (isViewerPoppedOut) {
+    return (
+      <div className="h-full flex flex-col bg-background border-l border-border select-none relative overflow-hidden">
+        <Toolbar
+          compileStatus={compileStatus}
+          engine={engine}
+          setEngine={setEngine}
+          compileMode={compileMode as 'full' | 'draft'}
+          setCompileMode={(m) => setCompileMode(m as any)}
+          autoCompile={autoCompile}
+          onToggleAutoCompile={() => setAutoCompile(!autoCompile)}
+          onClearCacheAndCompile={() => handleCompile({ forceClean: true })}
+          onCompile={handleCompile}
+          onForceSync={handleForceSync}
+          scale={scale}
+          autoFit={autoFit}
+          showZoomGroup={false}
+          onToggleAutoFit={handleToggleAutoFit}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onResetZoom={handleResetZoom}
+          pageNumber={pageNumber}
+          numPages={numPages}
+          onPrevPage={handlePrevPage}
+          onNextPage={handleNextPage}
+          pdfUrl={pdfUrl}
+          compileLog={compileLog || ''}
+          showLog={false}
+          showUtilityGroup={showUtilityGroup}
+          onToggleLog={() => setShowLog((p) => !p)}
+          onDownload={handleDownload}
+          onPopout={handleReattach}
+          isPoppedOut={true}
+          outline={pdfOutline}
+          onJumpToPage={handleJumpToPage}
+        />
+
+        <div className="flex-1 overflow-hidden relative flex flex-col">
+          <DetachedViewerPlaceholder
+            onReattach={handleReattach}
+            onFocusWindow={handleFocusPopout}
+            compileStatus={compileStatus}
+            lastCompiledAt={lastCompiledAt}
+          />
+        </div>
+
+        <Status
+          compileStatus={compileStatus}
+          lastCompiledAt={lastCompiledAt}
+          pdfUrl={pdfUrl}
+          parsedLog={parsedLog}
+          onToggleLog={() => setShowLog((p) => !p)}
+          onJumpToFirstError={handleJumpToFirstError}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-background border-l border-border select-none relative overflow-hidden">
@@ -319,8 +618,12 @@ export default function Viewer() {
       <Toolbar
         compileStatus={compileStatus}
         engine={engine}
+        setEngine={setEngine}
         compileMode={compileMode as 'full' | 'draft'}
         setCompileMode={(m) => setCompileMode(m as any)}
+        autoCompile={autoCompile}
+        onToggleAutoCompile={() => setAutoCompile(!autoCompile)}
+        onClearCacheAndCompile={() => handleCompile({ forceClean: true })}
         onCompile={handleCompile}
         onForceSync={handleForceSync}
         scale={scale}
@@ -340,6 +643,10 @@ export default function Viewer() {
         showUtilityGroup={showUtilityGroup}
         onToggleLog={() => setShowLog((p) => !p)}
         onDownload={handleDownload}
+        onPopout={handlePopoutWindow}
+        isPoppedOut={false}
+        outline={pdfOutline}
+        onJumpToPage={handleJumpToPage}
       />
 
       <a ref={downloadRef} className="hidden" aria-hidden="true" />
@@ -362,7 +669,13 @@ export default function Viewer() {
           onCompile={handleCompile}
         />
 
-        {showLog && compileLog && <Logs log={compileLog} onClose={() => setShowLog(false)} />}
+        {showLog && compileLog && (
+          <Logs
+            log={compileLog}
+            onClose={() => setShowLog(false)}
+            onJumpToError={(file, line) => handleJumpToSource(file || null, line)}
+          />
+        )}
       </div>
 
       {/* Bottom Status Bar */}
@@ -372,6 +685,7 @@ export default function Viewer() {
         pdfUrl={pdfUrl}
         parsedLog={parsedLog}
         onToggleLog={() => setShowLog((p) => !p)}
+        onJumpToFirstError={handleJumpToFirstError}
       />
     </div>
   );

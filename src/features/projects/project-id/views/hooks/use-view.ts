@@ -60,10 +60,10 @@ export function useProjectViews(projectId: string) {
     mutationFn: (input: CreateViewInput) => ViewService.createView(projectId, input),
     onSuccess: (newView) => {
       queryClient.invalidateQueries({ queryKey: viewKeys.all });
-      toast.success(`Created view "${newView.name}"`);
+      toast.success(`Created view "${newView.name}"`, { id: 'project-view-action' });
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Failed to create view');
+      toast.error(err.message || 'Failed to create view', { id: 'project-view-action' });
     },
   });
 
@@ -72,10 +72,10 @@ export function useProjectViews(projectId: string) {
       ViewService.updateView(projectId, viewId, input),
     onSuccess: (updatedView) => {
       queryClient.invalidateQueries({ queryKey: viewKeys.all });
-      toast.success(`Updated view "${updatedView.name}"`);
+      toast.success(`Updated view "${updatedView.name}"`, { id: 'project-view-action' });
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Failed to update view');
+      toast.error(err.message || 'Failed to update view', { id: 'project-view-action' });
     },
   });
 
@@ -83,10 +83,10 @@ export function useProjectViews(projectId: string) {
     mutationFn: (viewId: string) => ViewService.deleteView(projectId, viewId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: viewKeys.all });
-      toast.success('Deleted view successfully');
+      toast.success('Deleted view successfully', { id: 'project-view-action' });
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Failed to delete view');
+      toast.error(err.message || 'Failed to delete view', { id: 'project-view-action' });
     },
   });
 
@@ -96,7 +96,7 @@ export function useProjectViews(projectId: string) {
       queryClient.invalidateQueries({ queryKey: viewKeys.all });
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Failed to toggle favorite status');
+      toast.error(err.message || 'Failed to toggle favorite status', { id: 'project-view-action' });
     },
   });
 

@@ -9,6 +9,7 @@ import {
   FileText,
   FileX2,
   FolderClock,
+  GitCompare,
   History,
   Loader2,
   RotateCcw,
@@ -28,10 +29,11 @@ import {
   useVersionActions,
   useHistoryActions,
 } from '@/features/editor/hooks/use-history';
-import type { PageEvent } from "@/features/editor/types";
+import type { PageEvent, PageVersion } from "@/features/editor/types";
 import { usePageStore } from "@/features/editor/store";
 import { cn } from "@/shared/lib/utils";
 import { Input, Form } from "@/shared/components/ui";
+import { HistoryDiffModal } from "./HistoryDiffModal";
 
 type View = "file" | "project";
 
@@ -102,7 +104,7 @@ const EVENT_META: Record<
 
 export default function HistoryTab({ onClose }: { onClose?: () => void }) {
   const { pageId } = useParams<{ pageId: string }>();
-  const { currentPage, editorRef } = usePageStore();
+  const { currentPage, activeFilePage, editorRef, getEditorContent } = usePageStore();
 
   const rootPageId = pageId ?? null;
   const searchParams = useSearchParams();
@@ -111,6 +113,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
 
   const [view, setView] = useState<View>("project");
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [diffVersion, setDiffVersion] = useState<PageVersion | null>(null);
 
   const { data: versions, isLoading: versionsLoading } = useQuery({
     ...versionsQuery(activeFileId ?? ""),
@@ -140,8 +143,21 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
 
   const onSaveSnapshot = (data: CreateSnapshotInput) => {
     if (!activeFileId) return;
+    const currentBuffer =
+      getEditorContent.current?.() ||
+      editorRef.current?.getValue() ||
+      (typeof currentPage?.content === 'string' ? currentPage.content : '');
+    const currentFileName = activeFilePage?.title || currentPage?.title || 'main.tex';
+
     saveMutation.mutate(
-      { pageId: activeFileId, label: data.label?.trim(), rootPageId: rootPageId ?? undefined },
+      {
+        pageId: activeFileId,
+        label: data.label?.trim() || 'Manual Snapshot',
+        content: currentBuffer,
+        fileName: currentFileName,
+        eventType: 'manual_save',
+        rootPageId: rootPageId ?? undefined,
+      },
       { onSuccess: () => reset() },
     );
   };
@@ -165,10 +181,19 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
     restoreProjectMutation.mutate(
       { rootPageId, eventId },
       {
-        onSuccess: (data) => {
-          const restoredArr = (data as any)?.restored as Array<{ pageId: string; content: string }> | undefined;
-          const me = restoredArr?.find((r) => r.pageId === activeFileId);
-          if (me) editorRef.current?.setValue(me.content);
+        onSuccess: (data: any) => {
+          const restoredArr = data?.restored as Array<{ pageId: string; content: string }> | undefined;
+          const singlePage = data?.page;
+          if (restoredArr && Array.isArray(restoredArr)) {
+            const me = restoredArr.find((r) => r.pageId === activeFileId);
+            if (me && me.content !== undefined) {
+              editorRef.current?.setValue(typeof me.content === 'string' ? me.content : JSON.stringify(me.content));
+            }
+          } else if (singlePage && (singlePage.id === activeFileId || !activeFileId)) {
+            if (singlePage.content !== undefined) {
+              editorRef.current?.setValue(typeof singlePage.content === 'string' ? singlePage.content : JSON.stringify(singlePage.content));
+            }
+          }
           setConfirmId(null);
         },
       },
@@ -191,9 +216,9 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
   }, [events]);
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-card text-card-foreground">
+    <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
       {/* ── Header ── */}
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-background">
         <div className="flex min-w-0 items-center gap-1.5">
           <History className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="truncate text-xs font-semibold text-muted-foreground">
@@ -205,7 +230,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
             type="button"
             title="Close"
             onClick={onClose}
-            className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer"
+            className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-sidebar-hover cursor-pointer"
           >
             <X className="size-3.5 shrink-0" />
           </button>
@@ -292,9 +317,16 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
                 >
                   <Clock className="size-3.5 shrink-0 mt-0.5 text-muted-foreground" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">
-                      {v.label || "Snapshot"}
-                    </p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-xs font-medium truncate text-foreground">
+                        {v.label || "Snapshot"}
+                      </p>
+                      {v.label && (
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-primary/10 text-primary font-medium shrink-0">
+                          Label
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       {timeAgo(v.createdAt)} • {v.savedBy?.name ?? "Unknown"}
                     </p>
@@ -322,6 +354,13 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
                       </>
                     ) : (
                       <>
+                        <button
+                          onClick={() => setDiffVersion(v)}
+                          title="Compare this snapshot with current document"
+                          className="p-0.5 rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
+                        >
+                          <GitCompare className="size-3.5 shrink-0" />
+                        </button>
                         <button
                           onClick={() => setConfirmId(v.id)}
                           title="Restore this file to this snapshot"
@@ -372,7 +411,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
           ) : (
             groupedEvents.map(({ label: dayLabel, items }) => (
               <div key={dayLabel}>
-                <div className="sticky top-0 z-10 border-b border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+                <div className="sticky top-0 z-10 border-b border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground">
                   {dayLabel}
                 </div>
 
@@ -442,6 +481,21 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
           )}
         </div>
       )}
+
+      <HistoryDiffModal
+        open={!!diffVersion}
+        onClose={() => setDiffVersion(null)}
+        pageId={activeFileId ?? ""}
+        version={diffVersion}
+        currentContent={
+          getEditorContent.current?.() ||
+          editorRef.current?.getValue() ||
+          (typeof currentPage?.content === "string"
+            ? currentPage.content
+            : "")
+        }
+        onRestore={(verId) => handleRestoreFile(verId)}
+      />
     </div>
   );
 }

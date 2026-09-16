@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import {
   ProjectRoleEnum,
+  ProjectStateEnum,
+  ProjectPriorityEnum,
   ProjectMemberUserSchema,
   ProjectMemberSchema,
   ProjectSettingsSchema,
@@ -13,6 +15,8 @@ import {
 } from '../schemas/project.schema';
 
 export type ProjectRole = z.infer<typeof ProjectRoleEnum>;
+export type ProjectState = z.infer<typeof ProjectStateEnum>;
+export type ProjectPriority = z.infer<typeof ProjectPriorityEnum>;
 export type ProjectMemberUser = z.infer<typeof ProjectMemberUserSchema>;
 export type ProjectMember = z.infer<typeof ProjectMemberSchema>;
 export type ProjectSettings = z.infer<typeof ProjectSettingsSchema>;

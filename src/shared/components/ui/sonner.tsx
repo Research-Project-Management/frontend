@@ -24,8 +24,8 @@ export function Toaster({ ...props }: ToasterProps) {
     <SonnerToaster
       position="bottom-right"
       expand={false}
-      visibleToasts={4}
-      duration={3200}
+      visibleToasts={2}
+      duration={2400}
       gap={10}
       offset="16px"
       closeButton

@@ -26,6 +26,7 @@ import {
   MousePointer,
   Check,
   Layers,
+  FileText,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -78,6 +79,7 @@ export interface ReaderToolbarProps {
   onToggleInspector: () => void;
   isEntitiesDrawerOpen?: boolean;
   onToggleEntitiesDrawer?: () => void;
+  onExtractToNote?: () => void;
 }
 
 export const ZOTERO_COLORS = [
@@ -126,6 +128,7 @@ export function ReaderToolbar({
   onToggleInspector,
   isEntitiesDrawerOpen = false,
   onToggleEntitiesDrawer,
+  onExtractToNote,
 }: ReaderToolbarProps) {
   const pageNavForm = useForm<PageNavFormData>({
     resolver: zodResolver(pageNavFormSchema),
@@ -138,6 +141,43 @@ export function ReaderToolbar({
   useEffect(() => {
     reset({ page: visiblePage });
   }, [visiblePage, reset]);
+
+  // Zotero-standard quick tool keyboard shortcuts (H, U, N, A, T)
+  useEffect(() => {
+    const handleToolShortcuts = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) {
+        return;
+      }
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      switch (e.key.toLowerCase()) {
+        case 'h':
+          e.preventDefault();
+          onSelectTool?.('highlight');
+          break;
+        case 'u':
+          e.preventDefault();
+          onSelectTool?.('underline');
+          break;
+        case 'n':
+          e.preventDefault();
+          onSelectTool?.('note');
+          break;
+        case 'a':
+          e.preventDefault();
+          onSelectTool?.('area');
+          break;
+        case 't':
+          e.preventDefault();
+          onSelectTool?.('text');
+          break;
+      }
+    };
+    window.addEventListener('keydown', handleToolShortcuts);
+    return () => window.removeEventListener('keydown', handleToolShortcuts);
+  }, [onSelectTool]);
 
   const handlePageSubmit = (data: PageNavFormData) => {
     const p = data.page;
@@ -477,6 +517,28 @@ export function ReaderToolbar({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+
+          {/* 8. Zotero-style 1-click Extract Annotations to Note */}
+          {onExtractToNote && (
+            <>
+              <div className="w-px h-3.5 bg-border mx-0.5" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onExtractToNote}
+                    className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    aria-label="Add note from annotations"
+                  >
+                    <FileText className="size-3.5 shrink-0" strokeWidth={1.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-11">
+                  Add Note from Annotations
+                </TooltipContent>
+              </Tooltip>
+            </>
+          )}
         </div>
 
         {/* ── CỤM PHẢI: Thu phóng, Xoay, Theme, Tìm kiếm & Inspector ──────────── */}

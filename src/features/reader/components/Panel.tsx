@@ -44,7 +44,8 @@ import { useAttachments } from '@/features/library/hooks/use-attachments';
 import { useNotes } from '@/features/library/hooks/use-notes';
 import { useRelations } from '@/features/library/hooks/use-relations';
 import { useLibrarySidebarStore, type InspectorSectionId } from '@/features/library/store/sidebar.store';
-import { normalizeNotes, normalizeTags, convertToBibTeX, getPaperFileUrl } from '@/features/library/utils/library.util';
+import { normalizeNotes, normalizeTags, getPaperFileUrl } from '@/features/library/utils/library.util';
+import { ExportService } from '@/features/library/services/exports.service';
 import { ALL_ITEM_TYPES_FLAT } from '@/features/library/schemas/item-type.schema';
 import { cn } from "@/shared/lib/utils";
 import { uploadLibraryFile } from '@/features/library/services/upload.service';
@@ -556,13 +557,32 @@ export default function InspectorPanel({
 
   const handleCopyCitation = async () => {
     if (!paper) return;
-    const bib = convertToBibTeX(paper);
-    const ok = await copyToClipboard(bib);
-    if (ok) {
-      toast.success('BibTeX citation copied to clipboard', { id: 'library-clipboard' });
-    } else {
-      toast.error('Failed to copy to clipboard', { id: 'library-clipboard' });
+    if (paper.id) {
+      try {
+        const res = await ExportService.exportLibrary(paper.projectId ?? undefined, {
+          format: 'bibtex',
+          itemIds: [paper.id],
+        });
+        if (res?.content) {
+          const ok = await copyToClipboard(res.content);
+          if (ok) {
+            toast.success('BibTeX citation copied to clipboard', { id: 'reader-clipboard' });
+            return;
+          }
+        }
+      } catch {
+        // Fall back to cached canonical bibtex from backend
+      }
     }
+    const bib = (paper as any)?.bibtex;
+    if (bib) {
+      const ok = await copyToClipboard(bib);
+      if (ok) {
+        toast.success('BibTeX citation copied to clipboard', { id: 'reader-clipboard' });
+        return;
+      }
+    }
+    toast.error('Failed to copy BibTeX citation', { id: 'reader-clipboard' });
   };
 
   // Section Counts

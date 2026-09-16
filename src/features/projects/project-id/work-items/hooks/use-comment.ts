@@ -37,7 +37,7 @@ export const useAddComment = () => {
       queryClient.invalidateQueries({ queryKey: ['work-item-comments', targetId] });
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to add comment'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to add comment', { id: 'work-item-comment' }),
   });
 };
 
@@ -54,7 +54,7 @@ export const useDeleteComment = () => {
       queryClient.invalidateQueries({ queryKey: ['work-item-comments', targetId] });
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to delete comment'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to delete comment', { id: 'work-item-comment' }),
   });
 };
 
@@ -83,7 +83,7 @@ export const useUpdateComment = () => {
       queryClient.invalidateQueries({ queryKey: ['work-item-comments', targetId] });
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to update comment'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to update comment', { id: 'work-item-comment' }),
   });
 };
 
@@ -112,6 +112,6 @@ export const useReactComment = () => {
       queryClient.invalidateQueries({ queryKey: ['work-item-comments', targetId] });
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to react to comment'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to react to comment', { id: 'work-item-comment' }),
   });
 };

@@ -18,13 +18,13 @@ import {
 } from '../services/synctex.service';
 
 export function useForwardSync() {
-  return useMutation<ForwardSyncResult, Error, ForwardSyncPayload>({
+  return useMutation<ForwardSyncResult | null, Error, ForwardSyncPayload>({
     mutationFn: (payload) => synctexService.forwardSync(payload),
   });
 }
 
 export function useReverseSync() {
-  return useMutation<ReverseSyncResult, Error, ReverseSyncPayload>({
+  return useMutation<ReverseSyncResult | null, Error, ReverseSyncPayload>({
     mutationFn: (payload) => synctexService.reverseSync(payload),
   });
 }

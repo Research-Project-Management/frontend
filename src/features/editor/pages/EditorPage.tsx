@@ -60,7 +60,7 @@ function ResizeHandle({
       onDoubleClick={onDoubleClick}
       onKeyDown={onKeyDown}
       className={cn(
-        "group relative w-1 bg-border/60 hover:bg-primary/50 active:bg-primary cursor-col-resize shrink-0 transition-all duration-150 outline-none",
+        "group relative w-1 bg-border/60 hover:bg-primary/50 active:bg-primary cursor-col-resize shrink-0 transition-colors duration-150 outline-none",
         "focus-visible:ring-1 focus-visible:ring-primary select-none",
         isDragging && "bg-primary w-1 "
       )}
@@ -71,7 +71,7 @@ function ResizeHandle({
       {/* Optical grip pill in center */}
       <div
         className={cn(
-          "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none transition-all duration-150",
+          "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none transition-[opacity,transform] duration-150",
           isDragging
             ? "opacity-100 scale-110"
             : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
@@ -446,7 +446,7 @@ function EditorShell() {
   const showDivider = layout === 'split' && !isNarrowScreen;
 
   return (
-    <div className="flex flex-col h-dvh overflow-hidden bg-background">
+    <div className="flex flex-col h-dvh overflow-hidden bg-muted">
       <Topbar />
 
       {/* Mobile Tab Switcher for Split Layout */}
@@ -457,7 +457,7 @@ function EditorShell() {
               type="button"
               onClick={() => setMobileTab('editor')}
               className={cn(
-                "px-3 py-1 rounded-md transition-all cursor-pointer",
+                "px-3 py-1 rounded-md transition-colors cursor-pointer",
                 mobileTab === 'editor'
                   ? "bg-background text-foreground shadow-xs font-semibold"
                   : "text-muted-foreground hover:text-foreground"
@@ -469,7 +469,7 @@ function EditorShell() {
               type="button"
               onClick={() => setMobileTab('viewer')}
               className={cn(
-                "px-3 py-1 rounded-md transition-all cursor-pointer",
+                "px-3 py-1 rounded-md transition-colors cursor-pointer",
                 mobileTab === 'viewer'
                   ? "bg-background text-foreground shadow-xs font-semibold"
                   : "text-muted-foreground hover:text-foreground"
@@ -484,9 +484,9 @@ function EditorShell() {
       <div ref={containerRef} className="flex-1 flex overflow-hidden relative">
         {/* Desktop Sidebar */}
         <div
-          style={{ width: isNarrowScreen ? '100%' : (isSidebarCollapsed ? 52 : localSidebarWidth) }}
+          style={{ width: isNarrowScreen ? '100%' : (isSidebarCollapsed ? 44 : localSidebarWidth) }}
           className={cn(
-            "shrink-0 overflow-hidden bg-card border-r border-border transition-all duration-200 ease-out",
+            "shrink-0 overflow-hidden bg-background border-r border-border transition-[width] duration-200 ease-out",
             isNarrowScreen && "hidden",
             isDraggingSidebar && "transition-none"
           )}
@@ -502,14 +502,14 @@ function EditorShell() {
               onClick={() => setActiveSidebarPanel(null)}
               aria-label="Close drawer"
             />
-            <div className="relative z-10 w-[85vw] max-w-[340px] h-full bg-card border-r border-border flex flex-col">
-              <div className="flex items-center justify-between px-3 h-11 border-b border-border shrink-0">
+            <div className="relative z-10 w-[85vw] max-w-[340px] h-full bg-background border-r border-border flex flex-col">
+              <div className="flex items-center justify-between px-3 h-11 border-b border-border bg-background shrink-0">
                 <span className="text-xs font-semibold text-foreground">Explorer & Tools</span>
                 <button
                   type="button"
                   onClick={() => setActiveSidebarPanel(null)}
                   aria-label="Close sidebar"
-                  className="p-1 rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
+                  className="p-1 rounded-md hover:bg-sidebar-hover text-foreground transition-colors cursor-pointer"
                 >
                   <X className="size-4 shrink-0" />
                 </button>

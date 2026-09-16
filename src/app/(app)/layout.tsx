@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import React, { Suspense, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
+import { hasAuthToken } from '@/shared/lib/api';
 
 const Topbar = dynamic(
   () => import('@/features/shell/components/Topbar'),
@@ -27,7 +28,7 @@ export default function AppLayout({
   const isPaperReader = pathname.includes('/library/papers/');
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!isLoading && !user && !hasAuthToken()) {
       const redirectUrl =
         pathname && pathname !== '/'
           ? `/login?redirect=${encodeURIComponent(pathname)}`
@@ -36,8 +37,17 @@ export default function AppLayout({
     }
   }, [isLoading, user, router, pathname]);
 
+  useEffect(() => {
+    document.documentElement.classList.add('overflow-hidden');
+    document.body.classList.add('overflow-hidden');
+    return () => {
+      document.documentElement.classList.remove('overflow-hidden');
+      document.body.classList.remove('overflow-hidden');
+    };
+  }, []);
+
   // If unauthenticated, prevent rendering app shell and redirect to login
-  if (!isLoading && !user) {
+  if (!isLoading && !user && !hasAuthToken()) {
     return null;
   }
 
@@ -61,7 +71,7 @@ export default function AppLayout({
   }
 
   return (
-    <div className='h-dvh flex flex-col overflow-clip bg-muted'>
+    <div className='h-dvh max-h-dvh flex flex-col overflow-hidden bg-muted'>
       <Suspense fallback={null}>
         <Topbar />
       </Suspense>

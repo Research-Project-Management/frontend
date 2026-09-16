@@ -26,11 +26,12 @@ export function useTags(scopeId?: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: ['items'] });
-      toast.success('Tag created');
+      toast.success('Tag created', { id: 'tag-mutation' });
     },
     onError: (err: any) => {
       toast.error('Failed to create tag', {
-        description: err?.message || 'Please try again.',
+        description: err?.message || 'Please check the name and try again.',
+        id: 'tag-mutation',
       });
     },
   });
@@ -40,11 +41,12 @@ export function useTags(scopeId?: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: ['items'] });
-      toast.success('Tag deleted');
+      toast.success('Tag deleted', { id: 'tag-mutation' });
     },
     onError: (err: any) => {
       toast.error('Failed to delete tag', {
         description: err?.message || 'Please try again.',
+        id: 'tag-mutation',
       });
     },
   });
@@ -54,11 +56,12 @@ export function useTags(scopeId?: string) {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: ['items'] });
-      toast.success(`Removed ${data?.count ?? 0} automatic tags`);
+      toast.success(`Removed ${data?.count ?? 0} automatic tag(s)`, { id: 'tag-mutation' });
     },
     onError: (err: any) => {
       toast.error('Failed to delete automatic tags', {
         description: err?.message || 'Please try again.',
+        id: 'tag-mutation',
       });
     },
   });

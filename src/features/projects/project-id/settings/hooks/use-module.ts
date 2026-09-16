@@ -55,10 +55,10 @@ export function useModules(projectId: string) {
       updateProject(
         { projectId, modules: next },
         {
-          onSuccess: () => toast.success('Modules updated'),
+          onSuccess: () => toast.success('Modules updated', { id: 'settings-module' }),
           onError: () => {
             setActive(prev);
-            toast.error('Failed to update modules');
+            toast.error('Failed to update modules', { id: 'settings-module' });
           },
         },
       );
@@ -75,7 +75,7 @@ export function useModules(projectId: string) {
   const save = useCallback(() => {
     updateProject(
       { projectId, modules: active },
-      { onSuccess: () => toast.success('Modules updated') },
+      { onSuccess: () => toast.success('Modules updated', { id: 'settings-module' }) },
     );
   }, [projectId, active, updateProject]);
 

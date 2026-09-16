@@ -32,6 +32,44 @@ export const StorageService = {
     return data.files || [];
   },
 
+  uploadPageFile: async (
+    pageId: string,
+    file: File,
+    parentId?: string | null,
+  ): Promise<EditorStorageItem> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (parentId) {
+      formData.append('parentId', parentId);
+    }
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE_URL}/api/files/page/${pageId}/upload`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+      headers,
+    });
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      throw new Error(`Upload failed (${response.status}): ${errText}`);
+    }
+    const json = (await response.json()) as any;
+    const payload = json.data || json;
+    const fileObj = payload.file || payload;
+    return {
+      id: fileObj.id || payload.id || payload.fileId,
+      filename: fileObj.filename || file.name,
+      size: typeof fileObj.size === 'number' ? fileObj.size : file.size,
+      mimeType: fileObj.mimeType || file.type,
+      isFolder: false,
+      parentId: parentId || null,
+      url: fileObj.url || `/api/files/${payload.fileId || fileObj.id}/content`,
+    };
+  },
+
   uploadToR2: async (pageId: string, formData: FormData): Promise<{ url: string; path: string }> => {
     formData.append('pageId', pageId);
     const token = getAuthToken();

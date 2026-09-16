@@ -182,6 +182,7 @@ export default function UnfiledPage() {
           icon={Inbox}
           search={search}
           onSearchChange={setSearch}
+          items={state.items}
           onDirectFilesUpload={handleDirectFilesUpload}
           onDirectFolderUpload={handleDirectFolderUpload}
           onAddCollection={() => setCreateCollectionOpen(true)}

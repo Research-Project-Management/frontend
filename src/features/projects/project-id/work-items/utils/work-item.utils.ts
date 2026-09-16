@@ -2,6 +2,7 @@ import type {
   Column,
   State,
   StateGroup,
+  Item,
 } from "../types/work-item.types";
 import {
   STATE_GROUPS,
@@ -383,3 +384,38 @@ export const resolveWorkItemColumnColor = resolveColumnColor;
 export const resolveItemColumnColor = resolveColumnColor;
 export const resolveItemColumnId = resolveColumnId;
 export { DEFAULT_STATES };
+
+export function getItemBucketKey(item: Item, groupBy?: string): string {
+  if (!groupBy || groupBy === 'state') {
+    return item.columnId || (item as any).stateId || '';
+  }
+  if (groupBy === 'none') {
+    return '__all__';
+  }
+  if (groupBy === 'priority') {
+    return (item.priority || 'none').toLowerCase();
+  }
+  if (groupBy === 'assignee') {
+    return ItemHelpers.resolveAssigneeId(item) || '__unassigned__';
+  }
+  if (groupBy === 'cycle') {
+    const cId = item.cycleId || (typeof item.cycle === 'object' ? (item.cycle as any)?.id : null);
+    return cId || '__no_cycle__';
+  }
+  if (groupBy === 'labels') {
+    const itemLabels = Array.isArray(item.labels) ? item.labels : [];
+    if (itemLabels.length === 0) return '__no_label__';
+    const first = itemLabels[0] as any;
+    const firstLabel =
+      typeof first === 'object' && first !== null
+        ? first.id || first.name
+        : first;
+    return firstLabel || '__no_label__';
+  }
+  if (groupBy === 'createdBy') {
+    const authorId = item.authorId || (item as any).createdBy || (item as any).author?.id;
+    return authorId || '__unknown__';
+  }
+  return item.columnId || (item as any).stateId || '';
+}
+

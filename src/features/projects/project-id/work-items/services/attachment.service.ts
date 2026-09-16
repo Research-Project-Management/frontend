@@ -25,7 +25,24 @@ export const AttachmentService = {
     apiGet<unknown>(`/api/attachments/${attachmentId}`),
 
   uploadAttachment: (itemId: string, formData: FormData) =>
-    apiPost(`/api/work-items/${itemId}/attachments`, formData),
+    apiPost(`/api/work-items/${itemId}/attachments/upload`, formData),
+
+  uploadFile: async (
+    itemId: string,
+    file: File,
+    options?: { projectId?: string },
+  ) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('fileName', file.name);
+    if (options?.projectId) {
+      formData.append('projectId', options.projectId);
+    }
+    return apiPost<{ file: AttachFileItem; workItem?: Item }>(
+      `/api/work-items/${itemId}/attachments/upload`,
+      formData,
+    );
+  },
 
   deleteAttachment: (itemId: string, attachmentId: string) =>
     apiDelete(`/api/work-items/${itemId}/attachments/${attachmentId}`),

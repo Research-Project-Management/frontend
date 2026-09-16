@@ -19,7 +19,7 @@ export function useItemState(workspaceId?: string, itemId?: string) {
     queryKey: stateKeys.item(workspaceId, itemId),
     queryFn: async () => {
       const res = await StateService.getState(workspaceId || 'default', itemId || '');
-      return res?.data || null;
+      return (res as any)?.data ?? res ?? null;
     },
     enabled: Boolean(itemId),
     staleTime: 1000 * 60 * 5,

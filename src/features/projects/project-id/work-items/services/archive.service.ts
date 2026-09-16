@@ -3,7 +3,9 @@ import type { Item } from "../types/work-item.types";
 
 export interface ArchivedItemsResponse {
   archivedItems?: Item[];
+  workItems?: Item[];
   count: number;
+  total?: number;
 }
 
 export const ArchiveService = {

@@ -2,7 +2,6 @@ import { z } from "zod";
 
 // ── Re-export modular DTO schemas ────────────────────────────────────────────
 export * from "./core.schema";
-export * from "./draft.schema";
 export * from "./assignment.schema";
 export * from "./attachment.schema";
 export * from "./comment.schema";

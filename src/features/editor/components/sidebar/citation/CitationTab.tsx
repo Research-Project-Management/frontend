@@ -118,16 +118,16 @@ export default function CitationTab({ onClose }: CitationTabProps) {
   return (
     <div className="h-full flex flex-col bg-background text-foreground select-none">
       {/* Tab Header */}
-      <div className="h-10 px-3 border-b border-border flex items-center justify-between shrink-0 bg-background">
+      <div className="h-11 px-3 border-b border-border flex items-center justify-between shrink-0 bg-background">
         <div className="flex items-center gap-2">
           <BookMarked className="size-4 text-primary shrink-0" />
-          <span className="text-13 font-semibold text-foreground">Citations</span>
+          <span className="text-xs font-semibold text-foreground">Citations</span>
         </div>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={openPickerModal}
-            className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
             title="Insert citation from library"
           >
             <Plus className="size-3.5 shrink-0" />
@@ -136,7 +136,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
             <button
               type="button"
               onClick={onClose}
-              className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
               title="Close panel"
             >
               <X className="size-3.5 shrink-0" />

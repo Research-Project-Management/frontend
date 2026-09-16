@@ -8,7 +8,7 @@
  */
 
 import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
-import type { PageVersion, ProjectEvent } from '../types';
+import type { PageVersion, PageVersionWithContent, ProjectEvent } from '../types';
 
 // ─── 1. Document Version Snapshots ───────────────────────────────────────────
 
@@ -18,28 +18,55 @@ export const versionService = {
     return res.versions;
   },
 
+  getById: async (pageId: string, versionId: string): Promise<PageVersionWithContent> => {
+    const res = await apiGet<{ version: PageVersionWithContent }>(
+      `/api/pages/${pageId}/versions/${versionId}`,
+    );
+    return res.version;
+  },
+
   save: async ({
     pageId,
     label,
+    content,
+    eventType,
+    fileName,
     rootPageId,
   }: {
     pageId: string;
     label?: string;
+    content?: string;
+    eventType?: string;
+    fileName?: string;
     rootPageId?: string;
   }): Promise<PageVersion> => {
     const res = await apiPost<{ version: PageVersion }>(`/api/pages/${pageId}/versions`, {
       label,
+      content,
+      eventType,
+      fileName,
       rootPageId,
+      projectPageId: rootPageId,
     });
     return res.version;
   },
 
   restore: async ({ pageId, versionId }: { pageId: string; versionId: string }): Promise<any> => {
-    const res = await apiPost<{ page: any }>(
+    const res = await apiPost<{ page: any; restored?: Array<{ pageId: string; content: string }> }>(
       `/api/pages/${pageId}/versions/${versionId}/restore`,
       {},
     );
-    return res.page;
+    return res.page || res;
+  },
+
+  compareVersions: async (
+    pageId: string,
+    fromVersionId: string,
+    toVersionId: string,
+  ): Promise<any> => {
+    return await apiGet<any>(
+      `/api/pages/${pageId}/versions/diff?from=${fromVersionId}&to=${toVersionId}`,
+    );
   },
 
   delete: (pageId: string, versionId: string): Promise<void> =>

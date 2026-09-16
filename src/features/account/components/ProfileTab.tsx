@@ -21,7 +21,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/shared/components/ui";
-import { Upload, Loader2, AlertTriangle, Lock } from 'lucide-react';
+import { Loader2, AlertTriangle, Lock, Image as ImageIcon } from 'lucide-react';
+import { useUserCover } from '../hooks/use-user-cover';
+import { CoverModal } from './CoverModal';
 
 interface ProfileAvatarDisplayProps {
   control: Control<UpdateProfileFormValues>;
@@ -110,59 +112,100 @@ export default function ProfileTab() {
     });
   };
 
+  const { cover, setCover } = useUserCover();
+
+  const handleSelectCover = (coverUrl: string) => {
+    setCover(coverUrl);
+    toast.success('Background updated');
+  };
+
+  const handleUploadCustomCover = async (file: File) => {
+    try {
+      const url = await uploadFile(file, 'user/covers');
+      setCover(url);
+      toast.success('Background uploaded');
+    } catch {
+      const localUrl = URL.createObjectURL(file);
+      setCover(localUrl);
+    }
+  };
+
   if (isLoading || !user) return null;
 
   return (
     <div className='w-full max-w-3xl mx-auto p-6 md:p-8 space-y-6'>
-      {/* ── Section 1: Avatar & Identity ── */}
-      <div className='rounded-md border border-border bg-card p-5'>
-        <div className='flex flex-col sm:flex-row sm:items-center gap-5'>
-          <ProfileAvatarDisplay control={form.control} fallbackName={user.name || ''} />
+      {/* ── Section 1: Visual Banner & Identity (Like Project Settings) ── */}
+      <div className="relative w-full rounded-lg border border-border overflow-hidden bg-muted h-48 sm:h-56 flex flex-col justify-end p-5">
+        {/* Background Cover Image or Default Gradient */}
+        {cover ? (
+          <img
+            src={cover}
+            alt="Profile Cover"
+            className="absolute inset-0 size-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/30 via-indigo-600/20 to-purple-600/30" />
+        )}
 
-          <div className='flex-1 min-w-0 space-y-2'>
-            <div>
-              <h2 className='text-sm font-semibold text-foreground tracking-tight truncate'>{user.name || 'Researcher'}</h2>
-              <p className='text-xs text-muted-foreground truncate'>{user.email}</p>
+        {/* Subtle overlay for text contrast */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent pointer-events-none" />
+
+        {/* Content over Banner */}
+        <div className="relative z-10 flex items-end justify-between gap-4 flex-wrap sm:flex-nowrap">
+          {/* Left: Avatar & Info */}
+          <div className="flex items-center gap-4 min-w-0">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={isUploading || updateProfileMutation.isPending}
+              className="cursor-pointer group relative block shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-full"
+              title="Upload new picture"
+            >
+              <div className="size-16 sm:size-18 rounded-full border-2 border-white/85 bg-background flex items-center justify-center overflow-hidden shadow-md">
+                <ProfileAvatarDisplay control={form.control} fallbackName={user.name || ''} />
+              </div>
+              <div className="absolute inset-0 rounded-full bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs text-white font-medium">
+                {isUploading ? <Loader2 className="size-4 animate-spin text-white" /> : 'Edit'}
+              </div>
+            </button>
+
+            <div className="min-w-0 text-white">
+              <h2 className="text-base sm:text-lg font-semibold truncate leading-tight tracking-tight text-white drop-shadow-xs">
+                {user.name || 'User'}
+              </h2>
+              <p className="text-xs text-white/85 font-medium mt-0.5 tracking-wide truncate">
+                {user.email}
+              </p>
             </div>
-
-            <div className='flex items-center gap-2 pt-0.5'>
-              <Button
-                type='button'
-                variant='outline'
-                size='sm'
-                onClick={() => fileRef.current?.click()}
-                disabled={isUploading || updateProfileMutation.isPending}
-                className='h-8 px-3 text-12 font-medium shadow-2xs cursor-pointer'
-              >
-                {isUploading ? (
-                  <>
-                    <Loader2 className='size-3.5 animate-spin mr-1.5 shrink-0' />
-                    <span>Uploading...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload className='size-3.5 mr-1.5 shrink-0 text-muted-foreground' strokeWidth={1.5} />
-                    <span>Upload new picture</span>
-                  </>
-                )}
-              </Button>
-
-              <input
-                type='file'
-                ref={fileRef}
-                className='hidden'
-                accept='image/*'
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleAvatarUpload(file);
-                }}
-              />
-            </div>
-            <p className='text-11 text-muted-foreground'>
-              Recommended square image, at least 256×256px (PNG, JPG or WebP).
-            </p>
           </div>
+
+          {/* Right: Change Cover Modal Button */}
+          <CoverModal
+            currentCover={cover}
+            onSelectCover={handleSelectCover}
+            onUploadCustomCover={handleUploadCustomCover}
+            isUploading={isUploading}
+          >
+            <button
+              type="button"
+              className="h-8 px-3 rounded-md border border-white/20 bg-background/90 hover:bg-background text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 shadow-sm backdrop-blur-xs"
+            >
+              <ImageIcon className="size-3.5 text-foreground shrink-0" />
+              <span>Change cover</span>
+            </button>
+          </CoverModal>
         </div>
+
+        <input
+          type="file"
+          ref={fileRef}
+          className="hidden"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleAvatarUpload(file);
+          }}
+        />
       </div>
 
       {/* ── Section 2: Personal Information Form ── */}

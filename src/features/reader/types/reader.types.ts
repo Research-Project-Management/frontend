@@ -39,6 +39,7 @@ import {
   documentFigureSchema,
   documentTableSchema,
   documentFormulaSchema,
+  documentReferenceSchema,
   documentFulltextSchema,
 } from '../schemas/reader.schema';
 
@@ -103,6 +104,7 @@ export type DocumentSection = z.infer<typeof documentSectionSchema>;
 export type DocumentFigure = z.infer<typeof documentFigureSchema>;
 export type DocumentTable = z.infer<typeof documentTableSchema>;
 export type DocumentFormula = z.infer<typeof documentFormulaSchema>;
+export type DocumentReference = z.infer<typeof documentReferenceSchema>;
 export type DocumentFulltext = z.infer<typeof documentFulltextSchema>;
 
 export interface StreamPaperOptions {

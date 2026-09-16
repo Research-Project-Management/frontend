@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from '@/shared/lib/token-storage';
-import { toast } from 'sonner';
 
 export interface UseRealtimeWorkItemsOptions {
   projectId?: string;
@@ -35,10 +34,6 @@ export function useRealtimeWorkItems({
           if (payload?.projectId === projectId) {
             queryClient.invalidateQueries({ queryKey: ['work-items'] });
             queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
-            toast.info('Dữ liệu công việc vừa được đồng bộ thời gian thực.', {
-              id: 'realtime-sync',
-              duration: 2500,
-            });
           }
         } catch {
           // ignore non-json messages

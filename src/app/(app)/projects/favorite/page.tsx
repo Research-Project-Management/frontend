@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import FavoritesPage from '@/features/projects/shell/pages/FavoritesPage';
+import FavoritesPage from '@/features/projects/favorite/pages/FavoritesPage';
 
 export const metadata: Metadata = {
   title: 'Favorite Projects · Flux',

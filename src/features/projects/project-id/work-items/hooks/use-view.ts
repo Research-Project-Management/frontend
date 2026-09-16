@@ -28,7 +28,7 @@ import {
 
 import { ViewService, type SavedViewRecord } from '../services/view.service';
 import type { Item, WorkItem, Column } from '../types/work-item.types';
-import { resolveColumnId, resolveWorkItemColumnId } from '../utils/work-item.utils';
+import { resolveColumnId, resolveWorkItemColumnId, getItemBucketKey } from '../utils/work-item.utils';
 import { ItemHelpers, WorkItemHelpers } from '../utils/work-item.utils';
 
 // ── 1. Query Keys & Server State Hooks (matching backend view module) ───────────
@@ -63,10 +63,10 @@ export function useCreateViewMutation(projectId: string) {
     }) => ViewService.createView(projectId, data),
     onSuccess: (newView) => {
       queryClient.invalidateQueries({ queryKey: viewKeys.list(projectId) });
-      toast.success(`Created view "${newView.name}"`);
+      toast.success(`Created view "${newView.name}"`, { id: 'work-item-view-action' });
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Failed to create view');
+      toast.error(err.message || 'Failed to create view', { id: 'work-item-view-action' });
     },
   });
 }
@@ -90,10 +90,10 @@ export function useUpdateViewMutation(projectId: string) {
     }) => ViewService.updateView(projectId, viewId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: viewKeys.list(projectId) });
-      toast.success('View updated');
+      toast.success('View updated', { id: 'work-item-view-action' });
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Failed to update view');
+      toast.error(err.message || 'Failed to update view', { id: 'work-item-view-action' });
     },
   });
 }
@@ -104,10 +104,10 @@ export function useDeleteViewMutation(projectId: string) {
     mutationFn: (viewId: string) => ViewService.deleteView(projectId, viewId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: viewKeys.list(projectId) });
-      toast.success('View deleted');
+      toast.success('View deleted', { id: 'work-item-view-action' });
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Failed to delete view');
+      toast.error(err.message || 'Failed to delete view', { id: 'work-item-view-action' });
     },
   });
 }
@@ -159,6 +159,8 @@ export interface UseKanbanOptions {
   onReorderCard?: (workItemId: string, targetColumnId: string, rank: number) => void;
   isReadOnly?: boolean;
   subGroupBy?: string;
+  groupBy?: string;
+  itemsByColumnId?: Map<string, Item[]>;
 }
 
 export function useKanban({
@@ -169,6 +171,8 @@ export function useKanban({
   onReorderCard,
   isReadOnly = false,
   subGroupBy = 'none',
+  groupBy = 'state',
+  itemsByColumnId: propItemsByColumnId,
 }: UseKanbanOptions) {
   const items = propItems || propWorkItems || [];
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -190,18 +194,24 @@ export function useKanban({
   }, [columns]);
 
   const itemsByColumn = useMemo(() => {
+    if (propItemsByColumnId && propItemsByColumnId.size > 0) {
+      return propItemsByColumnId;
+    }
     const map = new Map<string, Item[]>();
     for (const column of columns) {
       const columnId = resolveColumnId(column);
       if (columnId) map.set(columnId, []);
     }
     for (const item of items) {
-      if (!item.columnId) continue;
-      const list = map.get(item.columnId);
-      if (list) list.push(item);
+      const bucketKey = getItemBucketKey(item, groupBy);
+      if (bucketKey && map.has(bucketKey)) {
+        map.get(bucketKey)!.push(item);
+      } else if (item.columnId && map.has(item.columnId)) {
+        map.get(item.columnId)!.push(item);
+      }
     }
     return map;
-  }, [items, columns]);
+  }, [items, columns, groupBy, propItemsByColumnId]);
 
   const activeItem = useMemo(() => {
     if (!activeId) return null;
@@ -233,8 +243,8 @@ export function useKanban({
         targetColumnId = parts[1];
       } else {
         const overItem = items.find((item) => item.id === overId);
-        if (overItem?.columnId) {
-          targetColumnId = overItem.columnId;
+        if (overItem) {
+          targetColumnId = getItemBucketKey(overItem, groupBy) || overItem.columnId || null;
           isOverCard = true;
           if (subGroupBy && subGroupBy !== 'none') {
             if (subGroupBy === 'priority') {

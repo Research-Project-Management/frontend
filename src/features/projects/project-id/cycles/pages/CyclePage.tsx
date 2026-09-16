@@ -148,7 +148,7 @@ export function CyclePage() {
   const handleSave = (values: CycleFormData) => {
     // Rule: Basic Date Validation (only if both are provided)
     if (values.startDate && values.endDate && new Date(values.startDate) > new Date(values.endDate)) {
-      toast.error("Start date cannot be after end date");
+      toast.error("Start date cannot be after end date", { id: 'cycle-management' });
       return;
     }
 
@@ -160,7 +160,7 @@ export function CyclePage() {
       if (values.startDate && values.endDate) {
         const hasOverlap = checkParallelConflict(values.startDate, values.endDate, editingCycle?.id);
         if (hasOverlap) {
-          toast.error("Dates overlap with an existing cycle");
+          toast.error("Dates overlap with an existing cycle", { id: 'cycle-management' });
           return;
         }
       }
@@ -175,7 +175,7 @@ export function CyclePage() {
       if (isNewActive) {
         const otherActive = cycles.find(c => c.id !== editingCycle?.id && deriveStatus(c) === "active");
         if (otherActive) {
-          toast.error(`"${otherActive.name}" is already active`);
+          toast.error(`"${otherActive.name}" is already active`, { id: 'cycle-management' });
           return;
         }
       }
@@ -190,13 +190,13 @@ export function CyclePage() {
 
     if (editingCycle) {
       updateMutation.mutate({ cycleId: editingCycle.id, projectId: projectId!, ...payload }, {
-        onSuccess: () => { setDialogOpen(false); toast.success("Cycle updated"); },
-        onError: (err: any) => toast.error(err?.message || err?.response?.data?.message || "Something went wrong"),
+        onSuccess: () => { setDialogOpen(false); toast.success("Cycle updated", { id: 'cycle-management' }); },
+        onError: (err: any) => toast.error(err?.message || err?.response?.data?.message || "Something went wrong", { id: 'cycle-management' }),
       });
     } else {
       createMutation.mutate({ projectId: projectId!, ...payload }, {
-        onSuccess: () => { setDialogOpen(false); toast.success("Cycle created"); },
-        onError: (err: any) => toast.error(err?.message || err?.response?.data?.message || "Something went wrong"),
+        onSuccess: () => { setDialogOpen(false); toast.success("Cycle created", { id: 'cycle-management' }); },
+        onError: (err: any) => toast.error(err?.message || err?.response?.data?.message || "Something went wrong", { id: 'cycle-management' }),
       });
     }
   };
@@ -210,11 +210,11 @@ export function CyclePage() {
     if (!cycleToDelete) return;
     deleteMutation.mutate({ cycleId: cycleToDelete, projectId: projectId! }, {
       onSuccess: () => {
-        toast.success("Cycle deleted");
+        toast.success("Cycle deleted", { id: 'cycle-management' });
         setIsDeleteModalOpen(false);
         setCycleToDelete(null);
       },
-      onError: (err: any) => toast.error(err?.message || err?.response?.data?.message || "Failed to delete cycle"),
+      onError: (err: any) => toast.error(err?.message || err?.response?.data?.message || "Failed to delete cycle", { id: 'cycle-management' }),
     });
   };
 
@@ -237,7 +237,7 @@ export function CyclePage() {
 
     if (statusModalType === "start") {
       if (!targetCycle.startDate || !targetCycle.endDate) {
-        toast.error("Set a date range to start this cycle");
+        toast.error("Set a date range to start this cycle", { id: 'cycle-management' });
         setStatusModalOpen(false);
         return;
       }
@@ -247,13 +247,13 @@ export function CyclePage() {
         status: "active",
       }, {
         onSuccess: () => {
-          toast.success("Cycle started successfully");
+          toast.success("Cycle started successfully", { id: 'cycle-management' });
           setStatusModalOpen(false);
           setTargetCycle(null);
         },
         onError: (err: any) => {
           const msg = err?.response?.data?.message || err?.message || "Failed to start cycle";
-          toast.error(msg);
+          toast.error(msg, { id: 'cycle-management' });
         }
       });
       return;
@@ -269,13 +269,13 @@ export function CyclePage() {
         onSuccess: (res: any) => {
           const count = res?.transferredCount ?? 0;
           const extra = count > 0 ? ` (${count} work item(s) processed)` : '';
-          toast.success(`Cycle completed successfully${extra}`);
+          toast.success(`Cycle completed successfully${extra}`, { id: 'cycle-management' });
           setStatusModalOpen(false);
           setTargetCycle(null);
         },
         onError: (err: any) => {
           const msg = err?.response?.data?.message || err?.message || "Failed to complete cycle";
-          toast.error(msg);
+          toast.error(msg, { id: 'cycle-management' });
         }
       });
     }

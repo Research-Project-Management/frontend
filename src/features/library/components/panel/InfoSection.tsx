@@ -16,8 +16,7 @@ import {
 } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import type { Item, CreatorCredit } from '@/features/library/types/library.types';
-import { normalizeAuthors, splitAuthorString, cleanDoi, extractArxivId, formatAndSanitizeExtraMetadata } from '@/features/library/utils/library.util';
-import { generateCitationKey } from '@/features/library/utils/bibtex.util';
+import { normalizeAuthors, splitAuthorString, cleanDoi, extractArxivId, formatAndSanitizeExtraMetadata, generateCitationKey } from '@/features/library/utils/library.util';
 import {
   LIBRARY_ITEM_TYPES,
   getItemTypeDefinition,

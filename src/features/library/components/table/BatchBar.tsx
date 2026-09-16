@@ -12,9 +12,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/shared/components/ui";
-import { convertToBibTeX, generateCitationKey } from '../../utils/library.util';
+
 import { CitationService } from '../../services/citation.service';
 import { ExportService } from '../../services/exports.service';
+import { generateCitationKey } from '../../utils/bibtex.util';
 import { useParams } from 'next/navigation';
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/shared/components/ui";
 import type { Collection, Item, CslStyle } from '../../types/library.types';
@@ -116,49 +117,66 @@ export function BatchBar({
 
   const handleExportAllBibtex = async () => {
     const itemIds = resolvedItems.map((p) => p.id).filter(Boolean);
-    if (itemIds.length > 0) {
-      try {
-        const res = await ExportService.exportLibrary(effectiveScopeId, {
-          format: 'bibtex',
-          itemIds,
-        });
-        if (res?.content) {
-          await copyWithToast(
-            res.content,
-            `Copied BibTeX for ${selectedCount} papers to clipboard`,
-          );
-          return;
-        }
-      } catch (err) {
-        console.warn('Backend BibTeX export failed, using client fallback', err);
+    if (itemIds.length === 0) return;
+
+    try {
+      const res = await ExportService.exportLibrary(effectiveScopeId, {
+        format: 'bibtex',
+        itemIds,
+      });
+      if (res?.content) {
+        await copyWithToast(
+          res.content,
+          `Copied BibTeX for ${selectedCount} reference(s) to clipboard`,
+        );
+        return;
       }
+    } catch (err) {
+      console.warn('Backend BibTeX export failed', err);
     }
-    const bibtexEntries = resolvedItems.map((p) => convertToBibTeX(p)).join('\n\n');
-    await copyWithToast(bibtexEntries, `Copied BibTeX for ${selectedCount} papers to clipboard`);
+
+    const cachedBib = resolvedItems
+      .map((p) => (p as any).bibtex)
+      .filter((b): b is string => Boolean(b && b.trim()))
+      .join('\n\n');
+    if (cachedBib) {
+      await copyWithToast(cachedBib, `Copied BibTeX for ${selectedCount} reference(s) to clipboard`);
+    } else {
+      toast.error('Unable to export BibTeX for selected items', { id: 'library-clipboard' });
+    }
   };
 
   const handleDownloadBibFile = async () => {
     const itemIds = resolvedItems.map((p) => p.id).filter(Boolean);
+    if (itemIds.length === 0) return;
+
     let bibtexContent: string | null = null;
     let downloadFilename = `references-selected-${selectedCount}.bib`;
 
-    if (itemIds.length > 0) {
-      try {
-        const res = await ExportService.exportLibrary(effectiveScopeId, {
-          format: 'bibtex',
-          itemIds,
-        });
-        if (res?.content) {
-          bibtexContent = res.content;
-          if (res.filename) downloadFilename = res.filename;
-        }
-      } catch (err) {
-        console.warn('Backend BibTeX export failed, using client fallback', err);
+    try {
+      const res = await ExportService.exportLibrary(effectiveScopeId, {
+        format: 'bibtex',
+        itemIds,
+      });
+      if (res?.content) {
+        bibtexContent = res.content;
+        if (res.filename) downloadFilename = res.filename;
       }
+    } catch (err) {
+      console.warn('Backend BibTeX export failed', err);
     }
 
     if (!bibtexContent) {
-      bibtexContent = resolvedItems.map((p) => convertToBibTeX(p)).join('\n\n');
+      bibtexContent =
+        resolvedItems
+          .map((p) => (p as any).bibtex)
+          .filter((b): b is string => Boolean(b && b.trim()))
+          .join('\n\n') || null;
+    }
+
+    if (!bibtexContent) {
+      toast.error('Unable to generate BibTeX file for download', { id: 'library-clipboard' });
+      return;
     }
 
     const blob = new Blob([bibtexContent], { type: 'text/plain;charset=utf-8' });

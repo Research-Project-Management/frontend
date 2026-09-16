@@ -20,7 +20,6 @@ export function useEditorStorage(pageId: string | null | undefined, parentId?: s
   const uploadFileMutation = useMutation({
     mutationFn: async ({
       file,
-      projectId,
       pageId: targetPageId,
       parentId: targetParentId,
     }: {
@@ -29,30 +28,11 @@ export function useEditorStorage(pageId: string | null | undefined, parentId?: s
       pageId: string;
       parentId?: string | null;
     }) => {
-      const timestamp = Date.now();
-      const prefix = projectId ? `projects/${projectId}` : 'uploads';
-      const fileName = `${prefix}/${timestamp}-${file.name}`;
-      const fileBase64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve((reader.result as string).split(',')[1] ?? (reader.result as string));
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('fileName', fileName);
-
-      const { path } = await EditorStorageService.uploadToR2(targetPageId, formData);
-
-      await EditorStorageService.createFileRecord(targetPageId, {
-        filename: file.name,
-        size: file.size,
-        mimeType: file.type || 'application/octet-stream',
-        url: `/api/files/r2/${path}`,
-        parentId: targetParentId || null,
-        fileBase64,
-      });
+      return EditorStorageService.uploadPageFile(
+        targetPageId,
+        file,
+        targetParentId,
+      );
     },
     onSuccess: (_, variables) => {
       if (variables.pageId || variables.projectId) {

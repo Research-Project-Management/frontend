@@ -143,13 +143,17 @@ export default function ImportFromPersonalModal({
     try {
       const res = await ItemService.importFromPersonal(projectId, selectedIds);
       toast.success(
-        `Imported ${res.importedCount ?? selectedIds.length} reference(s) into ${projectName}`
+        `Imported ${res.importedCount ?? selectedIds.length} reference(s) into ${projectName}`,
+        { id: 'import-personal-refs' }
       );
       setSelectedIds([]);
       onSuccess?.();
       onOpenChange(false);
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to import references');
+      toast.error('Failed to import references', {
+        description: err?.message,
+        id: 'import-personal-refs',
+      });
     } finally {
       setIsImporting(false);
     }

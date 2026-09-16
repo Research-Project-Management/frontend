@@ -13,6 +13,7 @@ export type LaTeXEngine = CompilerEngine;
 export type { CompileMode };
 export type LayoutMode = 'split' | 'editor-only' | 'viewer-only';
 export type EditorTheme = 'light' | 'dark';
+export type KeybindingMode = 'standard' | 'vim';
 
 export interface DocumentSettingsState {
   engine: CompilerEngine;
@@ -20,6 +21,7 @@ export interface DocumentSettingsState {
   autoCompile: boolean;
   layout: LayoutMode;
   editorTheme: EditorTheme;
+  keybinding: KeybindingMode;
   sidebarWidth: number;
   editorFlex: number;
   useCache: boolean;
@@ -36,6 +38,7 @@ export interface DocumentSettingsState {
   setAutoCompile: (autoCompile: boolean) => void;
   setLayout: (layout: LayoutMode) => void;
   setEditorTheme: (editorTheme: EditorTheme) => void;
+  setKeybinding: (keybinding: KeybindingMode) => void;
   setSidebarWidth: (sidebarWidth: number) => void;
   setEditorFlex: (editorFlex: number) => void;
   setUseCache: (useCache: boolean) => void;
@@ -59,6 +62,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       autoCompile: true,
       layout: 'split',
       editorTheme: 'light',
+      keybinding: 'standard',
       sidebarWidth: 320,
       editorFlex: 0.5,
       useCache: true,
@@ -75,6 +79,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       setAutoCompile: (autoCompile) => set({ autoCompile }),
       setLayout: (layout) => set({ layout }),
       setEditorTheme: (editorTheme) => set({ editorTheme }),
+      setKeybinding: (keybinding) => set({ keybinding }),
       setSidebarWidth: (sidebarWidth) => set({ sidebarWidth }),
       setEditorFlex: (editorFlex) => set({ editorFlex }),
       setUseCache: (useCache) => set({ useCache }),

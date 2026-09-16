@@ -32,7 +32,7 @@ export default function LayoutSwitcher() {
           type="button"
           title="Change layout"
           aria-label="Change editor layout"
-          className="p-1.5 rounded-md text-foreground hover:bg-muted transition-colors outline-none cursor-pointer"
+          className="p-1.5 rounded-md text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent transition-colors outline-none cursor-pointer"
         >
           <LayoutIcon strokeWidth={1.5} className="size-4 shrink-0 text-foreground" />
         </button>

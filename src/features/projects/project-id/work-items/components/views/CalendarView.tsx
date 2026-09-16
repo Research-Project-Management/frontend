@@ -431,22 +431,22 @@ export function CalendarView({
 
           <div className="flex items-center gap-2">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={handleToday}
-              className="h-7 px-2.5 text-11 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer"
+              className="h-8 px-3 text-13 font-medium bg-background border border-border text-foreground hover:bg-muted shadow-2xs rounded-md cursor-pointer"
             >
               Today
             </Button>
 
             {/* Month | Week inline segment switcher */}
-            <div className="inline-flex items-center p-0.5 rounded-md bg-muted border border-border text-xs">
+            <div className="inline-flex items-center p-0.5 rounded-md bg-muted border border-border text-12">
               <button
                 type="button"
                 onClick={() => setLayoutMode("month")}
-                className={`px-2.5 py-1 rounded-sm text-xs transition-all ${
+                className={`px-2.5 py-1 rounded-sm text-12 transition-all cursor-pointer ${
                   layoutMode === "month"
-                    ? "bg-background text-foreground font-medium shadow-none"
+                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -455,9 +455,9 @@ export function CalendarView({
               <button
                 type="button"
                 onClick={() => setLayoutMode("week")}
-                className={`px-2.5 py-1 rounded-sm text-xs transition-all ${
+                className={`px-2.5 py-1 rounded-sm text-12 transition-all cursor-pointer ${
                   layoutMode === "week"
-                    ? "bg-background text-foreground font-medium shadow-none"
+                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >

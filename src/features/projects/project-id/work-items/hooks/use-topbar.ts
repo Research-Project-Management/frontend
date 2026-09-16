@@ -19,6 +19,8 @@ import type {
   DisplayPropertyKey,
   Filters,
   ProjectMember,
+  GroupByOption,
+  SubGroupByOption,
 } from '../types/work-item.types';
 import {
   DEFAULT_DISPLAY_OPTIONS,
@@ -32,6 +34,8 @@ export type ViewMode = 'board' | 'list' | 'calendar' | 'table' | 'timeline' | 's
 
 const ITEMS_VIEW_STORAGE_KEY = 'flux:work-items-view-mode';
 const DISPLAY_OPTIONS_STORAGE_KEY = 'flux:work-item-display-options';
+const getDisplayOptionsStorageKey = (projId?: string) =>
+  projId ? `flux:work-item-display-options:${projId}` : DISPLAY_OPTIONS_STORAGE_KEY;
 const VALID_MODES: ViewMode[] = ['board', 'list', 'calendar', 'table', 'timeline', 'split'];
 
 const PRIORITY_WEIGHT: Record<Priority, number> = {
@@ -146,16 +150,30 @@ export function useTopbar({
         (beDisplayProps && Object.keys(beDisplayProps).length > 0) ||
         (beDisplayFilters && Object.keys(beDisplayFilters).length > 0)
       ) {
-        setDisplayOptionsState((prev) => ({
-          ...prev,
-          ...(beDisplayProps ? { properties: { ...prev.properties, ...beDisplayProps } } : {}),
-          ...(beDisplayFilters?.groupBy ? { groupBy: beDisplayFilters.groupBy } : {}),
-          ...(beDisplayFilters?.subGroupBy ? { subGroupBy: beDisplayFilters.subGroupBy } : {}),
-          ...(beDisplayFilters?.orderBy ? { orderBy: beDisplayFilters.orderBy } : {}),
-          ...(beDisplayFilters?.orderDirection ? { orderDirection: beDisplayFilters.orderDirection } : {}),
-          ...(beDisplayFilters?.showEmptyGroups !== undefined ? { showEmptyGroups: Boolean(beDisplayFilters.showEmptyGroups) } : {}),
-          ...(beDisplayFilters?.showChildWorkItems !== undefined ? { showChildWorkItems: Boolean(beDisplayFilters.showChildWorkItems) } : {}),
-        }));
+        const rawGroupBy = beDisplayFilters?.groupBy ?? beDisplayFilters?.group_by;
+        const rawSubGroupBy = beDisplayFilters?.subGroupBy ?? beDisplayFilters?.sub_group_by;
+        const rawOrderBy = beDisplayFilters?.orderBy ?? beDisplayFilters?.order_by;
+        const rawOrderDirection = beDisplayFilters?.orderDirection ?? beDisplayFilters?.order_direction;
+        const rawShowEmpty = beDisplayFilters?.showEmptyGroups ?? beDisplayFilters?.show_empty_groups;
+        const rawShowChild = beDisplayFilters?.showChildWorkItems ?? beDisplayFilters?.show_child_work_items;
+
+        setDisplayOptionsState((prev) => {
+          const nextGroupBy = (rawGroupBy && rawGroupBy !== 'null' && rawGroupBy !== '') ? rawGroupBy : (prev.groupBy || 'state');
+          let nextSubGroupBy = (rawSubGroupBy && rawSubGroupBy !== 'null' && rawSubGroupBy !== '') ? rawSubGroupBy : (prev.subGroupBy || 'none');
+          if (nextSubGroupBy === nextGroupBy) {
+            nextSubGroupBy = 'none';
+          }
+          return {
+            ...prev,
+            ...(beDisplayProps ? { properties: { ...prev.properties, ...beDisplayProps } } : {}),
+            groupBy: nextGroupBy,
+            subGroupBy: nextSubGroupBy,
+            ...(rawOrderBy ? { orderBy: rawOrderBy } : {}),
+            ...(rawOrderDirection ? { orderDirection: rawOrderDirection } : {}),
+            ...(rawShowEmpty !== undefined ? { showEmptyGroups: Boolean(rawShowEmpty) } : {}),
+            ...(rawShowChild !== undefined ? { showChildWorkItems: Boolean(rawShowChild) } : {}),
+          };
+        });
       }
     }
   }, [userProperties]);
@@ -182,11 +200,29 @@ export function useTopbar({
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
   // ── Display Options State ─────────────────────────────────────────────────
+  const storageKey = useMemo(() => getDisplayOptionsStorageKey(projectId), [projectId]);
+
   const [displayOptions, setDisplayOptionsState] = useState<DisplayOptions>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem(DISPLAY_OPTIONS_STORAGE_KEY);
-        if (saved) return { ...DEFAULT_DISPLAY_OPTIONS, ...(JSON.parse(saved) as Partial<DisplayOptions>) };
+        const key = getDisplayOptionsStorageKey(projectId);
+        const saved = localStorage.getItem(key) || (projectId ? localStorage.getItem(DISPLAY_OPTIONS_STORAGE_KEY) : null);
+        if (saved) {
+          const parsed = JSON.parse(saved) as Record<string, any>;
+          const rawGb = parsed.groupBy;
+          const rawSubGb = parsed.subGroupBy;
+          const groupBy = rawGb && rawGb !== 'null' ? (rawGb as GroupByOption) : 'state';
+          let subGroupBy = rawSubGb && rawSubGb !== 'null' ? (rawSubGb as SubGroupByOption) : 'none';
+          if (subGroupBy === groupBy) {
+            subGroupBy = 'none';
+          }
+          return {
+            ...DEFAULT_DISPLAY_OPTIONS,
+            ...parsed,
+            groupBy,
+            subGroupBy,
+          };
+        }
       } catch {}
     }
     return DEFAULT_DISPLAY_OPTIONS;
@@ -196,17 +232,25 @@ export function useTopbar({
     setDisplayOptionsState(options);
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem(DISPLAY_OPTIONS_STORAGE_KEY, JSON.stringify(options));
+        localStorage.setItem(storageKey, JSON.stringify(options));
       } catch {}
     }
     if (projectId) {
       const { properties, ...displayFilters } = options;
       updateProperties({
         displayProperties: properties as any,
-        displayFilters: displayFilters as any,
+        displayFilters: {
+          ...displayFilters,
+          group_by: displayFilters.groupBy,
+          sub_group_by: displayFilters.subGroupBy,
+          order_by: displayFilters.orderBy,
+          order_direction: displayFilters.orderDirection,
+          show_empty_groups: displayFilters.showEmptyGroups,
+          show_child_work_items: displayFilters.showChildWorkItems,
+        } as any,
       });
     }
-  }, [projectId, updateProperties]);
+  }, [projectId, storageKey, updateProperties]);
 
   const updateDisplayProperty = useCallback((key: DisplayPropertyKey, value: boolean) => {
     setDisplayOptionsState((prev) => {
@@ -231,7 +275,7 @@ export function useTopbar({
       };
       if (typeof window !== 'undefined') {
         try {
-          localStorage.setItem(DISPLAY_OPTIONS_STORAGE_KEY, JSON.stringify(next));
+          localStorage.setItem(storageKey, JSON.stringify(next));
         } catch {}
       }
       if (projectId) {
@@ -239,7 +283,7 @@ export function useTopbar({
       }
       return next;
     });
-  }, [projectId, updateProperties]);
+  }, [projectId, storageKey, updateProperties]);
 
   // ── Saved View Controller Actions ─────────────────────────────────────────
   const selectSavedView = useCallback((view: SavedViewRecord) => {
@@ -276,10 +320,10 @@ export function useTopbar({
     onSuccess: (newView: SavedViewRecord) => {
       queryClient.invalidateQueries({ queryKey: ['project-saved-views', projectId] });
       setActiveViewId(newView.id);
-      toast.success(`Saved view "${newView.name}"`);
+      toast.success(`Saved view "${newView.name}"`, { id: 'work-item-view-action' });
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Failed to save view');
+      toast.error(err.message || 'Failed to save view', { id: 'work-item-view-action' });
     },
   });
 

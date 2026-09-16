@@ -49,7 +49,7 @@ export const useAddRelationMutation = () => {
         queryClient.invalidateQueries({ queryKey: relationKeys.item(target) });
       }
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to add relation'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to add relation', { id: 'work-item-relation' }),
   });
 };
 
@@ -84,6 +84,6 @@ export const useRemoveRelationMutation = () => {
         queryClient.invalidateQueries({ queryKey: relationKeys.item(target) });
       }
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to remove relation'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to remove relation', { id: 'work-item-relation' }),
   });
 };

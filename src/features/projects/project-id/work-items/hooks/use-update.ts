@@ -63,9 +63,9 @@ export const useCreateUpdateMutation = () => {
       const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';
       queryClient.invalidateQueries({ queryKey: ['item-updates', targetId] });
       queryClient.invalidateQueries({ queryKey: ['item-updates-latest', targetId] });
-      toast.success('Progress update posted');
+      toast.success('Progress update posted', { id: 'work-item-progress' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to post update'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to post update', { id: 'work-item-progress' }),
   });
 };
 
@@ -95,9 +95,9 @@ export const useDeleteUpdateMutation = () => {
       const targetId = (vars.id || vars.itemId || vars.workItemId) ?? '';
       queryClient.invalidateQueries({ queryKey: ['item-updates', targetId] });
       queryClient.invalidateQueries({ queryKey: ['item-updates-latest', targetId] });
-      toast.success('Update deleted');
+      toast.success('Update deleted', { id: 'work-item-progress' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to delete update'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to delete update', { id: 'work-item-progress' }),
   });
 };
 

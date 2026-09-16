@@ -132,7 +132,7 @@ export function Topbar({
           title="View analytics"
         >
           <Link className="shrink-0" href="/projects/analytics">
-            <BarChart3 className="size-3.5 text-foreground shrink-0" />
+            <BarChart3 className="size-3.5 text-primary shrink-0" />
             <span>Analytics</span>
           </Link>
         </Button>

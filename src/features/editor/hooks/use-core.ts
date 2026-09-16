@@ -70,7 +70,7 @@ export function useActiveDocument() {
 
   const activeFile = childFiles.find((f) => f.id === fileId);
 
-  const pageStore = usePageStore() as any;
+  const pageStore = usePageStore();
   const {
     setCurrentPage,
     setFileHierarchy,
@@ -84,12 +84,12 @@ export function useActiveDocument() {
   const { openTab, setActive } = tabsStore;
 
   useEffect(() => {
-    if (projectId) setProjectId(projectId);
-    if (pageId) setParentPageId(pageId);
+    if (projectId && typeof setProjectId === 'function') setProjectId(projectId);
+    if (pageId && typeof setParentPageId === 'function') setParentPageId(pageId);
   }, [projectId, pageId, setProjectId, setParentPageId]);
 
   useEffect(() => {
-    if (parentPage) {
+    if (parentPage && typeof setFileHierarchy === 'function') {
       setFileHierarchy(parentPage);
     }
   }, [parentPage, setFileHierarchy]);
@@ -101,26 +101,45 @@ export function useActiveDocument() {
       const mainFile = childFiles.find((f) => f.id === (parentPage as any).mainFileId);
       const targetPage = mainFile || parentPage;
 
-      setCurrentPage(targetPage);
-      setActivePageId(targetPage.id);
+      setCurrentPage?.(targetPage);
+      setActivePageId?.(targetPage.id);
 
-      openTab(projectId || '', {
-        id: targetPage.id,
-        title: targetPage.title,
-      });
-      setActive(projectId || '', targetPage.id);
+      if (pageId) {
+        openTab(pageId, {
+          id: targetPage.id,
+          title: targetPage.title,
+        });
+        setActive(pageId, targetPage.id);
+      }
+      if (projectId && projectId !== pageId) {
+        openTab(projectId, {
+          id: targetPage.id,
+          title: targetPage.title,
+        });
+        setActive(projectId, targetPage.id);
+      }
     } else if (activeFile) {
-      setCurrentPage(activeFile);
-      setActivePageId(activeFile.id);
+      setCurrentPage?.(activeFile);
+      setActivePageId?.(activeFile.id);
 
-      openTab(projectId || '', {
-        id: activeFile.id,
-        title: activeFile.title,
-      });
-      setActive(projectId || '', activeFile.id);
+      if (pageId) {
+        openTab(pageId, {
+          id: activeFile.id,
+          title: activeFile.title,
+        });
+        setActive(pageId, activeFile.id);
+      }
+      if (projectId && projectId !== pageId) {
+        openTab(projectId, {
+          id: activeFile.id,
+          title: activeFile.title,
+        });
+        setActive(projectId, activeFile.id);
+      }
     }
   }, [
     fileId,
+    pageId,
     projectId,
     parentPage,
     activeFile,
@@ -142,7 +161,7 @@ export function useActiveDocument() {
     router.push(`${pathname}${query ? `?${query}` : ''}`);
   };
 
-  const activeTabId = projectId ? tabsStore.getActive(projectId) : null;
+  const activeTabId = (pageId ? tabsStore.getActive(pageId) : null) || (projectId ? tabsStore.getActive(projectId) : null);
   const selectedAsset = usePageStore((s) => (s as any).selectedAsset);
   const isAssetTab = activeTabId?.startsWith('asset:') || false;
   const activePage = fileId ? activeFile : parentPage;

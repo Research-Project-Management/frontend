@@ -8,15 +8,9 @@ import {
   compileLatex,
   type CompileLatexPayload,
 } from "../services/compiler.service";
-import {
-  fetchLookupDoi,
-  fetchSearchCrossref,
-  type CrossrefWork,
-} from "../services/citation.service";
+import { synctexService } from "../services/synctex.service";
 import { parseCompileErrors, type ParsedCompileError } from "./editor.util";
 import { logger } from "@/shared/lib/utils";
-
-export type { CrossrefWork };
 
 // ── SyncTeX Map & Node Types ──────────────────────────────────────────────────
 
@@ -85,7 +79,7 @@ export function parseSyncTeX(text: string): SyncTeXMap {
 
     if (first === 125 /* } */ || currentPage === 0) continue;
 
-    const m = s.match(/^([\[\(\)hvgxk$])(\d+):(\d+),(\d+):(-?\d+),(-?\d+)/);
+    const m = s.match(/^([\[\(\)hvgxk$])(\d+)[:,\.](\d+)(?:[:,\.](\d+))?:(-?\d+),(-?\d+)/);
     if (m) {
       const tag = parseInt(m[2], 10);
       const line = parseInt(m[3], 10);
@@ -164,6 +158,7 @@ export interface DirtyFileItem {
 
 export interface CompileExecutionOptions {
   projectId: string;
+  pageId?: string;
   mainFile: string;
   engine: string;
   draft: boolean;
@@ -181,12 +176,16 @@ export type CompileExecutionResult =
       synctexMap: SyncTeXMap | null;
       logs: string;
       compiledAt: Date;
+      flushedFileIds?: string[];
+      flushErrors?: Array<{ fileId: string; error: unknown }>;
     }
   | {
       success: false;
       error: string;
       logs: string;
       errors: ParsedCompileError[];
+      flushedFileIds?: string[];
+      flushErrors?: Array<{ fileId: string; error: unknown }>;
     };
 
 // ── Deep Compiler Engine ──────────────────────────────────────────────────────
@@ -195,6 +194,7 @@ export const LatexCompilerEngine = {
   async compile(opts: CompileExecutionOptions): Promise<CompileExecutionResult> {
     const {
       projectId,
+      pageId,
       mainFile,
       engine,
       draft,
@@ -204,24 +204,27 @@ export const LatexCompilerEngine = {
       onThumbnailGenerated,
     } = opts;
 
-    // Phase 1: Flush dirty files
+    // Phase 1: Flush dirty files with individual success tracking
+    const flushedFileIds: string[] = [];
+    const flushErrors: Array<{ fileId: string; error: unknown }> = [];
+
     if (dirtyFiles.length > 0) {
       onPhaseChange?.("flushing");
-      try {
-        await Promise.all(
-          dirtyFiles.map(({ fileId, content }) =>
-            flushPageContent(fileId, content).catch((err: unknown) => {
-              logger.warn(`[LatexCompilerEngine] Flush error on ${fileId}`, { error: err });
-            }),
-          ),
-        );
-      } catch (err) {
-        logger.warn('[LatexCompilerEngine] Some file flushes failed, proceeding', { error: err });
-      }
+      await Promise.all(
+        dirtyFiles.map(async ({ fileId, content }) => {
+          try {
+            await flushPageContent(fileId, content);
+            flushedFileIds.push(fileId);
+          } catch (err: unknown) {
+            logger.warn(`[LatexCompilerEngine] Flush error on ${fileId}`, { error: err });
+            flushErrors.push({ fileId, error: err });
+          }
+        }),
+      );
     }
 
     // Phase 2: Incremental sync
-    const dirtyFileIds = dirtyFiles.map((f) => f.fileId);
+    const dirtyFileIds = flushedFileIds.length > 0 ? flushedFileIds : dirtyFiles.map((f) => f.fileId);
     if (dirtyFileIds.length > 0) {
       onPhaseChange?.("syncing");
       try {
@@ -235,7 +238,8 @@ export const LatexCompilerEngine = {
     onPhaseChange?.("compiling");
 
     const payload: CompileLatexPayload = {
-      project_id: projectId,
+      project_id: projectId || undefined,
+      page_id: pageId || undefined,
       main_file: mainFile,
       engine,
       draft,
@@ -265,6 +269,8 @@ export const LatexCompilerEngine = {
             synctexMap,
             logs: data.logs || "",
             compiledAt: new Date(),
+            flushedFileIds,
+            flushErrors,
           };
         }
       }
@@ -277,6 +283,8 @@ export const LatexCompilerEngine = {
         error: (data as any)?.error || "LaTeX compilation failed to produce a PDF.",
         logs: log,
         errors: parsedErrors,
+        flushedFileIds,
+        flushErrors,
       };
     } catch (err: any) {
       const errStr = err instanceof Error ? err.message : String(err);
@@ -287,12 +295,63 @@ export const LatexCompilerEngine = {
         error: errStr,
         logs: errStr,
         errors: parsedErrors,
+        flushedFileIds,
+        flushErrors,
       };
     }
   },
 
-  async forceSync(projectId: string): Promise<{ synced: string[] }> {
-    return await syncIncremental(projectId, [], true);
+  forceSync(projectId: string): Promise<{ synced: string[] }> {
+    return syncIncremental(projectId, [], true);
+  },
+
+  /**
+   * Forward SyncTeX via Backend Single Source of Truth
+   */
+  async resolveForwardRemote(
+    projectId: string,
+    file: string,
+    line: number,
+    column: number = 0,
+  ): Promise<number | null> {
+    try {
+      const res = await synctexService.forwardSync({
+        projectId,
+        file,
+        line,
+        column,
+      });
+      return res?.page ?? null;
+    } catch (err) {
+      logger.debug('[LatexCompilerEngine] Remote forward sync failed', { err });
+      return null;
+    }
+  },
+
+  /**
+   * Reverse SyncTeX via Backend Single Source of Truth
+   */
+  async resolveReverseRemote(
+    projectId: string,
+    page: number,
+    x: number,
+    y: number,
+  ): Promise<{ sourcePath: string | null; line: number } | null> {
+    try {
+      const res = await synctexService.reverseSync({
+        projectId,
+        page,
+        x,
+        y,
+      });
+      if (res && res.line) {
+        return { sourcePath: res.file || null, line: res.line };
+      }
+      return null;
+    } catch (err) {
+      logger.debug('[LatexCompilerEngine] Remote reverse sync failed', { err });
+      return null;
+    }
   },
 
   /**
@@ -376,286 +435,23 @@ export const LatexCompilerEngine = {
   },
 };
 
-// ── Client PDF Metadata Parser ────────────────────────────────────────────────
-
-export type PdfMetadata = {
-  title?: string;
-  author?: string;
-  subject?: string;
-  creator?: string;
-  producer?: string;
-  creationDate?: string;
-  modDate?: string;
-  pageCount?: number;
-  keywords?: string;
-  doi?: string;
-  journal?: string;
-  publisher?: string;
-  issn?: string;
-  isbn?: string;
-  volume?: string;
-  issue?: string;
-  pages?: string;
-  publicationDate?: string;
-  abstract?: string;
-  language?: string;
-  copyright?: string;
-  year?: number | string;
-  authors?: string[];
-  editors?: string[];
-  type?: string;
-  itemType?: string;
-  url?: string;
-  crossrefEnriched?: boolean;
-  extraFields?: Record<string, string>;
-  journalAbbr?: string;
-  shortTitle?: string;
-  rights?: string;
-  license?: string;
-  publicationTitle?: string;
-  place?: string;
-  keywordsList?: string[];
-};
-
-const DOI_REGEX = /\b(10\.\d{4,}(?:\.\d+)*\/[^\s<>"{}|\\^`[\]]+)/g;
-
-export function extractDoiFromText(text: string): string | null {
-  const matches = text.match(DOI_REGEX);
-  if (!matches || !matches[0]) return null;
-  let doi = matches[0].trim();
-  doi = doi.replace(/[.,;:!?\s]+$/, "");
-
-  if (doi.endsWith(")")) {
-    const openCount = (doi.match(/\(/g) || []).length;
-    const closeCount = (doi.match(/\)/g) || []).length;
-    if (closeCount > openCount) {
-      doi = doi.slice(0, -1);
-    }
-  }
-
-  return doi.startsWith("10.") ? doi : null;
+/**
+ * Extract standard DOI from text, stripping trailing punctuation.
+ */
+export function extractDoiFromText(text?: string | null): string | null {
+  if (!text) return null;
+  const match = text.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)/);
+  if (!match) return null;
+  return match[1].replace(/[.,;:)\]]+$/, '');
 }
 
-export function parseXmpMetadata(xmpXml: string): Partial<PdfMetadata> {
-  const result: Partial<PdfMetadata> = {};
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(xmpXml, "application/xml");
-
-    const getTagText = (tag: string): string | undefined => {
-      const el = doc.getElementsByTagName(tag)[0];
-      return el?.textContent?.trim() || undefined;
-    };
-
-    const getSeqItems = (parentTag: string): string[] => {
-      const parent = doc.getElementsByTagName(parentTag)[0];
-      if (!parent) return [];
-      const seq = parent.getElementsByTagName("rdf:Seq")[0] || parent.getElementsByTagName("Seq")[0];
-      if (!seq) return [];
-      const lis = seq.getElementsByTagName("rdf:li") || seq.getElementsByTagName("li");
-      const items: string[] = [];
-      for (let i = 0; i < lis.length; i++) {
-        const text = lis[i].textContent?.trim();
-        if (text) items.push(text);
-      }
-      return items;
-    };
-
-    const dcDoi = getTagText("dc:identifier");
-    if (dcDoi && extractDoiFromText(dcDoi)) {
-      result.doi = extractDoiFromText(dcDoi)!;
-    } else {
-      const prismDoi = getTagText("prism:doi");
-      if (prismDoi) result.doi = extractDoiFromText(prismDoi) || prismDoi;
-    }
-
-    const titleAlt = doc.getElementsByTagName("dc:title")[0];
-    if (titleAlt) {
-      const li = titleAlt.getElementsByTagName("rdf:li")[0] || titleAlt.getElementsByTagName("li")[0];
-      if (li?.textContent) result.title = li.textContent.trim();
-    }
-
-    const authors = getSeqItems("dc:creator");
-    if (authors.length > 0) {
-      result.authors = authors;
-      result.author = authors.join(", ");
-    }
-
-    const description = getTagText("dc:description");
-    if (description) result.abstract = description;
-
-    const publisher = getTagText("dc:publisher");
-    if (publisher) result.publisher = publisher;
-
-    const journal = getTagText("prism:publicationName") || getTagText("prism:journalName");
-    if (journal) result.journal = journal;
-
-    const volume = getTagText("prism:volume");
-    if (volume) result.volume = volume;
-
-    const issue = getTagText("prism:number") || getTagText("prism:issue");
-    if (issue) result.issue = issue;
-
-    const pageRange = getTagText("prism:pageRange");
-    if (pageRange) result.pages = pageRange;
-
-    const prismDate = getTagText("prism:coverDate") || getTagText("prism:publicationDate") || getTagText("dc:date");
-    if (prismDate) {
-      result.publicationDate = prismDate;
-      const yearMatch = prismDate.match(/\b(19\d\d|20\d\d)\b/);
-      if (yearMatch) result.year = yearMatch[1];
-    }
-  } catch (err) {
-    logger.warn('[LatexCompilerEngine] Failed to parse XMP metadata', { error: err });
-  }
-  return result;
+/**
+ * Format PDF creation date string (e.g. "D:20240515143000Z") into ISO "YYYY-MM-DD".
+ */
+export function parsePdfDate(dateStr?: string | null): string | undefined {
+  if (!dateStr) return undefined;
+  const match = dateStr.match(/D:?(\d{4})(\d{2})(\d{2})/);
+  if (!match) return undefined;
+  return `${match[1]}-${match[2]}-${match[3]}`;
 }
 
-export function parsePdfDate(pdfDateStr?: string): string | undefined {
-  if (!pdfDateStr) return undefined;
-  const match = pdfDateStr.match(/^D:(\d{4})(\d{2})?(\d{2})?/);
-  if (match) {
-    const year = match[1];
-    const month = match[2] || "01";
-    const day = match[3] || "01";
-    return `${year}-${month}-${day}`;
-  }
-  return undefined;
-}
-
-export function mergeCrossrefMetadata(
-  meta: PdfMetadata,
-  crossref: CrossrefWork,
-): PdfMetadata {
-  const merged: PdfMetadata = { ...meta, crossrefEnriched: true };
-
-  if (crossref.title) {
-    merged.title = crossref.title;
-  }
-
-  if (crossref.authors && crossref.authors.length > 0) {
-    merged.authors = crossref.authors;
-    merged.author = crossref.authors.join(", ");
-  }
-
-  if (crossref.journal) {
-    merged.journal = crossref.journal;
-    merged.publicationTitle = crossref.journal;
-  }
-
-  if (crossref.journalAbbr) {
-    merged.journalAbbr = crossref.journalAbbr;
-  }
-
-  if (crossref.publisher) merged.publisher = crossref.publisher;
-  if (crossref.volume) merged.volume = crossref.volume;
-  if (crossref.issue) merged.issue = crossref.issue;
-  if (crossref.pages) merged.pages = crossref.pages;
-  if (crossref.issn) merged.issn = crossref.issn;
-  if (crossref.isbn) merged.isbn = crossref.isbn;
-  if (crossref.abstract) merged.abstract = crossref.abstract;
-  if (crossref.url) merged.url = crossref.url;
-  if (crossref.year) merged.year = crossref.year;
-  if (crossref.publicationDate) merged.publicationDate = crossref.publicationDate;
-  if (crossref.type) merged.itemType = crossref.type;
-
-  return merged;
-}
-
-export async function extractPdfMetadataFromFile(file: File): Promise<PdfMetadata> {
-  const meta: PdfMetadata = {};
-
-  try {
-    const pdfjsLib = await import("pdfjs-dist");
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-
-    const arrayBuffer = await file.arrayBuffer();
-    const loadingOp = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
-    const pdfDoc = await loadingOp.promise;
-
-    meta.pageCount = pdfDoc.numPages;
-
-    const metadataObj = await pdfDoc.getMetadata().catch(() => null);
-
-    if (metadataObj) {
-      const info: any = metadataObj.info || {};
-
-      if (info.Title) meta.title = info.Title;
-      if (info.Author) {
-        meta.author = info.Author;
-        meta.authors = [info.Author];
-      }
-      if (info.Subject) meta.subject = info.Subject;
-      if (info.Creator) meta.creator = info.Creator;
-      if (info.Producer) meta.producer = info.Producer;
-      if (info.Keywords) meta.keywords = info.Keywords;
-      if (info.CreationDate) {
-        meta.creationDate = parsePdfDate(info.CreationDate);
-        if (meta.creationDate) {
-          meta.year = meta.creationDate.split("-")[0];
-          meta.publicationDate = meta.creationDate;
-        }
-      }
-      if (info.ModDate) meta.modDate = parsePdfDate(info.ModDate);
-
-      if (metadataObj.metadata) {
-        try {
-          const rawXml = (metadataObj.metadata as any).getRaw?.() || "";
-          if (rawXml) {
-            const xmpMeta = parseXmpMetadata(rawXml);
-            Object.assign(meta, xmpMeta);
-          }
-        } catch (e) {
-          logger.warn('[LatexCompilerEngine] Failed to get raw XMP from metadata object', { error: e });
-        }
-      }
-    }
-
-    if (!meta.doi) {
-      const pagesToScan = Math.min(2, pdfDoc.numPages);
-      for (let i = 1; i <= pagesToScan; i++) {
-        const page = await pdfDoc.getPage(i);
-        const textContent = await page.getTextContent();
-        const fullText = textContent.items
-          .map((item: any) => item.str || "")
-          .join(" ");
-
-        const foundDoi = extractDoiFromText(fullText);
-        if (foundDoi) {
-          meta.doi = foundDoi;
-          break;
-        }
-      }
-    }
-
-    if (meta.doi) {
-      try {
-        const res = await fetchLookupDoi(meta.doi);
-        if (res && res.work) {
-          return mergeCrossrefMetadata(meta, res.work);
-        }
-      } catch (err) {
-        logger.warn('[LatexCompilerEngine] Crossref DOI enrichment failed', { error: err });
-      }
-    }
-
-    if (!meta.title || !meta.author) {
-      const titleToSearch = meta.title || file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
-      if (titleToSearch && titleToSearch.length > 5) {
-        try {
-          const res = await fetchSearchCrossref(titleToSearch, 1);
-          if (res && res.works && res.works.length > 0) {
-            return mergeCrossrefMetadata(meta, res.works[0]);
-          }
-        } catch (err) {
-          logger.warn('[LatexCompilerEngine] Crossref title search enrichment failed', { error: err });
-        }
-      }
-    }
-
-    return meta;
-  } catch (err) {
-    logger.error('[LatexCompilerEngine] PDF metadata extraction error', { error: err });
-    return meta;
-  }
-}

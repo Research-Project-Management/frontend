@@ -42,20 +42,9 @@ export default function DocumentBreadcrumb() {
 
   return (
     <div className="flex items-center min-w-0 flex-1 justify-center px-2">
-      {/* Flux Logo / Navigation */}
-      <button
-        type="button"
-        onClick={() => router.push('/projects')}
-        aria-label="Navigate to projects"
-        className="flex items-center shrink-0 p-1 rounded hover:bg-muted transition-colors outline-none"
-      >
-        <img src="/Flux.svg" className="size-5" alt="Flux" />
-      </button>
-
       {/* Project name -> back to project pages */}
       {projectName && (
         <>
-          <span className="text-muted-foreground/40 mx-1 text-sm select-none shrink-0">/</span>
           <button
             type="button"
             onClick={() => {
@@ -69,7 +58,7 @@ export default function DocumentBreadcrumb() {
             }}
             title="Back to project"
             aria-label={`Back to project ${projectName}`}
-            className="px-1.5 py-0.5 text-sm rounded-md text-foreground hover:bg-muted transition-colors shrink-0 max-w-[140px] truncate"
+            className="px-1.5 py-0.5 text-sm rounded-md text-foreground hover:bg-sidebar-hover transition-colors shrink-0 max-w-[140px] truncate"
           >
             {projectName}
           </button>
@@ -92,7 +81,7 @@ export default function DocumentBreadcrumb() {
                 if (e.key === 'Enter') handleCommit();
                 if (e.key === 'Escape') setIsEditing(false);
               }}
-              className="h-7 px-2 py-0.5 text-sm bg-muted focus:bg-background border border-primary/30 focus:border-primary rounded-md outline-none text-foreground font-medium transition-all min-w-[80px] max-w-[200px]"
+              className="h-7 px-2 py-0.5 text-sm bg-background border border-border focus:border-primary rounded-md outline-none text-foreground font-medium transition-colors min-w-[80px] max-w-[200px]"
             />
           ) : (
             <button
@@ -103,7 +92,7 @@ export default function DocumentBreadcrumb() {
               }}
               title="Click to rename document"
               aria-label={`Document title: ${currentPage.title}. Click to rename`}
-              className="text-sm font-medium text-foreground hover:bg-muted rounded-md px-1.5 py-0.5 transition-colors select-none truncate max-w-[180px]"
+              className="text-sm font-medium text-foreground hover:bg-sidebar-hover rounded-md px-1.5 py-0.5 transition-colors select-none truncate max-w-[180px]"
             >
               {currentPage.title}
             </button>

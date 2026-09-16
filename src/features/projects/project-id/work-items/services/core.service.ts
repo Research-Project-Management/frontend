@@ -18,10 +18,11 @@ export const CoreService = {
     CoreService.getProjectItems(projectId, cycleId),
 
   getItems: async () => {
-    const response = await apiGet<{ data?: Item[]; workItems?: Item[] }>(
+    const response = await apiGet<{ data?: Item[]; workItems?: Item[] } | Item[]>(
       `/api/work-items`,
     );
-    return response.data || response.workItems || [];
+    if (Array.isArray(response)) return response;
+    return response?.data || response?.workItems || [];
   },
   getWorkItems: () => CoreService.getItems(),
 
@@ -117,7 +118,7 @@ export const CoreService = {
     projectId,
   }: { ids?: string[]; itemIds?: string[]; workItemIds?: string[]; projectId?: string }) => {
     const targetIds = (ids || itemIds || workItemIds) ?? [];
-    const payload = { workItemIds: targetIds, ids: targetIds };
+    const payload = { workItemIds: targetIds, ids: targetIds, ...(projectId && { projectId }) };
     return projectId
       ? apiPost(`/api/projects/${projectId}/work-items/bulk-delete`, payload)
       : apiPost(`/api/work-items/bulk-delete`, payload);

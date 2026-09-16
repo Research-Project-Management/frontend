@@ -52,20 +52,20 @@ export const useTransferItems = (projectId: string) => {
       onSuccess?: () => void;
     }) => {
       if (!targetCycleId) {
-        toast.error('Please select a destination cycle');
+        toast.error('Please select a destination cycle', { id: 'cycle-transfer' });
         return false;
       }
       if (selectedIds.length === 0) {
-        toast.error('Please select at least one item to transfer');
+        toast.error('Please select at least one item to transfer', { id: 'cycle-transfer' });
         return false;
       }
       try {
         await mutation.mutateAsync({ selectedIds, targetCycleId });
-        toast.success(`Successfully transferred ${selectedIds.length} items`);
+        toast.success(`Successfully transferred ${selectedIds.length} items`, { id: 'cycle-transfer' });
         onSuccess?.();
         return true;
       } catch {
-        toast.error('Failed to transfer items');
+        toast.error('Failed to transfer items', { id: 'cycle-transfer' });
         return false;
       }
     },
@@ -104,16 +104,16 @@ export const useAddExistingItemsToCycle = (projectId: string, currentCycleId: st
       onSuccess?: () => void;
     }) => {
       if (selectedIds.length === 0) {
-        toast.error('Please select at least one item');
+        toast.error('Please select at least one item', { id: 'cycle-add-items' });
         return false;
       }
       try {
         await mutation.mutateAsync({ selectedIds });
-        toast.success(`Successfully added ${selectedIds.length} items to cycle`);
+        toast.success(`Successfully added ${selectedIds.length} items to cycle`, { id: 'cycle-add-items' });
         onSuccess?.();
         return true;
       } catch {
-        toast.error('Failed to add items to cycle');
+        toast.error('Failed to add items to cycle', { id: 'cycle-add-items' });
         return false;
       }
     },

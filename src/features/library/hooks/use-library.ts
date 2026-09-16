@@ -18,8 +18,8 @@ import { useAsyncJobStatus } from './use-ingestion';
 import { useLibrarySidebarStore } from '../store/sidebar.store';
 import {
   getDescendantIds,
-  getDuplicateIds,
   sortFilterItems,
+  LibraryFilterEngine,
 } from '../utils/filter.util';
 import type {
   Item,
@@ -145,6 +145,22 @@ export function useLibrary() {
   const activeTag = activeTags.length > 0 ? activeTags.join(',') : searchParams.get('tag');
   const activeFilter = searchParams.get('filter');
 
+  // Academic Multi-Criteria Filter Parameters
+  const fileStatus = (searchParams.get('fileStatus') as any) || 'all';
+  const readStatus = (searchParams.get('readStatus') as any) || 'all';
+  const itemTypes = useMemo(() => {
+    const raw = searchParams.getAll('type');
+    if (!raw.length) return [];
+    return raw
+      .flatMap((t: string) => t.split(','))
+      .map((t: string) => decodeURIComponent(t.trim()).toLowerCase())
+      .filter(Boolean);
+  }, [searchParams]);
+  const fromYear = searchParams.get('fromYear') ? parseInt(searchParams.get('fromYear')!, 10) : null;
+  const toYear = searchParams.get('toYear') ? parseInt(searchParams.get('toYear')!, 10) : null;
+  const startDate = searchParams.get('startDate') || null;
+  const endDate = searchParams.get('endDate') || null;
+
   const queryClient = useQueryClient();
 
   // Active Library Scope (Personal vs Project)
@@ -182,10 +198,17 @@ export function useLibrary() {
     [collectionId, collections],
   );
 
-  const duplicateIds = useMemo(
-    () => getDuplicateIds(allPapers),
-    [allPapers],
-  );
+  const duplicateIds = useMemo(() => {
+    const clusters = LibraryFilterEngine.findDuplicates(allPapers);
+    const set = new Set<string>();
+    for (const group of clusters) {
+      set.add(group.original.id);
+      for (const d of group.duplicates) {
+        set.add(d.id);
+      }
+    }
+    return set;
+  }, [allPapers]);
 
   const savedSearchId = searchParams.get('savedSearchId');
   const isSavedSearchActive = activeFilter === 'saved-search' && Boolean(savedSearchId);
@@ -214,6 +237,13 @@ export function useLibrary() {
       activeCollectionId: collectionId,
       collectionIds: descendantIds,
       duplicateItemIds: duplicateIds,
+      fileStatus,
+      readStatus,
+      itemTypes,
+      fromYear,
+      toYear,
+      startDate,
+      endDate,
     });
   }, [
     isSavedSearchActive,
@@ -226,6 +256,13 @@ export function useLibrary() {
     collectionId,
     descendantIds,
     duplicateIds,
+    fileStatus,
+    readStatus,
+    itemTypes,
+    fromYear,
+    toYear,
+    startDate,
+    endDate,
   ]);
 
   const selectedPaper = useMemo(
@@ -611,6 +648,11 @@ export function useLibrary() {
       activeTags,
       activeTag,
       activeFilter,
+      fileStatus,
+      readStatus,
+      itemTypes,
+      fromYear,
+      toYear,
       selectedItemId: selectedPaperId,
       selectedPaperId,
       selectedItem: selectedPaper,

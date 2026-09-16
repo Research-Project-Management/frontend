@@ -113,12 +113,12 @@ export default function SideBar({
   }, [setActivePanel]);
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-card">
+    <div className="flex h-full w-full overflow-hidden bg-background">
       {/* Icon strip */}
       <ul
         role="tablist"
         aria-label="Sidebar navigation"
-        className="flex h-full w-12 shrink-0 flex-col items-center gap-1 border-r border-border bg-card px-1 py-2"
+        className="flex h-full w-11 shrink-0 flex-col items-center gap-1.5 border-r border-border bg-muted py-2 select-none"
       >
         {sideBarItems.map((item) => {
           const isOpen = activePanel === item.name;
@@ -134,10 +134,10 @@ export default function SideBar({
                     aria-selected={isOpen}
                     aria-pressed={isOpen}
                     className={cn(
-                      "flex size-10 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer",
+                      "flex size-8 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer",
                       isOpen
-                        ? "bg-muted text-primary"
-                        : "text-muted-foreground hover:bg-muted",
+                        ? "bg-sidebar-accent text-foreground shadow-2xs font-medium"
+                        : "text-foreground/75 hover:text-foreground hover:bg-sidebar-hover",
                     )}
                   >
                     {"imageSrc" in item ? (
@@ -145,7 +145,7 @@ export default function SideBar({
                         src={(item as any).imageSrc}
                         alt={item.name}
                         className={cn(
-                          "size-4 shrink-0 transition-all hover:grayscale-0 hover:opacity-100",
+                          "size-4 shrink-0 transition-opacity hover:grayscale-0 hover:opacity-100",
                           isOpen ? "grayscale-0 opacity-100" : "grayscale opacity-60",
                         )}
                       />
@@ -162,7 +162,7 @@ export default function SideBar({
       </ul>
 
       {/* Stacked panels */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
         {!mounted ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <PanelContent

@@ -111,26 +111,6 @@ export function FilterPillsBar({
   dueDateFilter = 'all',
   onRemoveDueDate,
 }: FilterPillsBarProps) {
-  if (totalFiltersCount === 0) return null;
-
-  // Active state lists with backward compatibility
-  const activeStates = filters ? filters.state : selectedColumnIds;
-  const activeStateGroups = filters ? filters.state_group : [];
-  const activePriorities = filters ? filters.priority : selectedPriorities;
-  const activeAssignees = filters ? filters.assignees : selectedAssigneeIds;
-  const activeMentions = filters ? filters.mentions : [];
-  const activeCreatedBy = filters ? filters.created_by : [];
-  const activeLabels = filters ? filters.labels : [];
-  const activeCycles = filters ? filters.cycle : [];
-  const activeAttach = filters ? filters.attach : [];
-  const activeItems = filters ? [...((filters as any).items || []), ...(filters.work_items || [])] : [];
-  const activeParents = filters ? filters.parent : [];
-  const activeDueDates = filters ? filters.due_date : (dueDateFilter !== 'all' ? [dueDateFilter] : []);
-  const activeStartDates = filters ? filters.start_date : [];
-  const activeCreatedAt = filters ? filters.created_at : [];
-  const activeUpdatedAt = filters ? filters.updated_at : [];
-  const activeSearch = filters?.search || '';
-
   // Resolve label names and colors from items
   const labelsMap = React.useMemo(() => {
     const map = new Map<string, { name: string; color?: string }>();
@@ -154,6 +134,26 @@ export function FilterPillsBar({
     }
     return map;
   }, [items]);
+
+  if (totalFiltersCount === 0) return null;
+
+  // Active state lists with backward compatibility
+  const activeStates = filters ? filters.state : selectedColumnIds;
+  const activeStateGroups = filters ? filters.state_group : [];
+  const activePriorities = filters ? filters.priority : selectedPriorities;
+  const activeAssignees = filters ? filters.assignees : selectedAssigneeIds;
+  const activeMentions = filters ? filters.mentions : [];
+  const activeCreatedBy = filters ? filters.created_by : [];
+  const activeLabels = filters ? filters.labels : [];
+  const activeCycles = filters ? filters.cycle : [];
+  const activeAttach = filters ? filters.attach : [];
+  const activeItems = filters ? [...((filters as any).items || []), ...(filters.work_items || [])] : [];
+  const activeParents = filters ? filters.parent : [];
+  const activeDueDates = filters ? filters.due_date : (dueDateFilter !== 'all' ? [dueDateFilter] : []);
+  const activeStartDates = filters ? filters.start_date : [];
+  const activeCreatedAt = filters ? filters.created_at : [];
+  const activeUpdatedAt = filters ? filters.updated_at : [];
+  const activeSearch = filters?.search || '';
 
   return (
     <div className="flex items-center gap-2 px-4 py-1.5 border-b border-border bg-background text-xs text-foreground overflow-x-auto select-none shrink-0 min-h-9">

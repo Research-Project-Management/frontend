@@ -34,6 +34,13 @@ export default function LibrarySandboxLayout({
     if (!localStorage.getItem('auth_token')) {
       localStorage.setItem('auth_token', 'dev-sandbox-token');
     }
+
+    document.documentElement.classList.add('overflow-hidden');
+    document.body.classList.add('overflow-hidden');
+    return () => {
+      document.documentElement.classList.remove('overflow-hidden');
+      document.body.classList.remove('overflow-hidden');
+    };
   }, []);
 
   const switchBackend = (url: string) => {

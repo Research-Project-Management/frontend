@@ -72,10 +72,10 @@ export function useMembers(projectId: string) {
         { projectId, settings: merged } as any,
         {
           onSuccess: () => {
-            toast.success('Project settings updated');
+            toast.success('Project settings updated', { id: 'settings-member' });
           },
           onError: (err: any) => {
-            toast.error(err?.message || 'Failed to update project settings');
+            toast.error(err?.message || 'Failed to update project settings', { id: 'settings-member' });
           },
         },
       );
@@ -96,9 +96,9 @@ export function useMembers(projectId: string) {
         for (const userId of userIds) {
           await addMutation.mutateAsync({ projectId, userId, role });
         }
-        toast.success('Member(s) added successfully');
+        toast.success('Member(s) added successfully', { id: 'settings-member' });
       } catch (err: unknown) {
-        toast.error(getErrorMessage(err) || 'Failed to add member');
+        toast.error(getErrorMessage(err) || 'Failed to add member', { id: 'settings-member' });
       }
     },
     [projectId, addMutation],
@@ -109,8 +109,8 @@ export function useMembers(projectId: string) {
       updateRoleMutation.mutate(
         { projectId, userId, role, newRole: role },
         {
-          onSuccess: () => toast.success('Member role updated'),
-          onError: (err: unknown) => toast.error(getErrorMessage(err) || 'Failed to update role'),
+          onSuccess: () => toast.success('Member role updated', { id: 'settings-member' }),
+          onError: (err: unknown) => toast.error(getErrorMessage(err) || 'Failed to update role', { id: 'settings-member' }),
         },
       );
     },
@@ -122,8 +122,8 @@ export function useMembers(projectId: string) {
       removeMutation.mutate(
         { projectId, userId },
         {
-          onSuccess: () => toast.success('Member removed from project'),
-          onError: (err: any) => toast.error(err?.message || 'Failed to remove member'),
+          onSuccess: () => toast.success('Member removed from project', { id: 'settings-member' }),
+          onError: (err: any) => toast.error(err?.message || 'Failed to remove member', { id: 'settings-member' }),
         },
       );
     },

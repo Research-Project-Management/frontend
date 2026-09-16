@@ -36,7 +36,10 @@ export interface CompilerDiagnostic {
 }
 
 export type CompileLatexPayload = {
-  project_id: string;
+  project_id?: string;
+  projectId?: string;
+  page_id?: string;
+  pageId?: string;
   main_file: string | null;
   engine: string;
   draft: boolean;

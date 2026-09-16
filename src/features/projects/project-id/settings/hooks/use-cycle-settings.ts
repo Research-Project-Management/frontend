@@ -47,8 +47,8 @@ export function useCycleSettings(projectId: string) {
     updateProject(
       { projectId, settings: newSettings } as any,
       {
-        onSuccess: () => toast.success('Cycle settings updated'),
-        onError: (err: any) => toast.error(err?.message || 'Failed to update cycle settings'),
+        onSuccess: () => toast.success('Cycle settings updated', { id: 'settings-cycle' }),
+        onError: (err: any) => toast.error(err?.message || 'Failed to update cycle settings', { id: 'settings-cycle' }),
       },
     );
   }, [projectId, project, duration, autoAdvance, updateProject]);

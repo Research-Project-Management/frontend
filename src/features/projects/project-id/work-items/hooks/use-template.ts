@@ -39,9 +39,9 @@ export const useCreateTemplateMutation = () => {
     }) => TemplateService.createTemplate(projectId, data),
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: templateKeys.project(vars.projectId) });
-      toast.success('Template saved');
+      toast.success('Template saved', { id: 'work-item-template' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to save template'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to save template', { id: 'work-item-template' }),
   });
 };
 
@@ -59,9 +59,9 @@ export const useInstantiateTemplateMutation = () => {
     }) => TemplateService.instantiateTemplate(projectId, templateId, { overrides }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Work item created from template');
+      toast.success('Work item created from template', { id: 'work-item-action' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to instantiate template'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to instantiate template', { id: 'work-item-action' }),
   });
 };
 
@@ -72,8 +72,8 @@ export const useDeleteTemplateMutation = () => {
       TemplateService.deleteTemplate(projectId, templateId),
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: templateKeys.project(vars.projectId) });
-      toast.success('Template deleted');
+      toast.success('Template deleted', { id: 'work-item-template' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to delete template'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to delete template', { id: 'work-item-template' }),
   });
 };

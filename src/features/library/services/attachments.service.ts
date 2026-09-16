@@ -121,13 +121,22 @@ export async function fetchAttachmentContent(_scopeId: string, attachmentId: str
 }
 
 export async function uploadLibraryAttachment(
-  _scopeId: string | undefined,
+  scopeId: string | undefined,
   formData: FormData,
 ): Promise<{ fileId: string; url: string; filename: string; size: number; mimeType: string }> {
-  return apiPost(
-    `/api/v1/library/attachments/upload`,
-    formData,
-  );
+  const isProject = Boolean(scopeId) && scopeId !== 'user';
+  const uploadUrl = isProject
+    ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/attachments/upload`
+    : `/api/v1/library/attachments/upload`;
+  const response = await apiPost<any>(uploadUrl, formData);
+  const data = (response as any)?.data || response;
+  return {
+    fileId: String(data?.fileId || data?.id || ''),
+    url: String(data?.url || ''),
+    filename: String(data?.filename || ''),
+    size: Number(data?.size || 0),
+    mimeType: String(data?.mimeType || 'application/pdf'),
+  };
 }
 
 export const AttachmentsService = {

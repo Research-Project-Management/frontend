@@ -14,7 +14,6 @@ const PROTECTED_PREFIXES = [
   '/your-work',
   '/stickies',
   '/archives',
-  '/analytics',
   '/pages',
 ];
 

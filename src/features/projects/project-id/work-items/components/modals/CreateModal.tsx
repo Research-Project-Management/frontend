@@ -383,14 +383,27 @@ export function CreateModal({
 
     if (!isOpeningTransition) return;
 
-    // Check if initialData was explicitly provided with content
-    const hasInitialTitle = Boolean(initialData?.title && initialData.title.trim());
-    const hasInitialDescription = Boolean(
-      (initialData?.description && initialData.description.trim()) ||
-      (initialData?.content && initialData.content.trim())
+    // Check if initialData was provided with any initial field
+    const hasInitialData = Boolean(
+      initialData &&
+      (
+        initialData.columnId ||
+        initialData.priority ||
+        initialData.dueDate ||
+        initialData.startDate ||
+        initialData.cycleId ||
+        initialData.assigneeId ||
+        ((initialData as any).assigneeIds && (initialData as any).assigneeIds.length > 0) ||
+        (initialData.title && initialData.title.trim()) ||
+        (initialData.description && initialData.description.trim()) ||
+        (initialData.content && initialData.content.trim()) ||
+        (initialData.labels && initialData.labels.length > 0) ||
+        initialData.parentId ||
+        initialData.parentWorkItemId
+      )
     );
 
-    if (hasInitialTitle || hasInitialDescription) {
+    if (hasInitialData) {
       const initialAssigneeIds = Array.isArray((initialData as any)?.assigneeIds)
         ? (initialData as any).assigneeIds
         : (initialData as any)?.assignees && Array.isArray((initialData as any).assignees)
@@ -485,6 +498,7 @@ export function CreateModal({
     url: string;
     size?: number;
     type?: string;
+    fileId?: string;
   }) => {
     const newFile: AttachFileItem = {
       id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
@@ -493,6 +507,7 @@ export function CreateModal({
       size: file.size ? `${Math.round(file.size / 1024)} KB` : undefined,
       type: file.type,
       createdAt: new Date().toISOString(),
+      ...(file.fileId ? { fileId: file.fileId } : {}),
     };
     setAttachments((prev) => ({
       ...prev,
@@ -557,7 +572,7 @@ export function CreateModal({
       content: formData.description.trim(),
       description: formData.description.trim(),
       projectId: activeProject?.id || currentProjectId || undefined,
-      columnId: formData.columnId,
+      columnId: formData.columnId || defaultColumnId || 'backlog',
       priority: formData.priority,
       dueDate: formData.dueDate || null,
       startDate: formData.startDate || null,
@@ -590,7 +605,9 @@ export function CreateModal({
     }
   };
 
-  const handleSubmit = handleFormSubmit(onValidSubmit);
+  const handleSubmit = handleFormSubmit(onValidSubmit, () => {
+    titleInputRef.current?.focus();
+  });
 
   const { ref: titleFormRef, ...titleRegisterRest } = register('title');
 
@@ -879,7 +896,7 @@ export function CreateModal({
               />
               <label
                 htmlFor="create-more-switch"
-                className="text-xs text-muted-foreground cursor-pointer select-none font-medium"
+                className="text-12 text-muted-foreground cursor-pointer select-none font-medium"
               >
                 Create more
               </label>
@@ -891,7 +908,7 @@ export function CreateModal({
               size="sm"
               onClick={handleDiscard}
               disabled={isSubmitting}
-              className="h-8 text-xs px-3 font-medium cursor-pointer rounded-md border-border hover:bg-muted text-foreground"
+              className="h-8 text-13 px-3 font-medium cursor-pointer rounded-md border border-border bg-background hover:bg-muted text-foreground shadow-2xs"
             >
               Discard
             </Button>
@@ -901,10 +918,10 @@ export function CreateModal({
               size="sm"
               disabled={isSubmitting}
               onClick={handleSubmit}
-              className="h-8 text-xs px-4 font-semibold cursor-pointer rounded-md bg-primary text-primary-foreground hover:bg-primary-hover flex items-center gap-1.5 shadow-none select-none"
+              className="h-8 text-13 px-4 font-medium cursor-pointer rounded-md bg-primary text-primary-foreground hover:bg-primary-hover flex items-center gap-1.5 shadow-none select-none"
             >
               {isSubmitting && <Loader2 className="size-3.5 animate-spin shrink-0" />}
-              <span>{isSubmitting ? 'Saving...' : 'Save'}</span>
+              <span>{isSubmitting ? 'Creating...' : 'Create work item'}</span>
             </Button>
           </div>
         </DialogFooter>

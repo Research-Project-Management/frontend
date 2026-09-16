@@ -22,6 +22,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     resolveAlias: {
       'pdfjs-dist': 'pdfjs-dist/build/pdf.min.mjs',
+      'monaco-editor/esm/vs/editor/editor.api': 'monaco-editor',
+      'monaco-editor/esm/vs/editor/editor.api.js': 'monaco-editor',
+      'monaco-editor/esm/vs': 'monaco-editor',
     },
     rules: {
       '*.svg': {
@@ -40,6 +43,9 @@ const nextConfig: NextConfig = {
     config.resolve.alias = {
       ...config.resolve.alias,
       'pdfjs-dist$': 'pdfjs-dist/build/pdf.min.mjs',
+      'monaco-editor/esm/vs/editor/editor.api$': 'monaco-editor',
+      'monaco-editor/esm/vs/editor/editor.api.js$': 'monaco-editor',
+      'monaco-editor/esm/vs': 'monaco-editor',
     };
 
     if (!isServer) {
@@ -118,8 +124,8 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline'",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
+              "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
               "img-src 'self' blob: data: https:",
               "font-src 'self' data: https:",
               "connect-src 'self' blob: data: http: https: ws: wss:",

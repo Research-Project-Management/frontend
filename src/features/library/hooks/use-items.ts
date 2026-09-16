@@ -71,7 +71,9 @@ export interface UseItemsOptions {
   itemId?: string;
 }
 
-export function useItems({ workspaceId, scopeId, collectionId, paperId, itemId }: UseItemsOptions = {}) {
+export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
+  const options = typeof optionsOrScope === 'string' ? { scopeId: optionsOrScope } : optionsOrScope;
+  const { workspaceId, scopeId, collectionId, paperId, itemId } = options;
   const targetScope = scopeId || workspaceId || 'user';
   const activeItemId = itemId || paperId || '';
   const queryClient = useQueryClient();
@@ -190,9 +192,12 @@ export function useItems({ workspaceId, scopeId, collectionId, paperId, itemId }
     },
   });
 
+  const resolvedAllItems = ((allItemsQuery.data as any)?.items || []) as Item[];
   const state = {
-    allItems: ((allItemsQuery.data as any)?.items || []) as Item[],
-    allPapers: ((allItemsQuery.data as any)?.items || []) as Item[],
+    data: resolvedAllItems,
+    items: resolvedAllItems,
+    allItems: resolvedAllItems,
+    allPapers: resolvedAllItems,
     meta: (allItemsQuery.data as any)?.meta || null,
     item: (itemByIdQuery.data || null) as Item | null,
     paper: (itemByIdQuery.data || null) as Item | null,
@@ -327,7 +332,7 @@ export function useItemState(scopeId?: string, itemId?: string | null) {
     queryFn: async () => {
       if (!effectiveItemId) return null;
       const res = await ItemStateService.getState(effectiveScope, effectiveItemId);
-      return res?.data ?? null;
+      return (res as any)?.data ?? res ?? null;
     },
     enabled: Boolean(effectiveItemId),
     staleTime: 30_000,
@@ -337,7 +342,7 @@ export function useItemState(scopeId?: string, itemId?: string | null) {
     mutationFn: async (data: { readStatus?: 'unread' | 'reading' | 'completed'; rating?: number }) => {
       if (!effectiveItemId) throw new Error('Item ID required');
       const res = await ItemStateService.updateState(effectiveScope, effectiveItemId, data);
-      return res?.data;
+      return (res as any)?.data ?? res;
     },
     onSuccess: (newData) => {
       if (effectiveItemId) {
@@ -355,7 +360,7 @@ export function useItemState(scopeId?: string, itemId?: string | null) {
     mutationFn: async () => {
       if (!effectiveItemId) throw new Error('Item ID required');
       const res = await ItemStateService.markAsRead(effectiveScope, effectiveItemId);
-      return res?.data;
+      return (res as any)?.data ?? res;
     },
     onSuccess: (newData) => {
       if (effectiveItemId) {
@@ -412,14 +417,14 @@ export function useTrash(scopeId?: string) {
   const restoreMutation = useMutation({
     mutationFn: (itemId: string) => ItemService.restore(effectiveScope, itemId),
     onSuccess: () => {
-      toast.success('Document restored', {
+      toast.success('Item restored', {
         description: 'Item has been returned to your library.',
         id: 'trash-mutation-toast',
       });
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
     },
     onError: (err: any) => {
-      toast.error('Failed to restore document', {
+      toast.error('Failed to restore item', {
         description: err?.message || 'Please try again.',
         id: 'trash-mutation-toast',
       });
@@ -430,13 +435,13 @@ export function useTrash(scopeId?: string) {
     mutationFn: (itemId: string) => ItemService.purge(effectiveScope, itemId),
     onSuccess: () => {
       toast.success('Permanently deleted', {
-        description: 'The document and its files were permanently removed.',
+        description: 'The item and its attachments were permanently removed.',
         id: 'trash-mutation-toast',
       });
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
     },
     onError: (err: any) => {
-      toast.error('Failed to delete document', {
+      toast.error('Failed to delete item', {
         description: err?.message || 'Please try again.',
         id: 'trash-mutation-toast',
       });
@@ -451,7 +456,7 @@ export function useTrash(scopeId?: string) {
     },
     onSuccess: (count) => {
       toast.success('Trash emptied', {
-        description: `Permanently removed ${count} document(s).`,
+        description: `Permanently removed ${count} item(s).`,
         id: 'trash-mutation-toast',
       });
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
@@ -631,6 +636,8 @@ export function useItemTable({
 
   const actions = {
     handleSort,
+    setSortField,
+    setSortOrder,
     setActiveItemId,
     setActivePaperId: setActiveItemId,
     toggleSelect,

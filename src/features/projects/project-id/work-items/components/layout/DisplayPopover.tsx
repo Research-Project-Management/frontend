@@ -5,7 +5,6 @@ import {
   ChevronUp,
   ChevronDown,
   Check,
-  SlidersHorizontal,
   ArrowUpNarrowWide,
   ArrowDownNarrowWide,
 } from 'lucide-react';
@@ -21,7 +20,6 @@ import type {
   DisplayOptions,
   DisplayPropertyKey,
   GroupByOption,
-  SubGroupByOption,
   OrderByOption,
 } from '../../types/work-item.types';
 
@@ -35,41 +33,31 @@ export interface DisplayPopoverProps {
 
 const DISPLAY_PROPERTY_ITEMS: Array<{ key: DisplayPropertyKey; label: string }> = [
   { key: 'id', label: 'ID' },
-  { key: 'state', label: 'State' },
-  { key: 'priority', label: 'Priority' },
-  { key: 'assignee', label: 'Assignees' },
-  { key: 'dueDate', label: 'Due date' },
+  { key: 'assignee', label: 'Assignee' },
   { key: 'startDate', label: 'Start date' },
+  { key: 'dueDate', label: 'Due date' },
   { key: 'labels', label: 'Labels' },
-  { key: 'cycle', label: 'Cycle' },
-  { key: 'childWorkItemCount', label: 'Sub-issues count' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'state', label: 'State' },
+  { key: 'childWorkItemCount', label: 'Sub-work item count' },
   { key: 'attachmentCount', label: 'Attachment count' },
-  { key: 'link', label: 'Links' },
+  { key: 'link', label: 'Link' },
 ];
 
 const GROUP_BY_OPTIONS: Array<{ value: GroupByOption; label: string }> = [
   { value: 'state', label: 'States' },
   { value: 'priority', label: 'Priority' },
-  { value: 'cycle', label: 'Cycle' },
-  { value: 'assignee', label: 'Assignees' },
   { value: 'labels', label: 'Labels' },
-  { value: 'none', label: 'None' },
-];
-
-const SUB_GROUP_BY_OPTIONS: Array<{ value: SubGroupByOption; label: string }> = [
-  { value: 'none', label: 'None' },
-  { value: 'priority', label: 'Priority' },
   { value: 'assignee', label: 'Assignees' },
-  { value: 'cycle', label: 'Cycle' },
-  { value: 'labels', label: 'Labels' },
+  { value: 'none', label: 'None' },
 ];
 
 const ORDER_BY_OPTIONS: Array<{ value: OrderByOption; label: string }> = [
-  { value: 'manual', label: 'Manual' },
-  { value: 'createdAt', label: 'Last created' },
-  { value: 'updatedAt', label: 'Last updated' },
-  { value: 'priority', label: 'Priority' },
+  { value: 'manual', label: 'Manual - Rank' },
+  { value: 'createdAt', label: 'Created at' },
+  { value: 'updatedAt', label: 'Updated at' },
   { value: 'dueDate', label: 'Due date' },
+  { value: 'priority', label: 'Priority' },
 ];
 
 export function DisplayPopover({
@@ -82,7 +70,6 @@ export function DisplayPopover({
   const {
     properties,
     groupBy,
-    subGroupBy,
     orderBy,
     orderDirection,
     showEmptyGroups,
@@ -91,7 +78,6 @@ export function DisplayPopover({
 
   const [propertiesOpen, setPropertiesOpen] = useState(true);
   const [groupByOpen, setGroupByOpen] = useState(true);
-  const [subGroupByOpen, setSubGroupByOpen] = useState(false);
   const [orderByOpen, setOrderByOpen] = useState(true);
   const [extraOpen, setExtraOpen] = useState(true);
 
@@ -99,13 +85,6 @@ export function DisplayPopover({
     onDisplayOptionsChange({
       ...displayOptions,
       groupBy: value,
-    });
-  };
-
-  const handleSubGroupByChange = (value: SubGroupByOption) => {
-    onDisplayOptionsChange({
-      ...displayOptions,
-      subGroupBy: value,
     });
   };
 
@@ -147,27 +126,23 @@ export function DisplayPopover({
         <Button
           type="button"
           size="sm"
-          className="h-8 px-2.5 text-xs font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shadow-2xs shrink-0 gap-1.5"
+          className="h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shadow-2xs shrink-0"
           aria-label="Display options"
         >
-          <SlidersHorizontal className="size-3.5 text-muted-foreground shrink-0" />
           <span>Display</span>
-          {activePropertyCount > 0 && (
-            <span className="size-1.5 rounded-full bg-primary shrink-0" />
-          )}
         </Button>
       </PopoverTrigger>
 
       <PopoverContent
         align="end"
-        className="w-[320px] max-h-[85vh] overflow-y-auto p-0 rounded-lg text-xs border-border bg-popover divide-y divide-border shadow-md"
+        className="w-68 sm:w-72 max-h-[85vh] overflow-y-auto p-2 rounded-md text-12 border-border bg-popover shadow-none space-y-2"
       >
         {/* 1. Display Properties */}
-        <div className="p-3">
+        <div>
           <button
             type="button"
             onClick={() => setPropertiesOpen(!propertiesOpen)}
-            className="flex w-full items-center justify-between text-xs font-semibold text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none pb-2"
+            className="flex w-full items-center justify-between px-1 py-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
           >
             <span>Display properties</span>
             {propertiesOpen ? (
@@ -178,7 +153,7 @@ export function DisplayPopover({
           </button>
 
           {propertiesOpen && (
-            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            <div className="flex flex-wrap items-center gap-1.5 pt-1.5 px-0.5">
               {DISPLAY_PROPERTY_ITEMS.map((item) => {
                 const isSelected = Boolean(properties[item.key]);
                 return (
@@ -188,10 +163,10 @@ export function DisplayPopover({
                     aria-pressed={isSelected}
                     onClick={() => onPropertyToggle(item.key, !isSelected)}
                     className={cn(
-                      "px-2 py-0.5 text-11 font-medium rounded-md border transition-all cursor-pointer select-none",
+                      "px-2.5 py-1 text-12 font-medium rounded-md border transition-colors cursor-pointer select-none",
                       isSelected
-                        ? "border-primary bg-primary/10 text-primary dark:bg-primary/20 font-semibold shadow-2xs"
-                        : "border-border/70 bg-background text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border/70 bg-background text-muted-foreground hover:text-foreground hover:bg-muted"
                     )}
                   >
                     {item.label}
@@ -202,12 +177,14 @@ export function DisplayPopover({
           )}
         </div>
 
-        {/* 2. Group By (Plane.so checkmark list pattern) */}
-        <div className="p-3">
+        <div className="border-t border-border/50" />
+
+        {/* 2. Group By */}
+        <div>
           <button
             type="button"
             onClick={() => setGroupByOpen(!groupByOpen)}
-            className="flex w-full items-center justify-between text-xs font-semibold text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none pb-1.5"
+            className="flex w-full items-center justify-between px-1 py-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
           >
             <span>Group by</span>
             {groupByOpen ? (
@@ -218,7 +195,7 @@ export function DisplayPopover({
           </button>
 
           {groupByOpen && (
-            <div role="radiogroup" aria-label="Group by" className="space-y-0.5 pt-0.5">
+            <div role="radiogroup" aria-label="Group by" className="space-y-0.5 pt-1">
               {GROUP_BY_OPTIONS.map((opt) => {
                 const isSelected = groupBy === opt.value;
                 return (
@@ -229,16 +206,23 @@ export function DisplayPopover({
                     aria-checked={isSelected}
                     onClick={() => handleGroupByChange(opt.value)}
                     className={cn(
-                      "flex w-full items-center justify-between py-1.5 px-2 rounded-md text-xs transition-colors cursor-pointer select-none",
+                      "flex w-full items-center gap-2.5 py-1.5 px-2 rounded-md text-12 transition-colors cursor-pointer select-none",
                       isSelected
-                        ? "bg-accent/80 text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                     )}
                   >
+                    <div
+                      className={cn(
+                        "size-4 rounded-full border flex items-center justify-center shrink-0 transition-colors",
+                        isSelected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-muted-foreground/40 bg-background"
+                      )}
+                    >
+                      {isSelected && <Check className="size-2.5 text-primary-foreground stroke-[3] shrink-0" />}
+                    </div>
                     <span>{opt.label}</span>
-                    {isSelected && (
-                      <Check className="size-3.5 text-primary stroke-[2.2] shrink-0" />
-                    )}
                   </button>
                 );
               })}
@@ -246,53 +230,11 @@ export function DisplayPopover({
           )}
         </div>
 
-        {/* 3. Sub-group By (Kanban swimlanes) */}
-        <div className="p-3">
-          <button
-            type="button"
-            onClick={() => setSubGroupByOpen(!subGroupByOpen)}
-            className="flex w-full items-center justify-between text-xs font-semibold text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none pb-1.5"
-          >
-            <span>Sub-group by</span>
-            {subGroupByOpen ? (
-              <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
-            ) : (
-              <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
-            )}
-          </button>
+        <div className="border-t border-border/50" />
 
-          {subGroupByOpen && (
-            <div role="radiogroup" aria-label="Sub-group by" className="space-y-0.5 pt-0.5">
-              {SUB_GROUP_BY_OPTIONS.map((opt) => {
-                const isSelected = subGroupBy === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    onClick={() => handleSubGroupByChange(opt.value)}
-                    className={cn(
-                      "flex w-full items-center justify-between py-1.5 px-2 rounded-md text-xs transition-colors cursor-pointer select-none",
-                      isSelected
-                        ? "bg-accent/80 text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                    )}
-                  >
-                    <span>{opt.label}</span>
-                    {isSelected && (
-                      <Check className="size-3.5 text-primary stroke-[2.2] shrink-0" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* 4. Order By */}
-        <div className="p-3">
-          <div className="flex w-full items-center justify-between text-xs font-semibold text-foreground select-none pb-1.5">
+        {/* 3. Order By */}
+        <div>
+          <div className="flex w-full items-center justify-between px-1 py-1 text-12 font-medium text-foreground select-none">
             <button
               type="button"
               onClick={() => setOrderByOpen(!orderByOpen)}
@@ -321,7 +263,7 @@ export function DisplayPopover({
           </div>
 
           {orderByOpen && (
-            <div role="radiogroup" aria-label="Order by" className="space-y-0.5 pt-0.5">
+            <div role="radiogroup" aria-label="Order by" className="space-y-0.5 pt-1">
               {ORDER_BY_OPTIONS.map((opt) => {
                 const isSelected = orderBy === opt.value;
                 return (
@@ -332,16 +274,23 @@ export function DisplayPopover({
                     aria-checked={isSelected}
                     onClick={() => handleOrderByChange(opt.value)}
                     className={cn(
-                      "flex w-full items-center justify-between py-1.5 px-2 rounded-md text-xs transition-colors cursor-pointer select-none",
+                      "flex w-full items-center gap-2.5 py-1.5 px-2 rounded-md text-12 transition-colors cursor-pointer select-none",
                       isSelected
-                        ? "bg-accent/80 text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                     )}
                   >
+                    <div
+                      className={cn(
+                        "size-4 rounded-full border flex items-center justify-center shrink-0 transition-colors",
+                        isSelected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-muted-foreground/40 bg-background"
+                      )}
+                    >
+                      {isSelected && <Check className="size-2.5 text-primary-foreground stroke-[3] shrink-0" />}
+                    </div>
                     <span>{opt.label}</span>
-                    {isSelected && (
-                      <Check className="size-3.5 text-primary stroke-[2.2] shrink-0" />
-                    )}
                   </button>
                 );
               })}
@@ -349,28 +298,26 @@ export function DisplayPopover({
           )}
         </div>
 
-        {/* 5. Extra Options */}
-        <div className="p-3 space-y-2">
-          <div className="flex items-center justify-between text-xs font-semibold text-foreground select-none pb-0.5">
-            <span>Extra options</span>
-          </div>
+        <div className="border-t border-border/50" />
 
-          <label className="flex items-center justify-between text-xs text-foreground cursor-pointer select-none py-1 px-1 rounded hover:bg-muted/50 transition-colors">
-            <span className="text-muted-foreground font-medium">Show empty groups</span>
-            <Checkbox
-              checked={showEmptyGroups}
-              onCheckedChange={handleShowEmptyGroupsToggle}
-              className="size-4 rounded-xs border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary cursor-pointer"
-            />
-          </label>
-
-          <label className="flex items-center justify-between text-xs text-foreground cursor-pointer select-none py-1 px-1 rounded hover:bg-muted/50 transition-colors">
-            <span className="text-muted-foreground font-medium">Show sub-work items</span>
+        {/* 4. Sub-work items and Empty groups checkboxes */}
+        <div className="space-y-1 pt-0.5 select-none">
+          <label className="flex items-center gap-2.5 text-12 text-foreground cursor-pointer select-none py-1 px-1 rounded-md hover:text-foreground/90 transition-colors">
             <Checkbox
               checked={isChildWorkItemsShown}
               onCheckedChange={handleShowChildWorkItemsToggle}
               className="size-4 rounded-xs border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary cursor-pointer"
             />
+            <span className="font-normal">Show sub-work items</span>
+          </label>
+
+          <label className="flex items-center gap-2.5 text-12 text-foreground cursor-pointer select-none py-1 px-1 rounded-md hover:text-foreground/90 transition-colors">
+            <Checkbox
+              checked={showEmptyGroups}
+              onCheckedChange={handleShowEmptyGroupsToggle}
+              className="size-4 rounded-xs border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary cursor-pointer"
+            />
+            <span className="font-normal">Show empty groups</span>
           </label>
         </div>
       </PopoverContent>

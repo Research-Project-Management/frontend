@@ -16,8 +16,9 @@ export const useArchivedItems = (projectId: string) =>
     queryFn: async () => {
       const res = await ArchiveService.getArchived(projectId);
       if (Array.isArray(res)) return res as Item[];
-      if (res && typeof res === 'object' && 'archivedItems' in res && Array.isArray((res as any).archivedItems)) {
-        return (res as any).archivedItems as Item[];
+      if (res && typeof res === 'object') {
+        const items = (res as any).archivedItems || (res as any).workItems || (res as any).data;
+        if (Array.isArray(items)) return items as Item[];
       }
       return [] as Item[];
     },
@@ -33,9 +34,9 @@ export const useArchiveItem = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
       queryClient.invalidateQueries({ queryKey: ['archived-items'] });
-      toast.success('Work item archived');
+      toast.success('Work item archived', { id: 'work-item-action' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to archive work item'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to archive work item', { id: 'work-item-action' }),
   });
 };
 
@@ -48,9 +49,9 @@ export const useRestoreItem = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
       queryClient.invalidateQueries({ queryKey: ['archived-items'] });
-      toast.success('Work item restored');
+      toast.success('Work item restored', { id: 'work-item-action' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to restore work item'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to restore work item', { id: 'work-item-action' }),
   });
 };
 
@@ -67,9 +68,9 @@ export const useBulkArchive = () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
       queryClient.invalidateQueries({ queryKey: ['archived-items'] });
       const targetIds = vars.ids || vars.itemIds || vars.workItemIds || [];
-      toast.success(`Archived ${targetIds.length} items`);
+      toast.success(`Archived ${targetIds.length} items`, { id: 'work-item-bulk' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to archive work items'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to archive work items', { id: 'work-item-bulk' }),
   });
 };
 
@@ -87,9 +88,9 @@ export const useBulkRestore = () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
       queryClient.invalidateQueries({ queryKey: ['archived-items'] });
       const targetIds = vars.ids || vars.itemIds || vars.workItemIds || [];
-      toast.success(`Restored ${targetIds.length} items`);
+      toast.success(`Restored ${targetIds.length} items`, { id: 'work-item-bulk' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to restore work items'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to restore work items', { id: 'work-item-bulk' }),
   });
 };
 

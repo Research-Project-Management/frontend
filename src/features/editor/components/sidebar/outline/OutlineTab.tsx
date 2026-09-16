@@ -30,7 +30,7 @@ const SECTION_PATTERNS: { regex: RegExp; level: number; levelName: string }[] = 
   { regex: /^\\paragraph\*?(?:\[[^\]]*\])?\{(.+?)\}/, level: 4, levelName: 'Para' },
 ];
 
-const OUTLINE_INDENT = [0, 8, 18, 28, 38];
+export const OUTLINE_INDENT = [0, 8, 18, 28, 38];
 
 const LEVEL_STYLES: Record<number, { text: string; badge: string }> = {
   0: { text: "font-semibold text-foreground text-13", badge: "bg-primary/10 text-primary font-mono text-10" },
@@ -40,19 +40,20 @@ const LEVEL_STYLES: Record<number, { text: string; badge: string }> = {
   4: { text: "text-muted-foreground/80 italic text-11", badge: "text-muted-foreground/60 font-mono text-10" },
 };
 
-export function parseDocumentOutline(content: any): OutlineEntry[] {
-  const str =
-    typeof content === 'string'
-      ? content
-      : content && typeof content === 'object'
-        ? content.source || content.text || content.content || ''
-        : '';
+export function parseDocumentOutline(content: unknown): OutlineEntry[] {
+  let str = '';
+  if (typeof content === 'string') {
+    str = content;
+  } else if (content && typeof content === 'object') {
+    const obj = content as Record<string, unknown>;
+    str = String(obj.source || obj.text || obj.content || '');
+  }
 
   const entries: OutlineEntry[] = [];
   const lines = str.split('\n');
 
-  lines.forEach((rawLine: string, idx: number) => {
-    const line = rawLine.trimStart();
+  for (let idx = 0; idx < lines.length; idx++) {
+    const line = lines[idx].trimStart();
     for (const { regex, level, levelName } of SECTION_PATTERNS) {
       const match = line.match(regex);
       if (match) {
@@ -65,7 +66,7 @@ export function parseDocumentOutline(content: any): OutlineEntry[] {
         break;
       }
     }
-  });
+  }
 
   return entries;
 }
@@ -129,9 +130,12 @@ export default function OutlineTab({ onClose }: OutlineTabProps) {
     gotoPageRef,
   } = usePageStore();
 
-  const [outline, setOutline] = useState<OutlineEntry[]>([]);
+  const [localOutline, setLocalOutline] = useState<OutlineEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeLine, setActiveLine] = useState<number | null>(null);
+
+  // Client-side real-time outline (Overleaf standard: 0ms latency, zero backend polling)
+  const outline = localOutline;
 
   // Read current content from memory buffer or active page
   const readCurrentContent = useCallback(() => {
@@ -144,14 +148,14 @@ export default function OutlineTab({ onClose }: OutlineTabProps) {
     );
   }, [editorRef, getEditorContent, activeFilePage, currentPage]);
 
-  // Refresh outline on mount and subscribe to editor changes
+  // Refresh local outline fallback on mount and subscribe to editor changes
   useEffect(() => {
-    setOutline(parseDocumentOutline(readCurrentContent()));
+    setLocalOutline(parseDocumentOutline(readCurrentContent()));
 
     const ed = editorRef.current;
     if (!ed) {
       const timer = setTimeout(() => {
-        setOutline(parseDocumentOutline(readCurrentContent()));
+        setLocalOutline(parseDocumentOutline(readCurrentContent()));
       }, 500);
       return () => clearTimeout(timer);
     }
@@ -160,7 +164,7 @@ export default function OutlineTab({ onClose }: OutlineTabProps) {
     const contentSub = ed.onDidChangeModelContent(() => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        setOutline(parseDocumentOutline(ed.getValue()));
+        setLocalOutline(parseDocumentOutline(ed.getValue()));
       }, 400);
     });
 
@@ -210,15 +214,15 @@ export default function OutlineTab({ onClose }: OutlineTabProps) {
   );
 
   return (
-    <div className="flex flex-col h-full w-full bg-card select-none text-xs">
+    <div className="flex flex-col h-full w-full bg-background select-none text-xs">
       {/* ── Header ── */}
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-card">
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-background">
         <div className="flex items-center gap-2">
           <ListTree className="size-4 text-primary shrink-0" />
           <span className="text-xs font-semibold text-foreground">
             Document Outline
           </span>
-          <span className="rounded-full bg-muted px-1.5 py-0.5 text-10 font-mono text-muted-foreground">
+          <span className="rounded-full bg-muted px-1.5 py-0.5 text-11 font-mono font-medium text-foreground">
             {outline.length}
           </span>
         </div>
@@ -227,7 +231,7 @@ export default function OutlineTab({ onClose }: OutlineTabProps) {
             <TooltipTrigger asChild>
               <button
                 onClick={onClose}
-                className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
               >
                 <X className="size-3.5 shrink-0" />
               </button>
@@ -289,7 +293,7 @@ export default function OutlineTab({ onClose }: OutlineTabProps) {
                   paddingLeft: `${8 + (OUTLINE_INDENT[entry.level] || 0)}px`,
                 }}
                 className={cn(
-                  "group flex w-full items-center gap-1.5 py-1.5 pr-2 rounded-md text-left transition-all cursor-pointer",
+                  "group flex w-full items-center gap-1.5 py-1.5 pr-2 rounded-md text-left transition-colors cursor-pointer",
                   isNearCursor
                     ? "bg-primary/10 text-primary font-medium"
                     : "hover:bg-muted text-foreground/85 hover:text-foreground",
@@ -308,7 +312,7 @@ export default function OutlineTab({ onClose }: OutlineTabProps) {
 
                 <span
                   className={cn(
-                    "shrink-0 px-1 py-0.2 rounded text-10 font-mono opacity-60 group-hover:opacity-100 transition-opacity",
+                    "shrink-0 px-1.5 py-0.5 rounded text-11 font-mono opacity-70 group-hover:opacity-100 transition-opacity",
                     style.badge,
                   )}
                 >
@@ -322,7 +326,7 @@ export default function OutlineTab({ onClose }: OutlineTabProps) {
 
       {/* ── Footer Stats ── */}
       {outline.length > 0 && (
-        <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-card text-11 text-muted-foreground/70 shrink-0">
+        <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-background text-11 text-muted-foreground shrink-0">
           <span>{filteredOutline.length} items shown</span>
           <span className="font-mono">SyncTeX enabled</span>
         </div>

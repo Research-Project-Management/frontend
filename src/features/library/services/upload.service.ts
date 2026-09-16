@@ -79,7 +79,10 @@ export async function uploadLibraryFile(
     xhr.onerror = () => reject(new Error('Network error during upload'));
     xhr.onabort = () => reject(new Error('Upload aborted by user'));
 
-    const uploadBase = `/api/v1/library/upload`;
+    const isProject = Boolean(scopeId) && scopeId !== 'user';
+    const uploadBase = isProject
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/upload`
+      : `/api/v1/library/upload`;
     const uploadUrl =
       typeof window !== 'undefined'
         ? uploadBase

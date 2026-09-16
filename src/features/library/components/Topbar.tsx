@@ -11,6 +11,7 @@ import {
   Search,
   Plus,
   FileText,
+  FileUp,
   FolderUp,
   FolderPlus,
   FolderInput,
@@ -23,10 +24,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from "@/shared/components/ui";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
-import TagFilterPopover from "./TagSelector";
+import { LibraryFilterPopover } from "./LibraryFilterPopover";
+import { LibraryDisplayPopover, type LibraryDisplayOptions } from "./LibraryDisplayPopover";
+import type { Item } from "../types/library.types";
 
 export interface BreadcrumbItem {
   id?: string;
@@ -42,7 +44,11 @@ export interface TopbarProps {
   onSearchChange?: (search: string) => void;
   searchPlaceholder?: string;
   showFilter?: boolean;
+  showDisplay?: boolean;
+  displayOptions?: LibraryDisplayOptions;
+  onDisplayOptionsChange?: (options: LibraryDisplayOptions) => void;
   workspaceId?: string;
+  items?: Item[];
   onAddPaper?: (mode?: 'file' | 'folder' | 'link') => void;
   onDirectFilesUpload?: (files: File[]) => void;
   onDirectFolderUpload?: (files: File[], folderName: string) => void;
@@ -63,7 +69,11 @@ export default function Topbar({
   onSearchChange,
   searchPlaceholder = "Search references...",
   showFilter = true,
+  showDisplay = true,
+  displayOptions,
+  onDisplayOptionsChange,
   workspaceId: propWorkspaceId,
+  items,
   onAddPaper,
   onDirectFilesUpload,
   onDirectFolderUpload,
@@ -263,17 +273,24 @@ export default function Topbar({
           </div>
         )}
 
-        {/* Tag Filter Popover Button */}
+        {/* Academic Library Multi-Criteria Filter */}
         {showFilter && (
-          <TagFilterPopover workspaceId={effectiveWorkspaceId} />
+          <LibraryFilterPopover workspaceId={effectiveWorkspaceId} items={items} />
+        )}
+
+        {/* Academic Library Display Options */}
+        {showDisplay && displayOptions && onDisplayOptionsChange && (
+          <LibraryDisplayPopover
+            options={displayOptions}
+            onOptionsChange={onDisplayOptionsChange}
+          />
         )}
 
         {/* + New Button with Dropdown Menu (Includes Import from My Library when in Project scope) */}
         {(onAddPaper || onAddCollection || onDirectFilesUpload || onDirectFolderUpload || onAddLink || onImportFromPersonal) && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" className="h-8 gap-1.5 px-3 rounded-md cursor-pointer font-medium text-12">
-                <Plus className="size-4 text-primary-foreground shrink-0" />
+              <Button size="sm" className="h-8 px-3 rounded-md cursor-pointer font-medium text-12 shadow-2xs">
                 <span>New</span>
               </Button>
             </DropdownMenuTrigger>
@@ -281,7 +298,7 @@ export default function Topbar({
               align="end"
               sideOffset={4}
               onCloseAutoFocus={(e) => e.preventDefault()}
-              className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5"
+              className="w-48 p-1 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
             >
               {/* Group 1: Collection / Structure Creation */}
               {onAddCollection && (
@@ -294,18 +311,14 @@ export default function Topbar({
                 </DropdownMenuItem>
               )}
 
-              {onAddCollection && (onDirectFilesUpload || onDirectFolderUpload || onAddPaper || onAddLink) && (
-                <DropdownMenuSeparator className="my-1 bg-border" />
-              )}
-
               {/* Group 2: External Ingestion (File, Folder, Link) */}
               {(onDirectFilesUpload || onAddPaper) && (
                 <DropdownMenuItem
                   onClick={handleAddFileClick}
                   className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
-                  <FileText className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                  <span className="text-foreground">Add file</span>
+                  <FileUp className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span className="text-foreground">Upload Files</span>
                 </DropdownMenuItem>
               )}
               {(onDirectFolderUpload || onAddPaper) && (
@@ -314,7 +327,7 @@ export default function Topbar({
                   className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
                   <FolderUp className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                  <span className="text-foreground">Add folder</span>
+                  <span className="text-foreground">Upload Folder</span>
                 </DropdownMenuItem>
               )}
               {(onAddLink || onAddPaper) && (
@@ -323,22 +336,19 @@ export default function Topbar({
                   className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
                   <Link2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                  <span className="text-foreground">Add link</span>
+                  <span className="text-foreground">Add Link</span>
                 </DropdownMenuItem>
               )}
 
               {/* Group 3: Project Ingestion from Personal Library */}
               {onImportFromPersonal && (
-                <>
-                  <DropdownMenuSeparator className="my-1 bg-border" />
-                  <DropdownMenuItem
-                    onClick={onImportFromPersonal}
-                    className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                  >
-                    <FolderInput className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                    <span className="text-foreground">Import from My Library...</span>
-                  </DropdownMenuItem>
-                </>
+                <DropdownMenuItem
+                  onClick={onImportFromPersonal}
+                  className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                >
+                  <FolderInput className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span className="text-foreground">Import from My Library</span>
+                </DropdownMenuItem>
               )}
             </DropdownMenuContent>
           </DropdownMenu>

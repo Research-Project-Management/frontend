@@ -602,14 +602,17 @@ onSave,
         showSuccessToast: false,
         errorMessage: 'Failed to upload attachment',
       });
-      const newAttachments: ItemAttachment[] = results.map(({ file: f, url: uploadedUrl }) => ({
-        id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-        name: f.name,
-        type: f.type,
-        size: `${Math.round(f.size / 1024)} KB`,
-        createdAt: new Date().toISOString(),
-        url: uploadedUrl || URL.createObjectURL(f),
-      }));
+      const newAttachments: ItemAttachment[] = results.map(
+        ({ file: f, url: uploadedUrl, fileId }) => ({
+          id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+          name: f.name,
+          type: f.type,
+          size: `${Math.round(f.size / 1024)} KB`,
+          createdAt: new Date().toISOString(),
+          url: uploadedUrl || URL.createObjectURL(f),
+          ...(fileId ? { fileId } : {}),
+        }),
+      );
       const updated: AttachCenterData = {
         ...attachments,
         files: [...(attachments.files || []), ...newAttachments],
@@ -690,6 +693,7 @@ onSave,
     url: string;
     size?: number;
     type?: string;
+    fileId?: string;
   }) => {
     const newFile: ItemAttachment = {
       id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
@@ -698,6 +702,7 @@ onSave,
       size: file.size ? `${Math.round(file.size / 1024)} KB` : undefined,
       type: file.type,
       createdAt: new Date().toISOString(),
+      ...(file.fileId ? { fileId: file.fileId } : {}),
     };
     const updated: AttachCenterData = {
       ...attachments,
@@ -863,7 +868,7 @@ onSave,
 
   // Compact Pill Button Class
   const actionBtnClass =
-    'h-7 px-2.5 text-xs font-medium rounded-md bg-muted hover:bg-muted text-foreground border border-border shadow-none flex items-center gap-1.5 transition-colors cursor-pointer shrink-0';
+    'h-7 px-2.5 text-12 font-medium rounded-md bg-background hover:bg-muted text-foreground border border-border shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0';
 
   const renderStatusSelector = () => {
     const activeCol = columns.find((c) => resolveColumnId(c) === columnId);
@@ -873,7 +878,7 @@ onSave,
           <button
             type="button"
             className={cn(
-              'h-7 px-2.5 text-xs font-medium rounded-md bg-muted hover:bg-muted text-foreground border border-border shadow-none flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 outline-none',
+              'h-7 px-2.5 text-12 font-medium rounded-md bg-background hover:bg-muted text-foreground border border-border shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 outline-none',
               isReadOnly && 'opacity-60 cursor-not-allowed'
             )}
           >
@@ -1052,7 +1057,7 @@ onSave,
                   <button
                     type="button"
                     onClick={handleCopyIdentifier}
-                    className="font-mono text-11 font-semibold text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded-sm bg-muted hover:bg-muted transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                    className="font-mono text-11 font-semibold text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-md border border-border bg-background hover:bg-muted shadow-2xs transition-colors cursor-pointer flex items-center gap-1 shrink-0"
                     title="Click to copy identifier"
                     aria-label="Copy identifier"
                   >

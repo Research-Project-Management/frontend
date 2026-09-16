@@ -320,10 +320,11 @@ export default function AttachmentsSection({
         paper.id,
         `${paper.title || 'document'}-annotated.pdf`,
       );
-      toast.success('Annotated PDF downloaded');
+      toast.success('Annotated PDF downloaded', { id: 'annotated-pdf-download' });
     } catch (err: any) {
       toast.error('Failed to export annotated PDF', {
         description: err?.message || 'Please verify that annotations exist or try again.',
+        id: 'annotated-pdf-download',
       });
     } finally {
       setIsDownloadingAnnotated(false);

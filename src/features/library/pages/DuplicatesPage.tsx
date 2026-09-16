@@ -165,12 +165,13 @@ export default function DuplicatesPage() {
 
   const handleExecuteMerge = async (
     masterItem: Item,
-    _mergedFields: Partial<Item>,
+    mergedFields: Partial<Item>,
     duplicateIdsToDelete: string[],
   ) => {
     await mergeMutation.mutateAsync({
       masterPaperId: masterItem.id,
       sourcePaperIds: duplicateIdsToDelete,
+      fieldSelections: Object.keys(mergedFields).length > 0 ? mergedFields : undefined,
     });
   };
 

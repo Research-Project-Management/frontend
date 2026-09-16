@@ -128,9 +128,9 @@ export const useCreateItem = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Work item created');
+      toast.success('Work item created', { id: 'work-item-action' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to create work item'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to create work item', { id: 'work-item-action' }),
   });
 };
 
@@ -196,7 +196,7 @@ export const useUpdateItem = () => {
           queryClient.setQueryData(queryKey, data);
         });
       }
-      toast.error(error.message || 'Failed to update work item');
+      toast.error(error.message || 'Failed to update work item', { id: 'work-item-action' });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
@@ -248,10 +248,10 @@ export const useDeleteItem = () => {
           queryClient.setQueryData(queryKey, data);
         });
       }
-      toast.error(error.message || 'Failed to delete work item');
+      toast.error(error.message || 'Failed to delete work item', { id: 'work-item-action' });
     },
     onSuccess: () => {
-      toast.success('Work item deleted');
+      toast.success('Work item deleted', { id: 'work-item-action' });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
@@ -273,9 +273,9 @@ export const useDuplicateItem = () => {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Work item duplicated');
+      toast.success('Work item duplicated', { id: 'work-item-action' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to duplicate work item'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to duplicate work item', { id: 'work-item-action' }),
   });
 };
 
@@ -329,14 +329,14 @@ export const useBulkUpdate = () => {
           queryClient.setQueryData(queryKey, data);
         });
       }
-      toast.error(error.message || 'Failed to update work items');
+      toast.error(error.message || 'Failed to update work items', { id: 'work-item-bulk' });
     },
     onSuccess: (_, vars) => {
       const count = vars.ids?.length || vars.itemIds?.length || vars.workItemIds?.length || 0;
       if (count > 0) {
-        toast.success(`Updated ${count} items`);
+        toast.success(`Updated ${count} items`, { id: 'work-item-bulk' });
       } else {
-        toast.success('Work items updated');
+        toast.success('Work items updated', { id: 'work-item-bulk' });
       }
     },
     onSettled: () => {
@@ -398,10 +398,10 @@ export const useBulkDelete = () => {
           queryClient.setQueryData(queryKey, data);
         });
       }
-      toast.error(error.message || 'Failed to delete work items');
+      toast.error(error.message || 'Failed to delete work items', { id: 'work-item-bulk' });
     },
     onSuccess: () => {
-      toast.success('Work items deleted');
+      toast.success('Work items deleted', { id: 'work-item-bulk' });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
@@ -421,9 +421,9 @@ export const useCreateSubItem = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Sub-item created');
+      toast.success('Sub-item created', { id: 'work-item-action' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to create sub-item'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to create sub-item', { id: 'work-item-action' }),
   });
 };
 
@@ -438,9 +438,9 @@ export const useConvertSubItemToRoot = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Converted to top-level item');
+      toast.success('Converted to top-level item', { id: 'work-item-action' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to convert to top-level item'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to convert to top-level item', { id: 'work-item-action' }),
   });
 };
 
@@ -495,7 +495,7 @@ export const useReorderItem = () => {
           queryClient.setQueryData(queryKey, data);
         });
       }
-      toast.error(error.message || 'Failed to reorder work item');
+      toast.error(error.message || 'Failed to reorder work item', { id: 'work-item-reorder' });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
@@ -507,7 +507,7 @@ export const useReorderWorkItem = useReorderItem;
 
 export const useSubItemNotification = () => {
   const notifySubItemAdded = useCallback((count: number = 1) => {
-    toast.success(count === 1 ? 'Sub-item added' : `${count} sub-items added`);
+    toast.success(count === 1 ? 'Sub-item added' : `${count} sub-items added`, { id: 'work-item-action' });
   }, []);
   return { notifySubItemAdded };
 };
@@ -522,7 +522,7 @@ export const useCopyItemText = () => {
     }
     if (!text.trim()) return;
     navigator.clipboard.writeText(text).then(() => {
-      toast.success(message || 'Copied to clipboard');
+      toast.success(message || 'Copied to clipboard', { id: 'work-item-clipboard' });
     });
   }, []);
 };
@@ -714,12 +714,15 @@ export function useProject({ projectId, cycleId }: UseProjectOptions) {
             toast.success(
               itemIds.length === 1
                 ? 'Work item added to calendar'
-                : `${itemIds.length} work items added to calendar`
+                : `${itemIds.length} work items added to calendar`,
+              { id: 'work-item-bulk' }
             );
+          } else {
+            toast.dismiss('work-item-bulk');
           }
         })
         .catch((err: any) => {
-          toast.error(err?.message || 'Failed to update work items');
+          toast.error(err?.message || 'Failed to update work items', { id: 'work-item-bulk' });
         });
     },
     [bulkMutAsync, projectId],
@@ -729,11 +732,11 @@ export function useProject({ projectId, cycleId }: UseProjectOptions) {
     (targetId: string, callback?: () => void) => {
       updateMutAsync({ id: targetId, workItemId: targetId, projectId, cycleId: null })
         .then(() => {
-          toast.success('Work item removed from cycle');
+          toast.success('Work item removed from cycle', { id: 'work-item-action' });
           callback?.();
         })
         .catch((err: any) => {
-          toast.error(err?.message || 'Failed to remove work item from cycle');
+          toast.error(err?.message || 'Failed to remove work item from cycle', { id: 'work-item-action' });
         });
     },
     [updateMutAsync, projectId]
@@ -775,7 +778,7 @@ export function useProject({ projectId, cycleId }: UseProjectOptions) {
     assignWorkItemsToDate: assignItemsToDateAction,
 
     notifyAnalyticsComingSoon: useCallback(() => {
-      toast.info('Analytics is coming soon');
+      toast.info('Analytics is coming soon', { id: 'work-item-info' });
     }, []),
   };
 

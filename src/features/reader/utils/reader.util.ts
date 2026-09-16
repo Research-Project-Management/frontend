@@ -1,11 +1,6 @@
 import type { ReaderAnnotation, AnnotationRect, ReaderDocument, DocumentCreator } from '../types/reader.types';
 import {
   generateCitationKey as libGenerateCitationKey,
-  getBibTeXEntryType as libGetBibTeXEntryType,
-  convertToBibTeX as libConvertToBibTeX,
-  downloadBibTeXFile as libDownloadBibTeXFile,
-  convertToRIS as libConvertToRIS,
-  downloadRISFile as libDownloadRISFile,
 } from '@/features/library/utils/bibtex.util';
 import {
   normalizeAuthors as libNormalizeAuthors,
@@ -117,25 +112,7 @@ export function generateCitationKey(paper: ReaderDocument): string {
   return libGenerateCitationKey(paper as any);
 }
 
-export function getBibTeXEntryType(paper: ReaderDocument): string {
-  return libGetBibTeXEntryType(paper as any);
-}
 
-export function convertToBibTeX(paper: ReaderDocument): string {
-  return libConvertToBibTeX(paper as any);
-}
-
-export function downloadBibTeXFile(paper: ReaderDocument, filename?: string): void {
-  libDownloadBibTeXFile(paper as any, filename);
-}
-
-export function convertToRIS(paper: ReaderDocument): string {
-  return libConvertToRIS(paper as any);
-}
-
-export function downloadRISFile(paper: ReaderDocument, filename?: string): void {
-  libDownloadRISFile(paper as any, filename);
-}
 
 export function formatInTextCitation(paper: ReaderDocument, pageNumber?: number): string {
   const authors = normalizeAuthors(paper.authors, paper.creators);

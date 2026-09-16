@@ -139,6 +139,22 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
+  --color-brand: var(--primary);
+  --color-brand-hover: var(--primary-hover);
+  --color-brand-foreground: var(--primary-foreground);
+
+  /* Precision Blue / SaaS Blue Palette (DESIGN.md / PRODUCT.md) */
+  --color-blue-50: var(--blue-50);
+  --color-blue-100: var(--blue-100);
+  --color-blue-200: var(--blue-200);
+  --color-blue-300: var(--blue-300);
+  --color-blue-400: var(--blue-400);
+  --color-blue-500: var(--blue-500);
+  --color-blue-600: var(--blue-600);
+  --color-blue-700: var(--blue-700);
+  --color-blue-800: var(--blue-800);
+  --color-blue-900: var(--blue-900);
+  --color-blue-950: var(--blue-950);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -206,6 +222,7 @@
   --blue-700: oklch(38% 0.148 var(--brand-hue));
   --blue-800: oklch(28% 0.120 var(--brand-hue));
   --blue-900: oklch(20% 0.090 var(--brand-hue));
+  --blue-950: oklch(14% 0.060 var(--brand-hue));
 
   --gray-0: oklch(100% 0 0);
   --gray-25: oklch(98.5% 0 0);
@@ -237,6 +254,7 @@
   --primary: var(--blue-600);
   --primary-hover: var(--blue-700);
   --primary-foreground: var(--gray-0);
+  --brand: var(--primary);
   --secondary: var(--gray-50);
   --secondary-foreground: var(--gray-900);
   --muted: var(--gray-100);
@@ -259,7 +277,7 @@
   --input: var(--gray-200);
   --ring: var(--blue-600);
 
-  --chart-1: oklch(0.646 0.222 41);
+  --chart-1: var(--blue-600);
   --chart-2: oklch(0.600 0.118 185);
   --chart-3: oklch(0.398 0.070 227);
   --chart-4: oklch(0.828 0.189 84);
@@ -295,6 +313,7 @@
   --primary: var(--blue-500);
   --primary-hover: oklch(62% 0.178 var(--brand-hue));
   --primary-foreground: oklch(100% 0 0);
+  --brand: var(--primary);
   --secondary: oklch(17% 0 0);
   --secondary-foreground: oklch(92% 0 0);
   --muted: oklch(17% 0 0);
@@ -317,7 +336,7 @@
   --input: oklch(22% 0 0 / 70%);
   --ring: var(--blue-500);
 
-  --chart-1: oklch(0.488 0.243 264);
+  --chart-1: var(--blue-500);
   --chart-2: oklch(0.696 0.170 162);
   --chart-3: oklch(0.769 0.188 70);
   --chart-4: oklch(0.627 0.265 304);
@@ -713,11 +732,11 @@
 
 @keyframes flux-flash-active-line {
   0% {
-    background-color: oklch(50% 0.18 var(--brand-hue, 265) / 0.35);
+    background-color: color-mix(in oklch, var(--primary) 35%, transparent);
   }
 
   100% {
-    background-color: oklch(50% 0.18 var(--brand-hue, 265) / 0);
+    background-color: color-mix(in oklch, var(--primary) 0%, transparent);
   }
 }
 
@@ -758,7 +777,7 @@
 
 .react-pdf__Page__textLayer ::selection,
 .textLayer ::selection {
-  background: oklch(50% 0.18 var(--brand-hue, 265) / 0.25) !important;
+  background: color-mix(in oklch, var(--primary) 25%, transparent) !important;
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;
 }

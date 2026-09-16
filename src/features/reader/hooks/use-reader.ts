@@ -43,7 +43,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const fulltext = fulltextQuery.data ?? null;
   const isLoadingFulltext = fulltextQuery.isLoading;
 
-  const paperUrl = ItemsService.getPaperFileUrl(paper);
+  const paperUrl = ItemsService.getPaperFileUrl(paper as any);
   const {
     blobUrl: pdfBlobUrl,
     isLoading: pdfLoading,
@@ -235,13 +235,10 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       qc.invalidateQueries({
         queryKey: readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
       });
-      toast.success('Highlight created', {
-        description: `Saved to page ${pageIndex + 1}.`,
-        id: 'reader-annotation-toast',
-      });
+      // Silent on success to keep academic reading flow distraction-free (Zotero parity)
     } catch (err) {
       console.error('Failed to create highlight annotation:', err);
-      toast.error('Failed to create highlight', {
+      toast.error('Failed to save highlight', {
         description: getErrorMessage(err) || 'Could not save highlight. Please try again.',
         id: 'reader-annotation-toast',
       });
@@ -333,10 +330,10 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       qc.invalidateQueries({
         queryKey: readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
       });
-      toast.success(`Updated color for ${selectedAnnotationIds.size} highlights`);
+      toast.success(`Updated color for ${selectedAnnotationIds.size} highlights`, { id: 'reader-batch-action' });
       setSelectedAnnotationIds(new Set());
     } catch (err) {
-      toast.error('Batch update failed', { description: getErrorMessage(err) });
+      toast.error('Batch update failed', { description: getErrorMessage(err), id: 'reader-batch-action' });
     } finally {
       setIsBatchProcessing(false);
     }
@@ -355,10 +352,10 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       qc.invalidateQueries({
         queryKey: readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
       });
-      toast.success(`Deleted ${deletes.length} highlights`);
+      toast.success(`Deleted ${deletes.length} highlights`, { id: 'reader-batch-action' });
       setSelectedAnnotationIds(new Set());
     } catch (err) {
-      toast.error('Batch delete failed', { description: getErrorMessage(err) });
+      toast.error('Batch delete failed', { description: getErrorMessage(err), id: 'reader-batch-action' });
     } finally {
       setIsBatchProcessing(false);
     }
@@ -378,7 +375,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     setPendingNoteText(quotes);
     setActivePanel('notes');
     setSelectedAnnotationIds(new Set());
-    toast.success(`Added ${selected.length} highlights to Note draft`);
+    toast.success(`Added ${selected.length} highlights to Note draft`, { id: 'reader-note-toast' });
   };
 
   const goBack = () => {

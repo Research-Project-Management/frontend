@@ -1,6 +1,5 @@
 export * from "./work-item.schema";
 export * from "./core.schema";
-export * from "./draft.schema";
 export * from "./assignment.schema";
 export * from "./attachment.schema";
 export * from "./comment.schema";

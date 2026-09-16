@@ -289,7 +289,14 @@ export const StatePopover: React.FC<StatePopoverProps> = ({
   isReadOnly = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const activeCol = columns.find((c) => resolveColumnId(c) === columnId);
+  const activeCol = columns.find(
+    (c) =>
+      resolveColumnId(c) === columnId ||
+      c.id === columnId ||
+      c.group === columnId ||
+      (c.name && c.name.toLowerCase() === columnId?.toLowerCase()) ||
+      (c.title && c.title.toLowerCase() === columnId?.toLowerCase())
+  );
 
   const filteredColumns = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -1066,6 +1073,7 @@ export interface SingleDatePopoverProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   actionBtnClass?: string;
+  variant?: 'outline' | 'ghost' | 'default' | 'secondary';
   disabled?: boolean;
   isReadOnly?: boolean;
 }
@@ -1077,6 +1085,7 @@ export function SingleDatePopover({
   open,
   onOpenChange,
   actionBtnClass,
+  variant = 'outline',
   disabled = false,
   isReadOnly = false,
 }: SingleDatePopoverProps) {
@@ -1093,12 +1102,14 @@ export function SingleDatePopover({
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild disabled={isDisabled}>
         <Button
-          variant="outline"
+          variant={variant}
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+            variant === 'ghost'
+              ? 'h-7 px-2 text-xs font-normal rounded-md bg-transparent hover:bg-muted/50 text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 border-0'
+              : 'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
             actionBtnClass,
-            open && 'bg-muted border-border',
+            open && (variant === 'ghost' ? 'bg-muted/60' : 'bg-muted border-border'),
             date && 'text-foreground font-semibold'
           )}
         >

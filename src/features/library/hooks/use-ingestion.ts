@@ -114,7 +114,7 @@ export function useIngestion(workspaceId: string) {
   });
 
   const confirmUrlMutation = useMutation<
-    { success: boolean; data: { id: string; title: string; doi?: string; year?: number; citationKey?: string } },
+    { id: string; title: string; doi?: string; year?: number; citationKey?: string },
     Error,
     {
       url: string;

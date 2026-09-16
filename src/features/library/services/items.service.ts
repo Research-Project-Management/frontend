@@ -7,6 +7,7 @@ import type {
   PaginatedItemsResponse,
 } from "@/features/library/types/library.types";
 import { AttachmentsService } from './attachments.service';
+import { getPaperFileUrl } from '../utils/library.util';
 
 // ── Payload sanitization ──────────────────────────────────────────────────────
 const VALID_ITEM_PAYLOAD_KEYS = new Set([
@@ -19,7 +20,7 @@ const VALID_ITEM_PAYLOAD_KEYS = new Set([
   'volume', 'issue', 'section', 'partNumber', 'partTitle', 'pages',
   'series', 'seriesTitle', 'seriesText', 'seriesNumber',
   // Identifiers
-  'issn', 'isbn', 'pmid', 'pmcid', 'arxivId', 'arxiv', 'doi',
+  'issn', 'isbn', 'pmid', 'pmcid', 'arxivId', 'arxiv',
   // Web & access
   'url', 'type', 'accessDate', 'accessedAt',
   // Style & formatting
@@ -83,21 +84,12 @@ export const fetchPdfBlob = async (
 
   let targetUrl = url.trim();
 
-  if (targetUrl.includes('r2.rpm.local')) {
-    const match = targetUrl.match(/\/papers\/[^/?#]+/);
-    targetUrl = match ? match[0] : targetUrl.replace(/^https?:\/\/[^/]+/, '');
-  }
-
   // Static /papers files are served by Next.js, while API-backed files require
   // the backend origin and an auth token. Sending either through one generic
   // API fetcher breaks static preview URLs and leaks auth headers to external
   // PDFs (which browsers reject during CORS preflight).
   const isLocalStatic =
     targetUrl.startsWith('/papers/') || targetUrl.startsWith('/public/');
-  const baseUrl =
-    typeof window !== 'undefined' && window.location?.origin
-      ? window.location.origin
-      : 'http://localhost:3000';
 
   const rawApiBase =
     typeof API_BASE_URL === 'string' &&
@@ -105,6 +97,11 @@ export const fetchPdfBlob = async (
     API_BASE_URL !== 'null'
       ? API_BASE_URL.trim()
       : '';
+
+  const baseUrl =
+    typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : (rawApiBase || 'http://localhost:3000');
 
   let resolvedUrl = targetUrl;
   let isTrustedOrigin = false;
@@ -444,6 +441,25 @@ export const ItemsService = {
       { targetType, expectedVersion, retainUnmappedInExtra },
     ),
 
+  reindexItem: (scopeId: string | undefined, itemId: string) =>
+    apiPost<{ success: boolean; data?: any }>(
+      getItemUrl(scopeId, `${encodeURIComponent(itemId)}/reindex`),
+      {},
+    ).then((res) => res?.data || res || { success: true }),
+
+  getFulltext: (scopeId: string | undefined, itemId: string) =>
+    apiGet<any>(
+      getItemUrl(scopeId, `${encodeURIComponent(itemId)}/fulltext`),
+    ).then((res) => res?.data || res || null).catch(() => null),
+
+  getPaperFileUrl,
+
+  getItem: (scopeId: string | undefined, itemId: string) =>
+    ItemsService.getById(scopeId || 'user', itemId),
+
+  updateItem: (scopeId: string | undefined, itemId: string, data: Partial<Item>) =>
+    ItemsService.update(scopeId || 'user', itemId, data),
+
   fetchPdfBlob: (url: string, signal?: AbortSignal) =>
     fetchPdfBlob(url, signal),
 
@@ -458,6 +474,7 @@ export const ItemsService = {
         ).then((res) => res?.item || res?.data || res),
 };
 
+export { getPaperFileUrl } from '../utils/library.util';
 export const ItemService = ItemsService;
 export const PaperService = ItemsService;
 

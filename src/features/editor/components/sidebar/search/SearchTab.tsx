@@ -112,9 +112,9 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   };
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-card text-card-foreground">
+    <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
       {/* Header */}
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-background">
         <div className="flex min-w-0 items-center gap-1.5">
           <SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="truncate text-xs font-semibold text-muted-foreground">
@@ -129,8 +129,8 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             aria-expanded={showReplace}
             onClick={() => setShowReplace(!showReplace)}
             className={cn(
-              "flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer",
-              showReplace && "bg-muted text-primary",
+              "flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-sidebar-hover cursor-pointer",
+              showReplace && "bg-sidebar-accent text-primary",
             )}
           >
             <Replace className="size-4 shrink-0" />
@@ -141,7 +141,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
               title="Close search"
               aria-label="Close search"
               onClick={onClose}
-              className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer"
+              className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-sidebar-hover cursor-pointer"
             >
               <X className="size-3.5 shrink-0" />
             </button>

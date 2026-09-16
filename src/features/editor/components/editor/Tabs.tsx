@@ -60,10 +60,10 @@ function TabItem({ tab, isActive, rootPageId, onActivate, onCloseTab }: TabItemP
       className={cn(
         'group/tab relative flex items-center gap-2 h-full px-3 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
         'border-r border-border min-w-0 max-w-[200px] shrink-0',
-        'focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset transition-all',
+        'focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset transition-colors',
         isActive
           ? 'bg-background text-foreground font-medium'
-          : 'bg-muted text-muted-foreground hover:bg-background/40 hover:opacity-90',
+          : 'bg-muted/30 text-muted-foreground hover:bg-muted/70 hover:text-foreground',
       )}
     >
       {/* Active indicator */}
@@ -179,7 +179,7 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
   if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-center justify-between h-10 bg-secondary/70 border-b border-border px-1 gap-2">
+    <div className="flex items-center justify-between h-10 bg-background border-b border-border px-1 gap-2">
       {/* ── Left: File tabs ── */}
       <LayoutGroup id={`tab-bar-${rootPageId}`}>
         <div
@@ -232,7 +232,7 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
                 ? 'bg-background text-foreground shadow-xs'
                 : 'text-muted-foreground hover:text-foreground',
             )}
-            title="Source Code Editor"
+            title="Source Code Editor (Overleaf standard - 100% LaTeX fidelity)"
           >
             <Code className="size-3.5 shrink-0" />
             <span>Code</span>
@@ -246,10 +246,13 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
                 ? 'bg-background text-foreground shadow-xs'
                 : 'text-muted-foreground hover:text-foreground',
             )}
-            title="Visual WYSIWYG Editor"
+            title="Visual WYSIWYG Editor (Beta - Simplified LaTeX)"
           >
             <Eye className="size-3.5 shrink-0" />
             <span>Visual</span>
+            <span className="text-11 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 font-mono font-medium leading-none">
+              Beta
+            </span>
           </button>
         </div>
       </div>

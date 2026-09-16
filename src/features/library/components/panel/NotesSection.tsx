@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { MinusCircle, Plus } from 'lucide-react';
-import { Button } from "@/shared/components/ui";
 import { Textarea } from "@/shared/components/ui";
 import { normalizeNotes, type NormalizedNote } from '@/features/library/utils/library.util';
 import { useNotes } from '@/features/library/hooks/use-notes';
@@ -191,35 +190,30 @@ export default function NotesSection({
 
       {/* Add New Note Box */}
       {isAdding && (
-        <div className="space-y-1.5 p-2 bg-muted rounded-md border border-border text-xs mb-1.5">
+        <div className="space-y-1.5 p-2.5 bg-background rounded-md border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-colors text-xs mb-1.5 shadow-2xs">
           <Textarea
             autoFocus
             placeholder="Write a note..."
             value={newNoteContent}
             onChange={(e) => setNewNoteContent(e.target.value)}
-            rows={2}
-            className="text-xs resize-none w-full max-h-36 overflow-y-auto focus:border-primary border-border bg-transparent rounded-md"
-          />
-          <div className="flex items-center justify-end gap-1.5">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
+            onKeyDown={(e) => {
+              if ((e.key === 'Enter' && !e.shiftKey) || ((e.ctrlKey || e.metaKey) && e.key === 'Enter')) {
+                e.preventDefault();
+                if (newNoteContent.trim()) {
+                  handleSaveNewNote();
+                }
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
                 setIsAdding(false);
                 setNewNoteContent('');
-              }}
-              className="h-6 px-2 text-xs rounded-md cursor-pointer text-foreground hover:bg-muted"
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleSaveNewNote}
-              disabled={!newNoteContent.trim()}
-              className="h-6 px-2.5 text-xs rounded-md cursor-pointer font-medium"
-            >
-              Save
-            </Button>
+              }
+            }}
+            rows={2}
+            className="text-xs resize-none w-full max-h-36 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-muted-foreground/60"
+          />
+          <div className="flex items-center justify-between text-[10.5px] text-muted-foreground/75 select-none pt-1 border-t border-border/40">
+            <span>Shift + Enter for new line</span>
+            <span>Enter to save · Esc to cancel</span>
           </div>
         </div>
       )}
@@ -243,31 +237,28 @@ export default function NotesSection({
 
           if (isEditing) {
             return (
-              <div key={n.id} className="space-y-1.5 p-2 bg-muted rounded-md border border-border text-xs">
+              <div key={n.id} className="space-y-1.5 p-2.5 bg-background rounded-md border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-colors text-xs shadow-2xs">
                 <Textarea
                   autoFocus
                   value={editingContent}
                   onChange={(e) => setEditingContent(e.target.value)}
+                  onKeyDown={(e) => {
+                    if ((e.key === 'Enter' && !e.shiftKey) || ((e.ctrlKey || e.metaKey) && e.key === 'Enter')) {
+                      e.preventDefault();
+                      if (editingContent.trim()) {
+                        handleSaveEdit(n.id);
+                      }
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      handleCancelEdit();
+                    }
+                  }}
                   rows={2}
-                  className="text-xs resize-none w-full max-h-36 overflow-y-auto focus:border-primary border-border bg-transparent rounded-md"
+                  className="text-xs resize-none w-full max-h-36 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-muted-foreground/60"
                 />
-                <div className="flex justify-end gap-1.5">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleCancelEdit}
-                    className="h-6 px-2 text-xs rounded-md cursor-pointer text-foreground hover:bg-muted"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => handleSaveEdit(n.id)}
-                    disabled={!editingContent.trim()}
-                    className="h-6 px-2.5 text-xs rounded-md cursor-pointer font-medium"
-                  >
-                    Save
-                  </Button>
+                <div className="flex items-center justify-between text-[10.5px] text-muted-foreground/75 select-none pt-1 border-t border-border/40">
+                  <span>Shift + Enter for new line</span>
+                  <span>Enter to save · Esc to cancel</span>
                 </div>
               </div>
             );

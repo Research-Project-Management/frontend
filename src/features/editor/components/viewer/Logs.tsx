@@ -166,9 +166,10 @@ function LogEmpty({ text }: { text: string }) {
 export interface LogsProps {
   log: string;
   onClose: () => void;
+  onJumpToError?: (file: string | undefined, line: number) => void;
 }
 
-export default function Logs({ log, onClose }: LogsProps) {
+export default function Logs({ log, onClose, onJumpToError }: LogsProps) {
   const { scrollToLineRef } = usePageStore();
   const parsed = useMemo(() => parseLatexLog(log), [log]);
   const defaultTab = useMemo<LogTab>(() => {
@@ -181,8 +182,12 @@ export default function Logs({ log, onClose }: LogsProps) {
   const activeTab = selectedTab ?? defaultTab;
 
   const handleEntryClick = (entry: LogEntry) => {
-    if (entry.line && scrollToLineRef.current) {
-      scrollToLineRef.current(entry.line);
+    if (entry.line) {
+      if (onJumpToError) {
+        onJumpToError(entry.file, entry.line);
+      } else if (scrollToLineRef.current) {
+        scrollToLineRef.current(entry.line);
+      }
     }
   };
 

@@ -2,7 +2,7 @@
 
 import React, { useRef, useImperativeHandle, forwardRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { AlertCircle, Loader2, Play } from 'lucide-react';
+import { AlertCircle, FileText, Loader2, Play } from 'lucide-react';
 import { LatexCompilerEngine, type SyncTeXMap } from '@/features/editor/utils/viewer.util';
 import { useIntersectionObserver } from "@/shared/hooks";
 import { toast } from 'sonner';
@@ -27,7 +27,12 @@ interface OptimizedPDFPageProps {
   scale: number;
   pageElemRefs: React.MutableRefObject<Record<number, HTMLDivElement | null>>;
   approxHeightRef: React.MutableRefObject<number>;
-  onDoubleClickPage: (pageNum: number, clickFraction: number) => void;
+  onDoubleClickPage: (
+    pageNum: number,
+    clickFraction: number,
+    x?: number,
+    y?: number,
+  ) => void;
 }
 
 function OptimizedPDFPage({
@@ -55,7 +60,9 @@ function OptimizedPDFPage({
   const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const pageHeight = (e.currentTarget as HTMLDivElement).offsetHeight;
     const clickFraction = pageHeight > 0 ? e.nativeEvent.offsetY / pageHeight : 0;
-    onDoubleClickPage(pageNum, clickFraction);
+    const x = e.nativeEvent.offsetX;
+    const y = e.nativeEvent.offsetY;
+    (onDoubleClickPage as any)(pageNum, clickFraction, x, y);
   };
 
   return (
@@ -117,7 +124,13 @@ export interface SurfaceProps {
   onPageNumberChange?: (page: number) => void;
   onNumPagesChange?: (num: number) => void;
   onDocumentLoadSuccess?: (pdf: any) => void;
-  onJumpToSource?: (file: string | null, line: number) => void;
+  onJumpToSource?: (
+    file: string | null,
+    line: number,
+    pageNum?: number,
+    x?: number,
+    y?: number,
+  ) => void;
   onCompile?: () => void;
 }
 
@@ -163,56 +176,75 @@ export const Surface = forwardRef<SurfaceHandle, SurfaceProps>(function Surface(
   };
 
   // SyncTeX inverse search (PDF double-click -> LaTeX source jump)
-  const handleDoubleClickPage = (pageNum: number, clickFraction: number) => {
-    if (!synctexMap || !onJumpToSource) return;
-    const resolved = LatexCompilerEngine.resolveReverse(clickFraction, pageNum, synctexMap);
-    if (resolved) {
-      onJumpToSource(resolved.sourcePath, resolved.line);
-    }
+  const handleDoubleClickPage = (
+    pageNum: number,
+    clickFraction: number,
+    x?: number,
+    y?: number,
+  ) => {
+    if (!onJumpToSource) return;
+    const resolved = synctexMap
+      ? LatexCompilerEngine.resolveReverse(clickFraction, pageNum, synctexMap)
+      : null;
+    onJumpToSource(
+      resolved?.sourcePath ?? null,
+      resolved?.line ?? 1,
+      pageNum,
+      x,
+      y,
+    );
   };
 
   return (
     <div
       ref={scrollContainerRef}
-      className="flex-1 overflow-auto bg-muted p-4 flex flex-col items-center justify-start select-text relative"
+      className="flex-1 overflow-auto bg-background p-4 flex flex-col items-center justify-start select-text relative"
     >
       {!pdfUrl ? (
         /* Empty State */
-        <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
-          <div className="text-center">
-            <p className="text-sm font-medium">No PDF yet</p>
-            <p className="text-xs mt-1">
-              Click <strong>Compile</strong> or press{' '}
-              <kbd className="px-1 py-0.5 text-xs bg-muted border rounded">Ctrl+Enter</kbd> to
-              generate the PDF
-            </p>
+        <div className="flex flex-col items-center justify-center h-full w-full select-none">
+          <div className="flex flex-col items-center justify-center text-center max-w-sm rounded-xl border border-border bg-background p-8 shadow-xs gap-4">
+            <div className="size-10 rounded-lg bg-muted flex items-center justify-center text-foreground">
+              <FileText className="size-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">No PDF yet</p>
+              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                Click <strong className="font-semibold text-foreground">Compile</strong> or press{' '}
+                <kbd className="px-1.5 py-0.5 text-11 font-mono font-medium bg-muted border border-border rounded text-foreground">
+                  Ctrl+Enter
+                </kbd>{' '}
+                to generate the PDF
+              </p>
+            </div>
+            {onCompile && (
+              <button
+                type="button"
+                onClick={onCompile}
+                disabled={
+                  compileStatus !== 'idle' &&
+                  compileStatus !== 'done' &&
+                  compileStatus !== 'error'
+                }
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-medium rounded-md text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {compileStatus === 'compiling' ||
+                compileStatus === 'flushing' ||
+                compileStatus === 'syncing' ? (
+                  <Loader2 className="size-4 animate-spin shrink-0" />
+                ) : (
+                  <Play className="size-4 shrink-0" />
+                )}
+                {compileStatus === 'flushing'
+                  ? 'Saving…'
+                  : compileStatus === 'syncing'
+                    ? 'Syncing…'
+                    : compileStatus === 'compiling'
+                      ? 'Compiling…'
+                      : 'Compile'}
+              </button>
+            )}
           </div>
-          {onCompile && (
-            <button
-              onClick={onCompile}
-              disabled={
-                compileStatus !== 'idle' &&
-                compileStatus !== 'done' &&
-                compileStatus !== 'error'
-              }
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary-hover transition-colors disabled:opacity-50"
-            >
-              {compileStatus === 'compiling' ||
-              compileStatus === 'flushing' ||
-              compileStatus === 'syncing' ? (
-                <Loader2 className="size-4 animate-spin shrink-0" />
-              ) : (
-                <Play className="size-4 shrink-0" />
-              )}
-              {compileStatus === 'flushing'
-                ? 'Saving…'
-                : compileStatus === 'syncing'
-                  ? 'Syncing…'
-                  : compileStatus === 'compiling'
-                    ? 'Compiling…'
-                    : 'Compile'}
-            </button>
-          )}
         </div>
       ) : (
         /* PDF Document Canvas */
@@ -229,18 +261,20 @@ export const Surface = forwardRef<SurfaceHandle, SurfaceProps>(function Surface(
             </div>
           }
           error={
-            <div className="flex flex-col items-center justify-center h-full gap-2 p-6 text-center text-muted-foreground select-none">
-              <AlertCircle className="size-6 text-muted-foreground/60 shrink-0" />
-              <p className="text-xs font-medium">Failed to load PDF file.</p>
-              {onCompile && (
-                <button
-                  type="button"
-                  onClick={onCompile}
-                  className="px-3 py-1 text-xs rounded bg-primary text-primary-foreground hover:bg-primary-hover mt-2 transition-colors"
-                >
-                  Compile again
-                </button>
-              )}
+            <div className="flex flex-col items-center justify-center h-full select-none">
+              <div className="flex flex-col items-center justify-center gap-3 p-8 text-center bg-background rounded-xl border border-border shadow-xs max-w-sm">
+                <AlertCircle className="size-6 text-destructive shrink-0" />
+                <p className="text-sm font-medium text-foreground">Failed to load PDF file.</p>
+                {onCompile && (
+                  <button
+                    type="button"
+                    onClick={onCompile}
+                    className="px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 mt-1 font-medium transition-colors"
+                  >
+                    Compile again
+                  </button>
+                )}
+              </div>
             </div>
           }
         >

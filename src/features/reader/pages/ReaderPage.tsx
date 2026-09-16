@@ -9,7 +9,10 @@ import {
   ChevronRight,
   ZoomIn,
   ZoomOut,
+  ShieldAlert,
+  ExternalLink,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from "@/shared/components/ui";
 import { useRouter } from 'next/navigation';
 import { useReader } from '../hooks/use-reader';
@@ -173,6 +176,33 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     setThemeMode((m) => (m === 'normal' ? 'sepia' : m === 'sepia' ? 'dark' : 'normal'));
   };
 
+  const handleExtractAllAnnotationsToNote = () => {
+    if (!annotations || annotations.length === 0) {
+      toast.info('No annotations in this document to extract', { id: 'reader-extract-notes' });
+      return;
+    }
+    const quotes = annotations
+      .slice()
+      .sort((a, b) => (a.pageIndex ?? 0) - (b.pageIndex ?? 0))
+      .map((a) => {
+        const typeLabel =
+          a.type === 'note'
+            ? '📝 Note'
+            : a.type === 'rect'
+            ? '📐 Figure / Equation'
+            : '💡 Highlight';
+        const quotePart = a.quoteText ? `> "${a.quoteText}"\n\n` : '';
+        const commentPart = a.comment ? `**Comment**: ${a.comment}\n\n` : '';
+        return `### ${typeLabel} (Page ${(a.pageIndex ?? 0) + 1})\n\n${quotePart}${commentPart}`;
+      })
+      .join('---\n\n');
+
+    setPendingNoteText(quotes);
+    setActivePanel('notes');
+    setIsInspectorOpen(true);
+    toast.success(`Extracted ${annotations.length} annotations to Note draft`, { id: 'reader-extract-notes' });
+  };
+
   return (
     <div className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background ${isResizingPanel ? 'select-none' : ''}`}>
       {/* 0. ZOTERO 7 APPLICATION MENU BAR (File, Edit, View, Go) */}
@@ -217,7 +247,37 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           onToggleInspector={() => setIsInspectorOpen(!isInspectorOpen)}
           isEntitiesDrawerOpen={isEntitiesDrawerOpen}
           onToggleEntitiesDrawer={() => setIsEntitiesDrawerOpen((v) => !v)}
+          onExtractToNote={handleExtractAllAnnotationsToNote}
         />
+      )}
+
+      {/* 2.1 RETRACTION WARNING BANNER (Zotero-style alert) */}
+      {(paper as any)?.isRetracted && (
+        <div className="bg-rose-600 text-white px-4 py-2 flex items-center justify-between text-xs shadow-sm z-30 shrink-0 border-b border-rose-700 select-none">
+          <div className="flex items-center gap-2 min-w-0">
+            <ShieldAlert className="size-4 shrink-0 text-white animate-pulse" />
+            <span className="font-bold uppercase tracking-wider">
+              {(paper as any).retractionNature === 'expression_of_concern'
+                ? 'Expression of Concern'
+                : (paper as any).retractionNature === 'correction'
+                ? 'Publisher Correction'
+                : 'Retracted Publication'}
+            </span>
+            <span className="text-rose-100 truncate max-w-xl">
+              — {(((paper as any).retractionDetails as any)?.reason) || 'This publication has been flagged as retracted or unreliable.'}
+            </span>
+          </div>
+          {(((paper as any).retractionDetails as any)?.noticeUrl) && (
+            <a
+              href={((paper as any).retractionDetails as any).noticeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-white underline font-medium hover:text-rose-200 shrink-0 ml-4"
+            >
+              Notice <ExternalLink className="size-3 shrink-0" />
+            </a>
+          )}
+        </div>
       )}
 
       {/* WORKSPACE VIEWPORT */}

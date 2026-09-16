@@ -133,7 +133,7 @@ export default function MemberPage() {
   };
 
   const handleImport = () => {
-    toast.info('Importing members from CSV is coming soon');
+    toast.info('Importing members from CSV is coming soon', { id: 'settings-member-csv' });
   };
 
   const handleSort = (field: SortFieldType, asc: boolean) => {

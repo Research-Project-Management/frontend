@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Users,
   Tag,
   Paperclip,
-  Timer,
   CalendarClock,
   Calendar,
   User,
@@ -23,8 +22,11 @@ import {
   Pencil,
   Copy,
   ExternalLink,
-  Archive,
   Trash2,
+  ChevronDown,
+  ChevronRight,
+  Check,
+  CheckSquare,
 } from 'lucide-react';
 import {
   Button,
@@ -44,10 +46,34 @@ import {
 } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { useCopyItemText } from '../../hooks/use-work-item';
-import { StatusIcon } from '@/shared/components/icons';
+import {
+  StatusIcon,
+  UrgentPriorityBoxIcon,
+  HighPriorityBoxIcon,
+  MediumPriorityBoxIcon,
+  LowPriorityBoxIcon,
+  NonePriorityBoxIcon,
+  CycleIcon,
+} from '@/shared/components/icons';
 import { ItemHelpers, resolveColumnId } from '../../utils/work-item.utils';
-import { AvatarStack } from '../modals/Popovers';
-import type { Item, Column as ColumnType, Cycle, ProjectMember, Priority, DisplayOptions, BaseWorkItemViewProps, WorkItemCardHandlers } from '../../types/work-item.types';
+import {
+  MemberPopover,
+  SingleDatePopover,
+  PriorityPopover,
+  CyclePopover,
+  LabelPopover,
+  AvatarStack,
+} from '../modals/Popovers';
+import type {
+  Item,
+  Column as ColumnType,
+  Cycle,
+  ProjectMember,
+  Priority,
+  DisplayOptions,
+  BaseWorkItemViewProps,
+  WorkItemCardHandlers,
+} from '../../types/work-item.types';
 
 // ── 1. Table Types ───────────────────────────────────────────────────────────
 
@@ -55,18 +81,16 @@ export type TablePropertyKey =
   | 'state'
   | 'priority'
   | 'assignees'
+  | 'dueDate'
   | 'labels'
-  | 'attach'
   | 'cycle'
   | 'startDate'
-  | 'dueDate'
   | 'createdOn'
   | 'createdBy'
   | 'updatedOn'
-  | 'link'
   | 'attachment'
-  | 'childWorkItemCount'
-  | 'subItemCount';
+  | 'subItemCount'
+  | 'link';
 
 export type TableSortField =
   | 'identifier'
@@ -85,17 +109,18 @@ export interface TablePropertyConfig {
   label: string;
   icon: React.ElementType;
   defaultVisible: boolean;
-  minWidth?: number;
+  minWidth: number;
 }
 
 export interface TableViewProps extends BaseWorkItemViewProps, WorkItemCardHandlers {
   items?: Item[];
+  itemsByColumnId?: Map<string, Item[]> | Record<string, Item[]>;
   columns: ColumnType[];
   projectStates?: ColumnType[];
   projectId?: string;
   workspaceId?: string;
-  cycles?: any[];
-  members?: any[];
+  cycles?: Cycle[];
+  members?: ProjectMember[];
   selectedIds?: string[];
   onToggleSelect?: (id: string) => void;
   onSelectAll?: ((ids?: string[]) => void) | (() => void);
@@ -104,403 +129,108 @@ export interface TableViewProps extends BaseWorkItemViewProps, WorkItemCardHandl
   onToggleDisplayProperty?: (key: any, value: boolean) => void;
 }
 
-// ── 2. Table Custom Icons ────────────────────────────────────────────────────
+// ── 2. Table Constants ───────────────────────────────────────────────────────
 
-export function PriorityNoneIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      className={cn("size-3.5 shrink-0 text-muted-foreground", className)}
-      aria-label="None"
-    >
-      <circle cx="8" cy="8" r="6.25" />
-      <line x1="3.5" y1="3.5" x2="12.5" y2="12.5" />
-    </svg>
-  );
-}
-
-export function PriorityLowIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      className={cn("size-3.5 shrink-0 text-blue-500", className)}
-      aria-label="Low"
-    >
-      <rect x="2.5" y="10.5" width="2.5" height="3.5" rx="0.5" />
-      <rect x="6.75" y="7" width="2.5" height="7" rx="0.5" opacity="0.15" />
-      <rect x="11" y="3.5" width="2.5" height="10.5" rx="0.5" opacity="0.15" />
-    </svg>
-  );
-}
-
-export function PriorityMediumIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      className={cn("size-3.5 shrink-0 text-amber-500", className)}
-      aria-label="Medium"
-    >
-      <rect x="2.5" y="10.5" width="2.5" height="3.5" rx="0.5" />
-      <rect x="6.75" y="7" width="2.5" height="7" rx="0.5" />
-      <rect x="11" y="3.5" width="2.5" height="10.5" rx="0.5" opacity="0.15" />
-    </svg>
-  );
-}
-
-export function PriorityHighIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      className={cn("size-3.5 shrink-0 text-orange-500", className)}
-      aria-label="High"
-    >
-      <rect x="2.5" y="10.5" width="2.5" height="3.5" rx="0.5" />
-      <rect x="6.75" y="7" width="2.5" height="7" rx="0.5" />
-      <rect x="11" y="3.5" width="2.5" height="10.5" rx="0.5" />
-    </svg>
-  );
-}
-
-export function PriorityUrgentIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      className={cn("size-3 shrink-0 text-red-500", className)}
-      aria-label="Urgent"
-    >
-      <circle cx="8" cy="8" r="6.25" />
-      <line x1="8" y1="4.5" x2="8" y2="8.5" strokeLinecap="round" />
-      <circle cx="8" cy="11.25" r="0.75" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-export function PriorityHeaderIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      className={cn("size-3.5 shrink-0 text-muted-foreground", className)}
-      aria-label="Priority"
-    >
-      <rect x="2.5" y="10.5" width="2.5" height="3.5" rx="0.5" />
-      <rect x="6.75" y="7" width="2.5" height="7" rx="0.5" />
-      <rect x="11" y="3.5" width="2.5" height="10.5" rx="0.5" />
-    </svg>
-  );
-}
-
-export function StateHeaderIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      className={cn("size-3.5 shrink-0 text-muted-foreground", className)}
-      aria-label="State"
-    >
-      <circle cx="8" cy="8" r="6.25" />
-      <circle cx="8" cy="8" r="2.5" strokeWidth="1.5" />
-    </svg>
-  );
-}
-
-export function ModulesGridIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      className={cn("size-3.5 shrink-0 text-muted-foreground", className)}
-      aria-label="Modules"
-    >
-      <rect x="2.5" y="2.5" width="4" height="4" rx="1" />
-      <rect x="9.5" y="2.5" width="4" height="4" rx="1" />
-      <rect x="2.5" y="9.5" width="4" height="4" rx="1" />
-      <rect x="9.5" y="9.5" width="4" height="4" rx="1" />
-    </svg>
-  );
-}
-
-// ── 3. Table Constants ───────────────────────────────────────────────────────
-
-export const TABLE_STORAGE_KEY = 'flux:table_view:columns_v3';
-export const TABLE_WIDTHS_STORAGE_KEY = 'flux:table_view:column_widths_v2';
-
-export const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
-  title: 360,
-  state: 130,
-  priority: 110,
-  assignees: 140,
-  labels: 130,
-  attach: 140,
-  cycle: 130,
-  startDate: 120,
-  dueDate: 120,
-  createdOn: 120,
-  createdBy: 130,
-  updatedOn: 120,
-  link: 110,
-  attachment: 120,
-  childWorkItemCount: 130,
-  subItemCount: 130,
-};
+export const TABLE_STORAGE_KEY = 'flux:table_view:columns_v5';
+export const TABLE_WIDTHS_STORAGE_KEY = 'flux:table_view:column_widths_v4';
 
 export const TABLE_PROPERTIES: TablePropertyConfig[] = [
-  { key: 'state', label: 'State', icon: StateHeaderIcon, defaultVisible: true, minWidth: 130 },
-  { key: 'priority', label: 'Priority', icon: PriorityHeaderIcon, defaultVisible: true, minWidth: 110 },
-  { key: 'assignees', label: 'Assignees', icon: Users, defaultVisible: true, minWidth: 130 },
-  { key: 'labels', label: 'Labels', icon: Tag, defaultVisible: true, minWidth: 130 },
-  { key: 'attach', label: 'Attach', icon: ModulesGridIcon, defaultVisible: true, minWidth: 140 },
-  { key: 'cycle', label: 'Cycle', icon: Timer, defaultVisible: false, minWidth: 130 },
-  { key: 'startDate', label: 'Start date', icon: CalendarClock, defaultVisible: false, minWidth: 120 },
-  { key: 'dueDate', label: 'Due date', icon: Calendar, defaultVisible: false, minWidth: 120 },
-  { key: 'createdOn', label: 'Created on', icon: Calendar, defaultVisible: false, minWidth: 120 },
+  { key: 'state', label: 'State', icon: StatusIcon, defaultVisible: true, minWidth: 130 },
+  { key: 'priority', label: 'Priority', icon: MediumPriorityBoxIcon, defaultVisible: true, minWidth: 110 },
+  { key: 'assignees', label: 'Assignees', icon: Users, defaultVisible: true, minWidth: 140 },
+  { key: 'dueDate', label: 'Due date', icon: Calendar, defaultVisible: true, minWidth: 125 },
+  { key: 'labels', label: 'Labels', icon: Tag, defaultVisible: true, minWidth: 140 },
+  { key: 'cycle', label: 'Cycle', icon: CycleIcon, defaultVisible: false, minWidth: 130 },
+  { key: 'startDate', label: 'Start date', icon: CalendarClock, defaultVisible: false, minWidth: 125 },
+  { key: 'createdOn', label: 'Created on', icon: Calendar, defaultVisible: false, minWidth: 125 },
   { key: 'createdBy', label: 'Created by', icon: User, defaultVisible: false, minWidth: 130 },
-  { key: 'updatedOn', label: 'Updated on', icon: Calendar, defaultVisible: false, minWidth: 120 },
-  { key: 'link', label: 'Link', icon: Link2, defaultVisible: false, minWidth: 110 },
-  { key: 'attachment', label: 'Attachment', icon: Paperclip, defaultVisible: false, minWidth: 120 },
-  { key: 'childWorkItemCount', label: 'Child items', icon: Layers, defaultVisible: false, minWidth: 130 },
-  { key: 'subItemCount', label: 'Sub-items', icon: Layers, defaultVisible: false, minWidth: 130 },
+  { key: 'updatedOn', label: 'Updated on', icon: Calendar, defaultVisible: false, minWidth: 125 },
+  { key: 'attachment', label: 'Attachments', icon: Paperclip, defaultVisible: false, minWidth: 120 },
+  { key: 'subItemCount', label: 'Sub-items', icon: Layers, defaultVisible: false, minWidth: 120 },
+  { key: 'link', label: 'Links', icon: Link2, defaultVisible: false, minWidth: 100 },
 ];
 
 export const DEFAULT_VISIBLE_PROPERTIES: Record<TablePropertyKey, boolean> = {
   state: true,
   priority: true,
   assignees: true,
+  dueDate: true,
   labels: true,
-  attach: true,
   cycle: false,
   startDate: false,
-  dueDate: false,
   createdOn: false,
   createdBy: false,
   updatedOn: false,
-  link: false,
   attachment: false,
-  childWorkItemCount: false,
   subItemCount: false,
+  link: false,
 };
 
-// ── 4. Table Attach Cell ─────────────────────────────────────────────────────
+export const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+  title: 360,
+  state: 130,
+  priority: 110,
+  assignees: 140,
+  dueDate: 125,
+  labels: 140,
+  cycle: 130,
+  startDate: 125,
+  createdOn: 125,
+  createdBy: 130,
+  updatedOn: 125,
+  attachment: 120,
+  subItemCount: 120,
+  link: 100,
+};
 
-export function TableAttachCell({
-  item,
-  onEditCard,
-}: {
-  item: Item;
-  onEditCard?: (item: Item) => void;
-}) {
-  const rawAttachments = item.attachments;
-  const attachmentsList: Array<{ id: string; name: string; url?: string }> = Array.isArray(rawAttachments)
-    ? rawAttachments
-    : rawAttachments && typeof rawAttachments === 'object'
-    ? [
-        ...((rawAttachments as any).files || []).map((fileItem: any) => ({
-          id: fileItem.id || fileItem.url,
-          name: fileItem.name || 'File',
-          url: fileItem.url,
-        })),
-        ...((rawAttachments as any).pages || []).map((pageItem: any) => ({
-          id: pageItem.id,
-          name: pageItem.title || 'Page',
-          url: '#',
-        })),
-        ...((rawAttachments as any).papers || []).map((paperItem: any) => ({
-          id: paperItem.id,
-          name: paperItem.title || 'Paper',
-          url: '#',
-        })),
-        ...((rawAttachments as any).links || []).map((linkItem: any) => ({
-          id: linkItem.url || linkItem.title,
-          name: linkItem.title || linkItem.url,
-          url: linkItem.url,
-        })),
-      ]
-    : [];
+// ── 3. Helper: Priority Icon ─────────────────────────────────────────────────
 
-  const hasAttachments = attachmentsList.length > 0;
-
-  if (hasAttachments) {
-    return (
-      <Popover>
-        <PopoverTrigger asChild onClick={(event) => event.stopPropagation()}>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <ModulesGridIcon className="size-3.5 shrink-0 text-muted-foreground" />
-            <span className="font-medium text-11">{attachmentsList.length}</span>
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="start"
-          className="w-56 p-2 text-xs bg-popover border-border shadow-none"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-border">
-            <span className="font-medium text-foreground">Attachments ({attachmentsList.length})</span>
-            {onEditCard && (
-              <button
-                type="button"
-                onClick={() => onEditCard(item)}
-                className="text-11 text-primary hover:underline"
-              >
-                View all
-              </button>
-            )}
-          </div>
-          <div className="space-y-1 max-h-40 overflow-y-auto">
-            {attachmentsList.map((attachment) => (
-              <a
-                key={attachment.id}
-                href={attachment.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1.5 p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground truncate transition-colors"
-              >
-                <FileText className="size-3.5 shrink-0" />
-                <span className="truncate">{attachment.name}</span>
-              </a>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
-    );
+export function renderPriorityIcon(priority?: Priority, className?: string) {
+  const p = priority || 'none';
+  switch (p) {
+    case 'urgent':
+      return <UrgentPriorityBoxIcon className={cn('size-3.5 shrink-0', className)} />;
+    case 'high':
+      return <HighPriorityBoxIcon className={cn('size-3.5 shrink-0', className)} />;
+    case 'medium':
+      return <MediumPriorityBoxIcon className={cn('size-3.5 shrink-0', className)} />;
+    case 'low':
+      return <LowPriorityBoxIcon className={cn('size-3.5 shrink-0', className)} />;
+    case 'none':
+    default:
+      return <NonePriorityBoxIcon className={cn('size-3.5 shrink-0', className)} />;
   }
-
-  return (
-    <div
-      onClick={(event) => {
-        event.stopPropagation();
-        if (onEditCard) onEditCard(item);
-      }}
-      className="group/attach flex items-center h-6 cursor-pointer text-muted-foreground hover:text-foreground"
-    >
-      <div className="opacity-0 group-hover/row:opacity-100 group-hover/attach:opacity-100 transition-opacity duration-150 flex items-center gap-1 text-11 text-muted-foreground hover:text-foreground">
-        <Plus className="size-3 shrink-0" />
-        <span className="text-10">Attach</span>
-      </div>
-    </div>
-  );
 }
 
-// ── 5. Table Action Menu ─────────────────────────────────────────────────────
+// ── 4. Helper: Date Formatter ────────────────────────────────────────────────
 
-export function TableActionMenu({
-  item,
-  projectId = '',
-  workspaceId = '',
-  onEditCard,
-  onDuplicateCard,
-  onDeleteCard,
-}: {
-  item: Item;
-  projectId?: string;
-  workspaceId?: string;
-  onEditCard: (item: Item) => void;
-  onDuplicateCard: (item: Item) => void;
-  onDeleteCard: (item: Item) => void;
-}) {
-  const copyItemText = useCopyItemText();
-
-  const handleCopyLink = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    const url =
-      typeof window !== 'undefined'
-        ? `${window.location.origin}/projects/${projectId}/work-items?itemId=${item.id}`
-        : '';
-    if (url) {
-      copyItemText(url, 'Link copied to clipboard');
-    }
-  };
-
-  const handleOpenInNewTab = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    if (typeof window !== 'undefined') {
-      const url = `/projects/${projectId}/work-items?itemId=${item.id}`;
-      window.open(url, '_blank');
-    }
-  };
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted p-0 rounded-sm"
-        >
-          <MoreHorizontal className="size-4 shrink-0" />
-          <span className="sr-only">Work item actions</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48 text-xs py-1">
-        <DropdownMenuItem
-          onClick={(event) => {
-            event.stopPropagation();
-            onEditCard(item);
-          }}
-          className="gap-2 cursor-pointer"
-        >
-          <Pencil className="size-3.5 text-muted-foreground shrink-0" />
-          <span>Edit</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={(event) => {
-            event.stopPropagation();
-            onDuplicateCard(item);
-          }}
-          className="gap-2 cursor-pointer"
-        >
-          <Copy className="size-3.5 text-muted-foreground shrink-0" />
-          <span>Make a copy</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleCopyLink} className="gap-2 cursor-pointer">
-          <Link2 className="size-3.5 text-muted-foreground shrink-0" />
-          <span>Copy link</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleOpenInNewTab} className="gap-2 cursor-pointer">
-          <ExternalLink className="size-3.5 text-muted-foreground shrink-0" />
-          <span>Open in new tab</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          disabled
-          className="gap-2 text-muted-foreground cursor-not-allowed"
-          title="Only completed or cancelled work items can be archived"
-        >
-          <Archive className="size-3.5 text-muted-foreground shrink-0" />
-          <span>Archive</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={(event) => {
-            event.stopPropagation();
-            onDeleteCard(item);
-          }}
-          className="gap-2 text-destructive focus:text-destructive cursor-pointer"
-        >
-          <Trash2 className="size-3.5 shrink-0" />
-          <span>Delete</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+function formatTableDate(dateStr?: string | null) {
+  if (!dateStr) return null;
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
 }
 
-// ── 6. Table Column Properties Popover ───────────────────────────────────────
+function isDateOverdue(dateStr?: string | null, completed?: boolean) {
+  if (!dateStr || completed) return false;
+  try {
+    const d = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return d < today;
+  } catch {
+    return false;
+  }
+}
+
+// ── 5. Table Column Properties Popover ───────────────────────────────────────
 
 export function TableColumnPropertiesPopover({
   visibleProperties,
@@ -513,68 +243,63 @@ export function TableColumnPropertiesPopover({
 }) {
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredProperties = TABLE_PROPERTIES.filter((propertyItem) =>
-    propertyItem.label.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProperties = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return TABLE_PROPERTIES;
+    return TABLE_PROPERTIES.filter((p) => p.label.toLowerCase().includes(q));
+  }, [searchQuery]);
 
-  const activeCount = Object.values(visibleProperties).filter(Boolean).length;
+  const activeCount = useMemo(
+    () => Object.values(visibleProperties).filter(Boolean).length,
+    [visibleProperties]
+  );
 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-2 border-border bg-background text-xs font-normal text-muted-foreground hover:bg-muted hover:text-foreground"
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted border border-border/60 bg-background transition-colors cursor-pointer select-none"
         >
           <SlidersHorizontal className="size-3.5 shrink-0" />
           <span>Display</span>
-          <span className="rounded bg-muted px-1.5 py-0.5 text-10 font-medium text-muted-foreground">
+          <span className="rounded bg-muted px-1.5 py-0.2 text-10 font-mono font-medium text-muted-foreground tabular-nums">
             {activeCount}
           </span>
-        </Button>
+        </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-64 p-2 border-border bg-popover">
+      <PopoverContent align="end" className="w-64 p-2 border-border bg-popover shadow-md z-100">
         <div className="flex items-center justify-between pb-2 mb-2 border-b border-border px-1">
           <span className="text-xs font-semibold text-foreground">Display properties</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onResetProperties}
-            className="h-6 px-1.5 text-11 text-muted-foreground hover:text-foreground gap-1"
-          >
-            <RotateCcw className="size-3 shrink-0" />
-            Reset
-          </Button>
         </div>
 
         <div className="relative mb-2 px-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0" />
           <Input
             value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search properties..."
             className="h-7 pl-7 text-xs bg-background border-border"
           />
         </div>
 
         <div className="max-h-60 overflow-y-auto space-y-0.5 px-1 py-0.5">
-          {filteredProperties.map((propertyItem) => {
-            const Icon = propertyItem.icon;
-            const isChecked = Boolean(visibleProperties[propertyItem.key]);
+          {filteredProperties.map((p) => {
+            const Icon = p.icon;
+            const isChecked = Boolean(visibleProperties[p.key]);
 
             return (
               <label
-                key={propertyItem.key}
+                key={p.key}
                 className="flex items-center justify-between px-2 py-1.5 rounded-sm text-xs cursor-pointer hover:bg-muted transition-colors text-foreground select-none"
               >
                 <div className="flex items-center gap-2">
                   <Icon className="size-3.5 text-muted-foreground shrink-0" />
-                  <span>{propertyItem.label}</span>
+                  <span>{p.label}</span>
                 </div>
                 <Checkbox
                   checked={isChecked}
-                  onCheckedChange={() => onToggleProperty(propertyItem.key)}
+                  onCheckedChange={() => onToggleProperty(p.key)}
                   className="size-3.5"
                 />
               </label>
@@ -586,9 +311,9 @@ export function TableColumnPropertiesPopover({
   );
 }
 
-// ── 7. Table Header ──────────────────────────────────────────────────────────
+// ── 6. Table Header Row ──────────────────────────────────────────────────────
 
-export function TableHeader({
+export function TableHeaderRow({
   visibleProperties,
   columnWidths,
   onResizeColumn,
@@ -600,10 +325,11 @@ export function TableHeader({
   sortField,
   sortOrder,
   onSort,
+  totalItemsCount = 0,
 }: {
   visibleProperties: Record<TablePropertyKey, boolean>;
-  columnWidths?: Record<string, number>;
-  onResizeColumn?: (key: string, width: number) => void;
+  columnWidths: Record<string, number>;
+  onResizeColumn: (key: string, width: number) => void;
   onToggleProperty: (key: TablePropertyKey) => void;
   onResetProperties: () => void;
   isAllSelected: boolean;
@@ -612,8 +338,12 @@ export function TableHeader({
   sortField?: TableSortField;
   sortOrder?: TableSortOrder;
   onSort?: (field: TableSortField) => void;
+  totalItemsCount?: number;
 }) {
-  const activeProperties = TABLE_PROPERTIES.filter((propertyItem) => visibleProperties[propertyItem.key]);
+  const activeProperties = useMemo(
+    () => TABLE_PROPERTIES.filter((p) => visibleProperties[p.key]),
+    [visibleProperties]
+  );
 
   const renderSortIndicator = (field: TableSortField) => {
     if (sortField !== field) return null;
@@ -627,14 +357,13 @@ export function TableHeader({
   const handleResizeMouseDown = (colKey: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!onResizeColumn) return;
 
     const startX = e.clientX;
-    const currentW = (columnWidths && columnWidths[colKey]) || (colKey === 'title' ? 360 : 130);
+    const currentW = columnWidths[colKey] || (colKey === 'title' ? 360 : 130);
 
     const onMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - startX;
-      const minW = colKey === 'title' ? 180 : 60;
+      const minW = colKey === 'title' ? 200 : 70;
       onResizeColumn(colKey, Math.max(minW, currentW + deltaX));
     };
 
@@ -647,29 +376,40 @@ export function TableHeader({
     window.addEventListener('mouseup', onMouseUp);
   };
 
-  const titleWidth = (columnWidths && columnWidths.title) || 360;
+  const titleWidth = columnWidths.title || 360;
 
   return (
     <div
       role="row"
-      className="flex items-center h-9 border-b border-border bg-secondary text-xs text-muted-foreground font-normal select-none w-full"
+      className="sticky top-0 z-20 flex items-center h-10 border-b border-border bg-background/95 backdrop-blur-xs text-xs font-medium text-muted-foreground select-none w-full"
     >
+      {/* 1. First Column: Checkbox + Work items Title */}
       <div
         role="columnheader"
         style={{ width: `${titleWidth}px`, minWidth: `${titleWidth}px` }}
-        className="relative flex items-center px-3 group/header border-r border-border/40 shrink-0"
+        className="relative flex items-center px-3 h-full border-r border-border/40 shrink-0 group/header"
       >
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center max-sm:opacity-100 sm:opacity-0 sm:group-hover/header:opacity-100 has-[[data-state=checked]]:opacity-100 transition-opacity duration-150">
+        <div className="flex items-center gap-2.5 w-full">
           <Checkbox
             checked={isAllSelected ? true : isSomeSelected ? 'indeterminate' : false}
             onCheckedChange={onToggleSelectAll}
             aria-label="Select all work items"
             className="size-3.5 border-border data-[state=checked]:border-primary"
           />
+          <span
+            onClick={() => onSort?.('title')}
+            className="flex items-center gap-1.5 text-xs font-semibold text-foreground cursor-pointer hover:text-foreground transition-colors truncate"
+          >
+            <span>Work items</span>
+            {totalItemsCount > 0 && (
+              <span className="text-11 font-mono text-muted-foreground font-normal">
+                {totalItemsCount}
+              </span>
+            )}
+            {renderSortIndicator('title')}
+          </span>
         </div>
-        <span className="pl-6 text-xs font-normal text-muted-foreground select-none truncate">
-          Work items
-        </span>
+
         {/* Resize Handle */}
         <div
           className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/50 group-hover/header:bg-border/60 transition-colors z-20"
@@ -678,9 +418,10 @@ export function TableHeader({
         />
       </div>
 
-      <div className="flex items-center">
-        {activeProperties.map((propertyItem) => {
-          const Icon = propertyItem.icon;
+      {/* 2. Dynamic Property Headers */}
+      <div className="flex items-center h-full">
+        {activeProperties.map((p) => {
+          const Icon = p.icon;
           const isSortable = [
             'state',
             'priority',
@@ -688,36 +429,39 @@ export function TableHeader({
             'startDate',
             'createdOn',
             'updatedOn',
-          ].includes(propertyItem.key);
-
-          const propWidth = (columnWidths && columnWidths[propertyItem.key]) || propertyItem.minWidth || 130;
+          ].includes(p.key);
+          const propWidth = columnWidths[p.key] || p.minWidth || 130;
 
           return (
             <div
-              key={propertyItem.key}
+              key={p.key}
               role="columnheader"
               tabIndex={isSortable ? 0 : undefined}
-              aria-sort={sortField === propertyItem.key ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined}
-              aria-label={isSortable ? `Sort by ${propertyItem.label}` : propertyItem.label}
+              aria-sort={
+                sortField === p.key ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined
+              }
+              aria-label={isSortable ? `Sort by ${p.label}` : p.label}
               onKeyDown={(e) => {
                 if (isSortable && (e.key === 'Enter' || e.key === ' ')) {
                   e.preventDefault();
-                  onSort?.(propertyItem.key as TableSortField);
+                  onSort?.(p.key as TableSortField);
                 }
               }}
               style={{ width: `${propWidth}px`, minWidth: `${propWidth}px` }}
-              onClick={() => isSortable && onSort?.(propertyItem.key as TableSortField)}
-              className={`relative flex items-center gap-1.5 px-3 h-9 text-xs text-muted-foreground select-none transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary border-r border-border/40 shrink-0 group/col ${
-                isSortable ? 'cursor-pointer hover:bg-muted hover:text-foreground' : ''
-              }`}
+              onClick={() => isSortable && onSort?.(p.key as TableSortField)}
+              className={cn(
+                'relative flex items-center gap-1.5 px-3 h-full text-xs font-medium text-muted-foreground select-none transition-colors outline-none border-r border-border/40 shrink-0 group/col',
+                isSortable && 'cursor-pointer hover:bg-muted/50 hover:text-foreground'
+              )}
             >
               <Icon className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate">{propertyItem.label}</span>
-              {isSortable && renderSortIndicator(propertyItem.key as TableSortField)}
+              <span className="truncate">{p.label}</span>
+              {isSortable && renderSortIndicator(p.key as TableSortField)}
+
               {/* Resize Handle */}
               <div
                 className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/50 group-hover/col:bg-border/60 transition-colors z-20"
-                onMouseDown={(e) => handleResizeMouseDown(propertyItem.key, e)}
+                onMouseDown={(e) => handleResizeMouseDown(p.key, e)}
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
@@ -725,7 +469,8 @@ export function TableHeader({
         })}
       </div>
 
-      <div className="ml-auto pr-3 flex items-center">
+      {/* 3. Right: Display Popover */}
+      <div className="ml-auto pr-3 flex items-center shrink-0">
         <TableColumnPropertiesPopover
           visibleProperties={visibleProperties}
           onToggleProperty={onToggleProperty}
@@ -736,187 +481,160 @@ export function TableHeader({
   );
 }
 
-// ── 8. Table Quick Add Row ───────────────────────────────────────────────────
+// ── 7. Table Group Header ────────────────────────────────────────────────────
 
-export function TableQuickAddRow({
-  columns,
-  projectStates,
-  defaultColumnId,
-  onAddCard,
+export function TableGroupHeader({
+  title,
+  color,
+  icon,
+  count,
+  isExpanded,
+  onToggle,
+  onQuickAdd,
+  isReadOnly,
 }: {
-  columns: ColumnType[];
-  projectStates?: ColumnType[];
-  defaultColumnId?: string;
-  onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
+  title: string;
+  color?: string;
+  icon?: React.ReactNode;
+  count: number;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onQuickAdd?: () => void;
+  isReadOnly?: boolean;
 }) {
-  const [isAdding, setIsAdding] = useState(false);
-  const [title, setTitle] = useState('');
-  const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const stateList = projectStates && projectStates.length > 0 ? projectStates : columns;
-
-  useEffect(() => {
-    if (isAdding) {
-      inputRef.current?.focus();
-    }
-  }, [isAdding]);
-
-  // Derived active column ID: user selection override > defaultColumnId > first column
-  const activeColumnId = selectedColumnId || defaultColumnId || stateList[0]?.id || '';
-  const activeColumn = stateList.find((columnItem) => columnItem.id === activeColumnId) || stateList[0];
-
-  const handleSubmit = (event?: React.FormEvent) => {
-    if (event) event.preventDefault();
-    if (!title.trim()) return;
-
-    onAddCard(activeColumn?.id || '', title.trim());
-    setTitle('');
-    inputRef.current?.focus();
-  };
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      handleSubmit();
-    } else if (event.key === 'Escape') {
-      setIsAdding(false);
-      setTitle('');
-    }
-  };
-
-  if (!isAdding) {
-    return (
-      <div className="border-t border-border bg-background">
+  return (
+    <div
+      role="row"
+      onClick={onToggle}
+      className="flex items-center justify-between h-9 px-3 border-b border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer select-none group/groupHeader"
+    >
+      <div className="flex items-center gap-2 min-w-0">
         <button
           type="button"
-          onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 px-6 py-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors w-full text-left font-normal select-none"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
+          className="size-4 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+          aria-label={isExpanded ? 'Collapse group' : 'Expand group'}
         >
-          <Plus className="size-3.5 text-muted-foreground shrink-0" />
-          <span>Add work item</span>
+          {isExpanded ? (
+            <ChevronDown className="size-3.5 shrink-0" />
+          ) : (
+            <ChevronRight className="size-3.5 shrink-0" />
+          )}
         </button>
+
+        {icon ? (
+          icon
+        ) : (
+          <span
+            className="size-2 rounded-full shrink-0"
+            style={{ backgroundColor: color || '#8A9093' }}
+          />
+        )}
+
+        <span className="text-xs font-semibold text-foreground truncate">{title}</span>
+
+        <span className="rounded-full bg-muted px-1.5 py-0.2 text-10 font-mono font-medium text-muted-foreground tabular-nums">
+          {count}
+        </span>
       </div>
-    );
-  }
 
-  return (
-    <div className="border-t border-border bg-background p-2.5">
-      <form
-        onSubmit={handleSubmit}
-        className="flex items-center gap-2 max-w-2xl bg-background border border-border rounded-md p-1.5 focus-within:border-ring transition-colors"
-      >
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
-            >
-              <StatusIcon
-                title={activeColumn?.title}
-                group={activeColumn?.slug || activeColumn?.title}
-                color={activeColumn?.accentColor}
-                className="size-3.5 shrink-0"
-              />
-              <span className="max-w-[90px] truncate">
-                {activeColumn?.title || 'State'}
-              </span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-44 text-xs py-1">
-            {stateList.map((columnItem) => (
-              <DropdownMenuItem
-                key={columnItem.id}
-                onClick={() => columnItem.id && setSelectedColumnId(columnItem.id)}
-                className="flex items-center gap-2 cursor-pointer"
-              >
-                <StatusIcon
-                  id={columnItem.id}
-                  title={columnItem.title || columnItem.name}
-                  group={columnItem.group || columnItem.slug || columnItem.title}
-                  color={columnItem.color || columnItem.accentColor}
-                  className="size-3.5 shrink-0"
-                />
-                <span>{columnItem.title || columnItem.name}</span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <Input
-          ref={inputRef}
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Work item title..."
-          className="h-7 border-0 shadow-none focus-visible:ring-0 text-xs px-1 bg-transparent"
-        />
-
-        <div className="flex items-center gap-1 shrink-0">
-          <Button
-            type="submit"
-            size="sm"
-            disabled={!title.trim()}
-            className="h-7 px-2.5 text-xs font-medium"
-          >
-            Add
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setIsAdding(false);
-              setTitle('');
-            }}
-            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-          >
-            <X className="size-3.5 shrink-0" />
-          </Button>
-        </div>
-      </form>
+      {!isReadOnly && onQuickAdd && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onQuickAdd();
+          }}
+          className="opacity-0 group-hover/groupHeader:opacity-100 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+          title={`Add item to ${title}`}
+        >
+          <Plus className="size-3.5 shrink-0" />
+        </button>
+      )}
     </div>
   );
 }
 
-// ── 9. Table Row ─────────────────────────────────────────────────────────────
+// ── 8. Table Row Item ────────────────────────────────────────────────────────
 
-export function TableRow({
+export function TableRowItem({
   item,
   columns,
   projectStates,
   visibleProperties,
+  columnWidths,
   isSelected,
   onToggleSelect,
   onEditCard,
   onDeleteCard,
   onDuplicateCard,
-  onMoveCard,
   onUpdateCard,
   members = [],
   cycles = [],
   projectId = '',
   workspaceId = '',
-  columnWidths,
+  isReadOnly = false,
 }: {
   item: Item;
   columns: ColumnType[];
   projectStates?: ColumnType[];
   visibleProperties: Record<TablePropertyKey, boolean>;
+  columnWidths: Record<string, number>;
   isSelected: boolean;
   onToggleSelect: (id: string) => void;
   onEditCard: (item: Item) => void;
   onDeleteCard: (item: Item) => void;
   onDuplicateCard: (item: Item) => void;
-  onMoveCard: (itemId: string, newColumnId: string) => void;
   onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
   members?: ProjectMember[];
   cycles?: Cycle[];
   projectId?: string;
   workspaceId?: string;
-  columnWidths?: Record<string, number>;
+  isReadOnly?: boolean;
 }) {
+  const copyItemText = useCopyItemText();
   const stateList = projectStates && projectStates.length > 0 ? projectStates : columns;
+
+  // Title inline editing state
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleValue, setTitleValue] = useState(item.title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setTitleValue(item.title);
+  }, [item.title]);
+
+  useEffect(() => {
+    if (isEditingTitle) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [isEditingTitle]);
+
+  const handleSaveTitle = () => {
+    setIsEditingTitle(false);
+    const trimmed = titleValue.trim();
+    if (trimmed && trimmed !== item.title) {
+      onUpdateCard?.({ id: item.id, title: trimmed });
+    } else {
+      setTitleValue(item.title);
+    }
+  };
+
+  const handleKeyDownTitle = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveTitle();
+    } else if (e.key === 'Escape') {
+      setIsEditingTitle(false);
+      setTitleValue(item.title);
+    }
+  };
+
+  // State resolution
   const currentColumn = useMemo(() => {
     if (item.state && typeof item.state === 'object') {
       return {
@@ -929,276 +647,63 @@ export function TableRow({
         slug: item.state.name,
       };
     }
-    return stateList.find((columnItem) => resolveColumnId(columnItem) === item.columnId);
+    return stateList.find((c) => resolveColumnId(c) === item.columnId);
   }, [item.state, item.columnId, stateList]);
-  const activeProperties = TABLE_PROPERTIES.filter((propertyItem) => visibleProperties[propertyItem.key]);
 
-  const getPriorityIcon = (priority?: Priority) => {
-    switch (priority) {
-      case 'urgent':
-        return <PriorityUrgentIcon className="size-3.5 shrink-0" />;
-      case 'high':
-        return <PriorityHighIcon className="size-3.5 shrink-0" />;
-      case 'medium':
-        return <PriorityMediumIcon className="size-3.5 shrink-0" />;
-      case 'low':
-        return <PriorityLowIcon className="size-3.5 shrink-0" />;
-      case 'none':
-      default:
-        return <PriorityNoneIcon className="size-3.5 shrink-0 text-muted-foreground" />;
-    }
-  };
-
-  const priorityLabels: Record<string, string> = {
-    none: 'None',
-    low: 'Low',
-    medium: 'Medium',
-    high: 'High',
-    urgent: 'Urgent',
-  };
-
-  const formatDate = (dateStr?: string | null) => {
-    if (!dateStr) return '-';
-    try {
-      const parsedDate = new Date(dateStr);
-      return parsedDate.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      });
-    } catch {
-      return dateStr;
-    }
-  };
-
+  // Assignee resolution
   const resolvedAssignees = ItemHelpers.resolveAssignees(item, members);
   const resolvedAssignee = ItemHelpers.resolveAssignee(item);
   const assigneeId = ItemHelpers.resolveAssigneeId(item);
-  const memberMatch = members.find((member) => member.userId === assigneeId || member.id === assigneeId);
+  const memberMatch = members.find((m) => m.userId === assigneeId || m.id === assigneeId);
+  const assigneeName =
+    resolvedAssignee?.name || memberMatch?.name || resolvedAssignees[0]?.name || null;
+  const assigneeAvatar =
+    resolvedAssignee?.avatar || memberMatch?.avatar || resolvedAssignees[0]?.avatar || undefined;
 
-  const assigneeName = resolvedAssignee?.name || memberMatch?.name || (resolvedAssignees[0]?.name) || null;
-  const assigneeAvatar = resolvedAssignee?.avatar || memberMatch?.avatar || (resolvedAssignees[0]?.avatar) || undefined;
+  // Popover state toggles
+  const [priorityOpen, setPriorityOpen] = useState(false);
+  const [assigneeOpen, setAssigneeOpen] = useState(false);
+  const [dueDateOpen, setDueDateOpen] = useState(false);
+  const [startDateOpen, setStartDateOpen] = useState(false);
+  const [labelOpen, setLabelOpen] = useState(false);
+  const [cycleOpen, setCycleOpen] = useState(false);
 
-  const renderCellContent = (key: TablePropertyKey) => {
-    switch (key) {
-      case 'state': {
-        const title = currentColumn?.title || currentColumn?.name || 'Backlog';
-        const color = currentColumn?.color || currentColumn?.accentColor || '#8A9093';
-        const group = currentColumn?.group || currentColumn?.slug || title;
+  // Active properties list
+  const activeProperties = useMemo(
+    () => TABLE_PROPERTIES.filter((p) => visibleProperties[p.key]),
+    [visibleProperties]
+  );
 
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
-              <button
-                type="button"
-                className="flex items-center gap-1.5 px-1.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors w-full text-left truncate"
-              >
-                <StatusIcon
-                  id={item.columnId}
-                  title={title}
-                  group={group}
-                  color={color}
-                  className="size-3.5 shrink-0"
-                />
-                <span className="truncate">{title}</span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-40 text-xs py-1">
-              {stateList.map((columnItem) => {
-                const cId = resolveColumnId(columnItem);
-                const cTitle = columnItem.title || columnItem.name || 'Column';
-                const cColor = columnItem.color || columnItem.accentColor || '#8A9093';
-                const cGroup = columnItem.group || columnItem.slug || cTitle;
-                return (
-                  <DropdownMenuItem
-                    key={cId}
-                    onClick={() => {
-                      if (onUpdateCard) {
-                        onUpdateCard({ id: item.id, columnId: cId });
-                      } else {
-                        onMoveCard(item.id, cId);
-                      }
-                    }}
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <StatusIcon
-                      id={cId}
-                      title={cTitle}
-                      group={cGroup}
-                      color={cColor}
-                      className="size-3.5 shrink-0"
-                    />
-                    <span>{cTitle}</span>
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      }
+  const titleWidth = columnWidths.title || 360;
 
-      case 'priority': {
-        const priorityKey = (item.priority || 'none') as Priority;
+  // Sub-items count
+  const childCount =
+    (item as any).childWorkItemCount ?? (item as any).childWorkItems?.length ?? 0;
+  const attachmentsCount = ItemHelpers.countAttachments(item.attachments);
 
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
-              <button
-                type="button"
-                className="flex items-center gap-1.5 px-1.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors w-full text-left truncate"
-              >
-                {getPriorityIcon(priorityKey)}
-                <span className="truncate">{priorityLabels[priorityKey] || 'None'}</span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-36 text-xs py-1">
-              {(['urgent', 'high', 'medium', 'low', 'none'] as Priority[]).map((pKey) => (
-                <DropdownMenuItem
-                  key={pKey}
-                  onClick={() => onUpdateCard?.({ id: item.id, priority: pKey })}
-                  className="flex items-center gap-2 cursor-pointer"
-                >
-                  {getPriorityIcon(pKey)}
-                  <span>{priorityLabels[pKey]}</span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      }
+  const isOverdue = isDateOverdue(item.dueDate, item.completed);
+  const formattedDue = formatTableDate(item.dueDate);
+  const formattedStart = formatTableDate(item.startDate);
+  const formattedCreated = formatTableDate((item as any).createdAt);
+  const formattedUpdated = formatTableDate((item as any).updatedAt);
 
-      case 'assignees': {
-        return (
-          <div className="flex items-center gap-1.5 px-1.5 truncate">
-            {resolvedAssignees.length > 1 ? (
-              <div className="flex items-center gap-1.5">
-                <AvatarStack users={resolvedAssignees} size="xs" max={3} />
-                <span className="text-11 text-muted-foreground">{resolvedAssignees.length}</span>
-              </div>
-            ) : assigneeName ? (
-              <>
-                <Avatar className="size-4 shrink-0">
-                  <AvatarImage src={assigneeAvatar} />
-                  <AvatarFallback className="text-9 font-medium">
-                    {assigneeName.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-xs text-foreground truncate">{assigneeName}</span>
-              </>
-            ) : (
-              <span className="text-xs text-muted-foreground italic">-</span>
-            )}
-          </div>
-        );
-      }
+  // Copy identifier helper
+  const handleCopyIdentifier = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (item.identifier) {
+      copyItemText(item.identifier, 'Item ID copied to clipboard');
+    }
+  };
 
-      case 'labels': {
-        const labelList = Array.isArray(item.labels) ? item.labels : [];
-        if (labelList.length === 0) {
-          return <span className="text-xs text-muted-foreground px-1.5">-</span>;
-        }
-
-        return (
-          <div className="flex items-center gap-1 px-1.5 overflow-hidden">
-            {labelList.slice(0, 2).map((labelItem: any, idx: number) => {
-              const labelText = typeof labelItem === 'string'
-                ? labelItem
-                : (labelItem?.name || labelItem?.title || labelItem?.id || '');
-              const labelKey = typeof labelItem === 'string'
-                ? labelItem
-                : (labelItem?.id || String(idx));
-
-              return (
-                <span
-                  key={labelKey}
-                  className="inline-flex items-center px-1.5 py-0.5 rounded text-10 font-medium bg-muted text-muted-foreground border border-border truncate max-w-[80px]"
-                >
-                  {labelText}
-                </span>
-              );
-            })}
-            {labelList.length > 2 && (
-              <span className="text-10 text-muted-foreground font-medium">
-                +{labelList.length - 2}
-              </span>
-            )}
-          </div>
-        );
-      }
-
-      case 'attach': {
-        return <TableAttachCell item={item} onEditCard={onEditCard} />;
-      }
-
-      case 'cycle': {
-        const currentCycle = cycles.find((cycleItem) => cycleItem.id === item.cycleId);
-        return (
-          <span className="text-xs text-muted-foreground px-1.5 truncate">
-            {currentCycle?.name || '-'}
-          </span>
-        );
-      }
-
-      case 'startDate':
-        return (
-          <span className="text-xs text-muted-foreground px-1.5">
-            {formatDate(item.startDate)}
-          </span>
-        );
-
-      case 'dueDate':
-        return (
-          <span className="text-xs text-muted-foreground px-1.5">
-            {formatDate(item.dueDate)}
-          </span>
-        );
-
-      case 'createdOn':
-        return (
-          <span className="text-xs text-muted-foreground px-1.5">
-            {formatDate((item as any).createdAt)}
-          </span>
-        );
-
-      case 'createdBy':
-        return (
-          <span className="text-xs text-muted-foreground px-1.5 truncate">
-            {(item as any).author?.name || '-'}
-          </span>
-        );
-
-      case 'updatedOn':
-        return (
-          <span className="text-xs text-muted-foreground px-1.5">
-            {formatDate((item as any).updatedAt)}
-          </span>
-        );
-
-      case 'link':
-        return (
-          <span className="text-xs text-muted-foreground px-1.5">-</span>
-        );
-
-      case 'attachment': {
-        const count = ItemHelpers.countAttachments(item.attachments);
-        return (
-          <span className="text-xs text-muted-foreground px-1.5">
-            {count > 0 ? `${count} file${count > 1 ? 's' : ''}` : '-'}
-          </span>
-        );
-      }
-
-      case 'childWorkItemCount':
-      case 'subItemCount': {
-        const childCount = (item as any).childWorkItemCount ?? (item as any).childWorkItems?.length ?? 0;
-        return (
-          <span className="text-xs text-muted-foreground px-1.5">
-            {childCount > 0 ? `${childCount} sub-item${childCount > 1 ? 's' : ''}` : '-'}
-          </span>
-        );
-      }
-
-      default:
-        return null;
+  // Copy item link helper
+  const handleCopyLink = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/projects/${projectId}/work-items?itemId=${item.id}`
+        : '';
+    if (url) {
+      copyItemText(url, 'Link copied to clipboard');
     }
   };
 
@@ -1208,81 +713,615 @@ export function TableRow({
       tabIndex={0}
       onClick={() => onEditCard(item)}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.key === 'Enter' && !isEditingTitle) {
           e.preventDefault();
           onEditCard(item);
         }
       }}
       aria-label={`Work item: ${item.title}`}
-      className={`group/row flex items-center h-9 border-b border-border hover:bg-muted transition-colors cursor-pointer w-full text-xs select-none outline-none focus-visible:ring-1 focus-visible:ring-primary ${
-        isSelected ? 'bg-muted font-medium' : ''
-      }`}
+      className={cn(
+        'group/row flex items-center h-10 border-b border-border/40 hover:bg-muted/40 transition-colors cursor-pointer text-xs select-none w-full relative outline-none focus-visible:ring-1 focus-visible:ring-primary',
+        isSelected && 'bg-primary/5 font-medium'
+      )}
     >
+      {/* ── 1. Checkbox + Identifier + Title Column ────────────────────────── */}
       <div
         role="cell"
-        style={{
-          width: `${(columnWidths && columnWidths.title) || 360}px`,
-          minWidth: `${(columnWidths && columnWidths.title) || 360}px`,
+        style={{ width: `${titleWidth}px`, minWidth: `${titleWidth}px` }}
+        className="relative flex items-center px-3 h-full shrink-0 border-r border-border/30"
+        onClick={(e) => {
+          // If double click title cell, allow inline edit
+          if (e.detail === 2 && !isReadOnly) {
+            e.stopPropagation();
+            setIsEditingTitle(true);
+          }
         }}
-        className="relative flex items-center px-3 shrink-0 border-r border-border/20"
       >
+        {/* Checkbox */}
         <div
-          onClick={(event) => event.stopPropagation()}
-          className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center max-sm:opacity-100 sm:opacity-0 sm:group-hover/row:opacity-100 has-[[data-state=checked]]:opacity-100 transition-opacity duration-150"
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center justify-center shrink-0 mr-2.5"
         >
           <Checkbox
             checked={isSelected}
             onCheckedChange={() => onToggleSelect(item.id)}
             aria-label={isSelected ? `Deselect ${item.title}` : `Select ${item.title}`}
-            className="size-3.5 border-border data-[state=checked]:border-primary"
+            className={cn(
+              'size-3.5 border-border data-[state=checked]:border-primary transition-opacity',
+              !isSelected && 'sm:opacity-0 sm:group-hover/row:opacity-100'
+            )}
           />
         </div>
 
-        <div className="flex items-center gap-2 pl-6 min-w-0 pr-2">
-          {item.identifier && (
-            <span className="text-11 font-mono text-muted-foreground shrink-0 select-none">
-              {item.identifier}
-            </span>
-          )}
-          <span
-            className={`truncate font-normal ${
-              item.completed
-                ? 'line-through text-muted-foreground'
-                : 'text-foreground'
-            }`}
+        {/* Identifier Badge */}
+        {item.identifier && (
+          <button
+            type="button"
+            onClick={handleCopyIdentifier}
+            title="Click to copy identifier"
+            className="text-11 font-mono text-muted-foreground hover:text-foreground hover:bg-muted/80 px-1 py-0.5 rounded mr-2 shrink-0 transition-colors"
           >
-            {item.title}
-          </span>
-        </div>
+            {item.identifier}
+          </button>
+        )}
+
+        {/* Sub-item Indicator */}
+        {childCount > 0 && (
+          <div
+            className="flex items-center gap-1 text-10 font-mono text-muted-foreground mr-1.5 shrink-0"
+            title={`${childCount} sub-items`}
+          >
+            <Layers className="size-3 text-muted-foreground" />
+            <span>{childCount}</span>
+          </div>
+        )}
+
+        {/* Title Content */}
+        {isEditingTitle ? (
+          <div className="flex-1 mr-2" onClick={(e) => e.stopPropagation()}>
+            <input
+              ref={inputRef}
+              value={titleValue}
+              onChange={(e) => setTitleValue(e.target.value)}
+              onBlur={handleSaveTitle}
+              onKeyDown={handleKeyDownTitle}
+              className="w-full bg-background border border-primary px-1.5 py-0.5 rounded text-xs text-foreground outline-none shadow-xs"
+            />
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 flex-1 min-w-0 pr-2">
+            <span
+              className={cn(
+                'truncate font-normal text-xs',
+                item.completed ? 'line-through text-muted-foreground' : 'text-foreground'
+              )}
+            >
+              {item.title}
+            </span>
+            {!isReadOnly && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditingTitle(true);
+                }}
+                className="opacity-0 group-hover/row:opacity-100 p-0.5 text-muted-foreground hover:text-foreground transition-opacity shrink-0"
+                title="Edit title"
+              >
+                <Pencil className="size-3" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      <div className="flex items-center">
-        {activeProperties.map((propertyItem) => {
-          const propWidth = (columnWidths && columnWidths[propertyItem.key]) || propertyItem.minWidth || 130;
+      {/* ── 2. Dynamic Property Cells ───────────────────────────────────────── */}
+      <div className="flex items-center h-full">
+        {activeProperties.map((p) => {
+          const propWidth = columnWidths[p.key] || p.minWidth || 130;
+
           return (
             <div
-              key={propertyItem.key}
+              key={p.key}
               role="cell"
               style={{ width: `${propWidth}px`, minWidth: `${propWidth}px` }}
-              className="flex items-center h-9 overflow-hidden shrink-0 border-r border-border/20"
+              className="flex items-center h-full px-2 overflow-hidden shrink-0 border-r border-border/30"
+              onClick={(e) => e.stopPropagation()}
             >
-              {renderCellContent(propertyItem.key)}
+              {/* STATE CELL */}
+              {p.key === 'state' && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild disabled={isReadOnly}>
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-muted/80 text-foreground transition-colors w-full text-left truncate cursor-pointer"
+                    >
+                      <StatusIcon
+                        id={item.columnId}
+                        title={currentColumn?.title || currentColumn?.name || 'Backlog'}
+                        group={currentColumn?.group || currentColumn?.slug || 'backlog'}
+                        color={currentColumn?.color || currentColumn?.accentColor || '#8A9093'}
+                        className="size-3.5 shrink-0"
+                      />
+                      <span className="truncate">
+                        {currentColumn?.title || currentColumn?.name || 'Backlog'}
+                      </span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-44 p-1 text-xs z-100">
+                    {stateList.map((col) => {
+                      const cId = resolveColumnId(col);
+                      const isCurrent = cId === item.columnId;
+                      const cTitle = col.title || col.name || 'Column';
+                      const cColor = col.color || col.accentColor || '#8A9093';
+                      const cGroup = col.group || col.slug || cTitle;
+
+                      return (
+                        <DropdownMenuItem
+                          key={cId}
+                          onClick={() => onUpdateCard?.({ id: item.id, columnId: cId })}
+                          className={cn(
+                            'flex items-center gap-2 cursor-pointer py-1.5 text-xs rounded-sm',
+                            isCurrent && 'bg-muted font-medium'
+                          )}
+                        >
+                          <StatusIcon
+                            id={cId}
+                            title={cTitle}
+                            group={cGroup}
+                            color={cColor}
+                            className="size-3.5 shrink-0"
+                          />
+                          <span className="truncate">{cTitle}</span>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
+              {/* PRIORITY CELL */}
+              {p.key === 'priority' && (
+                <div className="w-full">
+                  <PriorityPopover
+                    open={priorityOpen}
+                    onOpenChange={setPriorityOpen}
+                    priority={(item.priority || 'none') as Priority}
+                    setPriority={(newPriority) =>
+                      onUpdateCard?.({ id: item.id, priority: newPriority })
+                    }
+                    isReadOnly={isReadOnly}
+                    actionBtnClass="w-full justify-start h-7 px-2 border-0 bg-transparent hover:bg-muted/80 shadow-none font-normal text-xs text-foreground cursor-pointer"
+                  />
+                </div>
+              )}
+
+              {/* ASSIGNEES CELL */}
+              {p.key === 'assignees' && (
+                <div className="relative w-full">
+                  {resolvedAssignees.length > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => !isReadOnly && setAssigneeOpen(true)}
+                      disabled={isReadOnly}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-muted/80 transition-colors w-full text-left truncate cursor-pointer"
+                    >
+                      <AvatarStack users={resolvedAssignees} size="xs" max={3} />
+                      <span className="text-11 font-mono text-muted-foreground">
+                        +{resolvedAssignees.length}
+                      </span>
+                    </button>
+                  ) : assigneeName ? (
+                    <button
+                      type="button"
+                      onClick={() => !isReadOnly && setAssigneeOpen(true)}
+                      disabled={isReadOnly}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-muted/80 transition-colors w-full text-left truncate cursor-pointer"
+                    >
+                      <Avatar className="size-4 shrink-0">
+                        <AvatarImage src={assigneeAvatar} />
+                        <AvatarFallback className="text-9 font-medium bg-muted">
+                          {assigneeName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs text-foreground truncate">{assigneeName}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => !isReadOnly && setAssigneeOpen(true)}
+                      disabled={isReadOnly}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-muted-foreground/60 hover:text-foreground hover:bg-muted/80 transition-colors w-full text-left cursor-pointer group/assign"
+                    >
+                      <div className="size-4 rounded-full border border-dashed border-border/80 flex items-center justify-center group-hover/assign:border-foreground/60">
+                        <Plus className="size-2.5 text-muted-foreground group-hover/assign:text-foreground" />
+                      </div>
+                      <span className="text-11 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                        Assign
+                      </span>
+                    </button>
+                  )}
+
+                  <MemberPopover
+                    open={assigneeOpen}
+                    onOpenChange={setAssigneeOpen}
+                    assigneeId={assigneeId ?? null}
+                    setAssigneeId={(id) => onUpdateCard?.({ id: item.id, assigneeId: id })}
+                    assigneeIds={
+                      Array.isArray(item.assigneeIds)
+                        ? item.assigneeIds
+                        : assigneeId
+                        ? [assigneeId]
+                        : []
+                    }
+                    setAssigneeIds={(ids) =>
+                      onUpdateCard?.({
+                        id: item.id,
+                        assigneeIds: ids,
+                        assigneeId: ids[0] ?? null,
+                      })
+                    }
+                    isMulti={true}
+                    members={members}
+                    actionBtnClass="hidden"
+                    isReadOnly={isReadOnly}
+                  />
+                </div>
+              )}
+
+              {/* DUE DATE CELL */}
+              {p.key === 'dueDate' && (
+                <div className="relative w-full">
+                  <SingleDatePopover
+                    open={dueDateOpen}
+                    onOpenChange={setDueDateOpen}
+                    date={item.dueDate || ''}
+                    onSelectDate={(dateStr) =>
+                      onUpdateCard?.({ id: item.id, dueDate: dateStr || null })
+                    }
+                    label={formattedDue || 'Due date'}
+                    isReadOnly={isReadOnly}
+                    actionBtnClass={cn(
+                      'h-7 px-2 text-xs font-normal border-0 shadow-none justify-start w-full cursor-pointer',
+                      formattedDue
+                        ? isOverdue
+                          ? 'text-destructive bg-destructive/10 hover:bg-destructive/20 font-medium'
+                          : 'bg-transparent hover:bg-muted/80 text-foreground'
+                        : 'bg-transparent text-muted-foreground/40 hover:text-foreground hover:bg-muted/80'
+                    )}
+                  />
+                </div>
+              )}
+
+              {/* LABELS CELL */}
+              {p.key === 'labels' && (
+                <div className="relative w-full">
+                  <button
+                    type="button"
+                    onClick={() => !isReadOnly && setLabelOpen(true)}
+                    disabled={isReadOnly}
+                    className="flex items-center gap-1 px-1.5 py-1 rounded-md text-xs hover:bg-muted/80 transition-colors w-full text-left truncate cursor-pointer"
+                  >
+                    {Array.isArray(item.labels) && item.labels.length > 0 ? (
+                      <div className="flex items-center gap-1 overflow-hidden">
+                        {item.labels.slice(0, 2).map((labelItem: any, idx: number) => {
+                          const labelText =
+                            typeof labelItem === 'string'
+                              ? labelItem
+                              : labelItem?.name || labelItem?.title || labelItem?.id || '';
+                          const labelColor =
+                            typeof labelItem === 'object' ? labelItem?.color : undefined;
+
+                          return (
+                            <span
+                              key={labelItem?.id || idx}
+                              style={labelColor ? { borderColor: `${labelColor}40` } : undefined}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-10 font-medium bg-muted/60 text-muted-foreground border border-border truncate max-w-[80px]"
+                            >
+                              {labelColor && (
+                                <span
+                                  className="size-1.5 rounded-full shrink-0"
+                                  style={{ backgroundColor: labelColor }}
+                                />
+                              )}
+                              <span className="truncate">{labelText}</span>
+                            </span>
+                          );
+                        })}
+                        {item.labels.length > 2 && (
+                          <span className="text-10 font-mono text-muted-foreground">
+                            +{item.labels.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground/40 hover:text-foreground">-</span>
+                    )}
+                  </button>
+
+                  <LabelPopover
+                    open={labelOpen}
+                    onOpenChange={setLabelOpen}
+                    labels={
+                      Array.isArray(item.labels)
+                        ? item.labels.map((l: any) => (typeof l === 'string' ? l : l.id))
+                        : []
+                    }
+                    setLabels={(newLabelsAction: any) => {
+                      const current = Array.isArray(item.labels)
+                        ? item.labels.map((l: any) => (typeof l === 'string' ? l : l.id))
+                        : [];
+                      const updated =
+                        typeof newLabelsAction === 'function'
+                          ? newLabelsAction(current)
+                          : newLabelsAction;
+                      onUpdateCard?.({ id: item.id, labels: updated });
+                    }}
+                    actionBtnClass="hidden"
+                    isReadOnly={isReadOnly}
+                  />
+                </div>
+              )}
+
+              {/* CYCLE CELL */}
+              {p.key === 'cycle' && (
+                <div className="relative w-full">
+                  <button
+                    type="button"
+                    onClick={() => !isReadOnly && setCycleOpen(true)}
+                    disabled={isReadOnly}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-muted/80 transition-colors w-full text-left truncate cursor-pointer"
+                  >
+                    {item.cycleId ? (
+                      <>
+                        <CycleIcon className="size-3.5 text-muted-foreground shrink-0" />
+                        <span className="truncate">
+                          {cycles.find((c) => c.id === item.cycleId)?.name || 'Cycle'}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground/40 hover:text-foreground">-</span>
+                    )}
+                  </button>
+
+                  <CyclePopover
+                    open={cycleOpen}
+                    onOpenChange={setCycleOpen}
+                    cycleId={item.cycleId || null}
+                    setCycleId={(cid) => onUpdateCard?.({ id: item.id, cycleId: cid || undefined })}
+                    cycles={cycles}
+                    actionBtnClass="hidden"
+                    isReadOnly={isReadOnly}
+                  />
+                </div>
+              )}
+
+              {/* START DATE CELL */}
+              {p.key === 'startDate' && (
+                <div className="relative w-full">
+                  <SingleDatePopover
+                    open={startDateOpen}
+                    onOpenChange={setStartDateOpen}
+                    date={item.startDate || ''}
+                    onSelectDate={(dateStr) =>
+                      onUpdateCard?.({ id: item.id, startDate: dateStr || null })
+                    }
+                    label={formattedStart || 'Start date'}
+                    isReadOnly={isReadOnly}
+                    actionBtnClass="h-7 px-2 text-xs font-normal border-0 shadow-none justify-start w-full bg-transparent hover:bg-muted/80 text-foreground cursor-pointer"
+                  />
+                </div>
+              )}
+
+              {/* CREATED ON CELL */}
+              {p.key === 'createdOn' && (
+                <span className="text-xs text-muted-foreground px-2 truncate">
+                  {formattedCreated || '-'}
+                </span>
+              )}
+
+              {/* CREATED BY CELL */}
+              {p.key === 'createdBy' && (
+                <span className="text-xs text-muted-foreground px-2 truncate">
+                  {(item as any).author?.name || (item as any).created_by_name || '-'}
+                </span>
+              )}
+
+              {/* UPDATED ON CELL */}
+              {p.key === 'updatedOn' && (
+                <span className="text-xs text-muted-foreground px-2 truncate">
+                  {formattedUpdated || '-'}
+                </span>
+              )}
+
+              {/* ATTACHMENT CELL */}
+              {p.key === 'attachment' && (
+                <button
+                  type="button"
+                  onClick={() => onEditCard(item)}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                >
+                  <Paperclip className="size-3.5 shrink-0" />
+                  <span>{attachmentsCount > 0 ? attachmentsCount : '-'}</span>
+                </button>
+              )}
+
+              {/* SUB ITEM COUNT CELL */}
+              {p.key === 'subItemCount' && (
+                <button
+                  type="button"
+                  onClick={() => onEditCard(item)}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                >
+                  <Layers className="size-3.5 shrink-0" />
+                  <span>{childCount > 0 ? `${childCount} sub-items` : '-'}</span>
+                </button>
+              )}
+
+              {/* LINK CELL */}
+              {p.key === 'link' && (
+                <span className="text-xs text-muted-foreground px-2 truncate">-</span>
+              )}
             </div>
           );
         })}
       </div>
 
-      <div className="ml-auto pr-3 flex items-center opacity-0 group-hover/row:opacity-100 transition-opacity">
-        <TableActionMenu
-          item={item}
-          projectId={projectId}
-          workspaceId={workspaceId}
-          onEditCard={onEditCard}
-          onDuplicateCard={onDuplicateCard}
-          onDeleteCard={onDeleteCard}
-        />
+      {/* ── 3. Row Actions (Hover Toolbar on Far Right) ─────────────────────── */}
+      <div className="ml-auto pr-2 flex items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity shrink-0">
+        <button
+          type="button"
+          onClick={handleCopyLink}
+          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          title="Copy link"
+        >
+          <Link2 className="size-3.5" />
+        </button>
+
+        {!isReadOnly && (
+          <>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditCard(item);
+              }}
+              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              title="Edit work item"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDuplicateCard(item);
+              }}
+              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              title="Duplicate"
+            >
+              <Copy className="size-3.5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteCard(item);
+              }}
+              className="p-1 rounded text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors"
+              title="Delete"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </>
+        )}
       </div>
     </div>
+  );
+}
+
+// ── 9. Table Inline Quick Add Row ────────────────────────────────────────────
+
+export function TableInlineAddRow({
+  targetColumnId,
+  groupTitle,
+  onAddCard,
+  isReadOnly = false,
+}: {
+  targetColumnId: string;
+  groupTitle?: string;
+  onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
+  isReadOnly?: boolean;
+}) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [title, setTitle] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isAdding) {
+      inputRef.current?.focus();
+    }
+  }, [isAdding]);
+
+  if (isReadOnly) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = title.trim();
+    if (!trimmed) {
+      setIsAdding(false);
+      return;
+    }
+    onAddCard(targetColumnId, trimmed);
+    setTitle('');
+    // Keep focus so user can rapidly add multiple items in sequence
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setIsAdding(false);
+      setTitle('');
+    }
+  };
+
+  if (!isAdding) {
+    return (
+      <div className="border-b border-border/30">
+        <button
+          type="button"
+          onClick={() => setIsAdding(true)}
+          className="flex items-center gap-2 h-9 px-3 w-full text-xs text-muted-foreground/70 hover:text-foreground hover:bg-muted/30 transition-colors cursor-pointer text-left group/add"
+        >
+          <Plus className="size-3.5 text-muted-foreground group-hover/add:text-foreground transition-colors" />
+          <span>{groupTitle ? `Add item to ${groupTitle}...` : 'New work item...'}</span>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="flex items-center h-10 px-3 border-b border-primary/50 bg-background transition-colors gap-2"
+    >
+      <Plus className="size-3.5 text-primary shrink-0" />
+      <input
+        ref={inputRef}
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="What needs to be done? (Enter to save, Esc to cancel)"
+        className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none px-1"
+      />
+      <div className="flex items-center gap-1.5 shrink-0">
+        <Button
+          type="submit"
+          size="sm"
+          disabled={!title.trim()}
+          className="h-7 px-3 text-xs font-medium"
+        >
+          Add
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setIsAdding(false);
+            setTitle('');
+          }}
+          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+        >
+          <X className="size-3.5" />
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -1290,6 +1329,7 @@ export function TableRow({
 
 export function TableView({
   items = [],
+  itemsByColumnId,
   columns,
   projectStates,
   displayOptions,
@@ -1301,15 +1341,17 @@ export function TableView({
   onEditCard,
   onDeleteCard,
   onDuplicateCard,
-  onMoveCard,
   onUpdateCard,
-  isReadOnly,
+  isReadOnly = false,
   selectedIds: propSelectedIds,
   onToggleSelect: rawOnToggleSelect,
   onSelectAll: rawOnSelectAll,
   onToggleDisplayProperty,
 }: TableViewProps) {
-  const [localVisibleProperties, setLocalVisibleProperties] = useState<Record<TablePropertyKey, boolean>>(() => {
+  // ── A. Column Visibility ───────────────────────────────────────────────────
+  const [localVisibleProperties, setLocalVisibleProperties] = useState<
+    Record<TablePropertyKey, boolean>
+  >(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem(TABLE_STORAGE_KEY);
@@ -1320,29 +1362,48 @@ export function TableView({
           }
         }
       } catch {
-        // Ignore localStorage errors
+        // Ignore localStorage error
       }
     }
     return DEFAULT_VISIBLE_PROPERTIES;
   });
 
+  // Merge with displayOptions.properties (supports camelCase & snake_case from DB)
   const visibleProperties = useMemo<Record<TablePropertyKey, boolean>>(() => {
     if (!displayOptions?.properties) return localVisibleProperties;
+    const p = displayOptions.properties as any;
+
     return {
       ...localVisibleProperties,
-      ...(displayOptions.properties.state !== undefined ? { state: displayOptions.properties.state } : {}),
-      ...(displayOptions.properties.priority !== undefined ? { priority: displayOptions.properties.priority } : {}),
-      ...(displayOptions.properties.assignee !== undefined ? { assignees: displayOptions.properties.assignee } : {}),
-      ...(displayOptions.properties.labels !== undefined ? { labels: displayOptions.properties.labels } : {}),
-      ...(displayOptions.properties.attach !== undefined ? { attach: displayOptions.properties.attach } : {}),
-      ...(displayOptions.properties.cycle !== undefined ? { cycle: displayOptions.properties.cycle } : {}),
-      ...(displayOptions.properties.startDate !== undefined ? { startDate: displayOptions.properties.startDate } : {}),
-      ...(displayOptions.properties.dueDate !== undefined ? { dueDate: displayOptions.properties.dueDate } : {}),
-      ...(displayOptions.properties.link !== undefined ? { link: displayOptions.properties.link } : {}),
-      ...((displayOptions.properties.childWorkItemCount ?? displayOptions.properties.subItemCount) !== undefined
-        ? { childWorkItemCount: Boolean(displayOptions.properties.childWorkItemCount ?? displayOptions.properties.subItemCount) }
+      ...(p.state !== undefined ? { state: Boolean(p.state) } : {}),
+      ...(p.priority !== undefined ? { priority: Boolean(p.priority) } : {}),
+      ...((p.assignees ?? p.assignee) !== undefined
+        ? { assignees: Boolean(p.assignees ?? p.assignee) }
         : {}),
-      ...(displayOptions.properties.attachmentCount !== undefined ? { attachment: displayOptions.properties.attachmentCount } : {}),
+      ...((p.dueDate ?? p.due_date) !== undefined
+        ? { dueDate: Boolean(p.dueDate ?? p.due_date) }
+        : {}),
+      ...(p.labels !== undefined ? { labels: Boolean(p.labels) } : {}),
+      ...(p.cycle !== undefined ? { cycle: Boolean(p.cycle) } : {}),
+      ...((p.startDate ?? p.start_date) !== undefined
+        ? { startDate: Boolean(p.startDate ?? p.start_date) }
+        : {}),
+      ...((p.createdOn ?? p.created_on) !== undefined
+        ? { createdOn: Boolean(p.createdOn ?? p.created_on) }
+        : {}),
+      ...((p.createdBy ?? p.created_by) !== undefined
+        ? { createdBy: Boolean(p.createdBy ?? p.created_by) }
+        : {}),
+      ...((p.updatedOn ?? p.updated_on) !== undefined
+        ? { updatedOn: Boolean(p.updatedOn ?? p.updated_on) }
+        : {}),
+      ...((p.attachment ?? p.attachment_count ?? p.attach) !== undefined
+        ? { attachment: Boolean(p.attachment ?? p.attachment_count ?? p.attach) }
+        : {}),
+      ...((p.subItemCount ?? p.sub_issue_count ?? p.childWorkItemCount) !== undefined
+        ? { subItemCount: Boolean(p.subItemCount ?? p.sub_issue_count ?? p.childWorkItemCount) }
+        : {}),
+      ...(p.link !== undefined ? { link: Boolean(p.link) } : {}),
     };
   }, [localVisibleProperties, displayOptions?.properties]);
 
@@ -1353,25 +1414,26 @@ export function TableView({
       try {
         localStorage.setItem(TABLE_STORAGE_KEY, JSON.stringify(updated));
       } catch {
-        // Ignore localStorage errors
+        // Ignore localStorage error
       }
       return updated;
     });
 
     if (onToggleDisplayProperty) {
-      const keyMap: Partial<Record<TablePropertyKey, any>> = {
+      const keyMap: Partial<Record<TablePropertyKey, string>> = {
         state: 'state',
         priority: 'priority',
         assignees: 'assignee',
+        dueDate: 'due_date',
         labels: 'labels',
-        attach: 'attach',
         cycle: 'cycle',
-        startDate: 'startDate',
-        dueDate: 'dueDate',
+        startDate: 'start_date',
+        createdOn: 'created_on',
+        createdBy: 'created_by',
+        updatedOn: 'updated_on',
+        attachment: 'attachment_count',
+        subItemCount: 'sub_issue_count',
         link: 'link',
-        attachment: 'attachmentCount',
-        childWorkItemCount: 'childWorkItemCount',
-        subItemCount: 'subItemCount',
       };
       const displayKey = keyMap[key];
       if (displayKey) {
@@ -1385,10 +1447,11 @@ export function TableView({
     try {
       localStorage.setItem(TABLE_STORAGE_KEY, JSON.stringify(DEFAULT_VISIBLE_PROPERTIES));
     } catch {
-      // Ignore localStorage errors
+      // Ignore localStorage error
     }
   };
 
+  // ── B. Column Widths ───────────────────────────────────────────────────────
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -1400,119 +1463,196 @@ export function TableView({
           }
         }
       } catch {
-        // Ignore localStorage errors
+        // Ignore localStorage error
       }
     }
     return DEFAULT_COLUMN_WIDTHS;
   });
 
-  const handleResizeColumn = (key: string, newWidth: number) => {
+  const handleResizeColumn = useCallback((key: string, newWidth: number) => {
     setColumnWidths((prev) => {
       const updated = { ...prev, [key]: newWidth };
       try {
         localStorage.setItem(TABLE_WIDTHS_STORAGE_KEY, JSON.stringify(updated));
       } catch {
-        // Ignore localStorage errors
+        // Ignore localStorage error
       }
       return updated;
     });
-  };
+  }, []);
 
+  // ── C. Multi-Select Handling ───────────────────────────────────────────────
   const [localSelectedIds, setLocalSelectedIds] = useState<string[]>([]);
   const selectedIds = propSelectedIds ?? localSelectedIds;
 
-  const handleToggleSelect = (id: string) => {
-    if (rawOnToggleSelect) {
-      rawOnToggleSelect(id);
-    } else {
-      setLocalSelectedIds((prev) =>
-        prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]
-      );
-    }
-  };
+  const handleToggleSelect = useCallback(
+    (id: string) => {
+      if (rawOnToggleSelect) {
+        rawOnToggleSelect(id);
+      } else {
+        setLocalSelectedIds((prev) =>
+          prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+        );
+      }
+    },
+    [rawOnToggleSelect]
+  );
 
-  const handleSelectAll = () => {
-    const allIds = items.map((item: Item) => item.id);
-    const isAllSelected = items.length > 0 && selectedIds.length === items.length;
+  const handleSelectAll = useCallback(() => {
+    const allIds = items.map((i) => i.id);
+    const isAll = items.length > 0 && selectedIds.length === items.length;
 
     if (rawOnSelectAll) {
-      rawOnSelectAll(isAllSelected ? [] : allIds);
+      rawOnSelectAll(isAll ? [] : allIds);
     } else {
-      setLocalSelectedIds(isAllSelected ? [] : allIds);
+      setLocalSelectedIds(isAll ? [] : allIds);
     }
-  };
+  }, [items, selectedIds, rawOnSelectAll]);
 
+  // ── D. Sorting ─────────────────────────────────────────────────────────────
   const [sortField, setSortField] = useState<TableSortField>('identifier');
   const [sortOrder, setSortOrder] = useState<TableSortOrder>('asc');
 
-  const handleSort = (field: TableSortField) => {
-    if (sortField === field) {
-      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortField(field);
-      setSortOrder('asc');
-    }
+  const handleSort = useCallback(
+    (field: TableSortField) => {
+      if (sortField === field) {
+        setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      } else {
+        setSortField(field);
+        setSortOrder('asc');
+      }
+    },
+    [sortField]
+  );
+
+  const sortItemsList = useCallback(
+    (list: Item[]) => {
+      const copy = [...list];
+      copy.sort((itemA, itemB) => {
+        let comparison = 0;
+
+        switch (sortField) {
+          case 'identifier': {
+            const numA = (itemA as any).sequenceNumber || 0;
+            const numB = (itemB as any).sequenceNumber || 0;
+            comparison = numA - numB;
+            break;
+          }
+          case 'title':
+            comparison = (itemA.title || '').localeCompare(itemB.title || '');
+            break;
+          case 'dueDate': {
+            const timeA = itemA.dueDate ? new Date(itemA.dueDate).getTime() : 0;
+            const timeB = itemB.dueDate ? new Date(itemB.dueDate).getTime() : 0;
+            comparison = timeA - timeB;
+            break;
+          }
+          case 'startDate': {
+            const timeA = itemA.startDate ? new Date(itemA.startDate).getTime() : 0;
+            const timeB = itemB.startDate ? new Date(itemB.startDate).getTime() : 0;
+            comparison = timeA - timeB;
+            break;
+          }
+          case 'createdOn': {
+            const timeA = (itemA as any).createdAt ? new Date((itemA as any).createdAt).getTime() : 0;
+            const timeB = (itemB as any).createdAt ? new Date((itemB as any).createdAt).getTime() : 0;
+            comparison = timeA - timeB;
+            break;
+          }
+          case 'updatedOn': {
+            const timeA = (itemA as any).updatedAt ? new Date((itemA as any).updatedAt).getTime() : 0;
+            const timeB = (itemB as any).updatedAt ? new Date((itemB as any).updatedAt).getTime() : 0;
+            comparison = timeA - timeB;
+            break;
+          }
+          case 'priority': {
+            const weights: Record<string, number> = {
+              urgent: 4,
+              high: 3,
+              medium: 2,
+              low: 1,
+              none: 0,
+            };
+            const weightA = weights[itemA.priority || 'none'] || 0;
+            const weightB = weights[itemB.priority || 'none'] || 0;
+            comparison = weightA - weightB;
+            break;
+          }
+          default:
+            comparison = 0;
+        }
+
+        return sortOrder === 'asc' ? comparison : -comparison;
+      });
+      return copy;
+    },
+    [sortField, sortOrder]
+  );
+
+  // ── E. Grouping Logic ──────────────────────────────────────────────────────
+  const isGrouped = displayOptions?.groupBy && displayOptions.groupBy !== 'none';
+
+  // Group expansion state
+  const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Set<string>>(new Set());
+
+  const toggleGroupCollapse = (groupKey: string) => {
+    setCollapsedGroupKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) {
+        next.delete(groupKey);
+      } else {
+        next.add(groupKey);
+      }
+      return next;
+    });
   };
 
-  const sortedItems = useMemo(() => {
-    const list = [...items];
-    list.sort((itemA, itemB) => {
-      let comparison = 0;
+  // Groups generation
+  const groups = useMemo(() => {
+    if (!isGrouped) return [];
 
-      switch (sortField) {
-        case 'identifier': {
-          const numA = (itemA as any).sequenceNumber || 0;
-          const numB = (itemB as any).sequenceNumber || 0;
-          comparison = numA - numB;
-          break;
-        }
-        case 'title':
-          comparison = (itemA.title || '').localeCompare(itemB.title || '');
-          break;
-        case 'dueDate': {
-          const timeA = itemA.dueDate ? new Date(itemA.dueDate).getTime() : 0;
-          const timeB = itemB.dueDate ? new Date(itemB.dueDate).getTime() : 0;
-          comparison = timeA - timeB;
-          break;
-        }
-        case 'startDate': {
-          const timeA = itemA.startDate ? new Date(itemA.startDate).getTime() : 0;
-          const timeB = itemB.startDate ? new Date(itemB.startDate).getTime() : 0;
-          comparison = timeA - timeB;
-          break;
-        }
-        case 'priority': {
-          const weights: Record<string, number> = {
-            urgent: 4,
-            high: 3,
-            medium: 2,
-            low: 1,
-            none: 0,
-          };
-          const weightA = weights[itemA.priority || 'none'] || 0;
-          const weightB = weights[itemB.priority || 'none'] || 0;
-          comparison = weightA - weightB;
-          break;
-        }
-        default:
-          comparison = 0;
-      }
+    return columns.map((col) => {
+      const colId = resolveColumnId(col);
+      const groupItems =
+        itemsByColumnId instanceof Map
+          ? itemsByColumnId.get(colId) ?? []
+          : (itemsByColumnId as Record<string, Item[]>)?.[colId] ??
+            items.filter((i) => i.columnId === colId);
 
-      return sortOrder === 'asc' ? comparison : -comparison;
+      const colColor = col.color || col.accentColor || '#8A9093';
+      const colTitle = col.title || col.name || 'Group';
+
+      return {
+        key: colId,
+        title: colTitle,
+        color: colColor,
+        column: col,
+        items: sortItemsList(groupItems),
+      };
     });
+  }, [isGrouped, columns, itemsByColumnId, items, sortItemsList]);
 
-    return list;
-  }, [items, sortField, sortOrder]);
+  // Flat sorted items when not grouped
+  const flatSortedItems = useMemo(() => {
+    if (isGrouped) return [];
+    return sortItemsList(items);
+  }, [isGrouped, items, sortItemsList]);
 
   const isAllSelected = items.length > 0 && selectedIds.length === items.length;
   const isSomeSelected = selectedIds.length > 0 && selectedIds.length < items.length;
+
+  const defaultColId = useMemo(() => {
+    const defaultCol = columns.find((c) => c.isDefault) || columns[0];
+    return defaultCol ? resolveColumnId(defaultCol) : 'backlog';
+  }, [columns]);
 
   return (
     <div className="flex flex-col flex-1 w-full overflow-hidden bg-background">
       <div className="flex-1 overflow-auto">
         <div role="table" aria-label="Work items table" className="min-w-max">
+          {/* Main Sticky Header */}
           <div role="rowgroup">
-            <TableHeader
+            <TableHeaderRow
               visibleProperties={visibleProperties}
               columnWidths={columnWidths}
               onResizeColumn={handleResizeColumn}
@@ -1524,17 +1664,112 @@ export function TableView({
               sortField={sortField}
               sortOrder={sortOrder}
               onSort={handleSort}
+              totalItemsCount={items.length}
             />
           </div>
 
-          {sortedItems.length === 0 ? (
-            <div className="py-16 text-center text-xs text-muted-foreground select-none">
-              No work items found
+          {/* Zero items state */}
+          {items.length === 0 && (
+            <div className="py-20 flex flex-col items-center justify-center text-center">
+              <div className="size-10 rounded-full bg-muted flex items-center justify-center mb-3">
+                <FileText className="size-5 text-muted-foreground" />
+              </div>
+              <h4 className="text-sm font-semibold text-foreground mb-1">No work items found</h4>
+              <p className="text-xs text-muted-foreground mb-4">
+                There are no items matching the current view filters.
+              </p>
+              {!isReadOnly && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onAddCard(defaultColId)}
+                  className="gap-1.5 text-xs rounded-md"
+                >
+                  <Plus className="size-3.5" />
+                  <span>Create work item</span>
+                </Button>
+              )}
             </div>
-          ) : (
+          )}
+
+          {/* Grouped Mode */}
+          {isGrouped && items.length > 0 && (
             <div role="rowgroup" className="flex flex-col">
-              {sortedItems.map((item) => (
-                <TableRow
+              {groups.map((group) => {
+                const isExpanded = !collapsedGroupKeys.has(group.key);
+
+                // Group icon
+                let groupIcon: React.ReactNode = null;
+                if (displayOptions?.groupBy === 'priority') {
+                  groupIcon = renderPriorityIcon(group.key as Priority);
+                } else {
+                  groupIcon = (
+                    <StatusIcon
+                      id={group.key}
+                      title={group.title}
+                      group={group.column.group || group.title}
+                      color={group.color}
+                      className="size-3.5 shrink-0"
+                    />
+                  );
+                }
+
+                return (
+                  <div key={group.key} className="flex flex-col border-b border-border/40">
+                    <TableGroupHeader
+                      title={group.title}
+                      color={group.color}
+                      icon={groupIcon}
+                      count={group.items.length}
+                      isExpanded={isExpanded}
+                      onToggle={() => toggleGroupCollapse(group.key)}
+                      onQuickAdd={() => onAddCard(group.key)}
+                      isReadOnly={isReadOnly}
+                    />
+
+                    {isExpanded && (
+                      <div className="flex flex-col">
+                        {group.items.map((item) => (
+                          <TableRowItem
+                            key={item.id}
+                            item={item}
+                            columns={columns}
+                            projectStates={projectStates || columns}
+                            visibleProperties={visibleProperties}
+                            columnWidths={columnWidths}
+                            isSelected={selectedIds.includes(item.id)}
+                            onToggleSelect={handleToggleSelect}
+                            onEditCard={onEditCard}
+                            onDeleteCard={onDeleteCard}
+                            onDuplicateCard={onDuplicateCard}
+                            onUpdateCard={onUpdateCard}
+                            members={members}
+                            cycles={cycles}
+                            projectId={projectId}
+                            workspaceId={workspaceId}
+                            isReadOnly={isReadOnly}
+                          />
+                        ))}
+
+                        <TableInlineAddRow
+                          targetColumnId={group.key}
+                          groupTitle={group.title}
+                          onAddCard={onAddCard}
+                          isReadOnly={isReadOnly}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Flat Mode */}
+          {!isGrouped && items.length > 0 && (
+            <div role="rowgroup" className="flex flex-col">
+              {flatSortedItems.map((item) => (
+                <TableRowItem
                   key={item.id}
                   item={item}
                   columns={columns}
@@ -1546,23 +1781,21 @@ export function TableView({
                   onEditCard={onEditCard}
                   onDeleteCard={onDeleteCard}
                   onDuplicateCard={onDuplicateCard}
-                  onMoveCard={onMoveCard}
                   onUpdateCard={onUpdateCard}
                   members={members}
                   cycles={cycles}
                   projectId={projectId}
                   workspaceId={workspaceId}
+                  isReadOnly={isReadOnly}
                 />
               ))}
-            </div>
-          )}
 
-          {!isReadOnly && (
-            <TableQuickAddRow
-              columns={columns}
-              projectStates={projectStates || columns}
-              onAddCard={onAddCard}
-            />
+              <TableInlineAddRow
+                targetColumnId={defaultColId}
+                onAddCard={onAddCard}
+                isReadOnly={isReadOnly}
+              />
+            </div>
           )}
         </div>
       </div>

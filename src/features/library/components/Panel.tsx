@@ -46,7 +46,7 @@ import { useAttachments } from '../hooks/use-attachments';
 import { useNotes } from '../hooks/use-notes';
 import { useRelations } from '../hooks/use-relations';
 import { useLibrarySidebarStore, type InspectorSectionId } from '../store/sidebar.store';
-import { normalizeNotes, normalizeTags, convertToBibTeX, getPaperFileUrl } from '../utils/library.util';
+import { normalizeNotes, normalizeTags, getPaperFileUrl } from '../utils/library.util';
 import { ALL_ITEM_TYPES_FLAT } from '../schemas/item-type.schema';
 import { cn } from "@/shared/lib/utils";
 import { uploadLibraryFile } from '../services/upload.service';
@@ -573,16 +573,18 @@ export default function InspectorPanel({
           }
         }
       } catch {
-        // Fall back to client generator
+        // Fall back to cached canonical bibtex from backend
       }
     }
-    const bib = convertToBibTeX(paper);
-    const ok = await copyToClipboard(bib);
-    if (ok) {
-      toast.success('BibTeX citation copied to clipboard', { id: 'library-clipboard' });
-    } else {
-      toast.error('Failed to copy to clipboard', { id: 'library-clipboard' });
+    const bib = (paper as any)?.bibtex;
+    if (bib) {
+      const ok = await copyToClipboard(bib);
+      if (ok) {
+        toast.success('BibTeX citation copied to clipboard', { id: 'library-clipboard' });
+        return;
+      }
     }
+    toast.error('Failed to copy BibTeX citation', { id: 'library-clipboard' });
   };
 
   // Section Counts

@@ -7,14 +7,27 @@
  *  - Heartbeat & Cursor Position
  */
 
-import { apiGet, apiPost } from '@/shared/lib/api';
+import { apiGet, apiPost, getAuthToken } from '@/shared/lib/api';
 
 export interface CollaborationPresence {
-  userId: string;
+  id?: string;
+  userId?: string;
   name: string;
   avatar?: string | null;
-  cursor?: { line: number; column: number };
-  lastActiveAt: number;
+  role?: string;
+  color?: string;
+  cursor?: {
+    line: number;
+    column: number;
+    selection?: {
+      startLineNumber: number;
+      startColumn: number;
+      endLineNumber: number;
+      endColumn: number;
+    };
+  };
+  lastHeartbeat?: number;
+  lastActiveAt?: number;
 }
 
 export interface CollaborationEvent {
@@ -23,22 +36,42 @@ export interface CollaborationEvent {
   suggestion?: any;
   comment?: any;
   user?: CollaborationPresence;
+  userId?: string;
+  isLocked?: boolean;
+  lockedBy?: string;
   timestamp: number;
 }
 
 export const collaborationService = {
   getPresence: async (pageId: string): Promise<CollaborationPresence[]> => {
-    const res = await apiGet<{ presence: CollaborationPresence[] }>(
+    const res = await apiGet<{ activeUsers?: CollaborationPresence[]; presence?: CollaborationPresence[] }>(
       `/api/pages/${pageId}/collaboration/presence`,
     );
-    return res.presence || [];
+    return res.activeUsers || res.presence || [];
   },
 
   sendHeartbeat: async (
     pageId: string,
-    cursor?: { line: number; column: number },
+    cursor?: {
+      line: number;
+      column: number;
+      selection?: {
+        startLineNumber: number;
+        startColumn: number;
+        endLineNumber: number;
+        endColumn: number;
+      };
+    },
   ): Promise<void> => {
     await apiPost(`/api/pages/${pageId}/collaboration/heartbeat`, { cursor });
+  },
+
+  leaveRoom: async (pageId: string): Promise<void> => {
+    try {
+      await apiPost(`/api/pages/${pageId}/collaboration/leave`, {});
+    } catch {
+      // ignore
+    }
   },
 
   createCollaborationStream: (
@@ -49,7 +82,9 @@ export const collaborationService = {
   ): (() => void) => {
     if (typeof window === 'undefined') return () => {};
 
-    const url = `/api/projects/${projectId}/pages/${pageId}/collaboration/stream`;
+    const token = getAuthToken();
+    const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : '';
+    const url = `/api/projects/${projectId}/pages/${pageId}/collaboration/stream${tokenQuery}`;
     const eventSource = new EventSource(url, { withCredentials: true });
 
     eventSource.onmessage = (e) => {

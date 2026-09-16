@@ -4,7 +4,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { Item, Column } from '../../types/work-item.types';
 import type { AssigneeFilterOption } from '../../hooks/use-topbar';
-import { AnalyticsService } from '@/features/analytics/services/analytics.service';
+import { AnalyticsService } from '../../services/analytics.service';
 
 import {
   Sheet,

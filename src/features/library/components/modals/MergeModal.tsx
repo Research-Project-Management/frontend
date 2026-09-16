@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ import { Button } from "@/shared/components/ui";
 import { RadioGroup, RadioGroupItem } from "@/shared/components/ui";
 import { Label } from "@/shared/components/ui";
 import { Badge } from "@/shared/components/ui";
-import { Files, Check, Loader2 } from 'lucide-react';
+import { Files, Check, Loader2, SlidersHorizontal } from 'lucide-react';
 import type { Item } from '../../types/library.types';
 
 export interface MergeModalProps {
@@ -39,8 +39,34 @@ export function MergeModal({
     duplicates[0]?.id || '',
   );
   const [isMerging, setIsMerging] = useState(false);
+  const [fieldOverrides, setFieldOverrides] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    if (duplicates[0]?.id) {
+      setSelectedMasterId(duplicates[0].id);
+      setFieldOverrides({});
+    }
+  }, [duplicates]);
 
   const masterPaper = duplicates.find((p) => p.id === selectedMasterId) || duplicates[0];
+
+  // Inspect field differences among duplicates
+  const differingFields = useMemo(() => {
+    if (duplicates.length < 2) return [];
+    const fieldsToCheck: Array<{ key: keyof Item; label: string }> = [
+      { key: 'title', label: 'Title' },
+      { key: 'year', label: 'Publication Year' },
+      { key: 'doi', label: 'DOI' },
+      { key: 'publicationTitle', label: 'Publication / Journal' },
+      { key: 'abstract', label: 'Abstract' },
+    ];
+
+    return fieldsToCheck.filter(({ key }) => {
+      const values = duplicates.map((d) => String(d[key] ?? '').trim()).filter(Boolean);
+      const uniqueVals = new Set(values);
+      return uniqueVals.size > 1;
+    });
+  }, [duplicates]);
 
   const handleConfirmMerge = async () => {
     if (!masterPaper) return;
@@ -49,7 +75,7 @@ export function MergeModal({
       const duplicateIdsToDelete = duplicates
         .filter((p) => p.id !== masterPaper.id)
         .map((p) => p.id);
-      await onMerge(masterPaper, {}, duplicateIdsToDelete);
+      await onMerge(masterPaper, fieldOverrides, duplicateIdsToDelete);
       onOpenChange(false);
     } finally {
       setIsMerging(false);
@@ -123,6 +149,73 @@ export function MergeModal({
             })}
           </RadioGroup>
         </div>
+
+        {differingFields.length > 0 && (
+          <div className="space-y-3 pt-3 border-t border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <SlidersHorizontal className="size-3.5 text-foreground" />
+                <Label className="text-11 font-medium text-foreground">
+                  Resolve Conflicting Fields
+                </Label>
+              </div>
+              <span className="text-10 text-muted-foreground">
+                Select value to keep for each field
+              </span>
+            </div>
+
+            <div className="space-y-2.5">
+              {differingFields.map(({ key, label }) => {
+                const activeValue = fieldOverrides[key as string] ?? masterPaper?.[key];
+                const options = Array.from(
+                  new Map(
+                    duplicates
+                      .filter((d) => d[key] !== undefined && d[key] !== null && String(d[key]).trim() !== '')
+                      .map((d) => [String(d[key]), { value: d[key], sourceTitle: d.title || 'Record' }])
+                  ).values()
+                );
+
+                return (
+                  <div key={String(key)} className="rounded-md border border-border p-2.5 bg-muted/20 space-y-1.5">
+                    <div className="text-11 font-medium text-foreground flex items-center justify-between">
+                      <span>{label}</span>
+                      <span className="text-10 text-muted-foreground font-mono">
+                        {String(key)}
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      {options.map((opt, idx) => {
+                        const isSelected = String(activeValue ?? '') === String(opt.value ?? '');
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setFieldOverrides((prev) => ({
+                                ...prev,
+                                [key]: opt.value,
+                              }));
+                            }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded text-11 transition-colors flex items-start justify-between gap-2 border ${
+                              isSelected
+                                ? 'border-primary/50 bg-primary/10 text-foreground font-medium'
+                                : 'border-transparent hover:bg-muted text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            <span className="line-clamp-2 break-all">{String(opt.value)}</span>
+                            {isSelected && (
+                              <Check className="size-3 text-primary shrink-0 mt-0.5" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <DialogFooter className="gap-2 sm:justify-end pt-2">
           <Button

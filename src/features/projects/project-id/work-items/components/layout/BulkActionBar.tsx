@@ -107,9 +107,9 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
 
   return (
     <>
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-background/95 backdrop-blur-md border border-border rounded-md px-3 py-1.5 flex items-center gap-2 max-w-[calc(100vw-2rem)] overflow-x-auto shadow-raised-200 animate-in fade-in slide-in-from-bottom-3 duration-200">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-background/95 backdrop-blur-md border border-border rounded-md px-3 py-1.5 flex items-center gap-2 max-w-[calc(100vw-2rem)] overflow-x-auto shadow-lg animate-in fade-in slide-in-from-bottom-3 duration-200">
         {/* Selection count badge */}
-        <div className="flex items-center gap-1.5 bg-muted px-2 py-1 rounded-md text-xs font-medium text-foreground shrink-0">
+        <div className="flex items-center gap-1.5 bg-muted px-2 py-1 rounded-md text-12 font-medium text-foreground shrink-0">
           <span>{count} selected</span>
           <button
             type="button"
@@ -131,7 +131,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               variant="ghost"
               size="sm"
               disabled={isUpdating}
-              className="h-7 text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
+              className="h-7 text-12 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
             >
               <CheckCircle2 className="size-3.5 text-muted-foreground shrink-0" />
               <span>State</span>
@@ -162,7 +162,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               variant="ghost"
               size="sm"
               disabled={isUpdating}
-              className="h-7 text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer"
+              className="h-7 text-12 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
             >
               <Flame className="size-3.5 text-muted-foreground shrink-0" />
               <span>Priority</span>
@@ -177,7 +177,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 <DropdownMenuItem
                   key={pKey}
                   onClick={() => onUpdatePriority(pKey)}
-                  className="text-xs cursor-pointer flex items-center gap-2 py-1.5 rounded-md"
+                  className="text-12 cursor-pointer flex items-center gap-2 py-1.5 rounded-md"
                 >
                   <Icon className={cn('size-3.5 shrink-0', cfg.color)} />
                   <span>{cfg.label}</span>
@@ -194,7 +194,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               variant="ghost"
               size="sm"
               disabled={isUpdating}
-              className="h-7 text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer"
+              className="h-7 text-12 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
             >
               <User className="size-3.5 text-muted-foreground shrink-0" />
               <span>Assignee</span>
@@ -204,7 +204,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           <DropdownMenuContent align="center" className="w-52 p-1 rounded-md border-border bg-popover max-h-56 overflow-y-auto">
             <DropdownMenuItem
               onClick={() => onUpdateAssignee(null)}
-              className="text-xs cursor-pointer flex items-center gap-2 py-1.5 rounded-md text-muted-foreground"
+              className="text-12 cursor-pointer flex items-center gap-2 py-1.5 rounded-md text-muted-foreground"
             >
               <UserMinus className="size-3.5 shrink-0" />
               <span>Unassign</span>
@@ -218,7 +218,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 <DropdownMenuItem
                   key={memberId}
                   onClick={() => onUpdateAssignee(memberId || null)}
-                  className="text-xs cursor-pointer flex items-center gap-2 py-1.5 rounded-md"
+                  className="text-12 cursor-pointer flex items-center gap-2 py-1.5 rounded-md"
                 >
                   <Avatar className="size-4.5 rounded-full shrink-0">
                     <AvatarImage src={u.avatar || ''} />
@@ -240,7 +240,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               variant="ghost"
               size="sm"
               disabled={isUpdating}
-              className="h-7 text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer"
+              className="h-7 text-12 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
             >
               <Calendar className="size-3.5 text-muted-foreground shrink-0" />
               <span>Due Date</span>
@@ -250,32 +250,32 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           <DropdownMenuContent align="center" className="w-44 p-1 rounded-md border-border bg-popover">
             <DropdownMenuItem
               onClick={() => onUpdateDueDate(new Date().toISOString())}
-              className="text-xs cursor-pointer py-1.5"
+              className="text-12 cursor-pointer py-1.5"
             >
               Today ({format(new Date(), 'MMM d')})
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onUpdateDueDate(addDays(new Date(), 1).toISOString())}
-              className="text-xs cursor-pointer py-1.5"
+              className="text-12 cursor-pointer py-1.5"
             >
               Tomorrow ({format(addDays(new Date(), 1), 'MMM d')})
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onUpdateDueDate(endOfWeek(new Date()).toISOString())}
-              className="text-xs cursor-pointer py-1.5"
+              className="text-12 cursor-pointer py-1.5"
             >
               End of week
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onUpdateDueDate(addDays(new Date(), 7).toISOString())}
-              className="text-xs cursor-pointer py-1.5"
+              className="text-12 cursor-pointer py-1.5"
             >
               In 1 week
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => onUpdateDueDate(null)}
-              className="text-xs cursor-pointer py-1.5 text-muted-foreground"
+              className="text-12 cursor-pointer py-1.5 text-muted-foreground"
             >
               Clear due date
             </DropdownMenuItem>
@@ -289,7 +289,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               variant="ghost"
               size="sm"
               disabled={isUpdating}
-              className="h-7 text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer"
+              className="h-7 text-12 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
             >
               <RotateCcw className="size-3.5 text-muted-foreground shrink-0" />
               <span>Cycle</span>
@@ -299,7 +299,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           <DropdownMenuContent align="center" className="w-52 p-1 rounded-md border-border bg-popover max-h-56 overflow-y-auto">
             <DropdownMenuItem
               onClick={() => onUpdateCycle(null)}
-              className="text-xs cursor-pointer py-1.5 text-muted-foreground"
+              className="text-12 cursor-pointer py-1.5 text-muted-foreground"
             >
               Remove from cycle
             </DropdownMenuItem>
@@ -308,7 +308,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               <DropdownMenuItem
                 key={c.id}
                 onClick={() => onUpdateCycle(c.id)}
-                className="text-xs cursor-pointer flex items-center justify-between py-1.5"
+                className="text-12 cursor-pointer flex items-center justify-between py-1.5"
               >
                 <span className="truncate">{c.name}</span>
                 {c.status === 'active' && (
@@ -329,7 +329,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 variant="ghost"
                 size="sm"
                 disabled={isUpdating}
-                className="h-7 text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer"
+                className="h-7 text-12 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
               >
                 <Tag className="size-3.5 text-muted-foreground shrink-0" />
                 <span>Label</span>
@@ -341,7 +341,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 <DropdownMenuItem
                   key={lbl.id}
                   onClick={() => onAddLabel(lbl.id)}
-                  className="text-xs cursor-pointer flex items-center gap-2 py-1.5 rounded-md"
+                  className="text-12 cursor-pointer flex items-center gap-2 py-1.5 rounded-md"
                 >
                   <div
                     className="size-2.5 rounded-full shrink-0"
@@ -355,7 +355,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={onClearLabels}
-                    className="text-xs cursor-pointer py-1.5 text-muted-foreground"
+                    className="text-12 cursor-pointer py-1.5 text-muted-foreground"
                   >
                     Clear all labels
                   </DropdownMenuItem>
@@ -365,7 +365,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           </DropdownMenu>
         )}
 
-        <div className="h-4 w-px bg-border" />
+        <div className="h-4 w-px bg-border shrink-0" />
 
         {/* Bulk Restore Button (when viewing archived) */}
         {isArchivedView && onRestoreSelected && (
@@ -374,7 +374,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
             size="sm"
             disabled={isUpdating}
             onClick={() => setRestoreDialogOpen(true)}
-            className="h-7 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-muted flex items-center gap-1 px-2 rounded-md cursor-pointer"
+            className="h-7 text-12 font-medium text-amber-600 dark:text-amber-400 hover:bg-muted flex items-center gap-1 px-2 rounded-md cursor-pointer shrink-0"
             title="Restore selected work items"
           >
             <RotateCcw className="size-3.5 shrink-0" />
@@ -389,7 +389,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
             size="sm"
             disabled={isUpdating}
             onClick={() => setArchiveDialogOpen(true)}
-            className="h-7 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-1 px-2 rounded-md cursor-pointer"
+            className="h-7 text-12 font-medium text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-1 px-2 rounded-md cursor-pointer shrink-0"
             title="Archive selected work items"
           >
             <Archive className="size-3.5 shrink-0" />
@@ -403,7 +403,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           size="sm"
           disabled={isUpdating}
           onClick={() => setDeleteDialogOpen(true)}
-          className="h-7 text-xs font-medium text-destructive hover:bg-muted flex items-center gap-1 px-2 rounded-md cursor-pointer"
+          className="h-7 text-12 font-medium text-destructive hover:bg-muted flex items-center gap-1 px-2 rounded-md cursor-pointer shrink-0"
           title="Delete selected work items"
         >
           <Trash2 className="size-3.5 shrink-0" />
@@ -413,12 +413,12 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
 
       {/* Restore Confirmation Dialog */}
       <Dialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
-        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-lg border border-border bg-background">
+        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-lg border border-border bg-background shadow-lg">
           <DialogHeader className="text-left space-y-1.5">
             <DialogTitle className="text-base font-semibold text-foreground">
               Restore {count} Work Items?
             </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
+            <DialogDescription className="text-13 text-muted-foreground">
               These {count} work items will be restored to your active board and list views.
             </DialogDescription>
           </DialogHeader>
@@ -428,7 +428,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               size="sm"
               onClick={() => setRestoreDialogOpen(false)}
               disabled={isUpdating}
-              className="rounded-md"
+              className="h-8 px-3 text-13 font-medium rounded-md cursor-pointer"
             >
               Cancel
             </Button>
@@ -440,7 +440,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 onRestoreSelected?.();
               }}
               disabled={isUpdating}
-              className="rounded-md"
+              className="h-8 px-3 text-13 font-medium rounded-md bg-background border border-border hover:bg-muted text-foreground shadow-2xs cursor-pointer"
             >
               {isUpdating ? 'Restoring...' : `Restore ${count} Items`}
             </Button>
@@ -450,12 +450,12 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
 
       {/* Archive Confirmation Dialog */}
       <Dialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
-        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-lg border border-border bg-background">
+        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-lg border border-border bg-background shadow-lg">
           <DialogHeader className="text-left space-y-1.5">
             <DialogTitle className="text-base font-semibold text-foreground">
               Archive {count} Work Items?
             </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
+            <DialogDescription className="text-13 text-muted-foreground">
               These {count} work items will be safely archived and hidden from active views. You can view or restore them at any time.
             </DialogDescription>
           </DialogHeader>
@@ -465,7 +465,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               size="sm"
               onClick={() => setArchiveDialogOpen(false)}
               disabled={isUpdating}
-              className="rounded-md"
+              className="h-8 px-3 text-13 font-medium rounded-md cursor-pointer"
             >
               Cancel
             </Button>
@@ -477,7 +477,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 onArchiveSelected?.();
               }}
               disabled={isUpdating}
-              className="rounded-md"
+              className="h-8 px-3 text-13 font-medium rounded-md bg-background border border-border hover:bg-muted text-foreground shadow-2xs cursor-pointer"
             >
               {isUpdating ? 'Archiving...' : `Archive ${count} Items`}
             </Button>
@@ -487,12 +487,12 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-lg border border-border bg-background">
+        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-lg border border-border bg-background shadow-lg">
           <DialogHeader className="text-left space-y-1.5">
             <DialogTitle className="text-base font-semibold text-foreground">
               Delete {count} Work Items?
             </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
+            <DialogDescription className="text-13 text-muted-foreground">
               Are you sure you want to delete these {count} work items? This action will move them to trash.
             </DialogDescription>
           </DialogHeader>
@@ -502,7 +502,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               size="sm"
               onClick={() => setDeleteDialogOpen(false)}
               disabled={isUpdating}
-              className="rounded-md"
+              className="h-8 px-3 text-13 font-medium rounded-md cursor-pointer"
             >
               Cancel
             </Button>
@@ -514,7 +514,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 onDeleteSelected();
               }}
               disabled={isUpdating}
-              className="rounded-md"
+              className="h-8 px-3 text-13 font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-none cursor-pointer"
             >
               {isUpdating ? 'Deleting...' : `Delete ${count} Items`}
             </Button>

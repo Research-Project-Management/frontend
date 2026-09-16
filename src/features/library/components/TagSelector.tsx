@@ -8,8 +8,8 @@ import {
   X,
   Check,
   Loader2,
-  SlidersHorizontal,
   ChevronDown,
+  ChevronUp,
   Trash2,
 } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
@@ -25,7 +25,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/components/ui/popover";
-import { Checkbox } from "@/shared/components/ui";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +34,21 @@ import {
   DialogFooter,
 } from "@/shared/components/ui";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
+
+function FilterCheckbox({ checked }: { checked: boolean }) {
+  return (
+    <div
+      className={cn(
+        'size-3.5 rounded-sm border flex items-center justify-center transition-colors shrink-0',
+        checked
+          ? 'bg-primary border-primary text-primary-foreground'
+          : 'border-border bg-background hover:border-border'
+      )}
+    >
+      {checked && <Check className="size-2.5 stroke-[1.75] text-primary-foreground shrink-0" />}
+    </div>
+  );
+}
 
 export interface TagFilterPopoverProps {
   scopeId?: string;
@@ -220,7 +234,7 @@ export function TagFilterPopover({
               <button
                 type="button"
                 className={cn(
-                  "relative size-8 rounded-md border border-border transition-colors outline-none cursor-pointer select-none inline-flex items-center justify-center",
+                  "relative size-8 rounded-md border border-border shadow-2xs transition-colors outline-none cursor-pointer select-none inline-flex items-center justify-center",
                   activeTags.length > 0
                     ? "bg-muted text-foreground"
                     : "bg-background hover:bg-muted text-foreground",
@@ -244,91 +258,68 @@ export function TagFilterPopover({
           align="end"
           side="bottom"
           sideOffset={6}
-          className="w-80 p-0 rounded-md border border-border bg-popover text-popover-foreground shadow-none z-50 overflow-hidden font-sans"
+          className="w-72 sm:w-80 max-h-[85vh] p-2.5 rounded-md border border-border bg-popover text-popover-foreground shadow-2xs z-50 overflow-hidden font-sans flex flex-col gap-2 select-none"
         >
-          {/* 1. Header */}
-          <div className="h-10 px-3 border-b border-border flex items-center justify-between bg-muted/40 select-none">
-            <div className="flex items-center gap-2">
-              <Tag className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-              <span className="text-12 font-medium text-foreground">Tags</span>
-            </div>
+          {/* 1. Search Input at Top (no divider line underneath) */}
+          <div className="relative flex items-center shrink-0">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none shrink-0" />
+            <input
+              type="text"
+              value={tagSearch}
+              onChange={(e) => setTagSearch(e.target.value)}
+              placeholder="Search tags..."
+              className="h-8 w-full pl-8 pr-7 text-12 bg-muted/50 hover:bg-muted focus:bg-background border border-border rounded-md outline-none focus:ring-1 focus:ring-primary transition-colors placeholder:text-muted-foreground/60 text-foreground"
+            />
+            {tagSearch ? (
+              <button
+                type="button"
+                onClick={() => setTagSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded-sm"
+                aria-label="Clear search"
+              >
+                <X className="size-3 shrink-0" />
+              </button>
+            ) : null}
+          </div>
 
-            <div className="flex items-center gap-1.5">
-              {activeTags.length > 0 && (
+          {/* 2. Active Tag Chips (when tags are active) */}
+          {activeTags.length > 0 && (
+            <div className="p-2 rounded-md bg-muted/40 shrink-0">
+              <div className="flex items-center justify-between pb-1 px-0.5 select-none">
+                <span className="text-11 font-medium text-muted-foreground">
+                  Active filters ({activeTags.length})
+                </span>
                 <button
                   type="button"
                   onClick={handleDeselectAll}
-                  className="text-11 text-muted-foreground hover:text-foreground transition-colors cursor-pointer hover:underline mr-1"
+                  className="text-11 text-primary hover:underline cursor-pointer font-medium"
                 >
                   Clear all
                 </button>
-              )}
-
-              {/* Advanced Options Toggle Button */}
-              <button
-                type="button"
-                onClick={() => setIsAdvancedOpen((v) => !v)}
-                className={cn(
-                  "size-6 flex items-center justify-center rounded-sm transition-colors cursor-pointer",
-                  isAdvancedOpen
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-                aria-label="Toggle advanced options"
-                title="Advanced options"
-              >
-                <SlidersHorizontal className="size-3.5 shrink-0" strokeWidth={1.5} />
-              </button>
-            </div>
-          </div>
-
-          {/* 2. Search Input */}
-          <div className="p-2 border-b border-border/60 bg-background flex items-center gap-1.5">
-            <div className="relative flex-1 flex items-center">
-              <Search className="absolute left-2.5 size-3.5 text-muted-foreground pointer-events-none shrink-0" />
-              <input
-                type="text"
-                value={tagSearch}
-                onChange={(e) => setTagSearch(e.target.value)}
-                placeholder="Search tags..."
-                className="h-7 w-full rounded-md border border-border bg-background pl-8 pr-7 text-12 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              {tagSearch ? (
-                <button
-                  type="button"
-                  onClick={() => setTagSearch('')}
-                  className="absolute right-2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded-sm"
-                >
-                  <X className="size-3 shrink-0" />
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          {/* 3. Active Tag Chips (if any) */}
-          {activeTags.length > 0 && (
-            <div className="px-2.5 py-1.5 flex flex-wrap gap-1 max-h-20 overflow-y-auto border-b border-border/40 bg-muted/20 thin-scrollbar">
-              {activeTags.map((tagName) => (
-                <span
-                  key={tagName}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-11 text-foreground border border-border"
-                >
-                  <span className="truncate max-w-[120px]">{tagName}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleTag(tagName)}
-                    className="text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded-sm"
-                    aria-label={`Remove tag ${tagName}`}
+              </div>
+              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto thin-scrollbar">
+                {activeTags.map((tagName) => (
+                  <span
+                    key={tagName}
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-primary text-primary-foreground text-11 font-medium select-none max-w-full"
                   >
-                    <X className="size-2.5 shrink-0" />
-                  </button>
-                </span>
-              ))}
+                    <span className="break-words leading-tight">{tagName}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleTag(tagName)}
+                      className="hover:bg-primary-hover rounded-xs p-0.5 cursor-pointer"
+                      aria-label={`Remove tag ${tagName}`}
+                    >
+                      <X className="size-2.5 shrink-0 text-primary-foreground" />
+                    </button>
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* 4. Tags List */}
-          <div className="max-h-64 overflow-y-auto p-1.5 space-y-0.5 thin-scrollbar">
+          {/* 3. Tags List */}
+          <div className="flex-1 max-h-60 overflow-y-auto space-y-0.5 thin-scrollbar pr-0.5">
             {isLoading ? (
               <div className="py-6 text-center text-12 text-muted-foreground flex items-center justify-center gap-1.5">
                 <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
@@ -343,7 +334,6 @@ export function TagFilterPopover({
                 const isActive = activeTags.some(
                   (t) => t.toLowerCase() === tag.name.toLowerCase()
                 );
-                const itemCount = tag._count?.itemTags ?? 0;
 
                 return (
                   <button
@@ -351,30 +341,18 @@ export function TagFilterPopover({
                     type="button"
                     onClick={() => handleToggleTag(tag.name)}
                     className={cn(
-                      "w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md text-12 transition-colors text-left cursor-pointer select-none",
+                      "w-full flex items-start gap-2.5 px-2 py-1.5 rounded-md text-12 transition-colors text-left cursor-pointer select-none group",
                       isActive
                         ? "bg-muted text-foreground font-medium"
                         : "text-foreground hover:bg-muted font-normal"
                     )}
-                    title={`${tag.name} (${itemCount})`}
+                    title={tag.name}
                   >
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <div className={cn(
-                        "size-3.5 rounded border flex items-center justify-center shrink-0 transition-colors",
-                        isActive
-                          ? "bg-foreground border-foreground text-background"
-                          : "border-border bg-background"
-                      )}>
-                        {isActive && <Check className="size-2.5 text-background stroke-[1.75] shrink-0" />}
-                      </div>
-                      <span className="truncate tracking-tight">{tag.name}</span>
+                    <div className="pt-0.5 shrink-0">
+                      <FilterCheckbox checked={isActive} />
                     </div>
-
-                    <span className={cn(
-                      "text-11 font-mono tabular-nums shrink-0",
-                      isActive ? "text-foreground font-medium" : "text-muted-foreground font-normal"
-                    )}>
-                      {itemCount}
+                    <span className="flex-1 min-w-0 break-words whitespace-normal leading-snug tracking-tight text-12">
+                      {tag.name}
                     </span>
                   </button>
                 );
@@ -382,57 +360,63 @@ export function TagFilterPopover({
             )}
           </div>
 
-          {/* 5. Advanced Options Collapsible */}
-          {isAdvancedOpen && (
-            <div className="p-3 space-y-2.5 border-t border-border bg-muted/20 text-12 select-none">
-              <div className="text-11 font-medium text-muted-foreground tracking-tight">
-                Advanced options
-              </div>
-
-              <label className="flex items-center gap-2 cursor-pointer text-foreground">
-                <Checkbox
-                  checked={showAutomatic}
-                  onCheckedChange={(checked) => setShowAutomatic(!!checked)}
-                  className="size-3.5"
-                />
-                <span className="text-12 font-normal leading-none">Show automatic tags</span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer text-foreground">
-                <Checkbox
-                  checked={showAllTagsInLibrary}
-                  onCheckedChange={(checked) => setShowAllTagsInLibrary(!!checked)}
-                  className="size-3.5"
-                />
-                <span className="text-12 font-normal leading-none">Display all tags in library</span>
-              </label>
-
-              <div className="pt-1.5 border-t border-border/50">
-                <button
-                  type="button"
-                  disabled={automaticCount === 0}
-                  onClick={() => setIsConfirmDeleteOpen(true)}
-                  className="w-full flex items-center gap-2 px-2 py-1 text-12 text-destructive hover:bg-destructive/10 rounded-sm disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition-colors"
-                >
-                  <Trash2 className="size-3.5 shrink-0" strokeWidth={1.5} />
-                  <span>Delete automatic tags ({automaticCount})</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 6. Footer summary */}
-          <div className="h-8 px-3 border-t border-border bg-muted/40 flex items-center justify-between text-11 text-muted-foreground select-none">
-            <span className="font-mono">{filteredTags.length} tag{filteredTags.length === 1 ? '' : 's'}</span>
+          {/* 4. Display Options Section */}
+          <div className="border-t border-border pt-1.5 shrink-0">
             <button
               type="button"
               onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
-              className="flex items-center gap-1 font-sans text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              className="flex w-full items-center justify-between px-1 py-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
             >
-              <SlidersHorizontal className="size-3 shrink-0" strokeWidth={1.5} />
-              <span>{isAdvancedOpen ? 'Hide options' : 'Options'}</span>
-              <ChevronDown className={cn("size-3 shrink-0 transition-transform duration-200", isAdvancedOpen && "rotate-180")} />
+              <span>Display options</span>
+              {isAdvancedOpen ? (
+                <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
+              ) : (
+                <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+              )}
             </button>
+
+            {isAdvancedOpen && (
+              <div className="pt-1.5 space-y-1 select-none">
+                <label className="flex items-center gap-2.5 py-1 px-1 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted/50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={showAutomatic}
+                    onChange={(e) => setShowAutomatic(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <FilterCheckbox checked={showAutomatic} />
+                  <span className="text-12 font-normal leading-none">Show automatic tags</span>
+                </label>
+
+                <label className="flex items-center gap-2.5 py-1 px-1 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted/50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={showAllTagsInLibrary}
+                    onChange={(e) => setShowAllTagsInLibrary(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <FilterCheckbox checked={showAllTagsInLibrary} />
+                  <span className="text-12 font-normal leading-none">Display all tags in library</span>
+                </label>
+
+                {automaticCount > 0 && (
+                  <div className="pt-1.5 border-t border-border mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmDeleteOpen(true)}
+                      disabled={isDeletingAutomatic}
+                      className="w-full flex items-center justify-between px-1.5 py-1.5 text-12 text-destructive hover:bg-destructive/10 rounded-md transition-colors cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Trash2 className="size-3.5 shrink-0" strokeWidth={1.5} />
+                        <span>Delete automatic tags</span>
+                      </span>
+                      <span className="font-mono text-11 font-medium">({automaticCount})</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </PopoverContent>
       </Popover>

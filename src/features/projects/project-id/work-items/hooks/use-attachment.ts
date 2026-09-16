@@ -31,9 +31,9 @@ export const useAttachPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Page attached to work item');
+      toast.success('Page attached to work item', { id: 'work-item-attachment' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to attach page'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to attach page', { id: 'work-item-attachment' }),
   });
 };
 
@@ -46,9 +46,9 @@ export const useDetachPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Page detached');
+      toast.success('Page detached', { id: 'work-item-attachment' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to detach page'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to detach page', { id: 'work-item-attachment' }),
   });
 };
 
@@ -77,9 +77,9 @@ export const useAttachPaper = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Paper attached to work item');
+      toast.success('Paper attached to work item', { id: 'work-item-attachment' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to attach paper'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to attach paper', { id: 'work-item-attachment' }),
   });
 };
 
@@ -92,9 +92,9 @@ export const useDetachPaper = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Paper detached');
+      toast.success('Paper detached', { id: 'work-item-attachment' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to detach paper'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to detach paper', { id: 'work-item-attachment' }),
   });
 };
 
@@ -123,9 +123,9 @@ export const useAttachFile = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('File attached');
+      toast.success('File attached', { id: 'work-item-attachment' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to attach file'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to attach file', { id: 'work-item-attachment' }),
   });
 };
 
@@ -138,16 +138,16 @@ export const useDetachFile = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('File removed');
+      toast.success('File removed', { id: 'work-item-attachment' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to remove file'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to remove file', { id: 'work-item-attachment' }),
   });
 };
 
 export const useAttachLink = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, itemId, workItemId, title, url }: { id?: string; itemId?: string; workItemId?: string } & AttachLinkInput) => {
+    mutationFn: ({ id, itemId, workItemId, title, url }: { id?: string; itemId?: string; workItemId?: string} & AttachLinkInput) => {
       const targetId = (id || itemId || workItemId) ?? '';
       const parsed = attachLinkInputSchema.safeParse({ title, url });
       if (!parsed.success) {
@@ -157,9 +157,9 @@ export const useAttachLink = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Link attached');
+      toast.success('Link attached', { id: 'work-item-attachment' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to attach link'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to attach link', { id: 'work-item-attachment' }),
   });
 };
 
@@ -172,14 +172,14 @@ export const useDetachLink = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
-      toast.success('Link removed');
+      toast.success('Link removed', { id: 'work-item-attachment' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to remove link'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to remove link', { id: 'work-item-attachment' }),
   });
 };
 
 export const useUploadFilesWithToast = () => {
-  const { uploadFile } = useUpload();
+  const { uploadFileDetailed } = useUpload();
   return useCallback(
     async (
       files: File[],
@@ -187,25 +187,30 @@ export const useUploadFilesWithToast = () => {
         showSuccessToast?: boolean;
         successMessage?: string;
         errorMessage?: string;
+        projectId?: string;
       }
     ) => {
       try {
         const results = await Promise.all(
           files.map(async (file) => {
-            const url = await uploadFile(file);
-            return { file, url };
+            const res = await uploadFileDetailed(file, {
+              prefix: options?.projectId
+                ? `project/${options.projectId}`
+                : undefined,
+            });
+            return { file, url: res.url, fileId: res.fileId };
           })
         );
         if (options?.showSuccessToast ?? true) {
-          toast.success(options?.successMessage || 'File attached successfully');
+          toast.success(options?.successMessage || 'File attached successfully', { id: 'work-item-upload' });
         }
         return results;
       } catch (err) {
-        toast.error(options?.errorMessage || 'Failed to upload file');
+        toast.error(options?.errorMessage || 'Failed to upload file', { id: 'work-item-upload' });
         throw err;
       }
     },
-    [uploadFile]
+    [uploadFileDetailed]
   );
 };
 

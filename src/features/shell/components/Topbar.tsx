@@ -1,8 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { Mail, Search } from 'lucide-react';
-import { ProjectSwitcher } from './Switcher';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
+import AccountDropdown from './AccountDropdown';
 
 export default function Topbar() {
   return (
@@ -10,9 +11,16 @@ export default function Topbar() {
       aria-label='App Header Navigation'
       className='flex h-11 w-full shrink-0 items-center justify-between gap-4 bg-muted px-2 select-none'
     >
-      {/* Left: Project switcher */}
+      {/* Left: Project logo */}
       <div className='flex items-center gap-2 min-w-0 shrink-0'>
-        <ProjectSwitcher />
+        <Link
+          href='/home'
+          className='flex items-center gap-2 px-2 py-1 rounded-md hover:bg-foreground/5 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary select-none group'
+          title='Flux Home'
+        >
+          <img src='/Flux.svg' alt='Flux' className='size-5 shrink-0 group-hover:scale-105 transition-transform' />
+          <span className='text-13 font-semibold tracking-tight text-foreground'>Flux</span>
+        </Link>
       </div>
 
       {/* Center: Search placeholder */}
@@ -26,8 +34,8 @@ export default function Topbar() {
         </button>
       </div>
 
-      {/* Right: Inbox */}
-      <div className='flex items-center gap-2 shrink-0'>
+      {/* Right: Inbox & User Avatar */}
+      <div className='flex items-center gap-1.5 shrink-0'>
         <TooltipProvider delayDuration={150}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -44,6 +52,8 @@ export default function Topbar() {
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+
+        <AccountDropdown />
       </div>
     </nav>
   );

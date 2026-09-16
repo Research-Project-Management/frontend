@@ -16,6 +16,9 @@ export interface DocumentEditorState {
   // ── Document & Project State ─────────────────────────────────────────────
   currentPage: any | null;
   projectId: string;
+  parentPageId: string | null;
+  activePageId: string | null;
+  fileHierarchy: any | null;
   activeFilePage: any | null;
   selectedAsset: AssetInfo | null;
   texFiles: string[];
@@ -33,6 +36,9 @@ export interface DocumentEditorState {
   // ── Setters & Actions ───────────────────────────────────────────────────
   setCurrentPage: (page: any) => void;
   setProjectId: (id: string) => void;
+  setParentPageId: (id: string | null) => void;
+  setActivePageId: (id: string | null) => void;
+  setFileHierarchy: (hierarchy: any) => void;
   setActiveFilePage: (page: any) => void;
   setSelectedAsset: (asset: AssetInfo | null) => void;
   setTexFiles: (files: string[]) => void;
@@ -42,6 +48,9 @@ export interface DocumentEditorState {
 export const useDocumentEditorStore = create<DocumentEditorState>((set) => ({
   currentPage: null,
   projectId: '',
+  parentPageId: null,
+  activePageId: null,
+  fileHierarchy: null,
   activeFilePage: null,
   selectedAsset: null,
   texFiles: [],
@@ -57,6 +66,9 @@ export const useDocumentEditorStore = create<DocumentEditorState>((set) => ({
 
   setCurrentPage: (page) => set({ currentPage: page }),
   setProjectId: (projectId) => set({ projectId }),
+  setParentPageId: (parentPageId) => set({ parentPageId }),
+  setActivePageId: (activePageId) => set({ activePageId }),
+  setFileHierarchy: (fileHierarchy) => set({ fileHierarchy }),
   setActiveFilePage: (activeFilePage) => set({ activeFilePage }),
   setSelectedAsset: (selectedAsset) => set({ selectedAsset }),
   setTexFiles: (texFiles) => set({ texFiles }),
@@ -64,6 +76,9 @@ export const useDocumentEditorStore = create<DocumentEditorState>((set) => ({
     set({
       currentPage: null,
       projectId: '',
+      parentPageId: null,
+      activePageId: null,
+      fileHierarchy: null,
       activeFilePage: null,
       selectedAsset: null,
       texFiles: [],

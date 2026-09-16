@@ -161,6 +161,7 @@ export default function RecentlyReadPage() {
           icon={History}
           search={search}
           onSearchChange={setSearch}
+          items={state.items}
           onDirectFilesUpload={handleDirectFilesUpload}
           onDirectFolderUpload={handleDirectFolderUpload}
           onAddCollection={() => setCreateCollectionOpen(true)}

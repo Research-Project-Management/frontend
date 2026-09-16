@@ -156,7 +156,7 @@ export default function LandingPage() {
               className='flex flex-col sm:flex-row gap-3 justify-center pt-2'
             >
               <Link
-                href={isAuthenticated ? '/home' : '/register'}
+                href={isAuthenticated ? '/home' : '/login'}
                 className='group flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer shrink-0'
               >
                 Start for free
@@ -347,7 +347,7 @@ export default function LandingPage() {
             </p>
             <div className='flex flex-col sm:flex-row gap-3 justify-center pt-2'>
               <Link
-                href={isAuthenticated ? '/home' : '/register'}
+                href={isAuthenticated ? '/home' : '/login'}
                 className='group flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer shrink-0'
               >
                 Get started

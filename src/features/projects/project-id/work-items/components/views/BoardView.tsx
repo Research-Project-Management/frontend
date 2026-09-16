@@ -50,7 +50,7 @@ import {
   AvatarStack,
   CycleHalfIcon,
 } from '../modals/Popovers';
-import { ItemHelpers, resolveColumnId } from '../../utils/work-item.utils';
+import { ItemHelpers, resolveColumnId, getItemBucketKey } from '../../utils/work-item.utils';
 import {
   type Item,
   type Column as ColumnType,
@@ -1096,7 +1096,13 @@ export function BoardView({
   const items = propItems;
   const itemsByColumnId = propItemsByColumnId;
   const subGroupBy = displayOptions?.subGroupBy || 'none';
-  const isSwimlanesActive = subGroupBy !== 'none';
+  const VALID_SWIMLANE_OPTIONS = ['priority', 'assignee', 'cycle', 'labels'] as const;
+  const isSwimlanesActive = Boolean(
+    subGroupBy &&
+    subGroupBy !== 'none' &&
+    VALID_SWIMLANE_OPTIONS.includes(subGroupBy as any) &&
+    subGroupBy !== displayOptions?.groupBy
+  );
 
   const [collapsedLanes, setCollapsedLanes] = useState<Record<string, boolean>>({});
 
@@ -1186,7 +1192,7 @@ export function BoardView({
         },
       ];
     } else {
-      defs = [{ id: '__all__', title: 'All Items', color: '#6b7280' }];
+      return [];
     }
 
     const columnIds = columns.map((c) => resolveColumnId(c));
@@ -1214,7 +1220,7 @@ export function BoardView({
           if (t.completed || (t as any).stateGroup === 'completed' || (t as any).state?.group === 'completed' || t.columnId === 'done' || t.columnId === 'completed') {
             completedCount++;
           }
-          const colId = t.columnId || columnIds[0] || 'backlog';
+          const colId = getItemBucketKey(t, displayOptions?.groupBy) || t.columnId || columnIds[0] || 'backlog';
           const list = laneMap.get(colId);
           if (list) {
             list.push(t);
@@ -1238,11 +1244,13 @@ export function BoardView({
     }
 
     return result;
-  }, [isSwimlanesActive, subGroupBy, members, cycles, columns, items, labelMap, displayOptions?.showEmptyGroups]);
+  }, [isSwimlanesActive, subGroupBy, members, cycles, columns, items, labelMap, displayOptions?.showEmptyGroups, displayOptions?.groupBy]);
 
   const { state: kanbanState, actions: kanbanActions } = useKanban({
     items,
     columns,
+    itemsByColumnId,
+    groupBy: displayOptions?.groupBy,
     onMoveCard,
     onReorderCard,
     isReadOnly,
@@ -1256,13 +1264,13 @@ export function BoardView({
     if (displayOptions?.showEmptyGroups === false) {
       const nonEmpty = columns.filter((col) => {
         const colId = resolveColumnId(col);
-        const colCards = itemsByColumn.get(colId) || [];
+        const colCards = (itemsByColumnId ? itemsByColumnId.get(colId) : itemsByColumn.get(colId)) || [];
         return colCards.length > 0;
       });
       return nonEmpty.length > 0 ? nonEmpty : columns;
     }
     return columns;
-  }, [columns, itemsByColumn, displayOptions?.showEmptyGroups]);
+  }, [columns, itemsByColumn, itemsByColumnId, displayOptions?.showEmptyGroups]);
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
@@ -1288,7 +1296,7 @@ export function BoardView({
         onDragEnd={dragEnd}
         onDragCancel={dragCancel}
       >
-        {isSwimlanesActive ? (
+        {isSwimlanesActive && swimlanes.length > 0 ? (
           <div className="space-y-4 pb-6 min-w-max">
             {swimlanes.map((lane) => {
               const isCollapsed = Boolean(collapsedLanes[lane.id]);
@@ -1388,7 +1396,7 @@ export function BoardView({
           <div className="flex h-full items-start gap-3.5 min-w-max pb-4">
             {visibleColumns.map((col) => {
               const colId = resolveColumnId(col);
-              const columnCards = itemsByColumn.get(colId) || [];
+              const columnCards = (itemsByColumnId ? itemsByColumnId.get(colId) : itemsByColumn.get(colId)) || [];
               return (
                 <Column
                   key={colId}

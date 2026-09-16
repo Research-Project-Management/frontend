@@ -30,6 +30,7 @@ export interface DocumentCompilerState {
   pdfUrl: string | null;
   lastCompiledAt: Date | null;
   pendingCompile: boolean;
+  isViewerPoppedOut: boolean;
 
   setCompileStatus: (status: CompileStatus) => void;
   setCompileLog: (log: string | null) => void;
@@ -38,6 +39,7 @@ export interface DocumentCompilerState {
   setPdfUrl: (url: string | null) => void;
   setLastCompiledAt: (date: Date | null) => void;
   setPendingCompile: (pending: boolean) => void;
+  setIsViewerPoppedOut: (poppedOut: boolean) => void;
 }
 
 export const useDocumentCompilerStore = create<DocumentCompilerState>()((set, get) => ({
@@ -92,6 +94,7 @@ export const useDocumentCompilerStore = create<DocumentCompilerState>()((set, ge
   pdfUrl: null,
   lastCompiledAt: null,
   pendingCompile: false,
+  isViewerPoppedOut: false,
 
   setCompileStatus(status) {
     set({ compileStatus: status });
@@ -118,6 +121,10 @@ export const useDocumentCompilerStore = create<DocumentCompilerState>()((set, ge
 
   setPendingCompile(pending) {
     set({ pendingCompile: pending });
+  },
+
+  setIsViewerPoppedOut(poppedOut) {
+    set({ isViewerPoppedOut: poppedOut });
   },
 }));
 

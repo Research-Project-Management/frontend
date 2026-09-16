@@ -12,7 +12,6 @@ import {
   UserCircle,
   User,
   Check,
-  RotateCcw,
   CircleDashed,
   Circle,
   AlertCircle,
@@ -149,16 +148,16 @@ export function PriorityNoneIcon({ className }: { className?: string }) {
 function SubmenuSearchBar({
   value,
   onChange,
-  placeholder = 'Search',
+  placeholder = 'Search...',
 }: {
   value: string;
   onChange: (val: string) => void;
   placeholder?: string;
 }) {
   return (
-    <div className="p-1 pb-1.5 border-b border-border mb-1" onClick={(e) => e.stopPropagation()}>
-      <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background focus-within:ring-1 focus-within:ring-primary">
-        <Search className="size-3 text-muted-foreground shrink-0" />
+    <div className="p-1 pb-1.5 border-b border-border/50 mb-1" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/60 text-12 text-foreground">
+        <Search className="size-3.5 text-muted-foreground shrink-0" />
         <input
           type="text"
           placeholder={placeholder}
@@ -376,15 +375,15 @@ export function FilterDropdown({
 
       <DropdownMenuContent
         align="start"
-        className="w-60 p-1 rounded-md border-border text-xs max-h-[85vh] overflow-y-auto"
+        className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-[85vh] overflow-y-auto"
       >
         {/* Main Search Header */}
-        <div className="p-1 pb-1.5" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-background focus-within:ring-1 focus-within:ring-primary">
+        <div className="p-1 pb-1.5 border-b border-border/50 mb-1" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/60 text-12 text-foreground">
             <Search className="size-3.5 text-muted-foreground shrink-0" />
             <input
               type="text"
-              placeholder="Search"
+              placeholder="Search filters..."
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
               className="w-full bg-transparent text-12 text-foreground placeholder:text-muted-foreground outline-none"
@@ -394,38 +393,30 @@ export function FilterDropdown({
           </div>
         </div>
 
-        {/* Clear All when active */}
+        {/* Active filters count */}
         {hasActiveFilters && (
-          <div className="px-1.5 py-1 border-b border-border mb-1 flex items-center justify-between">
+          <div className="px-2 py-1 border-b border-border/50 mb-1 flex items-center">
             <span className="text-11 font-medium text-muted-foreground">
               <span className="font-mono tabular-nums">{totalActiveFilters}</span> active filter{totalActiveFilters > 1 ? 's' : ''}
             </span>
-            <button
-              type="button"
-              onClick={onClearAll}
-              className="text-11 font-medium text-primary hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <RotateCcw className="size-3 shrink-0" />
-              Clear all
-            </button>
           </div>
         )}
 
         {/* 1. Work items (Submenu with Search) */}
         {filteredItems.some((i) => i.id === 'work-items') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted">
+            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
               <ItemsIcon className="size-4 shrink-0 text-foreground" />
               <span>Work items</span>
               {(filters?.work_items.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto" />
+                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-64 p-1 rounded-md border-border max-h-64 overflow-y-auto">
+            <DropdownMenuSubContent className="w-60 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-64 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('work-items')}
                 onChange={(v) => setSubSearchVal('work-items', v)}
-                placeholder="Search"
+                placeholder="Search..."
               />
               {items
                 .filter((t: Item) => {
@@ -447,7 +438,7 @@ export function FilterDropdown({
                         e.preventDefault();
                         handleToggle('work_items', val);
                       }}
-                      className="flex items-center justify-between px-2.5 py-1.5 text-12 cursor-pointer text-foreground hover:bg-muted"
+                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <WorkItemsIcon className="size-3.5 shrink-0 text-muted-foreground" />
@@ -469,25 +460,25 @@ export function FilterDropdown({
         {/* 4. Parent (Submenu with Search) */}
         {filteredItems.some((i) => i.id === 'parent') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted">
+            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
               <ParentBranchIcon className="size-4 shrink-0 text-foreground" />
               <span>Parent</span>
               {(filters?.parent.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto" />
+                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-64 p-1 rounded-md border-border max-h-64 overflow-y-auto">
+            <DropdownMenuSubContent className="w-60 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-64 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('parent')}
                 onChange={(v) => setSubSearchVal('parent', v)}
-                placeholder="Search"
+                placeholder="Search..."
               />
               <DropdownMenuItem
                 onSelect={(e) => {
                   e.preventDefault();
                   handleToggle('parent', '__none__');
                 }}
-                className="flex items-center justify-between px-2.5 py-1.5 text-12 cursor-pointer text-foreground hover:bg-muted"
+                className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
               >
                 <div className="flex items-center gap-2">
                   <ParentBranchIcon className="size-3.5 shrink-0 text-muted-foreground" />
@@ -516,7 +507,7 @@ export function FilterDropdown({
                         e.preventDefault();
                         handleToggle('parent', item.id);
                       }}
-                      className="flex items-center justify-between px-2.5 py-1.5 text-12 cursor-pointer text-foreground hover:bg-muted"
+                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <ParentBranchIcon className="size-3.5 shrink-0 text-muted-foreground" />
@@ -538,18 +529,18 @@ export function FilterDropdown({
         {/* 5. State (Submenu with Search & Icons) */}
         {filteredItems.some((i) => i.id === 'state') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted">
+            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
               <ConcentricCirclesIcon className="size-4 shrink-0 text-foreground" />
               <span>State</span>
               {(filters?.state.length ?? selectedColumnIds.length) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto" />
+                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border max-h-64 overflow-y-auto">
+            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-64 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('state')}
                 onChange={(v) => setSubSearchVal('state', v)}
-                placeholder="Search"
+                placeholder="Search..."
               />
               {columns
                 .filter((col) => {
@@ -567,7 +558,7 @@ export function FilterDropdown({
                         e.preventDefault();
                         handleToggle('state', columnId);
                       }}
-                      className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted"
+                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <StatusIcon
@@ -590,18 +581,18 @@ export function FilterDropdown({
         {/* 6. State Group (Submenu with Search & Icons) */}
         {filteredItems.some((i) => i.id === 'state-group') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted">
+            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
               <ConcentricCirclesIcon className="size-4 shrink-0 text-foreground" />
               <span>State Group</span>
               {(filters?.state_group.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto" />
+                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border">
+            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none">
               <SubmenuSearchBar
                 value={getSubSearch('state-group')}
                 onChange={(v) => setSubSearchVal('state-group', v)}
-                placeholder="Search"
+                placeholder="Search..."
               />
               {(
                 [
@@ -627,7 +618,7 @@ export function FilterDropdown({
                         e.preventDefault();
                         handleToggle('state_group', item.id as StateGroup);
                       }}
-                      className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted"
+                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <IconComp className="size-3.5 shrink-0" />
@@ -644,25 +635,25 @@ export function FilterDropdown({
         {/* 7. Assignees (Submenu with Search & Avatars) */}
         {filteredItems.some((i) => i.id === 'assignees') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted">
+            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
               <Users className="size-4 shrink-0 text-foreground" />
               <span>Assignees</span>
               {(filters?.assignees.length ?? selectedAssigneeIds.length) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto" />
+                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border max-h-60 overflow-y-auto">
+            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-60 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('assignees')}
                 onChange={(v) => setSubSearchVal('assignees', v)}
-                placeholder="Search"
+                placeholder="Search..."
               />
               <DropdownMenuItem
                 onSelect={(e) => {
                   e.preventDefault();
                   handleToggle('assignees', '__unassigned__');
                 }}
-                className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted"
+                className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <User className="size-4 text-muted-foreground shrink-0" />
@@ -689,7 +680,7 @@ export function FilterDropdown({
                         e.preventDefault();
                         handleToggle('assignees', user.id);
                       }}
-                      className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted"
+                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         {user.avatar ? (
@@ -717,18 +708,18 @@ export function FilterDropdown({
         {/* 7b. Subscribers (Submenu — same member pool as Assignees) */}
         {filteredItems.some((i) => i.id === 'subscribers') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted">
+            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
               <User className="size-4 shrink-0 text-foreground" />
               <span>Subscribers</span>
               {(filters?.subscribers?.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto" />
+                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border max-h-60 overflow-y-auto">
+            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-60 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('subscribers')}
                 onChange={(v) => setSubSearchVal('subscribers', v)}
-                placeholder="Search members"
+                placeholder="Search members..."
               />
               {assignees
                 .filter((user) => {
@@ -745,7 +736,7 @@ export function FilterDropdown({
                         e.preventDefault();
                         handleToggle('subscribers', user.id);
                       }}
-                      className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted"
+                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         {user.avatar ? (
@@ -773,18 +764,18 @@ export function FilterDropdown({
         {/* 8. Priority (Submenu with Search & Signal Bar Icons) */}
         {filteredItems.some((i) => i.id === 'priority') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted">
+            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
               <PrioritySignalBarsIcon className="size-4 shrink-0 text-foreground" />
               <span>Priority</span>
               {(filters?.priority.length ?? selectedPriorities.length) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto" />
+                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-52 p-1 rounded-md border-border">
+            <DropdownMenuSubContent className="w-52 p-1 rounded-md border-border bg-popover text-12 shadow-none">
               <SubmenuSearchBar
                 value={getSubSearch('priority')}
                 onChange={(v) => setSubSearchVal('priority', v)}
-                placeholder="Search"
+                placeholder="Search..."
               />
               {(
                 [
@@ -810,7 +801,7 @@ export function FilterDropdown({
                         e.preventDefault();
                         handleToggle('priority', p.id as Priority);
                       }}
-                      className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted"
+                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <IconComp className="size-3.5 shrink-0" />
@@ -827,18 +818,18 @@ export function FilterDropdown({
         {/* 9. Mentions (Submenu with Search & Avatars) */}
         {filteredItems.some((i) => i.id === 'mentions') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted">
+            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
               <AtSign className="size-4 shrink-0 text-foreground" />
               <span>Mentions</span>
               {(filters?.mentions.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto" />
+                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border max-h-56 overflow-y-auto">
+            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-56 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('mentions')}
                 onChange={(v) => setSubSearchVal('mentions', v)}
-                placeholder="Search"
+                placeholder="Search..."
               />
               {(() => {
                 const q = getSubSearch('mentions').toLowerCase().trim();
@@ -864,7 +855,7 @@ export function FilterDropdown({
                         e.preventDefault();
                         handleToggle('mentions', user.id);
                       }}
-                      className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted"
+                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         {user.avatar ? (
@@ -893,18 +884,18 @@ export function FilterDropdown({
         {/* 10. Label (Submenu with Search) */}
         {filteredItems.some((i) => i.id === 'label') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted">
+            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
               <Tag className="size-4 shrink-0 text-foreground" />
               <span>Label</span>
               {(filters?.labels.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto" />
+                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-52 p-1 rounded-md border-border max-h-56 overflow-y-auto">
+            <DropdownMenuSubContent className="w-52 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-56 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('label')}
                 onChange={(v) => setSubSearchVal('label', v)}
-                placeholder="Search"
+                placeholder="Search..."
               />
               {availableLabels
                 .filter((l) => {
@@ -921,7 +912,7 @@ export function FilterDropdown({
                         e.preventDefault();
                         handleToggle('labels', label.id);
                       }}
-                      className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted"
+                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <span
@@ -941,25 +932,25 @@ export function FilterDropdown({
         {/* 11. Cycle (Submenu with Search) */}
         {filteredItems.some((i) => i.id === 'cycle') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted">
+            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
               <CycleIcon className="size-4 shrink-0 text-foreground" />
               <span>Cycle</span>
               {(filters?.cycle.length ?? (selectedCycleId ? 1 : 0)) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto" />
+                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border max-h-56 overflow-y-auto">
+            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-56 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('cycle')}
                 onChange={(v) => setSubSearchVal('cycle', v)}
-                placeholder="Search"
+                placeholder="Search..."
               />
               <DropdownMenuItem
                 onSelect={(e) => {
                   e.preventDefault();
                   handleToggle('cycle', '__no_cycle__');
                 }}
-                className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted"
+                className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <CycleIcon className="size-3.5 shrink-0 opacity-40 text-foreground" />
@@ -987,7 +978,7 @@ export function FilterDropdown({
                           e.preventDefault();
                           handleToggle('cycle', c.id);
                         }}
-                        className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted"
+                        className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <CycleIcon className="size-3.5 shrink-0 text-foreground" />
@@ -1005,18 +996,18 @@ export function FilterDropdown({
         {/* 12. Attach (replacing Module, Submenu with Search) */}
         {filteredItems.some((i) => i.id === 'attach') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted">
+            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
               <Paperclip className="size-4 shrink-0 text-foreground" />
               <span>Attach</span>
               {(filters?.attach.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto" />
+                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border">
+            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none">
               <SubmenuSearchBar
                 value={getSubSearch('attach')}
                 onChange={(v) => setSubSearchVal('attach', v)}
-                placeholder="Search"
+                placeholder="Search..."
               />
               {(
                 [
@@ -1042,7 +1033,7 @@ export function FilterDropdown({
                         e.preventDefault();
                         handleToggle('attach', item.id);
                       }}
-                      className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted"
+                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <IconComp className="size-3.5 shrink-0 text-muted-foreground" />
@@ -1059,18 +1050,18 @@ export function FilterDropdown({
         {/* 13. Start date (Submenu with Search) */}
         {filteredItems.some((i) => i.id === 'start-date') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted">
+            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted [&>svg:last-child]:hidden">
               <CalendarClock className="size-4 shrink-0 text-foreground" />
               <span>Start date</span>
               {(filters?.start_date.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto" />
+                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border">
+            <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border bg-popover text-12 shadow-none">
               <SubmenuSearchBar
                 value={getSubSearch('start-date')}
                 onChange={(v) => setSubSearchVal('start-date', v)}
-                placeholder="Search"
+                placeholder="Search..."
               />
               {(
                 [
@@ -1095,7 +1086,7 @@ export function FilterDropdown({
                         e.preventDefault();
                         handleToggle('start_date', d.id);
                       }}
-                      className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer hover:bg-muted"
+                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer hover:bg-muted focus:bg-muted"
                     >
                       <span>{d.label}</span>
                       {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
@@ -1109,18 +1100,18 @@ export function FilterDropdown({
         {/* 14. Due date (Submenu with Search) */}
         {filteredItems.some((i) => i.id === 'due-date') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted">
+            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted [&>svg:last-child]:hidden">
               <Calendar className="size-4 shrink-0 text-foreground" />
               <span>Due date</span>
               {(filters?.due_date.length ?? (dueDateFilter !== 'all' ? 1 : 0)) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto" />
+                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-52 p-1 rounded-md border-border">
+            <DropdownMenuSubContent className="w-52 p-1 rounded-md border-border bg-popover text-12 shadow-none">
               <SubmenuSearchBar
                 value={getSubSearch('due-date')}
                 onChange={(v) => setSubSearchVal('due-date', v)}
-                placeholder="Search"
+                placeholder="Search..."
               />
               {(
                 [
@@ -1146,7 +1137,7 @@ export function FilterDropdown({
                         e.preventDefault();
                         handleToggle('due_date', opt.id);
                       }}
-                      className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer hover:bg-muted"
+                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer hover:bg-muted focus:bg-muted"
                     >
                       <span>{opt.label}</span>
                       {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
@@ -1160,18 +1151,18 @@ export function FilterDropdown({
         {/* 15. Created at (Submenu with Search) */}
         {filteredItems.some((i) => i.id === 'created-at') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted">
+            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted [&>svg:last-child]:hidden">
               <Calendar className="size-4 shrink-0 text-foreground" />
               <span>Created at</span>
               {(filters?.created_at.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto" />
+                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border">
+            <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border bg-popover text-12 shadow-none">
               <SubmenuSearchBar
                 value={getSubSearch('created-at')}
                 onChange={(v) => setSubSearchVal('created-at', v)}
-                placeholder="Search"
+                placeholder="Search..."
               />
               {['Today', 'This week', 'This month', 'This year']
                 .filter((d) => {
@@ -1189,7 +1180,7 @@ export function FilterDropdown({
                         e.preventDefault();
                         handleToggle('created_at', val);
                       }}
-                      className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer hover:bg-muted"
+                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer hover:bg-muted focus:bg-muted"
                     >
                       <span>{d}</span>
                       {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
@@ -1203,18 +1194,18 @@ export function FilterDropdown({
         {/* 16. Updated at (Submenu with Search) */}
         {filteredItems.some((i) => i.id === 'updated-at') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted">
+            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted [&>svg:last-child]:hidden">
               <Calendar className="size-4 shrink-0 text-foreground" />
               <span>Updated at</span>
               {(filters?.updated_at.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto" />
+                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border">
+            <DropdownMenuSubContent className="w-48 p-1 rounded-md border-border bg-popover text-12 shadow-none">
               <SubmenuSearchBar
                 value={getSubSearch('updated-at')}
                 onChange={(v) => setSubSearchVal('updated-at', v)}
-                placeholder="Search"
+                placeholder="Search..."
               />
               {['Today', 'This week', 'This month', 'This year']
                 .filter((d) => {
@@ -1232,7 +1223,7 @@ export function FilterDropdown({
                         e.preventDefault();
                         handleToggle('updated_at', val);
                       }}
-                      className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer hover:bg-muted"
+                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer hover:bg-muted focus:bg-muted"
                     >
                       <span>{d}</span>
                       {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
@@ -1246,18 +1237,18 @@ export function FilterDropdown({
         {/* 17. Created by (Submenu with Search & Avatars) */}
         {filteredItems.some((i) => i.id === 'created-by') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2.5 px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted">
+            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
               <UserCircle className="size-4 shrink-0 text-foreground" />
               <span>Created by</span>
               {(filters?.created_by.length ?? 0) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto" />
+                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
               )}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border max-h-56 overflow-y-auto">
+            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-56 overflow-y-auto">
               <SubmenuSearchBar
                 value={getSubSearch('created-by')}
                 onChange={(v) => setSubSearchVal('created-by', v)}
-                placeholder="Search"
+                placeholder="Search..."
               />
               {(() => {
                 const q = getSubSearch('created-by').toLowerCase().trim();
@@ -1283,7 +1274,7 @@ export function FilterDropdown({
                         e.preventDefault();
                         handleToggle('created_by', user.id);
                       }}
-                      className="flex items-center justify-between px-2.5 py-1.5 text-13 cursor-pointer text-foreground hover:bg-muted"
+                      className="flex items-center justify-between px-2 py-1.5 text-12 rounded-sm cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         {user.avatar ? (

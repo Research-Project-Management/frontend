@@ -11,6 +11,7 @@ import {
   Settings,
   UserStar,
   MoreHorizontal,
+  Compass,
   Archive,
   Star,
   Share2,
@@ -44,15 +45,16 @@ import {
 } from '@/shared/components/icons';
 import { useProjects } from '../hooks/use-project';
 import { useFavorites } from '../hooks/use-favorites';
-import { CreateProjectModal } from './project/CreateProjectModal';
-import { CreateModal } from '@/features/projects/project-id/work-items/components/modals/CreateModal';
 import { useProject } from '@/features/projects/project-id/work-items/hooks/use-work-item';
+import { CreateProjectModal } from '@/features/projects/shell/components/project/CreateProjectModal';
+import { CreateModal } from '@/features/projects/project-id/work-items/components/modals/CreateModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ProjectModuleKey = 'work-items' | 'views' | 'pages' | 'cycles';
+type ProjectModuleKey = 'overview' | 'work-items' | 'views' | 'pages' | 'cycles';
 
 const MODULE_ORDER: ProjectModuleKey[] = [
+  'overview',
   'work-items',
   'views',
   'pages',
@@ -60,10 +62,11 @@ const MODULE_ORDER: ProjectModuleKey[] = [
 ];
 
 const modulesConfig: Record<ProjectModuleKey, { label: string; icon: React.ComponentType<any>; path: string }> = {
-  'work-items': { label: 'Work items', icon: WorkItemsIcon, path: 'work-items' },
-  'views':      { label: 'Views',      icon: Layers,        path: 'views' },
-  'pages':      { label: 'Pages',      icon: FileText,      path: 'pages' },
-  'cycles':     { label: 'Cycles',     icon: CycleIcon,     path: 'cycles' },
+  'overview':   { label: 'Overview',   icon: Compass,          path: 'overview' },
+  'work-items': { label: 'Work items', icon: WorkItemsIcon,    path: 'work-items' },
+  'views':      { label: 'Views',      icon: Layers,           path: 'views' },
+  'pages':      { label: 'Pages',      icon: FileText,         path: 'pages' },
+  'cycles':     { label: 'Cycles',     icon: CycleIcon,        path: 'cycles' },
 };
 
 type NavItem = {
@@ -156,7 +159,21 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         id: 'views',
         label: 'Views',
         icon: Layers,
-        to: activeProjectId ? `/projects/${activeProjectId}/views` : '/projects/views',
+        to: '/projects/views',
+        canHide: true,
+      },
+      {
+        id: 'cycles',
+        label: 'Cycles',
+        icon: CycleIcon,
+        to: '/projects/cycles',
+        canHide: true,
+      },
+      {
+        id: 'pages',
+        label: 'Pages',
+        icon: FileText,
+        to: '/projects/pages',
         canHide: true,
       },
       {
@@ -174,7 +191,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         canHide: true,
       },
     ],
-    [activeProjectId]
+    []
   );
 
   // ── Favorite projects (persisted & synchronized across views) ─────────────
@@ -398,9 +415,10 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                 : ['work-items', 'views', 'pages', 'cycles'];
             const activeSet = new Set(rawModules);
 
-            // Strictly filter by MODULE_ORDER, ensuring work-items is always present as the core module
+            // Strictly filter by MODULE_ORDER, ensuring overview and work-items are always present as core navigation
             const effectiveModules = MODULE_ORDER.filter(
               (k) =>
+                k === 'overview' ||
                 k === 'work-items' ||
                 !projectModules ||
                 projectModules.length === 0 ||
@@ -791,7 +809,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           members={activeProjectState.members}
           project={activeProjectState.project}
           cycles={activeProjectState.cycles}
-          onSubmit={async (formData) => {
+          onSubmit={async (formData: any) => {
             const targetProjId = (formData as any).projectId || activeProjectId;
             if (!targetProjId) {
               toast.error('Please select or create a project first');

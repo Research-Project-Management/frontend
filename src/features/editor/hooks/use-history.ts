@@ -41,8 +41,14 @@ export function useVersionActions() {
   const queryClient = useQueryClient();
 
   const saveVersion = useMutation({
-    mutationFn: (payload: { pageId: string; label?: string; rootPageId?: string }) =>
-      versionService.save(payload),
+    mutationFn: (payload: {
+      pageId: string;
+      label?: string;
+      content?: string;
+      eventType?: string;
+      fileName?: string;
+      rootPageId?: string;
+    }) => versionService.save(payload),
     onSuccess: (newVersion, { pageId, rootPageId }) => {
       queryClient.invalidateQueries({ queryKey: versionKeys.byPage(pageId) });
       if (rootPageId) {

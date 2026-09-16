@@ -1,21 +1,16 @@
-'use client';
+import type { Metadata } from 'next';
+import { Suspense } from 'react';
+import WorkspaceViewsPage from '@/features/projects/shell/pages/WorkspaceViewsPage';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useProjects } from '@/features/projects/shell/hooks/use-project';
+export const metadata: Metadata = {
+  title: 'Views · Flux',
+  description: 'Workspace views and cross-project custom filters.',
+};
 
-export default function WorkspaceViewsRedirectPage() {
-  const router = useRouter();
-  const { projects = [], isLoading } = useProjects();
-
-  useEffect(() => {
-    if (isLoading) return;
-    if (projects && projects.length > 0) {
-      router.replace(`/projects/${projects[0].id}/views`);
-    } else {
-      router.replace('/projects');
-    }
-  }, [projects, isLoading, router]);
-
-  return null;
+export default function ProjectsViewsRoute() {
+  return (
+    <Suspense fallback={null}>
+      <WorkspaceViewsPage />
+    </Suspense>
+  );
 }

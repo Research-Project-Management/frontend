@@ -64,7 +64,7 @@ export default function Navbar() {
               Sign in
             </Link>
             <Link
-              href={isAuthenticated ? '/home' : '/register'}
+              href={isAuthenticated ? '/home' : '/login'}
               className='group flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer shrink-0'
             >
               Get started
@@ -105,7 +105,7 @@ export default function Navbar() {
                   Sign in
                 </Link>
                 <Link
-                  href={isAuthenticated ? '/home' : '/register'}
+                  href={isAuthenticated ? '/home' : '/login'}
                   className='flex items-center justify-center gap-1.5 min-h-11 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer shrink-0'
                   onClick={() => setIsMenuOpen(false)}
                 >

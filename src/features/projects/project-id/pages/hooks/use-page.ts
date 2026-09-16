@@ -28,18 +28,18 @@ export const usePageActions = () => {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.project(variables.projectId) });
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      toast.success('Page created');
+      toast.success('Page created', { id: 'project-page-action' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to create page'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to create page', { id: 'project-page-action' }),
   });
 
   const deletePage = useMutation({
     mutationFn: (pageId: string) => PageService.delete(pageId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      toast.success('Page deleted');
+      toast.success('Page deleted', { id: 'project-page-action' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to delete page'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to delete page', { id: 'project-page-action' }),
   });
 
   const updateTitle = useMutation({
@@ -50,9 +50,9 @@ export const usePageActions = () => {
         queryClient.invalidateQueries({ queryKey: pageKeys.detail(data.id) });
       }
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      toast.success('Title updated');
+      toast.success('Title updated', { id: 'project-page-action' });
     },
-    onError: (error: Error) => toast.error(error.message || 'Failed to update title'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to update title', { id: 'project-page-action' }),
   });
 
   return { createPage, deletePage, updateTitle };

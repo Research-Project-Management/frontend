@@ -69,10 +69,7 @@ export const IngestionService = {
       collectionId?: string;
     },
   ) =>
-    apiPost<{
-      success: boolean;
-      data: { id: string; title: string; doi?: string; year?: number; citationKey?: string };
-    }>(
+    apiPost<{ id: string; title: string; doi?: string; year?: number; citationKey?: string }>(
       `/api/v1/library/ingestion/confirm-url`,
       {
         ...payload,

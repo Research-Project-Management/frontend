@@ -22,6 +22,7 @@ import {
   FolderOpen,
   Folder,
   Image,
+  ListTree,
   Loader2,
   Paperclip,
   Pencil,
@@ -32,7 +33,6 @@ import {
   FileType,
   BookText,
   Braces,
-  ListTree,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/components/ui";
@@ -90,97 +90,15 @@ import {
   TEX_EXTS,
   type PendingUploadItem as PendingItem,
 } from "./UploadConflictDialog";
+import { parseDocumentOutline, OUTLINE_INDENT } from "../outline/OutlineTab";
 
-
-type OutlineEntry = {
-  level: number;
-  title: string;
-  line: number;
+const OUTLINE_COLORS: Record<number, string> = {
+  0: "font-medium text-foreground",
+  1: "text-foreground/90",
+  2: "text-muted-foreground",
+  3: "text-muted-foreground/80",
+  4: "text-muted-foreground/70",
 };
-
-const SECTION_PATTERNS: { regex: RegExp; level: number }[] = [
-  { regex: /^\\chapter\*?(?:\[[^\]]*\])?\{(.+?)\}/, level: 0 },
-  { regex: /^\\section\*?(?:\[[^\]]*\])?\{(.+?)\}/, level: 0 },
-  { regex: /^\\subsection\*?(?:\[[^\]]*\])?\{(.+?)\}/, level: 1 },
-  { regex: /^\\subsubsection\*?(?:\[[^\]]*\])?\{(.+?)\}/, level: 2 },
-  { regex: /^\\paragraph\*?(?:\[[^\]]*\])?\{(.+?)\}/, level: 3 },
-];
-
-const OUTLINE_INDENT = [0, 12, 24, 32];
-const OUTLINE_COLORS = [
-  "text-foreground font-medium",
-  "text-foreground/80",
-  "text-muted-foreground",
-  "text-muted-foreground/70 italic",
-];
-
-function parseOutline(content: any): OutlineEntry[] {
-  const str = typeof content === 'string'
-    ? content
-    : content && typeof content === 'object'
-      ? (content.source || content.text || content.content || '')
-      : '';
-  const entries: OutlineEntry[] = [];
-  str.split("\n").forEach((rawLine: string, idx: number) => {
-    const line = rawLine.trimStart();
-    for (const { regex, level } of SECTION_PATTERNS) {
-      const match = line.match(regex);
-      if (match) {
-        entries.push({ level, title: match[1].trim(), line: idx + 1 });
-        break;
-      }
-    }
-  });
-  return entries;
-}
-
-function flattenPdfOutline(items: any[]): any[] {
-  const result: any[] = [];
-  for (const item of items) {
-    result.push(item);
-    if (item.items?.length) result.push(...flattenPdfOutline(item.items));
-  }
-  return result;
-}
-
-async function findPdfPageForTitle(
-  doc: any,
-  title: string,
-): Promise<number | null> {
-  const needle = title.toLowerCase().trim();
-
-  try {
-    const outline = await doc.getOutline();
-    if (outline?.length) {
-      for (const item of flattenPdfOutline(outline)) {
-        if (item.title && item.title.toLowerCase().includes(needle)) {
-          const dest = Array.isArray(item.dest)
-            ? item.dest
-            : await doc.getDestination(item.dest);
-          if (dest) {
-            const pageIndex = await doc.getPageIndex(dest[0]);
-            return pageIndex + 1;
-          }
-        }
-      }
-    }
-  } catch (err) {
-    logger.debug('[FilesTab] Outline navigation lookup failed', { err });
-  }
-
-  for (let i = 1; i <= doc.numPages; i++) {
-    try {
-      const page = await doc.getPage(i);
-      const content = await page.getTextContent();
-      const text = (content.items as any[]).map((it) => it.str).join(" ");
-      if (text.toLowerCase().includes(needle)) return i;
-    } catch (err) {
-      logger.debug('[FilesTab] Text content search failed for page', { page: i, err });
-    }
-  }
-
-  return null;
-}
 
 // ── Main FilesTab ───────────────────────────────────────────────────────────
 
@@ -200,14 +118,16 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const {
     currentPage,
     activeFilePage,
-    editorRef,
-    getEditorContent,
-    pdfDocRef,
-    gotoPageRef,
     setTexFiles,
     setSelectedAsset,
+    editorRef,
+    scrollToLineRef,
   } = usePageStore();
   const { openTab } = useTabsStore();
+
+  const [isOutlineOpen, setIsOutlineOpen] = useState(false);
+  const docContent = currentPage?.content || "";
+  const outline = useMemo(() => parseDocumentOutline(docContent), [docContent]);
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -225,8 +145,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [pendingUploads, setPendingUploads] = useState<PendingItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [isOutlineOpen, setIsOutlineOpen] = useState(true);
-  const [outline, setOutline] = useState<OutlineEntry[]>([]);
   const dragCounterRef = useRef(0);
 
   // pageId from URL is always the project root page after the routing refactor.
@@ -259,58 +177,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     const names = files.map((f: any) => f.title);
     setTexFiles(names);
   }, [files, setTexFiles]);
-
-  useEffect(() => {
-    let disposed = false;
-    let subscription: { dispose: () => void } | null = null;
-    let retryTimer: ReturnType<typeof setInterval> | null = null;
-
-    const readInitialContent = () =>
-      getEditorContent.current?.() ||
-      editorRef.current?.getValue() ||
-      activeFilePage?.content ||
-      currentPage?.content ||
-      "";
-
-    const refreshOutline = () => {
-      if (!disposed) setOutline(parseOutline(readInitialContent()));
-    };
-
-    const attachEditorListener = () => {
-      refreshOutline();
-      const editor = editorRef.current;
-      if (!editor) return false;
-
-      subscription?.dispose();
-      subscription = editor.onDidChangeModelContent(() => {
-        if (!disposed) setOutline(parseOutline(editor.getValue()));
-      });
-      return true;
-    };
-
-    let attempts = 0;
-    if (!attachEditorListener()) {
-      retryTimer = setInterval(() => {
-        attempts++;
-        if ((attachEditorListener() || attempts > 20) && retryTimer) {
-          clearInterval(retryTimer);
-          retryTimer = null;
-        }
-      }, 250);
-    }
-
-    return () => {
-      disposed = true;
-      subscription?.dispose();
-      if (retryTimer) clearInterval(retryTimer);
-    };
-  }, [
-    activeFilePage?.id,
-    activeFilePage?.content,
-    currentPage?.content,
-    editorRef,
-    getEditorContent,
-  ]);
 
   const { createFile: createFileMutation, setMainFile: setMainFileMutation } = useFileActions();
   const { deletePage: deletePageMutation, updateTitle: updateTitleMutation, updateContent: updateContentMutation } = usePageActions();
@@ -348,25 +214,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       setSearchParams({ file: item.id });
     },
     [parentPageId, openTab, setSearchParams, setSelectedAsset],
-  );
-
-  const handleOutlineClick = useCallback(
-    async (line: number, title: string) => {
-      const editor = editorRef.current;
-      if (editor) {
-        editor.revealLineInCenter(line);
-        editor.setPosition({ lineNumber: line, column: 1 });
-        editor.focus();
-      }
-
-      const doc = pdfDocRef.current;
-      const scrollToPage = gotoPageRef.current;
-      if (!doc || !scrollToPage) return;
-
-      const page = await findPdfPageForTitle(doc, title);
-      if (page !== null) scrollToPage(page);
-    },
-    [editorRef, gotoPageRef, pdfDocRef],
   );
 
   const handleFileClick = (fileId: string, title: string) => {
@@ -782,7 +629,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         const src = model.getValue();
         if (!/\\usepackage(?:\[.*?\])?\{graphicx\}/.test(src)) {
           const lines = src.split("\n");
-          const beginDocIdx = lines.findIndex((l) =>
+          const beginDocIdx = lines.findIndex((l: string) =>
             /\\begin\{document\}/.test(l),
           );
           if (beginDocIdx >= 0) {
@@ -941,10 +788,16 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     [parentPageId, uploadFile, createFileMutation, parentPage],
   );
 
+  const handleOutlineClick = useCallback(
+    (line: number, _title?: string) => {
+      scrollToLineRef.current?.(line);
+    },
+    [scrollToLineRef],
+  );
 
   return (
     <>
-      <div className="w-full h-full flex flex-col select-none text-sm">
+      <div className="w-full h-full flex flex-col select-none text-sm bg-background">
         {/* Hidden upload inputs */}
         <input
           ref={combinedUploadRef}
@@ -962,8 +815,8 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           {...({ webkitdirectory: "", directory: "" } as any)}
         />
 
-        {/* GöÇGöÇ Header toolbar GöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇ */}
-        <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
+        {/* Header toolbar */}
+        <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-background">
           <span className="text-xs font-semibold text-muted-foreground">
             Explorer
           </span>
@@ -981,7 +834,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 <TooltipTrigger asChild>
                   <button
                     onClick={action}
-                    className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer"
+                    className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-sidebar-hover cursor-pointer"
                   >
                     <Icon className="size-3.5 shrink-0" />
                   </button>
@@ -994,7 +847,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 <TooltipTrigger asChild>
                   <button
                     onClick={onClose}
-                    className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer"
+                    className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-sidebar-hover cursor-pointer"
                   >
                     <X className="size-3.5 shrink-0" />
                   </button>
@@ -1255,7 +1108,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             })()}
         </div>
 
-        <div className="shrink-0 border-t border-border bg-card">
+        <div className="shrink-0 border-t border-border bg-background">
           <button
             type="button"
             onClick={() => setIsOutlineOpen((value) => !value)}
@@ -1269,14 +1122,14 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             />
             <ListTree className="size-3.5 shrink-0" />
             <span className="min-w-0 flex-1 truncate">Outline</span>
-            <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+            <span className="rounded-full bg-muted px-1.5 py-0.5 text-11 font-mono font-medium text-foreground">
               {outline.length}
             </span>
           </button>
           {isOutlineOpen && (
             <div className="max-h-[42vh] overflow-y-auto pb-1">
               {outline.length === 0 ? (
-                <div className="px-9 py-2 text-xs text-muted-foreground">
+                <div className="px-9 py-2 text-xs text-foreground/75">
                   No sections found.
                 </div>
               ) : (
@@ -1295,14 +1148,14 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                   >
                     <ChevronRight
                       className={cn(
-                        "shrink-0 text-muted-foreground/60",
+                        "shrink-0 text-muted-foreground",
                         entry.level === 0 ? "size-3.5" : "size-3",
                       )}
                     />
                     <span className="min-w-0 flex-1 truncate">
                       {entry.title}
                     </span>
-                    <span className="shrink-0 text-xs text-muted-foreground/60">
+                    <span className="shrink-0 text-11 font-mono text-muted-foreground">
                       :{entry.line}
                     </span>
                   </button>

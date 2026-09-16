@@ -89,8 +89,8 @@ export function useViewSettings(projectId: string) {
     updateProject(
       { projectId, settings: newSettings } as any,
       {
-        onSuccess: () => toast.success('View settings saved'),
-        onError: (err: any) => toast.error(err?.message || 'Failed to update view settings'),
+        onSuccess: () => toast.success('View settings saved', { id: 'settings-view' }),
+        onError: (err: any) => toast.error(err?.message || 'Failed to update view settings', { id: 'settings-view' }),
       },
     );
   }, [

@@ -27,6 +27,7 @@ export interface VisualEditorProps {
   onChange: (latexValue: string) => void;
   theme?: 'light' | 'dark';
   readOnly?: boolean;
+  onSwitchToCode?: () => void;
 }
 
 export default function VisualEditor({
@@ -34,6 +35,7 @@ export default function VisualEditor({
   onChange,
   theme = 'light',
   readOnly = false,
+  onSwitchToCode,
 }: VisualEditorProps) {
   const originalLatexRef = useRef<string>(value);
   const isInternalUpdateRef = useRef(false);
@@ -89,10 +91,17 @@ export default function VisualEditor({
     }
     if (editor && value !== originalLatexRef.current) {
       originalLatexRef.current = value;
-      const newHtml = latexToHtml(value);
-      editor.commands.setContent(newHtml);
+      const html = latexToHtml(value);
+      editor.commands.setContent(html, { emitUpdate: false });
     }
   }, [value, editor]);
+
+  // Synchronize editable state whenever readOnly prop changes dynamically
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) {
+      editor.setEditable(!readOnly);
+    }
+  }, [editor, readOnly]);
 
   const insertMathFormula = () => {
     if (!editor || !mathFormula.trim()) return;
@@ -132,8 +141,34 @@ export default function VisualEditor({
 
   return (
     <div className={cn('h-full w-full flex flex-col bg-background', theme === 'dark' ? 'dark' : '')}>
+      {/* ── LaTeX Source Fidelity Warning Banner ── */}
+      <div className="flex items-center justify-between px-3 py-1.5 bg-amber-500/10 border-b border-amber-500/20 text-amber-800 dark:text-amber-200 text-xs shrink-0 select-none">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-900 dark:text-amber-100 uppercase tracking-wide">
+            Visual Mode (Beta)
+          </span>
+          <span className="text-[11px] text-amber-900/90 dark:text-amber-200/90">
+            Rich-text mode simplifies custom macros and comments. Switch to <strong>Code</strong> mode for 100% LaTeX source fidelity (Overleaf standard).
+          </span>
+        </div>
+        {onSwitchToCode && (
+          <button
+            type="button"
+            onClick={onSwitchToCode}
+            className="ml-3 px-2 py-0.5 text-11 font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-100 rounded transition-colors cursor-pointer shrink-0"
+          >
+            Switch to Code
+          </button>
+        )}
+      </div>
+
       {/* ── Visual Editor Toolbar ── */}
-      <div className="flex flex-wrap items-center gap-1 px-3 py-1.5 border-b border-border bg-muted/30 shrink-0 select-none">
+      <div
+        className={cn(
+          'flex flex-wrap items-center gap-1 px-3 py-1.5 border-b border-border bg-muted/30 shrink-0 select-none',
+          readOnly && 'pointer-events-none opacity-50',
+        )}
+      >
         {/* Headings */}
         <button
           type="button"

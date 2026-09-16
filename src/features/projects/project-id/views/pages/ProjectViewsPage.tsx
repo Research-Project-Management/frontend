@@ -119,7 +119,7 @@ export function ProjectViewsPage() {
     if (typeof window !== 'undefined') {
       const url = `${window.location.origin}/projects/${projectId}/views/${view.id}`;
       navigator.clipboard.writeText(url);
-      toast.success('Link copied to clipboard');
+      toast.success('Link copied to clipboard', { id: 'project-view-clipboard' });
     }
   };
 

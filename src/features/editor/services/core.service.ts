@@ -60,11 +60,14 @@ export const fileService = {
     title: string;
     content?: string;
   }): Promise<PageFile> => {
-    const res = await apiPost<{ page: PageFile }>(`/api/pages/${parentPageId}/files`, {
-      title,
-      content,
-    });
-    return res.page;
+    const res = await apiPost<{ page?: PageFile; file?: PageFile }>(
+      `/api/pages/${parentPageId}/files`,
+      {
+        title,
+        content,
+      },
+    );
+    return (res.file || res.page)!;
   },
 
   setMain: async ({ pageId, fileId }: { pageId: string; fileId: string }): Promise<Page> => {

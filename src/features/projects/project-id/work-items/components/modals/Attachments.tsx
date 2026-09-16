@@ -64,7 +64,7 @@ export type AttachmentsProps = {
   onDetachPage?: (pageId: string) => void;
   onAttachPaper?: (paper: { paperId: string; title: string; doi?: string; citationKey?: string }) => void;
   onDetachPaper?: (paperId: string) => void;
-  onAttachFile?: (file: { name: string; url: string; size?: number; type?: string }) => void;
+  onAttachFile?: (file: { name: string; url: string; size?: number; type?: string; fileId?: string }) => void;
   onDetachFile?: (fileId: string) => void;
   onAttachLink?: (link: { title: string; url: string }) => void;
   onDetachLink?: (linkIndex: number) => void;
@@ -200,12 +200,13 @@ export function Attachments({
         successMessage: 'File attached successfully',
         errorMessage: 'Failed to upload file',
       });
-      results.forEach(({ file: f, url: uploadedUrl }) => {
+      results.forEach(({ file: f, url: uploadedUrl, fileId }) => {
         onAttachFile?.({
           name: f.name,
           url: uploadedUrl,
           size: f.size,
           type: f.type,
+          fileId,
         });
       });
     } catch {

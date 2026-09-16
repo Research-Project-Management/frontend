@@ -368,7 +368,7 @@ function SuggestionCard({
   return (
     <div
       className={cn(
-        'mx-3 my-2 rounded-lg border bg-background p-3 space-y-2.5 transition-all text-xs',
+        'mx-3 my-2 rounded-lg border bg-background p-3 space-y-2.5 transition-colors text-xs',
         isPending ? 'border-border shadow-xs' : 'border-border/40 opacity-70',
       )}
     >
@@ -551,9 +551,9 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
   };
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-card text-card-foreground">
+    <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
       {/* ── Top Header ── */}
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-background">
         <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
           <MessageSquare className="size-3.5 shrink-0" />
           Review & Phản biện
@@ -564,7 +564,7 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
               type="button"
               onClick={handleOpenAddForm}
               title="Add comment"
-              className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer"
+              className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-sidebar-hover cursor-pointer"
             >
               <MessageSquarePlus className="size-4 shrink-0" />
             </button>
@@ -573,7 +573,7 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
             <button
               type="button"
               onClick={onClose}
-              className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer"
+              className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-sidebar-hover cursor-pointer"
             >
               <X className="size-3.5 shrink-0" />
             </button>
@@ -582,7 +582,7 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
       </div>
 
       {/* ── Sub-tab Switcher: Comments vs Track Changes ── */}
-      <div className="flex border-b border-border bg-muted/40 p-1 gap-1 shrink-0">
+      <div className="flex border-b border-border bg-background p-1 gap-1 shrink-0">
         <button
           type="button"
           onClick={() => setSubTab('comments')}

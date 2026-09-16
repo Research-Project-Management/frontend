@@ -89,10 +89,10 @@ export function useGeneral(projectId: string, workspaceId?: string) {
         } as any,
         {
           onSuccess: () => {
-            toast.success('Project details updated');
+            toast.success('Project details updated', { id: 'settings-general' });
             reset(values);
           },
-          onError: (err: any) => toast.error(err?.message || 'Failed to update project'),
+          onError: (err: any) => toast.error(err?.message || 'Failed to update project', { id: 'settings-general' }),
         },
       );
     },
@@ -139,9 +139,9 @@ export function useGeneral(projectId: string, workspaceId?: string) {
         setIsUploading(true);
         const url = await uploadGenericFile(file, workspaceId);
         setValue('cover', url, { shouldDirty: true });
-        toast.success('Cover uploaded');
+        toast.success('Cover uploaded', { id: 'settings-general' });
       } catch (err: unknown) {
-        toast.error(getErrorMessage(err) || 'Failed to upload cover');
+        toast.error(getErrorMessage(err) || 'Failed to upload cover', { id: 'settings-general' });
       } finally {
         setIsUploading(false);
       }

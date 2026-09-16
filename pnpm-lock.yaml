@@ -170,6 +170,9 @@ importers:
       monaco-latex:
         specifier: ^0.1.1
         version: 0.1.1(monaco-editor@0.56.0)
+      monaco-vim:
+        specifier: ^0.4.4
+        version: 0.4.4(monaco-editor@0.56.0)
       next:
         specifier: ^16.3.3
         version: 16.3.4(@babel/core@7.29.7)(@playwright/test@1.62.1)(@types/node@26.2.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -3993,6 +3996,11 @@ packages:
     resolution: {integrity: sha512-/KUR5/CEHi2yUKdEloggwquzPY1x44QbDTydiRLkydStnbPd7Sb0r1ehbtS+h3cLmJ3nTkJqBDBukqoaXwNjKw==}
     peerDependencies:
       monaco-editor: '>=0.20.0'
+
+  monaco-vim@0.4.4:
+    resolution: {integrity: sha512-LNChAb//WEm/W+eyeHG/0+pdVEHotk2hLTN+M3sQZx5E8cAlSWSgqcxpcRuQnxDybSln7pfHF9i63HmbIQvrWw==}
+    peerDependencies:
+      monaco-editor: '*'
 
   motion-dom@13.0.0:
     resolution: {integrity: sha512-Xk+SJas70uMAUIApg+m3lZDShxI3LBFHq7mFGbBKoRXc2PVPDyAKmzN64Bbzt4CZdP/CItTiJxWtn4TA0v53Ng==}
@@ -8736,6 +8744,10 @@ snapshots:
       marked: 14.0.0
 
   monaco-latex@0.1.1(monaco-editor@0.56.0):
+    dependencies:
+      monaco-editor: 0.56.0
+
+  monaco-vim@0.4.4(monaco-editor@0.56.0):
     dependencies:
       monaco-editor: 0.56.0
 

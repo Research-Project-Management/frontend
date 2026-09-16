@@ -6,8 +6,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  ExternalLink,
   Image,
   Loader2,
+  Minimize2,
   MoreHorizontal,
   Play,
   RefreshCw,
@@ -22,6 +24,8 @@ import { Separator } from "@/shared/components/ui";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import type { CompileStatus, LaTeXEngine } from '@/features/editor/store';
+import ViewerOutlinePopover from './subcomponents/ViewerOutlinePopover';
+import type { PdfOutlineItem } from '@/features/editor/utils/pdf-outline.util';
 
 // ── Toolbar Button Helper ───────────────────────────────────────────────────
 
@@ -79,20 +83,34 @@ const COMPILE_MODES = [
   { value: 'draft', label: 'Draft', icon: Zap, description: 'Skip images' },
 ] as const;
 
+const LATEX_ENGINES = [
+  { value: 'pdflatex', label: 'pdfLaTeX', description: 'Standard & fast' },
+  { value: 'xelatex', label: 'XeLaTeX', description: 'Unicode & fontspec' },
+  { value: 'lualatex', label: 'LuaLaTeX', description: 'Modern Lua engine' },
+] as const;
+
 export interface CompileButtonProps {
   compileStatus: CompileStatus;
   onCompile: () => void;
   engine: LaTeXEngine;
+  setEngine?: (e: LaTeXEngine) => void;
   compileMode: 'full' | 'draft';
   setCompileMode: (m: 'full' | 'draft') => void;
+  autoCompile?: boolean;
+  onToggleAutoCompile?: () => void;
+  onClearCacheAndCompile?: () => void;
 }
 
 export function CompileButton({
   compileStatus,
   onCompile,
   engine,
+  setEngine,
   compileMode,
   setCompileMode,
+  autoCompile = true,
+  onToggleAutoCompile,
+  onClearCacheAndCompile,
 }: CompileButtonProps) {
   const isRunning =
     compileStatus !== 'idle' && compileStatus !== 'done' && compileStatus !== 'error';
@@ -114,7 +132,7 @@ export function CompileButton({
             ? statusLabel[compileStatus] ?? 'Compiling document…'
             : 'Compile document (Ctrl+Enter)'
         }
-        className="flex items-center gap-1.5 h-7 px-2.5 rounded-l-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary-hover transition-colors disabled:opacity-60 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        className="flex items-center gap-1.5 h-7 px-2.5 rounded-l-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary-hover transition-colors disabled:opacity-60 outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
       >
         {isRunning ? (
           <Loader2 className="size-3.5 animate-spin shrink-0" />
@@ -128,26 +146,113 @@ export function CompileButton({
           <button
             type="button"
             disabled={isRunning}
-            aria-label="Compile mode options"
-            className="flex items-center justify-center h-7 w-5 rounded-r-md bg-primary text-primary-foreground hover:bg-primary-hover transition-colors disabled:opacity-60 border-l border-primary-foreground/20 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            aria-label="Compile engine and mode options"
+            className="flex items-center justify-center h-7 w-5 rounded-r-md bg-primary text-primary-foreground hover:bg-primary-hover transition-colors disabled:opacity-60 border-l border-primary-foreground/20 outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
           >
             <ChevronDown className="size-3 shrink-0" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-44 z-[9999]">
-          {COMPILE_MODES.map(({ value, label, description }) => (
+        <DropdownMenuContent align="start" className="w-56 z-[9999]">
+          {/* Overleaf Parity: Auto-compile Toggle */}
+          <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground select-none">
+            Auto-compile
+          </div>
+          <DropdownMenuItem
+            onClick={onToggleAutoCompile}
+            className="text-xs flex items-center justify-between cursor-pointer"
+          >
+            <div className="flex items-center gap-1.5">
+              <Check
+                className={cn(
+                  'size-3.5 text-primary shrink-0',
+                  !autoCompile && 'opacity-0',
+                )}
+              />
+              <span>Auto-compile</span>
+            </div>
+            <span
+              className={cn(
+                'text-11 px-1.5 py-0.5 rounded font-medium font-mono',
+                autoCompile
+                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-muted text-muted-foreground',
+              )}
+            >
+              {autoCompile ? 'On' : 'Off'}
+            </span>
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          <div className="px-2 py-1 text-11 font-medium font-mono uppercase tracking-wider text-muted-foreground select-none">
+            Compiler Engine
+          </div>
+          {LATEX_ENGINES.map(({ value, label, description }) => (
+            <DropdownMenuItem
+              key={value}
+              onClick={() => setEngine?.(value as LaTeXEngine)}
+              className={cn(
+                'text-xs flex items-center justify-between cursor-pointer',
+                engine === value && 'font-semibold text-primary bg-muted/60',
+              )}
+            >
+              <div className="flex items-center gap-1.5">
+                <Check
+                  className={cn(
+                    'size-3.5 text-primary shrink-0',
+                    engine !== value && 'opacity-0',
+                  )}
+                />
+                <span>{label}</span>
+              </div>
+              <span className="text-11 font-mono text-muted-foreground">{description}</span>
+            </DropdownMenuItem>
+          ))}
+
+          <DropdownMenuSeparator />
+
+          <div className="px-2 py-1 text-11 font-medium font-mono uppercase tracking-wider text-muted-foreground select-none">
+            Compile Mode
+          </div>
+          {COMPILE_MODES.map(({ value, label, description, icon: ModeIcon }) => (
             <DropdownMenuItem
               key={value}
               onClick={() => setCompileMode(value)}
               className={cn(
-                compileMode === value && 'font-semibold text-primary',
-                'text-xs',
+                'text-xs flex items-center justify-between cursor-pointer',
+                compileMode === value && 'font-semibold text-primary bg-muted/60',
               )}
             >
-              {label}
-              <span className="ml-auto text-xs text-muted-foreground">{description}</span>
+              <div className="flex items-center gap-1.5">
+                <Check
+                  className={cn(
+                    'size-3.5 text-primary shrink-0',
+                    compileMode !== value && 'opacity-0',
+                  )}
+                />
+                <ModeIcon className="size-3.5 text-muted-foreground shrink-0" />
+                <span>{label}</span>
+              </div>
+              <span className="text-11 font-mono text-muted-foreground">{description}</span>
             </DropdownMenuItem>
           ))}
+
+          {/* Overleaf Parity: Clear Cache and Recompile */}
+          {onClearCacheAndCompile && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={onClearCacheAndCompile}
+                className="text-xs flex items-center gap-2 text-rose-600 dark:text-rose-400 focus:text-rose-600 dark:focus:text-rose-400 cursor-pointer"
+              >
+                <RefreshCw className="size-3.5 shrink-0" />
+                <div className="flex flex-col">
+                  <span className="font-medium">Clear cache & recompile</span>
+                  <span className="text-11 text-muted-foreground">Recompile from scratch</span>
+                </div>
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -159,8 +264,12 @@ export function CompileButton({
 export interface ToolbarProps {
   compileStatus: CompileStatus;
   engine: LaTeXEngine;
+  setEngine?: (e: LaTeXEngine) => void;
   compileMode: 'full' | 'draft';
   setCompileMode: (m: 'full' | 'draft') => void;
+  autoCompile?: boolean;
+  onToggleAutoCompile?: () => void;
+  onClearCacheAndCompile?: () => void;
   onCompile: () => void;
   onForceSync: () => void;
   // Zoom
@@ -183,13 +292,21 @@ export interface ToolbarProps {
   showUtilityGroup: boolean;
   onToggleLog: () => void;
   onDownload: () => void;
+  onPopout?: () => void;
+  isPoppedOut?: boolean;
+  outline?: PdfOutlineItem[];
+  onJumpToPage?: (page: number) => void;
 }
 
 export default function Toolbar({
   compileStatus,
   engine,
+  setEngine,
   compileMode,
   setCompileMode,
+  autoCompile,
+  onToggleAutoCompile,
+  onClearCacheAndCompile,
   onCompile,
   onForceSync,
   scale,
@@ -209,17 +326,25 @@ export default function Toolbar({
   showUtilityGroup,
   onToggleLog,
   onDownload,
+  onPopout,
+  isPoppedOut = false,
+  outline = [],
+  onJumpToPage,
 }: ToolbarProps) {
   return (
-    <div className="h-10 border-b border-border bg-secondary/80 flex items-center justify-between px-3 shrink-0 z-10 gap-2">
+    <div className="h-10 border-b border-border bg-background flex items-center justify-between px-3 shrink-0 z-10 gap-2">
       {/* Left: Compile + Zoom controls */}
       <div className="flex items-center gap-1.5">
         <CompileButton
           compileStatus={compileStatus}
           onCompile={onCompile}
           engine={engine}
+          setEngine={setEngine}
           compileMode={compileMode}
           setCompileMode={setCompileMode}
+          autoCompile={autoCompile}
+          onToggleAutoCompile={onToggleAutoCompile}
+          onClearCacheAndCompile={onClearCacheAndCompile}
         />
 
         {showZoomGroup ? (
@@ -308,6 +433,15 @@ export default function Toolbar({
           disabled={pageNumber >= numPages}
         />
 
+        {onJumpToPage && (
+          <ViewerOutlinePopover
+            outline={outline}
+            currentPageNumber={pageNumber}
+            onSelectPage={onJumpToPage}
+            disabled={!pdfUrl}
+          />
+        )}
+
         <Separator orientation="vertical" className="h-5 mx-0.5" />
 
         {showUtilityGroup ? (
@@ -326,6 +460,13 @@ export default function Toolbar({
               onClick={onDownload}
               disabled={!pdfUrl}
             />
+            {onPopout && (
+              <ToolbarButton
+                icon={isPoppedOut ? Minimize2 : ExternalLink}
+                label={isPoppedOut ? 'Re-attach to main window' : 'Pop out viewer to separate window'}
+                onClick={onPopout}
+              />
+            )}
           </>
         ) : (
           <DropdownMenu>
@@ -361,6 +502,19 @@ export default function Toolbar({
                 <Download className="size-3.5 mr-2 text-muted-foreground shrink-0" />
                 <span>Download PDF</span>
               </DropdownMenuItem>
+              {onPopout && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onPopout} className="text-xs">
+                    {isPoppedOut ? (
+                      <Minimize2 className="size-3.5 mr-2 text-muted-foreground shrink-0" />
+                    ) : (
+                      <ExternalLink className="size-3.5 mr-2 text-muted-foreground shrink-0" />
+                    )}
+                    <span>{isPoppedOut ? 'Re-attach to Editor' : 'Pop out to Window'}</span>
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}

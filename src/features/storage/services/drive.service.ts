@@ -23,14 +23,16 @@ export interface FileQueryParams {
 
 export function buildQueryString(params?: FileQueryParams | string | null): string {
   if (!params) return '';
-  if (typeof params === 'string' || params === null) {
-    return `?parentId=${params === null ? 'null' : params}`;
+  if (typeof params === 'string') {
+    return params && params !== 'null' && params !== 'root'
+      ? `?parentId=${encodeURIComponent(params)}`
+      : '';
   }
 
   const searchParams = new URLSearchParams();
 
-  if (params.parentId !== undefined) {
-    searchParams.set('parentId', params.parentId === null ? 'null' : params.parentId);
+  if (params.parentId && params.parentId !== 'null' && params.parentId !== 'root') {
+    searchParams.set('parentId', params.parentId);
   }
   if (params.search && params.search.trim()) {
     searchParams.set('search', params.search.trim());

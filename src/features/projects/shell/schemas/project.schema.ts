@@ -9,6 +9,23 @@ import { z } from 'zod';
  */
 export const ProjectRoleEnum = z.enum(['owner', 'contributor', 'commenter', 'viewer']);
 
+export const ProjectStateEnum = z.enum([
+  'draft',
+  'planning',
+  'execution',
+  'monitoring',
+  'completed',
+  'cancelled',
+]);
+
+export const ProjectPriorityEnum = z.enum([
+  'urgent',
+  'high',
+  'medium',
+  'low',
+  'none',
+]);
+
 /**
  * Minimal User Representation inside Project Members & Lead
  */
@@ -64,6 +81,10 @@ export const ProjectSchema = z.object({
   avatar: z.string().nullish().transform((v) => v ?? undefined),
   coverImage: z.string().nullish().transform((v) => v ?? undefined),
   cover: z.string().nullish().transform((v) => v ?? undefined),
+  state: ProjectStateEnum.default('planning').optional(),
+  priority: ProjectPriorityEnum.default('none').optional(),
+  startDate: z.string().nullish().transform((v) => v ?? undefined),
+  targetDate: z.string().nullish().transform((v) => v ?? undefined),
   isActive: z.boolean().default(true).optional(),
   isArchived: z.boolean().default(false).optional(),
   isFavorite: z.boolean().default(false).optional(),
@@ -96,6 +117,10 @@ export const CreateProjectInputSchema = z.object({
   avatar: z.string().nullable().optional(),
   coverImage: z.string().nullable().optional(),
   cover: z.string().nullable().optional(),
+  state: ProjectStateEnum.optional(),
+  priority: ProjectPriorityEnum.optional(),
+  startDate: z.string().nullable().optional(),
+  targetDate: z.string().nullable().optional(),
   isPrivate: z.boolean().default(false).optional(),
   timezone: z.string().optional(),
   modules: z.array(z.string()).optional(),
@@ -110,7 +135,11 @@ export const createProjectFormSchema = z.object({
   description: z.string(),
   avatar: z.string(),
   cover: z.string(),
-  isPrivate: z.boolean(),
+  state: ProjectStateEnum.default('planning'),
+  priority: ProjectPriorityEnum.default('none'),
+  startDate: z.string().nullable().optional(),
+  targetDate: z.string().nullable().optional(),
+  isPrivate: z.boolean().optional(),
 });
 
 export type CreateProjectFormValues = z.infer<typeof createProjectFormSchema>;
@@ -126,6 +155,10 @@ export const UpdateProjectInputSchema = z.object({
   avatar: z.string().nullable().optional(),
   coverImage: z.string().nullable().optional(),
   cover: z.string().nullable().optional(),
+  state: ProjectStateEnum.optional(),
+  priority: ProjectPriorityEnum.optional(),
+  startDate: z.string().nullable().optional(),
+  targetDate: z.string().nullable().optional(),
   isPrivate: z.boolean().optional(),
   timezone: z.string().optional(),
   isActive: z.boolean().optional(),

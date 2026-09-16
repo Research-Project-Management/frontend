@@ -377,37 +377,6 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
         )}
       </div>
 
-      {/* Citation Key Bar */}
-      {citeKey && (
-        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-md border border-border/80 bg-muted/30 text-xs">
-          <div className="flex items-center gap-1.5 min-w-0 pr-2">
-            <span className="text-muted-foreground text-11 shrink-0 font-medium">Citekey</span>
-            <span className="font-mono text-11 text-foreground truncate select-text font-semibold">
-              @{citeKey}
-            </span>
-          </div>
-          <TooltipProvider delayDuration={700}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const ok = await copyToClipboard(citeKey);
-                    if (ok) toast.success(`Copied @${citeKey} to clipboard`, { id: 'library-clipboard' });
-                  }}
-                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0"
-                  aria-label="Copy citation key"
-                >
-                  <Copy className="size-3.5 text-foreground shrink-0" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={4} className="text-xs px-2 py-1">
-                Copy @citekey
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      )}
 
       {/* In-Text Citation Preview Row (Academic styles only) */}
       {!isExportFormat && inTextPreview && (

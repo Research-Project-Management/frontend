@@ -13,6 +13,7 @@ import { useCompileStore, usePageStore, type CompileStatus } from '@/features/ed
 import type { ParsedLog } from './Logs';
 import { fetchWordCount } from '@/features/editor/services/compiler.service';
 import RawLogModal from './RawLogModal';
+import { WordCountDialog } from '../editor/subcomponents/WordCountDialog';
 
 export interface StatusProps {
   compileStatus: CompileStatus;
@@ -20,6 +21,7 @@ export interface StatusProps {
   pdfUrl: string | null;
   parsedLog: ParsedLog | null;
   onToggleLog: () => void;
+  onJumpToFirstError?: () => void;
 }
 
 export default function Status({
@@ -28,11 +30,13 @@ export default function Status({
   pdfUrl,
   parsedLog,
   onToggleLog,
+  onJumpToFirstError,
 }: StatusProps) {
   const { getEditorContent } = usePageStore();
   const compileLog = useCompileStore((s) => s.compileLog);
   const [wordCount, setWordCount] = useState<number | null>(null);
   const [rawLogOpen, setRawLogOpen] = useState(false);
+  const [wordCountOpen, setWordCountOpen] = useState(false);
 
   useEffect(() => {
     if (compileStatus === 'done') {
@@ -109,6 +113,18 @@ export default function Status({
           </button>
         )}
 
+        {/* Overleaf Parity: Jump to First Error Shortcut */}
+        {parsedLog && parsedLog.errors.length > 0 && onJumpToFirstError && (
+          <button
+            type="button"
+            onClick={onJumpToFirstError}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors cursor-pointer"
+            title="Jump directly to the first error in code"
+          >
+            <span>Jump to first error</span>
+          </button>
+        )}
+
         {/* Overleaf Parity: Raw Logs Modal Trigger */}
         {(compileStatus === 'error' || compileStatus === 'done') && compileLog && (
           <button
@@ -124,13 +140,15 @@ export default function Status({
       </div>
       <div className="flex items-center gap-3">
         {wordCount !== null && (
-          <span
-            className="flex items-center gap-1 text-muted-foreground"
-            title="Academic words in text (Overleaf texcount parity)"
+          <button
+            type="button"
+            onClick={() => setWordCountOpen(true)}
+            className="flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/80 px-1.5 py-0.5 rounded transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            title="Click to view full TeXcount statistics breakdown"
           >
-            <FileText className="size-3 shrink-0" />
-            {wordCount.toLocaleString()} words
-          </span>
+            <FileText className="size-3 text-primary shrink-0" />
+            <span className="font-medium">{wordCount.toLocaleString()} words</span>
+          </button>
         )}
         {pdfUrl && compileStatus !== 'compiling' && (
           <span className="text-success font-medium">PDF ready</span>
@@ -143,6 +161,13 @@ export default function Status({
         onOpenChange={setRawLogOpen}
         logs={compileLog || ''}
         hasErrors={compileStatus === 'error'}
+      />
+
+      {/* TeXcount Word Count Modal */}
+      <WordCountDialog
+        open={wordCountOpen}
+        onClose={() => setWordCountOpen(false)}
+        content={getEditorContent.current?.() ?? ''}
       />
     </div>
   );

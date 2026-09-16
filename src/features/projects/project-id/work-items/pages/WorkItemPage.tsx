@@ -27,7 +27,7 @@ import {
   useBulkRestore,
   useArchivedItems,
 } from "../hooks/use-archive";
-import { ItemHelpers, WorkItemHelpers, resolveColumnId, resolveStateId } from "../utils/work-item.utils";
+import { ItemHelpers, WorkItemHelpers, resolveColumnId, resolveStateId, getItemBucketKey } from "../utils/work-item.utils";
 import { useTopbar } from "../hooks/use-topbar";
 import { useRealtimeWorkItems } from "../hooks/use-realtime";
 import type {
@@ -359,8 +359,19 @@ export function WorkItemPage({
   }, [rawViewId, savedViews, selectSavedView]);
 
   // ── 3. Dynamic GroupBy Adapter (Plane.so matching architecture) ──────────
+  // If groupBy is 'cycle' but project has no cycles or is in a cycle view, fallback to 'state'
+  const effectiveGroupBy = useMemo(() => {
+    const gb = displayOptions.groupBy;
+    if (gb === 'cycle' && (cycles.length === 0 || Boolean(cycleId))) {
+      return 'state';
+    }
+    return gb && ['state', 'priority', 'assignee', 'cycle', 'labels', 'none', 'createdBy'].includes(gb)
+      ? gb
+      : 'state';
+  }, [displayOptions.groupBy, cycles.length, cycleId]);
+
   const activeColumns = useMemo<Column[]>(() => {
-    const groupBy = displayOptions.groupBy;
+    const groupBy = effectiveGroupBy;
     if (groupBy === 'priority') {
       return [
         { id: 'urgent', name: 'Urgent', title: 'Urgent', color: '#ef4444', accentColor: '#ef4444', group: 'unstarted', sequence: 0, isDefault: false },
@@ -453,39 +464,7 @@ export function WorkItemPage({
       ];
     }
     return columns;
-  }, [displayOptions.groupBy, columns, members, cycles, labels]);
-
-  // Helper to determine which bucket key in activeColumns an item belongs to, without mutating item.columnId
-  const getItemBucketKey = useCallback((item: Item, groupBy?: string): string => {
-    if (groupBy === 'none') {
-      return '__all__';
-    }
-    if (groupBy === 'priority') {
-      return (item.priority || 'none').toLowerCase();
-    }
-    if (groupBy === 'assignee') {
-      return ItemHelpers.resolveAssigneeId(item) || '__unassigned__';
-    }
-    if (groupBy === 'cycle') {
-      const cId = item.cycleId || (typeof item.cycle === 'object' ? (item.cycle as any)?.id : null);
-      return cId || '__no_cycle__';
-    }
-    if (groupBy === 'labels') {
-      const itemLabels = Array.isArray(item.labels) ? item.labels : [];
-      if (itemLabels.length === 0) return '__no_label__';
-      const first = itemLabels[0] as any;
-      const firstLabel =
-        typeof first === 'object' && first !== null
-          ? first.id || first.name
-          : first;
-      return firstLabel || '__no_label__';
-    }
-    if (groupBy === 'createdBy') {
-      const authorId = item.authorId || (item as any).createdBy || (item as any).author?.id;
-      return authorId || '__unknown__';
-    }
-    return item.columnId || (item as any).stateId || '';
-  }, []);
+  }, [effectiveGroupBy, columns, members, cycles, labels]);
 
   // ── 4. Kanban Column Mapping ──────────────────────────────────────────────
   const itemsByColumnId = useMemo(() => {
@@ -499,7 +478,7 @@ export function WorkItemPage({
     const fallbackColId = fallbackCol ? resolveColumnId(fallbackCol) : undefined;
 
     for (const item of activeFilteredItems) {
-      const bucketKey = getItemBucketKey(item, displayOptions.groupBy);
+      const bucketKey = getItemBucketKey(item, effectiveGroupBy);
       if (bucketKey && map.has(bucketKey)) {
         map.get(bucketKey)!.push(item);
       } else if (fallbackColId && map.has(fallbackColId)) {
@@ -509,11 +488,11 @@ export function WorkItemPage({
       }
     }
     return map;
-  }, [activeColumns, activeFilteredItems, displayOptions.groupBy, getItemBucketKey]);
+  }, [activeColumns, activeFilteredItems, effectiveGroupBy]);
 
   // Display visible columns respecting showEmptyGroups
   const visibleColumns = useMemo(() => {
-    if (displayOptions.showEmptyGroups === false && displayOptions.groupBy !== 'none') {
+    if (displayOptions.showEmptyGroups === false && effectiveGroupBy !== 'none') {
       const filtered = activeColumns.filter((col) => {
         const colId = resolveColumnId(col);
         const count = itemsByColumnId.get(colId)?.length ?? 0;
@@ -522,7 +501,7 @@ export function WorkItemPage({
       return filtered.length > 0 ? filtered : activeColumns;
     }
     return activeColumns;
-  }, [activeColumns, itemsByColumnId, displayOptions.showEmptyGroups, displayOptions.groupBy]);
+  }, [activeColumns, itemsByColumnId, displayOptions.showEmptyGroups, effectiveGroupBy]);
 
   // ── 4. Unified Discriminated Modal State (Matt Pocock Pattern) ────────────
   const [modal, setModal] = useState<ModalState>({ type: 'idle' });
@@ -550,8 +529,26 @@ export function WorkItemPage({
       router.replace(pathname);
     }
 
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.key.toLowerCase() === 'c' &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !['input', 'textarea'].includes((e.target as HTMLElement)?.tagName?.toLowerCase() || '') &&
+        !(e.target as HTMLElement)?.isContentEditable
+      ) {
+        e.preventDefault();
+        handleOpenModal();
+      }
+    };
+
     window.addEventListener('open-new-work-item-modal', handleOpenModal);
-    return () => window.removeEventListener('open-new-work-item-modal', handleOpenModal);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('open-new-work-item-modal', handleOpenModal);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [columns, cycleId, searchParams, pathname, router]);
 
   // ── Handlers & Actions ────────────────────────────────────────────────────
@@ -579,13 +576,13 @@ export function WorkItemPage({
     let targetAssigneeId: string | null = null;
     let targetCycleId: string | undefined = cycleId;
 
-    if (displayOptions.groupBy === 'priority') {
+    if (effectiveGroupBy === 'priority') {
       targetColumnId = defaultColumnId;
       targetPriority = (columnId === 'none' ? 'none' : columnId) as Priority;
-    } else if (displayOptions.groupBy === 'assignee') {
+    } else if (effectiveGroupBy === 'assignee') {
       targetColumnId = defaultColumnId;
       targetAssigneeId = columnId === '__unassigned__' ? null : columnId;
-    } else if (displayOptions.groupBy === 'cycle') {
+    } else if (effectiveGroupBy === 'cycle') {
       targetColumnId = defaultColumnId;
       targetCycleId = columnId === '__no_cycle__' ? undefined : columnId;
     }
@@ -638,7 +635,7 @@ export function WorkItemPage({
   ) => {
     if (!workItemId || !newColumnId) return;
 
-    if (displayOptions.groupBy === 'priority') {
+    if (effectiveGroupBy === 'priority') {
       projectActions.updateWorkItem({
         workItemId,
         id: workItemId,
@@ -647,7 +644,7 @@ export function WorkItemPage({
       });
       return;
     }
-    if (displayOptions.groupBy === 'assignee') {
+    if (effectiveGroupBy === 'assignee') {
       projectActions.updateWorkItem({
         workItemId,
         id: workItemId,
@@ -656,7 +653,7 @@ export function WorkItemPage({
       });
       return;
     }
-    if (displayOptions.groupBy === 'cycle') {
+    if (effectiveGroupBy === 'cycle') {
       projectActions.updateWorkItem({
         workItemId,
         id: workItemId,
@@ -665,7 +662,7 @@ export function WorkItemPage({
       });
       return;
     }
-    if (displayOptions.groupBy === 'labels') {
+    if (effectiveGroupBy === 'labels') {
       projectActions.updateWorkItem({
         workItemId,
         id: workItemId,
@@ -674,7 +671,7 @@ export function WorkItemPage({
       });
       return;
     }
-    if (displayOptions.groupBy === 'none') {
+    if (effectiveGroupBy === 'none') {
       return;
     }
 
@@ -711,7 +708,7 @@ export function WorkItemPage({
   const handleReorderCard = (workItemId: string, newColumnId: string, rank: number) => {
     if (!workItemId) return;
 
-    if (displayOptions.groupBy === 'priority') {
+    if (effectiveGroupBy === 'priority') {
       projectActions.updateWorkItem({
         workItemId,
         id: workItemId,
@@ -720,7 +717,7 @@ export function WorkItemPage({
       });
       return;
     }
-    if (displayOptions.groupBy === 'assignee') {
+    if (effectiveGroupBy === 'assignee') {
       projectActions.updateWorkItem({
         workItemId,
         id: workItemId,
@@ -729,7 +726,7 @@ export function WorkItemPage({
       });
       return;
     }
-    if (displayOptions.groupBy === 'cycle') {
+    if (effectiveGroupBy === 'cycle') {
       projectActions.updateWorkItem({
         workItemId,
         id: workItemId,
@@ -738,7 +735,7 @@ export function WorkItemPage({
       });
       return;
     }
-    if (displayOptions.groupBy === 'labels') {
+    if (effectiveGroupBy === 'labels') {
       projectActions.updateWorkItem({
         workItemId,
         id: workItemId,
@@ -747,7 +744,7 @@ export function WorkItemPage({
       });
       return;
     }
-    if (displayOptions.groupBy === 'none') {
+    if (effectiveGroupBy === 'none') {
       return;
     }
 
@@ -766,8 +763,11 @@ export function WorkItemPage({
     }
 
     const { createMore, ...restData } = formData;
+    const defaultCol = columns.find((c) => c.isDefault) || columns[0];
+    const defaultColumnId = defaultCol ? resolveStateId(defaultCol) : 'backlog';
     const payload = {
       ...restData,
+      columnId: formData.columnId || defaultColumnId,
       title: formData.title.trim(),
       cycleId: formData.cycleId !== undefined ? formData.cycleId : cycleId,
       projectId,
@@ -1130,6 +1130,7 @@ export function WorkItemPage({
             {viewMode === 'table' && (
               <TableView
                 items={activeFilteredItems}
+                itemsByColumnId={itemsByColumnId}
                 columns={visibleColumns}
                 projectStates={columns}
                 displayOptions={displayOptions}
@@ -1147,6 +1148,10 @@ export function WorkItemPage({
                 onLeaveCard={handleLeaveCard}
                 onRemoveFromCycle={handleRemoveFromCycle}
                 onMoveCard={handleMoveCard}
+                onUpdateCard={(item) => handleQuickUpdateItem(item.id, item)}
+                selectedIds={selectedIds}
+                onToggleSelect={handleToggleSelect}
+                onSelectAll={handleSelectAll}
                 isReadOnly={isReadOnly}
                 onToggleDisplayProperty={updateDisplayProperty}
               />
@@ -1326,12 +1331,12 @@ export function WorkItemPage({
 
       {/* Save Current View Dialog */}
       <Dialog open={isSaveViewOpen} onOpenChange={setIsSaveViewOpen}>
-        <DialogContent className="sm:max-w-md p-5 bg-card border-border">
+        <DialogContent className="sm:max-w-md p-5 bg-background border-border shadow-lg">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold text-foreground">
               Save Current View
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
+            <DialogDescription className="text-13 text-muted-foreground">
               Save your current layout and filter criteria as a reusable view.
             </DialogDescription>
           </DialogHeader>
@@ -1347,13 +1352,13 @@ export function WorkItemPage({
             className="space-y-4 pt-2"
           >
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">View Name *</label>
+              <label className="text-12 font-medium text-foreground">View Name *</label>
               <Input
                 placeholder="e.g. Active Experiments, Urgent Bugs..."
                 value={newViewName}
                 onChange={(e) => setNewViewName(e.target.value)}
                 autoFocus
-                className="h-8 text-xs bg-background border-border"
+                className="h-8 text-13 bg-background border-border shadow-2xs"
               />
             </div>
 
@@ -1364,7 +1369,7 @@ export function WorkItemPage({
                 size="sm"
                 onClick={() => setIsSaveViewOpen(false)}
                 disabled={isSavingCurrentView}
-                className="h-8 text-xs"
+                className="h-8 px-3 text-13 font-medium rounded-md cursor-pointer"
               >
                 Cancel
               </Button>
@@ -1372,7 +1377,7 @@ export function WorkItemPage({
                 type="submit"
                 size="sm"
                 disabled={!newViewName.trim() || isSavingCurrentView}
-                className="h-8 text-xs px-4 bg-primary text-primary-foreground hover:bg-primary-hover"
+                className="h-8 px-4 text-13 font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary-hover shadow-none cursor-pointer"
               >
                 {isSavingCurrentView ? 'Saving...' : 'Save View'}
               </Button>

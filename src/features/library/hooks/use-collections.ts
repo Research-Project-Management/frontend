@@ -90,7 +90,7 @@ export function useCollections(scopeId?: string) {
     onSuccess: () => {
       invalidateCollections(queryClient, scopeId);
       toast.success('Collection deleted', {
-        description: 'Contained papers were unfiled to library, not deleted.',
+        description: 'Contained items were unfiled to library, not deleted.',
         id: 'collection-mutation',
       });
     },

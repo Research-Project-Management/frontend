@@ -6,9 +6,7 @@
  *  - comment.service.ts
  *  - suggestion.service.ts
  *  - history.service.ts
- *  - outline.service.ts
  *  - collaboration.service.ts
- *  - export.service.ts
  *  - citation.service.ts
  *  - storage.service.ts
  */
@@ -19,8 +17,6 @@ export * from './synctex.service';
 export * from './comment.service';
 export * from './suggestion.service';
 export * from './history.service';
-export * from './outline.service';
 export * from './collaboration.service';
-export * from './export.service';
 export * from './citation.service';
 export * from './storage.service';

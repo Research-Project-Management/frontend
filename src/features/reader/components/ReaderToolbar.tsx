@@ -27,12 +27,20 @@ import {
   Check,
   Layers,
   FileText,
+  Undo2,
+  BookOpen,
+  Lock,
+  Unlock,
+  Columns2,
+  Rows2,
+  Square,
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   Form,
   Tooltip,
   TooltipContent,
@@ -52,6 +60,10 @@ export interface ReaderToolbarProps {
   numPages: number;
   onNavigateToPage: (page: number) => void;
 
+  // History Navigation (Zotero Navigate Back)
+  canNavigateBack?: boolean;
+  onNavigateBack?: () => void;
+
   // Interaction Mode (Select vs Hand)
   interactionMode?: 'select' | 'hand';
   onSelectInteractionMode?: (mode: 'select' | 'hand') => void;
@@ -61,6 +73,8 @@ export interface ReaderToolbarProps {
   onSelectTool?: (tool: ReaderAnnotationTool) => void;
   activeColor?: string;
   onSelectColor?: (hex: string) => void;
+  isToolLocked?: boolean;
+  onToggleToolLocked?: () => void;
 
   // Zoom & View
   zoom: number;
@@ -72,6 +86,12 @@ export interface ReaderToolbarProps {
   onRotate?: () => void;
   themeMode?: 'normal' | 'sepia' | 'dark';
   onToggleThemeMode?: () => void;
+
+  // Reading Mode & Split View (Zotero Features)
+  isReadingMode?: boolean;
+  onToggleReadingMode?: () => void;
+  splitMode?: 'none' | 'horizontal' | 'vertical';
+  onSelectSplitMode?: (mode: 'none' | 'horizontal' | 'vertical') => void;
 
   // Search & Inspector & Entities
   onToggleSearch?: () => void;
@@ -108,12 +128,16 @@ export function ReaderToolbar({
   visiblePage,
   numPages,
   onNavigateToPage,
+  canNavigateBack = false,
+  onNavigateBack,
   interactionMode = 'select',
   onSelectInteractionMode,
   activeTool = 'highlight',
   onSelectTool,
   activeColor = '#ffd400',
   onSelectColor,
+  isToolLocked = false,
+  onToggleToolLocked,
   zoom,
   onZoomIn,
   onZoomOut,
@@ -123,6 +147,10 @@ export function ReaderToolbar({
   onRotate,
   themeMode = 'normal',
   onToggleThemeMode,
+  isReadingMode = false,
+  onToggleReadingMode,
+  splitMode = 'none',
+  onSelectSplitMode,
   onToggleSearch,
   isInspectorOpen,
   onToggleInspector,
@@ -142,7 +170,7 @@ export function ReaderToolbar({
     reset({ page: visiblePage });
   }, [visiblePage, reset]);
 
-  // Zotero-standard quick tool keyboard shortcuts (H, U, N, A, T)
+  // Zotero-standard quick tool keyboard shortcuts (Alt+1..6 or single keys, Alt+Left for Back)
   useEffect(() => {
     const handleToolShortcuts = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -150,34 +178,40 @@ export function ReaderToolbar({
       if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) {
         return;
       }
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-      switch (e.key.toLowerCase()) {
-        case 'h':
-          e.preventDefault();
-          onSelectTool?.('highlight');
-          break;
-        case 'u':
-          e.preventDefault();
-          onSelectTool?.('underline');
-          break;
-        case 'n':
-          e.preventDefault();
-          onSelectTool?.('note');
-          break;
-        case 'a':
-          e.preventDefault();
-          onSelectTool?.('area');
-          break;
-        case 't':
-          e.preventDefault();
-          onSelectTool?.('text');
-          break;
+      // Navigate Back: Alt+Left
+      if (e.altKey && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        onNavigateBack?.();
+        return;
+      }
+
+      if (e.ctrlKey || e.metaKey) return;
+
+      const key = e.key.toLowerCase();
+      if (key === '1' || (e.altKey && key === '1') || key === 'h') {
+        e.preventDefault();
+        onSelectTool?.('highlight');
+      } else if (key === '2' || (e.altKey && key === '2') || key === 'u') {
+        e.preventDefault();
+        onSelectTool?.('underline');
+      } else if (key === '3' || (e.altKey && key === '3') || key === 'n') {
+        e.preventDefault();
+        onSelectTool?.('note');
+      } else if (key === '4' || (e.altKey && key === '4') || key === 't') {
+        e.preventDefault();
+        onSelectTool?.('text');
+      } else if (key === '5' || (e.altKey && key === '5') || key === 'a') {
+        e.preventDefault();
+        onSelectTool?.('area');
+      } else if (key === '6' || (e.altKey && key === '6') || key === 'd') {
+        e.preventDefault();
+        onSelectTool?.('ink');
       }
     };
     window.addEventListener('keydown', handleToolShortcuts);
     return () => window.removeEventListener('keydown', handleToolShortcuts);
-  }, [onSelectTool]);
+  }, [onSelectTool, onNavigateBack]);
 
   const handlePageSubmit = (data: PageNavFormData) => {
     const p = data.page;
@@ -191,9 +225,9 @@ export function ReaderToolbar({
   return (
     <div className="h-9 shrink-0 border-b border-border bg-background px-2 flex items-center justify-between select-none z-20 text-xs overflow-x-auto min-w-0 thin-scrollbar gap-2">
       <TooltipProvider delayDuration={300}>
-        {/* ── CỤM TRÁI: Điều hướng cấu trúc & Phân trang ──────────────────────── */}
+        {/* ── CỤM 1 (START): Điều hướng tài liệu, Zoom, Reading Mode & Lịch sử ────── */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Sidebar Toggle [| ] */}
+          {/* Sidebar Toggle (Left Sidebar) */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -215,7 +249,7 @@ export function ReaderToolbar({
             </TooltipContent>
           </Tooltip>
 
-          {/* Academic Entities Drawer Toggle (Figures, Tables, Formulas) */}
+          {/* Academic Entities Drawer Toggle (Figures, Tables, Math) */}
           {onToggleEntitiesDrawer && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -234,8 +268,138 @@ export function ReaderToolbar({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-11">
-                {isEntitiesDrawerOpen ? "Close Entities (Figures/Tables/Math)" : "Entities (Figures/Tables/Math)"}
+                {isEntitiesDrawerOpen ? "Close Entities" : "Entities (Figures/Tables/Math)"}
               </TooltipContent>
+            </Tooltip>
+          )}
+
+          <div className="w-px h-3.5 bg-border mx-1" />
+
+          {/* Zoom Out */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onZoomOut}
+                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                aria-label="Zoom out"
+              >
+                <ZoomOut className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-11">Zoom Out</TooltipContent>
+          </Tooltip>
+
+          {/* Zoom Preset Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="h-6 px-1.5 flex items-center gap-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground font-mono text-11 transition-colors cursor-pointer tabular-nums"
+                aria-label="Zoom percentage"
+              >
+                <span>{Math.round(zoom * 100)}%</span>
+                <ChevronDown className="size-2.5 opacity-60 shrink-0" strokeWidth={1.5} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="w-28 text-xs p-1 bg-popover border border-border shadow-none rounded-md">
+              {ZOOM_PRESETS.map((preset) => (
+                <DropdownMenuItem
+                  key={preset.label}
+                  onClick={() => onSetZoom?.(preset.value)}
+                  className="cursor-pointer text-11 font-mono flex items-center justify-between tabular-nums"
+                >
+                  <span>{preset.label}</span>
+                  {Math.abs(zoom - preset.value) < 0.05 && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
+                </DropdownMenuItem>
+              ))}
+              {onFitWidth && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={onFitWidth}
+                    className="cursor-pointer text-11 font-medium"
+                  >
+                    Fit to Width
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Zoom In */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onZoomIn}
+                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                aria-label="Zoom in"
+              >
+                <ZoomIn className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-11">Zoom In</TooltipContent>
+          </Tooltip>
+
+          {/* Fit to Width */}
+          {onFitWidth && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onFitWidth}
+                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  aria-label="Fit to width"
+                >
+                  <Maximize2 className="size-3.5 shrink-0" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-11">Fit to Width</TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Zotero Reading Mode Toggle */}
+          {onToggleReadingMode && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onToggleReadingMode}
+                  className={cn(
+                    "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                    isReadingMode
+                      ? "bg-primary text-primary-foreground font-medium"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                  aria-label="Toggle Reading Mode"
+                >
+                  <BookOpen className="size-3.5 shrink-0" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-11">
+                {isReadingMode ? "Exit Reading Mode" : "Reading Mode (Clean Text View)"}
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          <div className="w-px h-3.5 bg-border mx-1" />
+
+          {/* Zotero Navigate Back button (History stack) */}
+          {onNavigateBack && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onNavigateBack}
+                  disabled={!canNavigateBack}
+                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                  aria-label="Navigate back in document"
+                >
+                  <Undo2 className="size-3.5 shrink-0" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-11">Back (Alt+Left)</TooltipContent>
             </Tooltip>
           )}
 
@@ -516,6 +680,34 @@ export function ReaderToolbar({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Lock Tool Mode (Zotero: Keep tool selected after use) */}
+            {onToggleToolLocked && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onToggleToolLocked}
+                    className={cn(
+                      "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ml-0.5",
+                      isToolLocked
+                        ? "bg-primary/10 text-primary border border-primary/20 font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                    aria-label={isToolLocked ? "Unlock tool" : "Lock tool"}
+                  >
+                    {isToolLocked ? (
+                      <Lock className="size-3.5 shrink-0" strokeWidth={1.5} />
+                    ) : (
+                      <Unlock className="size-3.5 shrink-0" strokeWidth={1.5} />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-11">
+                  {isToolLocked ? "Tool Locked (Tool stays active after use)" : "Lock Tool (Stay active)"}
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
 
           {/* 8. Zotero-style 1-click Extract Annotations to Note */}
@@ -541,92 +733,8 @@ export function ReaderToolbar({
           )}
         </div>
 
-        {/* ── CỤM PHẢI: Thu phóng, Xoay, Theme, Tìm kiếm & Inspector ──────────── */}
+        {/* ── CỤM PHẢI: END (Appearance, Rotate, Split View, Find & Context Pane) ──────────── */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Zoom Out */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={onZoomOut}
-                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                aria-label="Zoom out"
-              >
-                <ZoomOut className="size-3.5 shrink-0" strokeWidth={1.5} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">Zoom Out</TooltipContent>
-          </Tooltip>
-
-          {/* Zoom Preset Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="h-6 px-1.5 flex items-center gap-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground font-mono text-11 transition-colors cursor-pointer tabular-nums"
-                aria-label="Zoom percentage"
-              >
-                <span>{Math.round(zoom * 100)}%</span>
-                <ChevronDown className="size-2.5 opacity-60 shrink-0" strokeWidth={1.5} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-28 text-xs p-1 bg-popover border border-border shadow-none rounded-md">
-              {ZOOM_PRESETS.map((preset) => (
-                <DropdownMenuItem
-                  key={preset.label}
-                  onClick={() => onSetZoom?.(preset.value)}
-                  className="cursor-pointer text-11 font-mono flex items-center justify-between tabular-nums"
-                >
-                  <span>{preset.label}</span>
-                  {Math.abs(zoom - preset.value) < 0.05 && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
-                </DropdownMenuItem>
-              ))}
-              {onFitWidth && (
-                <>
-                  <div className="h-px bg-border my-1" />
-                  <DropdownMenuItem
-                    onClick={onFitWidth}
-                    className="cursor-pointer text-11 font-medium"
-                  >
-                    Fit to Width
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Zoom In */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={onZoomIn}
-                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                aria-label="Zoom in"
-              >
-                <ZoomIn className="size-3.5 shrink-0" strokeWidth={1.5} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">Zoom In</TooltipContent>
-          </Tooltip>
-
-          {/* Fit Width */}
-          {onFitWidth && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onFitWidth}
-                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                  aria-label="Fit to width"
-                >
-                  <Maximize2 className="size-3.5 shrink-0" strokeWidth={1.5} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-11">Fit to Width</TooltipContent>
-            </Tooltip>
-          )}
-
           {/* Rotate Clockwise 90° */}
           {onRotate && (
             <Tooltip>
@@ -646,7 +754,7 @@ export function ReaderToolbar({
             </Tooltip>
           )}
 
-          {/* Reading Mode Theme Filter (Normal / Sepia / Dark) */}
+          {/* Appearance / Theme Mode (Normal / Sepia / Dark) */}
           {onToggleThemeMode && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -657,7 +765,7 @@ export function ReaderToolbar({
                     "size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer",
                     themeMode !== 'normal' && "text-primary font-medium"
                   )}
-                  aria-label="Toggle reading theme"
+                  aria-label="Toggle reading appearance theme"
                 >
                   {themeMode === 'dark' ? (
                     <Moon className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -669,9 +777,69 @@ export function ReaderToolbar({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-11">
-                Theme: {themeMode === 'dark' ? 'Dark Mode' : themeMode === 'sepia' ? 'Sepia Paper' : 'Normal'}
+                Appearance: {themeMode === 'dark' ? 'Dark Mode' : themeMode === 'sepia' ? 'Sepia Paper' : 'Normal'}
               </TooltipContent>
             </Tooltip>
+          )}
+
+          {/* Split View (Zotero Reader: Single, Horizontal, Vertical) */}
+          {onSelectSplitMode && (
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer",
+                        splitMode && splitMode !== 'none' && "bg-muted text-primary font-medium"
+                      )}
+                      aria-label="Split view"
+                    >
+                      {splitMode === 'vertical' ? (
+                        <Columns2 className="size-3.5 shrink-0" strokeWidth={1.5} />
+                      ) : splitMode === 'horizontal' ? (
+                        <Rows2 className="size-3.5 shrink-0" strokeWidth={1.5} />
+                      ) : (
+                        <Square className="size-3.5 shrink-0" strokeWidth={1.5} />
+                      )}
+                    </button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-11">
+                  Split View ({splitMode === 'vertical' ? 'Vertical' : splitMode === 'horizontal' ? 'Horizontal' : 'Single'})
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end" className="w-36 text-xs p-1 bg-popover border border-border shadow-none rounded-md">
+                <DropdownMenuItem
+                  onClick={() => onSelectSplitMode('none')}
+                  className="cursor-pointer text-11 flex items-center justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <Square className="size-3.5" strokeWidth={1.5} /> Single View
+                  </span>
+                  {(!splitMode || splitMode === 'none') && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onSelectSplitMode('vertical')}
+                  className="cursor-pointer text-11 flex items-center justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <Columns2 className="size-3.5" strokeWidth={1.5} /> Split Vertical
+                  </span>
+                  {splitMode === 'vertical' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onSelectSplitMode('horizontal')}
+                  className="cursor-pointer text-11 flex items-center justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <Rows2 className="size-3.5" strokeWidth={1.5} /> Split Horizontal
+                  </span>
+                  {splitMode === 'horizontal' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {/* Search in Document 🔍 */}

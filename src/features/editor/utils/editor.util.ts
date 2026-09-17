@@ -336,10 +336,10 @@ export function resolveFileUrl(fileUrl?: string | null): string {
 
 // ── Strongly-Typed Event Bus ──────────────────────────────────────────────────
 
-export type SidebarTabName = 'Explorer' | 'Search' | 'Review' | 'History' | 'AI' | 'Settings' | 'Citations';
+export type SidebarTabName = 'Files' | 'Explorer' | 'Outline' | 'Search' | 'Review' | 'History' | 'AI' | 'Settings' | 'Citations';
 
 export interface EditorEventMap {
-  'flux:open-panel': SidebarTabName | { panel: SidebarTabName; commentId?: string };
+  'flux:open-panel': SidebarTabName | { panel: SidebarTabName; commentId?: string; suggestionId?: string };
   'flux:open-ai-panel': { initialPrompt?: string; selectedText?: string } | undefined;
   'flux:toggle-ai-panel': undefined;
   'flux:trigger-compile': { forceSync?: boolean; draft?: boolean } | undefined;
@@ -347,6 +347,15 @@ export interface EditorEventMap {
   'flux:open-citation-picker': undefined;
   'flux:focus-editor': undefined;
   'flux:toggle-sidebar': undefined;
+  'flux:synctex-forward': undefined;
+  'flux:synctex-backward': undefined;
+  'flux:new-file': undefined;
+  'flux:new-folder': undefined;
+  'flux:upload-file': undefined;
+  'flux:zoom-in': undefined;
+  'flux:zoom-out': undefined;
+  'flux:zoom-fit-width': undefined;
+  'flux:zoom-fit-height': undefined;
 }
 
 export const EditorEventBus = {
@@ -402,7 +411,8 @@ export type LatexFormatType =
   | 'table'
   | 'figure'
   | 'cite'
-  | 'ref';
+  | 'ref'
+  | 'align';
 
 export const EditorCommandBus = {
   wrapSelection(
@@ -504,6 +514,11 @@ export const EditorCommandBus = {
         return EditorCommandBus.wrapSelection(editor, '\\cite{', '}', 'citation_key');
       case 'ref':
         return EditorCommandBus.wrapSelection(editor, '\\ref{', '}', 'label_name');
+      case 'align':
+        return EditorCommandBus.insertSnippet(
+          editor,
+          '\\begin{align}\n  y &= mx + b \\\\\n  z &= ax + c\n\\end{align}',
+        );
     }
   },
 

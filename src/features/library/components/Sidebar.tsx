@@ -167,7 +167,7 @@ export default function LibrarySideBar() {
           minWidth: '220px',
           maxWidth: '400px',
         }}
-        className="fixed inset-y-0 left-0 z-50 md:static md:z-auto h-full overflow-hidden border-r border-border bg-background flex flex-col select-none shrink-0 shadow-none"
+        className="fixed inset-y-0 left-0 z-50 md:static md:z-auto h-full overflow-hidden border-r border-border bg-background flex flex-col select-none shrink-0 shadow-raised-200 md:shadow-none"
       >
         {/* Upper Area: Header, Collections Tree, Views */}
         <div className="flex-1 min-h-0 flex flex-col p-2.5 pt-4 pb-1 overflow-hidden">
@@ -203,7 +203,7 @@ export default function LibrarySideBar() {
                     "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none select-none pr-8",
                     isLibraryActive
                       ? "bg-muted text-foreground font-medium"
-                      : "text-foreground hover:bg-muted font-normal"
+                      : "text-foreground hover:bg-muted group-hover/root:bg-muted font-normal"
                   )}
                 >
                   {isLibraryActive && (
@@ -227,7 +227,7 @@ export default function LibrarySideBar() {
                     setIsLibraryExpanded((v) => !v);
                   }}
                   aria-label={isLibraryExpanded ? 'Collapse My Library' : 'Expand My Library'}
-                  className="absolute right-2 z-20 flex size-5 shrink-0 items-center justify-center rounded-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
+                  className="absolute right-2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer"
                 >
                   <ChevronRight
                     className={cn(

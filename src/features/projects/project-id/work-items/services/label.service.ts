@@ -51,7 +51,8 @@ export const LabelService = {
       return LabelService.getProjectLabels(projectId);
     }
     const params = new URLSearchParams();
-    if (type) params.append("type", type);
+    const normalizedType = type === 'work-item' ? 'work_item' : type;
+    if (normalizedType) params.append("type", normalizedType);
 
     const queryStr = params.toString() ? `?${params.toString()}` : "";
     const data = await apiGet<any>(`/api/labels${queryStr}`);

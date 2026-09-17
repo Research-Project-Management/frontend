@@ -35,7 +35,7 @@ import CreateCollectionModal from '../components/modals/CreateCollectionModal';
 import BatchBar from '../components/table/BatchBar';
 import { useLibrary } from '../hooks/use-library';
 import { useViewItems, useItemTable, type SortField } from '../hooks/use-items';
-import { normalizeAuthors, formatCreatorCompact } from '../utils/library.util';
+import { normalizeAuthors, formatCreatorCompact, cleanPaperTitle } from '../utils/library.util';
 import { cn } from "@/shared/lib/utils";
 import type { Item } from '../types/library.types';
 
@@ -206,7 +206,7 @@ export default function RecentlyReadPage() {
             <div className="flex-1 overflow-auto">
               <table className="w-full table-fixed text-left border-collapse">
                 <colgroup>
-                  <col className="w-10" />
+                  <col className="w-8" />
                   <col className="w-4/12" />
                   <col className="w-4/12" />
                   <col className="w-4/12" />
@@ -214,7 +214,7 @@ export default function RecentlyReadPage() {
                 </colgroup>
                 <thead className="sticky top-0 z-20 bg-background border-b border-border select-none">
                   <tr className="h-9 type-dense font-normal text-foreground [&_th]:font-normal [&_th]:text-foreground">
-                    <th scope="col" className="w-10 px-2.5 py-1.5 text-center align-middle">
+                    <th scope="col" className="w-8 pl-3 pr-1 py-1.5 text-left align-middle">
                       <Checkbox
                         checked={isAllSelected ? true : isPartiallySelected ? 'indeterminate' : false}
                         onCheckedChange={toggleSelectAll}
@@ -233,7 +233,7 @@ export default function RecentlyReadPage() {
                           onColumnSort('title');
                         }
                       }}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer min-w-0 truncate outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
+                      className="group/th pl-1.5 pr-3.5 py-1.5 align-middle cursor-pointer min-w-0 truncate outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
                     >
                       <div className="flex items-center">
                         <span className="truncate">Title</span>
@@ -301,7 +301,7 @@ export default function RecentlyReadPage() {
                               isSelected ? 'bg-muted' : isActive ? 'bg-muted' : 'hover:bg-muted',
                             )}
                           >
-                            <td className="w-10 px-2.5 py-1.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                            <td className="w-8 pl-3 pr-1 py-1.5 text-left align-middle" onClick={(e) => e.stopPropagation()}>
                               <Checkbox
                                 checked={isSelected}
                                 onCheckedChange={() => toggleSelect(paper.id)}
@@ -309,10 +309,10 @@ export default function RecentlyReadPage() {
                               />
                             </td>
 
-                            <td className="px-3.5 py-1.5 align-middle min-w-0 max-w-0 truncate">
+                            <td className="pl-1.5 pr-3.5 py-1.5 align-middle min-w-0 max-w-0 truncate">
                               <div className="flex items-center gap-2 min-w-0">
-                                <span className="truncate block type-dense font-normal text-foreground" title={paper.title || 'Untitled Reference'}>
-                                  {paper.title || 'Untitled Reference'}
+                                <span className="truncate block type-dense font-normal text-foreground" title={cleanPaperTitle(paper.title) || 'Untitled Reference'}>
+                                  {cleanPaperTitle(paper.title) || 'Untitled Reference'}
                                 </span>
                               </div>
                             </td>
@@ -341,7 +341,7 @@ export default function RecentlyReadPage() {
                                       <MoreVertical className="size-4 text-foreground shrink-0" />
                                     </button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
+                                  <DropdownMenuContent align="end" sideOffset={4} className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5">
                                     <DropdownMenuItem
                                       onClick={() => router.push(`/library/papers/${paper.id}`)}
                                       className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
@@ -371,7 +371,7 @@ export default function RecentlyReadPage() {
                             </td>
                           </tr>
                         </ContextMenuTrigger>
-                        <ContextMenuContent className="w-48 text-12 font-sans">
+                        <ContextMenuContent className="w-56 p-1.5 text-12 font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5">
                           <ContextMenuItem onClick={() => router.push(`/library/papers/${paper.id}`)} className="gap-2">
                             <BookOpen className="size-3.5 shrink-0" />
                             <span>Open in Reader</span>

@@ -57,7 +57,7 @@ export function SidebarSystemNav({
       {/* 2. Saved Searches (Smart Collections) */}
       {isPersonalScope && savedSearches && savedSearches.length > 0 && (
         <div className="my-1 flex flex-col gap-0.5 border-t border-border/40 pt-1">
-          <div className="px-6 py-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+          <div className="px-6 py-1 text-11 font-medium text-muted-foreground flex items-center justify-between">
             <span>Saved Searches</span>
           </div>
           {savedSearches.map((ss) => {

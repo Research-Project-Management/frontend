@@ -349,7 +349,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
             <DropdownMenuContent
               align="end"
               sideOffset={4}
-              className="w-36 p-1 bg-popover/95 border border-border rounded-md shadow-none text-xs z-50"
+              className="w-52 p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200 text-xs z-50"
             >
               {moreFormats.map((fmt) => {
                 const isSelected = activeFormat === fmt.id;
@@ -469,8 +469,8 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
             <div>
               {isLoading && !sanitizedHtml ? (
                 <div className="space-y-1.5 py-1">
-                  <div className="h-3 bg-muted rounded animate-pulse w-full" />
-                  <div className="h-3 bg-muted rounded animate-pulse w-5/6" />
+                  <div className="h-3 bg-muted rounded-md animate-pulse w-full" />
+                  <div className="h-3 bg-muted rounded-md animate-pulse w-5/6" />
                 </div>
               ) : (
                 <div

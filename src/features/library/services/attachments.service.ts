@@ -1,5 +1,6 @@
 import { apiGet, apiPost, apiDelete } from "@/shared/lib/api";
 import type { AttachmentDto, AttachmentRevisionDto } from "../types/library.types";
+import { isProjectScope } from '../utils/library.util';
 export type { AttachmentDto, AttachmentRevisionDto };
 
 export interface AddRevisionDto {
@@ -124,7 +125,7 @@ export async function uploadLibraryAttachment(
   scopeId: string | undefined,
   formData: FormData,
 ): Promise<{ fileId: string; url: string; filename: string; size: number; mimeType: string }> {
-  const isProject = Boolean(scopeId) && scopeId !== 'user';
+  const isProject = isProjectScope(scopeId);
   const uploadUrl = isProject
     ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/attachments/upload`
     : `/api/v1/library/attachments/upload`;

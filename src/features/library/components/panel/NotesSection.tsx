@@ -10,6 +10,8 @@ import type { Paper } from '@/features/library/types/library.types';
 
 export interface NotesSectionProps {
   paper: Paper;
+  scopeId?: string;
+  workspaceId?: string;
   onUpdatePaper?: (data: Partial<Paper>) => void;
   onAddNote?: (content: string) => void;
   onDeleteNote?: (noteId: string, noteContent?: string) => void;
@@ -41,6 +43,8 @@ export function NoteIcon({ className = 'size-3.5' }: { className?: string }) {
 
 export default function NotesSection({
   paper,
+  scopeId,
+  workspaceId,
   onAddNote,
   onDeleteNote,
   onRequestDelete,
@@ -49,6 +53,7 @@ export default function NotesSection({
   forceAdding = false,
 }: NotesSectionProps) {
   const paperId = paper.id;
+  const activeScopeId = scopeId || (paper as any)?.projectId || (paper as any)?.workspaceId || workspaceId;
   const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
@@ -66,7 +71,7 @@ export default function NotesSection({
     createNote,
     updateNote,
     deleteNote,
-  } = useNotes(undefined, paper.id);
+  } = useNotes(activeScopeId, paper.id);
 
   // Reset internal interactive state when switching papers to avoid state leakage
   useEffect(() => {
@@ -93,32 +98,49 @@ export default function NotesSection({
     // If no notes exist yet, surface author or arXiv comment from extra metadata as an initial imported note (Zotero convention)
     const potentialCommentText =
       (paper.extraFields?.comment as string) ||
-      (typeof paper.extra === 'string' && paper.extra.includes('"comment"')
+      (typeof paper.extra === 'string'
         ? (() => {
-            try {
-              const parsedExtraPayload: unknown = JSON.parse(paper.extra);
-              if (
-                typeof parsedExtraPayload === 'object' &&
-                parsedExtraPayload !== null &&
-                'comment' in parsedExtraPayload
-              ) {
-                return String((parsedExtraPayload as Record<string, unknown>).comment);
+            if (paper.extra.trim().startsWith('{')) {
+              try {
+                const parsedExtraPayload: unknown = JSON.parse(paper.extra);
+                if (
+                  typeof parsedExtraPayload === 'object' &&
+                  parsedExtraPayload !== null &&
+                  'comment' in parsedExtraPayload
+                ) {
+                  return String((parsedExtraPayload as Record<string, unknown>).comment);
+                }
+              } catch {
+                // Not valid JSON
               }
-              return null;
-            } catch (caughtError) {
-              return null;
             }
+            const match = paper.extra.match(/^(?:comment|comments?):\s*(.+)$/im);
+            if (match) {
+              return match[1].trim();
+            }
+            return null;
           })()
         : null);
 
     if (typeof potentialCommentText === 'string' && potentialCommentText.trim()) {
-      return [
-        {
-          id: `imported-comment-${paper.id}`,
-          content: `Comment: ${potentialCommentText.trim()}`,
-          createdAt: paper.createdAt || new Date().toISOString(),
-        },
-      ];
+      const cleanComment = potentialCommentText.trim();
+      if (
+        cleanComment &&
+        !/^(\.{2,}|…|[-_—\s]+|null|undefined|none|n\/?a)$/i.test(cleanComment) &&
+        /[a-zA-Z0-9\u00C0-\u024F\u1EA0-\u1EF9]/.test(cleanComment)
+      ) {
+        const stripped = cleanComment.replace(/^comments?:\s*/i, '').trim();
+        const formattedContent = stripped.toLowerCase().startsWith('comment:')
+          ? stripped
+          : `Comment: ${stripped}`;
+        return [
+          {
+            id: `imported-comment-${paper.id}`,
+            content: formattedContent,
+            createdAt: paper.createdAt || new Date().toISOString(),
+          },
+        ];
+      }
     }
 
     return [];
@@ -211,7 +233,7 @@ export default function NotesSection({
             rows={2}
             className="text-xs resize-none w-full max-h-36 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-muted-foreground/60"
           />
-          <div className="flex items-center justify-between text-[10.5px] text-muted-foreground/75 select-none pt-1 border-t border-border/40">
+          <div className="flex items-center justify-between text-10 font-normal text-muted-foreground select-none pt-1 border-t border-border/40 font-mono">
             <span>Shift + Enter for new line</span>
             <span>Enter to save · Esc to cancel</span>
           </div>
@@ -256,7 +278,7 @@ export default function NotesSection({
                   rows={2}
                   className="text-xs resize-none w-full max-h-36 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-muted-foreground/60"
                 />
-                <div className="flex items-center justify-between text-[10.5px] text-muted-foreground/75 select-none pt-1 border-t border-border/40">
+                <div className="flex items-center justify-between text-10 font-normal text-muted-foreground select-none pt-1 border-t border-border/40 font-mono">
                   <span>Shift + Enter for new line</span>
                   <span>Enter to save · Esc to cancel</span>
                 </div>

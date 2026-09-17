@@ -61,7 +61,8 @@ export interface InspectorPanelProps {
   paper?: Item | null;
   item?: Item | null;
   collection?: Collection | null;
-  workspaceId: string;
+  scopeId?: string;
+  workspaceId?: string;
   onClose?: () => void;
 }
 
@@ -237,11 +238,13 @@ export default function InspectorPanel({
   paper: propPaper,
   item: propItem,
   collection,
+  scopeId,
   workspaceId,
   onClose,
 }: InspectorPanelProps) {
   const incomingPaper = propPaper || propItem || null;
-  const activeWorkspaceId = incomingPaper?.workspaceId || workspaceId || '';
+  const activeScopeId = scopeId || incomingPaper?.projectId || (incomingPaper as any)?.workspaceId || workspaceId || 'user';
+  const activeWorkspaceId = activeScopeId;
   const [paper, setPaper] = useState<Item | null>(incomingPaper);
   const latestPaperRef = useRef<Item | null>(incomingPaper);
   const updateQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -260,8 +263,6 @@ export default function InspectorPanel({
   } = useLibrarySidebarStore();
 
   const [collapsedSections, setCollapsedSections] = useState<Record<SectionId, boolean>>(DEFAULT_COLLAPSED_SECTIONS);
-
-  const isSectionVisible = (sectionId: SectionId) => !collapsedSections[sectionId];
 
   const [activeSectionId, setActiveSectionId] = useState<SectionId>('info');
   const [isAddRelatedOpen, setIsAddRelatedOpen] = useState(false);
@@ -724,258 +725,243 @@ export default function InspectorPanel({
             className="flex-1 overflow-y-auto min-w-0 focus-visible:outline-none thin-scrollbar bg-background divide-y divide-border/50"
           >
             {/* 1. Info Section (No Plus) */}
-            {isSectionVisible('info') && (
-              <div id="inspector-section-info" className="bg-background">
-                <InspectorSectionHeader
-                  id="info"
-                  label="Info"
-                  icon={Info}
-                  isOpen={isSectionOpen('info')}
-                  hasAdd={false}
-                  paper={paper}
-                  onToggle={toggleSection}
-                  onAdd={handleAddClick}
-                />
-                {paper && isSectionOpen('info') && (
-                  <div className="p-1 bg-background">
-                    <InfoSection paper={paper} onUpdatePaper={handleUpdatePaper} />
-                  </div>
-                )}
-              </div>
-            )}
+            <div id="inspector-section-info" className="bg-background">
+              <InspectorSectionHeader
+                id="info"
+                label="Info"
+                icon={Info}
+                isOpen={isSectionOpen('info')}
+                hasAdd={false}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('info') && (
+                <div className="p-1 bg-background">
+                  <InfoSection paper={paper} onUpdatePaper={handleUpdatePaper} />
+                </div>
+              )}
+            </div>
 
             {/* 2. Abstract Section */}
-            {isSectionVisible('abstract') && (
-              <div id="inspector-section-abstract" className="bg-background">
-                <InspectorSectionHeader
-                  id="abstract"
-                  label="Abstract"
-                  icon={AlignLeft}
-                  isOpen={isSectionOpen('abstract')}
-                  hasAdd={false}
-                  paper={paper}
-                  onToggle={toggleSection}
-                  onAdd={handleAddClick}
-                />
-                {paper && isSectionOpen('abstract') && (
-                  <div className="p-2 bg-background">
-                    <AbstractSection paper={paper} onUpdatePaper={handleUpdatePaper} hideHeader />
-                  </div>
-                )}
-              </div>
-            )}
+            <div id="inspector-section-abstract" className="bg-background">
+              <InspectorSectionHeader
+                id="abstract"
+                label="Abstract"
+                icon={AlignLeft}
+                isOpen={isSectionOpen('abstract')}
+                hasAdd={false}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('abstract') && (
+                <div className="p-2 bg-background">
+                  <AbstractSection paper={paper} onUpdatePaper={handleUpdatePaper} hideHeader />
+                </div>
+              )}
+            </div>
 
             {/* 3. Attachments / Files Section */}
-            {isSectionVisible('files') && (
-              <div id="inspector-section-files" className="bg-background">
-                <InspectorSectionHeader
-                  id="files"
-                  label="Attachments"
-                  icon={Paperclip}
-                  count={filesCount}
-                  isOpen={isSectionOpen('files')}
-                  hasAdd={true}
-                  paper={paper}
-                  onToggle={toggleSection}
-                  onAdd={handleAddClick}
-                />
-                {paper && isSectionOpen('files') && filesCount > 0 && (
-                  <div className="p-2 bg-background">
-                    <AttachmentsSection
-                      paper={paper}
-                      workspaceId={workspaceId}
-                      onAddAttachment={() => attachFileInputRef.current?.click()}
-                      isUploading={isUploadingAttachment}
-                      hideHeader
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+            <div id="inspector-section-files" className="bg-background">
+              <InspectorSectionHeader
+                id="files"
+                label="Attachments"
+                icon={Paperclip}
+                count={filesCount}
+                isOpen={isSectionOpen('files')}
+                hasAdd={true}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('files') && filesCount > 0 && (
+                <div className="p-2 bg-background">
+                  <AttachmentsSection
+                    paper={paper}
+                    workspaceId={activeWorkspaceId}
+                    onAddAttachment={() => attachFileInputRef.current?.click()}
+                    isUploading={isUploadingAttachment}
+                    hideHeader
+                  />
+                </div>
+              )}
+            </div>
 
             {/* 4. Notes Section */}
-            {isSectionVisible('notes') && (
-              <div id="inspector-section-notes" className="bg-background">
-                <InspectorSectionHeader
-                  id="notes"
-                  label="Notes"
-                  icon={StickyNote}
-                  count={notesCount}
-                  isOpen={isSectionOpen('notes')}
-                  hasAdd={true}
-                  paper={paper}
-                  onToggle={toggleSection}
-                  onAdd={handleAddClick}
-                />
-                {paper && isSectionOpen('notes') && (
-                  <div className="p-2 bg-background">
-                    <NotesSection
-                      paper={{ ...paper, workspaceId: activeWorkspaceId }}
-                      onUpdatePaper={handleUpdatePaper}
-                      hideHeader
-                      forceAdding={forceAddingNote}
-                      onRequestDelete={(note) => {
-                        setDeleteModalConfig({
-                          open: true,
-                          title: 'Move Note to Trash',
-                          description: 'Are you sure you want to move this note to the trash?',
-                          itemName: note.content,
-                          confirmLabel: 'Move to trash',
-                          onConfirm: async () => {
-                            await deleteNote(note.id).catch(() => {});
-                            setDeleteModalConfig(null);
-                          },
-                        });
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+            <div id="inspector-section-notes" className="bg-background">
+              <InspectorSectionHeader
+                id="notes"
+                label="Notes"
+                icon={StickyNote}
+                count={notesCount}
+                isOpen={isSectionOpen('notes')}
+                hasAdd={true}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('notes') && (
+                <div className="p-2 bg-background">
+                  <NotesSection
+                    paper={{ ...paper, workspaceId: activeWorkspaceId }}
+                    workspaceId={activeWorkspaceId}
+                    onUpdatePaper={handleUpdatePaper}
+                    hideHeader
+                    forceAdding={forceAddingNote}
+                    onRequestDelete={(note) => {
+                      setDeleteModalConfig({
+                        open: true,
+                        title: 'Move Note to Trash',
+                        description: 'Are you sure you want to move this note to the trash?',
+                        itemName: note.content,
+                        confirmLabel: 'Move to trash',
+                        onConfirm: async () => {
+                          await deleteNote(note.id).catch(() => {});
+                          setDeleteModalConfig(null);
+                        },
+                      });
+                    }}
+                  />
+                </div>
+              )}
+            </div>
 
             {/* 5. Collections Section */}
-            {isSectionVisible('collections') && (
-              <div id="inspector-section-collections" className="bg-background">
-                <InspectorSectionHeader
-                  id="collections"
-                  label="Libraries and Collections"
-                  icon={FolderTree}
-                  isOpen={isSectionOpen('collections')}
-                  paper={paper}
-                  onToggle={toggleSection}
-                  customAddAction={
-                    paper ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={(e) => e.stopPropagation()}
-                            className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
-                            aria-label="Add to collection"
-                          >
-                            <Plus className="size-3.5 text-foreground shrink-0" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-xs font-sans max-h-72 overflow-y-auto"
+            <div id="inspector-section-collections" className="bg-background">
+              <InspectorSectionHeader
+                id="collections"
+                label="Libraries and Collections"
+                icon={FolderTree}
+                isOpen={isSectionOpen('collections')}
+                paper={paper}
+                onToggle={toggleSection}
+                customAddAction={
+                  paper ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={(e) => e.stopPropagation()}
+                          className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
+                          aria-label="Add to collection"
                         >
+                          <Plus className="size-3.5 text-foreground shrink-0" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-xs font-sans max-h-72 overflow-y-auto"
+                      >
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setIsCreateCollectionOpen(true);
+                          }}
+                          className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-muted text-foreground"
+                        >
+                          <FolderPlus className="size-3.5 text-foreground shrink-0" />
+                          <span>Create Collection</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {collections.map((col) => (
                           <DropdownMenuItem
+                            key={col.id}
                             onClick={() => {
-                              setIsCreateCollectionOpen(true);
+                              handleUpdatePaper({ collectionId: col.id });
                             }}
                             className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-muted text-foreground"
                           >
-                            <FolderPlus className="size-3.5 text-foreground shrink-0" />
-                            <span>Create Collection</span>
+                            <Folder className="size-3.5 text-foreground shrink-0" />
+                            <span className="truncate">{col.name}</span>
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {collections.map((col) => (
-                            <DropdownMenuItem
-                              key={col.id}
-                              onClick={() => {
-                                handleUpdatePaper({ collectionId: col.id });
-                              }}
-                              className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-muted text-foreground"
-                            >
-                              <Folder className="size-3.5 text-foreground shrink-0" />
-                              <span className="truncate">{col.name}</span>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : null
-                  }
-                />
-                {paper && isSectionOpen('collections') && (
-                  <div className="p-2 bg-background">
-                    <CollectionsSection
-                      paper={paper}
-                      workspaceId={workspaceId}
-                      onCreateCollection={() => setIsCreateCollectionOpen(true)}
-                      hideHeader
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : null
+                }
+              />
+              {paper && isSectionOpen('collections') && (
+                <div className="p-2 bg-background">
+                  <CollectionsSection
+                    paper={paper}
+                    workspaceId={activeWorkspaceId}
+                    onCreateCollection={() => setIsCreateCollectionOpen(true)}
+                    hideHeader
+                  />
+                </div>
+              )}
+            </div>
 
             {/* 6. Tags Section */}
-            {isSectionVisible('tags') && (
-              <div id="inspector-section-tags" className="bg-background">
-                <InspectorSectionHeader
-                  id="tags"
-                  label="Tags"
-                  icon={Tag}
-                  count={tagsCount}
-                  isOpen={isSectionOpen('tags')}
-                  hasAdd={true}
-                  paper={paper}
-                  onToggle={toggleSection}
-                  onAdd={handleAddClick}
-                />
-                {paper && isSectionOpen('tags') && (
-                  <div className="p-2 bg-background">
-                    <TagsSection
-                      paper={paper}
-                      onUpdatePaper={handleUpdatePaper}
-                      hideHeader
-                      forceAdding={forceAddingTag}
-                      onCancelAdding={() => setForceAddingTag(false)}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+            <div id="inspector-section-tags" className="bg-background">
+              <InspectorSectionHeader
+                id="tags"
+                label="Tags"
+                icon={Tag}
+                count={tagsCount}
+                isOpen={isSectionOpen('tags')}
+                hasAdd={true}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('tags') && (
+                <div className="p-2 bg-background">
+                  <TagsSection
+                    paper={paper}
+                    onUpdatePaper={handleUpdatePaper}
+                    hideHeader
+                    forceAdding={forceAddingTag}
+                    onCancelAdding={() => setForceAddingTag(false)}
+                  />
+                </div>
+              )}
+            </div>
 
             {/* 7. Related Papers Section */}
-            {isSectionVisible('relations') && (
-              <div id="inspector-section-relations" className="bg-background">
-                <InspectorSectionHeader
-                  id="relations"
-                  label="Related"
-                  icon={Network}
-                  count={relationsCount}
-                  isOpen={isSectionOpen('relations')}
-                  hasAdd={true}
-                  paper={paper}
-                  onToggle={toggleSection}
-                  onAdd={handleAddClick}
-                />
-                {paper && isSectionOpen('relations') && relationsCount > 0 && (
-                  <div className="p-2 bg-background">
-                    <RelatedSection
-                      paper={paper}
-                      workspaceId={workspaceId}
-                      hideHeader
-                      isAddOpen={isAddRelatedOpen}
-                      onAddOpenChange={setIsAddRelatedOpen}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+            <div id="inspector-section-relations" className="bg-background">
+              <InspectorSectionHeader
+                id="relations"
+                label="Related"
+                icon={Network}
+                count={relationsCount}
+                isOpen={isSectionOpen('relations')}
+                hasAdd={true}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('relations') && relationsCount > 0 && (
+                <div className="p-2 bg-background">
+                  <RelatedSection
+                    paper={paper}
+                    workspaceId={activeWorkspaceId}
+                    hideHeader
+                    isAddOpen={isAddRelatedOpen}
+                    onAddOpenChange={setIsAddRelatedOpen}
+                  />
+                </div>
+              )}
+            </div>
 
             {/* 8. Citations Section (No Plus) */}
-            {isSectionVisible('cite') && (
-              <div id="inspector-section-cite" className="bg-background">
-                <InspectorSectionHeader
-                  id="cite"
-                  label="Citation"
-                  icon={Quote}
-                  isOpen={isSectionOpen('cite')}
-                  hasAdd={false}
-                  paper={paper}
-                  onToggle={toggleSection}
-                  onAdd={handleAddClick}
-                />
-                {paper && isSectionOpen('cite') && (
-                  <div className="p-1 bg-background">
-                    <CiteSection paper={paper} workspaceId={isPaperVerified ? workspaceId : ''} />
-                  </div>
-                )}
-              </div>
-            )}
+            <div id="inspector-section-cite" className="bg-background">
+              <InspectorSectionHeader
+                id="cite"
+                label="Citation"
+                icon={Quote}
+                isOpen={isSectionOpen('cite')}
+                hasAdd={false}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('cite') && (
+                <div className="p-1 bg-background">
+                  <CiteSection paper={paper} workspaceId={isPaperVerified ? activeWorkspaceId : ''} />
+                </div>
+              )}
+            </div>
           </div>
         </aside>
         </>

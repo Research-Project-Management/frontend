@@ -22,13 +22,14 @@ import {
   PopoverTrigger,
 } from "@/shared/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
+import { FilterFunnelIcon } from "@/shared/components/icons";
 import { SingleDatePopover } from "@/features/projects/project-id/work-items/components/modals/Popovers";
 import { useQueryClient } from '@tanstack/react-query';
 import { useTags } from '../hooks/use-tags';
 import type { TagWithCount } from '../services/tags.service';
 import type { Item } from '../types/library.types';
 import { ALL_ITEM_TYPES_FLAT, LIBRARY_ITEM_TYPES } from '../schemas/item-type.schema';
-import { itemKeys } from '../hooks/use-items';
+import { itemKeys, useItems } from '../hooks/use-items';
 import { libraryKeys } from '../hooks/use-library';
 
 // ── Checkbox Component (DESIGN.md Flat Precision) ───────────────────────────
@@ -118,18 +119,18 @@ function calculateFilterMatchScore(
 const FILE_STATUS_OPTIONS = [
   {
     id: 'has-pdf' as const,
-    label: 'Has PDF document',
-    aliases: ['pdf', 'fulltext', 'full text', 'attachment', 'doc', 'document', 'paper', 'co file'],
+    label: 'Has PDF',
+    aliases: ['pdf', 'has pdf', 'fulltext', 'full text', 'attachment', 'doc', 'document', 'paper', 'co file', 'file'],
   },
   {
     id: 'missing-pdf' as const,
-    label: 'Missing PDF (Citation only)',
-    aliases: ['missing pdf', 'no pdf', 'citation only', 'metadata', 'thieu file', 'chua co pdf'],
+    label: 'No PDF',
+    aliases: ['no pdf', 'missing pdf', 'without pdf', 'citation only', 'metadata', 'thieu file', 'chua co pdf', 'khong co pdf'],
   },
   {
     id: 'has-notes' as const,
-    label: 'Has notes or annotations',
-    aliases: ['notes', 'note', 'annotation', 'annotations', 'memo', 'ghi chu', 'highlight'],
+    label: 'Has notes',
+    aliases: ['notes', 'has notes', 'with notes', 'note', 'annotation', 'annotations', 'memo', 'ghi chu', 'highlight'],
   },
 ];
 
@@ -183,6 +184,7 @@ export function LibraryFilterPopover({
   const queryClient = useQueryClient();
 
   const scopeId = propScopeId || workspaceId || 'user';
+  const { data: allItemsFromHook } = useItems({ scopeId });
   const [isOpen, setIsOpen] = useState(false);
 
   // Search input query at the very top of popover
@@ -401,46 +403,47 @@ export function LibraryFilterPopover({
 
   // ── Dynamic Item Types from user's papers (Dynamic Facets) ────────────────
   const dynamicTypes = useMemo(() => {
-    // 1. Gather all raw items from props or query cache fallback
-    let sourceItems = items;
+    // 1. Gather all raw items from props, hook, or query cache fallback
+    let sourceItems: Item[] = (items && items.length > 0 ? items : allItemsFromHook) || [];
     if (!sourceItems || sourceItems.length === 0) {
-      const cached =
-        queryClient.getQueryData<Item[]>(libraryKeys.items(scopeId)) ||
-        queryClient.getQueryData<Item[]>(['library', 'items', scopeId]) ||
-        queryClient.getQueryData<Item[]>(itemKeys.all(scopeId));
-      if (Array.isArray(cached)) {
-        sourceItems = cached;
+      const targetScope = scopeId || workspaceId || 'user';
+      const cacheKeys = [
+        itemKeys.all(targetScope),
+        itemKeys.all('user'),
+        ['items', targetScope],
+        ['items', 'user'],
+        libraryKeys.items(targetScope),
+      ];
+      for (const k of cacheKeys) {
+        const raw = queryClient.getQueryData<any>(k);
+        if (Array.isArray(raw) && raw.length > 0) {
+          sourceItems = raw;
+          break;
+        } else if (raw && Array.isArray(raw.items) && raw.items.length > 0) {
+          sourceItems = raw.items;
+          break;
+        } else if (raw && Array.isArray(raw.papers) && raw.papers.length > 0) {
+          sourceItems = raw.papers;
+          break;
+        }
       }
-    }
-
-    if (!sourceItems || sourceItems.length === 0) {
-      // If we still have active types in URL, keep them visible so user can uncheck
-      if (itemTypes.length > 0) {
-        return itemTypes.map((lowerId) => {
-          const foundDef = ALL_ITEM_TYPES_FLAT.find(
-            (t) => t.value.toLowerCase() === lowerId || t.label.toLowerCase() === lowerId
-          );
-          const defFromLib = LIBRARY_ITEM_TYPES[lowerId];
-          const label = foundDef?.label || defFromLib?.label || formatTypeFallback(lowerId);
-          const knownAliases = KNOWN_TYPE_ALIASES[lowerId] || [];
-          return {
-            id: lowerId,
-            label,
-            aliases: Array.from(new Set([label, lowerId, ...knownAliases])),
-          };
-        });
-      }
-      return [];
     }
 
     // 2. Count / collect unique item types existing in user's library
     const existingTypeMap = new Map<string, string>(); // lowerKey -> canonicalKey
-    for (const item of sourceItems) {
-      const raw = item.itemType || (item as any).type;
-      if (raw && typeof raw === 'string') {
-        const lower = raw.toLowerCase().trim();
-        if (lower && !existingTypeMap.has(lower)) {
-          existingTypeMap.set(lower, raw.trim());
+    if (sourceItems && sourceItems.length > 0) {
+      for (const item of sourceItems) {
+        const raw =
+          item.itemType ||
+          (item as any).item_type ||
+          (item as any).type ||
+          (item as any).cslType ||
+          'journalArticle';
+        if (raw && typeof raw === 'string') {
+          const lower = raw.toLowerCase().trim();
+          if (lower && !existingTypeMap.has(lower)) {
+            existingTypeMap.set(lower, raw.trim());
+          }
         }
       }
     }
@@ -453,9 +456,21 @@ export function LibraryFilterPopover({
       }
     }
 
-    // If only 1 type exists in entire library and no filter active, hide the facet to eliminate clutter
-    if (existingTypeMap.size <= 1 && itemTypes.length === 0) {
-      return [];
+    // If no papers exist in library yet, provide standard academic fallback types
+    if (existingTypeMap.size === 0) {
+      const defaultTypes = [
+        { id: 'journalarticle', canonical: 'journalArticle', label: 'Journal Article' },
+        { id: 'preprint', canonical: 'preprint', label: 'Preprint (arXiv/SSRN)' },
+        { id: 'conferencepaper', canonical: 'conferencePaper', label: 'Conference Paper' },
+        { id: 'book', canonical: 'book', label: 'Book / Chapter' },
+        { id: 'thesis', canonical: 'thesis', label: 'Thesis / Dissertation' },
+        { id: 'report', canonical: 'report', label: 'Report / Whitepaper' },
+      ];
+      return defaultTypes.map((t) => ({
+        id: t.id,
+        label: t.label,
+        aliases: Array.from(new Set([t.label, t.canonical, ...(KNOWN_TYPE_ALIASES[t.id] || [])])),
+      }));
     }
 
     // 3. Map to options with canonical labels and aliases (Strictly NO count numbers)
@@ -477,7 +492,7 @@ export function LibraryFilterPopover({
 
     // Sort alphabetically by label
     return options.sort((a, b) => a.label.localeCompare(b.label));
-  }, [items, scopeId, queryClient, itemTypes]);
+  }, [items, allItemsFromHook, scopeId, workspaceId, queryClient, itemTypes]);
 
   const matchingTypeItems = useMemo(() => {
     return dynamicTypes
@@ -544,21 +559,28 @@ export function LibraryFilterPopover({
           <TooltipTrigger asChild>
             <PopoverTrigger asChild>
               <Button
+                type="button"
                 variant="outline"
-                size="sm"
+                size="icon"
                 className={cn(
-                  "h-8 px-3 text-12 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shadow-2xs shrink-0 select-none",
-                  activeCount > 0 && "bg-muted border-border font-semibold text-foreground",
+                  "size-8 rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors relative shrink-0 shadow-2xs select-none",
+                  activeCount > 0 && "border-primary/50 text-primary",
+                  isOpen && "bg-muted",
                   className
                 )}
-                aria-label="Filter library"
+                aria-label="Filter"
               >
-                <span>Filter</span>
+                <FilterFunnelIcon className="size-4 text-foreground shrink-0" />
+                {activeCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-primary text-10 font-mono text-primary-foreground font-medium tabular-nums leading-none">
+                    {activeCount}
+                  </span>
+                )}
               </Button>
             </PopoverTrigger>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-12">
-            Filter library items
+          <TooltipContent side="bottom" sideOffset={6} className="text-12">
+            Filter
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -566,268 +588,271 @@ export function LibraryFilterPopover({
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-76 sm:w-80 max-h-[85vh] p-2.5 rounded-md border border-border bg-popover text-popover-foreground shadow-2xs z-50 overflow-y-auto font-sans flex flex-col gap-2.5 select-none thin-scrollbar"
+        className="w-72 max-h-[480px] p-1.5 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 z-50 font-sans flex flex-col select-none"
       >
-        {/* 1. Main Search Header at Top (No Title, matches work-items) */}
-        <div className="p-0.5" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-background text-12 text-foreground border border-border focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/30 transition-all shadow-2xs">
-            <Search className="size-3.5 text-muted-foreground shrink-0" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search filters..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent text-12 text-foreground placeholder:text-muted-foreground outline-none"
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="p-0.5 text-muted-foreground hover:text-foreground cursor-pointer rounded-xs"
-                aria-label="Clear filter search"
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* 3. Empty State if Search Query Yields 0 Matches */}
-        {searchQuery.trim() && totalMatchesCount === 0 ? (
-          <div className="py-6 text-center text-12 text-muted-foreground select-none">
-            <p className="font-medium text-foreground">No matching filters</p>
-            <p className="text-11 text-muted-foreground mt-0.5">No options match &ldquo;{searchQuery}&rdquo;</p>
+        {/* 1. Main Search Header at Top - Fixed, Flat, No Shadow (Matches Project Standard) */}
+        <div className="relative flex items-center mb-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none shrink-0" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8 w-full pl-8 pr-7 text-xs bg-background border border-border rounded-md outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors text-foreground placeholder:text-muted-foreground shadow-none"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          />
+          {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="mt-2 text-11 text-primary hover:underline cursor-pointer font-medium"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground cursor-pointer rounded-xs"
+              aria-label="Clear filter search"
             >
-              Clear search
+              <X className="size-3 shrink-0" />
             </button>
-          </div>
-        ) : null}
+          )}
+        </div>
 
-        {/* 4. Files Section */}
-        {matchingFileItems.length > 0 && (
-          <div className="border-t border-border/50 pt-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setFilesOpen(!filesOpen)}
-              className="flex w-full items-center justify-between py-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
-            >
-              <div className="flex items-center gap-1.5">
-                <FileText className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
-                <span>Files</span>
-              </div>
-              {filesOpen ? (
-                <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
-              ) : (
-                <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
-              )}
-            </button>
+        {/* 2. Scrollable Body: Max height, scrollable without visible scrollbar */}
+        <div className="space-y-1.5 flex-1 min-h-0 overflow-y-auto no-scrollbar">
+          {/* 3. Empty State if Search Query Yields 0 Matches */}
+          {searchQuery.trim() && totalMatchesCount === 0 ? (
+            <div className="py-6 text-center text-12 text-muted-foreground select-none">
+              <p className="font-medium text-foreground">No matching filters</p>
+              <p className="text-11 text-muted-foreground mt-0.5">No options match &ldquo;{searchQuery}&rdquo;</p>
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="mt-2 text-11 text-primary hover:underline cursor-pointer font-medium"
+              >
+                Clear search
+              </button>
+            </div>
+          ) : null}
 
-            {filesOpen && (
-              <div className="space-y-1 pt-1.5 select-none">
-                {matchingFileItems.map((item) => (
-                  <label
-                    key={item.id}
-                    onClick={() => handleFileStatusToggle(item.id)}
-                    className="flex items-center gap-2.5 py-1 px-1 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted/50 transition-colors"
-                  >
-                    <FilterCheckbox checked={fileStatus === item.id} />
-                    <span className="font-normal leading-none">{item.label}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 5. Progress Section (Checkbox Style) */}
-        {matchingReadingItems.length > 0 && (
-          <div className="border-t border-border/50 pt-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setReadingOpen(!readingOpen)}
-              className="flex w-full items-center justify-between py-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
-            >
-              <div className="flex items-center gap-1.5">
-                <BookmarkCheck className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
-                <span>Progress</span>
-              </div>
-              {readingOpen ? (
-                <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
-              ) : (
-                <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
-              )}
-            </button>
-
-            {readingOpen && (
-              <div className="space-y-1 pt-1.5 select-none">
-                {matchingReadingItems.map((item) => (
-                  <label
-                    key={item.id}
-                    onClick={() => handleReadStatusToggle(item.id)}
-                    className="flex items-center gap-2.5 py-1 px-1 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted/50 transition-colors"
-                  >
-                    <FilterCheckbox checked={readStatuses.includes(item.id)} />
-                    <span className="font-normal leading-none">{item.label}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 6. Type Section */}
-        {matchingTypeItems.length > 0 && (
-          <div className="border-t border-border/50 pt-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setTypesOpen(!typesOpen)}
-              className="flex w-full items-center justify-between py-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
-            >
-              <div className="flex items-center gap-1.5">
-                <Shapes className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
-                <span>Type</span>
-              </div>
-              {typesOpen ? (
-                <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
-              ) : (
-                <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
-              )}
-            </button>
-
-            {typesOpen && (
-              <div className="space-y-1 pt-1.5 select-none">
-                {matchingTypeItems.map((t) => (
-                  <label
-                    key={t.id}
-                    onClick={() => handleTypeToggle(t.id)}
-                    className="flex items-center gap-2.5 py-1 px-1 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted/50 transition-colors"
-                  >
-                    <FilterCheckbox checked={itemTypes.includes(t.id)} />
-                    <span className="font-normal leading-none">{t.label}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 7. Date Section (Vertical Start/End Date Pickers, Reused from work-items) */}
-        {dateSectionMatch.matches && (
-          <div className="border-t border-border/50 pt-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setYearOpen(!yearOpen)}
-              className="flex w-full items-center justify-between py-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
-            >
-              <div className="flex items-center gap-1.5">
-                <CalendarIcon className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
-                <span>Date</span>
-                {hasDateFilter && (
-                  <span className="size-1.5 rounded-full bg-primary shrink-0" />
-                )}
-              </div>
-              <div className="flex items-center gap-1.5">
-                {hasDateFilter && (
-                  <span
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleClearDate();
-                    }}
-                    className="text-11 text-muted-foreground hover:text-destructive cursor-pointer px-1 py-0.5 rounded-xs"
-                    title="Clear date filter"
-                  >
-                    Clear
-                  </span>
-                )}
-                {yearOpen ? (
+          {/* 4. Type Section (Moved to Top) */}
+          {matchingTypeItems.length > 0 && (
+            <div className="pt-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setTypesOpen(!typesOpen)}
+                className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Shapes className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
+                  <span>Type</span>
+                </div>
+                {typesOpen ? (
                   <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
                 ) : (
                   <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
                 )}
-              </div>
-            </button>
+              </button>
 
-            {yearOpen && (
-              <div className="pt-1 flex flex-col gap-0.5 select-none">
-                <SingleDatePopover
-                  label="Start date"
-                  date={startDate}
-                  onSelectDate={handleStartDateSelect}
-                  open={startDateOpen}
-                  onOpenChange={setStartDateOpen}
-                  variant="ghost"
-                  actionBtnClass="w-full justify-start h-8 px-2 text-12 font-normal rounded-md border-0 bg-transparent hover:bg-muted/50 text-foreground transition-colors shadow-none cursor-pointer"
-                />
-                <SingleDatePopover
-                  label="End date"
-                  date={endDate}
-                  onSelectDate={handleEndDateSelect}
-                  open={endDateOpen}
-                  onOpenChange={setEndDateOpen}
-                  variant="ghost"
-                  actionBtnClass="w-full justify-start h-8 px-2 text-12 font-normal rounded-md border-0 bg-transparent hover:bg-muted/50 text-foreground transition-colors shadow-none cursor-pointer"
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 8. Tags Section */}
-        {matchingTags.length > 0 && (
-          <div className="border-t border-border/50 pt-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setTagsOpen(!tagsOpen)}
-              className="flex w-full items-center justify-between py-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
-            >
-              <div className="flex items-center gap-1.5">
-                <TagIcon className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
-                <span>Tags</span>
-              </div>
-              {tagsOpen ? (
-                <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
-              ) : (
-                <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
-              )}
-            </button>
-
-            {tagsOpen && (
-              <div className="pt-1.5 space-y-1 select-none">
-                <div className="max-h-40 overflow-y-auto space-y-0.5 thin-scrollbar pr-0.5">
-                  {matchingTags.map(({ tag }) => {
-                    const isSelected = activeTags.some(
-                      (t) => t.toLowerCase() === tag.name.toLowerCase()
-                    );
-                    return (
+              {typesOpen && (
+                <div className="pt-1 select-none">
+                  <div className="max-h-36 overflow-y-auto space-y-0.5 no-scrollbar">
+                    {matchingTypeItems.map((t) => (
                       <label
-                        key={tag.id}
-                        onClick={() => handleTagToggle(tag.name)}
-                        className={cn(
-                          "flex items-start gap-2.5 py-1 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none transition-colors",
-                          isSelected ? "bg-muted font-medium" : "hover:bg-muted/50 font-normal"
-                        )}
+                        key={t.id}
+                        onClick={() => handleTypeToggle(t.id)}
+                        className="flex items-center gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted transition-colors"
                       >
-                        <div className="pt-0.5 shrink-0">
-                          <FilterCheckbox checked={isSelected} />
-                        </div>
-                        <span className="flex-1 min-w-0 break-words whitespace-normal leading-snug tracking-tight text-12">
-                          {tag.name}
-                        </span>
+                        <FilterCheckbox checked={itemTypes.includes(t.id)} />
+                        <span className="font-normal leading-none">{t.label}</span>
                       </label>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+
+          {/* 5. Tags Section (Moved to Top) */}
+          {matchingTags.length > 0 && (
+            <div className="border-t border-border pt-1.5 mt-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setTagsOpen(!tagsOpen)}
+                className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+              >
+                <div className="flex items-center gap-1.5">
+                  <TagIcon className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
+                  <span>Tags</span>
+                </div>
+                {tagsOpen ? (
+                  <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
+                ) : (
+                  <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+                )}
+              </button>
+
+              {tagsOpen && (
+                <div className="pt-1 select-none">
+                  <div className="max-h-40 overflow-y-auto space-y-0.5 no-scrollbar">
+                    {matchingTags.map(({ tag }) => {
+                      const isSelected = activeTags.some(
+                        (t) => t.toLowerCase() === tag.name.toLowerCase()
+                      );
+                      return (
+                        <label
+                          key={tag.id}
+                          onClick={() => handleTagToggle(tag.name)}
+                          className={cn(
+                            "flex items-start gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none transition-colors",
+                            isSelected ? "bg-muted font-medium" : "hover:bg-muted font-normal"
+                          )}
+                        >
+                          <div className="pt-0.5 shrink-0">
+                            <FilterCheckbox checked={isSelected} />
+                          </div>
+                          <span className="flex-1 min-w-0 break-words whitespace-normal leading-snug tracking-tight text-12">
+                            {tag.name}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 6. Files Section */}
+          {matchingFileItems.length > 0 && (
+            <div className="border-t border-border pt-1.5 mt-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setFilesOpen(!filesOpen)}
+                className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+              >
+                <div className="flex items-center gap-1.5">
+                  <FileText className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
+                  <span>Files</span>
+                </div>
+                {filesOpen ? (
+                  <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
+                ) : (
+                  <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+                )}
+              </button>
+
+              {filesOpen && (
+                <div className="space-y-0.5 pt-1 select-none">
+                  {matchingFileItems.map((item) => (
+                    <label
+                      key={item.id}
+                      onClick={() => handleFileStatusToggle(item.id)}
+                      className="flex items-center gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted transition-colors"
+                    >
+                      <FilterCheckbox checked={fileStatus === item.id} />
+                      <span className="font-normal leading-none">{item.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 7. Progress Section */}
+          {matchingReadingItems.length > 0 && (
+            <div className="border-t border-border pt-1.5 mt-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setReadingOpen(!readingOpen)}
+                className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+              >
+                <div className="flex items-center gap-1.5">
+                  <BookmarkCheck className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
+                  <span>Progress</span>
+                </div>
+                {readingOpen ? (
+                  <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
+                ) : (
+                  <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+                )}
+              </button>
+
+              {readingOpen && (
+                <div className="space-y-0.5 pt-1 select-none">
+                  {matchingReadingItems.map((item) => (
+                    <label
+                      key={item.id}
+                      onClick={() => handleReadStatusToggle(item.id)}
+                      className="flex items-center gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted transition-colors"
+                    >
+                      <FilterCheckbox checked={readStatuses.includes(item.id)} />
+                      <span className="font-normal leading-none">{item.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 8. Date Section */}
+          {dateSectionMatch.matches && (
+            <div className="border-t border-border pt-1.5 mt-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setYearOpen(!yearOpen)}
+                className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+              >
+                <div className="flex items-center gap-1.5">
+                  <CalendarIcon className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
+                  <span>Date</span>
+                  {hasDateFilter && (
+                    <span className="size-1.5 rounded-full bg-primary shrink-0" />
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {hasDateFilter && (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleClearDate();
+                      }}
+                      className="text-11 text-muted-foreground hover:text-destructive cursor-pointer px-1 py-0.5 rounded-xs"
+                      title="Clear date filter"
+                    >
+                      Clear
+                    </span>
+                  )}
+                  {yearOpen ? (
+                    <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
+                  ) : (
+                    <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+                  )}
+                </div>
+              </button>
+
+              {yearOpen && (
+                <div className="pt-1 flex flex-col gap-0.5 select-none">
+                  <SingleDatePopover
+                    label="Start date"
+                    date={startDate}
+                    onSelectDate={handleStartDateSelect}
+                    open={startDateOpen}
+                    onOpenChange={setStartDateOpen}
+                    variant="ghost"
+                    actionBtnClass="w-full justify-start h-8 px-2 text-12 font-normal rounded-md border-0 bg-transparent hover:bg-muted text-foreground transition-colors shadow-none cursor-pointer"
+                  />
+                  <SingleDatePopover
+                    label="End date"
+                    date={endDate}
+                    onSelectDate={handleEndDateSelect}
+                    open={endDateOpen}
+                    onOpenChange={setEndDateOpen}
+                    variant="ghost"
+                    actionBtnClass="w-full justify-start h-8 px-2 text-12 font-normal rounded-md border-0 bg-transparent hover:bg-muted text-foreground transition-colors shadow-none cursor-pointer"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );

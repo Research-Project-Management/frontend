@@ -83,10 +83,12 @@ export function useActiveDocument() {
   const tabsStore = useTabsStore();
   const { openTab, setActive } = tabsStore;
 
+  const effectiveProjectId = projectId || (parentPage as any)?.projectId || null;
+
   useEffect(() => {
-    if (projectId && typeof setProjectId === 'function') setProjectId(projectId);
+    if (effectiveProjectId && typeof setProjectId === 'function') setProjectId(effectiveProjectId);
     if (pageId && typeof setParentPageId === 'function') setParentPageId(pageId);
-  }, [projectId, pageId, setProjectId, setParentPageId]);
+  }, [effectiveProjectId, pageId, setProjectId, setParentPageId]);
 
   useEffect(() => {
     if (parentPage && typeof setFileHierarchy === 'function') {
@@ -179,6 +181,7 @@ export function useActiveDocument() {
     fileId,
     isAssetTab,
     selectedAsset,
+    projectId: effectiveProjectId,
   };
 }
 

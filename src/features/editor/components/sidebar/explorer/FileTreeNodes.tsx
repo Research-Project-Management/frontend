@@ -5,7 +5,7 @@ import {
   BookText,
   Check,
   ChevronRight,
-  Ellipsis,
+  MoreVertical,
   FileCode2,
   FileText,
   Folder,
@@ -180,7 +180,13 @@ export function RenameInput({
   );
 }
 
-export function RowActions({ children }: { children: React.ReactNode }) {
+export function RowActions({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -188,9 +194,12 @@ export function RowActions({ children }: { children: React.ReactNode }) {
           type="button"
           aria-label="File options"
           onClick={(e) => e.stopPropagation()}
-          className="rounded-md p-1 text-foreground opacity-0 transition-opacity hover:bg-muted focus:opacity-100 group-hover/row:opacity-100"
+          className={cn(
+            "rounded-md p-1 text-foreground opacity-0 transition-opacity hover:bg-muted focus:opacity-100 group-hover/row:opacity-100",
+            className,
+          )}
         >
-          <Ellipsis className="size-3.5 shrink-0" />
+          <MoreVertical className="size-3.5 shrink-0" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44 text-xs z-[9999]">

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FolderInput, Copy, Trash2, X, Folder, Library, Quote, Download, RotateCcw } from 'lucide-react';
+import { FolderInput, Copy, Trash2, X, Folder, Library, Quote, Download, RotateCcw, GitMerge } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyToClipboard } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui";
@@ -30,6 +30,7 @@ export interface BatchBarProps {
   onBatchMove?: (collectionId: string | null) => void;
   onBatchDelete?: () => void;
   onBatchRestore?: () => void;
+  onBatchMerge?: () => void;
   isTrash?: boolean;
   workspaceId?: string;
   projectId?: string;
@@ -46,6 +47,7 @@ export function BatchBar({
   onBatchMove,
   onBatchDelete,
   onBatchRestore,
+  onBatchMerge,
   isTrash = false,
   workspaceId: propsWorkspaceId,
   projectId: propsProjectId,
@@ -197,7 +199,7 @@ export function BatchBar({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 10 }}
         transition={{ duration: 0.15, ease: 'easeOut' }}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-md select-none shadow-none"
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-md select-none shadow-raised-200"
       >
         {/* Selection Count */}
         <div className="flex items-center gap-1.5 pr-2.5 border-r border-border">
@@ -230,7 +232,7 @@ export function BatchBar({
               align="center"
               sideOffset={8}
               onCloseAutoFocus={(e) => e.preventDefault()}
-              className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5"
+              className="w-60 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5"
             >
               <DropdownMenuItem
                 onClick={() => onBatchMove(null)}
@@ -251,6 +253,26 @@ export function BatchBar({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+        )}
+
+        {/* Merge Duplicates Button - Contextual: only visible when onBatchMerge is provided and selectedCount >= 2 */}
+        {!isTrash && onBatchMerge && selectedCount >= 2 && (
+          <Tooltip delayDuration={250}>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onBatchMerge}
+                className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+              >
+                <GitMerge className="size-3.5 shrink-0 text-foreground" />
+                <span>Merge ({selectedCount})</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+              Merge {selectedCount} selected duplicate items into one master record
+            </TooltipContent>
+          </Tooltip>
         )}
 
         {/* Copy Multi Citation Dropdown */}
@@ -277,7 +299,7 @@ export function BatchBar({
             align="center"
             side="top"
             sideOffset={8}
-            className="w-48 p-1 bg-popover border border-border rounded-md shadow-none"
+            className="w-56 p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200"
           >
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('apa')}
@@ -432,7 +454,7 @@ export function BatchBar({
           <TooltipTrigger asChild>
             <button
               onClick={onClearSelection}
-              className="flex size-6 items-center justify-center rounded-sm text-foreground hover:bg-muted transition-colors cursor-pointer ml-0.5"
+              className="flex size-6 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer ml-0.5"
               aria-label="Clear selection"
             >
               <X className="size-3.5 text-foreground shrink-0" />

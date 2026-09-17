@@ -124,3 +124,51 @@ export function extractOutlineFromContent(
 
   return items;
 }
+
+export interface OutlineEntry {
+  level: number;
+  levelName: string;
+  title: string;
+  line: number;
+}
+
+export const OUTLINE_INDENT = [0, 8, 18, 28, 38];
+
+const SECTION_LEVEL_NAMES: Record<number, string> = {
+  0: 'Chapter',
+  1: 'Section',
+  2: 'Sub',
+  3: 'Subsub',
+  4: 'Para',
+};
+
+export function parseDocumentOutline(content: unknown): OutlineEntry[] {
+  let str = '';
+  if (typeof content === 'string') {
+    str = content;
+  } else if (content && typeof content === 'object') {
+    const obj = content as Record<string, unknown>;
+    str = String(obj.source || obj.text || obj.content || '');
+  }
+
+  const entries: OutlineEntry[] = [];
+  const lines = str.split('\n');
+
+  for (let idx = 0; idx < lines.length; idx++) {
+    const line = lines[idx].trimStart();
+    for (const { regex, level } of SECTION_PATTERNS) {
+      const match = line.match(regex);
+      if (match) {
+        entries.push({
+          level,
+          levelName: SECTION_LEVEL_NAMES[level] || 'Section',
+          title: match[1].trim(),
+          line: idx + 1,
+        });
+        break;
+      }
+    }
+  }
+
+  return entries;
+}

@@ -14,8 +14,6 @@ export default function EditMenu() {
     editor()?.setSelection(editor()!.getModel()!.getFullModelRange());
   const handleFind = () =>
     editor()?.getAction('actions.find')?.run();
-  const handleReplace = () =>
-    editor()?.getAction('editor.action.startFindReplaceAction')?.run();
 
   return (
     <MenubarMenu>
@@ -25,25 +23,20 @@ export default function EditMenu() {
       <MenubarContent className="min-w-44 text-xs z-[9999]">
         <MenubarItem onClick={handleUndo}>
           Undo
-          <MenubarShortcut>Ctrl+Z</MenubarShortcut>
+          <MenubarShortcut>Ctrl Z</MenubarShortcut>
         </MenubarItem>
         <MenubarItem onClick={handleRedo}>
           Redo
-          <MenubarShortcut>Ctrl+Y</MenubarShortcut>
+          <MenubarShortcut>Ctrl Y</MenubarShortcut>
         </MenubarItem>
         <MenubarSeparator />
         <MenubarItem onClick={handleFind}>
-          Find…
-          <MenubarShortcut>Ctrl+F</MenubarShortcut>
+          Find
+          <MenubarShortcut>Ctrl F</MenubarShortcut>
         </MenubarItem>
-        <MenubarItem onClick={handleReplace}>
-          Replace…
-          <MenubarShortcut>Ctrl+H</MenubarShortcut>
-        </MenubarItem>
-        <MenubarSeparator />
         <MenubarItem onClick={handleSelectAll}>
-          Select All
-          <MenubarShortcut>Ctrl+A</MenubarShortcut>
+          Select all
+          <MenubarShortcut>Ctrl A</MenubarShortcut>
         </MenubarItem>
       </MenubarContent>
     </MenubarMenu>

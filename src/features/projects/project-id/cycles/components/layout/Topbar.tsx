@@ -112,7 +112,7 @@ export default function TopBar({
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 gap-1.5 px-3 rounded-sm border border-border text-foreground hover:bg-muted shadow-none bg-background cursor-pointer"
+            className="h-8 gap-1.5 px-3 rounded-md border border-border text-foreground hover:bg-muted shadow-2xs bg-background cursor-pointer"
           >
             <Filter className="size-3.5 mt-[1px] text-foreground shrink-0" />
             <span className="text-xs font-medium text-foreground">Filters</span>

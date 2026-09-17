@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import { cn } from "@/shared/lib/utils";
 import {
   Loader2,
   FileQuestion,
@@ -163,10 +164,39 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     }
   };
 
-  // Additional Academic Reader States (Pan/Select, Rotation, Reading Theme)
+  // Additional Academic Reader States (Pan/Select, Rotation, Reading Theme, Split View, Reading Mode, Lock Tool)
   const [interactionMode, setInteractionMode] = useState<'select' | 'hand'>('select');
   const [rotation, setRotation] = useState<number>(0);
   const [themeMode, setThemeMode] = useState<'normal' | 'sepia' | 'dark'>('normal');
+  const [splitMode, setSplitMode] = useState<'none' | 'horizontal' | 'vertical'>('none');
+  const [isReadingMode, setIsReadingMode] = useState<boolean>(false);
+  const [isToolLocked, setIsToolLocked] = useState<boolean>(false);
+  const [pageHistory, setPageHistory] = useState<number[]>([]);
+
+  const handleNavigateToPageWithHistory = useCallback((newPage: number) => {
+    if (visiblePage && visiblePage !== newPage) {
+      setPageHistory((prev) => [...prev.slice(-30), visiblePage]);
+    }
+    handleNavigateToPage(newPage);
+  }, [visiblePage, handleNavigateToPage]);
+
+  const handleNavigateBack = useCallback(() => {
+    if (pageHistory.length === 0) return;
+    const prevPage = pageHistory[pageHistory.length - 1];
+    setPageHistory((prev) => prev.slice(0, prev.length - 1));
+    handleNavigateToPage(prevPage);
+  }, [pageHistory, handleNavigateToPage]);
+
+  // Escape key exits distraction-free reading mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isReadingMode) {
+        setIsReadingMode(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isReadingMode]);
 
   const handleRotate = () => {
     setRotation((r) => (r + 90) % 360);
@@ -205,19 +235,21 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
   return (
     <div className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background ${isResizingPanel ? 'select-none' : ''}`}>
-      {/* 0. ZOTERO 7 APPLICATION MENU BAR (File, Edit, View, Go) */}
-      <MenuBar />
+      {/* 0. ZOTERO 7 APPLICATION MENU BAR (File, Edit, View, Go) - Hidden in Reading Mode */}
+      {!isReadingMode && <MenuBar />}
 
-      {/* 1. ZOTERO 7 MULTI-PAPER TAB BAR (Hàng 1) */}
-      <Topbar
-        paper={paper}
-        tabs={tabs}
-        activeTabId={paper?.id || activeTabId}
-        scopeTitle={activeScope?.name}
-        onSelectTab={handleSelectTab}
-        onCloseTab={handleCloseTab}
-        onBack={goBack}
-      />
+      {/* 1. ZOTERO 7 MULTI-PAPER TAB BAR (Hàng 1) - Hidden in Reading Mode */}
+      {!isReadingMode && (
+        <Topbar
+          paper={paper}
+          tabs={tabs}
+          activeTabId={paper?.id || activeTabId}
+          scopeTitle={activeScope?.name}
+          onSelectTab={handleSelectTab}
+          onCloseTab={handleCloseTab}
+          onBack={goBack}
+        />
+      )}
 
       {/* 2. ZOTERO 7 DEDICATED READER TOOLBAR (Hàng 2) */}
       {paperUrl && (
@@ -226,13 +258,21 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           onToggleSidebar={() => setIsSidebarOpen((v) => !v)}
           visiblePage={visiblePage}
           numPages={numPages}
-          onNavigateToPage={handleNavigateToPage}
+          onNavigateToPage={handleNavigateToPageWithHistory}
+          canNavigateBack={pageHistory.length > 0}
+          onNavigateBack={handleNavigateBack}
+          isReadingMode={isReadingMode}
+          onToggleReadingMode={() => setIsReadingMode((v) => !v)}
+          splitMode={splitMode}
+          onSelectSplitMode={setSplitMode}
           interactionMode={interactionMode}
           onSelectInteractionMode={setInteractionMode}
           activeTool={activeTool}
           onSelectTool={setActiveTool}
           activeColor={activeColor}
           onSelectColor={setActiveColor}
+          isToolLocked={isToolLocked}
+          onToggleToolLocked={() => setIsToolLocked((v) => !v)}
           zoom={zoom}
           onZoomIn={() => setZoom((z) => Math.min(2.5, +(z + 0.15).toFixed(2)))}
           onZoomOut={() => setZoom((z) => Math.max(0.5, +(z - 0.15).toFixed(2)))}
@@ -284,11 +324,11 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       <div className="relative flex min-h-0 flex-1 overflow-hidden bg-muted">
         {/* 3. SIDEBAR (Collapsible 288px: Outline, Annotations & Pages) */}
         <Sidebar
-          isOpen={isSidebarOpen}
+          isOpen={isSidebarOpen && !isReadingMode}
           onClose={() => setIsSidebarOpen(false)}
           currentPage={visiblePage}
           totalPages={numPages}
-          onJumpToPage={handleNavigateToPage}
+          onJumpToPage={handleNavigateToPageWithHistory}
           fulltext={fulltext}
           paper={paper}
           workspaceId={workspaceId}
@@ -298,7 +338,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           annotationsCount={annotations.length}
         />
 
-        {/* 4. MAIN PDF CANVAS */}
+        {/* 4. MAIN PDF CANVAS (Supports Single, Horizontal, and Vertical Split) */}
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden relative">
           {isLoadingPapers ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-2">
@@ -327,31 +367,91 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
               </Button>
             </div>
           ) : paperUrl ? (
-            <Viewer
-              blobUrl={pdfBlobUrl}
-              isLoading={pdfLoading}
-              error={pdfError}
-              onRetry={handleRetryPdf}
-              onAskAi={handleAskAi}
-              onAddToNote={handleAddToNote}
-              onAnnotate={handleAnnotate}
-              annotations={annotations}
-              onDeleteAnnotation={(ann) => deleteAnnotation && deleteAnnotation(ann.id, ann.version)}
-              fulltext={fulltext}
-              isLoadingFulltext={isLoadingFulltext}
-              targetPage={targetPage}
-              paper={paper}
-              onVisiblePageChange={actions.setVisiblePage}
-              onTotalPagesChange={actions.setNumPages}
-              zoom={zoom}
-              rotation={rotation}
-              themeMode={themeMode}
-              interactionMode={interactionMode}
-              activeColor={activeColor}
-              activeTool={activeTool}
-              isSearchOpen={isSearchOpen}
-              onCloseSearch={() => setIsSearchOpen(false)}
-            />
+            splitMode === 'none' ? (
+              <Viewer
+                blobUrl={pdfBlobUrl}
+                isLoading={pdfLoading}
+                error={pdfError}
+                onRetry={handleRetryPdf}
+                onAskAi={handleAskAi}
+                onAddToNote={handleAddToNote}
+                onAnnotate={handleAnnotate}
+                annotations={annotations}
+                onDeleteAnnotation={(ann) => deleteAnnotation && deleteAnnotation(ann.id, ann.version)}
+                fulltext={fulltext}
+                isLoadingFulltext={isLoadingFulltext}
+                targetPage={targetPage}
+                paper={paper}
+                onVisiblePageChange={actions.setVisiblePage}
+                onTotalPagesChange={actions.setNumPages}
+                zoom={zoom}
+                rotation={rotation}
+                themeMode={themeMode}
+                interactionMode={interactionMode}
+                activeColor={activeColor}
+                activeTool={activeTool}
+                isSearchOpen={isSearchOpen}
+                onCloseSearch={() => setIsSearchOpen(false)}
+              />
+            ) : (
+              <div className={cn(
+                "flex-1 flex min-w-0 min-h-0 overflow-hidden",
+                splitMode === 'vertical' ? "flex-row divide-x divide-border" : "flex-col divide-y divide-border"
+              )}>
+                {/* Primary Split View */}
+                <div className="flex-1 min-w-0 min-h-0 overflow-hidden relative">
+                  <Viewer
+                    blobUrl={pdfBlobUrl}
+                    isLoading={pdfLoading}
+                    error={pdfError}
+                    onRetry={handleRetryPdf}
+                    onAskAi={handleAskAi}
+                    onAddToNote={handleAddToNote}
+                    onAnnotate={handleAnnotate}
+                    annotations={annotations}
+                    onDeleteAnnotation={(ann) => deleteAnnotation && deleteAnnotation(ann.id, ann.version)}
+                    fulltext={fulltext}
+                    isLoadingFulltext={isLoadingFulltext}
+                    targetPage={targetPage}
+                    paper={paper}
+                    onVisiblePageChange={actions.setVisiblePage}
+                    onTotalPagesChange={actions.setNumPages}
+                    zoom={zoom}
+                    rotation={rotation}
+                    themeMode={themeMode}
+                    interactionMode={interactionMode}
+                    activeColor={activeColor}
+                    activeTool={activeTool}
+                    isSearchOpen={isSearchOpen}
+                    onCloseSearch={() => setIsSearchOpen(false)}
+                  />
+                </div>
+                {/* Secondary Split View (Zotero: compare two sections of same document) */}
+                <div className="flex-1 min-w-0 min-h-0 overflow-hidden relative">
+                  <Viewer
+                    blobUrl={pdfBlobUrl}
+                    isLoading={pdfLoading}
+                    error={pdfError}
+                    onRetry={handleRetryPdf}
+                    onAskAi={handleAskAi}
+                    onAddToNote={handleAddToNote}
+                    onAnnotate={handleAnnotate}
+                    annotations={annotations}
+                    onDeleteAnnotation={(ann) => deleteAnnotation && deleteAnnotation(ann.id, ann.version)}
+                    fulltext={fulltext}
+                    isLoadingFulltext={isLoadingFulltext}
+                    targetPage={null}
+                    paper={paper}
+                    zoom={zoom}
+                    rotation={rotation}
+                    themeMode={themeMode}
+                    interactionMode={interactionMode}
+                    activeColor={activeColor}
+                    activeTool={activeTool}
+                  />
+                </div>
+              </div>
+            )
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center p-6 text-center max-w-md mx-auto">
               <p className="text-13 font-medium text-foreground mb-1">
@@ -374,21 +474,23 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
         {/* Academic Entities Drawer (Figures, Tables, Formulas) */}
         <DocumentNavDrawer
-          isOpen={isEntitiesDrawerOpen}
+          isOpen={isEntitiesDrawerOpen && !isReadingMode}
           onClose={() => setIsEntitiesDrawerOpen(false)}
           fulltext={fulltext}
           isLoading={isLoadingFulltext}
           currentPage={visiblePage}
-          onJumpToPage={(p) => handleNavigateToPage(p)}
+          onJumpToPage={(p) => handleNavigateToPageWithHistory(p)}
         />
 
         {/* 5. UNIFIED INSPECTOR PANEL */}
-        <Panel
-          paper={paper as any}
-          item={paper as any}
-          workspaceId={workspaceId}
-          onClose={() => setIsInspectorOpen(false)}
-        />
+        {!isReadingMode && (
+          <Panel
+            paper={paper as any}
+            item={paper as any}
+            workspaceId={workspaceId}
+            onClose={() => setIsInspectorOpen(false)}
+          />
+        )}
       </div>
 
       {/* Batch Annotation Action Bar (Dock) */}

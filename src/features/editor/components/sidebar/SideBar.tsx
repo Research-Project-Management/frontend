@@ -1,11 +1,9 @@
 'use client';
 import {
   FileText,
-  History,
   MessageSquareQuote,
   Search,
   BookMarked,
-  ListTree,
 } from "lucide-react";
 import React, { useEffect, useState, useCallback } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
@@ -13,31 +11,28 @@ import { cn } from "@/shared/lib/utils";
 
 import SearchTab from "./search/SearchTab";
 import FilesTab from "./explorer/FilesTab";
-import OutlineTab from "./outline/OutlineTab";
 import ReviewTab from "./review/ReviewTab";
-import HistoryTab from "./history/HistoryTab";
 import CitationTab from "./citation/CitationTab";
+import AiTab from "./ai/AiTab";
 import { EditorEventBus } from "@/features/editor/utils/editor.util";
 import { logger } from "@/shared/lib/utils";
 
 const sideBarItems = [
   { name: "Files", icon: FileText },
-  { name: "Outline", icon: ListTree },
   { name: "Search", icon: Search },
   { name: "Citations", icon: BookMarked },
   { name: "Review", icon: MessageSquareQuote },
-  { name: "History", icon: History },
+  { name: "AI", imageSrc: "/Chat.svg" },
 ] as const;
 
 export type SidebarTab = (typeof sideBarItems)[number]["name"];
 
 function PanelContent({ tab, onClose }: { tab: SidebarTab; onClose: () => void }) {
   if (tab === "Files") return <FilesTab onClose={onClose} />;
-  if (tab === "Outline") return <OutlineTab onClose={onClose} />;
   if (tab === "Search") return <SearchTab onClose={onClose} />;
   if (tab === "Citations") return <CitationTab onClose={onClose} />;
   if (tab === "Review") return <ReviewTab onClose={onClose} />;
-  if (tab === "History") return <HistoryTab onClose={onClose} />;
+  if (tab === "AI") return <AiTab onClose={onClose} />;
   return null;
 }
 
@@ -104,13 +99,29 @@ export default function SideBar({
   }, [activePanel, mounted]);
 
   useEffect(() => {
-    return EditorEventBus.on("flux:open-panel", (detail) => {
+    const unsubPanel = EditorEventBus.on("flux:open-panel", (detail) => {
       const tabName = typeof detail === "string" ? detail : detail?.panel;
-      if (tabName && validTabs.has(tabName as SidebarTab)) {
+      if (tabName === "Explorer" || tabName === "Outline") {
+        setActivePanel("Files");
+      } else if (tabName && validTabs.has(tabName as SidebarTab)) {
         setActivePanel(tabName as SidebarTab);
       }
     });
-  }, [setActivePanel]);
+
+    const unsubOpenAi = EditorEventBus.on("flux:open-ai-panel", () => {
+      setActivePanel("AI");
+    });
+
+    const unsubToggleAi = EditorEventBus.on("flux:toggle-ai-panel", () => {
+      togglePanel("AI");
+    });
+
+    return () => {
+      unsubPanel();
+      unsubOpenAi();
+      unsubToggleAi();
+    };
+  }, [setActivePanel, togglePanel]);
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
@@ -145,8 +156,8 @@ export default function SideBar({
                         src={(item as any).imageSrc}
                         alt={item.name}
                         className={cn(
-                          "size-4 shrink-0 transition-opacity hover:grayscale-0 hover:opacity-100",
-                          isOpen ? "grayscale-0 opacity-100" : "grayscale opacity-60",
+                          "size-4.5 shrink-0 rounded-full transition-transform duration-150",
+                          isOpen ? "scale-105" : "opacity-85 hover:opacity-100 hover:scale-105",
                         )}
                       />
                     ) : (

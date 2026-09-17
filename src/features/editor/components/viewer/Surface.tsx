@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useRef, useImperativeHandle, forwardRef, useState, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { AlertCircle, FileText, Loader2, Play } from 'lucide-react';
 import { LatexCompilerEngine, type SyncTeXMap } from '@/features/editor/utils/viewer.util';
@@ -22,6 +22,13 @@ if (typeof window !== 'undefined' && pdfjs && typeof pdfjs === 'object' && 'Glob
 
 // ── Optimized PDF Page with IntersectionObserver ──────────────────────────────
 
+interface ClickIndicator {
+  page: number;
+  x: number;
+  y: number;
+  id: number;
+}
+
 interface OptimizedPDFPageProps {
   pageIndex: number; // 0-based
   scale: number;
@@ -30,9 +37,12 @@ interface OptimizedPDFPageProps {
   onDoubleClickPage: (
     pageNum: number,
     clickFraction: number,
-    x?: number,
-    y?: number,
+    ptX?: number,
+    ptY?: number,
+    pixelX?: number,
+    pixelY?: number,
   ) => void;
+  clickIndicator?: ClickIndicator | null;
 }
 
 function OptimizedPDFPage({
@@ -41,6 +51,7 @@ function OptimizedPDFPage({
   pageElemRefs,
   approxHeightRef,
   onDoubleClickPage,
+  clickIndicator,
 }: OptimizedPDFPageProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -58,11 +69,14 @@ function OptimizedPDFPage({
   const estimatedHeight = approxHeightRef.current > 0 ? approxHeightRef.current : 840 * scale;
 
   const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const pageHeight = (e.currentTarget as HTMLDivElement).offsetHeight;
-    const clickFraction = pageHeight > 0 ? e.nativeEvent.offsetY / pageHeight : 0;
-    const x = e.nativeEvent.offsetX;
-    const y = e.nativeEvent.offsetY;
-    (onDoubleClickPage as any)(pageNum, clickFraction, x, y);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    const pageHeight = rect.height;
+    const clickFraction = pageHeight > 0 ? Math.max(0, Math.min(1, clickY / pageHeight)) : 0;
+    const ptX = scale > 0 ? Math.round(clickX / scale) : Math.round(clickX);
+    const ptY = scale > 0 ? Math.round(clickY / scale) : Math.round(clickY);
+    onDoubleClickPage(pageNum, clickFraction, ptX, ptY, clickX, clickY);
   };
 
   return (
@@ -98,6 +112,23 @@ function OptimizedPDFPage({
           <span className="text-xs font-mono font-medium">Page {pageNum}</span>
         </div>
       )}
+      {clickIndicator && clickIndicator.page === pageNum && (
+        <div
+          key={clickIndicator.id}
+          className="pointer-events-none absolute z-30 transition-all duration-300"
+          style={{
+            left: `${clickIndicator.x}px`,
+            top: `${clickIndicator.y}px`,
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          <span className="relative flex size-9 items-center justify-center">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500/60 opacity-80" />
+            <span className="absolute inline-flex size-6 rounded-full border-2 border-emerald-500 bg-emerald-500/20 shadow-lg" />
+            <span className="relative inline-flex size-2 rounded-full bg-emerald-600 shadow" />
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -106,6 +137,7 @@ function OptimizedPDFPage({
 
 export interface SurfaceHandle {
   scrollToPage: (pageNum: number) => void;
+  highlightTarget?: (page: number, x: number, y: number) => void;
   getContainer: () => HTMLDivElement | null;
 }
 
@@ -132,6 +164,7 @@ export interface SurfaceProps {
     y?: number,
   ) => void;
   onCompile?: () => void;
+  invertColors?: boolean;
 }
 
 export type PdfSurfaceProps = SurfaceProps;
@@ -150,19 +183,50 @@ export const Surface = forwardRef<SurfaceHandle, SurfaceProps>(function Surface(
     onDocumentLoadSuccess: parentOnLoadSuccess,
     onJumpToSource,
     onCompile,
+    invertColors = false,
   },
   ref,
 ) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const pageElemRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const approxHeightRef = useRef<number>(0);
+  const [clickIndicator, setClickIndicator] = useState<ClickIndicator | null>(null);
+  const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Expose container and scrollToPage via ref
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+    };
+  }, []);
+
+  const triggerClickIndicator = (page: number, x: number, y: number) => {
+    if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+    setClickIndicator({ page, x, y, id: Date.now() });
+    clickTimerRef.current = setTimeout(() => {
+      setClickIndicator(null);
+    }, 1500);
+  };
+
+  // Expose container, scrollToPage, and target highlighting via ref
   useImperativeHandle(ref, () => ({
     scrollToPage(pageNum: number) {
       const el = pageElemRefs.current[pageNum];
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    },
+    highlightTarget(page: number, x: number, y: number) {
+      triggerClickIndicator(page, x, y);
+      const el = pageElemRefs.current[page];
+      if (el) {
+        const container = scrollContainerRef.current;
+        if (container) {
+          const elTop = el.offsetTop;
+          const targetScrollTop = Math.max(0, elTop + y - container.clientHeight / 3);
+          container.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
+        } else {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }
     },
     getContainer() {
@@ -179,19 +243,24 @@ export const Surface = forwardRef<SurfaceHandle, SurfaceProps>(function Surface(
   const handleDoubleClickPage = (
     pageNum: number,
     clickFraction: number,
-    x?: number,
-    y?: number,
+    ptX?: number,
+    ptY?: number,
+    pixelX?: number,
+    pixelY?: number,
   ) => {
+    if (pixelX !== undefined && pixelY !== undefined) {
+      triggerClickIndicator(pageNum, pixelX, pixelY);
+    }
     if (!onJumpToSource) return;
     const resolved = synctexMap
-      ? LatexCompilerEngine.resolveReverse(clickFraction, pageNum, synctexMap)
+      ? LatexCompilerEngine.resolveReverse(clickFraction, pageNum, synctexMap, ptX, ptY)
       : null;
     onJumpToSource(
       resolved?.sourcePath ?? null,
       resolved?.line ?? 1,
       pageNum,
-      x,
-      y,
+      ptX,
+      ptY,
     );
   };
 
@@ -279,7 +348,10 @@ export const Surface = forwardRef<SurfaceHandle, SurfaceProps>(function Surface(
           }
         >
           {scrollMode ? (
-            <div className="flex flex-col gap-1">
+            <div
+              className="flex flex-col gap-1 transition-[filter] duration-200"
+              style={invertColors ? { filter: 'invert(0.9) hue-rotate(180deg) contrast(1.25)' } : undefined}
+            >
               {Array.from({ length: numPages }, (_, i) => (
                 <OptimizedPDFPage
                   key={`page_${i + 1}`}
@@ -288,18 +360,55 @@ export const Surface = forwardRef<SurfaceHandle, SurfaceProps>(function Surface(
                   pageElemRefs={pageElemRefs}
                   approxHeightRef={approxHeightRef}
                   onDoubleClickPage={handleDoubleClickPage}
+                  clickIndicator={clickIndicator}
                 />
               ))}
             </div>
           ) : (
-            <Page
-              pageNumber={pageNumber}
-              scale={scale}
-              className=""
-              renderTextLayer
-              renderAnnotationLayer
-              devicePixelRatio={Math.max(2, typeof window !== 'undefined' ? window.devicePixelRatio || 2 : 2)}
-            />
+            <div
+              ref={(el) => {
+                pageElemRefs.current[pageNumber] = el;
+              }}
+              onDoubleClickCapture={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+                const pageHeight = rect.height;
+                const clickFraction = pageHeight > 0 ? Math.max(0, Math.min(1, clickY / pageHeight)) : 0;
+                const ptX = scale > 0 ? Math.round(clickX / scale) : Math.round(clickX);
+                const ptY = scale > 0 ? Math.round(clickY / scale) : Math.round(clickY);
+                handleDoubleClickPage(pageNumber, clickFraction, ptX, ptY, clickX, clickY);
+              }}
+              title="Double-click anywhere to jump to LaTeX source"
+              className="bg-card rounded-sm border border-border relative overflow-hidden flex items-center justify-center cursor-text transition-[filter] duration-200"
+              style={invertColors ? { filter: 'invert(0.9) hue-rotate(180deg) contrast(1.25)' } : undefined}
+            >
+              <Page
+                pageNumber={pageNumber}
+                scale={scale}
+                className=""
+                renderTextLayer
+                renderAnnotationLayer
+                devicePixelRatio={Math.max(2, typeof window !== 'undefined' ? window.devicePixelRatio || 2 : 2)}
+              />
+              {clickIndicator && clickIndicator.page === pageNumber && (
+                <div
+                  key={clickIndicator.id}
+                  className="pointer-events-none absolute z-30 transition-all duration-300"
+                  style={{
+                    left: `${clickIndicator.x}px`,
+                    top: `${clickIndicator.y}px`,
+                    transform: 'translate(-50%, -50%)',
+                  }}
+                >
+                  <span className="relative flex size-9 items-center justify-center">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500/60 opacity-80" />
+                    <span className="absolute inline-flex size-6 rounded-full border-2 border-emerald-500 bg-emerald-500/20 shadow-lg" />
+                    <span className="relative inline-flex size-2 rounded-full bg-emerald-600 shadow" />
+                  </span>
+                </div>
+              )}
+            </div>
           )}
         </Document>
       )}

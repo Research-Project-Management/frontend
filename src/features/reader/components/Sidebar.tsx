@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ListTree, LayoutGrid, ChevronRight, Highlighter } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { ListTree, LayoutGrid, ChevronRight, Highlighter, Search, X } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import type { DocumentFulltext, ReaderDocument } from '../types/reader.types';
 import AnnotationsPanel from './panel/AnnotationsPanel';
@@ -36,7 +36,18 @@ export function Sidebar({
   annotationsCount = 0,
 }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<'outline' | 'annotations' | 'pages'>('outline');
+  const [outlineFilter, setOutlineFilter] = useState('');
   const sections = fulltext?.sections || [];
+
+  const filteredSections = useMemo(() => {
+    if (!outlineFilter.trim()) return sections;
+    const q = outlineFilter.toLowerCase().trim();
+    return sections.filter(
+      (s) =>
+        (s.title && s.title.toLowerCase().includes(q)) ||
+        (s.num && s.num.toLowerCase().includes(q))
+    );
+  }, [sections, outlineFilter]);
 
   if (!isOpen) return null;
 
@@ -45,7 +56,7 @@ export function Sidebar({
       aria-label="Document navigation"
       className="w-72 h-full border-r border-border bg-background flex flex-col shrink-0 select-none z-20"
     >
-      {/* Header with 3 tabs: Outline, Annotations, Pages */}
+      {/* Header with 3 tabs: Outline, Annotations, Thumbnails */}
       <div className="h-9 shrink-0 border-b border-border px-1.5 flex items-center justify-between">
         <div className="flex items-center gap-0.5">
           <button
@@ -73,7 +84,7 @@ export function Sidebar({
             )}
           >
             <Highlighter className="size-3.5 shrink-0" strokeWidth={1.5} />
-            Notes
+            Annotations
             {annotationsCount > 0 && (
               <span className="text-10 font-mono tabular-nums text-muted-foreground ml-0.5">
                 ({annotationsCount})
@@ -92,10 +103,36 @@ export function Sidebar({
             )}
           >
             <LayoutGrid className="size-3.5 shrink-0" strokeWidth={1.5} />
-            Pages
+            Thumbnails
           </button>
         </div>
       </div>
+
+      {/* Outline Search Filter (Zotero: Filter table of contents) */}
+      {activeTab === 'outline' && sections.length > 0 && (
+        <div className="p-1.5 border-b border-border bg-background shrink-0">
+          <div className="relative flex items-center">
+            <Search className="size-3 absolute left-2 text-muted-foreground pointer-events-none" strokeWidth={1.5} />
+            <input
+              type="text"
+              value={outlineFilter}
+              onChange={(e) => setOutlineFilter(e.target.value)}
+              placeholder="Filter outline..."
+              className="w-full h-6.5 pl-6.5 pr-6 text-11 bg-muted/40 hover:bg-muted/70 focus:bg-background border border-border rounded text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors font-sans"
+            />
+            {outlineFilter && (
+              <button
+                type="button"
+                onClick={() => setOutlineFilter('')}
+                className="size-4.5 absolute right-1 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
+                aria-label="Clear filter"
+              >
+                <X className="size-2.5" strokeWidth={1.5} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       <div className={cn(
@@ -103,9 +140,9 @@ export function Sidebar({
         activeTab === 'annotations' ? "overflow-hidden" : "overflow-y-auto p-2 thin-scrollbar"
       )}>
         {activeTab === 'outline' ? (
-          sections.length > 0 ? (
+          filteredSections.length > 0 ? (
             <div className="space-y-0.5">
-              {sections.map((s, idx) => {
+              {filteredSections.map((s, idx) => {
                 const isCurrent = s.page === currentPage;
                 const level = s.num ? Math.min(4, s.num.split('.').filter(Boolean).length) : 1;
                 return (
@@ -136,7 +173,7 @@ export function Sidebar({
             </div>
           ) : (
             <div className="p-4 text-center text-12 text-muted-foreground">
-              No outline detected in PDF.
+              {outlineFilter ? 'No matching headings.' : 'No outline detected in PDF.'}
             </div>
           )
         ) : activeTab === 'annotations' ? (

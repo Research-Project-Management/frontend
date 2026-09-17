@@ -28,27 +28,38 @@ export function useCollaborationPresence(pageId: string | null) {
   });
 }
 
-export function useCollaborationStream(projectId: string | null, pageId: string | null) {
+export function useCollaborationStream(projectId?: string | null, pageId?: string | null) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!projectId || !pageId) return;
+    if (!pageId) return;
 
     const cleanup = collaborationService.createCollaborationStream(
       projectId,
       pageId,
       (event: CollaborationEvent) => {
         const type = event.type;
+        const targetPageId = event.pageId || pageId;
 
         if (type.startsWith('suggestion')) {
-          queryClient.invalidateQueries({ queryKey: suggestionKeys.byPage(pageId) });
+          queryClient.invalidateQueries({ queryKey: ['page-suggestions', targetPageId] });
+          if (targetPageId !== pageId) {
+            queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
+          }
           if (type === 'suggestion-accepted' || type === 'suggestions-accepted-all') {
-            queryClient.invalidateQueries({ queryKey: pageKeys.detail(pageId) });
+            queryClient.invalidateQueries({ queryKey: ['pages', 'detail', targetPageId] });
+            queryClient.invalidateQueries({ queryKey: ['pages', 'detail', pageId] });
           }
         } else if (type.startsWith('comment')) {
-          queryClient.invalidateQueries({ queryKey: commentKeys.byPage(pageId) });
+          queryClient.invalidateQueries({ queryKey: ['page-comments', targetPageId] });
+          if (targetPageId !== pageId) {
+            queryClient.invalidateQueries({ queryKey: ['page-comments', pageId] });
+          }
         } else if (type === 'page-updated') {
-          queryClient.invalidateQueries({ queryKey: pageKeys.detail(pageId) });
+          queryClient.invalidateQueries({ queryKey: ['pages', 'detail', targetPageId] });
+          if (targetPageId !== pageId) {
+            queryClient.invalidateQueries({ queryKey: ['pages', 'detail', pageId] });
+          }
         }
       },
       () => {

@@ -289,7 +289,7 @@ export function Switcher({
 
           {/* Other Projects List */}
           {otherProjects.length > 0 && (
-            <div className='max-h-[220px] overflow-y-auto bg-background flex flex-col border-b border-border/60 py-1'>
+            <div className='max-h-[260px] overflow-y-auto bg-background flex flex-col border-b border-border/60 py-1 thin-scrollbar'>
               {otherProjects.map((proj) => (
                 <button
                   key={proj.id}
@@ -382,7 +382,7 @@ export function Switcher({
 
       {/* ── Invite Members Modal (Fallback / Direct Share) ─────────── */}
       <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
-        <DialogContent className='sm:max-w-[440px]'>
+        <DialogContent className='sm:max-w-[500px] p-6 rounded-lg bg-background border border-border shadow-raised-200'>
           <DialogHeader>
             <DialogTitle>Invite members to {activeProject ? activeProject.name : 'Project'}</DialogTitle>
             <DialogDescription>

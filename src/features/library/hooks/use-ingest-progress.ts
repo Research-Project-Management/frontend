@@ -113,6 +113,119 @@ export function useIngestProgress(workspaceId: string) {
     [workspaceId, poll, stopPolling],
   );
 
+  const startBatchProgress = useCallback(
+    (files: { id?: string; name: string }[], batchTitle = '') => {
+      stopPolling();
+      activeRunIdRef.current = null;
+      const total = files.length;
+      const title = batchTitle || (total === 1 ? files[0].name : `${total} documents`);
+      setModalState({
+        isOpen: true,
+        isMinimized: false,
+        runId: 'batch-upload',
+        fileName: title,
+        data: {
+          runId: 'batch-upload',
+          workspaceId,
+          status: 'PROCESSING',
+          total,
+          processed: 0,
+          percentage: 0,
+          succeeded: 0,
+          duplicates: 0,
+          failed: 0,
+          currentTitle: files[0]?.name || title,
+          items: files.map((f, idx) => ({
+            title: f.name,
+            status: (idx === 0 ? 'PROCESSING' : 'PENDING') as any,
+          })),
+          startedAt: new Date().toISOString(),
+        },
+        isComplete: false,
+        error: null,
+      });
+    },
+    [workspaceId, stopPolling],
+  );
+
+  const updateBatchItem = useCallback(
+    (
+      fileName: string,
+      status: 'SUCCEEDED' | 'DUPLICATE' | 'FAILED' | 'PROCESSING' | 'UPLOADING' | 'PENDING',
+      error?: string,
+      itemName?: string,
+    ) => {
+      setModalState((prev) => {
+        if (!prev.data) return prev;
+        let matched = false;
+        const items = prev.data.items.map((item) => {
+          if (item.title === fileName) {
+            matched = true;
+            return {
+              ...item,
+              status: status as any,
+              error: error || item.error,
+              itemName: itemName || (item as any).itemName,
+            };
+          }
+          return item;
+        });
+
+        const finalItems = matched
+          ? items
+          : [...items, { title: fileName, status: status as any, error, itemName } as any];
+        const processed = finalItems.filter((i) => i.status === 'SUCCEEDED' || i.status === 'DUPLICATE' || i.status === 'FAILED').length;
+        const succeeded = finalItems.filter((i) => i.status === 'SUCCEEDED').length;
+        const duplicates = finalItems.filter((i) => i.status === 'DUPLICATE').length;
+        const failed = finalItems.filter((i) => i.status === 'FAILED').length;
+        const total = Math.max(prev.data.total, finalItems.length);
+        const percentage = Math.round((processed / total) * 100);
+        const isComplete = processed >= total && total > 0;
+
+        return {
+          ...prev,
+          isComplete,
+          data: {
+            ...prev.data,
+            items: finalItems,
+            processed,
+            succeeded,
+            duplicates,
+            failed,
+            percentage,
+            currentTitle: fileName,
+            completedAt: isComplete ? new Date().toISOString() : undefined,
+          },
+        };
+      });
+    },
+    [],
+  );
+
+  const finishBatchProgress = useCallback(
+    (errorMessage?: string) => {
+      setModalState((prev) => {
+        if (!prev.data) return prev;
+        return {
+          ...prev,
+          isComplete: true,
+          error: errorMessage || null,
+          data: {
+            ...prev.data,
+            status: errorMessage ? 'FAILED_FINAL' : 'COMPLETED',
+            percentage: 100,
+            completedAt: new Date().toISOString(),
+          },
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: ['library', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['items'] });
+      queryClient.invalidateQueries({ queryKey: ['papers'] });
+    },
+    [workspaceId, queryClient],
+  );
+
   const closeModal = useCallback(() => {
     stopPolling();
     activeRunIdRef.current = null;
@@ -132,6 +245,9 @@ export function useIngestProgress(workspaceId: string) {
   return {
     modalState,
     startMonitoring,
+    startBatchProgress,
+    updateBatchItem,
+    finishBatchProgress,
     closeModal,
     toggleMinimize,
   };

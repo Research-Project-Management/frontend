@@ -54,6 +54,10 @@ const DIRECT_METADATA_FIELDS = new Set([
   'archiveId', 'archiveID', 'citationCount', 'referenceCount', 'openAccessPdfUrl',
   'rights', 'license', 'citationKey', 'citeKey', 'abstract', 'abstractNote',
   'publicationTitle', 'journal', 'accessedAt', 'accessDate',
+  'bookTitle', 'proceedingsTitle', 'conferenceName', 'eventPlace', 'websiteTitle',
+  'websiteType', 'university', 'institution', 'repository', 'edition', 'numPages',
+  'numberOfPages', 'numberOfVolumes', 'thesisType', 'reportType', 'reportNumber',
+  'genre', 'blogTitle',
 ]);
 
 /** Filter out empty, null, undefined, or junk placeholder string values */
@@ -536,7 +540,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         return cleanValue(p.publicationDate || (p.year ? String(p.year) : '') || p.date);
       }
       if (keyLower === 'publicationtitle' || keyLower === 'journal') {
-        return cleanValue(p.publicationTitle || p.journal);
+        return cleanValue(p.publicationTitle || p.journal || p.proceedingsTitle || p.conferenceName || (p.extraFields as any)?.proceedingsTitle || (p.extraFields as any)?.conferenceName);
       }
       if (keyLower === 'journalabbreviation' || keyLower === 'journalabbr') {
         return cleanValue(p.journalAbbr || p.journalAbbreviation);
@@ -624,19 +628,34 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         return cleanValue(p.proceedingsTitle || p.publicationTitle || p.extraFields?.proceedingsTitle);
       }
       if (keyLower === 'conferencename') {
-        return cleanValue(p.conferenceName || p.proceedingsTitle || p.publicationTitle || p.extraFields?.conferenceName);
+        return cleanValue(p.conferenceName || p.extraFields?.conferenceName);
+      }
+      if (keyLower === 'eventplace') {
+        return cleanValue(p.eventPlace || p.place || p.extraFields?.eventPlace);
       }
       if (keyLower === 'university' || keyLower === 'institution') {
-        return cleanValue(p.university || p.institution || p.extraFields?.university || p.extraFields?.institution);
+        return cleanValue(p[fieldKey] || p.university || p.institution || p.publisher || p.extraFields?.[fieldKey] || p.extraFields?.university || p.extraFields?.institution);
       }
-      if (keyLower === 'websitetitle') {
-        return cleanValue(p.websiteTitle || p.publicationTitle || p.extraFields?.websiteTitle);
+      if (keyLower === 'repository' || keyLower === 'company' || keyLower === 'distributor' || keyLower === 'studio' || keyLower === 'network' || keyLower === 'label') {
+        return cleanValue(p[fieldKey] || p.publisher || p.extraFields?.[fieldKey]);
       }
-      if (keyLower === 'websitetype' || keyLower === 'thesistype' || keyLower === 'reporttype') {
+      if (keyLower === 'websitetitle' || keyLower === 'blogtitle' || keyLower === 'dictionarytitle' || keyLower === 'encyclopediatitle' || keyLower === 'forumtitle' || keyLower === 'sessiontitle' || keyLower === 'programtitle') {
+        return cleanValue(p[fieldKey] || p.publicationTitle || p.extraFields?.[fieldKey]);
+      }
+      if (keyLower === 'websitetype' || keyLower === 'thesistype' || keyLower === 'reporttype' || keyLower === 'genre' || keyLower === 'posttype') {
         return cleanValue(p[fieldKey] || p.type || p.genre || p.extraFields?.[fieldKey]);
+      }
+      if (keyLower === 'reportnumber') {
+        return cleanValue(p.reportNumber || (p as any).number || p.extraFields?.reportNumber);
       }
       if (keyLower === 'country') {
         return cleanValue(p.country || p.place || p.extraFields?.country);
+      }
+      if (keyLower === 'numpages' || keyLower === 'numberofpages') {
+        return cleanValue(p.numPages || p.numberOfPages || (p.extraFields as any)?.numPages || (p.extraFields as any)?.numberOfPages);
+      }
+      if (keyLower === 'edition') {
+        return cleanValue(p.edition || (p.extraFields as any)?.edition);
       }
       if (keyLower === 'citationcount') {
         const currentCitationCount =
@@ -644,79 +663,221 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
           (p.extraFields as Record<string, unknown> | undefined)?.citationCount;
         return cleanValue(currentCitationCount);
       }
+      if (keyLower === 'referencecount') {
+        const currentReferenceCount =
+          p.referenceCount ??
+          (p.extraFields as Record<string, unknown> | undefined)?.referenceCount;
+        return cleanValue(currentReferenceCount);
+      }
       return cleanValue(p[fieldKey] ?? p.extraFields?.[fieldKey] ?? p.customFields?.[fieldKey]);
     },
     [paper, displayDoi],
   );
 
   /**
-   * Helper to save value for a dynamic field definition
+   * Helper to save value for a dynamic field definition atomically.
+   * Batches all multi-field mutations into a single onUpdatePaper call
+   * to eliminate 409 Version Mismatch race conditions and preserve extraFields.
    */
   const saveFieldValue = (fieldDef: SchemaFieldDefinition, val: string) => {
+    if (!onUpdatePaper) return;
+
     const key = fieldDef.field;
     const keyLower = key.toLowerCase();
+    const currentExtraFields =
+      (paper.extraFields as Record<string, unknown> | undefined) || {};
+
+    let patch: Record<string, any> = {};
 
     if (keyLower === 'date' || keyLower === 'publicationdate') {
       const parsedYear = parseInt(val, 10);
-      handleFieldChange('year', isNaN(parsedYear) || parsedYear === 0 ? undefined : parsedYear);
-      handleFieldChange('publicationDate', val || '');
-      handleFieldChange('date', val || '');
+      patch = {
+        year: isNaN(parsedYear) || parsedYear === 0 ? undefined : parsedYear,
+        publicationDate: val || '',
+        date: val || '',
+      };
     } else if (keyLower === 'doi') {
       const cleaned = cleanDoi(val);
-      handleFieldChange('doi', cleaned || '');
-      handleFieldChange('DOI', cleaned || '');
+      patch = {
+        doi: cleaned || '',
+        DOI: cleaned || '',
+      };
     } else if (keyLower === 'isbn') {
-      handleFieldChange('isbn', val || '');
-      handleFieldChange('ISBN', val || '');
+      patch = { isbn: val || '', ISBN: val || '' };
     } else if (keyLower === 'issn') {
-      handleFieldChange('issn', val || '');
-      handleFieldChange('ISSN', val || '');
+      patch = { issn: val || '', ISSN: val || '' };
     } else if (keyLower === 'pmid') {
-      handleFieldChange('pmid', val || '');
-      handleFieldChange('PMID', val || '');
+      patch = { pmid: val || '', PMID: val || '' };
     } else if (keyLower === 'pmcid') {
-      handleFieldChange('pmcid', val || '');
-      handleFieldChange('PMCID', val || '');
+      patch = { pmcid: val || '', PMCID: val || '' };
     } else if (keyLower === 'archiveid' || keyLower === 'arxivid') {
       const cleanVal = val.replace(/\s*\[.*?\]\s*$/, '').trim();
       const rawArxiv = cleanVal.replace(/^arxiv:\s*/i, '');
-      handleFieldChange('arxivId', rawArxiv || '');
-      handleFieldChange('archiveId', cleanVal || '');
-      handleFieldChange('archiveID', cleanVal || '');
+      patch = {
+        arxivId: rawArxiv || '',
+        archiveId: cleanVal || '',
+        archiveID: cleanVal || '',
+      };
     } else if (keyLower === 'publicationtitle' || keyLower === 'journal') {
-      handleFieldChange('publicationTitle', val || '');
-      handleFieldChange('journal', val || '');
+      patch = {
+        publicationTitle: val || '',
+        journal: val || '',
+      };
     } else if (keyLower === 'journalabbreviation' || keyLower === 'journalabbr') {
-      handleFieldChange('journalAbbr', val || '');
-      handleFieldChange('journalAbbreviation', val || '');
+      patch = {
+        journalAbbr: val || '',
+        journalAbbreviation: val || '',
+      };
     } else if (keyLower === 'accessdate' || keyLower === 'accessedat') {
-      handleFieldChange('accessedAt', val || '');
-      handleFieldChange('accessDate', val || '');
+      patch = {
+        accessedAt: val || '',
+        accessDate: val || '',
+      };
     } else if (keyLower === 'rights' || keyLower === 'license') {
-      handleFieldChange('rights', val || '');
-      handleFieldChange('license', val || '');
+      patch = {
+        rights: val || '',
+        license: val || '',
+      };
     } else if (keyLower === 'citationkey' || keyLower === 'citekey') {
-      handleFieldChange('citationKey', val || '');
+      patch = { citationKey: val || '' };
     } else if (keyLower === 'abstractnote' || keyLower === 'abstract') {
-      handleFieldChange('abstract', val || '');
-      handleFieldChange('abstractNote', val || '');
+      patch = {
+        abstract: val || '',
+        abstractNote: val || '',
+      };
     } else if (keyLower === 'citationcount') {
       const parsedCitationCount = parseInt(val.replace(/,/g, ''), 10);
       const validCitationCount = isNaN(parsedCitationCount) ? null : parsedCitationCount;
-      if (onUpdatePaper) {
-        onUpdatePaper({
+      patch = {
+        citationCount: validCitationCount,
+        extraFields: {
+          ...currentExtraFields,
           citationCount: validCitationCount,
-          extraFields: {
-            ...(paper.extraFields as Record<string, unknown> | undefined),
-            citationCount: validCitationCount,
-          },
-        });
-      }
+        },
+      };
+    } else if (keyLower === 'referencecount') {
+      const parsedReferenceCount = parseInt(val.replace(/,/g, ''), 10);
+      const validReferenceCount = isNaN(parsedReferenceCount) ? null : parsedReferenceCount;
+      patch = {
+        referenceCount: validReferenceCount,
+        extraFields: {
+          ...currentExtraFields,
+          referenceCount: validReferenceCount,
+        },
+      };
+    } else if (keyLower === 'numpages' || keyLower === 'numberofpages') {
+      const parsed = parseInt(val, 10);
+      const validNum = isNaN(parsed) ? (val || null) : parsed;
+      patch = {
+        numPages: validNum,
+        numberOfPages: validNum,
+        extraFields: {
+          ...currentExtraFields,
+          numPages: validNum,
+          numberOfPages: validNum,
+        },
+      };
+    } else if (keyLower === 'edition') {
+      patch = {
+        edition: val || '',
+        extraFields: {
+          ...currentExtraFields,
+          edition: val || null,
+        },
+      };
+    } else if (keyLower === 'booktitle') {
+      patch = {
+        bookTitle: val || '',
+        publicationTitle: val || '',
+        extraFields: {
+          ...currentExtraFields,
+          bookTitle: val || null,
+        },
+      };
+    } else if (keyLower === 'proceedingstitle') {
+      patch = {
+        proceedingsTitle: val || '',
+        publicationTitle: val || '',
+        extraFields: {
+          ...currentExtraFields,
+          proceedingsTitle: val || null,
+        },
+      };
+    } else if (
+      keyLower === 'websitetitle' ||
+      keyLower === 'blogtitle' ||
+      keyLower === 'dictionarytitle' ||
+      keyLower === 'encyclopediatitle' ||
+      keyLower === 'forumtitle' ||
+      keyLower === 'sessiontitle' ||
+      keyLower === 'programtitle'
+    ) {
+      patch = {
+        [key]: val || '',
+        publicationTitle: val || '',
+        extraFields: {
+          ...currentExtraFields,
+          [key]: val || null,
+        },
+      };
+    } else if (
+      keyLower === 'university' ||
+      keyLower === 'institution' ||
+      keyLower === 'repository' ||
+      keyLower === 'company' ||
+      keyLower === 'distributor' ||
+      keyLower === 'label' ||
+      keyLower === 'studio' ||
+      keyLower === 'network'
+    ) {
+      patch = {
+        [key]: val || '',
+        publisher: val || '',
+        extraFields: {
+          ...currentExtraFields,
+          [key]: val || null,
+        },
+      };
+    } else if (
+      keyLower === 'thesistype' ||
+      keyLower === 'reporttype' ||
+      keyLower === 'websitetype' ||
+      keyLower === 'genre' ||
+      keyLower === 'posttype'
+    ) {
+      patch = {
+        [key]: val || '',
+        type: val || '',
+        extraFields: {
+          ...currentExtraFields,
+          [key]: val || null,
+        },
+      };
+    } else if (
+      keyLower === 'conferencename' ||
+      keyLower === 'eventplace' ||
+      keyLower === 'numberofvolumes' ||
+      keyLower === 'reportnumber'
+    ) {
+      patch = {
+        [key]: val || '',
+        extraFields: {
+          ...currentExtraFields,
+          [key]: val || null,
+        },
+      };
     } else if (DIRECT_METADATA_FIELDS.has(key) || DIRECT_METADATA_FIELDS.has(keyLower)) {
-      handleFieldChange(key, val);
+      patch = { [key]: val };
     } else {
-      handleFieldChange('extraFields', { [key]: val || null });
+      patch = {
+        extraFields: {
+          ...currentExtraFields,
+          [key]: val || null,
+        },
+      };
     }
+
+    onUpdatePaper(patch);
   };
 
   // Render all schema fields for the selected item type in registry order
@@ -760,6 +921,24 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         raw.splice(doiIdx + 1, 0, citationDef);
       } else {
         raw.push(citationDef);
+      }
+    }
+    if (
+      academicTypes.has(currentItemType) &&
+      !raw.some((f) => f.field.toLowerCase() === 'referencecount')
+    ) {
+      const citIdx = raw.findIndex((f) => f.field.toLowerCase() === 'citationcount');
+      const refDef: SchemaFieldDefinition = {
+        field: 'referenceCount',
+        label: 'References',
+        type: 'number',
+        category: 'identifiers',
+        mono: true,
+      };
+      if (citIdx >= 0) {
+        raw.splice(citIdx + 1, 0, refDef);
+      } else {
+        raw.push(refDef);
       }
     }
     return raw;
@@ -827,7 +1006,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                 </div>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="max-h-[360px] min-w-[210px] overflow-y-auto p-1 rounded-md shadow-none border border-border bg-popover text-popover-foreground space-y-0.5">
+            <DropdownMenuContent align="start" className="max-h-[420px] min-w-[250px] overflow-y-auto p-1.5 rounded-md shadow-raised-200 border border-border bg-popover text-popover-foreground space-y-0.5">
               {selectableItemTypes.map((t) => {
                 const isSelected = t.value === currentItemType;
                 return (
@@ -969,7 +1148,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                         </span>
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="min-w-[140px] p-1 rounded-md shadow-none border border-border bg-popover text-popover-foreground space-y-0.5">
+                    <DropdownMenuContent align="start" className="min-w-[170px] p-1.5 rounded-md shadow-raised-200 border border-border bg-popover text-popover-foreground space-y-0.5">
                       {creatorTypesList.map((creatorTypeItem) => (
                         <DropdownMenuItem
                           key={creatorTypeItem.creatorType}

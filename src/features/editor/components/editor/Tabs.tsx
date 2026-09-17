@@ -1,26 +1,13 @@
 'use client';
 
 import React, { useRef } from 'react';
-import { motion, LayoutGroup } from 'framer-motion';
+import { LayoutGroup } from 'framer-motion';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { X, Code, Eye, FileCheck } from 'lucide-react';
+import { X, FileText } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
-import { useTabsStore, useSettingsStore, type EditorTab } from '@/features/editor/store';
+import { useTabsStore, type EditorTab } from '@/features/editor/store';
 
-// ── File indicator colors ───────────────────────────────────────────────────
-
-function fileIndicatorClass(title: string, isActive: boolean): string {
-  const ext = title.split('.').pop()?.toLowerCase() ?? '';
-  if (ext === 'tex') {
-    return isActive ? 'bg-primary' : 'bg-primary/60';
-  }
-  if (ext === 'bib' || ext === 'cls' || ext === 'sty') {
-    return isActive ? 'bg-foreground/70' : 'bg-muted-foreground/60';
-  }
-  return 'bg-muted-foreground/40';
-}
-
-// ── Single Tab Item ─────────────────────────────────────────────────────────
+// ── Single Tab Item (Overleaf 1:1) ───────────────────────────────────────────
 
 interface TabItemProps {
   tab: EditorTab;
@@ -30,7 +17,7 @@ interface TabItemProps {
   onCloseTab: () => void;
 }
 
-function TabItem({ tab, isActive, rootPageId, onActivate, onCloseTab }: TabItemProps) {
+function TabItem({ tab, isActive, onActivate, onCloseTab }: TabItemProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -58,28 +45,15 @@ function TabItem({ tab, isActive, rootPageId, onActivate, onCloseTab }: TabItemP
       onAuxClick={handleAuxClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        'group/tab relative flex items-center gap-2 h-full px-3 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
-        'border-r border-border min-w-0 max-w-[200px] shrink-0',
-        'focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset transition-colors',
+        'group/tab relative flex items-center gap-1.5 h-full px-2.5 cursor-pointer select-none outline-none',
+        'border-r border-border min-w-0 max-w-[200px] shrink-0 transition-colors',
         isActive
-          ? 'bg-background text-foreground font-medium'
-          : 'bg-muted/30 text-muted-foreground hover:bg-muted/70 hover:text-foreground',
+          ? 'bg-background text-foreground font-medium border-t-2 border-t-transparent'
+          : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground border-t-2 border-t-transparent',
       )}
     >
-      {/* Active indicator */}
-      {isActive && (
-        <motion.span
-          layoutId={`editor-tab-active-${rootPageId}`}
-          className="absolute inset-x-0 top-0 h-[2px] bg-primary rounded-b-sm"
-          initial={false}
-          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-        />
-      )}
-
-      {/* File dot */}
-      <span
-        className={cn('size-1.5 rounded-full shrink-0', fileIndicatorClass(tab.title, isActive))}
-      />
+      {/* File Document Icon */}
+      <FileText className="size-3.5 shrink-0 opacity-70" />
 
       {/* Title */}
       <span className="text-xs truncate leading-none">{tab.title}</span>
@@ -94,19 +68,19 @@ function TabItem({ tab, isActive, rootPageId, onActivate, onCloseTab }: TabItemP
         }}
         onAuxClick={(e) => e.preventDefault()}
         className={cn(
-          'ml-auto shrink-0 size-6 min-w-[24px] min-h-[24px] flex items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer',
+          'ml-auto shrink-0 size-4 min-w-[16px] min-h-[16px] flex items-center justify-center rounded-xs transition-colors outline-none cursor-pointer',
           isActive
-            ? 'opacity-70 hover:opacity-100 hover:bg-muted'
-            : 'opacity-0 group-hover/tab:opacity-70 group-hover/tab:hover:opacity-100 hover:bg-muted focus-visible:opacity-100',
+            ? 'opacity-60 hover:opacity-100 hover:bg-muted'
+            : 'opacity-0 group-hover/tab:opacity-60 group-hover/tab:hover:opacity-100 hover:bg-muted',
         )}
       >
-        <X className="size-3.5 shrink-0" />
+        <X className="size-3 shrink-0" />
       </button>
     </div>
   );
 }
 
-// ── Main Tabs Component ─────────────────────────────────────────────────────
+// ── Main Tabs Component (Only File Tabs - Clean Overleaf style) ───────────────
 
 export interface TabsProps {
   rootPageId: string;
@@ -121,7 +95,6 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
 
   const { getTabs, closeTab } = useTabsStore();
   const tabs = getTabs(rootPageId);
-  const { editorMode, setEditorMode, reviewMode, toggleReviewMode } = useSettingsStore();
 
   const updateQueryParams = (newFile: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -179,8 +152,8 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
   if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-center justify-between h-10 bg-background border-b border-border px-1 gap-2">
-      {/* ── Left: File tabs ── */}
+    <div className="flex items-center h-9 bg-muted/40 border-b border-border select-none">
+      {/* ── File tabs ── */}
       <LayoutGroup id={`tab-bar-${rootPageId}`}>
         <div
           ref={tabListRef}
@@ -202,60 +175,6 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
           ))}
         </div>
       </LayoutGroup>
-
-      {/* ── Right: Overleaf-style [ Code | Visual ] mode switcher & Review toggle ── */}
-      <div className="flex items-center gap-1.5 shrink-0 pr-1">
-        {/* Track Changes / Review Mode Button */}
-        <button
-          type="button"
-          onClick={toggleReviewMode}
-          className={cn(
-            'flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors cursor-pointer border',
-            reviewMode
-              ? 'bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400'
-              : 'bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground',
-          )}
-          title="Toggle Track Changes / Suggestion Mode"
-        >
-          <FileCheck className="size-3.5 shrink-0" />
-          <span className="hidden sm:inline">Review{reviewMode ? ': On' : ''}</span>
-        </button>
-
-        {/* [ Code | Visual ] Switcher */}
-        <div className="flex items-center bg-muted/60 p-0.5 rounded-md border border-border/70 text-xs">
-          <button
-            type="button"
-            onClick={() => setEditorMode('code')}
-            className={cn(
-              'flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer',
-              editorMode === 'code'
-                ? 'bg-background text-foreground shadow-xs'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-            title="Source Code Editor (Overleaf standard - 100% LaTeX fidelity)"
-          >
-            <Code className="size-3.5 shrink-0" />
-            <span>Code</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setEditorMode('visual')}
-            className={cn(
-              'flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer',
-              editorMode === 'visual'
-                ? 'bg-background text-foreground shadow-xs'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-            title="Visual WYSIWYG Editor (Beta - Simplified LaTeX)"
-          >
-            <Eye className="size-3.5 shrink-0" />
-            <span>Visual</span>
-            <span className="text-11 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 font-mono font-medium leading-none">
-              Beta
-            </span>
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

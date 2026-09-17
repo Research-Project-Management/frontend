@@ -14,7 +14,7 @@ export function formatEditorTitle(pageTitle?: string, projectTitle?: string): st
 }
 
 /** Generates clean download filename */
-export function getExportFilename(title: string, extension: 'pdf' | 'zip' | 'tex'): string {
+export function getExportFilename(title: string, extension: 'pdf' | 'zip' | 'tex' | 'doc' | 'docx' | 'md' | 'html' | string): string {
   const clean = (title || 'document').replace(/[^a-zA-Z0-9_-]/g, '_');
   return `${clean}.${extension}`;
 }

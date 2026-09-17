@@ -64,7 +64,7 @@ export default function DeleteModal({
   return (
     <Dialog open={open} onOpenChange={isDeleting ? undefined : onOpenChange}>
       <DialogContent
-        className="max-w-[480px] p-5 rounded-md border border-border bg-background shadow-none"
+        className="sm:max-w-[520px] p-6 rounded-lg border border-border bg-background shadow-raised-200"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader className="flex flex-row items-start gap-3.5 space-y-0 text-left">
@@ -105,7 +105,7 @@ export default function DeleteModal({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isDeleting}
-            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md hover:bg-muted"
+            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md hover:bg-muted shadow-2xs"
           >
             {cancelLabel}
           </Button>

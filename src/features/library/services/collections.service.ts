@@ -5,6 +5,7 @@ import type {
   CreateCollectionDTO,
   UpdateCollectionDTO,
 } from "@/features/library/types/library.types";
+import { isProjectScope } from './items.service';
 
 // ── Structured Collection Service ─────────────────────────────────────────────
 
@@ -12,7 +13,7 @@ export const CollectionsService = {
   getAll: (scopeId?: string) =>
     apiGet<{ collections: Collection[] }>(
       `/api/v1/library/collections`,
-      { params: scopeId ? { projectId: scopeId } : undefined }
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined }
     ),
 
   /**
@@ -22,7 +23,7 @@ export const CollectionsService = {
   getTree: (scopeId?: string) =>
     apiGet<{ tree: Collection[] }>(
       `/api/v1/library/collections/tree`,
-      { params: scopeId ? { projectId: scopeId } : undefined }
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined }
     ),
 
   getById: (_scopeId?: string, collectionId?: string) => {
@@ -36,7 +37,7 @@ export const CollectionsService = {
     apiPost<{ collection: Collection }>(
       `/api/v1/library/collections`,
       data,
-      { params: scopeId ? { projectId: scopeId } : undefined }
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined }
     ),
 
   update: (_scopeId: string | undefined, collectionId: string, data: UpdateCollectionDTO) =>

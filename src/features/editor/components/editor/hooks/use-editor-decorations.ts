@@ -5,6 +5,7 @@ import type { editor } from 'monaco-editor';
 import type { PageComment, PageSuggestion } from '@/features/editor/types';
 import { useCompileStore } from '@/features/editor/store';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import type { InlineSuggestionWidgetData } from '../subcomponents/InlineSuggestionWidget';
 
 export interface UseEditorDecorationsOptions {
   editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
@@ -25,12 +26,17 @@ export function useEditorDecorations({
   const decorationCollRef = useRef<editor.IEditorDecorationsCollection | null>(null);
   const suggestionDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null);
   const lineCommentsRef = useRef<Map<number, PageComment[]>>(new Map());
+  const suggestionsRef = useRef<PageSuggestion[]>(suggestions);
+  suggestionsRef.current = suggestions;
 
   const [glyphTooltip, setGlyphTooltip] = useState<{
     x: number;
     bottom: number;
     comments: PageComment[];
   } | null>(null);
+
+  const [activeSuggestionWidgetData, setActiveSuggestionWidgetData] =
+    useState<InlineSuggestionWidgetData | null>(null);
 
   // Synchronize comment glyphs in editor gutter
   useEffect(() => {
@@ -145,7 +151,10 @@ export function useEditorDecorations({
     ed: editor.IStandaloneCodeEditor,
     monaco: any,
   ): { dispose: () => void } => {
-    decorationCollRef.current = ed.createDecorationsCollection([]);
+    const scrollDisposable = ed.onDidScrollChange(() => {
+      setActiveSuggestionWidgetData(null);
+      setGlyphTooltip(null);
+    });
 
     const moveDisposable = ed.onMouseMove((e) => {
       const target = e.target;
@@ -180,6 +189,8 @@ export function useEditorDecorations({
 
     const downDisposable = ed.onMouseDown((e) => {
       const target = e.target;
+
+      // Handle comment glyph click
       if (
         (target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN ||
           target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS) &&
@@ -193,11 +204,49 @@ export function useEditorDecorations({
             commentId: matched[0].id,
           });
         }
+        return;
       }
+
+      // Handle suggestion click: open interactive suggestion action widget
+      if (
+        (target.type === monaco.editor.MouseTargetType.CONTENT_TEXT ||
+          target.type === monaco.editor.MouseTargetType.CONTENT_EMPTY) &&
+        target.position
+      ) {
+        const line = target.position.lineNumber;
+        const col = target.position.column;
+        const matched = suggestionsRef.current.find((s) => {
+          if (s.status !== 'pending' && s.status) return false;
+          if (line < s.fromLine || line > s.toLine) return false;
+          if (line === s.fromLine && col < (s.fromColumn || 1)) return false;
+          if (line === s.toLine && col > (s.toColumn || 1000)) return false;
+          return true;
+        });
+
+        if (matched) {
+          const editorDom = ed.getDomNode();
+          if (editorDom) {
+            const rect = editorDom.getBoundingClientRect();
+            const visPos = ed.getScrolledVisiblePosition(target.position);
+            if (visPos) {
+              setActiveSuggestionWidgetData({
+                suggestion: matched,
+                x: rect.left + visPos.left,
+                y: rect.top + visPos.top + visPos.height + 4,
+              });
+              return;
+            }
+          }
+        }
+      }
+
+      // Clicked on plain editor code -> dismiss suggestion widget
+      setActiveSuggestionWidgetData(null);
     });
 
     return {
       dispose: () => {
+        scrollDisposable.dispose();
         moveDisposable.dispose();
         leaveDisposable.dispose();
         downDisposable.dispose();
@@ -207,6 +256,8 @@ export function useEditorDecorations({
 
   return {
     glyphTooltip,
+    activeSuggestionWidgetData,
+    setActiveSuggestionWidgetData,
     bindDecorationListeners,
   };
 }

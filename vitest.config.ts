@@ -2,7 +2,13 @@ import { defineConfig } from 'vitest/config';
 import path from 'path';
 
 export default defineConfig({
+  server: {
+    fs: {
+      strict: false,
+    },
+  },
   resolve: {
+    preserveSymlinks: true,
     alias: {
       '@': path.resolve(__dirname, './src'),
       '~': path.resolve(__dirname, './src'),
@@ -15,7 +21,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./tests/unit/setup.ts'],
+    setupFiles: [path.resolve(__dirname, './tests/unit/setup.ts')],
     include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
     passWithNoTests: true,
     pool: 'forks',

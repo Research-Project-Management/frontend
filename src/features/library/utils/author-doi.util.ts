@@ -178,6 +178,204 @@ export function normalizeAuthors(
   return [];
 }
 
+const SPECIAL_CASE_WORDS: Record<string, string> = {
+  arxiv: 'arXiv',
+  biorxiv: 'bioRxiv',
+  medrxiv: 'medRxiv',
+  latex: 'LaTeX',
+  bibtex: 'BibTeX',
+  fmri: 'fMRI',
+  mrna: 'mRNA',
+  't-sne': 't-SNE',
+  pytorch: 'PyTorch',
+  tensorflow: 'TensorFlow',
+  openai: 'OpenAI',
+  chatgpt: 'ChatGPT',
+  ios: 'iOS',
+  macos: 'macOS',
+  phd: 'PhD',
+  ieee: 'IEEE',
+  acm: 'ACM',
+  nature: 'Nature',
+  science: 'Science',
+};
+
+const COMMON_ACADEMIC_ACRONYMS = new Set([
+  'AI', 'ML', 'DL', 'RL', 'NLP', 'CV', 'NLU', 'NLG',
+  'LLM', 'LLMS', 'SLM', 'SLMS', 'VLM', 'VLMS',
+  'CNN', 'CNNS', 'RNN', 'RNNS', 'GNN', 'GNNS', 'GAN', 'GANS',
+  'VAE', 'VAES', 'BERT', 'GPT', 'CLIP', 'LSTM', 'SVM',
+  'RAG', 'COT', 'TOT', 'DQN', 'PPO', 'DDPG', 'SAC',
+  'DNA', 'RNA', 'CRISPR', 'COVID', 'COVID-19', 'SARS', 'MERS', 'HIV', 'PCR',
+  'EEG', 'ECG', 'MRI', 'CT', 'PET',
+  'API', 'APIS', 'REST', 'HTTP', 'HTTPS', 'URL', 'URI', 'SQL', 'NOSQL',
+  'CPU', 'CPUS', 'GPU', 'GPUS', 'TPU', 'TPUS', 'RAM', 'ROM',
+  '2D', '3D', '4D', '5G', '6G',
+  'DOI', 'ISBN', 'ISSN', 'CSL', 'PDF', 'OCR', 'XML', 'HTML', 'JSON',
+  'USA', 'UK', 'EU', 'UN', 'WHO', 'NIH', 'NSF', 'NASA', 'DARPA',
+  'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII',
+]);
+
+const MINOR_WORDS = new Set([
+  'a', 'an', 'the',
+  'and', 'but', 'or', 'nor', 'for', 'yet', 'so',
+  'as', 'at', 'by', 'from', 'in', 'into', 'of', 'off', 'on', 'onto', 'out', 'over', 'per', 'to', 'up', 'via', 'with',
+]);
+
+/**
+ * Normalizes academic paper title casing:
+ * - If title is ALL CAPS or all lowercase, converts to standard academic Title Case.
+ * - If title has screaming uppercase non-acronym words (e.g. "SURVEY OF DEEP LEARNING"), normalizes them.
+ * - Preserves standard academic acronyms (BERT, GPT, LLM, CNN, RNA, etc.) and mixed-case terms (arXiv, mRNA).
+ * - Leaves correctly cased mixed-case titles untouched.
+ */
+export function normalizeAcademicTitleCase(title?: string | null): string {
+  if (!title || typeof title !== 'string') return '';
+  const trimmed = title.trim();
+  if (trimmed.length < 3) return trimmed;
+
+  const isAllUpper =
+    trimmed.length > 3 &&
+    trimmed === trimmed.toUpperCase() &&
+    /[A-Z]/.test(trimmed);
+  const isAllLower =
+    trimmed.length > 3 &&
+    trimmed === trimmed.toLowerCase() &&
+    /[a-z]/.test(trimmed);
+
+  const startsWithLower = /^[a-z]/.test(trimmed);
+
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  const hasShoutingWords = words.some((w) => {
+    const clean = w.replace(/^[^\w]+|[^\w]+$/g, '');
+    return (
+      clean.length >= 4 &&
+      clean === clean.toUpperCase() &&
+      !COMMON_ACADEMIC_ACRONYMS.has(clean) &&
+      /[A-Z]/.test(clean)
+    );
+  });
+
+  const significantWords = words
+    .map((w) => w.replace(/^[^\w]+|[^\w]+$/g, ''))
+    .filter(
+      (w) => w.length >= 4 && !COMMON_ACADEMIC_ACRONYMS.has(w.toUpperCase()),
+    );
+  const isSentenceCase =
+    significantWords.length >= 2 &&
+    significantWords.filter((w) => w === w.toLowerCase()).length /
+      significantWords.length >=
+      0.5;
+
+  if (
+    !isAllUpper &&
+    !isAllLower &&
+    !startsWithLower &&
+    !hasShoutingWords &&
+    !isSentenceCase
+  ) {
+    return trimmed;
+  }
+
+  const formatWord = (
+    word: string,
+    isFirstOrLast: boolean,
+    prevEndsWithColon: boolean,
+  ): string => {
+    const leadingPunct = word.match(/^[^\w]+/)?.[0] || '';
+    const trailingPunct = word.match(/[^\w]+$/)?.[0] || '';
+    const core = word.slice(
+      leadingPunct.length,
+      word.length - (trailingPunct.length || 0),
+    );
+
+    if (!core) return word;
+
+    const lower = core.toLowerCase();
+    const upper = core.toUpperCase();
+
+    if (SPECIAL_CASE_WORDS[lower]) {
+      return `${leadingPunct}${SPECIAL_CASE_WORDS[lower]}${trailingPunct}`;
+    }
+
+    if (COMMON_ACADEMIC_ACRONYMS.has(upper)) {
+      return `${leadingPunct}${upper}${trailingPunct}`;
+    }
+
+    if (core.includes('-')) {
+      const parts = core.split('-');
+      const formattedParts = parts.map((part, idx) => {
+        const pLower = part.toLowerCase();
+        const pUpper = part.toUpperCase();
+        if (SPECIAL_CASE_WORDS[pLower]) return SPECIAL_CASE_WORDS[pLower];
+        if (COMMON_ACADEMIC_ACRONYMS.has(pUpper)) return pUpper;
+        if (idx > 0 && MINOR_WORDS.has(pLower)) return pLower;
+        return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+      });
+      return `${leadingPunct}${formattedParts.join('-')}${trailingPunct}`;
+    }
+
+    if (MINOR_WORDS.has(lower) && !isFirstOrLast && !prevEndsWithColon) {
+      return `${leadingPunct}${lower}${trailingPunct}`;
+    }
+
+    return `${leadingPunct}${core.charAt(0).toUpperCase() + core.slice(1).toLowerCase()}${trailingPunct}`;
+  };
+
+  const formattedWords: string[] = [];
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    const isFirstOrLast = i === 0 || i === words.length - 1;
+    const prevWord = i > 0 ? words[i - 1] : '';
+    const prevEndsWithColon = /[:—\-\?!]$/.test(prevWord);
+
+    if (!isAllUpper && !isAllLower) {
+      const clean = w.replace(/^[^\w]+|[^\w]+$/g, '');
+      const cleanUpper = clean.toUpperCase();
+      if (
+        clean.length <= 4 ||
+        COMMON_ACADEMIC_ACRONYMS.has(cleanUpper) ||
+        SPECIAL_CASE_WORDS[clean.toLowerCase()] ||
+        clean !== cleanUpper
+      ) {
+        formattedWords.push(w);
+        continue;
+      }
+    }
+
+    formattedWords.push(formatWord(w, isFirstOrLast, prevEndsWithColon));
+  }
+
+  return formattedWords.join(' ');
+}
+
+/**
+ * Cleans PDF small-caps font drop-cap spaces, typographic gaps, and normalizes title casing:
+ * - "V ERY D EEP C ONVOLUTIONAL N ETWORKS" -> "Very Deep Convolutional Networks"
+ * - "N EURAL M ACHINE T RANSLATION" -> "Neural Machine Translation"
+ * - "ATTENTION IS ALL YOU NEED" -> "Attention Is All You Need"
+ * - "Auto - Encoding" -> "Auto-Encoding"
+ */
+export function cleanPaperTitle(title?: string | null): string {
+  if (!title || typeof title !== 'string') return '';
+  let s = title.trim();
+
+  // Fix PDF small-caps drop-cap gaps (e.g. "V ERY" -> "VERY", "D EEP" -> "DEEP")
+  s = s.replace(/\b([A-Z])\s+([A-Z]{2,})\b/g, '$1$2');
+
+  // Fix spaced hyphens (e.g. "Auto - Encoding" -> "Auto-Encoding")
+  s = s.replace(/\b([A-Za-z0-9]+)\s+-\s+([A-Za-z0-9]+)\b/g, '$1-$2');
+
+  // Fix single letter uppercase gaps: "B Y" -> "BY" (preserve standalone "A" or "I")
+  s = s.replace(/\b([B-HJ-Z])\s+([A-Z])\b/g, '$1$2');
+
+  // Collapse multiple spaces
+  s = s.replace(/\s+/g, ' ');
+
+  // Normalize screaming ALL CAPS or all lowercase titles to clean academic Title Case
+  return normalizeAcademicTitleCase(s.trim());
+}
+
 /**
  * Formats a list of author names into a standard compact academic display string.
  * - 0 authors: "—"
@@ -187,9 +385,14 @@ export function normalizeAuthors(
  */
 export function formatCreatorCompact(authors?: string[] | null): string {
   if (!authors || authors.length === 0) return '—';
-  if (authors.length === 1) return authors[0];
-  if (authors.length === 2) return `${authors[0]} & ${authors[1]}`;
-  return `${authors[0]} et al.`;
+  // Filter out obvious title continuation/preposition artifacts leaked as authors
+  const clean = authors.filter(
+    (a) => !/^(FOR\s+[A-Z]|BY\s+[A-Z]|Reducing\s+Internal)/i.test(a.trim()),
+  );
+  if (clean.length === 0) return '—';
+  if (clean.length === 1) return clean[0];
+  if (clean.length === 2) return `${clean[0]} & ${clean[1]}`;
+  return `${clean[0]} et al.`;
 }
 
 export function trimUnmatchedClosingBrackets(str: string): string {

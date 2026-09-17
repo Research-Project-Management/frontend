@@ -1,6 +1,7 @@
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/shared/lib/api";
 import type { Note } from '../types/library.types';
 import { noteResponseSchema, noteListResponseSchema } from '../schemas/library.schema';
+import { isProjectScope } from './items.service';
 
 export interface CreateNoteDTO {
   itemId?: string | null;
@@ -18,19 +19,23 @@ export interface UpdateNoteDTO {
   expectedVersion?: number;
 }
 
+function getNotesBasePath(scopeId?: string): string {
+  return isProjectScope(scopeId)
+    ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/notes`
+    : `/api/v1/library/notes`;
+}
+
 export const NotesService = {
   /**
    * List notes, optionally filtered by itemId
    */
   list: async (scopeId?: string, itemId?: string): Promise<Note[]> => {
-    const isProject = scopeId && scopeId !== 'user';
+    const isProject = isProjectScope(scopeId);
     const params = new URLSearchParams();
     if (itemId) params.set('itemId', itemId);
     if (isProject) params.set('projectId', scopeId);
     const queryString = params.toString() ? `?${params.toString()}` : '';
-    const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/notes`
-      : `/api/v1/library/notes`;
+    const basePath = getNotesBasePath(scopeId);
     const raw = await apiGet<any>(`${basePath}${queryString}`);
 
     const parsed = noteListResponseSchema.safeParse(raw);
@@ -47,10 +52,7 @@ export const NotesService = {
    * Get single note by id
    */
   get: async (scopeId: string | undefined, id: string): Promise<Note> => {
-    const isProject = scopeId && scopeId !== 'user';
-    const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/notes`
-      : `/api/v1/library/notes`;
+    const basePath = getNotesBasePath(scopeId);
     const raw = await apiGet<any>(
       `${basePath}/${encodeURIComponent(id)}`,
     );
@@ -66,10 +68,8 @@ export const NotesService = {
    * Create a new canonical Note
    */
   create: async (scopeId: string | undefined, dto: CreateNoteDTO): Promise<Note> => {
-    const isProject = scopeId && scopeId !== 'user';
-    const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/notes`
-      : `/api/v1/library/notes`;
+    const isProject = isProjectScope(scopeId);
+    const basePath = getNotesBasePath(scopeId);
     const raw = await apiPost<any>(
       basePath,
       {
@@ -94,10 +94,7 @@ export const NotesService = {
     expectedVersion: number | undefined,
     dto: UpdateNoteDTO,
   ): Promise<Note> => {
-    const isProject = scopeId && scopeId !== 'user';
-    const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/notes`
-      : `/api/v1/library/notes`;
+    const basePath = getNotesBasePath(scopeId);
     const raw = await apiPatch<any>(
       `${basePath}/${encodeURIComponent(id)}`,
       {
@@ -121,10 +118,7 @@ export const NotesService = {
     id: string,
     expectedVersion?: number,
   ): Promise<{ deleted: boolean }> => {
-    const isProject = scopeId && scopeId !== 'user';
-    const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/notes`
-      : `/api/v1/library/notes`;
+    const basePath = getNotesBasePath(scopeId);
     const versionQuery = expectedVersion !== undefined
       ? `?expectedVersion=${encodeURIComponent(String(expectedVersion))}`
       : '';

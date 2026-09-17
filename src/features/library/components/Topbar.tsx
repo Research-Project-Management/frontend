@@ -16,6 +16,7 @@ import {
   FolderPlus,
   FolderInput,
   Link2,
+  PanelRight,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
@@ -28,6 +29,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import { LibraryFilterPopover } from "./LibraryFilterPopover";
 import { LibraryDisplayPopover, type LibraryDisplayOptions } from "./LibraryDisplayPopover";
+import { useLibrarySidebarStore } from "../store/sidebar.store";
 import type { Item } from "../types/library.types";
 
 export interface BreadcrumbItem {
@@ -57,6 +59,8 @@ export interface TopbarProps {
   onImportFromPersonal?: () => void;
   isSubcollection?: boolean;
   onNavigateCrumb?: (crumbId?: string) => void;
+  showInspectorToggle?: boolean;
+  onToggleInspector?: () => void;
   children?: React.ReactNode;
   className?: string;
 }
@@ -82,9 +86,12 @@ export default function Topbar({
   onImportFromPersonal,
   isSubcollection = false,
   onNavigateCrumb,
+  showInspectorToggle = true,
+  onToggleInspector,
   children,
   className,
 }: TopbarProps) {
+  const { isInspectorOpen, toggleInspector } = useLibrarySidebarStore();
   const params = useParams() as { collectionId?: string };
   const effectiveWorkspaceId = propWorkspaceId || 'user';
 
@@ -214,7 +221,7 @@ export default function Topbar({
           <div className="flex items-center gap-2 min-w-0">
             {Icon && <Icon className="size-4 text-foreground shrink-0" />}
             {title && (
-              <h1 className="text-sub font-medium tracking-tight text-foreground truncate">
+              <h1 className="text-sm font-semibold tracking-tight text-foreground truncate">
                 {title}
               </h1>
             )}
@@ -251,7 +258,7 @@ export default function Topbar({
               onChange={(e) => onSearchChange(e.target.value)}
               onBlur={() => collapseSearch(search)}
               className={cn(
-                "h-full text-xs font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/60 placeholder:font-normal transition-opacity duration-200 pl-7 pr-7 text-foreground",
+                "h-full text-13 font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/60 placeholder:font-normal transition-opacity duration-200 pl-7 pr-7 text-foreground",
                 isSearchExpanded || search ? "opacity-100" : "opacity-0 pointer-events-none"
               )}
               autoFocus={isSearchExpanded}
@@ -264,7 +271,7 @@ export default function Topbar({
                   e.stopPropagation();
                 }}
                 onClick={handleClearSearch}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-sm"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-md"
                 aria-label="Clear search"
               >
                 <Plus className="size-3.5 rotate-45 shrink-0" />
@@ -290,7 +297,7 @@ export default function Topbar({
         {(onAddPaper || onAddCollection || onDirectFilesUpload || onDirectFolderUpload || onAddLink || onImportFromPersonal) && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" className="h-8 px-3 rounded-md cursor-pointer font-medium text-12 shadow-2xs">
+              <Button size="sm" className="h-8 px-3 rounded-md cursor-pointer font-medium text-13 shadow-none inline-flex items-center justify-center">
                 <span>New</span>
               </Button>
             </DropdownMenuTrigger>
@@ -298,7 +305,7 @@ export default function Topbar({
               align="end"
               sideOffset={4}
               onCloseAutoFocus={(e) => e.preventDefault()}
-              className="w-48 p-1 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+              className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
             >
               {/* Group 1: Collection / Structure Creation */}
               {onAddCollection && (
@@ -355,6 +362,33 @@ export default function Topbar({
         )}
 
         {children}
+
+        {/* Line dọc ngăn cách với item: mỏng mặc định 1px, khoảng cách 2 bên với item giảm 1 nửa */}
+        {showInspectorToggle && (
+          <div className="flex items-center gap-[5px] shrink-0 -ml-[5px]">
+            <div className="h-4 border-l border-border shrink-0" />
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={onToggleInspector || toggleInspector}
+                  className={cn(
+                    "size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0",
+                    isInspectorOpen && "bg-muted"
+                  )}
+                  aria-label={isInspectorOpen ? "Collapse inspector" : "Expand inspector"}
+                >
+                  <PanelRight className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={6} className="text-12">
+                {isInspectorOpen ? "Collapse inspector" : "Expand inspector"}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )}
 
         {/* Hidden Direct File Input */}
         <input

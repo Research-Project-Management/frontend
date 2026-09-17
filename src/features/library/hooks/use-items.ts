@@ -502,6 +502,7 @@ export type SortField =
   | 'year'
   | 'journal'
   | 'createdAt'
+  | 'updatedAt'
   | 'lastReadAt'
   | 'citationCount'
   | 'itemType';
@@ -567,6 +568,17 @@ export function useItemTable({
 
   const sortedItems = useMemo(() => {
     return [...targetItems].sort((firstItem, secondItem) => {
+      const aPending = Boolean((firstItem as any).isPending);
+      const bPending = Boolean((secondItem as any).isPending);
+      if (aPending && !bPending) return -1;
+      if (!aPending && bPending) return 1;
+      if (aPending && bPending) {
+        return (
+          new Date(secondItem.createdAt || 0).getTime() -
+          new Date(firstItem.createdAt || 0).getTime()
+        );
+      }
+
       let comparisonResult = 0;
       switch (sortField) {
         case 'title':
@@ -610,6 +622,11 @@ export function useItemTable({
           comparisonResult =
             new Date(firstItem.createdAt || 0).getTime() -
             new Date(secondItem.createdAt || 0).getTime();
+          break;
+        case 'updatedAt':
+          comparisonResult =
+            new Date(firstItem.updatedAt || 0).getTime() -
+            new Date(secondItem.updatedAt || 0).getTime();
           break;
         default:
           comparisonResult = 0;

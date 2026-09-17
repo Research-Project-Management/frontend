@@ -11,6 +11,7 @@ import {
 import { ViewerBroadcastBridge } from '@/features/editor/utils/popout-channel.util';
 import { filesQuery, usePageActions } from '@/features/editor/hooks/use-core';
 import { versionService } from '@/features/editor/services/history.service';
+import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import type { Page as ProjectPage } from '@/features/editor/types';
 import {
   extractPdfBookmarks,
@@ -46,6 +47,7 @@ export default function Viewer() {
     useCache,
     autoCompile,
     setAutoCompile,
+    texLiveVersion,
   } = useSettingsStore();
 
   const {
@@ -85,6 +87,7 @@ export default function Viewer() {
   const [showLog, setShowLog] = useState(false);
   const [scrollMode] = useState(true);
   const [pdfOutline, setPdfOutline] = useState<PdfOutlineItem[]>([]);
+  const [invertColors, setInvertColors] = useState(false);
 
   const [autoFit, setAutoFit] = useState(true);
   const [containerWidth, setContainerWidth] = useState(600);
@@ -151,6 +154,25 @@ export default function Viewer() {
     });
   };
 
+  useEffect(() => {
+    const unsubZoomIn = EditorEventBus.on('flux:zoom-in', handleZoomIn);
+    const unsubZoomOut = EditorEventBus.on('flux:zoom-out', handleZoomOut);
+    const unsubFitWidth = EditorEventBus.on('flux:zoom-fit-width', () => {
+      setAutoFit(true);
+      setScale(fittedScale);
+    });
+    const unsubFitHeight = EditorEventBus.on('flux:zoom-fit-height', () => {
+      setAutoFit(false);
+      setScale(0.85);
+    });
+    return () => {
+      unsubZoomIn();
+      unsubZoomOut();
+      unsubFitWidth();
+      unsubFitHeight();
+    };
+  }, [fittedScale]);
+
   const showZoomGroup = containerWidth >= 480;
   const showUtilityGroup = containerWidth >= 380;
 
@@ -197,6 +219,7 @@ export default function Viewer() {
       pageId: rootId,
       mainFile: mainFile || 'main.tex',
       engine: engine || 'pdflatex',
+      texLiveVersion,
       draft: compileMode === 'draft',
       useCache: options?.forceClean ? false : useCache,
       dirtyFiles,
@@ -323,24 +346,39 @@ export default function Viewer() {
       const filename = activeFilePage?.title || 'main.tex';
 
       // 1. Try Backend Single Source of Truth
-      const remotePage = await LatexCompilerEngine.resolveForwardRemote(
+      const remoteRes = await LatexCompilerEngine.resolveForwardRemote(
         rootId,
         filename,
         line,
       );
 
-      const targetPage =
-        remotePage ??
-        LatexCompilerEngine.resolveForward(
+      let targetPage = remoteRes?.page ?? null;
+      let targetX = remoteRes ? remoteRes.x * scale : undefined;
+      let targetY = remoteRes ? remoteRes.y * scale : undefined;
+
+      if (!targetPage) {
+        const localDetail = LatexCompilerEngine.resolveForwardDetail(
           line,
           synctexMapRef.current,
           activeFilePage?.title,
           numPages || 1,
         );
+        if (localDetail) {
+          targetPage = localDetail.page;
+          if (localDetail.x !== undefined && localDetail.y !== undefined) {
+            targetX = (localDetail.x / 65536) * scale;
+            targetY = (localDetail.y / 65536) * scale;
+          }
+        }
+      }
 
       if (targetPage !== null) {
         setPageNumber(targetPage);
-        pdfSurfaceRef.current?.scrollToPage(targetPage);
+        if (targetX !== undefined && targetY !== undefined) {
+          pdfSurfaceRef.current?.highlightTarget?.(targetPage, targetX, targetY);
+        } else {
+          pdfSurfaceRef.current?.scrollToPage(targetPage);
+        }
 
         if (bridgeRef.current) {
           bridgeRef.current.postMessage({
@@ -354,7 +392,7 @@ export default function Viewer() {
     return () => {
       scrollToPdfLineRef.current = null;
     };
-  }, [numPages, activeFilePage, scrollToPdfLineRef, projectId]);
+  }, [numPages, activeFilePage, scrollToPdfLineRef, projectId, scale]);
 
   // SyncTeX reverse search (PDF double-click -> Code jump)
   const handleJumpToSource = async (
@@ -366,8 +404,24 @@ export default function Viewer() {
   ) => {
     const rootId = parentPageIdRef.current || projectId || 'default';
 
-    // 1. Try Backend Reverse Sync if coordinates provided
-    if (pageNum !== undefined && x !== undefined && y !== undefined) {
+    // 1. Try local resolution first if line is missing or default
+    if ((!sourcePath || !line || line <= 1) && synctexMapRef.current && pageNum !== undefined) {
+      const clickFraction = y !== undefined ? Math.max(0, Math.min(1, y / 842)) : 0;
+      const local = LatexCompilerEngine.resolveReverse(
+        clickFraction,
+        pageNum,
+        synctexMapRef.current,
+        x,
+        y,
+      );
+      if (local?.line) {
+        sourcePath = local.sourcePath;
+        line = local.line;
+      }
+    }
+
+    // 2. Fallback to Backend Single Source of Truth if still unresolved
+    if ((!sourcePath || !line || line <= 1) && pageNum !== undefined && x !== undefined && y !== undefined) {
       const remoteJump = await LatexCompilerEngine.resolveReverseRemote(
         rootId,
         pageNum,
@@ -399,6 +453,21 @@ export default function Viewer() {
 
     scrollToLineRef.current?.(line);
   };
+
+  // SyncTeX reverse search event listener (Floating widget backward arrow)
+  useEffect(() => {
+    return EditorEventBus.on('flux:synctex-backward', () => {
+      const p = pageNumber || 1;
+      const resolved = synctexMapRef.current
+        ? LatexCompilerEngine.resolveReverse(0.25, p, synctexMapRef.current)
+        : null;
+      if (resolved?.line) {
+        handleJumpToSource(resolved.sourcePath, resolved.line, p);
+      } else {
+        handleJumpToSource(null, 1, p, 200, 200);
+      }
+    });
+  }, [pageNumber, handleJumpToSource]);
 
   const handleJumpToFirstError = () => {
     const firstErr = parsedLog?.errors.find((e) => e.line !== undefined);
@@ -589,6 +658,12 @@ export default function Viewer() {
           isPoppedOut={true}
           outline={pdfOutline}
           onJumpToPage={handleJumpToPage}
+          invertColors={invertColors}
+          onToggleInvertColors={() => setInvertColors((v) => !v)}
+          onSetScale={(s) => {
+            setAutoFit(false);
+            setScale(s);
+          }}
         />
 
         <div className="flex-1 overflow-hidden relative flex flex-col">
@@ -633,6 +708,10 @@ export default function Viewer() {
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onResetZoom={handleResetZoom}
+        onSetScale={(s) => {
+          setAutoFit(false);
+          setScale(s);
+        }}
         pageNumber={pageNumber}
         numPages={numPages}
         onPrevPage={handlePrevPage}
@@ -647,6 +726,8 @@ export default function Viewer() {
         isPoppedOut={false}
         outline={pdfOutline}
         onJumpToPage={handleJumpToPage}
+        invertColors={invertColors}
+        onToggleInvertColors={() => setInvertColors((v) => !v)}
       />
 
       <a ref={downloadRef} className="hidden" aria-hidden="true" />
@@ -667,6 +748,7 @@ export default function Viewer() {
           onDocumentLoadSuccess={onDocumentLoadSuccess}
           onJumpToSource={handleJumpToSource}
           onCompile={handleCompile}
+          invertColors={invertColors}
         />
 
         {showLog && compileLog && (

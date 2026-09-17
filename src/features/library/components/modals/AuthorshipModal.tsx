@@ -3,18 +3,18 @@
 import React, { useEffect } from 'react';
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Award, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { Button } from '@/shared/components/ui';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
+  DialogDescription,
   Form,
 } from '@/shared/components/ui';
 import { Checkbox } from '@/shared/components/ui';
 import { Label } from '@/shared/components/ui';
+import { cn } from '@/shared/lib/utils';
 import type { Item } from '../../types/library.types';
 import { normalizeAuthors, formatCreatorCompact } from '../../utils/library.util';
 import {
@@ -72,102 +72,98 @@ export default function AuthorshipModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[480px] p-5 rounded-md border border-border bg-background shadow-none font-sans">
-        <DialogHeader className="gap-2">
-          <div className="flex items-center gap-2 text-primary">
-            <Award className="size-4 shrink-0" strokeWidth={1.5} />
-            <DialogTitle className="text-14 font-medium text-foreground">
-              {isAlreadyPublication ? 'My Publications - Authorship' : 'Add to My Publications'}
+      <DialogContent className="sm:max-w-[460px] p-0 rounded-lg border border-border bg-background shadow-raised-200 font-sans gap-0 overflow-hidden">
+        {/* Modal Header with 1px hairline border matching DESIGN.md */}
+        <div className="px-5 py-3.5 border-b border-border bg-background flex items-center justify-between">
+          <DialogHeader className="text-left gap-0">
+            <DialogTitle className="text-14 font-semibold text-foreground">
+              {isAlreadyPublication ? 'My Publications' : 'Add to My Publications'}
             </DialogTitle>
-          </div>
-          <p className="text-12 text-muted-foreground leading-relaxed">
-            {isAlreadyPublication
-              ? 'This publication is currently part of your academic portfolio.'
-              : 'Add this paper to your personal publications list to curate your academic portfolio, track your scientific output, and generate CV bibliographies.'}
-          </p>
-        </DialogHeader>
+            <DialogDescription className="sr-only">
+              {isAlreadyPublication
+                ? 'Manage My Publications item'
+                : 'Confirm authorship and rights for My Publications'}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
+        {/* Modal Body - Clean layout, no inner boxed frame */}
         <Form {...form}>
-          <form onSubmit={handleSubmit(onValidSubmit)} className="space-y-4 pt-2">
-            {/* Paper Summary Card */}
-            <div className="p-3.5 rounded-md border border-border bg-muted/40 space-y-1.5">
-              <h4 className="text-12 font-medium text-foreground line-clamp-2 leading-snug">
-                {item.title || 'Untitled Reference'}
-              </h4>
-              <div className="flex items-center gap-3 text-11 text-muted-foreground">
-                <span>{authorCompact || 'Unknown Authors'}</span>
-                {item.year ? <span>• {item.year}</span> : null}
+          <form onSubmit={handleSubmit(onValidSubmit)}>
+            <div className="p-5 space-y-4 bg-background">
+              {/* Reference Information */}
+              <div className="space-y-1">
+                <h4 className="text-13 font-medium text-foreground line-clamp-2 leading-snug">
+                  {item.title || 'Untitled Reference'}
+                </h4>
+                <p className="text-12 text-muted-foreground truncate">
+                  {authorCompact || 'Unknown Authors'}
+                  {item.year ? ` • ${item.year}` : ''}
+                </p>
               </div>
-              {isAlreadyPublication && item.publicationConfirmedAt ? (
-                <div className="pt-1 flex items-center gap-1 text-11 font-medium text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="size-3.5 shrink-0" strokeWidth={1.5} />
-                  <span>
-                    Authorship confirmed on{' '}
-                    {new Date(item.publicationConfirmedAt).toLocaleDateString('en-US')}
-                  </span>
+
+              {/* Official Zotero Advisory & Attestation */}
+              {!isAlreadyPublication ? (
+                <div className="space-y-3.5">
+                  <p className="text-13 leading-relaxed text-foreground">
+                    My Publications allows you to create a list of your own work and share it on your public profile. Only add work you yourself have created, and only include files if you have the rights to distribute them publicly.
+                  </p>
+
+                  <div className="flex items-start gap-2.5 pt-0.5">
+                    <Controller
+                      name="confirmed"
+                      control={control}
+                      render={({ field }) => (
+                        <Checkbox
+                          id="authorship-confirm"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          className="mt-0.5 shrink-0"
+                        />
+                      )}
+                    />
+                    <Label
+                      htmlFor="authorship-confirm"
+                      className="text-13 font-normal text-foreground leading-snug cursor-pointer select-none"
+                    >
+                      I created this work and have the rights to distribute included files.
+                    </Label>
+                  </div>
                 </div>
-              ) : null}
+              ) : (
+                <p className="text-13 leading-relaxed text-foreground">
+                  This reference is currently in your My Publications collection. Confirming will remove it from your public profile.
+                </p>
+              )}
             </div>
 
-            {/* Authorship Declaration Checkbox */}
-            {!isAlreadyPublication ? (
-              <div className="flex items-start gap-2.5 p-3 rounded-md bg-primary/5 border border-primary/20">
-                <Controller
-                  name="confirmed"
-                  control={control}
-                  render={({ field }) => (
-                    <Checkbox
-                      id="authorship-declare"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      className="mt-0.5"
-                    />
-                  )}
-                />
-                <Label
-                  htmlFor="authorship-declare"
-                  className="text-12 text-foreground font-normal leading-snug cursor-pointer select-none"
-                >
-                  <strong className="font-medium">I created this work.</strong> I confirm that I am an author or co-author of this
-                  publication, and I hold the rights to include it in my portfolio.
-                </Label>
-              </div>
-            ) : null}
-
-            <DialogFooter className="gap-2 pt-2 sm:justify-end">
+            {/* Modal Footer with 1px hairline border - Cancel and Confirm buttons */}
+            <div className="px-5 py-3 border-t border-border bg-background flex items-center justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => onOpenChange(false)}
                 disabled={isPending}
-                className="h-8 px-3 text-12 font-medium rounded-md border-border"
+                className="h-8 px-3.5 text-13 font-medium rounded-md border border-border bg-background shadow-2xs hover:bg-muted text-foreground cursor-pointer"
               >
                 Cancel
               </Button>
 
-              {isAlreadyPublication ? (
-                <Button
-                  type="submit"
-                  variant="destructive"
-                  size="sm"
-                  disabled={isPending}
-                  className="h-8 px-3 text-12 font-medium rounded-md gap-1.5"
-                >
-                  <span>{isPending ? 'Removing...' : 'Remove from My Publications'}</span>
-                </Button>
-              ) : (
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={!confirmed || isPending}
-                  className="h-8 px-3 text-12 font-medium rounded-md gap-1.5"
-                >
-                  <ShieldCheck className="size-3.5 shrink-0" strokeWidth={1.5} />
-                  <span>{isPending ? 'Adding...' : 'Confirm & Add to My Publications'}</span>
-                </Button>
-              )}
-            </DialogFooter>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={(!isAlreadyPublication && !confirmed) || isPending}
+                className={cn(
+                  "h-8 px-3.5 text-13 font-medium rounded-md cursor-pointer shadow-none",
+                  isAlreadyPublication
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    : "bg-primary text-primary-foreground hover:bg-primary-hover"
+                )}
+              >
+                {isPending ? 'Confirming...' : 'Confirm'}
+              </Button>
+            </div>
           </form>
         </Form>
       </DialogContent>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import Sidebar from '@/features/library/components/Sidebar';
 import { useLibrarySidebarStore } from '@/features/library/store/sidebar.store';
@@ -119,7 +119,11 @@ export default function LibrarySandboxLayout({
           </main>
         ) : (
           <div className="flex flex-1 min-h-0 w-full overflow-hidden relative">
-            {isOpen && <Sidebar />}
+            {isOpen && (
+              <Suspense fallback={<aside className="w-64 border-r border-border shrink-0 bg-sidebar" />}>
+                <Sidebar />
+              </Suspense>
+            )}
 
             <div className="flex-1 min-w-0 flex flex-col overflow-hidden relative">
               <main className="flex-1 min-h-0 relative flex flex-col overflow-hidden">

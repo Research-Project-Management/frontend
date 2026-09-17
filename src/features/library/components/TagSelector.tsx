@@ -258,7 +258,7 @@ export function TagFilterPopover({
           align="end"
           side="bottom"
           sideOffset={6}
-          className="w-72 sm:w-80 max-h-[85vh] p-2.5 rounded-md border border-border bg-popover text-popover-foreground shadow-2xs z-50 overflow-hidden font-sans flex flex-col gap-2 select-none"
+          className="w-72 max-h-[85vh] p-3 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 z-50 overflow-hidden font-sans flex flex-col gap-2.5 select-none"
         >
           {/* 1. Search Input at Top (no divider line underneath) */}
           <div className="relative flex items-center shrink-0">
@@ -274,7 +274,7 @@ export function TagFilterPopover({
               <button
                 type="button"
                 onClick={() => setTagSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded-sm"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded-md"
                 aria-label="Clear search"
               >
                 <X className="size-3 shrink-0" />
@@ -297,7 +297,7 @@ export function TagFilterPopover({
                   Clear all
                 </button>
               </div>
-              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto thin-scrollbar">
+              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {activeTags.map((tagName) => (
                   <span
                     key={tagName}
@@ -319,7 +319,7 @@ export function TagFilterPopover({
           )}
 
           {/* 3. Tags List */}
-          <div className="flex-1 max-h-60 overflow-y-auto space-y-0.5 thin-scrollbar pr-0.5">
+          <div className="flex-1 max-h-60 overflow-y-auto space-y-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pr-0.5">
             {isLoading ? (
               <div className="py-6 text-center text-12 text-muted-foreground flex items-center justify-center gap-1.5">
                 <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
@@ -423,7 +423,7 @@ export function TagFilterPopover({
 
       {/* Confirmation Dialog for Deleting Automatic Tags */}
       <Dialog open={isConfirmDeleteOpen} onOpenChange={setIsConfirmDeleteOpen}>
-        <DialogContent className="sm:max-w-[500px] w-full p-7 rounded-lg bg-background border border-border gap-6 shadow-none">
+        <DialogContent className="sm:max-w-[520px] w-full p-6 rounded-lg bg-background border border-border gap-6 shadow-raised-200">
           <DialogHeader className="space-y-2 text-left">
             <DialogTitle className="text-base font-semibold tracking-tight text-foreground">
               Delete Automatic Tags in This Library?
@@ -438,7 +438,7 @@ export function TagFilterPopover({
               size="sm"
               onClick={() => setIsConfirmDeleteOpen(false)}
               disabled={isDeletingAutomatic}
-              className="h-9 px-4 text-xs font-medium rounded-md text-foreground hover:bg-muted cursor-pointer shadow-none"
+              className="h-9 px-4 text-xs font-medium rounded-md text-foreground hover:bg-muted cursor-pointer shadow-2xs"
             >
               Cancel
             </Button>

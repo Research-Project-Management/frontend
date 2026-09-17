@@ -188,7 +188,7 @@ function MenubarSeparator({
   return (
     <MenubarPrimitive.Separator
       data-slot='menubar-separator'
-      className={cn('-mx-1 my-1 h-px bg-border', className)}
+      className={cn('mx-1.5 my-1 h-px bg-border/70', className)}
       {...props}
     />
   );

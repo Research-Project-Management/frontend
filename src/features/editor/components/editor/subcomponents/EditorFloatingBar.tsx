@@ -2,9 +2,10 @@
 
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { MessageSquarePlus, FileCheck } from 'lucide-react';
+import { MessageSquarePlus, FileCheck, Sparkles } from 'lucide-react';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useActionsStore } from '@/features/editor/store';
+import { cn } from '@/shared/lib/utils';
 
 export interface SelFloating {
   x: number;
@@ -17,6 +18,7 @@ export interface SelFloating {
 export interface EditorFloatingBarProps {
   selFloating: SelFloating | null;
   selFloatingRef: React.RefObject<HTMLDivElement | null>;
+  reviewMode?: boolean;
   onClose: () => void;
   onOpenSuggest: (opts: {
     originalText: string;
@@ -31,6 +33,7 @@ export interface EditorFloatingBarProps {
 export function EditorFloatingBar({
   selFloating,
   selFloatingRef,
+  reviewMode = false,
   onClose,
   onOpenSuggest,
 }: EditorFloatingBarProps) {
@@ -73,11 +76,28 @@ export function EditorFloatingBar({
           });
           onClose();
         }}
-        className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer"
-        title="Suggest Edit (Track Changes)"
+        className={cn(
+          "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors cursor-pointer",
+          reviewMode
+            ? "bg-amber-500/20 text-amber-800 dark:text-amber-200 font-semibold ring-1 ring-amber-500/40"
+            : "text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+        )}
+        title={reviewMode ? "Suggest Edit (Track Changes Active)" : "Suggest Edit (Track Changes)"}
       >
         <FileCheck className="size-3.5 shrink-0" />
-        <span>Suggest</span>
+        <span>Suggest{reviewMode ? ' (Active)' : ''}</span>
+      </button>
+      <div className="w-px h-4 bg-border mx-0.5" />
+      <button
+        onClick={() => {
+          EditorEventBus.emit('flux:open-ai-panel', { selectedText: selFloating.text });
+          onClose();
+        }}
+        className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+        title="Ask Academic AI Assistant"
+      >
+        <Sparkles className="size-3.5 shrink-0" />
+        <span>Ask AI</span>
       </button>
     </div>,
     document.body,

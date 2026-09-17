@@ -6,6 +6,8 @@ import {
   parseCreatorName,
   normalizeAuthors,
   formatCreatorCompact,
+  cleanPaperTitle,
+  normalizeAcademicTitleCase,
   trimUnmatchedClosingBrackets,
   cleanDoi,
 } from './author-doi.util';
@@ -17,11 +19,19 @@ export {
   parseCreatorName,
   normalizeAuthors,
   formatCreatorCompact,
+  cleanPaperTitle,
+  normalizeAcademicTitleCase,
   trimUnmatchedClosingBrackets,
   cleanDoi,
 };
 
 // ── 1. ID & Key Resolution ───────────────────────────────────────────────────
+
+export function isProjectScope(scopeId?: string): scopeId is string {
+  if (!scopeId) return false;
+  const s = scopeId.trim().toLowerCase();
+  return s !== 'user' && s !== 'me' && s !== 'personal' && s !== 'global' && s !== 'default';
+}
 
 
 /**
@@ -123,25 +133,520 @@ export function getPaperFileUrl(
 }
 
 // ── Academic Tag Normalizer Constants ───────────────────────────────────────
-const ARXIV_CATEGORY_MAP: Record<string, string> = {
+export const ARXIV_CATEGORY_MAP: Record<string, string> = {
+  // Computer Science
   'cs.ai': 'Computer Science - Artificial Intelligence',
+  'cs.ar': 'Computer Science - Hardware Architecture',
+  'cs.cc': 'Computer Science - Computational Complexity',
+  'cs.ce': 'Computer Science - Computational Engineering',
+  'cs.cg': 'Computer Science - Computational Geometry',
   'cs.cl': 'Computer Science - Computation and Language',
+  'cs.cr': 'Computer Science - Cryptography and Security',
   'cs.cv': 'Computer Science - Computer Vision and Pattern Recognition',
+  'cs.cy': 'Computer Science - Computers and Society',
+  'cs.db': 'Computer Science - Databases',
+  'cs.dc': 'Computer Science - Distributed and Cluster Computing',
+  'cs.dl': 'Computer Science - Digital Libraries',
+  'cs.dm': 'Computer Science - Discrete Mathematics',
+  'cs.ds': 'Computer Science - Data Structures and Algorithms',
+  'cs.et': 'Computer Science - Emerging Technologies',
+  'cs.fl': 'Computer Science - Formal Languages and Automata',
+  'cs.gl': 'Computer Science - General Literature',
+  'cs.gr': 'Computer Science - Graphics',
+  'cs.gt': 'Computer Science - Computer Science and Game Theory',
+  'cs.hc': 'Computer Science - Human-Computer Interaction',
+  'cs.ir': 'Computer Science - Information Retrieval',
+  'cs.it': 'Computer Science - Information Theory',
   'cs.lg': 'Computer Science - Machine Learning',
+  'cs.lo': 'Computer Science - Logic in Computer Science',
+  'cs.ma': 'Computer Science - Multiagent Systems',
+  'cs.mm': 'Computer Science - Multimedia',
+  'cs.ms': 'Computer Science - Mathematical Software',
+  'cs.na': 'Computer Science - Numerical Analysis',
   'cs.ne': 'Computer Science - Neural and Evolutionary Computing',
+  'cs.ni': 'Computer Science - Networking and Internet Architecture',
+  'cs.oh': 'Computer Science - Other Computer Science',
+  'cs.os': 'Computer Science - Operating Systems',
+  'cs.pf': 'Computer Science - Performance',
+  'cs.pl': 'Computer Science - Programming Languages',
   'cs.ro': 'Computer Science - Robotics',
+  'cs.sc': 'Computer Science - Symbolic Computation',
+  'cs.sd': 'Computer Science - Sound',
+  'cs.se': 'Computer Science - Software Engineering',
+  'cs.si': 'Computer Science - Social and Information Networks',
+  'cs.sy': 'Computer Science - Systems and Control',
+
+  // Statistics
   'stat.ml': 'Statistics - Machine Learning',
+  'stat.ap': 'Statistics - Applied Statistics',
+  'stat.co': 'Statistics - Computation',
+  'stat.me': 'Statistics - Methodology',
+  'stat.th': 'Statistics - Statistics Theory',
+
+  // Mathematics
   'math.oc': 'Mathematics - Optimization and Control',
+  'math.pr': 'Mathematics - Probability',
+  'math.st': 'Mathematics - Statistical Theory',
+  'math.na': 'Mathematics - Numerical Analysis',
+  'math.ag': 'Mathematics - Algebraic Geometry',
+  'math.at': 'Mathematics - Algebraic Topology',
+  'math.ap': 'Mathematics - Analysis of PDEs',
+  'math.ca': 'Mathematics - Classical Analysis and ODEs',
+  'math.co': 'Mathematics - Combinatorics',
+  'math.ds': 'Mathematics - Dynamical Systems',
+  'math.fa': 'Mathematics - Functional Analysis',
+  'math.gm': 'Mathematics - General Mathematics',
+  'math.gn': 'Mathematics - General Topology',
+  'math.gr': 'Mathematics - Group Theory',
+  'math.gt': 'Mathematics - Geometric Topology',
+  'math.lo': 'Mathematics - Logic',
+  'math.mg': 'Mathematics - Metric Geometry',
+  'math.mp': 'Mathematics - Mathematical Physics',
+  'math.nt': 'Mathematics - Number Theory',
+  'math.oa': 'Mathematics - Operator Algebras',
+  'math.qa': 'Mathematics - Quantum Algebra',
+  'math.ra': 'Mathematics - Rings and Algebras',
+  'math.rt': 'Mathematics - Representation Theory',
+  'math.sg': 'Mathematics - Symplectic Geometry',
+  'math.sp': 'Mathematics - Spectral Theory',
+
+  // Quantitative Biology
+  'q-bio.bm': 'Quantitative Biology - Biomolecules',
+  'q-bio.cb': 'Quantitative Biology - Cell Behavior',
+  'q-bio.gn': 'Quantitative Biology - Genomics',
+  'q-bio.mn': 'Quantitative Biology - Molecular Networks',
+  'q-bio.nc': 'Quantitative Biology - Neurons and Cognition',
+  'q-bio.ot': 'Quantitative Biology - Other Quantitative Biology',
+  'q-bio.pe': 'Quantitative Biology - Populations and Evolution',
+  'q-bio.qm': 'Quantitative Biology - Quantitative Methods',
+  'q-bio.sc': 'Quantitative Biology - Subcellular Processes',
+  'q-bio.to': 'Quantitative Biology - Tissues and Organs',
+
+  // Quantitative Finance
+  'q-fin.cp': 'Quantitative Finance - Computational Finance',
+  'q-fin.ec': 'Quantitative Finance - Economics',
+  'q-fin.gn': 'Quantitative Finance - General Finance',
+  'q-fin.mf': 'Quantitative Finance - Mathematical Finance',
+  'q-fin.pm': 'Quantitative Finance - Portfolio Management',
+  'q-fin.pr': 'Quantitative Finance - Pricing of Securities',
+  'q-fin.rm': 'Quantitative Finance - Risk Management',
+  'q-fin.st': 'Quantitative Finance - Statistical Finance',
+  'q-fin.tr': 'Quantitative Finance - Trading and Market Microstructure',
+
+  // Electrical Engineering and Systems Science
+  'eess.as': 'Electrical Engineering and Systems Science - Audio and Speech Processing',
+  'eess.iv': 'Electrical Engineering and Systems Science - Image and Video Processing',
+  'eess.sp': 'Electrical Engineering and Systems Science - Signal Processing',
+  'eess.sy': 'Electrical Engineering and Systems Science - Systems and Control',
+
+  // Nonlinear Sciences
+  'nlin.ao': 'Nonlinear Sciences - Adaptation and Self-Organizing Systems',
+  'nlin.cd': 'Nonlinear Sciences - Chaotic Dynamics',
+  'nlin.cg': 'Nonlinear Sciences - Cellular Automata and Lattice Gases',
+  'nlin.ps': 'Nonlinear Sciences - Pattern Formation and Solitons',
+  'nlin.si': 'Nonlinear Sciences - Exactly Solvable and Solitable Nonlinear Systems',
+
+  // Physics & Others
+  'physics.comp-ph': 'Physics - Computational Physics',
+  'physics.data-an': 'Physics - Data Analysis and Statistics',
+  'physics.soc-ph': 'Physics - Physics and Society',
+  'quant-ph': 'Quantum Physics',
+  'gr-qc': 'General Relativity and Quantum Cosmology',
+  'hep-th': 'High Energy Physics - Theory',
+  'hep-ph': 'High Energy Physics - Phenomenology',
+  'hep-lat': 'High Energy Physics - Lattice',
+  'hep-ex': 'High Energy Physics - Experiment',
+  'cond-mat.mes-hall': 'Condensed Matter - Mesoscale and Nanoscale Physics',
+  'cond-mat.mtrl-sci': 'Condensed Matter - Materials Science',
+  'cond-mat.str-el': 'Condensed Matter - Strongly Correlated Electrons',
+  'cond-mat.supr-con': 'Condensed Matter - Superconductivity',
+  'astro-ph.co': 'Astrophysics - Cosmology and Nongalactic Astrophysics',
+  'astro-ph.ep': 'Astrophysics - Earth and Planetary Astrophysics',
+  'astro-ph.ga': 'Astrophysics - Astrophysics of Galaxies',
+  'astro-ph.he': 'Astrophysics - High Energy Astrophysical Phenomena',
+  'astro-ph.im': 'Astrophysics - Instrumentation and Methods for Astrophysics',
+  'astro-ph.sr': 'Astrophysics - Solar and Stellar Astrophysics',
+  'econ.em': 'Economics - Econometrics',
+  'econ.gn': 'Economics - General Economics',
+  'econ.th': 'Economics - Theoretical Economics',
 };
+
+// ── Canonical Casing for arXiv Category Codes ──────────────────────────────
+export const CANONICAL_ARXIV_CATEGORIES: Record<string, string> = {
+  // Computer Science
+  'cs.ai': 'cs.AI',
+  'cs.ar': 'cs.AR',
+  'cs.cc': 'cs.CC',
+  'cs.ce': 'cs.CE',
+  'cs.cg': 'cs.CG',
+  'cs.cl': 'cs.CL',
+  'cs.cr': 'cs.CR',
+  'cs.cv': 'cs.CV',
+  'cs.cy': 'cs.CY',
+  'cs.db': 'cs.DB',
+  'cs.dc': 'cs.DC',
+  'cs.dl': 'cs.DL',
+  'cs.dm': 'cs.DM',
+  'cs.ds': 'cs.DS',
+  'cs.et': 'cs.ET',
+  'cs.fl': 'cs.FL',
+  'cs.gl': 'cs.GL',
+  'cs.gr': 'cs.GR',
+  'cs.gt': 'cs.GT',
+  'cs.hc': 'cs.HC',
+  'cs.ir': 'cs.IR',
+  'cs.it': 'cs.IT',
+  'cs.lg': 'cs.LG',
+  'cs.lo': 'cs.LO',
+  'cs.ma': 'cs.MA',
+  'cs.mm': 'cs.MM',
+  'cs.ms': 'cs.MS',
+  'cs.na': 'cs.NA',
+  'cs.ne': 'cs.NE',
+  'cs.ni': 'cs.NI',
+  'cs.oh': 'cs.OH',
+  'cs.os': 'cs.OS',
+  'cs.pf': 'cs.PF',
+  'cs.pl': 'cs.PL',
+  'cs.ro': 'cs.RO',
+  'cs.sc': 'cs.SC',
+  'cs.sd': 'cs.SD',
+  'cs.se': 'cs.SE',
+  'cs.si': 'cs.SI',
+  'cs.sy': 'cs.SY',
+
+  // Statistics
+  'stat.ml': 'stat.ML',
+  'stat.ap': 'stat.AP',
+  'stat.co': 'stat.CO',
+  'stat.me': 'stat.ME',
+  'stat.th': 'stat.TH',
+
+  // Mathematics
+  'math.oc': 'math.OC',
+  'math.pr': 'math.PR',
+  'math.st': 'math.ST',
+  'math.na': 'math.NA',
+  'math.ag': 'math.AG',
+  'math.at': 'math.AT',
+  'math.ap': 'math.AP',
+  'math.ca': 'math.CA',
+  'math.co': 'math.CO',
+  'math.ds': 'math.DS',
+  'math.fa': 'math.FA',
+  'math.gm': 'math.GM',
+  'math.gn': 'math.GN',
+  'math.gr': 'math.GR',
+  'math.gt': 'math.GT',
+  'math.lo': 'math.LO',
+  'math.mg': 'math.MG',
+  'math.mp': 'math.MP',
+  'math.nt': 'math.NT',
+  'math.oa': 'math.OA',
+  'math.qa': 'math.QA',
+  'math.ra': 'math.RA',
+  'math.rt': 'math.RT',
+  'math.sg': 'math.SG',
+  'math.sp': 'math.SP',
+
+  // Quantitative Biology
+  'q-bio.bm': 'q-bio.BM',
+  'q-bio.cb': 'q-bio.CB',
+  'q-bio.gn': 'q-bio.GN',
+  'q-bio.mn': 'q-bio.MN',
+  'q-bio.nc': 'q-bio.NC',
+  'q-bio.ot': 'q-bio.OT',
+  'q-bio.pe': 'q-bio.PE',
+  'q-bio.qm': 'q-bio.QM',
+  'q-bio.sc': 'q-bio.SC',
+  'q-bio.to': 'q-bio.TO',
+
+  // Quantitative Finance
+  'q-fin.cp': 'q-fin.CP',
+  'q-fin.ec': 'q-fin.EC',
+  'q-fin.gn': 'q-fin.GN',
+  'q-fin.mf': 'q-fin.MF',
+  'q-fin.pm': 'q-fin.PM',
+  'q-fin.pr': 'q-fin.PR',
+  'q-fin.rm': 'q-fin.RM',
+  'q-fin.st': 'q-fin.ST',
+  'q-fin.tr': 'q-fin.TR',
+
+  // Physics & Others
+  'physics.comp-ph': 'physics.comp-ph',
+  'physics.data-an': 'physics.data-an',
+  'physics.soc-ph': 'physics.soc-ph',
+  'quant-ph': 'quant-ph',
+  'gr-qc': 'gr-qc',
+  'hep-th': 'hep-th',
+  'hep-ph': 'hep-ph',
+  'hep-lat': 'hep-lat',
+  'hep-ex': 'hep-ex',
+  'cond-mat.mes-hall': 'cond-mat.mes-hall',
+  'cond-mat.mtrl-sci': 'cond-mat.mtrl-sci',
+  'cond-mat.str-el': 'cond-mat.str-el',
+  'cond-mat.supr-con': 'cond-mat.supr-con',
+  'astro-ph.co': 'astro-ph.CO',
+  'astro-ph.ep': 'astro-ph.EP',
+  'astro-ph.ga': 'astro-ph.GA',
+  'astro-ph.he': 'astro-ph.HE',
+  'astro-ph.im': 'astro-ph.IM',
+  'astro-ph.sr': 'astro-ph.SR',
+
+  // Electrical Engineering and Systems Science
+  'eess.as': 'eess.AS',
+  'eess.iv': 'eess.IV',
+  'eess.sp': 'eess.SP',
+  'eess.sy': 'eess.SY',
+
+  // Nonlinear Sciences
+  'nlin.ao': 'nlin.AO',
+  'nlin.cd': 'nlin.CD',
+  'nlin.cg': 'nlin.CG',
+  'nlin.ps': 'nlin.PS',
+  'nlin.si': 'nlin.SI',
+
+  'econ.em': 'econ.EM',
+  'econ.gn': 'econ.GN',
+  'econ.th': 'econ.TH',
+};
+
+// ── Landmark Classic arXiv Benchmark Papers ──────────────────────────────
+export const KNOWN_CANONICAL_ARXIV_CATEGORIES: Record<string, string> = {
+  '1312.6114': 'cs.LG', // Playing Atari with Deep Reinforcement Learning (DQN)
+  '1406.2661': 'stat.ML', // Generative Adversarial Networks (GANs)
+  '1512.03385': 'cs.CV', // Deep Residual Learning for Image Recognition (ResNet)
+  '1706.03762': 'cs.CL', // Attention Is All You Need (Transformer)
+  '1810.04805': 'cs.CL', // BERT
+  '2005.14165': 'cs.CL', // GPT-3
+  '2010.11929': 'cs.CV', // Vision Transformer (ViT)
+  '1506.01497': 'cs.CV', // Faster R-CNN
+  '1409.1556': 'cs.CV', // VGG
+  '1409.4842': 'cs.CV', // GoogLeNet
+  '1611.07004': 'cs.CV', // Pix2Pix
+  '1703.10593': 'cs.CV', // CycleGAN
+  '1905.11946': 'cs.CV', // EfficientNet
+  '2103.00020': 'cs.CV', // CLIP
+  '2112.10752': 'cs.CV', // Latent Diffusion
+  '2205.11487': 'cs.CL', // Zero-shot COT
+  '2210.03629': 'cs.CL', // ReAct
+  '2303.08774': 'cs.CL', // GPT-4
+  '2302.13971': 'cs.CL', // LLaMA
+  '2307.09288': 'cs.CL', // LLaMA 2
+};
+
+/**
+ * Resolves the canonical arXiv primary category code (e.g. "cs.LG", "stat.ML", "math.PR")
+ * for native Zotero Extra field formatting: arXiv: <id> [<primaryCategory>]
+ */
+export function resolveArxivCategory(
+  arxivId?: string | null,
+  associatedPaperItem?: any,
+  additionalExtraFields?: Record<string, any> | null,
+): string | undefined {
+  // 1. Explicit primaryCategory / category in additionalExtraFields
+  if (typeof additionalExtraFields?.primaryCategory === 'string' && additionalExtraFields.primaryCategory.trim()) {
+    const raw = additionalExtraFields.primaryCategory.trim();
+    return CANONICAL_ARXIV_CATEGORIES[raw.toLowerCase()] || raw;
+  }
+  if (typeof additionalExtraFields?.category === 'string' && additionalExtraFields.category.trim()) {
+    const raw = additionalExtraFields.category.trim();
+    return CANONICAL_ARXIV_CATEGORIES[raw.toLowerCase()] || raw;
+  }
+
+  // 2. Explicit primaryCategory / category in associatedPaperItem or extraFields
+  if (typeof associatedPaperItem?.primaryCategory === 'string' && associatedPaperItem.primaryCategory.trim()) {
+    const raw = associatedPaperItem.primaryCategory.trim();
+    return CANONICAL_ARXIV_CATEGORIES[raw.toLowerCase()] || raw;
+  }
+  if (typeof associatedPaperItem?.extraFields?.primaryCategory === 'string' && associatedPaperItem.extraFields.primaryCategory.trim()) {
+    const raw = associatedPaperItem.extraFields.primaryCategory.trim();
+    return CANONICAL_ARXIV_CATEGORIES[raw.toLowerCase()] || raw;
+  }
+  if (typeof associatedPaperItem?.extraFields?.category === 'string' && associatedPaperItem.extraFields.category.trim()) {
+    const raw = associatedPaperItem.extraFields.category.trim();
+    return CANONICAL_ARXIV_CATEGORIES[raw.toLowerCase()] || raw;
+  }
+
+  // 3. Search tags and keywords
+  const candidates: string[] = [];
+  if (Array.isArray(associatedPaperItem?.keywords)) {
+    for (const k of associatedPaperItem.keywords) {
+      if (k) candidates.push(typeof k === 'object' && k.name ? String(k.name) : String(k));
+    }
+  }
+  if (Array.isArray(associatedPaperItem?.tags)) {
+    for (const t of associatedPaperItem.tags) {
+      if (t) candidates.push(typeof t === 'object' && t.name ? String(t.name) : String(t));
+    }
+  }
+
+  // 3a. Direct code match (e.g. "cs.LG", "stat.ML", "math.PR")
+  for (const c of candidates) {
+    const lower = c.trim().toLowerCase();
+    if (CANONICAL_ARXIV_CATEGORIES[lower]) {
+      return CANONICAL_ARXIV_CATEGORIES[lower];
+    }
+    if (
+      /^[a-z\-]+(?:\.[a-z\-]+)?$/i.test(c.trim()) &&
+      !['pdf', 'oa', 'openaccess', 'arxiv', 'preprint', 'paper', 'article'].includes(lower)
+    ) {
+      return CANONICAL_ARXIV_CATEGORIES[lower] || c.trim();
+    }
+  }
+
+  // 3b. Reverse lookup in ARXIV_CATEGORY_MAP
+  for (const c of candidates) {
+    const lower = c.trim().toLowerCase();
+    for (const [code, desc] of Object.entries(ARXIV_CATEGORY_MAP)) {
+      if (desc.toLowerCase() === lower) {
+        return CANONICAL_ARXIV_CATEGORIES[code] || code;
+      }
+    }
+  }
+
+  // 3c. Keyword heuristics from tags/keywords
+  for (const c of candidates) {
+    const lower = c.trim().toLowerCase();
+    if (/machine\s*learning|reinforcement\s*learning/i.test(lower)) return 'cs.LG';
+    if (/computer\s*vision/i.test(lower)) return 'cs.CV';
+    if (/natural\s*language|computation\s*and\s*language/i.test(lower)) return 'cs.CL';
+    if (/artificial\s*intelligence/i.test(lower)) return 'cs.AI';
+    if (/robotics/i.test(lower)) return 'cs.RO';
+    if (/neural\s*and\s*evolutionary/i.test(lower)) return 'cs.NE';
+  }
+
+  // 4. Known landmark classic arXiv papers (e.g. 1312.6114 -> cs.LG)
+  if (arxivId) {
+    const cleanId = String(arxivId)
+      .replace(/^arxiv:\s*/i, '')
+      .replace(/\s*\[.*?\]\s*$/, '')
+      .replace(/v\d+$/i, '')
+      .trim();
+    if (KNOWN_CANONICAL_ARXIV_CATEGORIES[cleanId]) {
+      return KNOWN_CANONICAL_ARXIV_CATEGORIES[cleanId];
+    }
+  }
+
+  // 5. Title / abstract fallback for arXiv preprints
+  const title = String(associatedPaperItem?.title || '').toLowerCase();
+  const abs = String(associatedPaperItem?.abstract || '').toLowerCase();
+  if (arxivId || associatedPaperItem?.repository === 'arXiv') {
+    if (/reinforcement\s*learning|deep\s*q-network|atari/i.test(title) || /deep\s*q-network|atari/i.test(abs)) {
+      return 'cs.LG';
+    }
+    if (/machine\s*learning/i.test(title)) return 'cs.LG';
+    if (/generative\s*adversarial\s*network/i.test(title)) return 'stat.ML';
+    if (/computer\s*vision|object\s*detection|segmentation/i.test(title)) return 'cs.CV';
+    if (/language\s*model|transformer|bert|gpt/i.test(title)) return 'cs.CL';
+  }
+
+  return undefined;
+}
 
 const SCIENTIFIC_ACRONYMS = new Set([
   'AI', 'ML', 'NLP', 'CV', 'CNN', 'RNN', 'LSTM', 'GAN', 'BERT', 'LLM', 'COCO',
   'YOLO', 'RESNET', 'VGG', 'SVM', 'RL', 'API', 'GPU', 'CPU', 'TPU', 'DNA', 'RNA', 'SGD', 'ADAM',
 ]);
 
-const NOISE_TAG_WORDS = new Set([
-  'undefined', 'null', 'n/a', 'na', 'none', 'unknown',
-  'introduction', 'conclusion', 'background', 'paper', 'article',
+export const NOISE_TAG_WORDS = new Set([
+  // Placeholders / Empty / Null indicators
+  'undefined',
+  'null',
+  'n/a',
+  'na',
+  'none',
+  'unknown',
+  'nil',
+  'empty',
+  'void',
+  'sample',
+  'test',
+  'draft',
+  'untitled',
+  'etc',
+  'etc.',
+  'various',
+  'others',
+  'and others',
+  'et al',
+  'et al.',
+  'et-al',
+
+  // Document sections & structural headers
+  'introduction',
+  'conclusion',
+  'conclusions',
+  'background',
+  'paper',
+  'article',
+  'study',
+  'approach',
+  'method',
+  'methods',
+  'methodology',
+  'result',
+  'results',
+  'discussion',
+  'overview',
+  'experiment',
+  'experiments',
+  'experimental',
+  'analysis',
+  'abstract',
+  'summary',
+  'contents',
+  'table of contents',
+  'references',
+  'bibliography',
+  'appendix',
+  'acknowledgments',
+  'acknowledgements',
+
+  // Metadata field headers & taxonomy labels
+  'keywords',
+  'keyword',
+  'index terms',
+  'key words',
+  'subject',
+  'subjects',
+  'topics',
+  'topic',
+  'category',
+  'categories',
+
+  // Publisher, copyright, repository noise
+  'all rights reserved',
+  'copyright',
+  'open access',
+  'creative commons',
+  'springer',
+  'elsevier',
+  'ieee',
+  'acm',
+  'wiley',
+  'nature',
+  'science',
+  'proceedings',
+  'conference',
+  'journal',
+  'volume',
+  'issue',
+  'page',
+  'pages',
+  'pp',
+  'no',
+  'vol',
+  'pdf',
+  'full text',
+  'available online',
+  'downloaded',
+  'preprint',
+  'manuscript',
+  'author',
+  'authors',
+  'editor',
+  'editors',
 ]);
 
 function cleanSingleFrontendTag(raw: string): string | null {
@@ -153,22 +658,60 @@ function cleanSingleFrontendTag(raw: string): string | null {
     .replace(/\uFFFD/g, '')
     .trim();
 
+  // 0. Strip XML/HTML tags and braces
+  str = str.replace(/<[^>]+>/g, '').replace(/[{}]/g, '').trim();
+
   const lower = str.toLowerCase();
   if (ARXIV_CATEGORY_MAP[lower]) return ARXIV_CATEGORY_MAP[lower];
   if (NOISE_TAG_WORDS.has(lower)) return null;
 
-  str = str
-    .replace(/\s*\([^)]*(?:\)|$)/g, '')
-    .replace(/^(?:keywords?|index terms|categories|subject)[:—\-\s]+/i, '')
-    .replace(/^#+/, '')
-    .replace(/^["'`]+|["'`]+$/g, '')
-    .replace(/\.$/, '')
-    .trim();
-
-  if (str.length < 2 || str.length > 60 || /^\d+$/.test(str)) return null;
+  // 1. Strip Wikipedia disambiguation
+  str = str.replace(/\s*\([^)]*(?:\)|$)/g, '').trim();
   if (NOISE_TAG_WORDS.has(str.toLowerCase())) return null;
 
-  return str
+  // 2. Strip prefixes and leading/trailing quotes, brackets, dots, ellipses (...)
+  str = str
+    .replace(
+      /^(?:keywords?|index terms|categories|subject|topics?|terms?)[:—\-\s]+/i,
+      '',
+    )
+    .replace(/^[#"''`([{<•·*—\-\s]+/, '')
+    .replace(/^(?:\.{2,}|…)+/, '')
+    .replace(/["''`)\]}>]+$/, '')
+    .replace(/(?:\.{2,}|…|[.,;:—\-\s•·*])+$/, '')
+    .trim();
+
+  // 3. Sanity & garbage checks:
+  if (str.length < 2 || str.length > 60) return null;
+
+  // Must contain at least one alphanumeric character
+  if (!/[a-zA-Z0-9\u00C0-\u024F\u1EA0-\u1EF9]/.test(str)) return null;
+
+  // Cannot be pure numbers
+  if (/^\d+$/.test(str)) return null;
+
+  // Cannot be page numbers or volume indicators (e.g. "pp. 12-15", "vol. 4", "no. 2")
+  if (/^(?:p|pp|vol|no|v|issue)\.?\s*\d+(?:[-–—]\d+)?$/i.test(str)) return null;
+
+  // Cannot be a pure year or number range (e.g. "2020-2021", "10-25")
+  if (/^\d{1,4}[-–—]\d{1,4}$/.test(str)) return null;
+
+  // Cannot be a URL, email, or DOI
+  if (
+    /^https?:\/\//i.test(str) ||
+    /^www\./i.test(str) ||
+    /@/.test(str) ||
+    /^10\.\d{4,9}\//i.test(str)
+  ) {
+    return null;
+  }
+
+  // Cannot be an ellipsis or dots sequence
+  if (/^(\.{2,}|…)+$/.test(str)) return null;
+
+  if (NOISE_TAG_WORDS.has(str.toLowerCase())) return null;
+
+  const formatted = str
     .split(/\s+/)
     .filter(Boolean)
     .map((word) => {
@@ -187,6 +730,10 @@ function cleanSingleFrontendTag(raw: string): string | null {
       return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
     })
     .join(' ');
+
+  // Strip any trailing ellipsis or punctuation that might have survived TitleCase
+  const result = formatted.replace(/(?:\.{2,}|…|[.,;:—\-\s])+$/, '').trim();
+  return result.length >= 2 ? result : null;
 }
 
 /**
@@ -227,7 +774,8 @@ export function normalizeTags(paper: Partial<Item> | null | undefined): string[]
       }
     }
   }
-  return result;
+  // Cap at 4 most relevant tags to prevent tag spam / clutter
+  return result.slice(0, 4);
 }
 
 // ── 2. Notes Normalization ───────────────────────────────────────────────────
@@ -292,45 +840,6 @@ export function extractArxivId(text: string): string | null {
 
 // ── 4. Extra Metadata Sanitization & Zotero Formatting ────────────────────────
 
-/**
- * Internal keys, duplicate fields, and telemetry flags that should never be displayed in the user-facing Extra field.
- * Items like citation count, arXiv ID, repository, and comments are already displayed in dedicated schema fields or the Notes tab.
- */
-const EXCLUDED_EXTRA_TELEMETRY_KEYS: ReadonlySet<string> = new Set([
-  'provider',
-  'querytype',
-  'provenance',
-  'crossrefenriched',
-  'crossref_enriched',
-  'author',
-  'authors',
-  'creators',
-  'contributors',
-  'title',
-  'doi',
-  'url',
-  'abstract',
-  'abstractnote',
-  'rawextra',
-  '_rawextra',
-  'fileurl',
-  'pdfurl',
-  'storageid',
-  'citationcount',
-  'citations',
-  'repository',
-  'comment',
-  'comments',
-  'tldr',
-  'referencecount',
-  'references',
-  'influentialcitationcount',
-  'influentialcitations',
-  'corpusid',
-  's2paperid',
-  'openaccesspdfurl',
-  'openaccess',
-]);
 
 /**
  * Sanitizes and formats Extra metadata for display.
@@ -338,11 +847,11 @@ const EXCLUDED_EXTRA_TELEMETRY_KEYS: ReadonlySet<string> = new Set([
  * artificial headings or redundant labels prepended.
  *
  * For arXiv preprints, native Zotero formats the Extra field as:
- *   arXiv:<id> [<primary_category>]
- * (e.g. "arXiv:1406.2661 [stat.ML]" or "arXiv:1512.03385 [cs.CV]").
+ *   arXiv: <id> [<primary_category>]
+ * (e.g. "arXiv: 1406.2661 [stat.ML]" or "arXiv: 1512.03385 [cs.CV]").
  *
  * This function preserves genuine user content, strips out redundant duplicate fields
- * (such as Title which is already displayed in the main Title field, Cite Key, Open Access URLs),
+ * (such as Title which is already displayed in the main Title field, Cite Key, Pages, Open Access URLs),
  * and eliminates internal telemetry while guaranteeing official Zotero arXiv syntax.
  */
 export function formatAndSanitizeExtraMetadata(
@@ -364,18 +873,16 @@ export function formatAndSanitizeExtraMetadata(
           if (typeof record._rawExtra === 'string') {
             textContent = record._rawExtra.trim();
           } else {
-            // If JSON contains genuine unmapped custom user properties (not telemetry or schema fields)
             const customLines: string[] = [];
             for (const [key, value] of Object.entries(parsed)) {
               const normKey = key.toLowerCase().replace(/[-_\s]/g, '');
-              if (EXCLUDED_EXTRA_TELEMETRY_KEYS.has(normKey)) continue;
               if (value === null || value === undefined) continue;
               if (typeof value === 'object') continue;
               const strVal = String(value).trim();
               if (!strVal) continue;
               if (normKey === 'arxiv' || normKey === 'arxivid' || normKey === 'archiveid') {
                 const cleanVal = strVal.replace(/^arxiv:\s*/i, '');
-                customLines.push(`arXiv:${cleanVal}`);
+                customLines.push(`arXiv: ${cleanVal}`);
               } else {
                 customLines.push(`${key}: ${strVal}`);
               }
@@ -446,26 +953,35 @@ export function formatAndSanitizeExtraMetadata(
       continue;
     }
 
-    // Check for native Zotero arXiv syntax (e.g. arXiv:1406.2661 [stat.ML])
+    // 6. Filter out page count lines (Pages / # of Pages is a native schema field in Zotero)
+    if (/^(?:number\s*of\s*pages|num\s*pages|page\s*count|total\s*pages):\s*/i.test(trimmedLine)) {
+      continue;
+    }
+
+    // Check for native Zotero arXiv syntax (e.g. arXiv: 1406.2661 [stat.ML])
     if (/^arxiv:\s*/i.test(trimmedLine)) {
       hasArxivLine = true;
-      // Standardize spacing: "arXiv:<id> [<category>]" with space before category and clean ID
+      // Standardize spacing: "arXiv: <id> [<category>]" with space after colon, clean ID, and canonical category brackets
       const normalizedLine = trimmedLine.replace(
         /^arxiv:\s*([^\s\[]+)(?:v\d+)?\s*(\[[^\]]+\])?/i,
-        (_, id, cat) => (cat ? `arXiv:${id} ${cat.trim()}` : `arXiv:${id}`),
+        (_, id, cat) => {
+          const cleanId = id.replace(/v\d+$/i, '').trim();
+          let category = cat ? cat.replace(/[\[\]]/g, '').trim() : '';
+          if (!category) {
+            category = resolveArxivCategory(cleanId, associatedPaperItem, additionalExtraFields) || '';
+          }
+          if (category) {
+            const canonicalCat = CANONICAL_ARXIV_CATEGORIES[category.toLowerCase()] || category;
+            return `arXiv: ${cleanId} [${canonicalCat}]`;
+          }
+          return `arXiv: ${cleanId}`;
+        },
       );
       sanitizedLines.push(normalizedLine);
       continue;
     }
 
-    // 6. Filter out internal telemetry keys
-    const colonIdx = trimmedLine.indexOf(':');
-    if (colonIdx > 0 && !trimmedLine.startsWith('http://') && !trimmedLine.startsWith('https://')) {
-      const k = trimmedLine.slice(0, colonIdx).trim().toLowerCase().replace(/[-_\s]/g, '');
-      if (EXCLUDED_EXTRA_TELEMETRY_KEYS.has(k)) {
-        continue;
-      }
-    }
+
 
     // Preserve the clean content line as-is (no artificial label/title prepended!)
     sanitizedLines.push(trimmedLine);
@@ -485,23 +1001,12 @@ export function formatAndSanitizeExtraMetadata(
         .replace(/\s*\[.*?\]\s*$/, '')
         .replace(/v\d+$/i, '')
         .trim();
-      // Look for primary category if available
-      let primaryCategory =
-        typeof additionalExtraFields?.primaryCategory === 'string'
-          ? additionalExtraFields.primaryCategory.trim()
-          : '';
+      const category = resolveArxivCategory(cleanArxiv, associatedPaperItem, additionalExtraFields);
+      const canonicalCat = category ? (CANONICAL_ARXIV_CATEGORIES[category.toLowerCase()] || category) : '';
 
-      if (!primaryCategory && Array.isArray(associatedPaperItem?.keywords)) {
-        // e.g. ["stat.ML", "cs.LG"]
-        const catMatch = associatedPaperItem.keywords.find((k) =>
-          /^[a-z\-]+(\.[a-z\-]+)?$/i.test(String(k).trim()),
-        );
-        if (catMatch) primaryCategory = String(catMatch).trim();
-      }
-
-      const formattedArxivLine = primaryCategory
-        ? `arXiv:${cleanArxiv} [${primaryCategory}]`
-        : `arXiv:${cleanArxiv}`;
+      const formattedArxivLine = canonicalCat
+        ? `arXiv: ${cleanArxiv} [${canonicalCat}]`
+        : `arXiv: ${cleanArxiv}`;
 
       sanitizedLines.unshift(formattedArxivLine);
     }

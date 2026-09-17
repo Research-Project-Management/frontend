@@ -115,7 +115,7 @@ export default function AddLinkModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-md bg-background border border-border shadow-none rounded-md"
+        className="sm:max-w-[540px] p-6 bg-background border border-border shadow-raised-200 rounded-lg"
       >
         <DialogHeader>
           <DialogTitle className="text-base font-medium text-foreground">
@@ -169,7 +169,7 @@ export default function AddLinkModal({
               <Button
                 type="submit"
                 disabled={isPending}
-                className="h-8 px-3 text-12 font-medium cursor-pointer min-w-[70px] rounded-md"
+                className="h-8 px-3 text-12 font-medium cursor-pointer min-w-[70px] rounded-md shadow-none"
               >
                 {isPending ? (
                   <Loader2 className="size-3.5 animate-spin text-primary-foreground shrink-0" />

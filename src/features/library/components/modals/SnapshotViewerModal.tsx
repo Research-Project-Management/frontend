@@ -41,19 +41,19 @@ export default function SnapshotViewerModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-background border border-border rounded-lg"
+        className="max-w-6xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-background border border-border rounded-lg shadow-raised-200"
       >
         <DialogHeader className="px-4 py-3 border-b border-border flex flex-row items-center justify-between shrink-0 m-0">
           <div className="flex items-center gap-2 min-w-0 flex-1 mr-4">
-            <div className="size-6 rounded flex items-center justify-center bg-primary/10 text-primary shrink-0">
-              <Globe className="size-3.5 shrink-0" />
+            <div className="size-6 rounded-md flex items-center justify-center bg-primary/10 text-primary shrink-0">
+              <Globe className="size-3.5 shrink-0" strokeWidth={1.5} />
             </div>
             <div className="min-w-0 flex-1">
-              <DialogTitle className="text-xs font-semibold text-foreground truncate">
+              <DialogTitle className="text-13 font-semibold text-foreground truncate">
                 {title || 'Web Snapshot Reader'}
               </DialogTitle>
               {sourceUrl && (
-                <p className="text-10 text-muted-foreground truncate">
+                <p className="text-11 text-muted-foreground truncate font-mono">
                   Source: {sourceUrl}
                 </p>
               )}
@@ -65,22 +65,22 @@ export default function SnapshotViewerModal({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-xs gap-1 text-foreground"
+                className="h-7 px-2 text-11 gap-1 text-foreground rounded-md hover:bg-muted"
                 onClick={() => window.open(sourceUrl, '_blank', 'noopener,noreferrer')}
                 title="Open original live website"
               >
-                <ExternalLink className="size-3.5 shrink-0" />
+                <ExternalLink className="size-3.5 shrink-0" strokeWidth={1.5} />
                 <span className="hidden sm:inline">Original Web</span>
               </Button>
             )}
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs gap-1 text-foreground"
+              className="h-7 px-2 text-11 gap-1 text-foreground rounded-md hover:bg-muted"
               onClick={handleDownload}
               title="Download snapshot HTML"
             >
-              <Download className="size-3.5 shrink-0" />
+              <Download className="size-3.5 shrink-0" strokeWidth={1.5} />
               <span className="hidden sm:inline">Download</span>
             </Button>
           </div>

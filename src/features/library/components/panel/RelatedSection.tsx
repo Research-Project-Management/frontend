@@ -148,7 +148,7 @@ export default function RelatedSection({
 
       {/* Add Related Item Dialog */}
       <Dialog open={isModalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-md bg-background text-foreground p-5 space-y-4 shadow-none border border-border rounded-lg">
+        <DialogContent className="sm:max-w-[520px] bg-background text-foreground p-6 space-y-4 shadow-raised-200 border border-border rounded-lg">
           <DialogHeader className="p-0 space-y-1">
             <DialogTitle className="text-sm font-semibold text-foreground">
               Add Related Item
@@ -188,7 +188,7 @@ export default function RelatedSection({
             </div>
 
             {/* Paper options select / list */}
-            <div className="max-h-48 overflow-y-auto space-y-1 border border-border rounded-md p-1 bg-muted">
+            <div className="max-h-64 overflow-y-auto space-y-1 border border-border rounded-md p-1.5 bg-muted thin-scrollbar">
               {availableItems.length === 0 ? (
                 <p className="text-xs text-foreground text-center py-4">
                   No other items available to link

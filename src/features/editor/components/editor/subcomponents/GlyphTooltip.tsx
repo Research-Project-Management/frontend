@@ -57,6 +57,10 @@ export function GlyphTooltip({ tooltip }: GlyphTooltipProps) {
           )}
         </div>
       ))}
+      <div className="mt-2 pt-1.5 border-t border-border/60 text-[10px] text-muted-foreground/80 flex items-center justify-between">
+        <span>Click glyph to open review</span>
+        <span className="font-mono text-[9px] bg-muted px-1 py-0.5 rounded">Gutter</span>
+      </div>
     </div>,
     document.body,
   );

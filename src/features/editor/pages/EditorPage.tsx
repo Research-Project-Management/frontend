@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react';
 import { TooltipProvider } from "@/shared/components/ui";
 import { Skeleton } from "@/shared/components/ui";
-import { FileImage, AlertCircle, FileCode2, LayoutGrid, X } from 'lucide-react';
+import { FileImage, AlertCircle, FileCode2, LayoutGrid, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { editor } from 'monaco-editor';
 
@@ -12,20 +12,23 @@ import Topbar from '../components/topbar/Topbar';
 import Setting from '../components/topbar/settings/Setting';
 import Tabs from '../components/editor/Tabs';
 
-import { useSettingsStore, type AssetInfo } from '@/features/editor/store';
+import { useParams } from 'next/navigation';
+import { usePageStore, useSettingsStore, type AssetInfo } from '@/features/editor/store';
 import { resolveFileUrl, EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useActiveDocument } from '@/features/editor/hooks/use-core';
+import { useCollaborationStream } from '@/features/editor/hooks/use-collaboration';
 import { cn } from "@/shared/lib/utils";
 import { useTheme } from "@/shared/providers";
 
 const Editor = dynamic(() => import('../components/editor/Editor'), { ssr: false });
 const Viewer = dynamic(() => import('../components/viewer/Viewer'), { ssr: false });
+const HistoryView = dynamic(() => import('../components/history/HistoryView'), { ssr: false });
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 interface ResizeHandleProps {
   onMouseDown: (e: React.MouseEvent) => void;
-  onTouchStart?: (e: React.TouchEvent) => void;
+  onTouchStart: (e: React.TouchEvent) => void;
   onDoubleClick?: () => void;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   isDragging?: boolean;
@@ -33,6 +36,7 @@ interface ResizeHandleProps {
   valueNow?: number;
   valueMin?: number;
   valueMax?: number;
+  hideGrip?: boolean;
 }
 
 function ResizeHandle({
@@ -45,6 +49,7 @@ function ResizeHandle({
   valueNow,
   valueMin,
   valueMax,
+  hideGrip = false,
 }: ResizeHandleProps) {
   return (
     <div
@@ -60,25 +65,12 @@ function ResizeHandle({
       onDoubleClick={onDoubleClick}
       onKeyDown={onKeyDown}
       className={cn(
-        "group relative w-1 bg-border/60 hover:bg-primary/50 active:bg-primary cursor-col-resize shrink-0 transition-colors duration-150 outline-none",
-        "focus-visible:ring-1 focus-visible:ring-primary select-none",
-        isDragging && "bg-primary w-1 "
+        "group relative w-2 bg-muted hover:bg-muted/80 active:bg-primary/20 cursor-col-resize shrink-0 transition-colors duration-150 outline-none select-none",
+        isDragging && "bg-primary/30"
       )}
     >
       {/* Expanded invisible hit area */}
-      <div className="absolute inset-y-0 -left-1.5 -right-1.5 z-10" />
-
-      {/* Optical grip pill in center */}
-      <div
-        className={cn(
-          "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none transition-[opacity,transform] duration-150",
-          isDragging
-            ? "opacity-100 scale-110"
-            : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
-        )}
-      >
-        <span className="h-6 w-1 rounded-full bg-primary " />
-      </div>
+      <div className="absolute inset-y-0 -left-1 -right-1 z-10" />
     </div>
   );
 }
@@ -174,6 +166,10 @@ function LoadingSkeleton() {
 function EditorColumn() {
   const { isLoading, activePage, isAssetTab, displayPage, pageId, fileId, selectedAsset } = useActiveDocument();
 
+  // Stream real-time events for active sub-file if different from root page
+  const childPageId = displayPage?.id && displayPage.id !== pageId ? displayPage.id : null;
+  useCollaborationStream(undefined, childPageId);
+
   if (isLoading) return <LoadingSkeleton />;
 
   if (!activePage) {
@@ -203,9 +199,22 @@ function EditorColumn() {
 // ─── Shell (sidebar + editor + viewer + settings) ─────────────────────────────
 
 function EditorShell() {
+  const { projectId: routeProjectId, pageId, draftId } = useParams<{
+    projectId?: string;
+    pageId?: string;
+    draftId?: string;
+  }>();
+  const storeProjectId = usePageStore((s) => s.projectId);
+  const projectId = routeProjectId || storeProjectId || undefined;
+  const rootPageId = pageId ?? draftId ?? null;
+
+  // Stream real-time SSE events for the root document (suggestions, comments, page updates)
+  useCollaborationStream(projectId ?? null, rootPageId);
+
   const { resolvedTheme } = useTheme();
   const {
     layout,
+    setLayout,
     sidebarWidth,
     editorFlex,
     setSidebarWidth,
@@ -213,6 +222,7 @@ function EditorShell() {
     settingsPanelOpen,
     editorTheme,
     setEditorTheme,
+    isHistoryOpen,
   } = useSettingsStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -227,6 +237,13 @@ function EditorShell() {
   const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
 
   const isSidebarCollapsed = !activeSidebarPanel;
+  const lastActiveSidebarPanelRef = useRef<SidebarTab>('Files');
+
+  useEffect(() => {
+    if (activeSidebarPanel) {
+      lastActiveSidebarPanelRef.current = activeSidebarPanel;
+    }
+  }, [activeSidebarPanel]);
 
   const DEFAULT_SIDEBAR = 300;
   const MIN_SIDEBAR = 240;
@@ -430,9 +447,30 @@ function EditorShell() {
   const [mobileTab, setMobileTab] = useState<'editor' | 'viewer'>('editor');
 
   useEffect(() => {
-    return EditorEventBus.on('flux:toggle-sidebar', () => {
-      setActiveSidebarPanel((prev) => (prev ? null : 'Files'));
+    const unsubToggle = EditorEventBus.on('flux:toggle-sidebar', () => {
+      setActiveSidebarPanel((prev) => (prev ? null : (lastActiveSidebarPanelRef.current || 'Files')));
     });
+    const unsubOpenAi = EditorEventBus.on('flux:open-ai-panel', () => {
+      setActiveSidebarPanel('AI');
+    });
+    const unsubToggleAi = EditorEventBus.on('flux:toggle-ai-panel', () => {
+      setActiveSidebarPanel((prev) => (prev === 'AI' ? null : 'AI'));
+    });
+    const unsubOpenPanel = EditorEventBus.on('flux:open-panel', (detail) => {
+      const tabName = typeof detail === 'string' ? detail : detail?.panel;
+      if (tabName === 'Explorer' || tabName === 'Outline') {
+        setActiveSidebarPanel('Files');
+      } else if (tabName) {
+        setActiveSidebarPanel(tabName as SidebarTab);
+      }
+    });
+
+    return () => {
+      unsubToggle();
+      unsubOpenAi();
+      unsubToggleAi();
+      unsubOpenPanel();
+    };
   }, []);
 
   const showEditor = isNarrowScreen
@@ -444,6 +482,10 @@ function EditorShell() {
     : layout !== 'editor-only';
 
   const showDivider = layout === 'split' && !isNarrowScreen;
+
+  if (isHistoryOpen) {
+    return <HistoryView />;
+  }
 
   return (
     <div className="flex flex-col h-dvh overflow-hidden bg-muted">
@@ -523,17 +565,53 @@ function EditorShell() {
 
         {/* Sidebar <-> Editor Splitter */}
         {!isNarrowScreen && !isSidebarCollapsed && (
-          <ResizeHandle
-            onMouseDown={handleSidebarResize}
-            onTouchStart={handleSidebarTouchResize}
-            onDoubleClick={handleSidebarReset}
-            onKeyDown={handleSidebarKeyDown}
-            isDragging={isDraggingSidebar}
-            valueNow={localSidebarWidth}
-            valueMin={MIN_SIDEBAR}
-            valueMax={MAX_SIDEBAR}
-            label="Resize sidebar pane (Double-click to reset)"
-          />
+          <div className="relative shrink-0 flex items-stretch w-2 bg-muted">
+            <ResizeHandle
+              onMouseDown={handleSidebarResize}
+              onTouchStart={handleSidebarTouchResize}
+              onDoubleClick={handleSidebarReset}
+              onKeyDown={handleSidebarKeyDown}
+              isDragging={isDraggingSidebar}
+              valueNow={localSidebarWidth}
+              valueMin={MIN_SIDEBAR}
+              valueMax={MAX_SIDEBAR}
+              label="Resize sidebar pane (Double-click to reset)"
+            />
+
+            {/* Overleaf Panel Toggle Arrow: Collapse sidebar */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                lastActiveSidebarPanelRef.current = activeSidebarPanel;
+                setActiveSidebarPanel(null);
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              title="Close sidebar"
+              aria-label="Close sidebar"
+              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-full h-9 rounded-none bg-[#475569] hover:bg-[#334155] dark:bg-[#64748b] dark:hover:bg-[#475569] text-white shadow-none transition-colors cursor-pointer select-none"
+            >
+              <ChevronLeft className="size-2.5 shrink-0 text-white" strokeWidth={2.5} />
+            </button>
+          </div>
+        )}
+
+        {/* Expand Sidebar Button when collapsed */}
+        {!isNarrowScreen && isSidebarCollapsed && (
+          <div className="relative shrink-0 flex items-stretch w-2 bg-muted">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSidebarPanel(lastActiveSidebarPanelRef.current || 'Files');
+              }}
+              title="Open sidebar"
+              aria-label="Open sidebar"
+              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-full h-9 rounded-none bg-[#475569] hover:bg-[#334155] dark:bg-[#64748b] dark:hover:bg-[#475569] text-white shadow-none transition-colors cursor-pointer select-none"
+            >
+              <ChevronRight className="size-2.5 shrink-0 text-white" strokeWidth={2.5} />
+            </button>
+          </div>
         )}
 
         {/* Editor Column */}
@@ -551,17 +629,65 @@ function EditorShell() {
 
         {/* Editor <-> Viewer Splitter */}
         {showDivider && (
-          <ResizeHandle
-            onMouseDown={handleEditorViewerResize}
-            onTouchStart={handleEditorViewerTouchResize}
-            onDoubleClick={handleSplitterReset}
-            onKeyDown={handleEditorViewerKeyDown}
-            isDragging={isDraggingSplitter}
-            valueNow={Math.round(localEditorFlex * 100)}
-            valueMin={Math.round(MIN_EDITOR_FLEX * 100)}
-            valueMax={Math.round(MAX_EDITOR_FLEX * 100)}
-            label="Resize editor and PDF preview panes (Double-click to reset 50/50)"
-          />
+          <div className="relative shrink-0 flex items-stretch w-2 bg-muted">
+            <ResizeHandle
+              onMouseDown={handleEditorViewerResize}
+              onTouchStart={handleEditorViewerTouchResize}
+              onDoubleClick={handleSplitterReset}
+              onKeyDown={handleEditorViewerKeyDown}
+              isDragging={isDraggingSplitter}
+              valueNow={Math.round(localEditorFlex * 100)}
+              valueMin={Math.round(MIN_EDITOR_FLEX * 100)}
+              valueMax={Math.round(MAX_EDITOR_FLEX * 100)}
+              label="Resize editor and PDF preview panes (Double-click to reset 50/50)"
+            />
+
+            {/* Overleaf Panel Toggle Arrow: Collapse PDF viewer */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLayout('editor-only');
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              title="Close PDF preview"
+              aria-label="Close PDF preview"
+              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-full h-9 rounded-none bg-[#475569] hover:bg-[#334155] dark:bg-[#64748b] dark:hover:bg-[#475569] text-white shadow-none transition-colors cursor-pointer select-none"
+            >
+              <ChevronRight className="size-2.5 shrink-0 text-white" strokeWidth={2.5} />
+            </button>
+          </div>
+        )}
+
+        {/* Expand PDF Viewer Button when collapsed (editor-only) */}
+        {!isNarrowScreen && layout === 'editor-only' && (
+          <div className="relative shrink-0 flex items-stretch w-2 bg-muted">
+            <button
+              type="button"
+              onClick={() => setLayout('split')}
+              title="Open PDF preview"
+              aria-label="Open PDF preview"
+              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-full h-9 rounded-none bg-[#475569] hover:bg-[#334155] dark:bg-[#64748b] dark:hover:bg-[#475569] text-white shadow-none transition-colors cursor-pointer select-none"
+            >
+              <ChevronLeft className="size-2.5 shrink-0 text-white" strokeWidth={2.5} />
+            </button>
+          </div>
+        )}
+
+        {/* Expand Editor Button when editor is collapsed (viewer-only) */}
+        {!isNarrowScreen && layout === 'viewer-only' && (
+          <div className="relative shrink-0 flex items-stretch w-2 bg-muted">
+            <button
+              type="button"
+              onClick={() => setLayout('split')}
+              title="Open LaTeX editor"
+              aria-label="Open LaTeX editor"
+              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-full h-9 rounded-none bg-[#475569] hover:bg-[#334155] dark:bg-[#64748b] dark:hover:bg-[#475569] text-white shadow-none transition-colors cursor-pointer select-none"
+            >
+              <ChevronRight className="size-2.5 shrink-0 text-white" strokeWidth={2.5} />
+            </button>
+          </div>
         )}
 
         {/* PDF Viewer Column */}
@@ -571,7 +697,7 @@ function EditorShell() {
             display: showViewer ? undefined : 'none'
           }}
           className={cn(
-            "min-w-0 overflow-hidden bg-muted dark:bg-background/60 border-l border-border",
+            "min-w-0 overflow-hidden bg-muted dark:bg-background/60",
             isDraggingSplitter && "transition-none"
           )}
         >

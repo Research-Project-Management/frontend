@@ -149,7 +149,7 @@ export function ViewListHeader({
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-2.5 text-xs font-normal rounded-md border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shadow-none shrink-0"
+              className="h-8 px-2.5 text-xs font-normal rounded-md border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
             >
               {sortBy === 'asc' ? <SortAscendingIcon /> : <SortDescendingIcon />}
               <span>{activeSortLabel}</span>
@@ -206,7 +206,7 @@ export function ViewListHeader({
               variant="outline"
               size="sm"
               className={cn(
-                'h-8 px-2.5 text-xs font-normal rounded-md border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shadow-none shrink-0',
+                'h-8 px-2.5 text-xs font-normal rounded-md border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0',
                 isFiltersApplied && 'bg-muted border-primary/40 font-medium'
               )}
             >

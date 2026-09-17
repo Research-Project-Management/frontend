@@ -1,35 +1,25 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { usePageStore, useSettingsStore } from '@/features/editor/store';
 import {
   Bot,
-  Undo,
-  Redo,
-  Type,
+  Undo2,
+  Redo2,
   Bold,
   Italic,
-  Calculator,
-  Sigma,
   Link as LinkIcon,
   MessageSquarePlus,
   Tag,
   BookOpen,
-  Image as ImageIcon,
-  Table as TableIcon,
+  ImagePlus,
+  Table2,
   List,
   Search,
   PenLine,
   ChevronDown,
-  Settings,
   MoreHorizontal,
-  ZoomIn,
-  ZoomOut,
-  Pilcrow,
-  Hash,
   Check,
-  Code as CodeIcon,
-  Eye,
 } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import {
@@ -46,10 +36,37 @@ import {
   EditorEventBus,
   type LatexFormatType,
 } from '@/features/editor/utils/editor.util';
-import { WordCountDialog } from './subcomponents/WordCountDialog';
 import { MathSymbolPalette } from './subcomponents/MathSymbolPalette';
 import { InsertTableModal } from './subcomponents/InsertTableModal';
 import { InsertImageModal } from './subcomponents/InsertImageModal';
+
+// ── Overleaf Math Formula Icon (+ - / *) ──────────────────────────────────────
+
+function MathFormulaIcon({ className = 'size-3.5' }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="1.5" y="1.5" width="13" height="13" rx="2" strokeWidth="1.2" />
+      {/* Top Left: + */}
+      <path d="M4 5.2h3M5.5 3.7v3" />
+      {/* Top Right: - */}
+      <path d="M9 5.2h3" />
+      {/* Bottom Left: × */}
+      <path d="M4.3 11.7l2.4-2.4M6.7 11.7l-2.4-2.4" />
+      {/* Bottom Right: ÷ */}
+      <path d="M9 10.5h3" />
+      <circle cx="10.5" cy="8.8" r="0.6" fill="currentColor" stroke="none" />
+      <circle cx="10.5" cy="12.2" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
 
 // ── Toolbar Button Primitive ───────────────────────────────────────────────────
 
@@ -60,7 +77,7 @@ interface ToolbarButtonProps {
   tooltip: string;
   kbd?: string;
   active?: boolean;
-  variant?: 'default' | 'ai' | 'settings';
+  className?: string;
   children?: React.ReactNode;
 }
 
@@ -71,7 +88,7 @@ function ToolbarButton({
   tooltip,
   kbd,
   active = false,
-  variant = 'default',
+  className,
   children,
 }: ToolbarButtonProps) {
   return (
@@ -82,17 +99,13 @@ function ToolbarButton({
           onClick={onClick}
           aria-label={tooltip || label}
           className={cn(
-            'h-7 min-w-7 px-1.5 flex items-center justify-center gap-1 rounded text-xs font-medium transition-colors duration-150 outline-none select-none cursor-pointer',
-            'active:scale-95',
-            active
-              ? 'bg-primary/10 text-primary hover:bg-primary/15'
-              : 'text-foreground hover:bg-muted',
-            variant === 'ai' && 'text-primary hover:bg-primary/10',
-            variant === 'settings' && 'text-foreground hover:bg-muted',
+            'size-7 flex items-center justify-center rounded text-foreground/80 hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-150 outline-none select-none cursor-pointer shrink-0',
+            active && 'bg-primary/15 text-primary font-semibold',
+            className,
           )}
         >
           {Icon && <Icon className="size-3.5 shrink-0" />}
-          {label && <span>{label}</span>}
+          {label && <span className="leading-none">{label}</span>}
           {children}
         </button>
       </TooltipTrigger>
@@ -108,54 +121,14 @@ function ToolbarButton({
   );
 }
 
-// ── Master Format Toolbar Component ───────────────────────────────────────────
+// ── Master Format Toolbar Component (Overleaf 1:1) ────────────────────────────
 
 export default function Format() {
   const { editorRef } = usePageStore();
-  const {
-    wordWrap,
-    setWordWrap,
-    lineNumbers,
-    setLineNumbers,
-    fontSize,
-    setFontSize,
-    editorMode,
-    setEditorMode,
-    reviewMode,
-    setReviewMode,
-  } = useSettingsStore();
+  const { editorMode, setEditorMode, reviewMode, setReviewMode } = useSettingsStore();
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(1000);
-
-  // Dialog states
-  const [wordCountOpen, setWordCountOpen] = useState(false);
   const [tableModalOpen, setTableModalOpen] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    let frameId: number | null = null;
-    const observer = new ResizeObserver((entries) => {
-      if (frameId !== null) cancelAnimationFrame(frameId);
-      frameId = requestAnimationFrame(() => {
-        for (const entry of entries) {
-          setWidth(entry.contentRect.width);
-        }
-      });
-    });
-
-    observer.observe(el);
-    return () => {
-      if (frameId !== null) cancelAnimationFrame(frameId);
-      observer.unobserve(el);
-    };
-  }, []);
-
-  const isWide = width >= 780;
-  const isMedium = width >= 560;
 
   const handleFormat = (type: LatexFormatType) => {
     if (type === 'cite') {
@@ -177,14 +150,6 @@ export default function Format() {
     }
   };
 
-  const handleFontSizeChange = (direction: 'in' | 'out') => {
-    setFontSize(
-      direction === 'in'
-        ? Math.min(fontSize + 1, 30)
-        : Math.max(fontSize - 1, 10),
-    );
-  };
-
   const handleFind = () => {
     if (editorRef.current) {
       editorRef.current.trigger('toolbar', 'actions.find', null);
@@ -196,195 +161,277 @@ export default function Format() {
     EditorEventBus.emit('flux:open-panel', 'Review');
   };
 
+  const handleOpenAi = () => {
+    let selectedText: string | undefined = undefined;
+    if (editorRef.current) {
+      const selection = editorRef.current.getSelection();
+      if (selection && !selection.isEmpty()) {
+        const model = editorRef.current.getModel();
+        const text = model ? model.getValueInRange(selection) : '';
+        if (text.trim()) {
+          selectedText = text;
+        }
+      }
+    }
+    EditorEventBus.emit('flux:open-ai-panel', { selectedText });
+  };
+
   return (
-    <div
-      ref={containerRef}
-      className="h-9 px-1.5 flex items-center justify-between flex-1 min-w-0 select-none bg-background text-foreground"
-    >
+    <div className="h-9 px-2 flex items-center justify-between flex-1 min-w-0 select-none bg-background text-foreground">
       {/* ── Left Side: 1:1 Overleaf Authoring Tools ─────────────────────────── */}
-      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
-        {/* 1. AI & History Group */}
-        <div className="flex items-center gap-0.5 pr-1 border-r border-border shrink-0">
-          <ToolbarButton
-            onClick={() => EditorEventBus.emit('flux:open-ai-panel')}
-            icon={Bot}
-            tooltip="AI Research Assistant"
-            variant="ai"
-          />
-          <ToolbarButton
-            onClick={() => EditorCommandBus.undo(editorRef.current)}
-            icon={Undo}
-            tooltip="Undo"
-            kbd="Ctrl+Z"
-          />
-          <ToolbarButton
-            onClick={() => EditorCommandBus.redo(editorRef.current)}
-            icon={Redo}
-            tooltip="Redo"
-            kbd="Ctrl+Y"
-          />
-        </div>
+      <div className="flex items-center gap-0.5 min-w-0 shrink-0">
+        {/* 1. AI Assistant (🤖) */}
+        <ToolbarButton
+          onClick={handleOpenAi}
+          icon={Bot}
+          tooltip="AI Research Assistant (LaTeX Copilot)"
+        />
 
-        {/* 2. Headings Dropdown (TT ▾) */}
-        <div className="flex items-center pr-1 border-r border-border shrink-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label="Headings"
-                className="h-7 px-1.5 flex items-center justify-center gap-0.5 rounded text-xs font-medium text-foreground hover:bg-muted active:scale-95 outline-none cursor-pointer"
-              >
-                <span className="font-serif font-bold text-xs tracking-tighter">TT</span>
-                <ChevronDown className="size-3 opacity-60 ml-0.5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-44 z-[9999]">
-              <DropdownMenuLabel className="text-xs text-muted-foreground font-semibold px-2 py-1">
-                Paragraph Style
-              </DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => handleHeadingSelect('paragraph')}>
-                <span className="text-xs">Normal Text (\paragraph)</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleHeadingSelect('section')}>
-                <span className="font-semibold text-sm">Section (\section)</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleHeadingSelect('subsection')}>
-                <span className="font-medium text-xs">Subsection (\subsection)</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleHeadingSelect('subsubsection')}>
-                <span className="text-xs">Subsubsection (\subsubsection)</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        {/* 2. Undo & Redo (↺, ↻) */}
+        <ToolbarButton
+          onClick={() => EditorCommandBus.undo(editorRef.current)}
+          icon={Undo2}
+          tooltip="Undo"
+          kbd="Ctrl+Z"
+        />
+        <ToolbarButton
+          onClick={() => EditorCommandBus.redo(editorRef.current)}
+          icon={Redo2}
+          tooltip="Redo"
+          kbd="Ctrl+Y"
+        />
 
-        {/* 3. Text Styling (B, I) */}
-        <div className="flex items-center gap-0.5 pr-1 border-r border-border shrink-0">
-          <ToolbarButton
-            onClick={() => handleFormat('bold')}
-            icon={Bold}
-            tooltip="Bold"
-            kbd="Ctrl+B"
-          />
-          <ToolbarButton
-            onClick={() => handleFormat('italic')}
-            icon={Italic}
-            tooltip="Italic"
-            kbd="Ctrl+I"
-          />
-        </div>
+        {/* Divider */}
+        <div className="h-4 w-px bg-border/80 mx-1 shrink-0" />
 
-        {/* 4. Academic & Multimedia Inserts */}
-        <div className="flex items-center gap-0.5 shrink-0">
-          {/* Math Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label="Insert Math Formula"
-                className="h-7 px-1.5 flex items-center justify-center gap-0.5 rounded text-xs font-medium text-foreground hover:bg-muted active:scale-95 outline-none cursor-pointer"
-              >
-                <Calculator className="size-3.5" />
-                <ChevronDown className="size-2.5 opacity-60" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48 z-[9999]">
-              <DropdownMenuLabel className="text-xs text-muted-foreground font-semibold px-2 py-1">
-                Math Formula
-              </DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => handleFormat('inlineMath')}>
-                <span className="font-mono text-xs mr-2 text-primary">$ ... $</span>
-                <span className="text-xs">Inline Math</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFormat('displayMath')}>
-                <span className="font-mono text-xs mr-2 text-primary">\[ ... \]</span>
-                <span className="text-xs">Display Math</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleFormat('equation')}>
-                <span className="font-mono text-xs mr-2 text-primary">\begin&#123;equation&#125;</span>
-                <span className="text-xs">Equation</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {/* 3. Headings Dropdown (TT ˅) */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Headings"
+              className="h-7 px-1.5 flex items-center justify-center gap-0.5 rounded text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-muted active:scale-95 outline-none cursor-pointer shrink-0 transition-colors"
+            >
+              <span className="font-serif font-bold text-xs tracking-tight">TT</span>
+              <ChevronDown className="size-2.5 opacity-60 ml-0.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-48 z-[9999]">
+            <DropdownMenuLabel className="text-xs text-muted-foreground font-semibold px-2 py-1">
+              Heading Style
+            </DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => handleHeadingSelect('section')} className="cursor-pointer">
+              <span className="font-semibold text-sm">Section (\section)</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleHeadingSelect('subsection')} className="cursor-pointer">
+              <span className="font-medium text-xs">Subsection (\subsection)</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleHeadingSelect('subsubsection')} className="cursor-pointer">
+              <span className="text-xs">Subsubsection (\subsubsection)</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => handleHeadingSelect('paragraph')} className="cursor-pointer">
+              <span className="text-xs">Normal Text (\paragraph)</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-          {/* Math Symbol Palette (Ω) */}
-          <MathSymbolPalette
-            onInsert={handleInsert}
-            trigger={
-              <button
-                type="button"
-                aria-label="LaTeX Math Symbol Palette (Ω)"
-                className="h-7 min-w-7 px-1.5 flex items-center justify-center rounded text-xs font-serif font-bold text-foreground hover:bg-muted active:scale-95 outline-none transition-colors cursor-pointer"
-              >
-                <span className="text-xs font-semibold leading-none">Ω</span>
-              </button>
-            }
-          />
+        {/* Divider */}
+        <div className="h-4 w-px bg-border/80 mx-1 shrink-0" />
 
-          {/* Link */}
-          <ToolbarButton
-            onClick={() => EditorCommandBus.wrapSelection(editorRef.current, '\\href{url}{', '}', 'link text')}
-            icon={LinkIcon}
-            tooltip="Insert Link (\href)"
-          />
+        {/* 4. Text Styling (B, I) */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => handleFormat('bold')}
+              aria-label="Bold (Ctrl+B)"
+              className="size-7 flex items-center justify-center rounded text-foreground/80 hover:text-foreground hover:bg-muted active:scale-95 transition-colors outline-none cursor-pointer shrink-0"
+            >
+              <Bold className="size-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="flex items-center gap-2">
+            <span>Bold</span>
+            <kbd className="bg-muted px-1 rounded text-[11px] text-muted-foreground font-mono leading-none border border-border">Ctrl+B</kbd>
+          </TooltipContent>
+        </Tooltip>
 
-          {/* Review Comment (💬⁺) */}
-          <ToolbarButton
-            onClick={handleAddComment}
-            icon={MessageSquarePlus}
-            tooltip="Add Review Comment"
-          />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => handleFormat('italic')}
+              aria-label="Italic (Ctrl+I)"
+              className="size-7 flex items-center justify-center rounded text-foreground/80 hover:text-foreground hover:bg-muted active:scale-95 transition-colors outline-none cursor-pointer shrink-0"
+            >
+              <Italic className="size-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="flex items-center gap-2">
+            <span>Italic</span>
+            <kbd className="bg-muted px-1 rounded text-[11px] text-muted-foreground font-mono leading-none border border-border">Ctrl+I</kbd>
+          </TooltipContent>
+        </Tooltip>
 
-          {/* Label (🏷️) */}
-          <ToolbarButton
-            onClick={() => handleFormat('ref')}
-            icon={Tag}
-            tooltip="Cross-Reference / Label"
-          />
+        {/* Divider */}
+        <div className="h-4 w-px bg-border/80 mx-1 shrink-0" />
 
-          {/* Citation (📖) */}
-          <ToolbarButton
-            onClick={() => EditorEventBus.emit('flux:open-citation-picker')}
-            icon={BookOpen}
-            tooltip="Insert Citation (\cite)"
-          />
+        {/* 5. Math Formulas Dropdown (+ - / *) */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Insert Math Formula"
+              className="size-7 flex items-center justify-center rounded text-foreground/80 hover:text-foreground hover:bg-muted active:scale-95 outline-none transition-colors cursor-pointer shrink-0"
+            >
+              <MathFormulaIcon className="size-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-52 z-[9999]">
+            <DropdownMenuLabel className="text-xs text-muted-foreground font-semibold px-2 py-1">
+              Math Formulas
+            </DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => handleFormat('inlineMath')} className="cursor-pointer">
+              <span className="font-mono text-xs mr-2 text-primary">$ ... $</span>
+              <span className="text-xs">Inline Math</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleFormat('displayMath')} className="cursor-pointer">
+              <span className="font-mono text-xs mr-2 text-primary">\[ ... \]</span>
+              <span className="text-xs">Display Math</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleFormat('equation')} className="cursor-pointer">
+              <span className="font-mono text-xs mr-2 text-primary">\begin&#123;equation&#125;</span>
+              <span className="text-xs">Numbered Equation</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleFormat('align')} className="cursor-pointer">
+              <span className="font-mono text-xs mr-2 text-primary">\begin&#123;align&#125;</span>
+              <span className="text-xs">Multi-line Align</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-          {/* Insert Figure / Image (🖼️) */}
-          <ToolbarButton
-            onClick={() => setImageModalOpen(true)}
-            icon={ImageIcon}
-            tooltip="Insert Image / Figure"
-          />
+        {/* 6. Greek & Math Symbol Palette (Ω) */}
+        <MathSymbolPalette
+          onInsert={handleInsert}
+          trigger={
+            <button
+              type="button"
+              aria-label="LaTeX Math Symbol Palette (Ω)"
+              className="size-7 flex items-center justify-center rounded text-xs font-serif font-bold text-foreground/80 hover:text-foreground hover:bg-muted active:scale-95 outline-none transition-colors cursor-pointer shrink-0"
+            >
+              <span className="text-sm font-semibold leading-none">Ω</span>
+            </button>
+          }
+        />
 
-          {/* Insert Table (▦) */}
-          <ToolbarButton
-            onClick={() => setTableModalOpen(true)}
-            icon={TableIcon}
-            tooltip="Insert Table"
-          />
+        {/* 7. Link (🔗) */}
+        <ToolbarButton
+          onClick={() => EditorCommandBus.wrapSelection(editorRef.current, '\\href{url}{', '}', 'link text')}
+          icon={LinkIcon}
+          tooltip="Insert Link (\href)"
+        />
 
-          {/* Bullet List (≡) */}
-          <ToolbarButton
-            onClick={() => handleFormat('itemize')}
-            icon={List}
-            tooltip="Bullet List (\begin{itemize})"
-          />
-        </div>
+        {/* 8. Review Comment (💬⁺) */}
+        <ToolbarButton
+          onClick={handleAddComment}
+          icon={MessageSquarePlus}
+          tooltip="Add Review Comment"
+        />
+
+        {/* 9. Label / Reference (🏷️) */}
+        <ToolbarButton
+          onClick={() => handleFormat('ref')}
+          icon={Tag}
+          tooltip="Cross-Reference / Label (\label, \ref)"
+        />
+
+        {/* 10. Citation (📖) */}
+        <ToolbarButton
+          onClick={() => EditorEventBus.emit('flux:open-citation-picker')}
+          icon={BookOpen}
+          tooltip="Insert Citation (\cite)"
+        />
+
+        {/* 11. Overflow / More Options (...) -> [🖼️+] [▦] [≔] */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="More options"
+              className="size-7 flex items-center justify-center rounded text-foreground/80 hover:text-foreground hover:bg-muted active:scale-95 transition-colors outline-none cursor-pointer shrink-0"
+            >
+              <MoreHorizontal className="size-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            sideOffset={6}
+            className="flex items-center gap-1 p-1 bg-[#1e232d] dark:bg-[#161a22] border border-border/80 shadow-xl rounded-md z-[9999]"
+          >
+            {/* Insert Figure (🖼️+) */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setImageModalOpen(true)}
+                  aria-label="Insert Figure"
+                  className="size-7 flex items-center justify-center rounded text-zinc-300 hover:text-white hover:bg-white/15 transition-colors cursor-pointer"
+                >
+                  <ImagePlus className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Insert Figure</TooltipContent>
+            </Tooltip>
+
+            {/* Insert Table (▦) */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setTableModalOpen(true)}
+                  aria-label="Insert Table"
+                  className="size-7 flex items-center justify-center rounded text-zinc-300 hover:text-white hover:bg-white/15 transition-colors cursor-pointer"
+                >
+                  <Table2 className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Insert Table</TooltipContent>
+            </Tooltip>
+
+            {/* Bullet List (≔) */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => handleFormat('itemize')}
+                  aria-label="Bullet List"
+                  className="size-7 flex items-center justify-center rounded text-zinc-300 hover:text-white hover:bg-white/15 transition-colors cursor-pointer"
+                >
+                  <List className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Bullet List (\begin&#123;itemize&#125;)</TooltipContent>
+            </Tooltip>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {/* ── Right Side: Mode Switcher, Review, Search & Settings ─────────── */}
-      <div className="flex items-center gap-2 shrink-0 pl-2">
-        {/* Code | Visual Segmented Pill Toggle (Matching Overleaf 1:1) */}
-        <div className="flex items-center rounded-full bg-muted/80 p-0.5 border border-border text-xs select-none">
+      {/* ── Spacer ── */}
+      <div className="flex-1 min-w-2" />
+
+      {/* ── Right Side: [ Code | Visual ], Review Mode [✏️ ˅], Find [🔍] ───── */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        {/* Code | Visual Segmented Switcher (Overleaf 1:1) */}
+        <div className="inline-flex items-center rounded-full bg-[#1b222c] border border-black/15 p-0.5 select-none shrink-0">
           <button
             type="button"
             onClick={() => setEditorMode('code')}
             className={cn(
-              'px-2.5 py-0.5 rounded-full text-xs font-medium transition-all duration-150 cursor-pointer',
+              'px-2.5 py-0.5 rounded-full text-xs font-medium transition-all duration-150 cursor-pointer select-none leading-none',
               editorMode === 'code'
-                ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
-                : 'text-muted-foreground hover:text-foreground',
+                ? 'bg-[#098842] text-white shadow-2xs'
+                : 'text-zinc-400 hover:text-white',
             )}
           >
             Code
@@ -393,29 +440,29 @@ export default function Format() {
             type="button"
             onClick={() => setEditorMode('visual')}
             className={cn(
-              'px-2.5 py-0.5 rounded-full text-xs font-medium transition-all duration-150 cursor-pointer',
+              'px-2.5 py-0.5 rounded-full text-xs font-medium transition-all duration-150 cursor-pointer select-none leading-none',
               editorMode === 'visual'
-                ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
-                : 'text-muted-foreground hover:text-foreground',
+                ? 'bg-[#098842] text-white shadow-2xs'
+                : 'text-zinc-400 hover:text-white',
             )}
           >
             Visual
           </button>
         </div>
 
-        {/* Review Mode Dropdown (✏️ ▾) */}
+        {/* Review / Track Changes Mode Dropdown (✏️ ▾) */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
               aria-label="Review Mode"
               className={cn(
-                'h-7 px-1.5 flex items-center justify-center gap-0.5 rounded text-xs font-medium text-foreground hover:bg-muted active:scale-95 outline-none transition-colors cursor-pointer',
+                'h-7 px-1.5 flex items-center justify-center gap-0.5 rounded text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-muted active:scale-95 outline-none transition-colors cursor-pointer shrink-0',
                 reviewMode && 'bg-amber-500/15 text-amber-600 dark:text-amber-400 font-semibold',
               )}
             >
               <PenLine className="size-3.5 shrink-0" />
-              <ChevronDown className="size-2.5 opacity-60" />
+              <ChevronDown className="size-2.5 opacity-60 ml-0.5" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48 z-[9999]">
@@ -430,7 +477,7 @@ export default function Format() {
                 <PenLine className="size-3.5 text-muted-foreground" />
                 <span className="text-xs">Direct Editing</span>
               </div>
-              {!reviewMode && <Check className="size-3.5 text-emerald-600" />}
+              {!reviewMode && <Check className="size-3.5 text-[#16a34a]" />}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setReviewMode(true)}
@@ -440,7 +487,7 @@ export default function Format() {
                 <Check className="size-3.5 text-amber-500" />
                 <span className="text-xs">Track Changes</span>
               </div>
-              {reviewMode && <Check className="size-3.5 text-emerald-600" />}
+              {reviewMode && <Check className="size-3.5 text-[#16a34a]" />}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -452,67 +499,9 @@ export default function Format() {
           tooltip="Find and Replace"
           kbd="Ctrl+F"
         />
-
-        {/* Settings & Word Count */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label="Editor settings"
-              className="h-7 w-7 flex items-center justify-center rounded text-foreground hover:bg-muted active:scale-95 outline-none shrink-0 cursor-pointer"
-            >
-              <Settings className="size-3.5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 z-[9999]">
-            <DropdownMenuLabel className="text-xs text-muted-foreground font-semibold px-2 py-1">
-              Editor Tools & Preferences
-            </DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => setWordCountOpen(true)} className="cursor-pointer">
-              <Calculator className="size-4 mr-2 text-primary" />
-              <span className="text-xs">Word Count (TeXcount)</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setWordWrap(!wordWrap)} className="cursor-pointer">
-              <Pilcrow className={cn('size-4 mr-2', wordWrap && 'text-primary')} />
-              <span className="text-xs">Word Wrap</span>
-              <span className="ml-auto text-[11px] font-mono font-medium text-muted-foreground">
-                {wordWrap ? 'On' : 'Off'}
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setLineNumbers(!lineNumbers)} className="cursor-pointer">
-              <Hash className={cn('size-4 mr-2', lineNumbers && 'text-primary')} />
-              <span className="text-xs">Line Numbers</span>
-              <span className="ml-auto text-[11px] font-mono font-medium text-muted-foreground">
-                {lineNumbers ? 'On' : 'Off'}
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <div className="flex items-center justify-between px-2 py-1.5 text-xs">
-              <span className="text-muted-foreground">Font Size:</span>
-              <div className="flex items-center gap-1 bg-muted rounded border border-border">
-                <button
-                  type="button"
-                  onClick={() => handleFontSizeChange('out')}
-                  className="px-1.5 py-0.5 hover:bg-background rounded-l text-xs font-bold"
-                >
-                  -
-                </button>
-                <span className="px-1.5 font-mono text-[11px] font-semibold">{fontSize}px</span>
-                <button
-                  type="button"
-                  onClick={() => handleFontSizeChange('in')}
-                  className="px-1.5 py-0.5 hover:bg-background rounded-r text-xs font-bold"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
-      {/* ── Modals & Dialogs ─────────────────────────────────────────────── */}
+      {/* ── Modals & Dialogs ── */}
       <InsertTableModal
         open={tableModalOpen}
         onClose={() => setTableModalOpen(false)}
@@ -523,12 +512,6 @@ export default function Format() {
         open={imageModalOpen}
         onClose={() => setImageModalOpen(false)}
         onInsert={handleInsert}
-      />
-
-      <WordCountDialog
-        open={wordCountOpen}
-        onClose={() => setWordCountOpen(false)}
-        content={editorRef.current?.getValue() ?? ''}
       />
     </div>
   );

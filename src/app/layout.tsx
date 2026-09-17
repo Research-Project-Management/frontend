@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import { Inter, IBM_Plex_Mono } from 'next/font/google';
 import { Toaster } from "@/shared/components/ui";
 import '@/shared/styles/globals.css';
@@ -6,14 +7,14 @@ import Providers from './providers';
 
 const inter = Inter({
   subsets: ['latin', 'vietnamese'],
-  variable: '--font-sans',
+  variable: '--font-inter',
   display: 'swap',
 });
 
 const ibmPlexMono = IBM_Plex_Mono({
   subsets: ['latin', 'vietnamese'],
   weight: ['400', '500', '600', '700'],
-  variable: '--font-mono',
+  variable: '--font-ibm-plex-mono',
   display: 'swap',
 });
 
@@ -46,7 +47,9 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script
+        <Script
+          id="flux-theme-init"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('flux-theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme:dark)').matches);if(d){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}}catch(e){}})();`,
           }}

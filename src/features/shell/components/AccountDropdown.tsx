@@ -98,7 +98,7 @@ export default function AccountDropdown({}: AccountDropdownProps = {}) {
         <DropdownMenuContent
           align="end"
           onCloseAutoFocus={(e) => e.preventDefault()}
-          className="w-68 p-0 overflow-hidden bg-popover rounded-md shadow-lg border border-border"
+          className="w-72 p-0 overflow-hidden bg-popover rounded-lg shadow-raised-200 border border-border"
           alignOffset={0}
         >
           {/* Cover Banner Header with Change Background Button */}

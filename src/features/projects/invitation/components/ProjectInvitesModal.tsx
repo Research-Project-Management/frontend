@@ -79,7 +79,7 @@ export function ProjectInvitesModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden bg-card border-border shadow-raised-200">
+      <DialogContent className="sm:max-w-[540px] p-0 overflow-hidden bg-card border-border shadow-raised-200">
         <DialogHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
           <div className="flex items-center gap-2.5">
             <div className="size-8 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">

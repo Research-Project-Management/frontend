@@ -10,14 +10,18 @@ import {
   Plus,
   AlertCircle,
   X,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 import { Input } from "@/shared/components/ui";
 import { Badge } from "@/shared/components/ui";
 import { usePageStore } from '@/features/editor/store';
+import { useFileActions, filesQuery } from '@/features/editor/hooks/use-core';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useEditorCitations } from '@/features/editor/hooks/use-citation';
 import { generateCitationKey } from '@/features/library/utils/bibtex.util';
+import { formatItemToBibtex } from '@/features/editor/utils/citation.util';
 import type { Item } from '@/features/library/types/library.types';
 
 interface CitationTabProps {
@@ -27,6 +31,13 @@ interface CitationTabProps {
 export default function CitationTab({ onClose }: CitationTabProps) {
   const params = useParams<{ projectId?: string }>();
   const { getEditorContent, editorRef, currentPage } = usePageStore();
+  const rootPageId = currentPage?.id || params?.projectId;
+  const { data: pageFiles = [] } = useQuery({
+    ...filesQuery(rootPageId ?? ''),
+    enabled: !!rootPageId,
+  });
+  const { createFile } = useFileActions();
+  const [isSyncingBib, setIsSyncingBib] = useState(false);
   const projectId = params?.projectId || (typeof currentPage?.projectId === 'string' ? currentPage.projectId : currentPage?.projectId?.id);
 
   const [content, setContent] = useState<string>('');
@@ -111,6 +122,38 @@ export default function CitationTab({ onClose }: CitationTabProps) {
     toast.success(`Inserted \\cite{${key}}`);
   };
 
+  const handleSyncToBibtex = async () => {
+    const itemsToExport = citedItems.length > 0 ? citedItems : libraryItems;
+    if (itemsToExport.length === 0) {
+      toast.error('No citations found in document or workspace library');
+      return;
+    }
+
+    setIsSyncingBib(true);
+    const bibEntries = itemsToExport.map((item: Item) => formatItemToBibtex(item)).join('\n\n');
+    const rootPageId = currentPage?.id;
+
+    try {
+      const existingBib = pageFiles.find((f: any) => f.title === 'references.bib');
+      if (!existingBib && rootPageId) {
+        await createFile.mutateAsync({
+          parentPageId: rootPageId,
+          title: 'references.bib',
+          content: bibEntries,
+        });
+        toast.success(`Created references.bib with ${itemsToExport.length} citation(s)`);
+      } else {
+        await navigator.clipboard.writeText(bibEntries);
+        toast.success(`Copied BibTeX for ${itemsToExport.length} citation(s) to clipboard`);
+      }
+    } catch {
+      await navigator.clipboard.writeText(bibEntries);
+      toast.success(`Copied BibTeX for ${itemsToExport.length} citation(s) to clipboard`);
+    } finally {
+      setIsSyncingBib(false);
+    }
+  };
+
   const openPickerModal = () => {
     EditorEventBus.emit('flux:open-citation-picker');
   };
@@ -124,6 +167,16 @@ export default function CitationTab({ onClose }: CitationTabProps) {
           <span className="text-xs font-semibold text-foreground">Citations</span>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handleSyncToBibtex}
+            disabled={isSyncingBib}
+            className="h-7 px-2 flex items-center gap-1 rounded-md text-[11px] font-medium text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
+            title="Sync all citations to references.bib"
+          >
+            <Download className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span className="hidden sm:inline">Sync .bib</span>
+          </button>
           <button
             type="button"
             onClick={openPickerModal}

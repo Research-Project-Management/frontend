@@ -9,28 +9,31 @@ export default function Topbar() {
   return (
     <nav
       aria-label='App Header Navigation'
-      className='flex h-11 w-full shrink-0 items-center justify-between gap-4 bg-muted px-2 select-none'
+      className='flex h-11 max-h-11 w-full shrink-0 items-center justify-between gap-4 bg-muted px-2 select-none'
     >
       {/* Left: Project logo */}
-      <div className='flex items-center gap-2 min-w-0 shrink-0'>
+      <div className='flex w-8 md:w-11 items-center justify-center shrink-0'>
         <Link
           href='/home'
-          className='flex items-center gap-2 px-2 py-1 rounded-md hover:bg-foreground/5 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary select-none group'
+          className='flex size-8 items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary select-none cursor-pointer'
           title='Flux Home'
         >
-          <img src='/Flux.svg' alt='Flux' className='size-5 shrink-0 group-hover:scale-105 transition-transform' />
-          <span className='text-13 font-semibold tracking-tight text-foreground'>Flux</span>
+          <img
+            src='/Flux.svg'
+            alt='Flux'
+            className='size-5 shrink-0'
+          />
         </Link>
       </div>
 
-      {/* Center: Search placeholder */}
+      {/* Center: Search placeholder (White/Canvas background, crisp text-foreground, no gray) */}
       <div className='flex flex-1 items-center justify-center max-w-sm px-2'>
         <button
           type='button'
-          className='group flex h-8 w-full items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-13 text-foreground shadow-none transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
+          className='group flex h-8 w-full items-center gap-1.5 rounded-md border border-border bg-white dark:bg-card px-2.5 text-13 text-foreground shadow-2xs transition-colors hover:border-foreground/30 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
         >
           <Search className='size-3.5 text-foreground shrink-0' />
-          <span className='text-13 text-muted-foreground truncate'>Search...</span>
+          <span className='text-13 font-normal text-foreground truncate'>Search...</span>
         </button>
       </div>
 

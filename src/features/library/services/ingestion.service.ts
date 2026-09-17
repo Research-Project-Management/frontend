@@ -9,6 +9,7 @@ import {
   UrlCapturePreviewResponseSchema,
   IngestionRunSnapshotResponseSchema,
 } from '../schemas/ingestion.schema';
+import { isProjectScope } from './items.service';
 
 export * from '../schemas/ingestion.schema';
 
@@ -21,7 +22,7 @@ export const IngestionService = {
     const validatedPayload = UnifiedIngestionPayloadSchema.parse(payload);
     const submission = {
       ...toSubmission(validatedPayload),
-      ...(scopeId && scopeId !== 'user' ? { projectId: scopeId } : {}),
+      ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
     };
     const res = await apiPost<any>(
       `/api/v1/library/ingestion/submit`,
@@ -73,7 +74,7 @@ export const IngestionService = {
       `/api/v1/library/ingestion/confirm-url`,
       {
         ...payload,
-        ...(scopeId && scopeId !== 'user' ? { projectId: scopeId } : {}),
+        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
       },
     ),
 
@@ -124,7 +125,7 @@ export const IngestionService = {
         rawRecord: resolvedContent,
         format: resolvedFormat,
         recordFormat: resolvedFormat,
-        ...(scopeId && scopeId !== 'user' ? { projectId: scopeId } : {}),
+        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
       },
     );
   },

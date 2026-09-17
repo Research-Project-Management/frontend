@@ -1,7 +1,15 @@
 'use client';
 
 import React from 'react';
-import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarSub, MenubarSubTrigger, MenubarSubContent } from "@/shared/components/ui";
+import {
+  MenubarMenu,
+  MenubarTrigger,
+  MenubarContent,
+  MenubarItem,
+  MenubarSub,
+  MenubarSubTrigger,
+  MenubarSubContent,
+} from "@/shared/components/ui";
 import { usePageStore } from '@/features/editor/store';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 
@@ -22,103 +30,98 @@ export default function InsertMenu() {
     ed.focus();
   };
 
+  const handleUploadFigure = () => {
+    EditorEventBus.emit('flux:upload-file');
+    insertSnippet(
+      '\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\linewidth]{image.png}\n  \\caption{Caption}\n  \\label{fig:figure}\n\\end{figure}\n',
+    );
+  };
+
   return (
     <MenubarMenu>
       <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-sm">
         Insert
       </MenubarTrigger>
-      <MenubarContent className="min-w-52 text-xs z-[9999]">
+      <MenubarContent className="min-w-48 text-xs z-[9999]">
+        {/* Math > */}
         <MenubarSub>
-          <MenubarSubTrigger>Section heading</MenubarSubTrigger>
-          <MenubarSubContent className="text-xs">
-            <MenubarItem onClick={() => insertSnippet('\\section{Title}\n')}>
-              \section&#123;…&#125;
+          <MenubarSubTrigger>Math</MenubarSubTrigger>
+          <MenubarSubContent className="text-xs min-w-40">
+            <MenubarItem onClick={() => insertSnippet('$E = mc^2$')}>
+              Inline math
             </MenubarItem>
-            <MenubarItem onClick={() => insertSnippet('\\subsection{Title}\n')}>
-              \subsection&#123;…&#125;
-            </MenubarItem>
-            <MenubarItem onClick={() => insertSnippet('\\subsubsection{Title}\n')}>
-              \subsubsection&#123;…&#125;
-            </MenubarItem>
-            <MenubarItem onClick={() => insertSnippet('\\paragraph{Title}\n')}>
-              \paragraph&#123;…&#125;
+            <MenubarItem onClick={() => insertSnippet('\\[\n  \\int_{a}^{b} f(x)\\,dx\n\\]\n')}>
+              Display math
             </MenubarItem>
           </MenubarSubContent>
         </MenubarSub>
 
+        {/* Symbol */}
+        <MenubarItem onClick={() => insertSnippet('\\alpha')}>
+          Symbol
+        </MenubarItem>
+
+        {/* Figure > */}
         <MenubarSub>
-          <MenubarSubTrigger>Environment</MenubarSubTrigger>
-          <MenubarSubContent className="text-xs">
-            <MenubarItem
-              onClick={() =>
-                insertSnippet(
-                  '\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\linewidth]{image.png}\n  \\caption{Caption}\n  \\label{fig:label}\n\\end{figure}\n',
-                )
-              }
-            >
-              Figure
+          <MenubarSubTrigger>Figure</MenubarSubTrigger>
+          <MenubarSubContent className="text-xs min-w-48">
+            <MenubarItem onClick={handleUploadFigure}>
+              Upload from computer
             </MenubarItem>
             <MenubarItem
               onClick={() =>
                 insertSnippet(
-                  '\\begin{table}[htbp]\n  \\centering\n  \\caption{Caption}\n  \\label{tab:label}\n  \\begin{tabular}{llr}\n    \\toprule\n    Header 1 & Header 2 & Header 3 \\\\\n    \\midrule\n    Row 1 & Value & 10.0 \\\\\n    \\bottomrule\n  \\end{tabular}\n\\end{table}\n',
+                  '\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\linewidth]{image.png}\n  \\caption{Caption}\n  \\label{fig:figure}\n\\end{figure}\n',
                 )
               }
             >
-              Table (booktabs)
+              From project files
             </MenubarItem>
             <MenubarItem
               onClick={() =>
                 insertSnippet(
-                  '\\begin{equation}\n  \\label{eq:label}\n  E = mc^2\n\\end{equation}\n',
+                  '\\begin{figure}[htbp]\n  \\centering\n  % Reference asset from another project\n  \\includegraphics[width=0.8\\linewidth]{figure.png}\n  \\caption{Caption}\n  \\label{fig:figure}\n\\end{figure}\n',
                 )
               }
             >
-              Equation
+              From another project
             </MenubarItem>
             <MenubarItem
               onClick={() =>
                 insertSnippet(
-                  '\\begin{align}\n  a &= b + c \\\\\n  d &= e + f\n\\end{align}\n',
+                  '\\begin{figure}[htbp]\n  \\centering\n  % Image from external URL\n  \\includegraphics[width=0.8\\linewidth]{https://example.com/image.png}\n  \\caption{Caption}\n  \\label{fig:figure}\n\\end{figure}\n',
                 )
               }
             >
-              Align (multiline math)
-            </MenubarItem>
-            <MenubarSeparator />
-            <MenubarItem
-              onClick={() =>
-                insertSnippet(
-                  '\\begin{itemize}\n  \\item First\n  \\item Second\n\\end{itemize}\n',
-                )
-              }
-            >
-              Bullet List (itemize)
-            </MenubarItem>
-            <MenubarItem
-              onClick={() =>
-                insertSnippet(
-                  '\\begin{enumerate}\n  \\item First\n  \\item Second\n\\end{enumerate}\n',
-                )
-              }
-            >
-              Numbered List (enumerate)
+              From URL
             </MenubarItem>
           </MenubarSubContent>
         </MenubarSub>
 
-        <MenubarSeparator />
+        {/* Table */}
+        <MenubarItem
+          onClick={() =>
+            insertSnippet(
+              '\\begin{table}[htbp]\n  \\centering\n  \\caption{Caption}\n  \\label{tab:table}\n  \\begin{tabular}{llr}\n    \\toprule\n    Header 1 & Header 2 & Header 3 \\\\\n    \\midrule\n    Row 1 & Value & 10.0 \\\\\n    \\bottomrule\n  \\end{tabular}\n\\end{table}\n',
+            )
+          }
+        >
+          Table
+        </MenubarItem>
+
+        {/* Citation */}
         <MenubarItem onClick={() => EditorEventBus.emit('flux:open-citation-picker')}>
-          Citation (\cite&#123;…&#125;)
+          Citation
         </MenubarItem>
-        <MenubarItem onClick={() => insertSnippet('\\ref{fig:label}')}>
-          Cross-reference (\ref&#123;…&#125;)
+
+        {/* Link */}
+        <MenubarItem onClick={() => insertSnippet('\\href{https://example.com}{Link text}')}>
+          Link
         </MenubarItem>
-        <MenubarItem onClick={() => insertSnippet('\\footnote{Note text}')}>
-          Footnote (\footnote&#123;…&#125;)
-        </MenubarItem>
-        <MenubarItem onClick={() => insertSnippet('\\label{sec:name}')}>
-          Label (\label&#123;…&#125;)
+
+        {/* Cross reference */}
+        <MenubarItem onClick={() => insertSnippet('\\ref{fig:figure}')}>
+          Cross reference
         </MenubarItem>
       </MenubarContent>
     </MenubarMenu>

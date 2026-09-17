@@ -168,9 +168,9 @@ export default function ImportFromPersonalModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-full h-[620px] flex flex-col p-0 gap-0 overflow-hidden border border-border bg-background shadow-none rounded-lg font-sans select-none">
+      <DialogContent className="max-w-5xl w-[92vw] h-[660px] max-h-[88vh] flex flex-col p-0 gap-0 overflow-hidden border border-border bg-background shadow-raised-200 rounded-lg font-sans select-none">
         {/* Header */}
-        <DialogHeader className="px-5 py-3.5 border-b border-border flex flex-row items-center justify-between shrink-0 bg-muted/20">
+        <DialogHeader className="px-5 py-3.5 border-b border-border flex flex-row items-center justify-between shrink-0 bg-background">
           <div>
             <div className="flex items-center gap-2">
               <BookOpen className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
@@ -188,7 +188,7 @@ export default function ImportFromPersonalModal({
         {/* Modal Body: 2 Columns */}
         <div className="flex-1 flex min-h-0 overflow-hidden">
           {/* Left Column: My Library Collections Tree */}
-          <aside className="w-60 shrink-0 border-r border-border bg-muted/15 flex flex-col overflow-hidden">
+          <aside className="w-64 shrink-0 border-r border-border bg-muted/15 flex flex-col overflow-hidden">
             <div className="px-3 py-2 text-11 font-medium text-muted-foreground tracking-tight border-b border-border/40 select-none">
               Personal Collections
             </div>
@@ -298,7 +298,7 @@ export default function ImportFromPersonalModal({
                   variant="outline"
                   size="sm"
                   onClick={toggleSelectAll}
-                  className="h-8 text-12 font-normal whitespace-nowrap cursor-pointer hover:bg-muted"
+                  className="h-8 text-12 font-medium whitespace-nowrap cursor-pointer hover:bg-muted rounded-md shadow-2xs"
                 >
                   {isAllSelectableSelected ? 'Deselect All' : `Select All (${selectableItems.length})`}
                 </Button>
@@ -381,7 +381,7 @@ export default function ImportFromPersonalModal({
         </div>
 
         {/* Footer */}
-        <DialogFooter className="px-5 py-3 border-t border-border bg-muted/20 flex items-center justify-between sm:justify-between shrink-0">
+        <DialogFooter className="px-5 py-3 border-t border-border bg-background flex items-center justify-between sm:justify-between shrink-0">
           <span className="text-11 text-muted-foreground font-mono">
             {selectedIds.length} reference(s) selected
           </span>
@@ -391,7 +391,7 @@ export default function ImportFromPersonalModal({
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="h-8 text-12 font-normal cursor-pointer hover:bg-muted"
+              className="h-8 text-12 font-medium cursor-pointer hover:bg-muted rounded-md shadow-2xs"
             >
               Cancel
             </Button>
@@ -400,9 +400,9 @@ export default function ImportFromPersonalModal({
               size="sm"
               onClick={handleImport}
               disabled={selectedIds.length === 0 || isImporting}
-              className="h-8 text-12 font-normal gap-1.5 cursor-pointer"
+              className="h-8 text-12 font-medium gap-1.5 cursor-pointer rounded-md shadow-none"
             >
-              {isImporting && <Loader2 className="size-3.5 animate-spin" />}
+              {isImporting && <Loader2 className="size-3.5 animate-spin shrink-0" />}
               <span>Import to Project ({selectedIds.length})</span>
             </Button>
           </div>

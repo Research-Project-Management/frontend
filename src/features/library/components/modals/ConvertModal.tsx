@@ -1,13 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  ArrowRight,
-  CheckCircle2,
-  AlertTriangle,
-  Loader2,
-  ArrowLeftRight,
-} from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -38,6 +32,17 @@ export interface ConvertModalProps {
 
 export type TypeConversionDialogProps = ConvertModalProps;
 
+function formatFieldValue(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) {
+    return value.map((v) => (typeof v === 'object' ? JSON.stringify(v) : String(v))).join(', ');
+  }
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
 export function ConvertModal({
   open,
   onOpenChange,
@@ -58,10 +63,9 @@ export function ConvertModal({
 
   const { previewAsync, convertAsync, isConverting } = useItemTypeConversion(workspaceId);
 
-  const sourceTypeName =
-    ALL_ITEM_TYPES_FLAT.find((t) => t.value === itemType)?.label || itemType || 'Journal Article';
-  const targetTypeName =
-    ALL_ITEM_TYPES_FLAT.find((t) => t.value === targetType)?.label || targetType;
+  const targetTypeName = useMemo(() => {
+    return ALL_ITEM_TYPES_FLAT.find((t) => t.value === targetType)?.label || targetType;
+  }, [targetType]);
 
   // ── Load preview when dialog opens ────────────────────────────────────────
   const loadPreview = useCallback(async () => {
@@ -83,10 +87,15 @@ export function ConvertModal({
   }, [loadPreview]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
-  const hasLoss = preview?.hasLoss ?? false;
-  const droppedWithValues = (preview?.droppedFields ?? []).filter(
-    (d) => d.value !== null && d.value !== undefined && d.value !== '',
-  );
+  const droppedWithValues = useMemo(() => {
+    return (preview?.droppedFields ?? []).filter(
+      (d) => d.value !== null && d.value !== undefined && d.value !== '',
+    );
+  }, [preview?.droppedFields]);
+
+  const creatorRoleChanges = useMemo(() => {
+    return (preview?.creatorChanges ?? []).filter((c) => c.fromRole && c.toRole && c.fromRole !== c.toRole);
+  }, [preview?.creatorChanges]);
 
   // ── Confirm handler ────────────────────────────────────────────────────────
   const handleConfirm = async () => {
@@ -112,106 +121,89 @@ export function ConvertModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[480px] p-5 rounded-md border border-border bg-background shadow-none font-sans gap-4">
-        <DialogHeader className="gap-1.5 text-left">
-          <div className="flex items-center gap-2 text-primary">
-            <ArrowLeftRight className="size-4 shrink-0" strokeWidth={1.5} />
-            <DialogTitle className="text-14 font-medium text-foreground">
-              Convert Item Type
-            </DialogTitle>
-          </div>
-          <DialogDescription className="text-12 text-muted-foreground leading-relaxed">
-            Change the bibliographic classification for this reference.
+      <DialogContent className="sm:max-w-[440px] p-5 rounded-lg border border-border bg-background shadow-raised-200 font-sans gap-4">
+        <DialogHeader className="text-left pb-2.5 border-b border-border">
+          <DialogTitle className="text-14 font-semibold text-foreground">
+            Convert Item Type
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Convert item type
           </DialogDescription>
         </DialogHeader>
 
-        {/* Type Transition Card */}
-        <div className="flex items-center justify-between p-3 rounded-md border border-border bg-muted/40 text-xs">
-          <div className="space-y-0.5 min-w-0">
-            <span className="text-11 font-medium text-muted-foreground block">
-              Current
-            </span>
-            <p className="font-semibold text-foreground truncate">{sourceTypeName}</p>
-          </div>
-          <ArrowRight className="size-4 text-muted-foreground shrink-0 mx-3" strokeWidth={1.5} />
-          <div className="space-y-0.5 text-right min-w-0">
-            <span className="text-11 font-medium text-muted-foreground block">
-              Target
-            </span>
-            <p className="font-semibold text-primary truncate">{targetTypeName}</p>
-          </div>
-        </div>
-
-        {/* Item Title Summary */}
-        <div className="px-1 text-xs">
-          <p className="text-11 text-muted-foreground line-clamp-1">
-            Reference:{' '}
-            <strong className="text-foreground font-medium">
-              {currentItem.title || 'Untitled Reference'}
-            </strong>
-          </p>
-        </div>
-
-        {/* Field Compatibility Status */}
-        <div className="space-y-3">
+        <div className="space-y-3 py-0.5">
           {isLoadingPreview ? (
-            <div className="flex items-center justify-center py-4 text-xs text-muted-foreground gap-2">
-              <Loader2 className="size-3.5 animate-spin text-primary" />
+            <div className="flex items-center justify-center py-6 text-12 text-muted-foreground gap-2">
+              <Loader2 className="size-3.5 animate-spin text-primary shrink-0" />
               <span>Checking field compatibility…</span>
             </div>
-          ) : hasLoss && droppedWithValues.length > 0 ? (
-            <div className="space-y-2.5 p-3.5 rounded-md border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/60 dark:bg-amber-950/20 text-xs">
-              <div className="flex items-center gap-1.5 text-amber-900 dark:text-amber-200 font-medium">
-                <AlertTriangle className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" strokeWidth={1.5} />
-                <span>Unmapped fields preserved in Extra</span>
-              </div>
-              <p className="text-11 text-amber-800/90 dark:text-amber-300/80 leading-normal">
-                These fields do not exist on <strong>{targetTypeName}</strong> and will be saved in Extra notes to prevent data loss:
+          ) : droppedWithValues.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-12 text-muted-foreground leading-normal">
+                {droppedWithValues.length === 1 ? 'This field is' : 'These fields are'} not supported in{' '}
+                <span className="font-medium text-foreground">{targetTypeName}</span>:
               </p>
-              <div className="flex flex-wrap gap-1.5 pt-0.5">
-                {droppedWithValues.map((d, i) => (
-                  <span
-                    key={d.field + i}
-                    className="px-2 py-0.5 rounded-sm text-11 font-mono bg-amber-100/90 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 border border-amber-300/60 dark:border-amber-800/60"
-                  >
-                    {d.label || d.field}
-                  </span>
-                ))}
+
+              <div className="rounded-md border border-border bg-muted/20 overflow-hidden">
+                <div className="max-h-[160px] overflow-y-auto divide-y divide-border text-12">
+                  {droppedWithValues.map((d, i) => (
+                    <div
+                      key={d.field + i}
+                      className="grid grid-cols-[130px_1fr] gap-2 px-3 py-1.5 items-baseline"
+                    >
+                      <span className="font-medium text-foreground truncate" title={d.label || d.field}>
+                        {d.label || d.field}
+                      </span>
+                      <span
+                        className="text-muted-foreground truncate font-mono text-11"
+                        title={formatFieldValue(d.value)}
+                      >
+                        {formatFieldValue(d.value)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              {creatorRoleChanges.length > 0 && (
+                <p className="text-11 text-muted-foreground pt-0.5">
+                  {creatorRoleChanges.length === 1
+                    ? '1 contributor role will be adjusted to the target type.'
+                    : `${creatorRoleChanges.length} contributor roles will be adjusted to the target type.`}
+                </p>
+              )}
             </div>
           ) : (
-            <div className="flex items-center gap-2 p-3 rounded-md border border-emerald-200/80 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 text-xs">
-              <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" strokeWidth={1.5} />
-              <span>All existing fields are fully compatible with this type.</span>
-            </div>
+            <p className="text-12 text-muted-foreground py-2">
+              All existing fields are supported by <span className="font-medium text-foreground">{targetTypeName}</span>.
+            </p>
           )}
 
           {/* Preserve unmapped checkbox */}
-          <div className="flex items-center gap-2 px-1 pt-1">
+          <div className="flex items-center gap-2 pt-1">
             <Checkbox
               id="retain-extra-fields"
               checked={retainUnmapped}
               onCheckedChange={(checked) => setRetainUnmapped(Boolean(checked))}
-              className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
             />
             <Label
               htmlFor="retain-extra-fields"
-              className="text-12 text-muted-foreground font-normal cursor-pointer select-none"
+              className="text-12 text-muted-foreground cursor-pointer select-none font-normal"
             >
-              Preserve unmapped values in Extra notes
+              Preserve unsupported fields in Extra note
             </Label>
           </div>
         </div>
 
         {/* Actions Footer */}
-        <DialogFooter className="gap-2 pt-2 sm:justify-end">
+        <DialogFooter className="gap-2 pt-3 border-t border-border sm:justify-end">
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
             disabled={isConverting}
-            className="h-8 px-3 text-12 font-medium rounded-md border-border"
+            className="h-8 px-3 text-12 font-medium rounded-md border border-border bg-background shadow-2xs hover:bg-muted text-foreground"
           >
             Cancel
           </Button>
@@ -220,10 +212,13 @@ export function ConvertModal({
             size="sm"
             onClick={handleConfirm}
             disabled={isConverting || isLoadingPreview}
-            className="h-8 px-3 text-12 font-medium rounded-md gap-1.5 min-w-[100px]"
+            className="h-8 px-3 text-12 font-medium rounded-md bg-primary text-primary-foreground min-w-[75px]"
           >
-            {isConverting && <Loader2 className="size-3 animate-spin shrink-0" />}
-            <span>Convert Type</span>
+            {isConverting ? (
+              <Loader2 className="size-3 animate-spin shrink-0" />
+            ) : (
+              'Convert'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

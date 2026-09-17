@@ -7,27 +7,27 @@ import type { Note } from '../types/library.types';
 export const noteKeys = {
   all: ['notes'] as const,
   lists: () => [...noteKeys.all, 'list'] as const,
-  list: (workspaceId?: string, itemId?: string) =>
-    [...noteKeys.lists(), workspaceId || 'default', itemId || 'all'] as const,
-  detail: (workspaceId?: string, id?: string) =>
-    [...noteKeys.all, 'detail', workspaceId || 'default', id] as const,
+  list: (scopeId?: string, itemId?: string) =>
+    [...noteKeys.lists(), scopeId || 'default', itemId || 'all'] as const,
+  detail: (scopeId?: string, id?: string) =>
+    [...noteKeys.all, 'detail', scopeId || 'default', id] as const,
 };
 
-export function useNotes(workspaceId?: string, itemId?: string) {
+export function useNotes(scopeId?: string, itemId?: string) {
   const queryClient = useQueryClient();
 
   const notesQuery = useQuery({
-    queryKey: noteKeys.list(workspaceId, itemId),
-    queryFn: () => NoteService.list(workspaceId, itemId),
+    queryKey: noteKeys.list(scopeId, itemId),
+    queryFn: () => NoteService.list(scopeId, itemId),
     enabled: true,
   });
 
   const createMutation = useMutation({
     mutationFn: (dto: CreateNoteDTO) =>
-      NoteService.create(workspaceId, { ...dto, itemId: dto.itemId !== undefined ? dto.itemId : itemId }),
+      NoteService.create(scopeId, { ...dto, itemId: dto.itemId !== undefined ? dto.itemId : itemId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: noteKeys.list(workspaceId, itemId) });
-      queryClient.invalidateQueries({ queryKey: noteKeys.list(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, itemId) });
+      queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId) });
       toast.success('Note saved', { id: 'note-mutation-toast' });
     },
     onError: (err: any) => {
@@ -47,10 +47,10 @@ export function useNotes(workspaceId?: string, itemId?: string) {
       id: string;
       version: number;
       dto: UpdateNoteDTO;
-    }) => NoteService.update(workspaceId, id, version, dto),
+    }) => NoteService.update(scopeId, id, version, dto),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: noteKeys.list(workspaceId, itemId) });
-      queryClient.invalidateQueries({ queryKey: noteKeys.list(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, itemId) });
+      queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId) });
       toast.success('Note updated', { id: 'note-mutation-toast' });
     },
     onError: (err: any) => {
@@ -63,10 +63,10 @@ export function useNotes(workspaceId?: string, itemId?: string) {
 
   const deleteMutation = useMutation({
     mutationFn: ({ id, version }: { id: string; version?: number }) =>
-      NoteService.delete(workspaceId, id, version),
+      NoteService.delete(scopeId, id, version),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: noteKeys.list(workspaceId, itemId) });
-      queryClient.invalidateQueries({ queryKey: noteKeys.list(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, itemId) });
+      queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId) });
       toast.success('Note deleted', { id: 'note-mutation-toast' });
     },
     onError: (err: any) => {

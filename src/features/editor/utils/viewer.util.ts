@@ -8,7 +8,7 @@ import {
   compileLatex,
   type CompileLatexPayload,
 } from "../services/compiler.service";
-import { synctexService } from "../services/synctex.service";
+import { synctexService, type ForwardSyncResult } from "../services/synctex.service";
 import { parseCompileErrors, type ParsedCompileError } from "./editor.util";
 import { logger } from "@/shared/lib/utils";
 
@@ -161,6 +161,7 @@ export interface CompileExecutionOptions {
   pageId?: string;
   mainFile: string;
   engine: string;
+  texLiveVersion?: string;
   draft: boolean;
   useCache: boolean;
   dirtyFiles: DirtyFileItem[];
@@ -242,6 +243,7 @@ export const LatexCompilerEngine = {
       page_id: pageId || undefined,
       main_file: mainFile,
       engine,
+      texLiveVersion: opts.texLiveVersion,
       draft,
       use_cache: useCache,
     };
@@ -313,7 +315,7 @@ export const LatexCompilerEngine = {
     file: string,
     line: number,
     column: number = 0,
-  ): Promise<number | null> {
+  ): Promise<ForwardSyncResult | null> {
     try {
       const res = await synctexService.forwardSync({
         projectId,
@@ -321,7 +323,7 @@ export const LatexCompilerEngine = {
         line,
         column,
       });
-      return res?.page ?? null;
+      return res ?? null;
     } catch (err) {
       logger.debug('[LatexCompilerEngine] Remote forward sync failed', { err });
       return null;
@@ -355,17 +357,18 @@ export const LatexCompilerEngine = {
   },
 
   /**
-   * SyncTeX forward resolution (Editor line -> PDF page number)
+   * SyncTeX forward resolution with coordinate detail
    */
-  resolveForward(
+  resolveForwardDetail(
     line: number,
     synctexMap: SyncTeXMap | null,
     activeTitle?: string,
     maxPages?: number,
-  ): number | null {
+  ): { page: number; x?: number; y?: number } | null {
     if (!synctexMap) return null;
 
     let targetPage: number | null = null;
+    let targetNode: (SyncTeXNode & { page?: number }) | null = null;
 
     if (activeTitle && synctexMap.pathToTag) {
       const normalizedTitle = activeTitle.replace(/\\/g, '/').toLowerCase();
@@ -378,19 +381,40 @@ export const LatexCompilerEngine = {
         const key = `${tag}:${line}`;
         if (synctexMap.tagLineToPage.has(key)) {
           targetPage = synctexMap.tagLineToPage.get(key)!;
+          targetNode = synctexMap.tagLineToNode?.get(key) || null;
         }
       }
     }
 
     if (targetPage === null) {
       targetPage = synctexMap.lineToPage.get(line) ?? null;
+      if (targetPage !== null) {
+        const pNodes = synctexMap.pageToNodes?.get(targetPage);
+        targetNode = pNodes?.find((n) => n.line === line) || null;
+      }
     }
 
     if (targetPage !== null && targetPage >= 1 && (!maxPages || targetPage <= maxPages)) {
-      return targetPage;
+      return {
+        page: targetPage,
+        x: targetNode?.x,
+        y: targetNode?.y,
+      };
     }
 
     return null;
+  },
+
+  /**
+   * SyncTeX forward resolution (Editor line -> PDF page number)
+   */
+  resolveForward(
+    line: number,
+    synctexMap: SyncTeXMap | null,
+    activeTitle?: string,
+    maxPages?: number,
+  ): number | null {
+    return this.resolveForwardDetail(line, synctexMap, activeTitle, maxPages)?.page ?? null;
   },
 
   /**
@@ -400,18 +424,24 @@ export const LatexCompilerEngine = {
     clickFraction: number,
     pageNum: number,
     synctexMap: SyncTeXMap | null,
+    ptX?: number,
+    ptY?: number,
   ): { sourcePath: string | null; line: number } | null {
     if (!synctexMap) return null;
 
-    // 1. Direct page node mapping (nearest Y coordinate)
+    // 1. Direct page node mapping (nearest coordinate)
     const nodes = synctexMap.pageToNodes?.get(pageNum);
     if (nodes && nodes.length > 0) {
-      const approxY = (1 - clickFraction) * 842 * 65536;
+      const targetY = ptY !== undefined ? ptY * 65536 : clickFraction * 842 * 65536;
+      const targetX = ptX !== undefined ? ptX * 65536 : undefined;
+
       let bestNode = nodes[0];
       let bestDist = Infinity;
 
       for (const n of nodes) {
-        const dist = Math.abs(n.y - approxY);
+        const dy = n.y - targetY;
+        const dx = targetX !== undefined ? n.x - targetX : 0;
+        const dist = dy * dy + 0.1 * (dx * dx);
         if (dist < bestDist) {
           bestDist = dist;
           bestNode = n;

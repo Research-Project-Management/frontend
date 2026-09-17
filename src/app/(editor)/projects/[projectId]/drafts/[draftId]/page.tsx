@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import EditorPage from '@/features/editor/pages/EditorPage';
+import ClientEditor from '@/features/editor/pages/ClientEditor';
 
 export const metadata: Metadata = { title: 'Draft · Editor · Flux' };
 
 export default function DraftEditorPage() {
-  return <EditorPage />;
+  return <ClientEditor />;
 }

@@ -21,7 +21,14 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const params = useParams() as { paperId?: string; projectId?: string };
   const router = useRouter();
   const qc = useQueryClient();
-  const scopeId = params?.projectId || 'me';
+  const rawProjectId = params?.projectId;
+  const isProject = Boolean(
+    rawProjectId &&
+      rawProjectId !== 'me' &&
+      rawProjectId !== 'user' &&
+      rawProjectId !== 'personal',
+  );
+  const scopeId = isProject ? rawProjectId! : 'user';
 
   const storeReadingId = useLibraryReaderStore((s) => s.readingPaperId);
   const closeReader = useLibraryReaderStore((s) => s.closeReader);
@@ -390,7 +397,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   return {
     state: {
       scopeId,
-      projectId: params?.projectId,
+      projectId: isProject ? rawProjectId : undefined,
       workspaceId: scopeId,
       workspaceUrl: scopeId,
       paperId: effectivePaperId,

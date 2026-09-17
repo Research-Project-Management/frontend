@@ -21,15 +21,29 @@ export type LibraryColumnKey =
   | 'authors'
   | 'year'
   | 'publication'
-  | 'citations'
+  | 'itemType'
+  | 'publisher'
   | 'dateAdded'
+  | 'dateModified'
+  | 'doi'
+  | 'citationKey'
+  | 'citations'
+  | 'references'
+  | 'pages'
+  | 'volume'
+  | 'issue'
+  | 'edition'
+  | 'language'
+  | 'extra'
   | 'collection';
 
 export type LibraryOrderBy =
   | 'createdAt'
+  | 'updatedAt'
   | 'year'
   | 'title'
   | 'authors'
+  | 'itemType'
   | 'citationCount'
   | 'lastReadAt';
 
@@ -40,6 +54,32 @@ export interface LibraryDisplayOptions {
   density?: 'comfortable' | 'compact';
 }
 
+export const DEFAULT_LIBRARY_DISPLAY_OPTIONS: LibraryDisplayOptions = {
+  columns: {
+    authors: true,
+    year: true,
+    publication: true,
+    itemType: true,
+    publisher: false,
+    dateAdded: false,
+    dateModified: false,
+    doi: true,
+    citationKey: false,
+    citations: true,
+    references: false,
+    pages: false,
+    volume: false,
+    issue: false,
+    edition: false,
+    language: false,
+    extra: false,
+    collection: false,
+  },
+  orderBy: 'createdAt',
+  orderDirection: 'desc',
+  density: 'comfortable',
+};
+
 export interface LibraryDisplayPopoverProps {
   options: LibraryDisplayOptions;
   onOptionsChange: (options: LibraryDisplayOptions) => void;
@@ -48,22 +88,36 @@ export interface LibraryDisplayPopoverProps {
   className?: string;
 }
 
-const COLUMN_ITEMS: Array<{ key: LibraryColumnKey; label: string }> = [
-  { key: 'authors', label: 'Creator / Authors' },
+export const COLUMN_ITEMS: Array<{ key: LibraryColumnKey; label: string }> = [
+  { key: 'authors', label: 'Creator' },
   { key: 'year', label: 'Year' },
-  { key: 'publication', label: 'Publication / Venue' },
-  { key: 'citations', label: 'Citation count' },
-  { key: 'dateAdded', label: 'Date added' },
+  { key: 'publication', label: 'Publication' },
+  { key: 'itemType', label: 'Item Type' },
+  { key: 'publisher', label: 'Publisher' },
+  { key: 'dateAdded', label: 'Date Added' },
+  { key: 'dateModified', label: 'Date Modified' },
+  { key: 'doi', label: 'DOI' },
+  { key: 'citationKey', label: 'Citation Key' },
+  { key: 'citations', label: 'Citations' },
+  { key: 'references', label: 'References' },
+  { key: 'pages', label: 'Pages' },
+  { key: 'volume', label: 'Volume' },
+  { key: 'issue', label: 'Issue' },
+  { key: 'edition', label: 'Edition' },
+  { key: 'language', label: 'Language' },
+  { key: 'extra', label: 'Extra' },
   { key: 'collection', label: 'Collection' },
 ];
 
 const ORDER_BY_OPTIONS: Array<{ value: LibraryOrderBy; label: string }> = [
-  { value: 'createdAt', label: 'Date added' },
-  { value: 'year', label: 'Publication year' },
+  { value: 'createdAt', label: 'Date Added' },
+  { value: 'updatedAt', label: 'Date Modified' },
+  { value: 'year', label: 'Year' },
   { value: 'title', label: 'Title' },
   { value: 'authors', label: 'Creator' },
+  { value: 'itemType', label: 'Item Type' },
   { value: 'citationCount', label: 'Citations' },
-  { value: 'lastReadAt', label: 'Last read' },
+  { value: 'lastReadAt', label: 'Last Read' },
 ];
 
 export function LibraryDisplayPopover({
@@ -80,6 +134,7 @@ export function LibraryDisplayPopover({
 
   const [columnsOpen, setColumnsOpen] = useState(true);
   const [orderByOpen, setOrderByOpen] = useState(true);
+  const [densityOpen, setDensityOpen] = useState(true);
 
   const { columns, orderBy, orderDirection, density = 'comfortable' } = options;
 
@@ -122,7 +177,8 @@ export function LibraryDisplayPopover({
           variant="outline"
           size="sm"
           className={cn(
-            "h-8 px-2.5 text-12 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shadow-2xs shrink-0 select-none",
+            "h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shadow-2xs shrink-0 select-none inline-flex items-center justify-center",
+            open && "bg-muted",
             className
           )}
           aria-label="Display options"
@@ -134,7 +190,7 @@ export function LibraryDisplayPopover({
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-72 max-h-[85vh] overflow-y-auto p-3 rounded-md border border-border bg-popover text-popover-foreground shadow-2xs z-50 flex flex-col gap-3 select-none thin-scrollbar font-sans"
+        className="w-72 p-3 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 z-50 flex flex-col gap-2.5 select-none font-sans no-scrollbar max-h-[calc(100vh-2rem)] overflow-y-auto"
       >
         {/* 1. Display Properties (Columns) */}
         <div className="shrink-0">
@@ -143,7 +199,7 @@ export function LibraryDisplayPopover({
             onClick={() => setColumnsOpen(!columnsOpen)}
             className="flex w-full items-center justify-between py-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
           >
-            <span>Display properties</span>
+            <span>Columns</span>
             {columnsOpen ? (
               <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
             ) : (
@@ -153,8 +209,8 @@ export function LibraryDisplayPopover({
 
           {columnsOpen && (
             <div className="flex flex-wrap gap-1.5 pt-1.5 select-none">
-              <span className="px-2 py-1 rounded-md text-11 font-medium bg-muted text-muted-foreground border border-transparent cursor-not-allowed select-none">
-                Title (required)
+              <span className="px-2.5 py-1 rounded-md text-11 font-medium bg-muted text-muted-foreground border border-transparent cursor-not-allowed select-none">
+                Title
               </span>
               {COLUMN_ITEMS.map((item) => {
                 const isSelected = Boolean(columns[item.key]);
@@ -197,7 +253,7 @@ export function LibraryDisplayPopover({
             <button
               type="button"
               onClick={toggleOrderDirection}
-              className="p-1 rounded border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              className="size-6 flex items-center justify-center rounded-md border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer shadow-2xs"
               title={orderDirection === 'asc' ? 'Ascending (A to Z / Low to High)' : 'Descending (Z to A / High to Low)'}
               aria-label="Toggle sort direction"
             >
@@ -224,7 +280,7 @@ export function LibraryDisplayPopover({
                       "flex w-full items-center gap-2.5 py-1.5 px-2 rounded-md text-12 transition-colors cursor-pointer select-none",
                       isSelected
                         ? "text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     )}
                   >
                     <div
@@ -232,7 +288,7 @@ export function LibraryDisplayPopover({
                         "size-3.5 rounded-full border flex items-center justify-center shrink-0 transition-colors",
                         isSelected
                           ? "border-primary bg-primary text-primary-foreground"
-                          : "border-muted-foreground/40 bg-background"
+                          : "border-border bg-background"
                       )}
                     >
                       {isSelected && <Check className="size-2 text-primary-foreground stroke-[3] shrink-0" />}
@@ -247,35 +303,56 @@ export function LibraryDisplayPopover({
 
         {/* 3. Density */}
         <div className="border-t border-border pt-2 shrink-0">
-          <div className="flex items-center justify-between pb-1.5">
-            <span className="text-12 font-medium text-foreground">Density</span>
-          </div>
-          <div className="grid grid-cols-2 gap-1 p-0.5 bg-muted rounded-md border border-border">
-            <button
-              type="button"
-              onClick={() => handleDensityChange('comfortable')}
-              className={cn(
-                "py-1 text-11 font-medium rounded transition-colors text-center cursor-pointer",
-                density === 'comfortable'
-                  ? "bg-background text-foreground shadow-2xs font-semibold"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Comfortable
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDensityChange('compact')}
-              className={cn(
-                "py-1 text-11 font-medium rounded transition-colors text-center cursor-pointer",
-                density === 'compact'
-                  ? "bg-background text-foreground shadow-2xs font-semibold"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Compact
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setDensityOpen(!densityOpen)}
+            className="flex w-full items-center justify-between py-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+          >
+            <span>Density</span>
+            {densityOpen ? (
+              <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
+            ) : (
+              <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+            )}
+          </button>
+
+          {densityOpen && (
+            <div role="radiogroup" aria-label="Density" className="space-y-0.5 pt-1">
+              {[
+                { value: 'comfortable' as const, label: 'Comfortable' },
+                { value: 'compact' as const, label: 'Compact' },
+              ].map((item) => {
+                const isSelected = density === item.value;
+                return (
+                  <button
+                    key={item.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    onClick={() => handleDensityChange(item.value)}
+                    className={cn(
+                      "flex w-full items-center gap-2.5 py-1.5 px-2 rounded-md text-12 transition-colors cursor-pointer select-none",
+                      isSelected
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "size-3.5 rounded-sm border flex items-center justify-center shrink-0 transition-colors",
+                        isSelected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background"
+                      )}
+                    >
+                      {isSelected && <Check className="size-2.5 text-primary-foreground stroke-[3] shrink-0" />}
+                    </div>
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </PopoverContent>
     </Popover>

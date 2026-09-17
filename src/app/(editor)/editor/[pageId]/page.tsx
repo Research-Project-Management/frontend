@@ -1,13 +1,8 @@
 import type { Metadata } from 'next';
-import dynamic from 'next/dynamic';
+import ClientEditor from '@/features/editor/pages/ClientEditor';
 
 export const metadata: Metadata = { title: 'Page · Flux' };
 
-const EditorPage = dynamic(
-  () => import('@/features/editor/pages/EditorPage'),
-  { ssr: false },
-);
-
 export default function EditorPageWrapper() {
-  return <EditorPage />;
+  return <ClientEditor />;
 }

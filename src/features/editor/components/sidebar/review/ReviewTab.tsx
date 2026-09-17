@@ -460,9 +460,10 @@ function SuggestionCard({
   );
 }
 
-// ── Main ReviewTab ───────────────────────────────────────────────────────────
 export default function ReviewTab({ onClose }: { onClose?: () => void }) {
-  const { pageId } = useParams<{ pageId: string }>();
+  const { pageId: rootPageId } = useParams<{ pageId: string }>();
+  const storeActivePageId = usePageStore((s) => s.activePageId);
+  const pageId = storeActivePageId || rootPageId;
   const { editorRef, scrollToLineRef, scrollToPdfLineRef } = usePageStore();
   const { user } = useAuth();
 

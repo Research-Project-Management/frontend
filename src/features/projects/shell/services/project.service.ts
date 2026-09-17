@@ -133,4 +133,7 @@ export const updateProject = updateProjectApi;
 export const deleteProject = deleteProjectApi;
 export const archiveProject = archiveProjectApi;
 export const restoreProject = restoreProjectApi;
+export const addProjectMember = addProjectMemberApi;
+export const updateProjectMemberRole = updateProjectMemberRoleApi;
+export const removeProjectMember = removeProjectMemberApi;
 

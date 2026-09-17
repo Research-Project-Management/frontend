@@ -144,7 +144,7 @@ export function CollectionNode({
                   setIsOpen((v) => !v);
                 }}
                 aria-label={effectiveIsOpen ? `Collapse ${node.name}` : `Expand ${node.name}`}
-                className="flex size-4 shrink-0 items-center justify-center rounded-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
+                className="flex size-4 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
               >
                 <ChevronRight
                   className={cn('size-3.5 transition-transform duration-150 shrink-0', effectiveIsOpen && 'rotate-90')}

@@ -54,11 +54,11 @@ export function CollectionContextMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="flex size-7 shrink-0 items-center justify-center rounded-sm text-foreground opacity-0 group-hover/node:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-muted transition-opacity hover:transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-foreground opacity-0 group-hover/node:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-sidebar-accent transition-opacity hover:transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           onClick={(e) => e.stopPropagation()}
           aria-label={`Options for ${node.name}`}
         >
-          <MoreVertical className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+          <MoreVertical className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -67,7 +67,7 @@ export function CollectionContextMenu({
         sideOffset={4}
         collisionPadding={12}
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="w-56 p-1 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+        className="w-64 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
       >
         <DropdownMenuItem
           onClick={() => onCreateSub(node.id, node.name)}
@@ -90,7 +90,7 @@ export function CollectionContextMenu({
             <FolderOutput className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
             <span>Move to</span>
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-52 p-1 rounded-md border border-border bg-popover text-popover-foreground text-xs shadow-raised-200 space-y-0.5 select-none">
+          <DropdownMenuSubContent className="w-60 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-xs shadow-raised-200 space-y-0.5 select-none">
             <DropdownMenuItem
               onClick={() => onMove(node.id, null)}
               className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
@@ -116,7 +116,7 @@ export function CollectionContextMenu({
             <Copy className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
             <span>Copy to</span>
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-52 p-1 rounded-md border border-border bg-popover text-popover-foreground text-xs shadow-raised-200 space-y-0.5 select-none">
+          <DropdownMenuSubContent className="w-60 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-xs shadow-raised-200 space-y-0.5 select-none">
             <DropdownMenuItem
               onClick={() => onCopy(node.id, null)}
               className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"

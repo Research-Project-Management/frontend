@@ -47,6 +47,10 @@ export function CollectionTree({
     );
   }
 
+  if (tree.length === 0) {
+    return null;
+  }
+
   return (
     <div className="flex flex-col gap-1 w-full">
       {tree.map((node) => (

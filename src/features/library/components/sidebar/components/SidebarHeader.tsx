@@ -68,7 +68,7 @@ export function SidebarHeader({
               e.stopPropagation();
             }}
             onClick={handleClearSearch}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-sm"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-md"
             aria-label="Clear search"
           >
             <Plus className="size-3.5 rotate-45 text-foreground shrink-0" />

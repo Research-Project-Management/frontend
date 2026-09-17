@@ -42,6 +42,7 @@ export type CompileLatexPayload = {
   pageId?: string;
   main_file: string | null;
   engine: string;
+  texLiveVersion?: string;
   draft: boolean;
   use_cache: boolean;
   source?: string;

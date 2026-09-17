@@ -75,7 +75,7 @@ export const collaborationService = {
   },
 
   createCollaborationStream: (
-    projectId: string,
+    projectId: string | null | undefined,
     pageId: string,
     onEvent: (event: CollaborationEvent) => void,
     onError?: (err: any) => void,
@@ -84,7 +84,10 @@ export const collaborationService = {
 
     const token = getAuthToken();
     const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : '';
-    const url = `/api/projects/${projectId}/pages/${pageId}/collaboration/stream${tokenQuery}`;
+    const path = projectId
+      ? `/api/projects/${projectId}/pages/${pageId}/collaboration/stream`
+      : `/api/pages/${pageId}/collaboration/stream`;
+    const url = `${path}${tokenQuery}`;
     const eventSource = new EventSource(url, { withCredentials: true });
 
     eventSource.onmessage = (e) => {

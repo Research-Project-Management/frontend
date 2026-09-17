@@ -11,6 +11,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
+import StickyDock from './StickyDock';
 
 const NAV_ITEMS = [
   { label: 'Projects', icon: Layers, to: '/home' },
@@ -28,75 +29,81 @@ export default function Sidebar() {
     <LayoutGroup id={id}>
       <nav
         aria-label='Main Navigation'
-        className='order-2 flex h-11 shrink-0 items-center justify-around gap-1 border-t border-border bg-muted p-1 md:order-1 md:h-full md:w-11 md:flex-col md:justify-start md:gap-2.5 md:rounded-none md:border-t-0 md:border-r-0 md:bg-muted md:p-0 md:py-2'
+        className='order-2 flex h-14 shrink-0 items-center justify-around gap-1 border-t border-border bg-muted p-1 md:order-1 md:h-full md:w-[52px] md:flex-col md:justify-between md:rounded-none md:border-t-0 md:border-r-0 md:bg-muted md:p-0 md:py-2 select-none'
       >
-        {NAV_ITEMS.map((item) => {
-          const Icon = 'icon' in item ? item.icon : null;
-          const imageSrc = 'imageSrc' in item ? item.imageSrc : null;
-          const fullPath = item.to;
+        {/* Top: Nav Items */}
+        <div className='flex items-center gap-1 md:flex-col md:justify-start md:gap-3 md:w-full'>
+          {NAV_ITEMS.map((item) => {
+            const Icon = 'icon' in item ? item.icon : null;
+            const imageSrc = 'imageSrc' in item ? item.imageSrc : null;
+            const fullPath = item.to;
 
-          const isActive =
-            item.label === 'Projects'
-              ? pathname === '/' ||
-                pathname === '/home' ||
-                pathname.startsWith('/home/') ||
-                pathname === '/dashboard' ||
-                pathname.startsWith('/dashboard/') ||
-                pathname === '/projects' ||
-                pathname.startsWith('/projects/') ||
-                pathname === '/drafts' ||
-                pathname.startsWith('/drafts/') ||
-                pathname === '/your-work' ||
-                pathname.startsWith('/your-work/') ||
-                pathname === '/stickies' ||
-                pathname.startsWith('/stickies/')
-              : pathname === item.to || pathname.startsWith(`${item.to}/`);
+            const isActive =
+              item.label === 'Projects'
+                ? pathname === '/' ||
+                  pathname === '/home' ||
+                  pathname.startsWith('/home/') ||
+                  pathname === '/dashboard' ||
+                  pathname.startsWith('/dashboard/') ||
+                  pathname === '/projects' ||
+                  pathname.startsWith('/projects/') ||
+                  pathname === '/drafts' ||
+                  pathname.startsWith('/drafts/') ||
+                  pathname === '/your-work' ||
+                  pathname.startsWith('/your-work/')
+                : pathname === item.to || pathname.startsWith(`${item.to}/`);
 
-          return (
-            <Link
-              key={item.label}
-              href={fullPath}
-              aria-current={isActive ? 'page' : undefined}
-              className='group relative flex w-full cursor-pointer flex-col items-center justify-center gap-1 select-none outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 text-foreground shrink-0'
-            >
-              <div
-                className={cn(
-                  'relative flex size-8 shrink-0 items-center justify-center rounded-md transition-colors duration-200',
-                  !isActive && 'group-hover:bg-sidebar-hover'
-                )}
+            return (
+              <Link
+                key={item.label}
+                href={fullPath}
+                aria-current={isActive ? 'page' : undefined}
+                className='group relative flex w-full cursor-pointer flex-col items-center justify-center gap-1 select-none outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 text-foreground shrink-0'
               >
-                {isActive && (
-                  <motion.div
-                    layoutId={`sidebar-active-${id}`}
-                    className='absolute inset-0 rounded-md bg-sidebar-accent'
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                  />
-                )}
+                <div
+                  className={cn(
+                    'relative flex size-8 shrink-0 items-center justify-center rounded-md transition-colors duration-200',
+                    !isActive && 'group-hover:bg-sidebar-hover'
+                  )}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId={`sidebar-active-${id}`}
+                      className='absolute inset-0 rounded-md bg-sidebar-accent'
+                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                    />
+                  )}
 
-                {imageSrc ? (
-                  <img
-                    src={imageSrc}
-                    alt={item.label}
-                    className='relative z-10 size-5 transition-transform duration-200'
-                  />
-                ) : Icon ? (
-                  <Icon
-                    className="relative z-10 size-5 text-foreground transition-transform duration-200"
-                  />
-                ) : null}
-              </div>
+                  {imageSrc ? (
+                    <img
+                      src={imageSrc}
+                      alt={item.label}
+                      className='relative z-10 size-5 transition-transform duration-200'
+                    />
+                  ) : Icon ? (
+                    <Icon
+                      className="relative z-10 size-5 text-foreground transition-transform duration-200"
+                    />
+                  ) : null}
+                </div>
 
-              <span
-                className={cn(
-                  'relative z-10 whitespace-nowrap text-center text-11 tracking-tight leading-none select-none text-foreground transition-colors duration-200',
-                  isActive ? 'font-medium' : 'font-normal'
-                )}
-              >
-                {item.label}
-              </span>
-            </Link>
-          );
-        })}
+                <span
+                  className={cn(
+                    'relative z-10 whitespace-nowrap text-center text-11 tracking-tight leading-none select-none text-foreground transition-colors duration-200',
+                    isActive ? 'font-medium' : 'font-normal'
+                  )}
+                >
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Bottom: Stickies Trigger */}
+        <div className='flex items-center justify-center md:flex-col md:w-full md:mt-auto relative shrink-0'>
+          <StickyDock />
+        </div>
       </nav>
     </LayoutGroup>
   );

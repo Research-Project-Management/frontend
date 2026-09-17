@@ -93,7 +93,7 @@ export default function FlagRetractionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[480px] p-5 rounded-md border border-border bg-background shadow-none font-sans">
+      <DialogContent className="sm:max-w-[540px] p-6 rounded-lg border border-border bg-background shadow-raised-200 font-sans">
         <DialogHeader>
           <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
             <ShieldAlert className="size-4 shrink-0" strokeWidth={1.5} />
@@ -180,7 +180,7 @@ export default function FlagRetractionModal({
                   size="sm"
                   onClick={handleRemoveFlag}
                   disabled={isPending}
-                  className="h-8 px-3 text-12 font-medium rounded-md border-border text-destructive hover:bg-destructive/10"
+                  className="h-8 px-3 text-12 font-medium rounded-md border-border shadow-2xs text-destructive hover:bg-destructive/10"
                 >
                   Clear Flag
                 </Button>
@@ -192,7 +192,7 @@ export default function FlagRetractionModal({
                   variant="outline"
                   size="sm"
                   onClick={() => onOpenChange(false)}
-                  className="h-8 px-3 text-12 font-medium rounded-md border-border"
+                  className="h-8 px-3 text-12 font-medium rounded-md border-border shadow-2xs hover:bg-muted"
                 >
                   Cancel
                 </Button>

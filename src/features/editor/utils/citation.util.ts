@@ -196,3 +196,33 @@ export function formatItemAuthorSummary(item: Item): string {
   }
   return 'Unknown author';
 }
+
+/**
+ * Formats an Item into a standard BibTeX entry (@article, @inproceedings, @book).
+ */
+export function formatItemToBibtex(item: Item): string {
+  const key = item.citationKey || item.id || 'reference';
+  const itemType = (item.itemType || 'article').toLowerCase();
+  let type = 'article';
+  if (itemType.includes('book')) type = 'book';
+  else if (itemType.includes('conf') || itemType.includes('proc')) type = 'inproceedings';
+  else if (itemType.includes('thesis')) type = 'phdthesis';
+
+  const fields: string[] = [];
+  if (item.title) fields.push(`  title = {${item.title}}`);
+  if (item.authors && item.authors.length > 0) {
+    fields.push(`  author = {${item.authors.join(' and ')}}`);
+  } else if (item.contributors && item.contributors.length > 0) {
+    const names = item.contributors.map((c) => c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim()).filter(Boolean);
+    if (names.length > 0) fields.push(`  author = {${names.join(' and ')}}`);
+  }
+  if (item.journal || (item as any).publicationTitle) {
+    fields.push(`  journal = {${item.journal || (item as any).publicationTitle}}`);
+  }
+  if (item.year) fields.push(`  year = {${item.year}}`);
+  if (item.doi) fields.push(`  doi = {${item.doi}}`);
+  if (item.volume) fields.push(`  volume = {${item.volume}}`);
+  if (item.pages) fields.push(`  pages = {${item.pages}}`);
+
+  return `@${type}{${key},\n${fields.join(',\n')}\n}`;
+}

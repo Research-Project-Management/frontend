@@ -78,7 +78,7 @@ export default function CreateCollectionModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-md bg-background border border-border shadow-none rounded-md"
+        className="sm:max-w-[520px] p-6 bg-background border border-border shadow-raised-200 rounded-lg"
         showCloseButton={false}
       >
         <DialogHeader>
@@ -123,7 +123,7 @@ export default function CreateCollectionModal({
                     <SelectTrigger className="w-full h-8 text-12 text-foreground justify-between rounded-md border-border">
                       <SelectValue placeholder="Select location" />
                     </SelectTrigger>
-                    <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-none rounded-md">
+                    <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
                       {/* Root My Library */}
                       <SelectItem value="root" className="rounded-sm text-12">
                         <div className="flex items-center gap-2">
@@ -161,7 +161,7 @@ export default function CreateCollectionModal({
               <Button
                 type="submit"
                 disabled={isPending}
-                className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md"
+                className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md shadow-none"
               >
                 {isPending ? 'Creating...' : 'Create Collection'}
               </Button>

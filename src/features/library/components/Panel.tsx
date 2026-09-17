@@ -46,7 +46,7 @@ import { useAttachments } from '../hooks/use-attachments';
 import { useNotes } from '../hooks/use-notes';
 import { useRelations } from '../hooks/use-relations';
 import { useLibrarySidebarStore, type InspectorSectionId } from '../store/sidebar.store';
-import { normalizeNotes, normalizeTags, getPaperFileUrl } from '../utils/library.util';
+import { normalizeNotes, normalizeTags, getPaperFileUrl, cleanPaperTitle } from '../utils/library.util';
 import { ALL_ITEM_TYPES_FLAT } from '../schemas/item-type.schema';
 import { cn } from "@/shared/lib/utils";
 import { uploadLibraryFile } from '../services/upload.service';
@@ -62,7 +62,8 @@ export interface InspectorPanelProps {
   paper?: Item | null;
   item?: Item | null;
   collection?: Collection | null;
-  workspaceId: string;
+  scopeId?: string;
+  workspaceId?: string;
   onClose?: () => void;
 }
 
@@ -126,11 +127,11 @@ function InspectorSectionHeader({
     <div
       onClick={() => onToggle(id)}
       className={cn(
-        "flex h-9 w-full items-center justify-between px-3 text-foreground select-none group bg-background",
-        paper && !isOpen ? "hover:bg-muted cursor-pointer" : "cursor-default"
+        "flex h-9 w-full items-center justify-between px-3 text-foreground select-none group bg-background transition-colors",
+        paper ? "hover:bg-muted cursor-pointer" : "cursor-default"
       )}
     >
-      <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
+      <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
         <div className="size-4 shrink-0 flex items-center justify-center">
           <Icon className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
         </div>
@@ -143,7 +144,7 @@ function InspectorSectionHeader({
         {customAddAction ? (
           customAddAction
         ) : hasAdd ? (
-          <Tooltip>
+          <Tooltip delayDuration={200}>
             <TooltipTrigger asChild>
               <button
                 type="button"
@@ -159,11 +160,13 @@ function InspectorSectionHeader({
                 <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="left">Add {label}</TooltipContent>
+            <TooltipContent side="left" sideOffset={4} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+              Add {label}
+            </TooltipContent>
           </Tooltip>
         ) : null}
 
-        <Tooltip>
+        <Tooltip delayDuration={200}>
           <TooltipTrigger asChild>
             <button
               type="button"
@@ -176,14 +179,16 @@ function InspectorSectionHeader({
             >
               <ChevronDown
                 className={cn(
-                  "size-3.5 text-foreground shrink-0",
+                  "size-3.5 text-foreground shrink-0 transition-transform duration-150",
                   paper && isOpen && "rotate-180"
                 )}
                 strokeWidth={1.5}
               />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="left">{isOpen ? `Collapse ${label}` : `Expand ${label}`}</TooltipContent>
+          <TooltipContent side="left" sideOffset={4} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+            {isOpen ? `Collapse ${label}` : `Expand ${label}`}
+          </TooltipContent>
         </Tooltip>
       </div>
     </div>
@@ -239,11 +244,13 @@ export default function InspectorPanel({
   paper: propPaper,
   item: propItem,
   collection,
+  scopeId,
   workspaceId,
   onClose,
 }: InspectorPanelProps) {
   const incomingPaper = propPaper || propItem || null;
-  const activeWorkspaceId = incomingPaper?.workspaceId || workspaceId || '';
+  const activeScopeId = scopeId || incomingPaper?.projectId || (incomingPaper as any)?.workspaceId || workspaceId || 'user';
+  const activeWorkspaceId = activeScopeId;
   const [paper, setPaper] = useState<Item | null>(incomingPaper);
   const latestPaperRef = useRef<Item | null>(incomingPaper);
   const updateQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -262,8 +269,6 @@ export default function InspectorPanel({
   } = useLibrarySidebarStore();
 
   const [collapsedSections, setCollapsedSections] = useState<Record<SectionId, boolean>>(DEFAULT_COLLAPSED_SECTIONS);
-
-  const isSectionVisible = (sectionId: SectionId) => !collapsedSections[sectionId];
 
   const [activeSectionId, setActiveSectionId] = useState<SectionId>('info');
   const [isAddRelatedOpen, setIsAddRelatedOpen] = useState(false);
@@ -333,12 +338,17 @@ export default function InspectorPanel({
     };
   }, [incomingPaper?.id, activeWorkspaceId, onClose]);
 
-  // Nếu user chưa chọn paper nào, panel không tự động mở và tự động đóng nếu đang mở
+  // Khi user tương tác với paper (chọn paper mới), tự động mở panel; khi không có paper thì đóng panel
+  const prevPaperIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!paper && isInspectorOpen) {
+    if (incomingPaper?.id && incomingPaper.id !== prevPaperIdRef.current) {
+      prevPaperIdRef.current = incomingPaper.id;
+      setIsInspectorOpen(true);
+    } else if (!incomingPaper?.id) {
+      prevPaperIdRef.current = null;
       setIsInspectorOpen(false);
     }
-  }, [paper, isInspectorOpen, setIsInspectorOpen]);
+  }, [incomingPaper?.id, setIsInspectorOpen]);
 
   // Khi chọn hoặc đổi paper, đảm bảo section info luôn được mở mặc định
   useEffect(() => {
@@ -648,6 +658,11 @@ export default function InspectorPanel({
     }
   };
 
+  // Thanh panel chỉ xuất hiện khi user tương tác với paper và mở nó ra, bình thường ẩn đi luôn
+  if (!isInspectorOpen || !paper) {
+    return null;
+  }
+
   return (
     <div className="flex h-full shrink-0 select-none font-sans z-10">
       {/* ── Left Part: Collapsible Resizable Inspector Drawer ───────────────── */}
@@ -666,7 +681,7 @@ export default function InspectorPanel({
               width: `${inspectorWidth}px`,
               maxWidth: '100vw',
             }}
-            className="fixed inset-y-0 right-0 z-50 md:static md:z-auto shrink-0 flex flex-col h-full border-l border-border bg-background select-none shadow-none max-w-full sm:max-w-[480px]"
+            className="fixed inset-y-0 right-0 z-50 md:static md:z-auto shrink-0 flex flex-col h-full border-l border-border bg-background select-none shadow-raised-200 md:shadow-none max-w-full sm:max-w-[480px] md:max-w-none"
           >
             {/* Resizer Handle (desktop only) */}
             <div
@@ -690,30 +705,48 @@ export default function InspectorPanel({
                 {/* Paper Title at the top */}
                 <div className="flex-1 min-w-0">
                   <InspectorTitleInput
-                    title={paper.title || 'Untitled Reference'}
-                    onSave={(newTitle) => handleUpdatePaper({ title: newTitle })}
+                    title={cleanPaperTitle(paper.title) || 'Untitled Reference'}
+                    onSave={(newTitle) =>
+                      handleUpdatePaper({
+                        title: cleanPaperTitle(newTitle) || newTitle,
+                      })
+                    }
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsInspectorOpen(false)}
-                  className="md:hidden p-1.5 rounded-md text-foreground hover:bg-muted cursor-pointer"
-                  aria-label="Close inspector"
-                >
-                  <X className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-                </button>
+                <Tooltip delayDuration={200}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setIsInspectorOpen(false)}
+                      className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      aria-label="Close inspector"
+                    >
+                      <X className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={4} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+                    Close inspector
+                  </TooltipContent>
+                </Tooltip>
               </header>
             ) : (
               /* Clean h-11 Header when no paper is selected */
               <header className="h-11 px-3 border-b border-border bg-background flex items-center justify-end shrink-0 select-none">
-                <button
-                  type="button"
-                  onClick={() => setIsInspectorOpen(false)}
-                  className="md:hidden p-1.5 rounded-md text-foreground hover:bg-muted cursor-pointer"
-                  aria-label="Close inspector"
-                >
-                  <X className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-                </button>
+                <Tooltip delayDuration={200}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setIsInspectorOpen(false)}
+                      className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      aria-label="Close inspector"
+                    >
+                      <X className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={4} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+                    Close inspector
+                  </TooltipContent>
+                </Tooltip>
               </header>
             )}
 
@@ -726,260 +759,245 @@ export default function InspectorPanel({
             className="flex-1 overflow-y-auto min-w-0 focus-visible:outline-none thin-scrollbar bg-background divide-y divide-border/50"
           >
             {/* 1. Info Section (No Plus) */}
-            {isSectionVisible('info') && (
-              <div id="inspector-section-info" className="bg-background">
-                <InspectorSectionHeader
-                  id="info"
-                  label="Info"
-                  icon={Info}
-                  isOpen={isSectionOpen('info')}
-                  hasAdd={false}
-                  paper={paper}
-                  onToggle={toggleSection}
-                  onAdd={handleAddClick}
-                />
-                {paper && isSectionOpen('info') && (
-                  <div className="p-1 bg-background">
-                    <InfoSection paper={paper} onUpdatePaper={handleUpdatePaper} />
-                  </div>
-                )}
-              </div>
-            )}
+            <div id="inspector-section-info" className="bg-background">
+              <InspectorSectionHeader
+                id="info"
+                label="Info"
+                icon={Info}
+                isOpen={isSectionOpen('info')}
+                hasAdd={false}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('info') && (
+                <div className="p-1 bg-background">
+                  <InfoSection paper={paper} onUpdatePaper={handleUpdatePaper} />
+                </div>
+              )}
+            </div>
 
             {/* 2. Abstract Section */}
-            {isSectionVisible('abstract') && (
-              <div id="inspector-section-abstract" className="bg-background">
-                <InspectorSectionHeader
-                  id="abstract"
-                  label="Abstract"
-                  icon={AlignLeft}
-                  isOpen={isSectionOpen('abstract')}
-                  hasAdd={false}
-                  paper={paper}
-                  onToggle={toggleSection}
-                  onAdd={handleAddClick}
-                />
-                {paper && isSectionOpen('abstract') && (
-                  <div className="p-2 bg-background">
-                    <AbstractSection paper={paper} onUpdatePaper={handleUpdatePaper} hideHeader />
-                  </div>
-                )}
-              </div>
-            )}
+            <div id="inspector-section-abstract" className="bg-background">
+              <InspectorSectionHeader
+                id="abstract"
+                label="Abstract"
+                icon={AlignLeft}
+                isOpen={isSectionOpen('abstract')}
+                hasAdd={false}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('abstract') && (
+                <div className="p-2 bg-background">
+                  <AbstractSection paper={paper} onUpdatePaper={handleUpdatePaper} hideHeader />
+                </div>
+              )}
+            </div>
 
             {/* 3. Attachments / Files Section */}
-            {isSectionVisible('files') && (
-              <div id="inspector-section-files" className="bg-background">
-                <InspectorSectionHeader
-                  id="files"
-                  label="Attachments"
-                  icon={Paperclip}
-                  count={filesCount}
-                  isOpen={isSectionOpen('files')}
-                  hasAdd={true}
-                  paper={paper}
-                  onToggle={toggleSection}
-                  onAdd={handleAddClick}
-                />
-                {paper && isSectionOpen('files') && filesCount > 0 && (
-                  <div className="p-2 bg-background">
-                    <AttachmentsSection
-                      paper={paper}
-                      workspaceId={workspaceId}
-                      onAddAttachment={() => attachFileInputRef.current?.click()}
-                      isUploading={isUploadingAttachment}
-                      hideHeader
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+            <div id="inspector-section-files" className="bg-background">
+              <InspectorSectionHeader
+                id="files"
+                label="Attachments"
+                icon={Paperclip}
+                count={filesCount}
+                isOpen={isSectionOpen('files')}
+                hasAdd={true}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('files') && filesCount > 0 && (
+                <div className="p-2 bg-background">
+                  <AttachmentsSection
+                    paper={paper}
+                    workspaceId={activeWorkspaceId}
+                    onAddAttachment={() => attachFileInputRef.current?.click()}
+                    isUploading={isUploadingAttachment}
+                    hideHeader
+                  />
+                </div>
+              )}
+            </div>
 
             {/* 4. Notes Section */}
-            {isSectionVisible('notes') && (
-              <div id="inspector-section-notes" className="bg-background">
-                <InspectorSectionHeader
-                  id="notes"
-                  label="Notes"
-                  icon={StickyNote}
-                  count={notesCount}
-                  isOpen={isSectionOpen('notes')}
-                  hasAdd={true}
-                  paper={paper}
-                  onToggle={toggleSection}
-                  onAdd={handleAddClick}
-                />
-                {paper && isSectionOpen('notes') && (
-                  <div className="p-2 bg-background">
-                    <NotesSection
-                      paper={{ ...paper, workspaceId: activeWorkspaceId }}
-                      onUpdatePaper={handleUpdatePaper}
-                      hideHeader
-                      forceAdding={forceAddingNote}
-                      onRequestDelete={(note) => {
-                        setDeleteModalConfig({
-                          open: true,
-                          title: 'Move Note to Trash',
-                          description: 'Are you sure you want to move this note to the trash?',
-                          itemName: note.content,
-                          confirmLabel: 'Move to trash',
-                          onConfirm: async () => {
-                            if (activeWorkspaceId) {
-                              await deleteNote(note.id).catch(() => {});
-                            }
-                            setDeleteModalConfig(null);
-                          },
-                        });
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+            <div id="inspector-section-notes" className="bg-background">
+              <InspectorSectionHeader
+                id="notes"
+                label="Notes"
+                icon={StickyNote}
+                count={notesCount}
+                isOpen={isSectionOpen('notes')}
+                hasAdd={true}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('notes') && (
+                <div className="p-2 bg-background">
+                  <NotesSection
+                    paper={{ ...paper, workspaceId: activeWorkspaceId }}
+                    workspaceId={activeWorkspaceId}
+                    onUpdatePaper={handleUpdatePaper}
+                    hideHeader
+                    forceAdding={forceAddingNote}
+                    onRequestDelete={(note) => {
+                      setDeleteModalConfig({
+                        open: true,
+                        title: 'Move Note to Trash',
+                        description: 'Are you sure you want to move this note to the trash?',
+                        itemName: note.content,
+                        confirmLabel: 'Move to trash',
+                        onConfirm: async () => {
+                          if (activeWorkspaceId) {
+                            await deleteNote(note.id).catch(() => {});
+                          }
+                          setDeleteModalConfig(null);
+                        },
+                      });
+                    }}
+                  />
+                </div>
+              )}
+            </div>
 
             {/* 5. Collections Section */}
-            {isSectionVisible('collections') && (
-              <div id="inspector-section-collections" className="bg-background">
-                <InspectorSectionHeader
-                  id="collections"
-                  label="Libraries and Collections"
-                  icon={FolderTree}
-                  isOpen={isSectionOpen('collections')}
-                  paper={paper}
-                  onToggle={toggleSection}
-                  customAddAction={
-                    paper ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <button
-                            type="button"
-                            onClick={(e) => e.stopPropagation()}
-                            className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
-                            aria-label="Add to collection"
-                          >
-                            <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-xs font-sans max-h-72 overflow-y-auto"
+            <div id="inspector-section-collections" className="bg-background">
+              <InspectorSectionHeader
+                id="collections"
+                label="Libraries and Collections"
+                icon={FolderTree}
+                isOpen={isSectionOpen('collections')}
+                paper={paper}
+                onToggle={toggleSection}
+                customAddAction={
+                  paper ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                          <button
+                          type="button"
+                          onClick={(e) => e.stopPropagation()}
+                          className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
+                          aria-label="Add to collection"
                         >
+                          <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="w-64 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-xs font-sans max-h-80 overflow-y-auto shadow-raised-200 space-y-0.5"
+                      >
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setIsCreateCollectionOpen(true);
+                          }}
+                          className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-muted text-foreground"
+                        >
+                          <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                          <span>Create Collection</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {collections.map((col) => (
                           <DropdownMenuItem
+                            key={col.id}
                             onClick={() => {
-                              setIsCreateCollectionOpen(true);
+                              handleUpdatePaper({ collectionId: col.id });
                             }}
                             className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-muted text-foreground"
                           >
-                            <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                            <span>Create Collection</span>
+                            <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                            <span className="truncate">{col.name}</span>
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {collections.map((col) => (
-                            <DropdownMenuItem
-                              key={col.id}
-                              onClick={() => {
-                                handleUpdatePaper({ collectionId: col.id });
-                              }}
-                              className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-muted text-foreground"
-                            >
-                              <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                              <span className="truncate">{col.name}</span>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : null
-                  }
-                />
-                {paper && isSectionOpen('collections') && (
-                  <div className="p-2 bg-background">
-                    <CollectionsSection
-                      paper={paper}
-                      workspaceId={workspaceId}
-                      onCreateCollection={() => setIsCreateCollectionOpen(true)}
-                      hideHeader
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : null
+                }
+              />
+              {paper && isSectionOpen('collections') && (
+                <div className="p-2 bg-background">
+                  <CollectionsSection
+                    paper={paper}
+                    workspaceId={activeWorkspaceId}
+                    onCreateCollection={() => setIsCreateCollectionOpen(true)}
+                    hideHeader
+                  />
+                </div>
+              )}
+            </div>
 
             {/* 6. Tags Section */}
-            {isSectionVisible('tags') && (
-              <div id="inspector-section-tags" className="bg-background">
-                <InspectorSectionHeader
-                  id="tags"
-                  label="Tags"
-                  icon={Tag}
-                  count={tagsCount}
-                  isOpen={isSectionOpen('tags')}
-                  hasAdd={true}
-                  paper={paper}
-                  onToggle={toggleSection}
-                  onAdd={handleAddClick}
-                />
-                {paper && isSectionOpen('tags') && (
-                  <div className="p-2 bg-background">
-                    <TagsSection
-                      paper={paper}
-                      onUpdatePaper={handleUpdatePaper}
-                      hideHeader
-                      forceAdding={forceAddingTag}
-                      onCancelAdding={() => setForceAddingTag(false)}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+            <div id="inspector-section-tags" className="bg-background">
+              <InspectorSectionHeader
+                id="tags"
+                label="Tags"
+                icon={Tag}
+                count={tagsCount}
+                isOpen={isSectionOpen('tags')}
+                hasAdd={true}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('tags') && (
+                <div className="p-2 bg-background">
+                  <TagsSection
+                    paper={paper}
+                    onUpdatePaper={handleUpdatePaper}
+                    hideHeader
+                    forceAdding={forceAddingTag}
+                    onCancelAdding={() => setForceAddingTag(false)}
+                  />
+                </div>
+              )}
+            </div>
 
             {/* 7. Related Papers Section */}
-            {isSectionVisible('relations') && (
-              <div id="inspector-section-relations" className="bg-background">
-                <InspectorSectionHeader
-                  id="relations"
-                  label="Related"
-                  icon={Network}
-                  count={relationsCount}
-                  isOpen={isSectionOpen('relations')}
-                  hasAdd={true}
-                  paper={paper}
-                  onToggle={toggleSection}
-                  onAdd={handleAddClick}
-                />
-                {paper && isSectionOpen('relations') && relationsCount > 0 && (
-                  <div className="p-2 bg-background">
-                    <RelatedSection
-                      paper={paper}
-                      workspaceId={workspaceId}
-                      hideHeader
-                      isAddOpen={isAddRelatedOpen}
-                      onAddOpenChange={setIsAddRelatedOpen}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+            <div id="inspector-section-relations" className="bg-background">
+              <InspectorSectionHeader
+                id="relations"
+                label="Related"
+                icon={Network}
+                count={relationsCount}
+                isOpen={isSectionOpen('relations')}
+                hasAdd={true}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('relations') && relationsCount > 0 && (
+                <div className="p-2 bg-background">
+                  <RelatedSection
+                    paper={paper}
+                    workspaceId={activeWorkspaceId}
+                    hideHeader
+                    isAddOpen={isAddRelatedOpen}
+                    onAddOpenChange={setIsAddRelatedOpen}
+                  />
+                </div>
+              )}
+            </div>
 
             {/* 8. Citations Section (No Plus) */}
-            {isSectionVisible('cite') && (
-              <div id="inspector-section-cite" className="bg-background">
-                <InspectorSectionHeader
-                  id="cite"
-                  label="Citation"
-                  icon={Quote}
-                  isOpen={isSectionOpen('cite')}
-                  hasAdd={false}
-                  paper={paper}
-                  onToggle={toggleSection}
-                  onAdd={handleAddClick}
-                />
-                {paper && isSectionOpen('cite') && (
-                  <div className="p-1 bg-background">
-                    <CiteSection paper={paper} workspaceId={isPaperVerified ? workspaceId : ''} />
-                  </div>
-                )}
-              </div>
-            )}
+            <div id="inspector-section-cite" className="bg-background">
+              <InspectorSectionHeader
+                id="cite"
+                label="Citation"
+                icon={Quote}
+                isOpen={isSectionOpen('cite')}
+                hasAdd={false}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('cite') && (
+                <div className="p-1 bg-background">
+                  <CiteSection paper={paper} workspaceId={isPaperVerified ? activeWorkspaceId : ''} />
+                </div>
+              )}
+            </div>
           </div>
         </aside>
         </>
@@ -990,41 +1008,75 @@ export default function InspectorPanel({
         aria-label="Inspector panel bar"
         className="w-10 shrink-0 h-full border-l border-border bg-background hidden sm:flex flex-col items-center z-20 select-none"
       >
-        {/* Top: Toggle Panel Button Container - EXACTLY h-11 with line cách biên p-1 */}
+        {/* Top: Toggle Panel Button Container - EXACTLY h-11 with line cách biên */}
         <div className="h-11 w-full flex flex-col items-center justify-between shrink-0">
           <div className="flex-1 flex items-center justify-center w-full">
-            <button
-              type="button"
-              onClick={() => {
-                if (!paper) return;
-                setIsInspectorOpen(!isInspectorOpen);
-              }}
-              className="size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary text-foreground hover:bg-muted cursor-pointer"
-              aria-label={isInspectorOpen ? "Collapse panel" : "Expand panel"}
-            >
-              <PanelRight className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-            </button>
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsInspectorOpen(false);
+                    onClose?.();
+                  }}
+                  className="size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors bg-muted text-foreground hover:bg-muted cursor-pointer"
+                  aria-label="Collapse inspector"
+                >
+                  <PanelRight className="size-4 shrink-0" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left" sideOffset={6} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+                {!paper ? "Select a reference to view inspector" : isInspectorOpen ? "Collapse inspector" : "Expand inspector"}
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           {/* Line cách biên p-2 (8px mỗi bên), tại đúng vị trí pixel 48 */}
-          <div className="w-[calc(100%-16px)] mx-auto h-px bg-border/60 shrink-0" />
+          <div className="w-[calc(100%-16px)] mx-auto h-px bg-border shrink-0" />
         </div>
 
-        {/* Middle: 8 Section Icons - gap-1 and hover:bg-muted only, NO active effect */}
+        {/* Middle: 8 Section Icons with Tooltips and active state */}
         <div className="flex flex-col items-center gap-1 w-full pt-1 px-1">
           {SECTIONS_CONFIG.map((sec) => {
             const Icon = sec.icon;
+            const count =
+              sec.id === 'files' ? filesCount :
+              sec.id === 'notes' ? notesCount :
+              sec.id === 'tags' ? tagsCount :
+              sec.id === 'relations' ? relationsCount :
+              undefined;
+
+            const tooltipLabel = count !== undefined && count > 0
+              ? `${sec.label} (${count})`
+              : sec.label;
+
+            const isSectionActive = isInspectorOpen && !collapsedSections[sec.id];
 
             return (
-              <button
-                key={sec.id}
-                type="button"
-                onClick={() => handleSectionIconClick(sec.id)}
-                className="size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary text-foreground hover:bg-muted cursor-pointer"
-                aria-label={sec.label}
-              >
-                <Icon className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-              </button>
+              <Tooltip key={sec.id} delayDuration={200}>
+                <TooltipTrigger asChild>
+                  <button
+                    key={sec.id}
+                    type="button"
+                    disabled={!paper}
+                    onClick={() => handleSectionIconClick(sec.id)}
+                    className={cn(
+                      "size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors",
+                      !paper
+                        ? "opacity-40 cursor-not-allowed text-muted-foreground"
+                        : isSectionActive
+                          ? "bg-muted text-foreground cursor-pointer"
+                          : "text-foreground hover:bg-muted cursor-pointer"
+                    )}
+                    aria-label={sec.label}
+                  >
+                    <Icon className="size-4 shrink-0" strokeWidth={1.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="left" sideOffset={6} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+                  {tooltipLabel}
+                </TooltipContent>
+              </Tooltip>
             );
           })}
         </div>

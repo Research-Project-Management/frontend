@@ -69,6 +69,7 @@ const nextConfig: NextConfig = {
   },
 
   experimental: {
+    middlewareClientMaxBodySize: '100mb',
     optimizePackageImports: [
       'lucide-react',
       'framer-motion',

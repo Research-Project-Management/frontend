@@ -127,6 +127,19 @@ async function uploadFilesWithConcurrency(
   return { successCount, lastErrorMessage };
 }
 
+export interface PendingUploadItem {
+  id: string;
+  file: File;
+  filename: string;
+  size: number;
+  collectionId?: string | null;
+  status: 'uploading' | 'processing' | 'succeeded' | 'failed';
+  error?: string;
+  fileId?: string;
+  runId?: string;
+  createdAt: string;
+}
+
 // ── 1. Unified Main Library View Model Hook ──────────────────────────────────
 
 export function useLibrary() {
@@ -171,10 +184,36 @@ export function useLibrary() {
 
   // Data Layer Services
   const itemsHook = useItems({ scopeId: effectiveScopeId, collectionId: '' });
-  const allPapers = useMemo(
+  const rawPapers = useMemo(
     () => itemsHook.state.allPapers ?? [],
     [itemsHook.state.allPapers],
   );
+
+  // Optimistic items generated from pending uploads (raw uploaded files)
+  const [pendingUploads, setPendingUploads] = useState<PendingUploadItem[]>([]);
+
+  const optimisticItems: Item[] = useMemo(() => {
+    return pendingUploads.map((p) => ({
+      id: p.id,
+      title: p.filename,
+      itemType: 'document',
+      creators: [],
+      publicationTitle: `${(p.size / (1024 * 1024)).toFixed(1)} MB`,
+      year: new Date().getFullYear(),
+      dateAdded: p.createdAt,
+      createdAt: p.createdAt,
+      updatedAt: p.createdAt,
+      collectionId: p.collectionId || null,
+      isPending: true,
+      pendingStatus: p.status,
+      pendingError: p.error,
+    } as unknown as Item));
+  }, [pendingUploads]);
+
+  const allPapers = useMemo(() => {
+    if (!optimisticItems.length) return rawPapers;
+    return [...optimisticItems, ...rawPapers];
+  }, [optimisticItems, rawPapers]);
   const isPapersLoading = itemsHook.state.isLoadingAll;
   const collectionService = useCollections(effectiveScopeId);
   const collections = collectionService.state.collections;
@@ -218,37 +257,54 @@ export function useLibrary() {
   );
 
   const filteredPapers = useMemo(() => {
+    let list: Item[] = [];
     if (isSavedSearchActive && savedSearchResults.data?.items) {
       const items = savedSearchResults.data.items;
-      if (!searchQuery.trim()) return items;
-      const q = searchQuery.toLowerCase();
-      return items.filter(
-        (it: Item) =>
-          it.title?.toLowerCase().includes(q) ||
-          it.publicationTitle?.toLowerCase().includes(q),
-      );
+      if (!searchQuery.trim()) {
+        list = items;
+      } else {
+        const q = searchQuery.toLowerCase();
+        list = items.filter(
+          (it: Item) =>
+            it.title?.toLowerCase().includes(q) ||
+            it.publicationTitle?.toLowerCase().includes(q),
+        );
+      }
+    } else {
+      list = sortFilterItems({
+        items: rawPapers,
+        searchQuery,
+        activeFilter,
+        activeTag,
+        activeTags,
+        activeCollectionId: collectionId,
+        collectionIds: descendantIds,
+        duplicateItemIds: duplicateIds,
+        fileStatus,
+        readStatus,
+        itemTypes,
+        fromYear,
+        toYear,
+        startDate,
+        endDate,
+      });
     }
-    return sortFilterItems({
-      items: allPapers,
-      searchQuery,
-      activeFilter,
-      activeTag,
-      activeTags,
-      activeCollectionId: collectionId,
-      collectionIds: descendantIds,
-      duplicateItemIds: duplicateIds,
-      fileStatus,
-      readStatus,
-      itemTypes,
-      fromYear,
-      toYear,
-      startDate,
-      endDate,
-    });
+
+    if (optimisticItems.length > 0) {
+      const matchingOptimistic = searchQuery.trim()
+        ? optimisticItems.filter((p) =>
+            p.title?.toLowerCase().includes(searchQuery.toLowerCase()),
+          )
+        : optimisticItems;
+      return [...matchingOptimistic, ...list];
+    }
+
+    return list;
   }, [
     isSavedSearchActive,
     savedSearchResults.data?.items,
-    allPapers,
+    rawPapers,
+    optimisticItems,
     searchQuery,
     activeFilter,
     activeTag,
@@ -289,155 +345,289 @@ export function useLibrary() {
     [addPaper],
   );
 
-  const handleDirectFilesUpload = useCallback(
-    async (files: File[]) => {
+
+  const uploadAndProcessFiles = useCallback(
+    async (files: File[], batchTitle?: string) => {
       if (!files.length) return;
 
-      const recordFiles = files.filter((f) =>
-        /\.(bib|bibtex|ris)$/i.test(f.name),
+      // 1. Immediately create and register optimistic pending items in Library table
+      const newPendingItems: PendingUploadItem[] = files.map((file) => ({
+        id: `temp-upload-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        file,
+        filename: file.name,
+        size: file.size,
+        collectionId: collectionId || null,
+        status: 'uploading' as const,
+        createdAt: new Date().toISOString(),
+      }));
+
+      setPendingUploads((prev) => [...newPendingItems, ...prev]);
+
+      // 2. Open ProcessModal to track real-time progress
+      const modalTitle =
+        batchTitle ||
+        (files.length === 1 ? files[0].name : `${files.length} document(s)`);
+      ingestProgress.startBatchProgress(
+        files.map((f) => ({ name: f.name })),
+        modalTitle,
       );
-      const otherFiles = files.filter(
-        (f) => !/\.(bib|bibtex|ris)$/i.test(f.name),
+
+      // Track successfully submitted runs to monitor in background
+      const submittedRuns: Array<{ tempId: string; file: File; runId: string }> = [];
+
+      // 3. Process file uploads and pipeline submission with concurrency pool of 3
+      // Workers only upload and submit — they do NOT block waiting for pipeline execution.
+      const { lastErrorMessage } = await uploadFilesWithConcurrency(
+        files,
+        3,
+        async (file: File) => {
+          const pendingItem = newPendingItems.find((p) => p.file === file);
+          const tempId = pendingItem?.id || file.name;
+
+          try {
+            const isRecord = /\.(bib|bibtex|ris)$/i.test(file.name);
+
+            if (isRecord) {
+              setPendingUploads((prev) =>
+                prev.map((p) =>
+                  p.id === tempId ? { ...p, status: 'processing' } : p,
+                ),
+              );
+
+              const content = await file.text();
+              const isRis = /\.ris$/i.test(file.name);
+              const format = isRis ? 'RIS' : 'BIBTEX';
+
+              const res = await IngestionService.submit(effectiveScopeId, {
+                kind: 'RECORD',
+                format,
+                content,
+                recordFormat: format,
+                rawRecord: content,
+                collectionId: collectionId || undefined,
+              });
+
+              const runId = (res as any)?.data?.runId || (res as any)?.runId;
+              if (runId) {
+                submittedRuns.push({ tempId, file, runId });
+                setPendingUploads((prev) =>
+                  prev.map((p) =>
+                    p.id === tempId ? { ...p, runId } : p,
+                  ),
+                );
+              }
+            } else {
+              // Binary upload
+              setPendingUploads((prev) =>
+                prev.map((p) =>
+                  p.id === tempId ? { ...p, status: 'uploading' } : p,
+                ),
+              );
+
+              const uploadRes = await uploadLibraryFile(effectiveScopeId, file);
+              if (!uploadRes?.fileId) {
+                throw new Error(`Upload failed for ${file.name}`);
+              }
+
+              // Pipeline submitted
+              setPendingUploads((prev) =>
+                prev.map((p) =>
+                  p.id === tempId
+                    ? { ...p, status: 'processing', fileId: uploadRes.fileId }
+                    : p,
+                ),
+              );
+
+              const res = await IngestionService.submit(effectiveScopeId, {
+                kind: 'FILE',
+                fileId: uploadRes.fileId,
+                filename: file.name,
+                collectionId: collectionId || undefined,
+              });
+
+              const runId = (res as any)?.data?.runId || (res as any)?.runId;
+              if (runId) {
+                submittedRuns.push({ tempId, file, runId });
+                setPendingUploads((prev) =>
+                  prev.map((p) =>
+                    p.id === tempId ? { ...p, runId } : p,
+                  ),
+                );
+              }
+            }
+          } catch (err: any) {
+            const errorMsg = err?.message || 'Upload failed';
+            ingestProgress.updateBatchItem(file.name, 'FAILED', errorMsg);
+            setPendingUploads((prev) =>
+              prev.map((p) =>
+                p.id === tempId ? { ...p, status: 'failed', error: errorMsg } : p,
+              ),
+            );
+            setTimeout(() => {
+              setPendingUploads((prev) => prev.filter((p) => p.id !== tempId));
+            }, 6000);
+            throw err;
+          }
+        },
       );
 
-      // 1. Process BibTeX / RIS directly with ProcessModal
-      for (const recordFile of recordFiles) {
-        try {
-          const content = await recordFile.text();
-          const isRis = /\.ris$/i.test(recordFile.name);
-          const format = isRis ? 'RIS' : 'BIBTEX';
-          const res = await IngestionService.submit(effectiveScopeId, {
-            kind: 'RECORD',
-            format,
-            content,
-            recordFormat: format,
-            rawRecord: content,
-            collectionId: collectionId || undefined,
-          });
-          const runId = (res as any)?.data?.runId || (res as any)?.runId;
-          if (runId) {
-            ingestProgress.startMonitoring(runId, recordFile.name);
-            return;
-          }
-        } catch (err: any) {
-          toast.error(`Failed to import ${recordFile.name}: ${err?.message}`);
-        }
-      }
-
-      // 2. Process single PDF with ProcessModal
-      if (otherFiles.length === 1) {
-        const file = otherFiles[0];
-        try {
-          const { fileId } = await uploadLibraryFile(effectiveScopeId, file);
-          if (fileId) {
-            const res = await IngestionService.submit(effectiveScopeId, {
-              kind: 'FILE',
-              fileId,
-              filename: file.name,
-              collectionId: collectionId || undefined,
-            });
-            const runId = (res as any)?.data?.runId || (res as any)?.runId;
-            if (runId) {
-              ingestProgress.startMonitoring(runId, file.name);
-              return;
-            }
-          }
-        } catch (err: any) {
-          toast.error(`Failed to upload ${file.name}: ${err?.message}`);
-          return;
-        }
-      }
-
-      // 3. Batch multi-file upload fallback
-      if (otherFiles.length > 1) {
-        const loadingToastId = toast.loading(`Uploading ${otherFiles.length} document(s)...`);
-        const { successCount, lastErrorMessage } = await uploadFilesWithConcurrency(
-          otherFiles,
-          3,
-          async (file: File, count: number) => {
-            toast.loading(`Uploading document ${count} of ${otherFiles.length}...`, {
-              id: loadingToastId,
-            });
-
-            const { fileId } = await uploadLibraryFile(workspaceId, file);
-
-            if (!fileId) {
-              throw new Error(`Upload succeeded but no fileId returned for ${file.name}`);
-            }
-
-            await ingestUnified({
-              source: 'pdf',
-              fileId,
-              filename: file.name,
-              collectionId: collectionId || undefined,
-              silent: true,
-            } as any);
-          },
+      // 4. Unified resilient batch monitoring
+      let succeededCount = 0;
+      if (submittedRuns.length > 0) {
+        const pendingRunMap = new Map(
+          submittedRuns.map((r) => [r.runId, r]),
         );
+        const startPoll = Date.now();
+        const MAX_BATCH_WAIT_MS = 240000; // 4 minutes max
 
-        if (successCount > 0) {
-          invalidateLibraryItems(queryClient, workspaceId, workspaceSlug, collectionId);
-          toast.success('Import submitted', {
-            description: `${successCount} of ${otherFiles.length} document(s) uploaded. Ingestion pipeline is extracting metadata in background.`,
-            id: loadingToastId,
-          });
-        } else {
-          toast.error('Upload failed', {
-            description: lastErrorMessage || 'Unable to process selected documents.',
-            id: loadingToastId,
-          });
+        while (
+          pendingRunMap.size > 0 &&
+          Date.now() - startPoll < MAX_BATCH_WAIT_MS
+        ) {
+          await new Promise((r) => setTimeout(r, 2000));
+
+          const activeRunIds = Array.from(pendingRunMap.keys());
+          const chunks: string[][] = [];
+          for (let i = 0; i < activeRunIds.length; i += 4) {
+            chunks.push(activeRunIds.slice(i, i + 4));
+          }
+
+          let batchChanged = false;
+          for (const chunk of chunks) {
+            await Promise.all(
+              chunk.map(async (runId) => {
+                const itemInfo = pendingRunMap.get(runId);
+                if (!itemInfo) return;
+                try {
+                  const res = await IngestionService.getRunStatus(
+                    effectiveScopeId,
+                    runId,
+                  );
+                  const rawStatus =
+                    res?.data?.status || (res as any)?.status;
+                  const s = String(rawStatus || '').toUpperCase();
+
+                  if (
+                    s === 'READY' ||
+                    s === 'COMPLETED' ||
+                    s === 'COMMITTED'
+                  ) {
+                    pendingRunMap.delete(runId);
+                    succeededCount++;
+                    batchChanged = true;
+                    const resolvedTitle =
+                      (res?.data as any)?.item?.title ||
+                      (res?.data as any)?.snapshot?.title ||
+                      (res?.data as any)?.title ||
+                      (res as any)?.title;
+                    ingestProgress.updateBatchItem(
+                      itemInfo.file.name,
+                      'SUCCEEDED',
+                      undefined,
+                      resolvedTitle,
+                    );
+                    setPendingUploads((prev) =>
+                      prev.map((p) =>
+                        p.id === itemInfo.tempId
+                          ? { ...p, status: 'succeeded' }
+                          : p,
+                      ),
+                    );
+                    setTimeout(() => {
+                      setPendingUploads((prev) =>
+                        prev.filter((p) => p.id !== itemInfo.tempId),
+                      );
+                    }, 800);
+                  } else if (s.startsWith('FAIL') || s === 'ERROR') {
+                    pendingRunMap.delete(runId);
+                    batchChanged = true;
+                    const errMsg =
+                      (res?.data as any)?.errorMessage ||
+                      (res?.data as any)?.lastError ||
+                      (res?.data as any)?.error ||
+                      (res as any)?.error ||
+                      'Metadata extraction failed';
+                    ingestProgress.updateBatchItem(
+                      itemInfo.file.name,
+                      'FAILED',
+                      errMsg,
+                    );
+                    setPendingUploads((prev) =>
+                      prev.map((p) =>
+                        p.id === itemInfo.tempId
+                          ? { ...p, status: 'failed', error: errMsg }
+                          : p,
+                      ),
+                    );
+                    setTimeout(() => {
+                      setPendingUploads((prev) =>
+                        prev.filter((p) => p.id !== itemInfo.tempId),
+                      );
+                    }, 6000);
+                  }
+                } catch {
+                  // Transient polling error, keep waiting
+                }
+              }),
+            );
+          }
+
+          if (batchChanged) {
+            invalidateLibraryItems(
+              queryClient,
+              workspaceId,
+              workspaceSlug,
+              collectionId,
+            );
+            queryClient.invalidateQueries({ queryKey: ['items'] });
+            queryClient.invalidateQueries({ queryKey: ['library'] });
+          }
         }
+      }
+
+      // 5. Wrap up batch progress
+      ingestProgress.finishBatchProgress(lastErrorMessage || undefined);
+      invalidateLibraryItems(
+        queryClient,
+        workspaceId,
+        workspaceSlug,
+        collectionId,
+      );
+      queryClient.invalidateQueries({ queryKey: ['items'] });
+      queryClient.invalidateQueries({ queryKey: ['library'] });
+
+      if (succeededCount > 0) {
+        toast.success('Import completed', {
+          description: `${succeededCount} of ${files.length} document(s) added to library.`,
+        });
+      } else if (lastErrorMessage) {
+        toast.error('Import failed', {
+          description: lastErrorMessage,
+        });
       }
     },
-    [ingestUnified, workspaceId, workspaceSlug, collectionId, queryClient, ingestProgress, effectiveScopeId],
+    [
+      collectionId,
+      effectiveScopeId,
+      workspaceId,
+      workspaceSlug,
+      queryClient,
+      ingestProgress,
+    ],
+  );
+
+  const handleDirectFilesUpload = useCallback(
+    async (files: File[]) => {
+      await uploadAndProcessFiles(files);
+    },
+    [uploadAndProcessFiles],
   );
 
   const handleDirectFolderUpload = useCallback(
     async (files: File[], folderName: string) => {
-      if (!files.length) return;
-      const loadingToastId = toast.loading(
-        `Importing ${files.length} document(s) from "${folderName}"...`,
-      );
-
-      const { successCount, lastErrorMessage } = await uploadFilesWithConcurrency(
-        files,
-        3,
-        async (file: File, count: number) => {
-          toast.loading(
-            `Importing from "${folderName}": ${count} of ${files.length}...`,
-            { id: loadingToastId },
-          );
-
-          const uploadRes = await uploadLibraryFile(effectiveScopeId, file);
-
-          if (!uploadRes?.fileId) {
-            throw new Error(`Upload failed for ${file.name}`);
-          }
-
-          await ingestUnified({
-            source: 'pdf',
-            fileId: uploadRes.fileId,
-            filename: file.name,
-            collectionId: collectionId ?? undefined,
-            silent: true,
-          } as any);
-        },
-      );
-
-      if (successCount > 0) {
-        invalidateLibraryItems(queryClient, workspaceId, workspaceSlug, collectionId);
-        toast.success('Folder import submitted', {
-          description: `${successCount} of ${files.length} document(s) uploaded and queued for processing.`,
-          id: loadingToastId,
-        });
-      } else {
-        toast.error('Import failed', {
-          description: lastErrorMessage || `Failed to import documents from "${folderName}".`,
-          id: loadingToastId,
-        });
-      }
+      await uploadAndProcessFiles(files, `Importing "${folderName}"`);
     },
-    [ingestUnified, workspaceId, workspaceSlug, collectionId, queryClient, effectiveScopeId],
+    [uploadAndProcessFiles],
   );
 
   const handleAddLinkSubmit = useCallback(
@@ -670,6 +860,7 @@ export function useLibrary() {
       ingestProgressModal: ingestProgress.modalState,
       activeSavedSearch: savedSearchResults.data?.savedSearch ?? null,
       isSavedSearchActive,
+      pendingUploads,
     },
     actions: {
       setSearch: setSearchQuery,

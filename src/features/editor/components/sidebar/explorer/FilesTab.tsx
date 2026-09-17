@@ -22,14 +22,12 @@ import {
   FolderOpen,
   Folder,
   Image,
-  ListTree,
   Loader2,
   Paperclip,
   Pencil,
   Star,
   Trash2,
   Upload,
-  X,
   FileType,
   BookText,
   Braces,
@@ -50,6 +48,7 @@ import {
   useFileActions,
 } from '@/features/editor/hooks/use-core';
 import { useQuery } from '@tanstack/react-query';
+import { EditorEventBus } from '@/features/editor/utils/editor.util';
 
 import type { EditorStorageItem as StorageItem } from '@/features/editor/services/storage.service';
 
@@ -90,7 +89,8 @@ import {
   TEX_EXTS,
   type PendingUploadItem as PendingItem,
 } from "./UploadConflictDialog";
-import { parseDocumentOutline, OUTLINE_INDENT } from "../outline/OutlineTab";
+import AddFilesModal, { type AddFilesTab } from "@/features/editor/components/modals/AddFilesModal";
+import { parseDocumentOutline, OUTLINE_INDENT } from "@/features/editor/utils/pdf-outline.util";
 
 const OUTLINE_COLORS: Record<number, string> = {
   0: "font-medium text-foreground",
@@ -125,7 +125,37 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   } = usePageStore();
   const { openTab } = useTabsStore();
 
+  const [isFileTreeOpen, setIsFileTreeOpen] = useState(true);
   const [isOutlineOpen, setIsOutlineOpen] = useState(false);
+  const [outlineHeight, setOutlineHeight] = useState(200);
+  const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
+
+  const startResizeOutline = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDraggingSplitter(true);
+    const startY = e.clientY;
+    const startH = outlineHeight;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      const deltaY = startY - ev.clientY;
+      const newH = Math.min(Math.max(startH + deltaY, 80), 500);
+      setOutlineHeight(newH);
+    };
+
+    const onMouseUp = () => {
+      setIsDraggingSplitter(false);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+  }, [outlineHeight]);
+
   const docContent = currentPage?.content || "";
   const outline = useMemo(() => parseDocumentOutline(docContent), [docContent]);
 
@@ -144,6 +174,8 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const [uploadingCount, setUploadingCount] = useState(0);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [pendingUploads, setPendingUploads] = useState<PendingItem[]>([]);
+  const [isAddFilesModalOpen, setIsAddFilesModalOpen] = useState(false);
+  const [addFilesTab, setAddFilesTab] = useState<AddFilesTab>('new-file');
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
 
@@ -251,6 +283,36 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const handleUpload = () => combinedUploadRef.current?.click();
   const handleFolderUpload = () => folderUploadRef.current?.click();
 
+  const handleOpenFileModal = () => {
+    setAddFilesTab('new-file');
+    setIsAddFilesModalOpen(true);
+  };
+
+  const handleOpenUploadModal = () => {
+    setAddFilesTab('upload');
+    setIsAddFilesModalOpen(true);
+  };
+
+  useEffect(() => {
+    const unsubFile = EditorEventBus.on('flux:new-file', () => {
+      setIsFileTreeOpen(true);
+      handleOpenFileModal();
+    });
+    const unsubFolder = EditorEventBus.on('flux:new-folder', () => {
+      setIsFileTreeOpen(true);
+      handleStartCreateFolder();
+    });
+    const unsubUpload = EditorEventBus.on('flux:upload-file', () => {
+      setIsFileTreeOpen(true);
+      handleOpenUploadModal();
+    });
+    return () => {
+      unsubFile();
+      unsubFolder();
+      unsubUpload();
+    };
+  }, []);
+
   // Build a set of existing file names for duplicate detection (case-insensitive)
   const existingNames = useMemo(() => {
     const names = new Set<string>();
@@ -290,6 +352,15 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       return candidate;
     },
     [existingNames],
+  );
+
+  const handleAddFilesPick = useCallback(
+    (items: { file: File; name: string }[]) => {
+      setIsAddFilesModalOpen(false);
+      setPendingUploads(markDuplicates(items));
+      setUploadDialogOpen(true);
+    },
+    [markDuplicates],
   );
 
   const handleFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -816,51 +887,54 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         />
 
         {/* Header toolbar */}
-        <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-background">
-          <span className="text-xs font-semibold text-muted-foreground">
-            Explorer
-          </span>
-          <div className="flex items-center gap-0.5">
-            {[
-              { icon: FilePlus, label: "New File", action: handleStartCreate },
-              {
-                icon: FolderPlus,
-                label: "New Folder",
-                action: handleStartCreateFolder,
-              },
-              { icon: Upload, label: "Upload Files", action: handleUpload },
-            ].map(({ icon: Icon, label, action }) => (
-              <Tooltip key={label}>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={action}
-                    className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-sidebar-hover cursor-pointer"
-                  >
-                    <Icon className="size-3.5 shrink-0" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">{label}</TooltipContent>
-              </Tooltip>
-            ))}
-            {onClose && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={onClose}
-                    className="flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-sidebar-hover cursor-pointer"
-                  >
-                    <X className="size-3.5 shrink-0" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Close</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
+        <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-3 bg-background select-none">
+          <button
+            type="button"
+            onClick={() => setIsFileTreeOpen((prev) => !prev)}
+            className="flex items-center gap-1.5 font-semibold text-xs text-foreground hover:text-foreground/80 cursor-pointer select-none"
+            title={isFileTreeOpen ? "Collapse file tree" : "Expand file tree"}
+            aria-label={isFileTreeOpen ? "Collapse file tree" : "Expand file tree"}
+          >
+            <ChevronRight
+              className={cn(
+                "size-3.5 shrink-0 transition-transform text-muted-foreground",
+                isFileTreeOpen && "rotate-90",
+              )}
+            />
+            <span>File tree</span>
+          </button>
+          {isFileTreeOpen && (
+            <div className="flex items-center gap-0.5">
+              {[
+                { icon: FilePlus, label: "New File", action: handleOpenFileModal },
+                {
+                  icon: FolderPlus,
+                  label: "New Folder",
+                  action: handleStartCreateFolder,
+                },
+                { icon: Upload, label: "Upload Files", action: handleOpenUploadModal },
+              ].map(({ icon: Icon, label, action }) => (
+                <Tooltip key={label}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={action}
+                      aria-label={label}
+                      className="flex size-7 items-center justify-center rounded text-foreground/80 transition-colors hover:bg-muted hover:text-foreground cursor-pointer"
+                    >
+                      <Icon className="size-3.5 shrink-0" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{label}</TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── File tree ──────────────────────────────────────────────────────── */}
-        <div
-          className="relative min-h-0 flex-1 overflow-y-auto"
+        {isFileTreeOpen && (
+          <div
+            className="relative min-h-0 flex-1 overflow-y-auto"
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
@@ -1015,7 +1089,8 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
                 // kind === "tex"
                 const file = item.data;
-                const isActive = file.id === pageId;
+                const activeId = activeFilePage?.id ?? (searchParams.get('fileId') || pageId);
+                const isActive = file.id === activeId || file.id === pageId;
                 const isMain = file.id === mainFileId;
                 const { icon: FileIcon, color: fileColor } = getFileIcon(
                   file.title,
@@ -1025,17 +1100,16 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                     key={file.id}
                     onClick={() => handleFileClick(file.id, file.title)}
                     className={cn(
-                      "group/row flex h-8 cursor-pointer items-center border-l-2 pr-2 transition-colors",
+                      "group/row flex h-7.5 cursor-pointer items-center rounded-md mx-1 px-2 my-0.5 transition-colors select-none",
                       isActive
-                        ? "border-l-primary bg-muted text-primary"
-                        : "border-l-transparent hover:bg-muted",
+                        ? "bg-[#1b5e3a] dark:bg-[#1a5632] text-white shadow-2xs font-medium"
+                        : "hover:bg-muted/70 text-foreground/90",
                     )}
                   >
-                    <span className="w-4 shrink-0" />
                     <FileIcon
                       className={cn(
                         "size-3.5 shrink-0 mr-1.5",
-                        isActive ? "text-primary" : fileColor,
+                        isActive ? "text-white" : fileColor,
                       )}
                     />
 
@@ -1051,21 +1125,28 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                       <>
                         <span
                           className={cn(
-                            "flex-1 min-w-0 truncate text-sm",
+                            "flex-1 min-w-0 truncate text-xs",
                             isActive
-                              ? "text-primary font-medium"
+                              ? "text-white font-medium"
                               : "text-foreground/90",
                           )}
                         >
                           {displayName(file.title)}
                         </span>
                         {isMain && !renamingId && (
-                          <span className="shrink-0 text-xs px-1.5 py-px rounded-full border border-primary/30 bg-primary/8 text-primary/80 font-medium mr-1">
+                          <span
+                            className={cn(
+                              "shrink-0 text-[10px] px-1.5 py-px rounded-full font-medium mr-1",
+                              isActive
+                                ? "bg-white/20 text-white"
+                                : "border border-primary/30 bg-primary/8 text-primary/80",
+                            )}
+                          >
                             main
                           </span>
                         )}
                         {renamingId !== file.id && (
-                          <RowActions>
+                          <RowActions className={isActive ? "text-white/80 hover:text-white hover:bg-white/15 opacity-100" : undefined}>
                             {!isMain && (
                               <DropdownMenuItem
                                 className="text-xs!"
@@ -1106,31 +1187,68 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 );
               });
             })()}
-        </div>
+          </div>
+        )}
 
-        <div className="shrink-0 border-t border-border bg-background">
+        {/* Resizable Divider between File tree and File outline */}
+        {isOutlineOpen && (
+          <div
+            onMouseDown={isFileTreeOpen ? startResizeOutline : undefined}
+            className={cn(
+              "h-2 w-full shrink-0 flex items-center justify-center border-t border-border hover:bg-muted/60 select-none group transition-colors",
+              isFileTreeOpen ? "cursor-row-resize" : "cursor-default"
+            )}
+          >
+            <div className="flex items-center gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
+              <span className="size-1 rounded-full bg-foreground/60" />
+              <span className="size-1 rounded-full bg-foreground/60" />
+              <span className="size-1 rounded-full bg-foreground/60" />
+              <span className="size-1 rounded-full bg-foreground/60" />
+            </div>
+          </div>
+        )}
+
+        {/* ── File outline Accordion ────────────────────────────────────────── */}
+        <div
+          className={cn(
+            "border-t border-border bg-background flex flex-col select-none",
+            !isFileTreeOpen && isOutlineOpen ? "flex-1 min-h-0" : "shrink-0"
+          )}
+        >
           <button
             type="button"
             onClick={() => setIsOutlineOpen((value) => !value)}
-            className="flex h-8 w-full items-center gap-2 px-3 text-left text-xs font-semibold text-foreground transition-colors hover:bg-muted cursor-pointer"
+            className="flex h-8 w-full items-center gap-1.5 px-3 text-left text-xs font-semibold text-foreground transition-colors hover:bg-muted/60 cursor-pointer select-none"
           >
             <ChevronRight
               className={cn(
-                "size-3.5 shrink-0 transition-transform",
+                "size-3.5 shrink-0 transition-transform text-muted-foreground",
                 isOutlineOpen && "rotate-90",
               )}
             />
-            <ListTree className="size-3.5 shrink-0" />
-            <span className="min-w-0 flex-1 truncate">Outline</span>
-            <span className="rounded-full bg-muted px-1.5 py-0.5 text-11 font-mono font-medium text-foreground">
-              {outline.length}
-            </span>
+            <span className="min-w-0 flex-1 truncate">File outline</span>
+            {outline.length > 0 && (
+              <span className="rounded-full bg-muted px-1.5 py-0.2 text-[10px] font-mono font-medium text-muted-foreground">
+                {outline.length}
+              </span>
+            )}
           </button>
           {isOutlineOpen && (
-            <div className="max-h-[42vh] overflow-y-auto pb-1">
+            <div
+              style={isFileTreeOpen ? { height: `${outlineHeight}px` } : undefined}
+              className={cn(
+                "overflow-y-auto pb-1 border-t border-border/40",
+                !isFileTreeOpen && "flex-1 min-h-0"
+              )}
+            >
               {outline.length === 0 ? (
-                <div className="px-9 py-2 text-xs text-foreground/75">
-                  No sections found.
+                <div className="flex flex-col items-center justify-center text-center px-4 py-8 select-none">
+                  <p className="text-xs text-foreground/80 font-medium">
+                    We can&apos;t find any sections or subsections in this file.
+                  </p>
+                  <span className="text-[11px] text-primary hover:underline mt-1.5 cursor-pointer">
+                    Find out more about the file outline
+                  </span>
                 </div>
               ) : (
                 outline.map((entry, index) => (
@@ -1139,10 +1257,10 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                     type="button"
                     onClick={() => handleOutlineClick(entry.line, entry.title)}
                     style={{
-                      paddingLeft: `${28 + OUTLINE_INDENT[entry.level]}px`,
+                      paddingLeft: `${24 + OUTLINE_INDENT[entry.level]}px`,
                     }}
                     className={cn(
-                      "flex h-7 w-full items-center gap-1.5 pr-2 text-left text-xs transition-colors hover:bg-muted cursor-pointer",
+                      "flex h-7 w-full items-center gap-1.5 pr-2 text-left text-xs transition-colors hover:bg-muted/70 cursor-pointer",
                       OUTLINE_COLORS[entry.level],
                     )}
                   >
@@ -1155,7 +1273,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                     <span className="min-w-0 flex-1 truncate">
                       {entry.title}
                     </span>
-                    <span className="shrink-0 text-11 font-mono text-muted-foreground">
+                    <span className="shrink-0 text-[11px] font-mono text-muted-foreground">
                       :{entry.line}
                     </span>
                   </button>
@@ -1188,6 +1306,15 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           setPendingUploads([]);
         }}
         onConfirm={handleConfirmUpload}
+      />
+
+      <AddFilesModal
+        open={isAddFilesModalOpen}
+        onOpenChange={setIsAddFilesModalOpen}
+        defaultTab={addFilesTab}
+        parentPageId={parentPageId}
+        projectId={projectId}
+        onPickItems={handleAddFilesPick}
       />
 
 

@@ -18,13 +18,13 @@ export default function Trigger() {
           title="Editor settings"
           aria-label="Toggle editor settings"
           className={cn(
-            'p-1.5 rounded-md transition-colors outline-none cursor-pointer',
+            'size-7 flex items-center justify-center rounded-full transition-colors outline-none cursor-pointer select-none',
             settingsPanelOpen
-              ? 'text-primary bg-primary/15'
-              : 'text-foreground hover:bg-sidebar-hover',
+              ? 'text-foreground bg-sidebar-accent shadow-2xs'
+              : 'text-foreground/80 hover:text-foreground hover:bg-sidebar-hover',
           )}
         >
-          <Settings className="size-4 shrink-0" />
+          <Settings className="size-3.5 shrink-0" />
         </button>
       </TooltipTrigger>
       <TooltipContent side="bottom">Settings</TooltipContent>

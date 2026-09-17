@@ -18,6 +18,7 @@ import {
 import { Button } from "@/shared/components/ui";
 import { Checkbox } from "@/shared/components/ui";
 import { Skeleton } from "@/shared/components/ui";
+import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,7 +40,7 @@ import BatchBar from '../components/table/BatchBar';
 import { useLibrary } from '../hooks/use-library';
 import { useDuplicateGroups, useMergePapers } from '../hooks/use-curation';
 import { useItemTable, type SortField } from '../hooks/use-items';
-import { normalizeAuthors, formatCreatorCompact } from '../utils/library.util';
+import { normalizeAuthors, formatCreatorCompact, cleanPaperTitle } from '../utils/library.util';
 import { cn } from "@/shared/lib/utils";
 import type { Item, DuplicateGroup } from '../types/library.types';
 
@@ -84,10 +85,19 @@ export default function DuplicatesPage() {
     [duplicateData],
   );
 
+  const [dismissedItemIds, setDismissedItemIds] = useState<Set<string>>(new Set());
+
+  const activeDuplicateGroups = useMemo(() => {
+    return duplicateGroups.filter((group) => {
+      const items = (group as unknown as { items?: Item[]; papers?: Item[] }).items || (group as unknown as { items?: Item[]; papers?: Item[] }).papers || [];
+      return !items.some((p) => dismissedItemIds.has(p.id));
+    });
+  }, [duplicateGroups, dismissedItemIds]);
+
   const allDuplicateItems = useMemo(() => {
     const list: Item[] = [];
     const seen = new Set<string>();
-    for (const group of duplicateGroups) {
+    for (const group of activeDuplicateGroups) {
       const groupItems = group.items || group.papers || [];
       for (const p of groupItems) {
         if (!seen.has(p.id)) {
@@ -97,7 +107,7 @@ export default function DuplicatesPage() {
       }
     }
     return list;
-  }, [duplicateGroups]);
+  }, [activeDuplicateGroups]);
 
   const filteredItems = useMemo(() => {
     if (!search.trim()) return allDuplicateItems;
@@ -173,6 +183,20 @@ export default function DuplicatesPage() {
       sourcePaperIds: duplicateIdsToDelete,
       fieldSelections: Object.keys(mergedFields).length > 0 ? mergedFields : undefined,
     });
+    clearSelection();
+  };
+
+  const handleDismissDuplicate = (itemIds: string[]) => {
+    setDismissedItemIds((prev) => {
+      const next = new Set(prev);
+      itemIds.forEach((id) => next.add(id));
+      return next;
+    });
+    setMergeOpen(false);
+    toast.success('Marked as not duplicates', {
+      description: 'These records have been unlinked and will not be grouped together.',
+      id: 'dismiss-duplicate',
+    });
   };
 
   const [hasUserSorted, setHasUserSorted] = useState(false);
@@ -212,17 +236,17 @@ export default function DuplicatesPage() {
 
         {/* Central Duplicate Table - Managed Directly by DuplicatesPage */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
-          {duplicateGroups.length > 0 && !isDupLoading && (
+          {activeDuplicateGroups.length > 0 && !isDupLoading && (
             <div className="px-4 py-2 bg-muted border-b border-border flex flex-wrap items-center justify-between gap-2 shrink-0">
               <div className="flex items-center gap-2 text-xs">
                 <Layers className="size-3.5 text-foreground shrink-0" />
                 <span className="font-medium text-foreground">
-                  {duplicateGroups.length} duplicate {duplicateGroups.length === 1 ? 'cluster' : 'clusters'} detected
+                  {activeDuplicateGroups.length} duplicate {activeDuplicateGroups.length === 1 ? 'cluster' : 'clusters'} detected
                 </span>
                 <span className="text-muted-foreground font-mono">({allDuplicateItems.length} items)</span>
               </div>
               <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-0.5">
-                {duplicateGroups.map((group: DuplicateGroup, idx: number) => {
+                {activeDuplicateGroups.map((group: DuplicateGroup, idx: number) => {
                   const items = (group as unknown as { items?: Item[]; papers?: Item[] }).items || (group as unknown as { items?: Item[]; papers?: Item[] }).papers || [];
                   if (items.length < 2) return null;
                   const matchLabel = group.matchType === 'DOI' ? 'DOI' : 'Title';
@@ -232,7 +256,7 @@ export default function DuplicatesPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleOpenMerge(items)}
-                      className="h-6.5 px-2 text-11 font-medium gap-1.5 cursor-pointer bg-background hover:bg-muted border-border shadow-none text-foreground"
+                      className="h-6.5 px-2 text-11 font-medium gap-1.5 cursor-pointer bg-background hover:bg-muted border-border shadow-2xs text-foreground"
                     >
                       <GitMerge className="size-3 text-foreground shrink-0" />
                       <span>Review & Merge #{idx + 1} ({items.length} · {matchLabel})</span>
@@ -254,7 +278,7 @@ export default function DuplicatesPage() {
                 </div>
               ))}
             </div>
-          ) : duplicateGroups.length === 0 ? (
+          ) : activeDuplicateGroups.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground select-none">
               <Files className="size-12 mb-3 opacity-20 text-foreground shrink-0" />
               <p className="text-sm font-medium text-foreground">No duplicates detected</p>
@@ -266,7 +290,7 @@ export default function DuplicatesPage() {
             <div className="flex-1 overflow-auto">
               <table className="w-full table-fixed text-left border-collapse">
                 <colgroup>
-                  <col className="w-10" />
+                  <col className="w-8" />
                   <col className="w-4/12" />
                   <col className="w-4/12" />
                   <col className="w-1/12" />
@@ -275,7 +299,7 @@ export default function DuplicatesPage() {
                 </colgroup>
                 <thead className="sticky top-0 z-20 bg-background border-b border-border select-none">
                   <tr className="h-9 type-dense font-normal text-foreground [&_th]:font-normal [&_th]:text-foreground">
-                    <th scope="col" className="w-10 px-2.5 py-1.5 text-center align-middle">
+                    <th scope="col" className="w-8 pl-3 pr-1 py-1.5 text-left align-middle">
                       <Checkbox
                         checked={isAllSelected ? true : isPartiallySelected ? 'indeterminate' : false}
                         onCheckedChange={toggleSelectAll}
@@ -294,7 +318,7 @@ export default function DuplicatesPage() {
                           onColumnSort('title');
                         }
                       }}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer min-w-0 truncate outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
+                      className="group/th pl-1.5 pr-3.5 py-1.5 align-middle cursor-pointer min-w-0 truncate outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
                     >
                       <div className="flex items-center">
                         <span className="truncate">Title</span>
@@ -364,7 +388,7 @@ export default function DuplicatesPage() {
                               isSelected ? 'bg-muted' : isActive ? 'bg-muted' : 'hover:bg-muted',
                             )}
                           >
-                            <td className="w-10 px-2.5 py-1.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                            <td className="w-8 pl-3 pr-1 py-1.5 text-left align-middle" onClick={(e) => e.stopPropagation()}>
                               <Checkbox
                                 checked={isSelected}
                                 onCheckedChange={() => toggleSelect(paper.id)}
@@ -372,10 +396,10 @@ export default function DuplicatesPage() {
                               />
                             </td>
 
-                            <td className="px-3.5 py-1.5 align-middle min-w-0 max-w-0 truncate">
+                            <td className="pl-1.5 pr-3.5 py-1.5 align-middle min-w-0 max-w-0 truncate">
                               <div className="flex items-center gap-2 min-w-0">
-                                <span className="truncate block type-dense font-normal text-foreground" title={paper.title || 'Untitled Reference'}>
-                                  {paper.title || 'Untitled Reference'}
+                                <span className="truncate block type-dense font-normal text-foreground" title={cleanPaperTitle(paper.title) || 'Untitled Reference'}>
+                                  {cleanPaperTitle(paper.title) || 'Untitled Reference'}
                                 </span>
                               </div>
                             </td>
@@ -406,7 +430,7 @@ export default function DuplicatesPage() {
                                       <MoreVertical className="size-4 text-foreground shrink-0" />
                                     </button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
+                                  <DropdownMenuContent align="end" sideOffset={4} className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5">
                                     <DropdownMenuItem
                                       onClick={() => router.push(`/library/papers/${paper.id}`)}
                                       className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
@@ -466,6 +490,12 @@ export default function DuplicatesPage() {
             selectedItems={sortedItems.filter((i) => selectedIds.has(i.id))}
             collections={collections}
             onClearSelection={clearSelection}
+            onBatchMerge={() => {
+              const items = sortedItems.filter((i) => selectedIds.has(i.id));
+              if (items.length >= 2) {
+                handleOpenMerge(items);
+              }
+            }}
             onBatchMove={handleBatchMoveItems ? (collectionId) => {
               handleBatchMoveItems(Array.from(selectedIds), collectionId);
               clearSelection();
@@ -506,7 +536,9 @@ export default function DuplicatesPage() {
           open={mergeOpen}
           onOpenChange={setMergeOpen}
           duplicates={mergeCluster}
+          workspaceId={effectiveScopeId || workspaceId}
           onMerge={handleExecuteMerge}
+          onDismissDuplicate={handleDismissDuplicate}
         />
       )}
     </div>

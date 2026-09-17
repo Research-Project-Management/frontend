@@ -10,12 +10,12 @@
    -------------------------------------------------------------------------- */
 
 @theme {
-  --font-heading: var(--font-sans), "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-  --font-body: var(--font-sans), "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-  --font-sans: var(--font-sans), "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-  --font-serif: var(--font-serif), Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-code: var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --font-mono: var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-heading: var(--font-inter), "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-body: var(--font-inter), "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-sans: var(--font-inter), "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-serif: Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-code: var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-mono: var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   /* Plane.so Font Weights */
   --font-weight-light: 300;
@@ -209,20 +209,21 @@
    -------------------------------------------------------------------------- */
 
 :root {
-  --brand-hue: 265;
+  --brand-hue: 254;
   --radius: 0.5rem;
 
-  --blue-50: oklch(97% 0.018 var(--brand-hue));
-  --blue-100: oklch(93% 0.040 var(--brand-hue));
-  --blue-200: oklch(87% 0.075 var(--brand-hue));
-  --blue-300: oklch(78% 0.115 var(--brand-hue));
-  --blue-400: oklch(68% 0.148 var(--brand-hue));
-  --blue-500: oklch(55.3% 0.178 var(--brand-hue));
-  --blue-600: oklch(47% 0.165 var(--brand-hue));
-  --blue-700: oklch(38% 0.148 var(--brand-hue));
-  --blue-800: oklch(28% 0.120 var(--brand-hue));
-  --blue-900: oklch(20% 0.090 var(--brand-hue));
-  --blue-950: oklch(14% 0.060 var(--brand-hue));
+  /* Flux Official Brand Blue Palette (#3370FF - from Flux.svg) */
+  --blue-50: #EBF1FF;
+  --blue-100: #D6E3FF;
+  --blue-200: #ADC8FF;
+  --blue-300: #85ACFF;
+  --blue-400: #5C8FFF;
+  --blue-500: #3370FF;
+  --blue-600: #205CF5;
+  --blue-700: #1349DE;
+  --blue-800: #0E36B3;
+  --blue-900: #0A2685;
+  --blue-950: #061859;
 
   --gray-0: oklch(100% 0 0);
   --gray-25: oklch(98.5% 0 0);
@@ -251,9 +252,9 @@
   --card-foreground: var(--gray-900);
   --popover: var(--gray-0);
   --popover-foreground: var(--gray-900);
-  --primary: var(--blue-600);
-  --primary-hover: var(--blue-700);
-  --primary-foreground: var(--gray-0);
+  --primary: var(--blue-500);
+  --primary-hover: var(--blue-600);
+  --primary-foreground: #FFFFFF;
   --brand: var(--primary);
   --secondary: var(--gray-50);
   --secondary-foreground: var(--gray-900);
@@ -275,9 +276,9 @@
   --layer-transparent-hover: var(--gray-100);
   --surface-1: var(--gray-0);
   --input: var(--gray-200);
-  --ring: var(--blue-600);
+  --ring: var(--blue-500);
 
-  --chart-1: var(--blue-600);
+  --chart-1: var(--blue-500);
   --chart-2: oklch(0.600 0.118 185);
   --chart-3: oklch(0.398 0.070 227);
   --chart-4: oklch(0.828 0.189 84);
@@ -285,13 +286,13 @@
 
   --sidebar: var(--muted);
   --sidebar-foreground: var(--gray-900);
-  --sidebar-primary: var(--blue-600);
-  --sidebar-primary-foreground: var(--gray-0);
+  --sidebar-primary: var(--blue-500);
+  --sidebar-primary-foreground: #FFFFFF;
   --sidebar-hover: var(--gray-150);
   --sidebar-accent: var(--gray-200);
   --sidebar-accent-foreground: var(--gray-900);
   --sidebar-border: var(--gray-200);
-  --sidebar-ring: var(--blue-600);
+  --sidebar-ring: var(--blue-500);
 
   --shadow-2xs: 0 1px rgb(0 0 0 / 0.05);
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.06);
@@ -311,8 +312,8 @@
   --popover: oklch(14% 0 0);
   --popover-foreground: oklch(92% 0 0);
   --primary: var(--blue-500);
-  --primary-hover: oklch(62% 0.178 var(--brand-hue));
-  --primary-foreground: oklch(100% 0 0);
+  --primary-hover: var(--blue-400);
+  --primary-foreground: #FFFFFF;
   --brand: var(--primary);
   --secondary: oklch(17% 0 0);
   --secondary-foreground: oklch(92% 0 0);
@@ -713,8 +714,44 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Full-width seamless active line highlight across gutter and content without margin gap */
 .monaco-editor .current-line {
-  border-radius: 6px;
+  border-radius: 0 !important;
+}
+
+.monaco-editor .view-overlays .current-line {
+  width: 100% !important;
+  min-width: 100% !important;
+  border-radius: 0 !important;
+}
+
+.monaco-editor .margin-view-overlays .current-line-margin {
+  border-radius: 0 !important;
+}
+
+/* Monaco Editor Scrollbar: hidden by default, visible only on interaction / hover / scrolling */
+.monaco-editor .scrollbar {
+  opacity: 0 !important;
+  transition: opacity 0.2s ease-in-out !important;
+}
+
+.monaco-editor:hover .scrollbar,
+.monaco-editor .scrollbar.visible,
+.monaco-editor .scrollbar:hover,
+.monaco-editor .scrollbar.active,
+.monaco-editor .scrollbar.scrolling {
+  opacity: 1 !important;
+}
+
+.monaco-editor .scrollbar .slider {
+  border-radius: 9999px !important;
+  background: hsl(var(--muted-foreground) / 0.25) !important;
+  transition: background 0.15s ease !important;
+}
+
+.monaco-editor .scrollbar .slider:hover,
+.monaco-editor .scrollbar .slider.active {
+  background: hsl(var(--muted-foreground) / 0.5) !important;
 }
 
 .monaco-editor .suggest-widget,

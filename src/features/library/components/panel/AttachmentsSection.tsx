@@ -218,7 +218,7 @@ function AttachmentRevisions({
         {revisions.map((rev: any) => (
           <div
             key={rev.id || rev.version}
-            className="flex items-center justify-between p-1 rounded hover:bg-muted text-xs"
+            className="flex items-center justify-between p-1 rounded-md hover:bg-muted text-xs"
           >
             <span className="font-mono text-11">v{rev.version}</span>
             <span className="text-muted-foreground text-10">
@@ -396,7 +396,7 @@ export default function AttachmentsSection({
                   <MoreVertical className="size-3.5 text-foreground shrink-0" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52 text-xs font-sans">
+              <DropdownMenuContent align="end" className="w-64 p-1.5 text-xs font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5">
                 <DropdownMenuItem
                   onClick={handleOpenReader}
                   className="gap-2 cursor-pointer"
@@ -487,7 +487,7 @@ export default function AttachmentsSection({
                       <MoreVertical className="size-3.5 text-foreground shrink-0" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-52 text-xs font-sans">
+                  <DropdownMenuContent align="end" className="w-64 p-1.5 text-xs font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5">
                     {isSnapshot && (
                       <DropdownMenuItem
                         onClick={() =>

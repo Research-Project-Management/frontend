@@ -1,13 +1,11 @@
 import { apiGet, apiPost, apiPatch, apiPut, apiDelete, getAuthToken } from "@/shared/lib/api";
 import { API_BASE_URL } from '@/config/env';
-import type {
-  Item,
-  ItemBundle,
-  ItemAttachment,
-  PaginatedItemsResponse,
-} from "@/features/library/types/library.types";
+import type { Item, PaginatedItemsResponse } from '../types/items.types';
+import type { ItemAttachment } from '../types/attachments.types';
+import type { ItemBundle } from '../types/citation.types';
+import { getPaperFileUrl, isProjectScope } from '../utils/library.util';
+export { isProjectScope };
 import { AttachmentsService } from './attachments.service';
-import { getPaperFileUrl } from '../utils/library.util';
 
 // ── Payload sanitization ──────────────────────────────────────────────────────
 const VALID_ITEM_PAYLOAD_KEYS = new Set([
@@ -36,7 +34,7 @@ const VALID_ITEM_PAYLOAD_KEYS = new Set([
   // Collection targeting
   'collectionId', 'collectionIds',
   // Citation metrics
-  'citationCount',
+  'citationCount', 'referenceCount',
   // Type-specific fields across 37 item types
   'edition', 'numPages', 'numberOfVolumes', 'bookTitle', 'proceedingsTitle',
   'conferenceName', 'eventPlace', 'websiteTitle', 'websiteType',
@@ -182,9 +180,10 @@ export const fetchPdfBlob = async (
 };
 
 // ── Scope URL helper ────────────────────────────────────────────────────────
+
 function getItemUrl(scopeId?: string, suffix = ''): string {
-  const base = scopeId && scopeId !== 'user'
-    ? `/api/v1/projects/${scopeId}/library/items`
+  const base = isProjectScope(scopeId)
+    ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/items`
     : `/api/v1/library/items`;
   return suffix ? `${base}/${suffix}` : base;
 }

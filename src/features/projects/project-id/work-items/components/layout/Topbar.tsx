@@ -252,7 +252,7 @@ export function Topbar({
           <div
             role="tablist"
             aria-label="View modes"
-            className="flex items-center bg-muted/70 p-0.5 rounded-lg shrink-0 gap-0.5 h-8 border border-border/40 shadow-2xs"
+            className="flex items-center bg-muted/70 p-0.5 rounded-md shrink-0 gap-0.5 h-8 border border-border/40 shadow-2xs"
           >
             {viewOptions.map((v) => {
               const IconComp = v.icon;

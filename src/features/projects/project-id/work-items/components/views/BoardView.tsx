@@ -333,7 +333,7 @@ export function CardUI({
       }}
       aria-label={`Work item: ${card.title}`}
       className={cn(
-        'group relative min-w-0 rounded-lg border border-border/70 dark:border-border/60 bg-card p-3 shadow-2xs hover:shadow-xs hover:border-border transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none',
+        'group relative min-w-0 rounded-md border border-border/70 dark:border-border/60 bg-card p-3 shadow-2xs hover:shadow-xs hover:border-border transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none',
         isDragging && 'opacity-40 border-primary',
         isSelected && 'ring-1 ring-ring border-ring bg-muted/40'
       )}
@@ -850,7 +850,7 @@ export function Column({
         ref={setNodeRef}
         onClick={() => setIsCollapsed(false)}
         className={cn(
-          'flex flex-col items-center py-3 w-11 shrink-0 rounded-xl bg-muted/40 dark:bg-muted/15 border border-border/50 transition-all cursor-pointer hover:bg-muted/60 h-full min-h-[350px] select-none',
+          'flex flex-col items-center py-3 w-11 shrink-0 rounded-md bg-muted/40 dark:bg-muted/15 border border-border/50 transition-all cursor-pointer hover:bg-muted/60 h-full min-h-[350px] select-none',
           isOver && 'border-primary ring-1 ring-primary bg-primary/5'
         )}
       >
@@ -914,7 +914,7 @@ export function Column({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex flex-col w-[320px] shrink-0 max-h-full min-h-[350px] rounded-xl bg-muted/40 dark:bg-muted/15 border border-border/50 transition-colors',
+        'flex flex-col w-[320px] shrink-0 max-h-full min-h-[350px] rounded-md bg-muted/40 dark:bg-muted/15 border border-border/50 transition-colors',
         isOver && 'border-primary ring-1 ring-primary bg-muted/60'
       )}
     >
@@ -964,7 +964,7 @@ export function Column({
       {/* Cards List */}
       <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2.5 min-h-[60px]">
         {isQuickAdding && (
-          <form onSubmit={handleQuickAddSubmit} className="p-3 bg-card rounded-lg border border-border shadow-xs space-y-2.5">
+          <form onSubmit={handleQuickAddSubmit} className="p-3 bg-card rounded-md border border-border shadow-2xs space-y-2.5">
             <input
               ref={inputRef}
               value={quickTitle}
@@ -1032,7 +1032,7 @@ export function Column({
           <button
             type="button"
             onClick={() => setIsQuickAdding(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer rounded-lg hover:bg-muted/60 transition-colors w-full text-left font-normal"
+            className="flex items-center gap-1.5 px-3 py-2 text-13 text-muted-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-muted/60 transition-colors w-full text-left font-normal"
           >
             <Plus className="size-3.5 shrink-0" />
             <span>New work item</span>
@@ -1303,7 +1303,7 @@ export function BoardView({
               return (
                 <div
                   key={lane.id}
-                  className="rounded-xl border border-border/50 bg-card/40 overflow-hidden shadow-2xs"
+                  className="rounded-md border border-border/50 bg-card/40 overflow-hidden shadow-2xs"
                 >
                   {/* Swimlane Header */}
                   <div

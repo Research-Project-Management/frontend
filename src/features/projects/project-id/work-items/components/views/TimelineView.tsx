@@ -1269,7 +1269,7 @@ function TimelineCanvas({
                     {group.label}
                   </span>
                   {group.isCurrent && (
-                    <span className="bg-[#0070F3] text-white text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0">
+                    <span className="bg-primary text-primary-foreground text-10 font-medium px-1.5 py-0.5 rounded-full shrink-0">
                       Current
                     </span>
                   )}
@@ -1295,10 +1295,10 @@ function TimelineCanvas({
                   >
                     {col.isCurrent ? (
                       <div className="flex items-center">
-                        <span className="bg-[#0070F3] text-white font-medium text-xs rounded-[4px] px-1 min-w-[20px] h-[18px] inline-flex items-center justify-center mr-1">
+                        <span className="bg-primary text-primary-foreground font-medium text-xs rounded-sm px-1 min-w-[20px] h-[18px] inline-flex items-center justify-center mr-1">
                           {col.primaryLabel}
                         </span>
-                        <span className="text-[#0070F3] font-medium text-xs">
+                        <span className="text-primary font-medium text-xs">
                           {col.secondaryLabel}
                         </span>
                       </div>
@@ -1324,13 +1324,13 @@ function TimelineCanvas({
                     <span
                       className={cn(
                         'text-xs font-normal',
-                        col.isCurrent ? 'text-[#0070F3] font-semibold' : 'text-foreground'
+                        col.isCurrent ? 'text-primary font-semibold' : 'text-foreground'
                       )}
                     >
                       {col.primaryLabel}
                     </span>
                     {col.isCurrent ? (
-                      <span className="bg-[#0070F3] text-white font-medium text-xs px-1.5 py-0.5 rounded-[4px]">
+                      <span className="bg-primary text-primary-foreground font-medium text-xs px-1.5 py-0.5 rounded-sm">
                         {col.secondaryLabel}
                       </span>
                     ) : (

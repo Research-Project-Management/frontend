@@ -3,7 +3,9 @@ import {
   maskLatexSyntax,
   lintLatexStructure,
   checkLatexSpelling,
+  lintRetractedCitations,
   runLatexLinter,
+  type RetractedItemInfo,
 } from '@/features/editor/utils/latex-linter.util';
 
 describe('LaTeX Linter & Spellchecker Engine (Overleaf latexqc standards)', () => {
@@ -152,6 +154,86 @@ describe('LaTeX Linter & Spellchecker Engine (Overleaf latexqc standards)', () =
       expect(results.some((r) => r.code === 'REPEATED_WORD')).toBe(true);
       expect(results.some((r) => r.code === 'DEPRECATED_COMMAND')).toBe(true);
       expect(results.some((r) => r.code === 'UNCLOSED_ENV')).toBe(true);
+    });
+  });
+
+  describe('5. Retracted Citations Detection & Interception', () => {
+    const retractedMap = new Map<string, RetractedItemInfo>([
+      [
+        'wakefield1998',
+        {
+          title: 'Retracted Autism MMR Vaccine Paper',
+          reason: 'Falsified data and unethical conduct',
+          nature: 'retraction',
+        },
+      ],
+      [
+        'surgisphere2020',
+        {
+          title: 'Hydroxychloroquine COVID-19 Registry',
+          reason: 'Fraudulent database',
+          nature: 'retraction',
+        },
+      ],
+    ]);
+
+    it('should detect single LaTeX \\cite referencing a retracted paper', () => {
+      const text = '\\section{Introduction}\nAs shown in \\cite{wakefield1998}, the findings were reported.';
+      const diags = lintRetractedCitations(text, retractedMap);
+
+      expect(diags).toHaveLength(1);
+      expect(diags[0].code).toBe('RETRACTED_CITATION');
+      expect(diags[0].severity).toBe('warning');
+      expect(diags[0].startLineNumber).toBe(2);
+      expect(diags[0].message).toContain('wakefield1998');
+      expect(diags[0].message).toContain('Falsified data');
+    });
+
+    it('should detect retracted citation within multiple comma-separated keys', () => {
+      const text = 'Prior studies \\cite{cleanPaper2021, wakefield1998, anotherClean2023} noted this.';
+      const diags = lintRetractedCitations(text, retractedMap);
+
+      expect(diags).toHaveLength(1);
+      expect(diags[0].code).toBe('RETRACTED_CITATION');
+      expect(diags[0].message).toContain('wakefield1998');
+    });
+
+    it('should detect retracted citations with \\citep and \\citet variants', () => {
+      const text = 'Evidence was criticized \\citep[see][p. 12]{surgisphere2020}.';
+      const diags = lintRetractedCitations(text, retractedMap);
+
+      expect(diags).toHaveLength(1);
+      expect(diags[0].code).toBe('RETRACTED_CITATION');
+      expect(diags[0].message).toContain('surgisphere2020');
+    });
+
+    it('should detect Markdown Pandoc citation format [@key]', () => {
+      const text = 'According to recent data [@surgisphere2020] there were issues.';
+      const diags = lintRetractedCitations(text, retractedMap);
+
+      expect(diags).toHaveLength(1);
+      expect(diags[0].code).toBe('RETRACTED_CITATION');
+      expect(diags[0].message).toContain('surgisphere2020');
+    });
+
+    it('should ignore citations that are clean', () => {
+      const text = 'Reliable results were obtained in \\cite{einstein1905} and [@curie1898].';
+      const diags = lintRetractedCitations(text, retractedMap);
+
+      expect(diags).toHaveLength(0);
+    });
+
+    it('should integrate retracted diagnostics seamlessly into runLatexLinter', () => {
+      const text = '\\begin{document}\n\\cite{wakefield1998}\n\\end{document}';
+      const diags = runLatexLinter(text, {
+        enableStructureLint: true,
+        enableSpellCheck: false,
+        retractedItemsMap: retractedMap,
+      });
+
+      const retractionDiag = diags.find((d) => d.code === 'RETRACTED_CITATION');
+      expect(retractionDiag).toBeDefined();
+      expect(retractionDiag?.message).toContain('wakefield1998');
     });
   });
 });

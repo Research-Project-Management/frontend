@@ -207,17 +207,17 @@ export default function CitationPickerModal({
                 The paper <strong className="text-foreground font-semibold">"{interceptedItem?.title || 'Untitled'}"</strong> has been officially flagged as <span className="text-destructive font-semibold uppercase">{interceptedItem?.retractionNature || 'retracted'}</span>.
               </p>
 
-              {interceptedItem?.retractionDetails?.reason && (
+              {interceptedItem?.retractionDetails && (interceptedItem.retractionDetails as any).reason && (
                 <div className="p-2.5 rounded bg-destructive/10 border border-destructive/20 text-12 text-destructive">
-                  <strong>Stated Reason:</strong> {interceptedItem.retractionDetails.reason}
+                  <strong>Stated Reason:</strong> {String((interceptedItem.retractionDetails as any).reason)}
                 </div>
               )}
 
-              {interceptedItem?.retractionDetails?.noticeUrl && (
+              {interceptedItem?.retractionDetails && (interceptedItem.retractionDetails as any).noticeUrl && (
                 <p className="text-12 text-muted-foreground">
                   Official Notice:{' '}
                   <a
-                    href={interceptedItem.retractionDetails.noticeUrl}
+                    href={String((interceptedItem.retractionDetails as any).noticeUrl)}
                     target="_blank"
                     rel="noreferrer"
                     className="underline text-primary hover:text-primary/80"

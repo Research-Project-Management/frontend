@@ -17,10 +17,18 @@ export interface LatexLintDiagnostic {
   suggestions?: string[];
 }
 
+export interface RetractedItemInfo {
+  title?: string;
+  reason?: string;
+  nature?: string;
+  noticeUrl?: string;
+}
+
 export interface LatexLinterOptions {
   enableStructureLint?: boolean;
   enableSpellCheck?: boolean;
   userDictionary?: string[];
+  retractedItemsMap?: Map<string, RetractedItemInfo>;
 }
 
 // ── Deprecated LaTeX 2.09 Command Map ─────────────────────────────────────────
@@ -429,8 +437,94 @@ export function checkLatexSpelling(
 }
 
 /**
+ * Scans document for citations referencing known retracted publications.
+ * Detects \cite{...}, \citep{...}, etc. and Markdown [@key] citations.
+ */
+export function lintRetractedCitations(
+  text: string,
+  retractedMap: Map<string, RetractedItemInfo>,
+): LatexLintDiagnostic[] {
+  if (!text || !retractedMap || retractedMap.size === 0) return [];
+  const diagnostics: LatexLintDiagnostic[] = [];
+  const lines = text.split(/\r?\n/);
+
+  const latexCiteRegex = /\\(cite|citep|citet|parencite|textcite|nocite)(?:\[[^\]]*\])*\{([^}]+)\}/g;
+  const markdownCiteRegex = /@([a-zA-Z0-9_:.#$%&\-+?<>~/]+)/g;
+
+  lines.forEach((lineText, lineIdx) => {
+    const lineNum = lineIdx + 1;
+    const commentIdx = lineText.indexOf('%');
+    const activeText = commentIdx !== -1 ? lineText.slice(0, commentIdx) : lineText;
+
+    // 1. Check LaTeX \cite{...}
+    let match: RegExpExecArray | null;
+    latexCiteRegex.lastIndex = 0;
+    while ((match = latexCiteRegex.exec(activeText)) !== null) {
+      const fullCmd = match[0];
+      const keysRaw = match[2];
+      const keysStartOffset = match.index + fullCmd.indexOf(keysRaw);
+
+      let currentOffset = 0;
+      const rawParts = keysRaw.split(',');
+      for (const part of rawParts) {
+        const trimmedKey = part.trim();
+        const partIndexInRaw = keysRaw.indexOf(part, currentOffset);
+        currentOffset = partIndexInRaw + part.length;
+
+        if (trimmedKey && retractedMap.has(trimmedKey)) {
+          const info = retractedMap.get(trimmedKey);
+          const keyLeadingSpaces = part.indexOf(trimmedKey);
+          const startCol = keysStartOffset + partIndexInRaw + keyLeadingSpaces + 1;
+          const endCol = startCol + trimmedKey.length;
+
+          diagnostics.push({
+            startLineNumber: lineNum,
+            startColumn: startCol,
+            endLineNumber: lineNum,
+            endColumn: endCol,
+            message: `⚠️ Retracted Paper Warning: Citation '${trimmedKey}' (${info?.title ? `"${info.title}"` : 'Untitled'}) has been officially retracted${info?.reason ? `: ${info.reason}` : '.'}`,
+            severity: 'warning',
+            code: 'RETRACTED_CITATION',
+            suggestions: [`% Retracted: ${trimmedKey}`],
+          });
+        }
+      }
+    }
+
+    // 2. Check Markdown citations [@key]
+    markdownCiteRegex.lastIndex = 0;
+    while ((match = markdownCiteRegex.exec(activeText)) !== null) {
+      const citeKey = match[1];
+      if (retractedMap.has(citeKey)) {
+        const info = retractedMap.get(citeKey);
+        const startCol = match.index + 1;
+        const endCol = startCol + match[0].length;
+
+        const alreadyReported = diagnostics.some(
+          (d) => d.startLineNumber === lineNum && d.startColumn === startCol,
+        );
+        if (!alreadyReported) {
+          diagnostics.push({
+            startLineNumber: lineNum,
+            startColumn: startCol,
+            endLineNumber: lineNum,
+            endColumn: endCol,
+            message: `⚠️ Retracted Paper Warning: Citation '${citeKey}' (${info?.title ? `"${info.title}"` : 'Untitled'}) has been officially retracted${info?.reason ? `: ${info.reason}` : '.'}`,
+            severity: 'warning',
+            code: 'RETRACTED_CITATION',
+            suggestions: [],
+          });
+        }
+      }
+    }
+  });
+
+  return diagnostics;
+}
+
+/**
  * Main linter entry point: orchestrates syntax masking, structure linting,
- * and academic spellchecking.
+ * academic spellchecking, and retracted citation detection.
  */
 export function runLatexLinter(
   content: string,
@@ -442,6 +536,7 @@ export function runLatexLinter(
     enableStructureLint = true,
     enableSpellCheck = true,
     userDictionary = [],
+    retractedItemsMap,
   } = options;
 
   const results: LatexLintDiagnostic[] = [];
@@ -455,6 +550,11 @@ export function runLatexLinter(
     const masked = maskLatexSyntax(content);
     const spellDiagnostics = checkLatexSpelling(content, masked, userDictionary);
     results.push(...spellDiagnostics);
+  }
+
+  if (retractedItemsMap && retractedItemsMap.size > 0) {
+    const retractionDiagnostics = lintRetractedCitations(content, retractedItemsMap);
+    results.push(...retractionDiagnostics);
   }
 
   return results;

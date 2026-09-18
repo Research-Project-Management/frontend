@@ -6,7 +6,11 @@
  */
 
 import type { editor, IDisposable } from 'monaco-editor';
-import { runLatexLinter, type LatexLintDiagnostic } from '@/features/editor/utils/latex-linter.util';
+import {
+  runLatexLinter,
+  type LatexLintDiagnostic,
+  type RetractedItemInfo,
+} from '@/features/editor/utils/latex-linter.util';
 import { useSettingsStore } from '@/features/editor/store';
 
 let codeActionProviderDisposable: IDisposable | null = null;
@@ -17,6 +21,7 @@ let codeActionProviderDisposable: IDisposable | null = null;
 export function registerLatexLinter(
   ed: editor.IStandaloneCodeEditor,
   monaco: typeof import('monaco-editor'),
+  getRetractedItemsMap?: () => Map<string, RetractedItemInfo>,
 ): IDisposable {
   const disposables: IDisposable[] = [];
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -33,9 +38,11 @@ export function registerLatexLinter(
     }
 
     const content = model.getValue();
+    const retractedItemsMap = getRetractedItemsMap?.();
     const diagnostics = runLatexLinter(content, {
       enableStructureLint: linterEnabled,
       enableSpellCheck: spellCheck,
+      retractedItemsMap,
     });
 
     const markers: editor.IMarkerData[] = diagnostics.map((diag) => {
@@ -153,6 +160,28 @@ export function registerLatexLinter(
                 },
               });
             }
+          }
+
+          // Quick fix for retracted citation
+          if (marker.code === 'RETRACTED_CITATION') {
+            const raw = model.getValueInRange(marker);
+            actions.push({
+              title: `Comment out retracted citation '${raw}'`,
+              diagnostics: [marker],
+              kind: 'quickfix',
+              isPreferred: true,
+              edit: {
+                edits: [
+                  {
+                    resource: model.uri,
+                    textEdit: {
+                      range: marker,
+                      text: `% RETRACTED: ${raw}`,
+                    },
+                  },
+                ],
+              },
+            });
           }
         }
 

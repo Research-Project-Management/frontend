@@ -373,7 +373,24 @@ export default function Editor({ page }: EditorProps) {
     );
     disposablesRef.current.push(registerLatexSnippets(monaco));
     disposablesRef.current.push(registerLatexLinkedEditing(monaco));
-    disposablesRef.current.push(registerLatexLinter(editor, monaco));
+
+    const getRetractedItemsMap = () => {
+      const map = new Map<string, any>();
+      for (const it of libraryItemsRef.current) {
+        if (it.isRetracted && it.citationKey) {
+          map.set(it.citationKey, {
+            title: it.title,
+            reason: (it as any).retractionDetails?.reason,
+            nature: it.retractionNature,
+            noticeUrl: (it as any).retractionDetails?.noticeUrl,
+          });
+        }
+      }
+      return map;
+    };
+    disposablesRef.current.push(
+      registerLatexLinter(editor, monaco, getRetractedItemsMap),
+    );
     disposablesRef.current.push(registerMathHoverPreview(monaco));
 
     // Register decoration listeners

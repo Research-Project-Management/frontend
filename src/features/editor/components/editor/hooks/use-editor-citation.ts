@@ -108,16 +108,51 @@ export function useEditorCitation({
             const yearStr = p.year ? ` (${p.year})` : '';
             const venue = p.journal || p.publicationTitle || p.publisher || '';
             const title = p.title || 'Untitled Paper';
+            const isRetracted = Boolean(p.isRetracted);
+
+            const retractionWarningDoc = isRetracted
+              ? [
+                  `> ⚠️ **WARNING: RETRACTED PUBLICATION**`,
+                  `>`,
+                  `> This publication has been officially flagged as **${(p.retractionNature || 'retracted').toUpperCase()}**.`,
+                  p.retractionDetails?.reason ? `> **Reason:** ${p.retractionDetails.reason}` : null,
+                  p.retractionDetails?.noticeUrl ? `> **Official Notice:** [Publisher Statement](${p.retractionDetails.noticeUrl})` : null,
+                  `>`,
+                  `> *Citing discredited or retracted research without contextualizing its errors may undermine academic rigor.*`,
+                  `\n---`,
+                ]
+                  .filter(Boolean)
+                  .join('\n')
+              : '';
 
             return {
-              label: citeKey,
+              label: isRetracted
+                ? {
+                    label: citeKey,
+                    description: '⚠️ RETRACTED',
+                    detail: ` [RETRACTED] - ${title}`,
+                  }
+                : citeKey,
               kind: monaco.languages.CompletionItemKind.Reference,
-              detail: `${authors}${yearStr} — ${title}`,
+              detail: isRetracted
+                ? `⚠️ [RETRACTED] ${authors}${yearStr} — ${title}`
+                : `${authors}${yearStr} — ${title}`,
               documentation: {
-                value: `### ${title}\n\n**Authors:** ${authors}\n\n**Year:** ${p.year || 'N/A'}${venue ? `\n\n**Venue:** *${venue}*` : ''}${p.doi ? `\n\n**DOI:** [${p.doi}](https://doi.org/${p.doi})` : ''}${p.abstract ? `\n\n---\n*Abstract:*\n${p.abstract.slice(0, 300)}...` : ''}`,
+                value: [
+                  retractionWarningDoc,
+                  `### ${isRetracted ? '⚠️ [RETRACTED] ' : ''}${title}`,
+                  `**Authors:** ${authors}`,
+                  `**Year:** ${p.year || 'N/A'}`,
+                  venue ? `**Venue:** *${venue}*` : null,
+                  p.doi ? `**DOI:** [${p.doi}](https://doi.org/${p.doi})` : null,
+                  p.abstract ? `\n---\n*Abstract:*\n${p.abstract.slice(0, 300)}...` : null,
+                ]
+                  .filter(Boolean)
+                  .join('\n\n'),
               },
               insertText: citeKey,
               range,
+              sortText: isRetracted ? `zz_${citeKey}` : citeKey,
             };
           });
 

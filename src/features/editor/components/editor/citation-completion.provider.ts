@@ -1,4 +1,4 @@
-﻿import type * as Monaco from 'monaco-editor';
+import type * as Monaco from 'monaco-editor';
 import type { Item } from '@/features/library/types/library.types';
 import { detectCitationTrigger, formatItemAuthorSummary } from '../../utils/citation.util';
 
@@ -48,20 +48,39 @@ export function registerCitationCompletion(
             const authorYear = formatItemAuthorSummary(item);
             const yearStr = item.year ? ` (${item.year})` : '';
             const authorsList = item.authors?.join(', ') || 'Unknown Authors';
+            const isRetracted = Boolean(item.isRetracted);
+
+            const retractionWarningDoc = isRetracted
+              ? [
+                  `> ⚠️ **WARNING: RETRACTED PUBLICATION**`,
+                  `>`,
+                  `> This publication has been officially flagged as **${(item.retractionNature || 'retracted').toUpperCase()}**.`,
+                  item.retractionDetails?.reason ? `> **Reason:** ${item.retractionDetails.reason}` : null,
+                  item.retractionDetails?.noticeUrl ? `> **Official Notice:** [Publisher Statement](${item.retractionDetails.noticeUrl})` : null,
+                  `>`,
+                  `> *Citing discredited or retracted research without contextualizing its errors may compromise manuscript validity.*`,
+                  `\n---`,
+                ]
+                  .filter(Boolean)
+                  .join('\n')
+              : '';
 
             return {
               label: {
                 label: item.citationKey!,
-                description: `${authorYear}${yearStr}`,
-                detail: ` - ${item.title || 'Untitled'}`,
+                description: isRetracted ? '⚠️ RETRACTED' : `${authorYear}${yearStr}`,
+                detail: isRetracted ? ` [RETRACTED] - ${item.title || 'Untitled'}` : ` - ${item.title || 'Untitled'}`,
               },
               kind: monaco.languages.CompletionItemKind.Reference,
               insertText: item.citationKey!,
               range,
-              detail: `${item.title || 'Untitled'}\n${authorsList}${yearStr}`,
+              detail: isRetracted
+                ? `⚠️ [RETRACTED] ${item.title || 'Untitled'}\n${authorsList}${yearStr}`
+                : `${item.title || 'Untitled'}\n${authorsList}${yearStr}`,
               documentation: {
                 value: [
-                  `### ${item.title || 'Untitled'}`,
+                  retractionWarningDoc,
+                  `### ${isRetracted ? '⚠️ [RETRACTED] ' : ''}${item.title || 'Untitled'}`,
                   `**Authors:** ${authorsList}`,
                   item.journal ? `**Journal:** *${item.journal}*` : null,
                   item.year ? `**Year:** ${item.year}` : null,
@@ -72,7 +91,7 @@ export function registerCitationCompletion(
                   .join('\n\n'),
               },
               filterText: `${item.citationKey} ${item.title || ''} ${authorsList} ${item.year || ''}`,
-              sortText: item.citationKey,
+              sortText: isRetracted ? `zz_${item.citationKey}` : item.citationKey,
             };
           });
 

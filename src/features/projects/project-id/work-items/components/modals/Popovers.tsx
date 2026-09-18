@@ -219,7 +219,7 @@ export const ProjectSelectorPopover: React.FC<ProjectSelectorPopoverProps> = ({
         align="start"
         side="bottom"
         sideOffset={4}
-        className="w-64 p-1.5 rounded-lg border border-border bg-popover z-100 flex flex-col"
+        className="w-64 p-1.5 rounded-md border border-border bg-popover z-100 flex flex-col"
       >
         <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-background mb-1">
           <Search className="size-3.5 text-muted-foreground shrink-0" />
@@ -916,7 +916,7 @@ export function DatePopover({
         side="bottom"
         sideOffset={6}
         collisionPadding={16}
-        className="w-[520px] p-0 rounded-lg border border-border overflow-hidden flex flex-col z-100 bg-popover"
+        className="w-[520px] p-0 rounded-md border border-border overflow-hidden flex flex-col z-100 bg-popover"
       >
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0 bg-popover">
           <div className="flex items-center gap-2">

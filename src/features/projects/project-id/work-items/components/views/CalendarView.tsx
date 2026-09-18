@@ -73,7 +73,7 @@ function CalendarCard({ card }: CalendarCardProps) {
   const columnColor = resolveStateColor(card.columnId);
 
   return (
-    <div className="rounded-lg border border-border bg-card p-3 space-y-2 text-xs w-72">
+    <div className="rounded-md border border-border bg-card p-3 space-y-2 text-xs w-72">
       <div className="flex items-center justify-between gap-2">
         {card.identifier && (
           <span className="text-10 font-mono text-muted-foreground font-semibold">
@@ -742,7 +742,7 @@ export function CalendarView({
           {activeItem ? (
             <div 
               style={{ width: draggedWidth ?? 'auto' }} 
-              className="bg-card border border-border rounded-lg overflow-hidden opacity-90"
+              className="bg-card border border-border rounded-md overflow-hidden opacity-90"
             >
               <div className="relative flex items-center gap-2 px-3 py-1.5 text-xs font-medium leading-tight text-foreground">
                 <span

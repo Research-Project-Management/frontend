@@ -13,16 +13,16 @@ import { itemKeys } from './use-items';
 
 export const ingestKeys = {
   all: ['ingest'] as const,
-  status: (workspaceId: string, runId?: string) =>
-    ['ingest', workspaceId, runId || 'none'] as const,
+  status: (scopeId: string, runId?: string) =>
+    ['ingest', scopeId, runId || 'none'] as const,
 };
 
-export function useIngestion(workspaceId: string) {
+export function useIngestion(scopeId: string = 'user') {
   const queryClient = useQueryClient();
 
   const invalidateLibrary = () => {
-    queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
-    queryClient.invalidateQueries({ queryKey: ['library', workspaceId] });
+    queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
+    queryClient.invalidateQueries({ queryKey: ['library', scopeId] });
     queryClient.invalidateQueries({ queryKey: ['items'] });
     queryClient.invalidateQueries({ queryKey: ['papers'] });
   };
@@ -31,7 +31,7 @@ export function useIngestion(workspaceId: string) {
     for (let attempt = 0; attempt < 90; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 2000));
       try {
-        const response = await IngestionService.getRunStatus(workspaceId, runId);
+        const response = await IngestionService.getRunStatus(scopeId, runId);
         const snapshot: any = (response as any)?.data || response;
         const status = String(snapshot?.status || '').toUpperCase();
 
@@ -77,7 +77,7 @@ export function useIngestion(workspaceId: string) {
     UnifiedIngestionPayload
   >({
     mutationFn: (payload: UnifiedIngestionPayload) =>
-      IngestionService.ingest(workspaceId, payload),
+      IngestionService.ingest(scopeId, payload),
     onSuccess: (data, variables) => {
       invalidateLibrary();
       const runId = data?.data?.runId;
@@ -104,7 +104,7 @@ export function useIngestion(workspaceId: string) {
     Error,
     string
   >({
-    mutationFn: (url: string) => IngestionService.captureUrl(workspaceId, url),
+    mutationFn: (url: string) => IngestionService.captureUrl(scopeId, url),
     onError: (err: any) => {
       toast.error('URL capture failed', {
         description: err?.message || 'Could not parse document from URL.',
@@ -128,9 +128,9 @@ export function useIngestion(workspaceId: string) {
       collectionId?: string;
     }
   >({
-    mutationFn: (payload) => IngestionService.confirmUrl(workspaceId, payload),
+    mutationFn: (payload) => IngestionService.confirmUrl(scopeId, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
       toast.success('Document added', {
         description: 'Imported from URL into your library.',
         id: 'confirm-url',
@@ -168,17 +168,17 @@ export function useIngestion(workspaceId: string) {
 }
 
 export function useIngestStatus(
-  workspaceId: string | null,
+  scopeId: string | null,
   runId?: string | null,
   options?: { enabled?: boolean; refetchInterval?: number | false },
 ) {
   return useQuery<IngestionRunSnapshotResponse | null, Error>({
-    queryKey: ingestKeys.status(workspaceId || '', runId || ''),
+    queryKey: ingestKeys.status(scopeId || '', runId || ''),
     queryFn: () => {
-      if (!workspaceId || !runId) return Promise.resolve(null);
-      return IngestionService.getRunStatus(workspaceId, runId);
+      if (!scopeId || !runId) return Promise.resolve(null);
+      return IngestionService.getRunStatus(scopeId, runId);
     },
-    enabled: Boolean(workspaceId && runId && (options?.enabled ?? true)),
+    enabled: Boolean(scopeId && runId && (options?.enabled ?? true)),
     refetchInterval: (query) => {
       if (options?.refetchInterval !== undefined) return options.refetchInterval;
       const data = query.state.data;
@@ -205,14 +205,14 @@ import { CitationService } from '../services/citation.service';
  * Hook that wraps CitationService for identifier/DOI resolution.
  * Components call this; they never touch the service layer directly.
  */
-export function useResolveIdentifier(workspaceId?: string) {
+export function useResolveIdentifier(scopeId?: string) {
   const resolveMutation = useMutation<
     any,
     Error,
     { query: string }
   >({
     mutationFn: ({ query }) =>
-      CitationService.resolve(query, workspaceId),
+      CitationService.resolve(query, scopeId),
     onSuccess: (res) => {
       if (res?.metadata?.title) {
         toast.success('Metadata resolved', {

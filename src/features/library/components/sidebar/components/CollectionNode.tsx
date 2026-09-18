@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { FolderOpen, Folder, ChevronRight } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import type { TreeNode, CollectionActionHandlers } from '../types';
 import type { Collection } from '@/features/library/types/library.types';
 import { getValidMoveTargets } from '../utils/tree-helpers';
@@ -138,20 +139,33 @@ export function CollectionNode({
             style={{ paddingLeft: `${paddingLeft}px` }}
           >
             {hasChildren ? (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsOpen((v) => !v);
-                }}
-                aria-label={effectiveIsOpen ? `Collapse ${node.name}` : `Expand ${node.name}`}
-                className="flex size-4 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
-              >
-                <ChevronRight
-                  className={cn('size-3.5 transition-transform duration-150 shrink-0', effectiveIsOpen && 'rotate-90')}
-                />
-              </button>
+              <Tooltip delayDuration={700}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsOpen((v) => !v);
+                    }}
+                    aria-label={effectiveIsOpen ? `Collapse ${node.name}` : `Expand ${node.name}`}
+                    className="flex size-5 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer"
+                  >
+                    <ChevronRight
+                      className={cn('size-3.5 transition-transform duration-150 shrink-0', effectiveIsOpen && 'rotate-90')}
+                    />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  align="start"
+                  sideOffset={6}
+                  alignOffset={2}
+                  className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                >
+                  {effectiveIsOpen ? 'Collapse' : 'Expand'}
+                </TooltipContent>
+              </Tooltip>
             ) : depth > 0 ? (
-              <span className="size-4 shrink-0" />
+              <span className="size-5 shrink-0" />
             ) : null}
 
             <Link

@@ -77,6 +77,8 @@ export const collectionRelationSchema = z.object({
   description: z.string().nullable().optional(),
   color: z.string().optional(),
   icon: z.string().optional(),
+  projectId: z.string().optional(),
+  userId: z.string().optional(),
   workspaceId: z.string().optional(),
 });
 
@@ -183,6 +185,9 @@ export const itemSchema = z.object({
   thesisType: z.string().optional(),
   genre: z.string().optional(),
   filingDate: z.string().optional(),
+  issueDate: z.string().optional(),
+  priorityDate: z.string().optional(),
+  programmingLanguage: z.string().optional(),
   legalStatus: z.string().optional(),
   versionNumber: z.string().optional(),
   libraryCatalog: z.string().optional(),
@@ -221,7 +226,9 @@ export const itemSchema = z.object({
   collectionId: z.string().nullish(),
   uploadedBy: userSchema.optional(),
   user: userSchema.optional(),
+  userId: z.string().nullish(),
   projectId: z.string().nullish(),
+  scopeId: z.string().nullish(),
   deletedAt: z.string().nullish(),
   createdAt: z.string().optional().default(''),
   updatedAt: z.string().optional().default(''),

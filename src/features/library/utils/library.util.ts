@@ -1,4 +1,5 @@
 import type { Paper, Item, Note } from '../types/library.types';
+import { getVenueFieldForType } from '../schemas/item-type.schema';
 import {
   INSTITUTION_KEYWORDS,
   PREFIX_PARTICLES,
@@ -41,11 +42,12 @@ export function isProjectScope(scopeId?: string): scopeId is string {
  */
 export function getPaperFileUrl(
   paper?: Partial<Paper> | Partial<Item> | Record<string, any> | null | undefined,
-  workspaceId?: string,
+  scopeId?: string,
 ): string {
   if (!paper) return '';
 
-  const wsId = workspaceId || (paper as any)?.workspaceId;
+  const effectiveScope = scopeId || (paper as any)?.projectId || (paper as any)?.userId;
+  void effectiveScope;
 
   const normalizeUrl = (url?: string | null, fileId?: string | null): string => {
     if (fileId) {
@@ -742,7 +744,10 @@ function cleanSingleFrontendTag(raw: string): string | null {
  * Cleans mojibake, strips Wikipedia disambiguation suffixes, maps arXiv taxonomy codes,
  * and formats with Title Case and preserved acronyms.
  */
-export function normalizeTags(paper: Partial<Item> | null | undefined): string[] {
+export function normalizeTags(
+  paper: Partial<Item> | null | undefined,
+  maxTags?: number,
+): string[] {
   if (!paper) return [];
   const raw: unknown[] = [
     ...(Array.isArray(paper.tags) ? paper.tags : []),
@@ -758,8 +763,12 @@ export function normalizeTags(paper: Partial<Item> | null | undefined): string[]
     const s =
       typeof t === 'string'
         ? t
-        : t && typeof t === 'object' && 'name' in t && typeof (t as { name?: unknown }).name === 'string'
-          ? String((t as { name: string }).name)
+        : t && typeof t === 'object'
+          ? (typeof (t as any).tag === 'string'
+              ? (t as any).tag
+              : typeof (t as any).name === 'string'
+                ? (t as any).name
+                : '')
           : '';
     if (!s) continue;
     const parts = s.split(/[,;\n\r|•·]/).map((p: string) => p.trim()).filter(Boolean);
@@ -774,8 +783,7 @@ export function normalizeTags(paper: Partial<Item> | null | undefined): string[]
       }
     }
   }
-  // Cap at 4 most relevant tags to prevent tag spam / clutter
-  return result.slice(0, 4);
+  return typeof maxTags === 'number' && maxTags > 0 ? result.slice(0, maxTags) : result;
 }
 
 // ── 2. Notes Normalization ───────────────────────────────────────────────────
@@ -783,14 +791,18 @@ export function normalizeTags(paper: Partial<Item> | null | undefined): string[]
 export interface NormalizedNote {
   id: string;
   content: string;
+  contentMd?: string;
+  contentJson?: unknown;
+  note?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
 /**
  * Normalizes raw notes array into strongly-typed NormalizedNote objects.
+ * Aligned 100% with Zotero child note format (note: string HTML) and Flux Markdown notes.
  */
-export function normalizeNotes(notes?: Array<string | Note | { id?: string; content?: string }> | null): NormalizedNote[] {
+export function normalizeNotes(notes?: Array<string | Note | { id?: string; content?: string; note?: string }> | null): NormalizedNote[] {
   if (!Array.isArray(notes)) return [];
 
   return notes.map((note, index) => {
@@ -809,6 +821,7 @@ export function normalizeNotes(notes?: Array<string | Note | { id?: string; cont
     const rawContent =
       noteObj.content ||
       noteObj.contentMd ||
+      noteObj.note ||
       (typeof noteObj.contentJson === 'string' ? noteObj.contentJson : '') ||
       '';
     // Strip HTML tags for clean card preview if note originated from Zotero HTML (<p>...</p>)
@@ -819,8 +832,9 @@ export function normalizeNotes(notes?: Array<string | Note | { id?: string; cont
     return {
       id: note.id || `note-${index}`,
       content: cleanPreview,
-      contentMd: noteObj.contentMd || rawContent,
+      contentMd: noteObj.contentMd || (noteObj.note ? cleanPreview : rawContent),
       contentJson: noteObj.contentJson,
+      note: noteObj.note || `<p>${cleanPreview}</p>`,
       createdAt: (note as Note).createdAt || new Date().toISOString(),
       updatedAt: (note as Note).updatedAt,
     };
@@ -1093,4 +1107,183 @@ export function cleanAbstractText(text?: string | null): string {
   return normalizedParagraphs.join('\n\n').trim();
 }
 
+/**
+ * Resolves the canonical publication venue display text for an item according to Zotero Schema v42.
+ * Uses type-specific field mapping (e.g. proceedingsTitle for conferencePaper, bookTitle for bookSection,
+ * websiteTitle for webpage, repository for preprint/dataset, publicationTitle for journalArticle).
+ */
+export function getPublicationVenue(
+  item?: Partial<Item> | Partial<Paper> | Record<string, any> | null,
+): string {
+  if (!item) return '—';
+  const anyItem = item as Record<string, any>;
+  const rawItemType = anyItem.itemType || anyItem.item_type || anyItem.type || anyItem.cslType;
+  const itemType = String(rawItemType || 'journalArticle');
+  const typeLower = itemType.toLowerCase();
+  const ef = (anyItem.extraFields as Record<string, any>) || {};
 
+  // 1. Check type-specific mapped venue field from Zotero Schema v42
+  const venueField = getVenueFieldForType(itemType);
+  const directValue = anyItem[venueField] || ef[venueField];
+  if (directValue && typeof directValue === 'string' && directValue.trim()) {
+    return directValue.trim();
+  }
+
+  // 2. Type-specific semantic fallbacks (matching Zotero specifications)
+  if (typeLower === 'preprint') {
+    if (typeof anyItem.repository === 'string' && anyItem.repository.trim()) {
+      return anyItem.repository.trim();
+    }
+    if (typeof ef.repository === 'string' && ef.repository.trim()) {
+      return ef.repository.trim();
+    }
+    if (
+      typeof anyItem.publicationTitle === 'string' &&
+      anyItem.publicationTitle.trim() &&
+      !/^(ieee|acm)$/i.test(anyItem.publicationTitle.trim())
+    ) {
+      return anyItem.publicationTitle.trim();
+    }
+    const isArxiv = Boolean(
+      anyItem.arxivId ||
+        (typeof anyItem.doi === 'string' && anyItem.doi.includes('arXiv')) ||
+        (typeof anyItem.callNumber === 'string' && anyItem.callNumber.toLowerCase().startsWith('arxiv:')),
+    );
+    if (isArxiv) return 'arXiv';
+    return '—';
+  }
+
+  if (typeLower === 'conferencepaper') {
+    return (
+      (typeof anyItem.proceedingsTitle === 'string' && anyItem.proceedingsTitle.trim()) ||
+      (typeof anyItem.conferenceName === 'string' && anyItem.conferenceName.trim()) ||
+      (typeof ef.proceedingsTitle === 'string' && ef.proceedingsTitle.trim()) ||
+      (typeof ef.conferenceName === 'string' && ef.conferenceName.trim()) ||
+      (typeof anyItem.publicationTitle === 'string' && anyItem.publicationTitle.trim()) ||
+      '—'
+    );
+  }
+
+  if (typeLower === 'booksection') {
+    return (
+      (typeof anyItem.bookTitle === 'string' && anyItem.bookTitle.trim()) ||
+      (typeof ef.bookTitle === 'string' && ef.bookTitle.trim()) ||
+      (typeof anyItem.publicationTitle === 'string' && anyItem.publicationTitle.trim()) ||
+      '—'
+    );
+  }
+
+  if (typeLower === 'book') {
+    return (
+      (typeof anyItem.publisher === 'string' && anyItem.publisher.trim()) ||
+      (typeof ef.publisher === 'string' && ef.publisher.trim()) ||
+      (typeof anyItem.publicationTitle === 'string' && anyItem.publicationTitle.trim()) ||
+      '—'
+    );
+  }
+
+  if (typeLower === 'thesis') {
+    return (
+      (typeof anyItem.university === 'string' && anyItem.university.trim()) ||
+      (typeof anyItem.institution === 'string' && anyItem.institution.trim()) ||
+      (typeof ef.university === 'string' && ef.university.trim()) ||
+      (typeof ef.institution === 'string' && ef.institution.trim()) ||
+      (typeof anyItem.publisher === 'string' && anyItem.publisher.trim()) ||
+      '—'
+    );
+  }
+
+  if (typeLower === 'report') {
+    return (
+      (typeof anyItem.institution === 'string' && anyItem.institution.trim()) ||
+      (typeof ef.institution === 'string' && ef.institution.trim()) ||
+      (typeof anyItem.publisher === 'string' && anyItem.publisher.trim()) ||
+      '—'
+    );
+  }
+
+  if (typeLower === 'patent') {
+    return (
+      (typeof anyItem.issuingAuthority === 'string' && anyItem.issuingAuthority.trim()) ||
+      (typeof ef.issuingAuthority === 'string' && ef.issuingAuthority.trim()) ||
+      (typeof anyItem.assignee === 'string' && anyItem.assignee.trim()) ||
+      (typeof ef.assignee === 'string' && ef.assignee.trim()) ||
+      '—'
+    );
+  }
+
+  if (typeLower === 'webpage' || typeLower === 'blogpost') {
+    return (
+      (typeof anyItem.websiteTitle === 'string' && anyItem.websiteTitle.trim()) ||
+      (typeof anyItem.blogTitle === 'string' && anyItem.blogTitle.trim()) ||
+      (typeof ef.websiteTitle === 'string' && ef.websiteTitle.trim()) ||
+      (typeof ef.blogTitle === 'string' && ef.blogTitle.trim()) ||
+      (typeof anyItem.publicationTitle === 'string' && anyItem.publicationTitle.trim()) ||
+      '—'
+    );
+  }
+
+  // 3. General publication title or journal
+  const defaultVenue =
+    (typeof anyItem.publicationTitle === 'string' && anyItem.publicationTitle.trim()) ||
+    (typeof anyItem.journal === 'string' && anyItem.journal.trim()) ||
+    (typeof anyItem.publisher === 'string' && anyItem.publisher.trim());
+
+  return defaultVenue || '—';
+}
+
+/** Formats item type with proper words and casing (e.g. journalArticle -> Journal Article) */
+export function formatItemTypeLabel(rawType?: string | null): string {
+  if (!rawType) return '—';
+  const str = String(rawType).trim();
+  const withSpaces = str
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ');
+  return withSpaces
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Formats extra / extraFields into human-readable text instead of raw JSON brackets */
+export function formatExtraDisplay(paper: Item): string {
+  // 1. If paper.extra is a clean non-JSON string, use it
+  if (typeof paper.extra === 'string' && paper.extra.trim()) {
+    const trimmed = paper.extra.trim();
+    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+      return trimmed.replace(/\r?\n+/g, ', ');
+    }
+  }
+
+  // 2. Extract key-values from extraFields or parsed extra JSON
+  let fields: Record<string, unknown> | null = null;
+  if (paper.extraFields && typeof paper.extraFields === 'object' && !Array.isArray(paper.extraFields)) {
+    fields = paper.extraFields;
+  } else if (typeof paper.extra === 'string') {
+    const trimmed = paper.extra.trim();
+    if (trimmed.startsWith('{')) {
+      try {
+        fields = JSON.parse(trimmed) as Record<string, unknown>;
+      } catch {
+        // Ignore JSON error
+      }
+    }
+  }
+
+  if (fields && typeof fields === 'object') {
+    const parts: string[] = [];
+    for (const [k, v] of Object.entries(fields)) {
+      if (v !== null && v !== undefined && v !== '') {
+        const valStr = typeof v === 'object' ? JSON.stringify(v) : String(v);
+        const keyLabel = k
+          .replace(/([a-z])([A-Z])/g, '$1 $2')
+          .replace(/[_-]+/g, ' ');
+        parts.push(`${keyLabel}: ${valStr}`);
+      }
+    }
+    if (parts.length > 0) {
+      return parts.join(', ');
+    }
+  }
+
+  return '—';
+}

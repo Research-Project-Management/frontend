@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import {
   Button,
+  Checkbox,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -174,7 +175,7 @@ export function LibraryDisplayPopover({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
+          type="button"
           size="sm"
           className={cn(
             "h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shadow-2xs shrink-0 select-none inline-flex items-center justify-center",
@@ -190,14 +191,14 @@ export function LibraryDisplayPopover({
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-72 p-3 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 z-50 flex flex-col gap-2.5 select-none font-sans no-scrollbar max-h-[calc(100vh-2rem)] overflow-y-auto"
+        className="w-68 sm:w-72 max-h-[85vh] overflow-y-auto p-2 rounded-md text-12 border-border bg-popover shadow-none space-y-1.5 select-none font-sans no-scrollbar"
       >
         {/* 1. Display Properties (Columns) */}
-        <div className="shrink-0">
+        <div>
           <button
             type="button"
             onClick={() => setColumnsOpen(!columnsOpen)}
-            className="flex w-full items-center justify-between py-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+            className="flex w-full items-center justify-between px-1 py-0.5 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
           >
             <span>Columns</span>
             {columnsOpen ? (
@@ -208,8 +209,8 @@ export function LibraryDisplayPopover({
           </button>
 
           {columnsOpen && (
-            <div className="flex flex-wrap gap-1.5 pt-1.5 select-none">
-              <span className="px-2.5 py-1 rounded-md text-11 font-medium bg-muted text-muted-foreground border border-transparent cursor-not-allowed select-none">
+            <div className="flex flex-wrap items-center gap-1 pt-1 px-0.5 select-none">
+              <span className="h-6 px-2 text-11 font-medium rounded-md bg-muted text-muted-foreground border border-transparent cursor-not-allowed select-none inline-flex items-center justify-center">
                 Title
               </span>
               {COLUMN_ITEMS.map((item) => {
@@ -218,12 +219,13 @@ export function LibraryDisplayPopover({
                   <button
                     key={item.key}
                     type="button"
+                    aria-pressed={isSelected}
                     onClick={() => handleColumnToggle(item.key)}
                     className={cn(
-                      "px-2.5 py-1 rounded-md text-11 font-medium border transition-colors cursor-pointer select-none",
+                      "h-6 px-2 text-11 font-medium rounded-md border transition-colors cursor-pointer select-none inline-flex items-center justify-center",
                       isSelected
-                        ? "bg-primary border-primary text-primary-foreground font-semibold"
-                        : "bg-background border-border text-foreground hover:bg-muted font-normal"
+                        ? "border-primary bg-primary text-primary-foreground font-semibold"
+                        : "border-border/70 bg-background text-foreground hover:bg-muted font-normal"
                     )}
                   >
                     {item.label}
@@ -234,79 +236,82 @@ export function LibraryDisplayPopover({
           )}
         </div>
 
+        <div className="border-t border-border/50 my-0.5" />
+
         {/* 2. Order by */}
-        <div className="border-t border-border pt-2 shrink-0">
-          <div className="flex items-center justify-between py-1">
+        <div>
+          <div className="flex w-full items-center justify-between px-1 py-0.5 text-12 font-medium text-foreground select-none">
             <button
               type="button"
               onClick={() => setOrderByOpen(!orderByOpen)}
-              className="flex items-center gap-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+              className="hover:text-foreground/80 transition-colors cursor-pointer text-12 font-medium"
             >
               <span>Order by</span>
-              {orderByOpen ? (
-                <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
-              ) : (
-                <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
-              )}
             </button>
 
-            <button
-              type="button"
-              onClick={toggleOrderDirection}
-              className="size-6 flex items-center justify-center rounded-md border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer shadow-2xs"
-              title={orderDirection === 'asc' ? 'Ascending (A to Z / Low to High)' : 'Descending (Z to A / High to Low)'}
-              aria-label="Toggle sort direction"
-            >
-              {orderDirection === 'asc' ? (
-                <ArrowUpNarrowWide className="size-3 text-foreground shrink-0" />
-              ) : (
-                <ArrowDownNarrowWide className="size-3 text-foreground shrink-0" />
-              )}
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={toggleOrderDirection}
+                className="size-6 flex items-center justify-center rounded-md border border-border hover:bg-muted text-foreground transition-colors cursor-pointer shadow-2xs"
+                title={orderDirection === 'asc' ? 'Ascending (A to Z / Low to High)' : 'Descending (Z to A / High to Low)'}
+                aria-label="Toggle sort direction"
+              >
+                {orderDirection === 'asc' ? (
+                  <ArrowUpNarrowWide className="size-3 text-foreground shrink-0" />
+                ) : (
+                  <ArrowDownNarrowWide className="size-3 text-foreground shrink-0" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setOrderByOpen(!orderByOpen)}
+                className="p-0.5 text-foreground hover:text-foreground/80 transition-colors cursor-pointer"
+                aria-label={orderByOpen ? "Collapse order by" : "Expand order by"}
+              >
+                {orderByOpen ? (
+                  <ChevronUp className="size-3.5 shrink-0" />
+                ) : (
+                  <ChevronDown className="size-3.5 shrink-0" />
+                )}
+              </button>
+            </div>
           </div>
 
           {orderByOpen && (
-            <div role="radiogroup" aria-label="Order by" className="space-y-0.5 pt-1">
+            <div className="space-y-0.5 pt-0.5 select-none">
               {ORDER_BY_OPTIONS.map((opt) => {
                 const isSelected = orderBy === opt.value;
                 return (
-                  <button
+                  <label
                     key={opt.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    onClick={() => handleOrderByChange(opt.value)}
                     className={cn(
-                      "flex w-full items-center gap-2.5 py-1.5 px-2 rounded-md text-12 transition-colors cursor-pointer select-none",
-                      isSelected
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      "flex w-full items-center gap-2 py-1 px-1.5 rounded-md text-12 text-foreground transition-colors cursor-pointer select-none hover:bg-muted/50",
+                      isSelected ? "font-medium" : "font-normal"
                     )}
                   >
-                    <div
-                      className={cn(
-                        "size-3.5 rounded-full border flex items-center justify-center shrink-0 transition-colors",
-                        isSelected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-background"
-                      )}
-                    >
-                      {isSelected && <Check className="size-2 text-primary-foreground stroke-[3] shrink-0" />}
-                    </div>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => handleOrderByChange(opt.value)}
+                      className="size-4 rounded-sm border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary cursor-pointer"
+                    />
                     <span>{opt.label}</span>
-                  </button>
+                  </label>
                 );
               })}
             </div>
           )}
         </div>
 
+        <div className="border-t border-border/50 my-0.5" />
+
         {/* 3. Density */}
-        <div className="border-t border-border pt-2 shrink-0">
+        <div>
           <button
             type="button"
             onClick={() => setDensityOpen(!densityOpen)}
-            className="flex w-full items-center justify-between py-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+            className="flex w-full items-center justify-between px-1 py-0.5 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
           >
             <span>Density</span>
             {densityOpen ? (
@@ -317,38 +322,27 @@ export function LibraryDisplayPopover({
           </button>
 
           {densityOpen && (
-            <div role="radiogroup" aria-label="Density" className="space-y-0.5 pt-1">
+            <div className="space-y-0.5 pt-0.5 select-none">
               {[
                 { value: 'comfortable' as const, label: 'Comfortable' },
                 { value: 'compact' as const, label: 'Compact' },
               ].map((item) => {
                 const isSelected = density === item.value;
                 return (
-                  <button
+                  <label
                     key={item.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    onClick={() => handleDensityChange(item.value)}
                     className={cn(
-                      "flex w-full items-center gap-2.5 py-1.5 px-2 rounded-md text-12 transition-colors cursor-pointer select-none",
-                      isSelected
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      "flex w-full items-center gap-2 py-1 px-1.5 rounded-md text-12 text-foreground transition-colors cursor-pointer select-none hover:bg-muted/50",
+                      isSelected ? "font-medium" : "font-normal"
                     )}
                   >
-                    <div
-                      className={cn(
-                        "size-3.5 rounded-sm border flex items-center justify-center shrink-0 transition-colors",
-                        isSelected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-background"
-                      )}
-                    >
-                      {isSelected && <Check className="size-2.5 text-primary-foreground stroke-[3] shrink-0" />}
-                    </div>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => handleDensityChange(item.value)}
+                      className="size-4 rounded-sm border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary cursor-pointer"
+                    />
                     <span>{item.label}</span>
-                  </button>
+                  </label>
                 );
               })}
             </div>

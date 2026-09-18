@@ -210,7 +210,7 @@ export function ProjectFilterPopover({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search"
-            className="h-8 w-full pl-8 pr-2.5 text-xs bg-muted hover:bg-muted focus:bg-background border border-border rounded-md outline-none focus:ring-1 focus:ring-ring transition-colors placeholder:text-muted-foreground/60 text-foreground"
+            className="h-8 w-full pl-8 pr-2.5 text-xs bg-background border border-border rounded-md outline-none focus:outline-none focus:border-border focus:ring-0 placeholder:text-muted-foreground text-foreground shadow-none"
           />
         </div>
 

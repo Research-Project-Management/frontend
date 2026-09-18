@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { cn } from "@/shared/lib/utils";
 import {
-  BookOpen,
   FolderOpen,
   ChevronRight,
   MoreHorizontal,
@@ -18,8 +17,8 @@ import {
   Link2,
   PanelRight,
 } from "lucide-react";
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
+import { LibraryIcon } from "@/shared/components/icons";
+import { Button, Input } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +48,8 @@ export interface TopbarProps {
   showDisplay?: boolean;
   displayOptions?: LibraryDisplayOptions;
   onDisplayOptionsChange?: (options: LibraryDisplayOptions) => void;
+  scopeId?: string;
+  projectId?: string;
   workspaceId?: string;
   items?: Item[];
   onAddPaper?: (mode?: 'file' | 'folder' | 'link') => void;
@@ -67,7 +68,7 @@ export interface TopbarProps {
 
 export default function Topbar({
   title,
-  icon: Icon = BookOpen,
+  icon: Icon = LibraryIcon,
   breadcrumbs,
   search = "",
   onSearchChange,
@@ -76,6 +77,8 @@ export default function Topbar({
   showDisplay = true,
   displayOptions,
   onDisplayOptionsChange,
+  scopeId: propScopeId,
+  projectId: propProjectId,
   workspaceId: propWorkspaceId,
   items,
   onAddPaper,
@@ -93,7 +96,7 @@ export default function Topbar({
 }: TopbarProps) {
   const { isInspectorOpen, toggleInspector } = useLibrarySidebarStore();
   const params = useParams() as { collectionId?: string };
-  const effectiveWorkspaceId = propWorkspaceId || 'user';
+  const effectiveScopeId = propScopeId || propProjectId || propWorkspaceId || 'user';
 
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -231,7 +234,7 @@ export default function Topbar({
 
       {/* Right Section: Search & Actions */}
       <div className="flex items-center gap-2.5 shrink-0">
-        {/* Search Input (Standard expandable workspace search) */}
+        {/* Search Input (Standard expandable library search) */}
         {onSearchChange !== undefined && (
           <div
             className={cn(
@@ -282,7 +285,7 @@ export default function Topbar({
 
         {/* Academic Library Multi-Criteria Filter */}
         {showFilter && (
-          <LibraryFilterPopover workspaceId={effectiveWorkspaceId} items={items} />
+          <LibraryFilterPopover scopeId={effectiveScopeId} items={items} />
         )}
 
         {/* Academic Library Display Options */}
@@ -311,7 +314,7 @@ export default function Topbar({
               {onAddCollection && (
                 <DropdownMenuItem
                   onClick={onAddCollection}
-                  className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                 >
                   <FolderPlus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                   <span className="text-foreground">{isSubcollection ? "New Subcollection" : "New Collection"}</span>
@@ -322,7 +325,7 @@ export default function Topbar({
               {(onDirectFilesUpload || onAddPaper) && (
                 <DropdownMenuItem
                   onClick={handleAddFileClick}
-                  className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                 >
                   <FileUp className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                   <span className="text-foreground">Upload Files</span>
@@ -331,7 +334,7 @@ export default function Topbar({
               {(onDirectFolderUpload || onAddPaper) && (
                 <DropdownMenuItem
                   onClick={handleAddFolderClick}
-                  className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                 >
                   <FolderUp className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                   <span className="text-foreground">Upload Folder</span>
@@ -340,7 +343,7 @@ export default function Topbar({
               {(onAddLink || onAddPaper) && (
                 <DropdownMenuItem
                   onClick={handleAddLinkClick}
-                  className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                 >
                   <Link2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                   <span className="text-foreground">Add Link</span>
@@ -351,7 +354,7 @@ export default function Topbar({
               {onImportFromPersonal && (
                 <DropdownMenuItem
                   onClick={onImportFromPersonal}
-                  className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                 >
                   <FolderInput className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                   <span className="text-foreground">Import from My Library</span>
@@ -363,28 +366,25 @@ export default function Topbar({
 
         {children}
 
-        {/* Line dọc ngăn cách với item: mỏng mặc định 1px, khoảng cách 2 bên với item giảm 1 nửa */}
-        {showInspectorToggle && (
-          <div className="flex items-center gap-[5px] shrink-0 -ml-[5px]">
-            <div className="h-4 border-l border-border shrink-0" />
-            <Tooltip delayDuration={200}>
+        {/* Line dọc ngăn cách giữa button New và icon đóng mở: line gốc mỏng 1px (border-l border-border), căn giữa chuẩn quang học 12px mỗi bên */}
+        {showInspectorToggle && !isInspectorOpen && (
+          <div className="flex items-center gap-1 shrink-0 ml-0.5">
+            <div className="h-4 border-l border-border shrink-0" aria-hidden="true" />
+            <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
                   onClick={onToggleInspector || toggleInspector}
-                  className={cn(
-                    "size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0",
-                    isInspectorOpen && "bg-muted"
-                  )}
-                  aria-label={isInspectorOpen ? "Collapse inspector" : "Expand inspector"}
+                  className="size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0"
+                  aria-label="Expand inspector"
                 >
                   <PanelRight className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={6} className="text-12">
-                {isInspectorOpen ? "Collapse inspector" : "Expand inspector"}
+              <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm">
+                Expand inspector
               </TooltipContent>
             </Tooltip>
           </div>

@@ -105,7 +105,10 @@ export default function ProcessModal({
                 {items.map((item, idx) => {
                   const isItemSuccess = item.status === 'SUCCEEDED';
                   const isItemFailed = item.status === 'FAILED';
-                  const isItemActive = idx === activeIndex;
+                  const isItemProcessing =
+                    (item.status as string) === 'PROCESSING' ||
+                    (item.status as string) === 'UPLOADING' ||
+                    (idx === activeIndex && !isItemSuccess && !isItemFailed);
 
                   return (
                     <div
@@ -116,7 +119,7 @@ export default function ProcessModal({
                       <div className="flex items-center gap-2 min-w-0">
                         {isItemSuccess ? (
                           <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                        ) : isItemActive ? (
+                        ) : isItemProcessing ? (
                           <RefreshCw className="size-3.5 text-foreground animate-spin [animation-duration:2s] shrink-0" />
                         ) : isItemFailed ? (
                           <AlertCircle className="size-3.5 text-destructive shrink-0" />
@@ -140,9 +143,9 @@ export default function ProcessModal({
                           >
                             {(item as any).itemName || item.title}
                           </span>
-                        ) : isItemActive ? (
+                        ) : isItemProcessing ? (
                           <span className="text-foreground text-12 font-normal">
-                            Processing...
+                            {(item.status as string) === 'UPLOADING' ? 'Uploading...' : 'Processing...'}
                           </span>
                         ) : isItemFailed ? (
                           <span

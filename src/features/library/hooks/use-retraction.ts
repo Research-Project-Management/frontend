@@ -6,19 +6,19 @@ import { RetractionService } from '../services/retraction.service';
 import type { FlagRetractionInput } from '../types/library.types';
 
 export const retractionKeys = {
-  all: (workspaceId?: string) => ['retraction', workspaceId || 'user'] as const,
-  stats: (workspaceId?: string) => ['retraction', workspaceId || 'user', 'stats'] as const,
-  items: (workspaceId?: string) => ['retraction', workspaceId || 'user', 'items'] as const,
+  all: (scopeId?: string) => ['retraction', scopeId || 'user'] as const,
+  stats: (scopeId?: string) => ['retraction', scopeId || 'user', 'stats'] as const,
+  items: (scopeId?: string) => ['retraction', scopeId || 'user', 'items'] as const,
 };
 
-export const invalidateRetraction = (qc: QueryClient, workspaceId?: string) => {
-  qc.invalidateQueries({ queryKey: retractionKeys.all(workspaceId) });
-  qc.invalidateQueries({ queryKey: ['items', workspaceId || 'user'] });
+export const invalidateRetraction = (qc: QueryClient, scopeId?: string) => {
+  qc.invalidateQueries({ queryKey: retractionKeys.all(scopeId) });
+  qc.invalidateQueries({ queryKey: ['items', scopeId || 'user'] });
 };
 
-export function useRetraction(workspaceId?: string) {
+export function useRetraction(scopeId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = workspaceId || 'user';
+  const effectiveScope = scopeId || 'user';
 
   const statsQuery = useQuery({
     queryKey: retractionKeys.stats(effectiveScope),
@@ -35,7 +35,7 @@ export function useRetraction(workspaceId?: string) {
   const checkItemMutation = useMutation({
     mutationFn: (itemId: string) => RetractionService.checkItem(effectiveScope, itemId),
     onSuccess: (data) => {
-      invalidateRetraction(queryClient, workspaceId);
+      invalidateRetraction(queryClient, scopeId);
       if (data.isRetracted) {
         toast.error('Retraction detected!', {
           description: `This publication was flagged as ${data.nature || 'retracted'}.`,
@@ -51,13 +51,13 @@ export function useRetraction(workspaceId?: string) {
     },
   });
 
-  const checkWorkspaceMutation = useMutation({
-    mutationFn: (itemIds?: string[]) => RetractionService.checkWorkspace(effectiveScope, itemIds),
+  const checkLibraryMutation = useMutation({
+    mutationFn: (itemIds?: string[]) => RetractionService.checkLibrary(effectiveScope, itemIds),
     onSuccess: (res) => {
-      invalidateRetraction(queryClient, workspaceId);
+      invalidateRetraction(queryClient, scopeId);
       if (res.newlyRetracted > 0) {
         toast.warning(`Scan completed: ${res.newlyRetracted} retracted item(s) found!`, {
-          description: `Scanned ${res.scanned} publications in this workspace.`,
+          description: `Scanned ${res.scanned} publications in this library.`,
         });
       } else {
         toast.success(`Scan completed: All ${res.scanned} publications clear`, {
@@ -66,7 +66,7 @@ export function useRetraction(workspaceId?: string) {
       }
     },
     onError: (err: any) => {
-      toast.error('Workspace scan failed', { description: err?.message });
+      toast.error('Library scan failed', { description: err?.message });
     },
   });
 
@@ -74,7 +74,7 @@ export function useRetraction(workspaceId?: string) {
     mutationFn: ({ itemId, data }: { itemId: string; data: FlagRetractionInput }) =>
       RetractionService.flagItem(effectiveScope, itemId, data),
     onSuccess: () => {
-      invalidateRetraction(queryClient, workspaceId);
+      invalidateRetraction(queryClient, scopeId);
       toast.warning('Item flagged as retracted');
     },
     onError: (err: any) => {
@@ -85,7 +85,7 @@ export function useRetraction(workspaceId?: string) {
   const unflagMutation = useMutation({
     mutationFn: (itemId: string) => RetractionService.unflagItem(effectiveScope, itemId),
     onSuccess: () => {
-      invalidateRetraction(queryClient, workspaceId);
+      invalidateRetraction(queryClient, scopeId);
       toast.success('Retraction flag removed');
     },
     onError: (err: any) => {
@@ -99,11 +99,11 @@ export function useRetraction(workspaceId?: string) {
     isLoadingStats: statsQuery.isLoading,
     isLoadingItems: itemsQuery.isLoading,
     checkItem: checkItemMutation.mutateAsync,
-    checkWorkspace: checkWorkspaceMutation.mutateAsync,
+    checkLibrary: checkLibraryMutation.mutateAsync,
     flagItem: flagMutation.mutateAsync,
     unflagItem: unflagMutation.mutateAsync,
     isCheckingItem: checkItemMutation.isPending,
-    isCheckingWorkspace: checkWorkspaceMutation.isPending,
+    isCheckingLibrary: checkLibraryMutation.isPending,
     isFlagging: flagMutation.isPending,
     isUnflagging: unflagMutation.isPending,
   };

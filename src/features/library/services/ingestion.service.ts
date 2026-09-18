@@ -179,7 +179,10 @@ export interface IngestionProgressItem {
 
 export interface IngestionProgressResponse {
   runId: string;
-  workspaceId: string;
+  scopeId?: string;
+  projectId?: string;
+  userId?: string;
+  workspaceId?: string;
   status: string;
   total: number;
   processed: number;

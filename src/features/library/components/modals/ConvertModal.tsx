@@ -54,14 +54,14 @@ export function ConvertModal({
   const currentItem = item || paper;
   const itemId = currentItem?.id || '';
   const itemType = currentItem?.itemType || (currentItem as unknown as { type?: string })?.type || 'journalArticle';
-  const workspaceId = currentItem?.workspaceId || '';
+  const scopeId = currentItem?.projectId || (currentItem as any)?.userId || 'user';
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [preview, setPreview] = useState<TypeConversionPreview | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [retainUnmapped, setRetainUnmapped] = useState(true);
 
-  const { previewAsync, convertAsync, isConverting } = useItemTypeConversion(workspaceId);
+  const { previewAsync, convertAsync, isConverting } = useItemTypeConversion(scopeId);
 
   const targetTypeName = useMemo(() => {
     return ALL_ITEM_TYPES_FLAT.find((t) => t.value === targetType)?.label || targetType;

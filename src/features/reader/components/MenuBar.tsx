@@ -18,6 +18,8 @@ import {
 import { cn } from "@/shared/lib/utils";
 import { useLibrarySidebarStore } from '@/features/library/store/sidebar.store';
 import { useReaderStore } from '@/features/reader/store/reader.store';
+import { ExportService } from '@/features/library/services/exports.service';
+import { toast } from 'sonner';
 
 export function FluxLogo({ className }: { className?: string }) {
   return (
@@ -105,6 +107,18 @@ export function MenuBar() {
     }
   };
 
+  const handleExportAnnotatedPdf = async () => {
+    if (!activeTabId || activeTabId === 'library') return;
+    const currentTab = tabs.find((t) => t.id === activeTabId);
+    toast.loading('Exporting PDF with annotations...', { id: 'export-annotated-pdf' });
+    try {
+      await ExportService.downloadAnnotatedPdf('me', activeTabId, `${currentTab?.title || 'document'}-annotated.pdf`);
+      toast.success('Annotated PDF exported successfully', { id: 'export-annotated-pdf' });
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to export annotated PDF', { id: 'export-annotated-pdf' });
+    }
+  };
+
   return (
     <div className="h-7 shrink-0 border-b border-border bg-muted px-2 flex items-center justify-between select-none z-40 text-12">
       <div className="flex items-center gap-1">
@@ -155,6 +169,14 @@ export function MenuBar() {
               <MenubarItem onClick={() => router.push('/library')} className="text-11 cursor-pointer">
                 Export Library...
                 <MenubarShortcut>Ctrl+E</MenubarShortcut>
+              </MenubarItem>
+              <MenubarItem
+                onClick={handleExportAnnotatedPdf}
+                disabled={!isReader}
+                className="text-11 cursor-pointer"
+              >
+                Export PDF with Annotations...
+                <MenubarShortcut>Ctrl+Shift+E</MenubarShortcut>
               </MenubarItem>
               <MenubarSeparator />
               <MenubarItem

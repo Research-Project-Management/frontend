@@ -18,16 +18,19 @@ export const RelationsService = {
   link: (
     scopeId: string,
     itemId: string,
-    targetItemId: string,
+    targetItemId: string | string[],
     relationType: string = 'related',
   ) => {
     const isProject = scopeId && scopeId !== 'user';
     const basePath = isProject
       ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/items`
       : `/api/v1/library/items`;
-    return apiPost<{ message: string; relationType: string }>(
+    const payload = Array.isArray(targetItemId)
+      ? { targetItemIds: targetItemId, relationType }
+      : { targetItemId, relationType };
+    return apiPost<{ message: string; relationType?: string; totalLinked?: number }>(
       `${basePath}/${encodeURIComponent(itemId)}/relations`,
-      { targetItemId, relationType },
+      payload,
     );
   },
 

@@ -87,6 +87,8 @@ export function StoragePageTemplate({
       <StorageViewContainer
         isLoading={isFilesLoading && !data}
         viewProps={viewProps}
+        searchQuery={searchQuery}
+        onClearSearch={() => setSearchQuery('')}
       />
       <BulkActionBar items={files} isTrash={isTrash} />
     </div>

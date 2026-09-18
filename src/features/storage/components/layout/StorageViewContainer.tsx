@@ -6,14 +6,20 @@ import ListView, { type StorageViewProps } from '../views/ListView';
 import GridView from '../views/GridView';
 import { useViewStore } from '../../store/use-view-store';
 
+import StorageEmptyState from './StorageEmptyState';
+
 export interface StorageViewContainerProps {
   isLoading: boolean;
   viewProps: StorageViewProps;
+  searchQuery?: string;
+  onClearSearch?: () => void;
 }
 
 export function StorageViewContainer({
   isLoading,
   viewProps,
+  searchQuery = '',
+  onClearSearch,
 }: StorageViewContainerProps) {
   const { view } = useViewStore();
 
@@ -28,6 +34,13 @@ export function StorageViewContainer({
             ))}
           </div>
         </div>
+      ) : viewProps.items.length === 0 ? (
+        <StorageEmptyState
+          searchQuery={searchQuery}
+          onClearSearch={onClearSearch}
+          isTrash={viewProps.isTrash}
+          isReadOnly={viewProps.isReadOnly}
+        />
       ) : view === 'list' ? (
         <ListView {...viewProps} />
       ) : (

@@ -3,7 +3,8 @@ import type { ItemStateData } from '../types/library.types';
 export type { ItemStateData };
 
 export const StateService = {
-  getState: async (_workspaceId: string, itemId: string): Promise<ItemStateData | null> => {
+  getState: async (_scopeId?: string, itemId?: string): Promise<ItemStateData | null> => {
+    if (!itemId) return null;
     const res = await apiGet<ItemStateData | { data: ItemStateData }>(
       `/api/v1/library/items/${encodeURIComponent(itemId)}/state`,
     );
@@ -11,21 +12,23 @@ export const StateService = {
   },
 
   updateState: async (
-    _workspaceId: string,
-    itemId: string,
-    data: {
+    _scopeId?: string,
+    itemId?: string,
+    data?: {
       readStatus?: 'unread' | 'reading' | 'completed';
       rating?: number;
     },
   ): Promise<ItemStateData> => {
+    if (!itemId) throw new Error('itemId is required');
     const res = await apiPatch<ItemStateData | { data: ItemStateData }>(
       `/api/v1/library/items/${encodeURIComponent(itemId)}/state`,
-      data,
+      data ?? {},
     );
     return (res as any)?.data ?? res;
   },
 
-  markAsRead: async (_workspaceId: string, itemId: string): Promise<ItemStateData> => {
+  markAsRead: async (_scopeId?: string, itemId?: string): Promise<ItemStateData> => {
+    if (!itemId) throw new Error('itemId is required');
     const res = await apiPost<ItemStateData | { data: ItemStateData }>(
       `/api/v1/library/items/${encodeURIComponent(itemId)}/state/read`,
       {},
@@ -38,12 +41,12 @@ export const StateService = {
    * Backed by POST /api/v1/library/items/state/batch
    */
   batchStates: async (
-    _workspaceId: string,
-    itemIds: string[],
+    _scopeId?: string,
+    itemIds?: string[],
   ): Promise<Record<string, ItemStateData>> => {
     const res = await apiPost<
       Record<string, ItemStateData> | { data: Record<string, ItemStateData> }
-    >(`/api/v1/library/items/state/batch`, { itemIds });
+    >(`/api/v1/library/items/state/batch`, { itemIds: itemIds ?? [] });
     return (res as any)?.data ?? res ?? {};
   },
 };

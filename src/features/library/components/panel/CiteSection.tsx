@@ -22,6 +22,8 @@ import { getPaperCitationKey, cleanDoi } from '@/features/library/utils/library.
 
 export interface CiteSectionProps {
   paper: Item;
+  scopeId?: string;
+  projectId?: string;
   workspaceId?: string;
   hideHeader?: boolean;
 }
@@ -133,7 +135,7 @@ function sanitizeCslHtml(html?: string): string {
   });
 }
 
-export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
+export default function CiteSection({ paper, scopeId, projectId, workspaceId }: CiteSectionProps) {
   const [activeFormat, setActiveFormat] = useState<CitationFormat>('apa');
   const [copied, setCopied] = useState(false);
   const [copiedInText, setCopiedInText] = useState(false);
@@ -142,7 +144,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
   const measureRef = useRef<HTMLDivElement>(null);
   const [visibleCount, setVisibleCount] = useState<number>(4);
 
-  const activeWorkspaceId = workspaceId || paper?.workspaceId || '';
+  const activeScopeId = scopeId || projectId || (paper as any)?.projectId || workspaceId || 'user';
   const isExportFormat = activeFormat === 'bibtex' || activeFormat === 'ris';
 
   // All citation formats are rendered by the backend CSL engine.
@@ -150,7 +152,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
   const currentCslStyle = activeFormat as CslStyle;
 
   const { data: cslData, isLoading } = useCslCitation(
-    activeWorkspaceId,
+    activeScopeId,
     paper?.id || '',
     currentCslStyle,
   );

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Users, ChevronRight, Folder, Search } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import type { TreeNode, CollectionActionHandlers } from '../types';
 import type { Collection } from '@/features/library/types/library.types';
 import { CollectionTree } from './CollectionTree';
@@ -79,22 +80,36 @@ export function ProjectLibrariesSection({
           </span>
         </button>
 
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsProjectsExpanded((v) => !v);
-          }}
-          aria-label={isProjectsExpanded ? 'Collapse Project Libraries' : 'Expand Project Libraries'}
-          className="absolute right-2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer"
-        >
-          <ChevronRight
-            className={cn(
-              'size-3.5 text-foreground transition-transform duration-150 shrink-0',
-              isProjectsExpanded && 'rotate-90'
-            )}
-          />
-        </button>
+        <Tooltip delayDuration={700}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsProjectsExpanded((v) => !v);
+              }}
+              aria-label={isProjectsExpanded ? 'Collapse Project Libraries' : 'Expand Project Libraries'}
+              className="absolute right-2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer"
+            >
+              <ChevronRight
+                className={cn(
+                  'size-3.5 text-foreground transition-transform duration-150 shrink-0',
+                  isProjectsExpanded && 'rotate-90'
+                )}
+                strokeWidth={1.5}
+              />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent
+            side="bottom"
+            align="start"
+            sideOffset={6}
+            alignOffset={2}
+            className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+          >
+            {isProjectsExpanded ? 'Collapse' : 'Expand'}
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {isProjectsExpanded && (

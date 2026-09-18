@@ -34,60 +34,53 @@ import type {
 export const libraryKeys = {
   all: ['library'] as const,
 
-  items: (workspaceId: string) => [...libraryKeys.all, 'items', workspaceId] as const,
-  itemList: (workspaceId: string, filter?: ItemQueryParams) =>
-    [...libraryKeys.items(workspaceId), 'list', filter] as const,
-  itemDetail: (workspaceId: string, itemId: string) =>
-    [...libraryKeys.items(workspaceId), 'detail', itemId] as const,
-  itemBundle: (workspaceId: string, itemId: string) =>
-    [...libraryKeys.items(workspaceId), 'bundle', itemId] as const,
+  items: (scopeId: string) => [...libraryKeys.all, 'items', scopeId] as const,
+  itemList: (scopeId: string, filter?: ItemQueryParams) =>
+    [...libraryKeys.items(scopeId), 'list', filter] as const,
+  itemDetail: (scopeId: string, itemId: string) =>
+    [...libraryKeys.items(scopeId), 'detail', itemId] as const,
+  itemBundle: (scopeId: string, itemId: string) =>
+    [...libraryKeys.items(scopeId), 'bundle', itemId] as const,
 
   // Aliases kept for backward compat with useLinkPapers / useMergePapers consumers
-  papers: (workspaceId: string) => [...libraryKeys.all, 'items', workspaceId] as const,
-  paperBundle: (workspaceId: string, itemId: string) =>
-    [...libraryKeys.items(workspaceId), 'bundle', itemId] as const,
+  papers: (scopeId: string) => [...libraryKeys.all, 'items', scopeId] as const,
+  paperBundle: (scopeId: string, itemId: string) =>
+    [...libraryKeys.items(scopeId), 'bundle', itemId] as const,
 
-  collections: (workspaceId: string) =>
-    [...libraryKeys.all, 'collections', workspaceId] as const,
+  collections: (scopeId: string) =>
+    [...libraryKeys.all, 'collections', scopeId] as const,
 
-  citations: (workspaceId: string) =>
-    [...libraryKeys.all, 'citations', workspaceId] as const,
-  citationItem: (workspaceId: string, itemId: string, style: CslStyle, index: number = 1) =>
-    [...libraryKeys.citations(workspaceId), itemId, style, index] as const,
+  citations: (scopeId: string) =>
+    [...libraryKeys.all, 'citations', scopeId] as const,
+  citationItem: (scopeId: string, itemId: string, style: CslStyle, index: number = 1) =>
+    [...libraryKeys.citations(scopeId), itemId, style, index] as const,
 
-  annotations: (workspaceId: string, itemId: string) =>
-    [...libraryKeys.all, 'annotations', workspaceId, itemId] as const,
+  annotations: (scopeId: string, itemId: string) =>
+    [...libraryKeys.all, 'annotations', scopeId, itemId] as const,
 
-  relations: (workspaceId: string, itemId: string) =>
-    [...libraryKeys.all, 'relations', workspaceId, itemId] as const,
+  relations: (scopeId: string, itemId: string) =>
+    [...libraryKeys.all, 'relations', scopeId, itemId] as const,
 
-  duplicates: (workspaceId: string) =>
-    [...libraryKeys.all, 'duplicates', workspaceId] as const,
-  integrity: (workspaceId: string) =>
-    [...libraryKeys.all, 'integrity', workspaceId] as const,
+  duplicates: (scopeId: string) =>
+    [...libraryKeys.all, 'duplicates', scopeId] as const,
+  integrity: (scopeId: string) =>
+    [...libraryKeys.all, 'integrity', scopeId] as const,
 
   job: (jobId: string) => [...libraryKeys.all, 'job', jobId] as const,
 };
 
 /**
- * Invalidates all item-related queries for a workspace (and optionally a collection).
+ * Invalidates all item-related queries for a library scope (and optionally a collection).
  * Use after any mutation that modifies the library items.
  */
 function invalidateLibraryItems(
   queryClient: ReturnType<typeof import('@tanstack/react-query').useQueryClient>,
-  workspaceId: string,
-  workspaceSlug: string | undefined,
-  collectionId: string | undefined | null,
+  scopeId: string,
+  collectionId?: string | null,
 ): void {
-  queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
-  if (workspaceSlug && workspaceSlug !== workspaceId) {
-    queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceSlug) });
-  }
+  queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
   if (collectionId) {
-    queryClient.invalidateQueries({ queryKey: itemKeys.byCollection(workspaceId, collectionId) });
-    if (workspaceSlug && workspaceSlug !== workspaceId) {
-      queryClient.invalidateQueries({ queryKey: itemKeys.byCollection(workspaceSlug, collectionId) });
-    }
+    queryClient.invalidateQueries({ queryKey: itemKeys.byCollection(scopeId, collectionId) });
   }
 }
 
@@ -179,8 +172,9 @@ export function useLibrary() {
   // Active Library Scope (Personal vs Project)
   const { activeScope } = useLibrarySidebarStore();
   const effectiveScopeId = activeScope.type === 'project' ? activeScope.id : 'user';
-  const workspaceId = effectiveScopeId;
-  const workspaceSlug = effectiveScopeId;
+  const projectId = activeScope.type === 'project' ? activeScope.id : undefined;
+  const userId = activeScope.type === 'personal' ? activeScope.id : undefined;
+  const scopeId = effectiveScopeId;
 
   // Data Layer Services
   const itemsHook = useItems({ scopeId: effectiveScopeId, collectionId: '' });
@@ -575,8 +569,7 @@ export function useLibrary() {
           if (batchChanged) {
             invalidateLibraryItems(
               queryClient,
-              workspaceId,
-              workspaceSlug,
+              effectiveScopeId,
               collectionId,
             );
             queryClient.invalidateQueries({ queryKey: ['items'] });
@@ -589,8 +582,7 @@ export function useLibrary() {
       ingestProgress.finishBatchProgress(lastErrorMessage || undefined);
       invalidateLibraryItems(
         queryClient,
-        workspaceId,
-        workspaceSlug,
+        effectiveScopeId,
         collectionId,
       );
       queryClient.invalidateQueries({ queryKey: ['items'] });
@@ -609,8 +601,6 @@ export function useLibrary() {
     [
       collectionId,
       effectiveScopeId,
-      workspaceId,
-      workspaceSlug,
       queryClient,
       ingestProgress,
     ],
@@ -734,14 +724,14 @@ export function useLibrary() {
             type: linkData.type,
           });
         }
-        invalidateLibraryItems(queryClient, workspaceId, workspaceSlug, collectionId);
+        invalidateLibraryItems(queryClient, effectiveScopeId, collectionId);
       } catch (err: any) {
         toast.error('Import failed', {
           description: err?.message || 'Could not process identifier or document.',
         });
       }
     },
-    [workspaceId, workspaceSlug, collectionId, handleAddPaper, queryClient, ingestProgress, effectiveScopeId],
+    [effectiveScopeId, collectionId, handleAddPaper, queryClient, ingestProgress],
   );
 
 
@@ -828,8 +818,9 @@ export function useLibrary() {
     state: {
       activeScope,
       effectiveScopeId,
-      workspaceId,
-      workspaceSlug,
+      scopeId,
+      projectId,
+      userId,
       items: allPapers,
       papers: allPapers,
       collections,
@@ -894,14 +885,14 @@ export { useCollections } from './use-collections';
 export { useAsyncJobStatus } from './use-ingestion';
 
 export function useCslCitation(
-  workspaceId?: string,
+  scopeId?: string,
   paperId?: string,
   style: CslStyle = 'apa',
   index: number = 1,
 ) {
   return useQuery({
-    queryKey: libraryKeys.citationItem(workspaceId || 'default', paperId || 'none', style, index),
-    queryFn: () => formatCslCitation(workspaceId, paperId || '', style, index),
+    queryKey: libraryKeys.citationItem(scopeId || 'default', paperId || 'none', style, index),
+    queryFn: () => formatCslCitation(scopeId, paperId || '', style, index),
     enabled: Boolean(paperId),
     staleTime: 1000 * 60 * 30,
   });

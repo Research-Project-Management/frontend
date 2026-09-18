@@ -63,8 +63,10 @@ export interface InspectorPanelProps {
   item?: Item | null;
   collection?: Collection | null;
   scopeId?: string;
+  projectId?: string;
   workspaceId?: string;
   onClose?: () => void;
+  onSelectPaper?: (paperId: string) => void;
 }
 
 export type SectionId = InspectorSectionId;
@@ -144,7 +146,7 @@ function InspectorSectionHeader({
         {customAddAction ? (
           customAddAction
         ) : hasAdd ? (
-          <Tooltip delayDuration={200}>
+          <Tooltip>
             <TooltipTrigger asChild>
               <button
                 type="button"
@@ -154,19 +156,25 @@ function InspectorSectionHeader({
                     onAdd?.(id, e);
                   }
                 }}
-                className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
+                className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-sidebar-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
                 aria-label={`Add ${label}`}
               >
                 <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="left" sideOffset={4} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+            <TooltipContent
+              side="bottom"
+              align="start"
+              sideOffset={6}
+              alignOffset={2}
+              className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+            >
               Add {label}
             </TooltipContent>
           </Tooltip>
         ) : null}
 
-        <Tooltip delayDuration={200}>
+        <Tooltip>
           <TooltipTrigger asChild>
             <button
               type="button"
@@ -174,7 +182,7 @@ function InspectorSectionHeader({
                 e.stopPropagation();
                 onToggle(id);
               }}
-              className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
+              className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-sidebar-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
               aria-label={isOpen ? `Collapse ${label}` : `Expand ${label}`}
             >
               <ChevronDown
@@ -186,7 +194,13 @@ function InspectorSectionHeader({
               />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="left" sideOffset={4} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+          <TooltipContent
+            side="bottom"
+            align="start"
+            sideOffset={6}
+            alignOffset={2}
+            className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+          >
             {isOpen ? `Collapse ${label}` : `Expand ${label}`}
           </TooltipContent>
         </Tooltip>
@@ -240,24 +254,31 @@ function InspectorTitleInput({
   );
 }
 
+const getSectionLevel = (id: SectionId): number => {
+  const index = SECTIONS_CONFIG.findIndex((s) => s.id === id);
+  if (index === -1) return 8;
+  return SECTIONS_CONFIG.length - index;
+};
+
 export default function InspectorPanel({
   paper: propPaper,
   item: propItem,
   collection,
   scopeId,
+  projectId,
   workspaceId,
   onClose,
+  onSelectPaper,
 }: InspectorPanelProps) {
   const incomingPaper = propPaper || propItem || null;
-  const activeScopeId = scopeId || incomingPaper?.projectId || (incomingPaper as any)?.workspaceId || workspaceId || 'user';
-  const activeWorkspaceId = activeScopeId;
+  const activeScopeId = scopeId || projectId || incomingPaper?.projectId || workspaceId || 'user';
   const [paper, setPaper] = useState<Item | null>(incomingPaper);
   const latestPaperRef = useRef<Item | null>(incomingPaper);
   const updateQueueRef = useRef<Promise<void>>(Promise.resolve());
-  const paperService = usePapers({ workspaceId: activeWorkspaceId });
-  const collectionsState = useCollections(activeWorkspaceId);
+  const paperService = usePapers({ scopeId: activeScopeId });
+  const collectionsState = useCollections(activeScopeId);
   const collections = collectionsState?.state?.collections || [];
-  const { notes: canonicalNotes, deleteNote } = useNotes(activeWorkspaceId, paper?.id);
+  const { notes: canonicalNotes, deleteNote } = useNotes(activeScopeId, paper?.id);
 
   const {
     isInspectorOpen,
@@ -269,6 +290,7 @@ export default function InspectorPanel({
   } = useLibrarySidebarStore();
 
   const [collapsedSections, setCollapsedSections] = useState<Record<SectionId, boolean>>(DEFAULT_COLLAPSED_SECTIONS);
+  const [visibleLevel, setVisibleLevel] = useState<number>(8);
 
   const [activeSectionId, setActiveSectionId] = useState<SectionId>('info');
   const [isAddRelatedOpen, setIsAddRelatedOpen] = useState(false);
@@ -282,7 +304,7 @@ export default function InspectorPanel({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const verifiedPaperId = isPaperVerified ? paper?.id || '' : '';
-  const { add: addAttachment } = useAttachments(activeWorkspaceId, verifiedPaperId);
+  const { add: addAttachment } = useAttachments(activeScopeId, verifiedPaperId);
 
   // Table rows can be stale after another mutation. Keep the panel on the
   // newest server version so optimistic locking never reuses an old version.
@@ -305,11 +327,11 @@ export default function InspectorPanel({
   }, [incomingPaper]);
 
   useEffect(() => {
-    if (!incomingPaper?.id || !activeWorkspaceId) return;
+    if (!incomingPaper?.id || !activeScopeId) return;
 
     setIsPaperVerified(false);
     let cancelled = false;
-    void ItemService.getById(activeWorkspaceId, incomingPaper.id)
+    void ItemService.getById(activeScopeId, incomingPaper.id)
       .then((response) => {
         if (cancelled) return;
         const latest = response;
@@ -336,7 +358,7 @@ export default function InspectorPanel({
     return () => {
       cancelled = true;
     };
-  }, [incomingPaper?.id, activeWorkspaceId, onClose]);
+  }, [incomingPaper?.id, activeScopeId, onClose]);
 
   // Khi user tương tác với paper (chọn paper mới), tự động mở panel; khi không có paper thì đóng panel
   const prevPaperIdRef = useRef<string | null>(null);
@@ -350,9 +372,10 @@ export default function InspectorPanel({
     }
   }, [incomingPaper?.id, setIsInspectorOpen]);
 
-  // Khi chọn hoặc đổi paper, đảm bảo section info luôn được mở mặc định
+  // Khi chọn hoặc đổi paper, đảm bảo section info luôn được mở mặc định và hiện toàn bộ 8 bar
   useEffect(() => {
     if (paper?.id) {
+      setVisibleLevel(8);
       setCollapsedSections((prev) => ({
         ...prev,
         info: false,
@@ -422,7 +445,7 @@ export default function InspectorPanel({
 
     try {
       setIsUploadingAttachment(true);
-      const { url: fileUrl, fileId } = await uploadLibraryFile(activeWorkspaceId, file);
+      const { url: fileUrl, fileId } = await uploadLibraryFile(activeScopeId, file);
 
       await addAttachment({
         filename: file.name,
@@ -527,10 +550,10 @@ export default function InspectorPanel({
       })
       .catch(async () => {
         const currentPaper = latestPaperRef.current;
-        if (!currentPaper?.id || currentPaper.id !== requestedItemId || !activeWorkspaceId) return;
+        if (!currentPaper?.id || currentPaper.id !== requestedItemId || !activeScopeId) return;
 
         try {
-          const response = await ItemService.getById(activeWorkspaceId, currentPaper.id);
+          const response = await ItemService.getById(activeScopeId, currentPaper.id);
           const latest = response;
           if (!latest?.id) return;
           latestPaperRef.current = latest;
@@ -571,7 +594,7 @@ export default function InspectorPanel({
     if (!paper) return;
     if (paper.id) {
       try {
-        const res = await ExportService.exportLibrary(workspaceId, {
+        const res = await ExportService.exportLibrary(activeScopeId, {
           format: 'bibtex',
           itemIds: [paper.id],
         });
@@ -620,7 +643,7 @@ export default function InspectorPanel({
   const tagsList = useMemo(() => normalizeTags(paper), [paper]);
   const tagsCount = tagsList.length;
 
-  const { total: relationsTotal } = useRelations(workspaceId, verifiedPaperId);
+  const { total: relationsTotal } = useRelations(activeScopeId, verifiedPaperId);
   const relationsCount = relationsTotal || 0;
 
   const itemTypeLabel = useMemo(() => {
@@ -629,15 +652,21 @@ export default function InspectorPanel({
     return found?.label || paper.itemType;
   }, [paper?.itemType]);
 
+  const isSectionVisible = (id: SectionId): boolean => {
+    return getSectionLevel(id) <= visibleLevel;
+  };
+
   const handleSectionIconClick = (sectionId: SectionId) => {
     if (!paper) return;
 
+    const targetLevel = getSectionLevel(sectionId);
     setActiveSectionId(sectionId);
     setActiveInspectorTab(sectionId);
 
-    // If panel is closed: open it and ensure section is expanded & visible
+    // If panel is closed: open it and set the visible height level
     if (!isInspectorOpen) {
       setIsInspectorOpen(true);
+      setVisibleLevel(targetLevel);
       setCollapsedSections((prev) => ({ ...prev, [sectionId]: false }));
       setTimeout(() => {
         const el = document.getElementById(`inspector-section-${sectionId}`);
@@ -646,11 +675,20 @@ export default function InspectorPanel({
       return;
     }
 
-    // If panel is already open: toggle collapsed state
-    const isCurrentlyOpen = !collapsedSections[sectionId];
-    setCollapsedSections((prev) => ({ ...prev, [sectionId]: isCurrentlyOpen }));
+    // If panel is already open:
+    if (visibleLevel === targetLevel) {
+      const isCurrentlyOpen = !collapsedSections[sectionId];
+      setCollapsedSections((prev) => ({ ...prev, [sectionId]: isCurrentlyOpen }));
 
-    if (!isCurrentlyOpen) {
+      if (!isCurrentlyOpen) {
+        setTimeout(() => {
+          const el = document.getElementById(`inspector-section-${sectionId}`);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+      }
+    } else {
+      setVisibleLevel(targetLevel);
+      setCollapsedSections((prev) => ({ ...prev, [sectionId]: false }));
       setTimeout(() => {
         const el = document.getElementById(`inspector-section-${sectionId}`);
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -701,7 +739,7 @@ export default function InspectorPanel({
             </div>
 
             {paper ? (
-              <header className="h-11 px-3 border-b border-border bg-background flex items-center justify-between gap-2 shrink-0 select-none">
+              <header className="h-11 px-3 border-b border-border bg-background flex items-center shrink-0 select-none">
                 {/* Paper Title at the top */}
                 <div className="flex-1 min-w-0">
                   <InspectorTitleInput
@@ -713,41 +751,10 @@ export default function InspectorPanel({
                     }
                   />
                 </div>
-                <Tooltip delayDuration={200}>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => setIsInspectorOpen(false)}
-                      className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                      aria-label="Close inspector"
-                    >
-                      <X className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" sideOffset={4} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-                    Close inspector
-                  </TooltipContent>
-                </Tooltip>
               </header>
             ) : (
               /* Clean h-11 Header when no paper is selected */
-              <header className="h-11 px-3 border-b border-border bg-background flex items-center justify-end shrink-0 select-none">
-                <Tooltip delayDuration={200}>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => setIsInspectorOpen(false)}
-                      className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                      aria-label="Close inspector"
-                    >
-                      <X className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" sideOffset={4} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-                    Close inspector
-                  </TooltipContent>
-                </Tooltip>
-              </header>
+              <header className="h-11 px-3 border-b border-border bg-background flex items-center shrink-0 select-none" />
             )}
 
           {/* Continuous Scrollable Section Accordion Body (always rendered, never hidden by empty screen) */}
@@ -759,7 +766,7 @@ export default function InspectorPanel({
             className="flex-1 overflow-y-auto min-w-0 focus-visible:outline-none thin-scrollbar bg-background divide-y divide-border/50"
           >
             {/* 1. Info Section (No Plus) */}
-            <div id="inspector-section-info" className="bg-background">
+            <div id="inspector-section-info" className={cn("bg-background", !isSectionVisible('info') && "hidden")}>
               <InspectorSectionHeader
                 id="info"
                 label="Info"
@@ -778,7 +785,7 @@ export default function InspectorPanel({
             </div>
 
             {/* 2. Abstract Section */}
-            <div id="inspector-section-abstract" className="bg-background">
+            <div id="inspector-section-abstract" className={cn("bg-background", !isSectionVisible('abstract') && "hidden")}>
               <InspectorSectionHeader
                 id="abstract"
                 label="Abstract"
@@ -797,7 +804,7 @@ export default function InspectorPanel({
             </div>
 
             {/* 3. Attachments / Files Section */}
-            <div id="inspector-section-files" className="bg-background">
+            <div id="inspector-section-files" className={cn("bg-background", !isSectionVisible('files') && "hidden")}>
               <InspectorSectionHeader
                 id="files"
                 label="Attachments"
@@ -813,7 +820,7 @@ export default function InspectorPanel({
                 <div className="p-2 bg-background">
                   <AttachmentsSection
                     paper={paper}
-                    workspaceId={activeWorkspaceId}
+                    scopeId={activeScopeId}
                     onAddAttachment={() => attachFileInputRef.current?.click()}
                     isUploading={isUploadingAttachment}
                     hideHeader
@@ -823,7 +830,7 @@ export default function InspectorPanel({
             </div>
 
             {/* 4. Notes Section */}
-            <div id="inspector-section-notes" className="bg-background">
+            <div id="inspector-section-notes" className={cn("bg-background", !isSectionVisible('notes') && "hidden")}>
               <InspectorSectionHeader
                 id="notes"
                 label="Notes"
@@ -835,14 +842,15 @@ export default function InspectorPanel({
                 onToggle={toggleSection}
                 onAdd={handleAddClick}
               />
-              {paper && isSectionOpen('notes') && (
+              {paper && isSectionOpen('notes') && (notesCount > 0 || forceAddingNote) && (
                 <div className="p-2 bg-background">
                   <NotesSection
-                    paper={{ ...paper, workspaceId: activeWorkspaceId }}
-                    workspaceId={activeWorkspaceId}
+                    paper={{ ...paper, projectId: activeScopeId !== 'user' ? activeScopeId : undefined }}
+                    scopeId={activeScopeId}
                     onUpdatePaper={handleUpdatePaper}
                     hideHeader
                     forceAdding={forceAddingNote}
+                    onCancelAdding={() => setForceAddingNote(false)}
                     onRequestDelete={(note) => {
                       setDeleteModalConfig({
                         open: true,
@@ -851,7 +859,7 @@ export default function InspectorPanel({
                         itemName: note.content,
                         confirmLabel: 'Move to trash',
                         onConfirm: async () => {
-                          if (activeWorkspaceId) {
+                          if (activeScopeId) {
                             await deleteNote(note.id).catch(() => {});
                           }
                           setDeleteModalConfig(null);
@@ -864,7 +872,7 @@ export default function InspectorPanel({
             </div>
 
             {/* 5. Collections Section */}
-            <div id="inspector-section-collections" className="bg-background">
+            <div id="inspector-section-collections" className={cn("bg-background", !isSectionVisible('collections') && "hidden")}>
               <InspectorSectionHeader
                 id="collections"
                 label="Libraries and Collections"
@@ -875,16 +883,29 @@ export default function InspectorPanel({
                 customAddAction={
                   paper ? (
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                          <button
-                          type="button"
-                          onClick={(e) => e.stopPropagation()}
-                          className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
-                          aria-label="Add to collection"
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={(e) => e.stopPropagation()}
+                              className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-sidebar-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
+                              aria-label="Add to collection"
+                            >
+                              <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                            </button>
+                          </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="bottom"
+                          align="start"
+                          sideOffset={6}
+                          alignOffset={2}
+                          className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
                         >
-                          <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                        </button>
-                      </DropdownMenuTrigger>
+                          Add to collection
+                        </TooltipContent>
+                      </Tooltip>
                       <DropdownMenuContent
                         align="end"
                         className="w-64 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-xs font-sans max-h-80 overflow-y-auto shadow-raised-200 space-y-0.5"
@@ -898,19 +919,46 @@ export default function InspectorPanel({
                           <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                           <span>Create Collection</span>
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        {collections.map((col) => (
-                          <DropdownMenuItem
-                            key={col.id}
-                            onClick={() => {
-                              handleUpdatePaper({ collectionId: col.id });
-                            }}
-                            className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-muted text-foreground"
-                          >
-                            <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                            <span className="truncate">{col.name}</span>
-                          </DropdownMenuItem>
-                        ))}
+                        {collections.map((col) => {
+                          const isAlreadyInCol =
+                            paper.collectionId === col.id ||
+                            (Array.isArray(paper.collectionIds) && paper.collectionIds.includes(col.id)) ||
+                            (Array.isArray(paper.collections) && paper.collections.some((c) => c?.id === col.id));
+                          return (
+                            <DropdownMenuItem
+                              key={col.id}
+                              disabled={isAlreadyInCol}
+                              onClick={() => {
+                                const currentIds = new Set<string>();
+                                if (paper.collectionId) currentIds.add(paper.collectionId);
+                                if (Array.isArray(paper.collectionIds)) {
+                                  paper.collectionIds.forEach((id) => id && currentIds.add(id));
+                                }
+                                if (Array.isArray(paper.collections)) {
+                                  paper.collections.forEach((c) => c?.id && currentIds.add(c.id));
+                                }
+                                currentIds.add(col.id);
+                                const nextIds = Array.from(currentIds);
+                                handleUpdatePaper({
+                                  collectionIds: nextIds,
+                                  collectionId: nextIds[0] || col.id,
+                                });
+                              }}
+                              className={cn(
+                                "flex items-center justify-between gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-muted text-foreground",
+                                isAlreadyInCol && "opacity-50 cursor-default"
+                              )}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                                <span className="truncate">{col.name}</span>
+                              </div>
+                              {isAlreadyInCol && (
+                                <span className="text-[10px] text-muted-foreground ml-auto">Added</span>
+                              )}
+                            </DropdownMenuItem>
+                          );
+                        })}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   ) : null
@@ -920,7 +968,7 @@ export default function InspectorPanel({
                 <div className="p-2 bg-background">
                   <CollectionsSection
                     paper={paper}
-                    workspaceId={activeWorkspaceId}
+                    scopeId={activeScopeId}
                     onCreateCollection={() => setIsCreateCollectionOpen(true)}
                     hideHeader
                   />
@@ -929,7 +977,7 @@ export default function InspectorPanel({
             </div>
 
             {/* 6. Tags Section */}
-            <div id="inspector-section-tags" className="bg-background">
+            <div id="inspector-section-tags" className={cn("bg-background", !isSectionVisible('tags') && "hidden")}>
               <InspectorSectionHeader
                 id="tags"
                 label="Tags"
@@ -941,7 +989,7 @@ export default function InspectorPanel({
                 onToggle={toggleSection}
                 onAdd={handleAddClick}
               />
-              {paper && isSectionOpen('tags') && (
+              {paper && isSectionOpen('tags') && (tagsCount > 0 || forceAddingTag) && (
                 <div className="p-2 bg-background">
                   <TagsSection
                     paper={paper}
@@ -955,7 +1003,7 @@ export default function InspectorPanel({
             </div>
 
             {/* 7. Related Papers Section */}
-            <div id="inspector-section-relations" className="bg-background">
+            <div id="inspector-section-relations" className={cn("bg-background", !isSectionVisible('relations') && "hidden")}>
               <InspectorSectionHeader
                 id="relations"
                 label="Related"
@@ -967,11 +1015,12 @@ export default function InspectorPanel({
                 onToggle={toggleSection}
                 onAdd={handleAddClick}
               />
-              {paper && isSectionOpen('relations') && relationsCount > 0 && (
-                <div className="p-2 bg-background">
+              {paper && (isSectionOpen('relations') || isAddRelatedOpen) && (
+                <div className={cn("bg-background", relationsCount > 0 ? "p-2" : "p-0")}>
                   <RelatedSection
                     paper={paper}
-                    workspaceId={activeWorkspaceId}
+                    scopeId={activeScopeId}
+                    onSelectPaper={onSelectPaper}
                     hideHeader
                     isAddOpen={isAddRelatedOpen}
                     onAddOpenChange={setIsAddRelatedOpen}
@@ -981,7 +1030,7 @@ export default function InspectorPanel({
             </div>
 
             {/* 8. Citations Section (No Plus) */}
-            <div id="inspector-section-cite" className="bg-background">
+            <div id="inspector-section-cite" className={cn("bg-background", !isSectionVisible('cite') && "hidden")}>
               <InspectorSectionHeader
                 id="cite"
                 label="Citation"
@@ -994,7 +1043,10 @@ export default function InspectorPanel({
               />
               {paper && isSectionOpen('cite') && (
                 <div className="p-1 bg-background">
-                  <CiteSection paper={paper} workspaceId={isPaperVerified ? activeWorkspaceId : ''} />
+                  <CiteSection
+                    paper={paper}
+                    scopeId={isPaperVerified ? activeScopeId : ''}
+                  />
                 </div>
               )}
             </div>
@@ -1011,7 +1063,7 @@ export default function InspectorPanel({
         {/* Top: Toggle Panel Button Container - EXACTLY h-11 with line cách biên */}
         <div className="h-11 w-full flex flex-col items-center justify-between shrink-0">
           <div className="flex-1 flex items-center justify-center w-full">
-            <Tooltip delayDuration={200}>
+            <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
@@ -1019,13 +1071,13 @@ export default function InspectorPanel({
                     setIsInspectorOpen(false);
                     onClose?.();
                   }}
-                  className="size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors bg-muted text-foreground hover:bg-muted cursor-pointer"
+                  className="size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground hover:bg-muted cursor-pointer"
                   aria-label="Collapse inspector"
                 >
                   <PanelRight className="size-4 shrink-0" strokeWidth={1.5} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="left" sideOffset={6} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+              <TooltipContent side="left" sideOffset={6} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm">
                 {!paper ? "Select a reference to view inspector" : isInspectorOpen ? "Collapse inspector" : "Expand inspector"}
               </TooltipContent>
             </Tooltip>
@@ -1039,21 +1091,9 @@ export default function InspectorPanel({
         <div className="flex flex-col items-center gap-1 w-full pt-1 px-1">
           {SECTIONS_CONFIG.map((sec) => {
             const Icon = sec.icon;
-            const count =
-              sec.id === 'files' ? filesCount :
-              sec.id === 'notes' ? notesCount :
-              sec.id === 'tags' ? tagsCount :
-              sec.id === 'relations' ? relationsCount :
-              undefined;
-
-            const tooltipLabel = count !== undefined && count > 0
-              ? `${sec.label} (${count})`
-              : sec.label;
-
-            const isSectionActive = isInspectorOpen && !collapsedSections[sec.id];
 
             return (
-              <Tooltip key={sec.id} delayDuration={200}>
+              <Tooltip key={sec.id}>
                 <TooltipTrigger asChild>
                   <button
                     key={sec.id}
@@ -1064,9 +1104,7 @@ export default function InspectorPanel({
                       "size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors",
                       !paper
                         ? "opacity-40 cursor-not-allowed text-muted-foreground"
-                        : isSectionActive
-                          ? "bg-muted text-foreground cursor-pointer"
-                          : "text-foreground hover:bg-muted cursor-pointer"
+                        : "text-foreground hover:bg-muted cursor-pointer"
                     )}
                     aria-label={sec.label}
                   >
@@ -1074,7 +1112,7 @@ export default function InspectorPanel({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="left" sideOffset={6} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-                  {tooltipLabel}
+                  {sec.label}
                 </TooltipContent>
               </Tooltip>
             );

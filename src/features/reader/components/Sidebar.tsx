@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { Document, Page } from 'react-pdf';
 import { ListTree, LayoutGrid, ChevronRight, Highlighter, Search, X } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import type { DocumentFulltext, ReaderDocument } from '../types/reader.types';
@@ -11,14 +12,16 @@ export interface SidebarProps {
   onClose: () => void;
   currentPage: number;
   totalPages?: number;
-  onJumpToPage: (page: number) => void;
+  onJumpToPage: (page: number, annotationId?: string) => void;
   fulltext?: DocumentFulltext | null;
   paper?: ReaderDocument | null;
   workspaceId?: string;
   attachmentId?: string;
+  pdfBlobUrl?: string | null;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
   annotationsCount?: number;
+  onAddToNote?: (text: string, pageNumber?: number) => void;
 }
 
 export function Sidebar({
@@ -31,9 +34,11 @@ export function Sidebar({
   paper,
   workspaceId,
   attachmentId,
+  pdfBlobUrl,
   selectedIds,
   onToggleSelect,
   annotationsCount = 0,
+  onAddToNote,
 }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<'outline' | 'annotations' | 'pages'>('outline');
   const [outlineFilter, setOutlineFilter] = useState('');
@@ -185,6 +190,7 @@ export function Sidebar({
               onNavigateToPage={onJumpToPage}
               selectedIds={selectedIds}
               onToggleSelect={onToggleSelect}
+              onAddToNote={onAddToNote}
             />
           ) : (
             <div className="p-4 text-center text-12 text-muted-foreground">
@@ -193,34 +199,84 @@ export function Sidebar({
           )
         ) : (
           /* Pages grid */
-          <div className="grid grid-cols-2 gap-2 p-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-              const isCurrent = pageNum === currentPage;
-              return (
-                <button
-                  key={pageNum}
-                  type="button"
-                  onClick={() => onJumpToPage(pageNum)}
-                  className={cn(
-                    "flex flex-col items-center p-1.5 rounded-md border transition-colors group cursor-pointer",
-                    isCurrent
-                      ? "border-primary bg-primary/10"
-                      : "border-border hover:border-border-hover bg-card"
-                  )}
-                >
-                  <div className="w-full aspect-[1/1.4] rounded-sm bg-background border border-border flex items-center justify-center text-muted-foreground group-hover:text-foreground transition-colors">
-                    <span className="text-11 font-mono tabular-nums">{pageNum}</span>
-                  </div>
-                  <span className={cn(
-                    "text-11 font-mono tabular-nums mt-1",
-                    isCurrent ? "font-medium text-primary" : "text-muted-foreground"
-                  )}>
-                    Page {pageNum}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          pdfBlobUrl ? (
+            <Document
+              file={pdfBlobUrl}
+              loading={
+                <div className="p-4 text-center text-11 text-muted-foreground">
+                  Loading thumbnails...
+                </div>
+              }
+            >
+              <div className="grid grid-cols-2 gap-2 p-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                  const isCurrent = pageNum === currentPage;
+                  return (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => onJumpToPage(pageNum)}
+                      className={cn(
+                        "flex flex-col items-center p-1 rounded-md border transition-all group cursor-pointer overflow-hidden",
+                        isCurrent
+                          ? "border-primary ring-2 ring-primary/40 bg-primary/5"
+                          : "border-border hover:border-foreground/40 bg-card"
+                      )}
+                    >
+                      <div className="w-full aspect-[1/1.4] rounded-sm bg-background border border-border/60 overflow-hidden flex items-center justify-center">
+                        <Page
+                          pageNumber={pageNum}
+                          width={100}
+                          renderTextLayer={false}
+                          renderAnnotationLayer={false}
+                          loading={
+                            <div className="size-full flex items-center justify-center text-muted-foreground text-11 font-mono">
+                              {pageNum}
+                            </div>
+                          }
+                        />
+                      </div>
+                      <span className={cn(
+                        "text-11 font-mono tabular-nums mt-1",
+                        isCurrent ? "font-semibold text-primary" : "text-muted-foreground"
+                      )}>
+                        Page {pageNum}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Document>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 p-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                const isCurrent = pageNum === currentPage;
+                return (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    onClick={() => onJumpToPage(pageNum)}
+                    className={cn(
+                      "flex flex-col items-center p-1.5 rounded-md border transition-colors group cursor-pointer",
+                      isCurrent
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-border-hover bg-card"
+                    )}
+                  >
+                    <div className="w-full aspect-[1/1.4] rounded-sm bg-background border border-border flex items-center justify-center text-muted-foreground group-hover:text-foreground transition-colors">
+                      <span className="text-11 font-mono tabular-nums">{pageNum}</span>
+                    </div>
+                    <span className={cn(
+                      "text-11 font-mono tabular-nums mt-1",
+                      isCurrent ? "font-medium text-primary" : "text-muted-foreground"
+                    )}>
+                      Page {pageNum}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )
         )}
       </div>
     </aside>

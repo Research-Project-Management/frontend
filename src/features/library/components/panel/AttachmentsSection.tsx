@@ -151,7 +151,7 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
               setCurrentPage((p) => Math.max(1, p - 1));
             }}
             aria-label="Previous page"
-            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none"
+            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none transition-colors"
           >
             <ChevronLeft className="size-4 shrink-0" />
           </button>
@@ -163,7 +163,7 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
               setCurrentPage((p) => Math.min(numPages, p + 1));
             }}
             aria-label="Next page"
-            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none"
+            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none transition-colors"
           >
             <ChevronRight className="size-4 shrink-0" />
           </button>
@@ -187,13 +187,17 @@ const PdfPagePreview = dynamic(
 );
 
 function AttachmentRevisions({
-  workspaceId,
+  scopeId,
+  projectId,
   attachmentId,
 }: {
-  workspaceId: string;
+  scopeId?: string;
+  projectId?: string;
+  workspaceId?: string;
   attachmentId: string;
 }) {
-  const { data: revisionsData, isLoading } = useAttachmentRevisions(workspaceId, attachmentId);
+  const effectiveScope = scopeId || projectId || 'user';
+  const { data: revisionsData, isLoading } = useAttachmentRevisions(effectiveScope, attachmentId);
   const revisions = Array.isArray(revisionsData) ? revisionsData : [];
 
   if (isLoading) {
@@ -233,6 +237,8 @@ function AttachmentRevisions({
 
 interface AttachmentsSectionProps {
   paper: Item;
+  scopeId?: string;
+  projectId?: string;
   workspaceId?: string;
   onAddAttachment?: () => void;
   isUploading?: boolean;
@@ -243,19 +249,21 @@ const EMPTY_ATTACHMENTS: ItemAttachment[] = [];
 
 export default function AttachmentsSection({
   paper,
+  scopeId,
+  projectId,
   workspaceId,
   hideHeader = false,
 }: AttachmentsSectionProps) {
   const router = RouterHookWrapper();
   const params = useParams();
-  const rawWorkspaceId = (workspaceId || (params as any)?.workspaceId || 'ws-default') as string;
+  const rawScopeId = (scopeId || projectId || (paper as any)?.projectId || (params as any)?.projectId || 'user') as string;
 
   const {
     captureSnapshot,
     isCapturingSnapshot,
     setPrimary,
     isSettingPrimary,
-  } = useAttachments(rawWorkspaceId, paper.id || '');
+  } = useAttachments(rawScopeId, paper.id || '');
   const [activeSnapshot, setActiveSnapshot] = useState<{ url: string; title: string; sourceUrl?: string } | null>(null);
   const [isDownloadingAnnotated, setIsDownloadingAnnotated] = useState(false);
 
@@ -297,7 +305,7 @@ export default function AttachmentsSection({
 
   const handleOpenReader = () => {
     if (!paper.id) return;
-    router.push(rawWorkspaceId ? `/${rawWorkspaceId}/library/papers/${paper.id}` : `/library/papers/${paper.id}`);
+    router.push(`/library/papers/${paper.id}`);
   };
 
   const handleDownload = (url: string, filename: string) => {
@@ -316,7 +324,7 @@ export default function AttachmentsSection({
     try {
       setIsDownloadingAnnotated(true);
       await downloadAnnotatedPdf(
-        rawWorkspaceId,
+        rawScopeId,
         paper.id,
         `${paper.title || 'document'}-annotated.pdf`,
       );
@@ -517,7 +525,7 @@ export default function AttachmentsSection({
                       <ExternalLink className="size-3.5 text-foreground shrink-0" />
                       <span>Open in New Tab</span>
                     </DropdownMenuItem>
-                    {rawWorkspaceId && att.id && att.id !== 'open-access-pdf' && !isSnapshot && (
+                    {rawScopeId && att.id && att.id !== 'open-access-pdf' && !isSnapshot && (
                       <DropdownMenuItem
                         onClick={() => handleSetPrimary(att.id)}
                         disabled={isSettingPrimary}
@@ -527,11 +535,11 @@ export default function AttachmentsSection({
                         <span>Set as Primary Document</span>
                       </DropdownMenuItem>
                     )}
-                    {rawWorkspaceId && att.id && (
+                    {rawScopeId && att.id && (
                       <>
                         <DropdownMenuSeparator />
                         <AttachmentRevisions
-                          workspaceId={rawWorkspaceId}
+                          scopeId={rawScopeId}
                           attachmentId={att.id}
                         />
                       </>

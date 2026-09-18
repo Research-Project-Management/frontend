@@ -6,21 +6,21 @@ import { QualityService } from '../services/curation.service';
 import { itemKeys } from './use-items';
 
 export const curationKeys = {
-  duplicates: (workspaceId?: string) => ['curation', workspaceId || 'user', 'duplicates'] as const,
-  integrity: (workspaceId?: string) => ['curation', workspaceId || 'user', 'integrity'] as const,
+  duplicates: (scopeId?: string) => ['curation', scopeId || 'user', 'duplicates'] as const,
+  integrity: (scopeId?: string) => ['curation', scopeId || 'user', 'integrity'] as const,
 };
 
-export function useDuplicateGroups(workspaceId?: string) {
+export function useDuplicateGroups(scopeId?: string) {
   return useQuery({
-    queryKey: curationKeys.duplicates(workspaceId),
-    queryFn: () => QualityService.getDuplicates(workspaceId),
+    queryKey: curationKeys.duplicates(scopeId),
+    queryFn: () => QualityService.getDuplicates(scopeId),
     enabled: true,
   });
 }
 
-export function useMergePapers(workspaceId?: string) {
+export function useMergePapers(scopeId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = workspaceId || 'user';
+  const effectiveScope = scopeId || 'user';
 
   return useMutation({
     mutationFn: ({
@@ -33,9 +33,9 @@ export function useMergePapers(workspaceId?: string) {
       fieldSelections?: Record<string, any>;
     }) => QualityService.mergePapers(effectiveScope, masterPaperId, sourcePaperIds, fieldSelections),
     onSuccess: (response: any) => {
-      queryClient.invalidateQueries({ queryKey: curationKeys.duplicates(workspaceId) });
-      queryClient.invalidateQueries({ queryKey: curationKeys.integrity(workspaceId) });
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: curationKeys.duplicates(effectiveScope) });
+      queryClient.invalidateQueries({ queryKey: curationKeys.integrity(effectiveScope) });
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       const count = response.mergedCount ?? response.data?.mergedCount ?? 1;
       toast.success('Duplicates merged', {
         description: `Consolidated ${count} duplicate record(s) into master. Notes and citations preserved.`,
@@ -51,10 +51,10 @@ export function useMergePapers(workspaceId?: string) {
   });
 }
 
-export function useLibraryIntegrity(workspaceId?: string) {
+export function useLibraryIntegrity(scopeId?: string) {
   return useQuery({
-    queryKey: curationKeys.integrity(workspaceId),
-    queryFn: () => QualityService.getIntegrityReport(workspaceId),
+    queryKey: curationKeys.integrity(scopeId),
+    queryFn: () => QualityService.getIntegrityReport(scopeId),
     enabled: true,
   });
 }

@@ -16,6 +16,7 @@ interface NotesPanelProps {
   workspaceId: string;
   pendingText?: string;
   onClearPendingText?: () => void;
+  onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void;
 }
 
 interface DisplayNote {
@@ -115,8 +116,8 @@ function NoteEditForm({
 
         <textarea
           {...register('contentMd')}
-          aria-label="Note content"
-          className="w-full resize-none bg-transparent text-xs leading-relaxed outline-none focus:ring-0 text-foreground"
+          aria-label="Edit note content"
+          className="w-full resize-none bg-transparent text-xs leading-relaxed outline-none placeholder:text-muted-foreground/50 text-foreground"
           rows={3}
           autoFocus
         />
@@ -152,6 +153,7 @@ export default function NotesPanel({
   workspaceId,
   pendingText,
   onClearPendingText,
+  onNavigateToAnnotation,
 }: NotesPanelProps) {
   const {
     notes: canonicalNotes,
@@ -437,7 +439,35 @@ export default function NotesPanel({
                   ) : (
                     <div className="space-y-1">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="text-xs leading-relaxed text-foreground select-text flex-1 overflow-hidden space-y-1">
+                        <div
+                          className="text-xs leading-relaxed text-foreground select-text flex-1 overflow-hidden space-y-1"
+                          onClick={(e) => {
+                            const target = (e.target as HTMLElement).closest('a');
+                            if (target) {
+                              const href = target.getAttribute('href') || '';
+                              if (
+                                href.startsWith('flux://open-pdf') ||
+                                href.includes('page=') ||
+                                href.includes('annotation=')
+                              ) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                try {
+                                  const urlStr = href.replace(/^flux:\/\/open-pdf\/library\/items\/?/, 'http://dummy/');
+                                  const parsed = new URL(urlStr);
+                                  const pageStr = parsed.searchParams.get('page');
+                                  const annId = parsed.searchParams.get('annotation');
+                                  const pageNum = pageStr ? parseInt(pageStr, 10) : undefined;
+                                  if (pageNum && onNavigateToAnnotation) {
+                                    onNavigateToAnnotation(pageNum, annId || undefined);
+                                  }
+                                } catch (err) {
+                                  console.error('Failed to parse citation backlink:', err);
+                                }
+                              }
+                            }
+                          }}
+                        >
                           {renderMarkdown(note.content)}
                         </div>
                         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity shrink-0">

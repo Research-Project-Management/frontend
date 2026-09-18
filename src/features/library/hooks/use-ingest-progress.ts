@@ -15,7 +15,7 @@ export interface ProcessModalState {
   error: string | null;
 }
 
-export function useIngestProgress(workspaceId: string) {
+export function useIngestProgress(scopeId: string = 'user') {
   const queryClient = useQueryClient();
   const [modalState, setModalState] = useState<ProcessModalState>({
     isOpen: false,
@@ -42,7 +42,7 @@ export function useIngestProgress(workspaceId: string) {
       if (activeRunIdRef.current !== runId) return;
 
       try {
-        const progress = await IngestionService.getRunProgress(workspaceId, runId);
+        const progress = await IngestionService.getRunProgress(scopeId, runId);
         if (activeRunIdRef.current !== runId) return;
 
         const isTerminal =
@@ -63,8 +63,8 @@ export function useIngestProgress(workspaceId: string) {
 
         if (isTerminal) {
           stopPolling();
-          queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
-          queryClient.invalidateQueries({ queryKey: ['library', workspaceId] });
+          queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
+          queryClient.invalidateQueries({ queryKey: ['library', scopeId] });
           queryClient.invalidateQueries({ queryKey: ['items'] });
           queryClient.invalidateQueries({ queryKey: ['papers'] });
         } else {
@@ -77,7 +77,7 @@ export function useIngestProgress(workspaceId: string) {
         }
       }
     },
-    [workspaceId, queryClient, stopPolling],
+    [scopeId, queryClient, stopPolling],
   );
 
   const startMonitoring = useCallback(
@@ -91,7 +91,7 @@ export function useIngestProgress(workspaceId: string) {
         fileName,
         data: {
           runId,
-          workspaceId,
+          scopeId,
           status: 'RECEIVED',
           total: 1,
           processed: 0,
@@ -110,7 +110,7 @@ export function useIngestProgress(workspaceId: string) {
       // Kickoff poll
       pollTimerRef.current = setTimeout(() => poll(runId), 300);
     },
-    [workspaceId, poll, stopPolling],
+    [scopeId, poll, stopPolling],
   );
 
   const startBatchProgress = useCallback(
@@ -126,7 +126,7 @@ export function useIngestProgress(workspaceId: string) {
         fileName: title,
         data: {
           runId: 'batch-upload',
-          workspaceId,
+          scopeId,
           status: 'PROCESSING',
           total,
           processed: 0,
@@ -145,7 +145,7 @@ export function useIngestProgress(workspaceId: string) {
         error: null,
       });
     },
-    [workspaceId, stopPolling],
+    [scopeId, stopPolling],
   );
 
   const updateBatchItem = useCallback(
@@ -218,12 +218,12 @@ export function useIngestProgress(workspaceId: string) {
           },
         };
       });
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
-      queryClient.invalidateQueries({ queryKey: ['library', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
+      queryClient.invalidateQueries({ queryKey: ['library', scopeId] });
       queryClient.invalidateQueries({ queryKey: ['items'] });
       queryClient.invalidateQueries({ queryKey: ['papers'] });
     },
-    [workspaceId, queryClient],
+    [scopeId, queryClient],
   );
 
   const closeModal = useCallback(() => {

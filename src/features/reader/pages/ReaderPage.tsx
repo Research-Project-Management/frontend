@@ -23,7 +23,7 @@ import Topbar from '../components/Topbar';
 import MenuBar from '../components/MenuBar';
 import ReaderToolbar from '../components/ReaderToolbar';
 import Sidebar from '../components/Sidebar';
-import Panel from '@/features/library/components/Panel';
+import Panel from '../components/Panel';
 import BibtexModal from '../components/modals/BibtexModal';
 import Systembar from '../components/Systembar';
 import DocumentNavDrawer from '../components/viewer/DocumentNavDrawer';
@@ -123,6 +123,10 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [isEntitiesDrawerOpen, setIsEntitiesDrawerOpen] = useState<boolean>(false);
 
+  // Page Presentation Mode (Zotero 7: Continuous Scroll, Single Page, Two Pages/Spread)
+  const [viewMode, setViewMode] = useState<'single' | 'continuous' | 'spread'>('continuous');
+  const [fitMode, setFitMode] = useState<'fit-width' | 'fit-page' | 'auto'>('fit-width');
+
   // Global keyboard shortcut: Ctrl+F / Cmd+F to toggle document search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -173,12 +177,16 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const [isToolLocked, setIsToolLocked] = useState<boolean>(false);
   const [pageHistory, setPageHistory] = useState<number[]>([]);
 
-  const handleNavigateToPageWithHistory = useCallback((newPage: number) => {
+  const handleNavigateToPageWithHistory = useCallback((newPage: number, annotationId?: string) => {
     if (visiblePage && visiblePage !== newPage) {
       setPageHistory((prev) => [...prev.slice(-30), visiblePage]);
     }
-    handleNavigateToPage(newPage);
-  }, [visiblePage, handleNavigateToPage]);
+    if (actions.handleNavigateToAnnotation) {
+      actions.handleNavigateToAnnotation(newPage, annotationId);
+    } else {
+      handleNavigateToPage(newPage);
+    }
+  }, [visiblePage, actions, handleNavigateToPage]);
 
   const handleNavigateBack = useCallback(() => {
     if (pageHistory.length === 0) return;
@@ -282,6 +290,10 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           onRotate={handleRotate}
           themeMode={themeMode}
           onToggleThemeMode={handleToggleThemeMode}
+          viewMode={viewMode}
+          onSelectViewMode={setViewMode}
+          fitMode={fitMode}
+          onSelectFitMode={setFitMode}
           onToggleSearch={() => setIsSearchOpen((v) => !v)}
           isInspectorOpen={isInspectorOpen}
           onToggleInspector={() => setIsInspectorOpen(!isInspectorOpen)}
@@ -333,9 +345,11 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           paper={paper}
           workspaceId={workspaceId}
           attachmentId={effectiveAttachmentId}
+          pdfBlobUrl={pdfBlobUrl}
           selectedIds={selectedAnnotationIds}
           onToggleSelect={handleToggleSelectAnnotation}
           annotationsCount={annotations.length}
+          onAddToNote={handleAddToNote}
         />
 
         {/* 4. MAIN PDF CANVAS (Supports Single, Horizontal, and Vertical Split) */}
@@ -390,6 +404,8 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 interactionMode={interactionMode}
                 activeColor={activeColor}
                 activeTool={activeTool}
+                viewMode={viewMode}
+                fitMode={fitMode}
                 isSearchOpen={isSearchOpen}
                 onCloseSearch={() => setIsSearchOpen(false)}
               />
@@ -422,6 +438,8 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                     interactionMode={interactionMode}
                     activeColor={activeColor}
                     activeTool={activeTool}
+                    viewMode={viewMode}
+                    fitMode={fitMode}
                     isSearchOpen={isSearchOpen}
                     onCloseSearch={() => setIsSearchOpen(false)}
                   />
@@ -448,6 +466,8 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                     interactionMode={interactionMode}
                     activeColor={activeColor}
                     activeTool={activeTool}
+                    viewMode={viewMode}
+                    fitMode={fitMode}
                   />
                 </div>
               </div>
@@ -489,6 +509,9 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
             item={paper as any}
             workspaceId={workspaceId}
             onClose={() => setIsInspectorOpen(false)}
+            onNavigateToAnnotation={handleNavigateToPageWithHistory}
+            pendingNoteText={pendingNoteText}
+            onClearPendingText={() => setPendingNoteText('')}
           />
         )}
       </div>

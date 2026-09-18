@@ -32,8 +32,9 @@ export interface BatchBarProps {
   onBatchRestore?: () => void;
   onBatchMerge?: () => void;
   isTrash?: boolean;
-  workspaceId?: string;
+  scopeId?: string;
   projectId?: string;
+  workspaceId?: string;
 }
 
 export type PaperBatchBarProps = BatchBarProps;
@@ -49,12 +50,13 @@ export function BatchBar({
   onBatchRestore,
   onBatchMerge,
   isTrash = false,
-  workspaceId: propsWorkspaceId,
+  scopeId: propsScopeId,
   projectId: propsProjectId,
+  workspaceId: propsWorkspaceId,
 }: BatchBarProps) {
-  const params = useParams() as { workspaceId?: string; projectId?: string };
+  const params = useParams() as { projectId?: string; workspaceId?: string };
   const effectiveScopeId =
-    propsWorkspaceId || propsProjectId || params?.workspaceId || params?.projectId;
+    propsScopeId || propsProjectId || propsWorkspaceId || params?.projectId || 'user';
 
   const copyWithToast = async (text: string, label: string = 'Copied to clipboard') => {
     if (!text || !text.trim()) {
@@ -236,7 +238,7 @@ export function BatchBar({
             >
               <DropdownMenuItem
                 onClick={() => onBatchMove(null)}
-                className="h-8 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                className="h-8 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
               >
                 <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                 <span>My Library</span>
@@ -245,7 +247,7 @@ export function BatchBar({
                 <DropdownMenuItem
                   key={c.id}
                   onClick={() => onBatchMove(c.id)}
-                  className="h-8 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="h-8 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                 >
                   <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                   <span className="truncate">{c.name}</span>
@@ -303,49 +305,49 @@ export function BatchBar({
           >
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('apa')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
               <span>APA (7th Edition)</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('ieee')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
               <span>IEEE Style</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('mla')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
               <span>MLA (9th Edition)</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('chicago')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
               <span>Chicago (Author-Date)</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('nature')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
               <span>Nature</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('harvard')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
               <span>Harvard</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('vancouver')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
               <span>Vancouver</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('latex')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary font-mono text-11"
+              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors font-mono text-11"
             >
               <span>LaTeX (\cite&#123;...&#125;)</span>
             </DropdownMenuItem>

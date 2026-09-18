@@ -2,6 +2,9 @@ import { z } from 'zod';
 
 export const noteSchema = z.object({
   id: z.string().optional().default(''),
+  scopeId: z.string().optional(),
+  projectId: z.string().nullable().optional(),
+  userId: z.string().nullable().optional(),
   workspaceId: z.string().optional(),
   itemId: z.string().nullable().optional(),
   title: z.string().optional().default('Untitled Note'),

@@ -10,23 +10,23 @@ import type {
 } from '../types/library.types';
 
 export const savedSearchKeys = {
-  all: (workspaceId?: string) => ['saved-searches', workspaceId || 'user'] as const,
-  byId: (workspaceId: string | undefined, id: string) => ['saved-searches', workspaceId || 'user', id] as const,
-  results: (workspaceId: string | undefined, id: string, params?: Record<string, any>) =>
-    ['saved-searches', workspaceId || 'user', id, 'results', params] as const,
+  all: (scopeId?: string) => ['saved-searches', scopeId || 'user'] as const,
+  byId: (scopeId: string | undefined, id: string) => ['saved-searches', scopeId || 'user', id] as const,
+  results: (scopeId: string | undefined, id: string, params?: Record<string, any>) =>
+    ['saved-searches', scopeId || 'user', id, 'results', params] as const,
 };
 
-export const invalidateSavedSearches = (qc: QueryClient, workspaceId?: string) => {
-  qc.invalidateQueries({ queryKey: savedSearchKeys.all(workspaceId) });
+export const invalidateSavedSearches = (qc: QueryClient, scopeId?: string) => {
+  qc.invalidateQueries({ queryKey: savedSearchKeys.all(scopeId) });
 };
 
-export function useSavedSearches(workspaceId?: string) {
+export function useSavedSearches(scopeId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = workspaceId || 'user';
+  const effectiveScope = scopeId || 'user';
 
   const savedSearchesQuery = useQuery({
-    queryKey: savedSearchKeys.all(workspaceId),
-    queryFn: () => SavedSearchService.getAll(workspaceId),
+    queryKey: savedSearchKeys.all(scopeId),
+    queryFn: () => SavedSearchService.getAll(scopeId),
     enabled: true,
   });
 
@@ -34,7 +34,7 @@ export function useSavedSearches(workspaceId?: string) {
     mutationFn: (data: CreateSavedSearchInput) =>
       SavedSearchService.create(effectiveScope, data),
     onSuccess: () => {
-      invalidateSavedSearches(queryClient, workspaceId);
+      invalidateSavedSearches(queryClient, scopeId);
       toast.success('Smart collection created', { id: 'saved-search-mutation' });
     },
     onError: (err: any) => {
@@ -49,9 +49,9 @@ export function useSavedSearches(workspaceId?: string) {
     mutationFn: ({ id, data }: { id: string; data: UpdateSavedSearchInput }) =>
       SavedSearchService.update(effectiveScope, id, data),
     onSuccess: (_, variables) => {
-      invalidateSavedSearches(queryClient, workspaceId);
+      invalidateSavedSearches(queryClient, scopeId);
       queryClient.invalidateQueries({
-        queryKey: savedSearchKeys.byId(workspaceId, variables.id),
+        queryKey: savedSearchKeys.byId(scopeId, variables.id),
       });
       toast.success('Smart collection updated', { id: 'saved-search-mutation' });
     },
@@ -66,7 +66,7 @@ export function useSavedSearches(workspaceId?: string) {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => SavedSearchService.delete(effectiveScope, id),
     onSuccess: () => {
-      invalidateSavedSearches(queryClient, workspaceId);
+      invalidateSavedSearches(queryClient, scopeId);
       toast.success('Smart collection deleted', { id: 'saved-search-mutation' });
     },
     onError: (err: any) => {
@@ -100,7 +100,7 @@ export function useSavedSearches(workspaceId?: string) {
 }
 
 export function useSavedSearchResults(
-  workspaceId: string | undefined,
+  scopeId: string | undefined,
   id: string | null,
   params?: {
     limit?: number;
@@ -110,8 +110,8 @@ export function useSavedSearchResults(
   },
 ) {
   return useQuery({
-    queryKey: savedSearchKeys.results(workspaceId, id || '', params),
-    queryFn: () => SavedSearchService.getResults(workspaceId || 'user', id!, params),
+    queryKey: savedSearchKeys.results(scopeId, id || '', params),
+    queryFn: () => SavedSearchService.getResults(scopeId || 'user', id!, params),
     enabled: Boolean(id),
   });
 }

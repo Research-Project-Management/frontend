@@ -29,6 +29,7 @@ import InfoSection from '@/features/library/components/panel/InfoSection';
 import AbstractSection from '@/features/library/components/panel/AbstractSection';
 import CollectionsSection from '@/features/library/components/panel/CollectionsSection';
 import NotesSection from '@/features/library/components/panel/NotesSection';
+import NotesPanel from './panel/NotesPanel';
 import TagsSection from '@/features/library/components/panel/TagsSection';
 import CiteSection from '@/features/library/components/panel/CiteSection';
 import RelatedSection from '@/features/library/components/panel/RelatedSection';
@@ -64,6 +65,9 @@ export interface InspectorPanelProps {
   scopeId?: string;
   workspaceId?: string;
   onClose?: () => void;
+  onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void;
+  pendingNoteText?: string;
+  onClearPendingText?: () => void;
 }
 
 export type SectionId = InspectorSectionId;
@@ -241,6 +245,9 @@ export default function InspectorPanel({
   scopeId,
   workspaceId,
   onClose,
+  onNavigateToAnnotation,
+  pendingNoteText,
+  onClearPendingText,
 }: InspectorPanelProps) {
   const incomingPaper = propPaper || propItem || null;
   const activeScopeId = scopeId || incomingPaper?.projectId || (incomingPaper as any)?.workspaceId || workspaceId || 'user';
@@ -248,7 +255,7 @@ export default function InspectorPanel({
   const [paper, setPaper] = useState<Item | null>(incomingPaper);
   const latestPaperRef = useRef<Item | null>(incomingPaper);
   const updateQueueRef = useRef<Promise<void>>(Promise.resolve());
-  const paperService = usePapers({ workspaceId: activeWorkspaceId });
+  const paperService = usePapers({ scopeId: activeScopeId, workspaceId: activeWorkspaceId });
   const collectionsState = useCollections(activeWorkspaceId);
   const collections = collectionsState?.state?.collections || [];
   const { notes: canonicalNotes, deleteNote } = useNotes(activeWorkspaceId, paper?.id);
@@ -348,6 +355,17 @@ export default function InspectorPanel({
       }));
     }
   }, [paper?.id]);
+
+  // Khi có đoạn text thêm vào note từ PDF viewer, tự động mở inspector và mở section notes
+  useEffect(() => {
+    if (pendingNoteText) {
+      setIsInspectorOpen(true);
+      setCollapsedSections((prev) => ({
+        ...prev,
+        notes: false,
+      }));
+    }
+  }, [pendingNoteText, setIsInspectorOpen]);
 
   // Resize Dragging
   const [isDragging, setIsDragging] = useState(false);
@@ -802,26 +820,13 @@ export default function InspectorPanel({
                 onAdd={handleAddClick}
               />
               {paper && isSectionOpen('notes') && (
-                <div className="p-2 bg-background">
-                  <NotesSection
-                    paper={{ ...paper, workspaceId: activeWorkspaceId }}
-                    workspaceId={activeWorkspaceId}
-                    onUpdatePaper={handleUpdatePaper}
-                    hideHeader
-                    forceAdding={forceAddingNote}
-                    onRequestDelete={(note) => {
-                      setDeleteModalConfig({
-                        open: true,
-                        title: 'Move Note to Trash',
-                        description: 'Are you sure you want to move this note to the trash?',
-                        itemName: note.content,
-                        confirmLabel: 'Move to trash',
-                        onConfirm: async () => {
-                          await deleteNote(note.id).catch(() => {});
-                          setDeleteModalConfig(null);
-                        },
-                      });
-                    }}
+                <div className="p-1 bg-background">
+                  <NotesPanel
+                    paper={paper as any}
+                    workspaceId={activeWorkspaceId || 'me'}
+                    pendingText={pendingNoteText}
+                    onClearPendingText={onClearPendingText}
+                    onNavigateToAnnotation={onNavigateToAnnotation}
                   />
                 </div>
               )}
@@ -905,7 +910,7 @@ export default function InspectorPanel({
                 onToggle={toggleSection}
                 onAdd={handleAddClick}
               />
-              {paper && isSectionOpen('tags') && (
+              {paper && isSectionOpen('tags') && (tagsCount > 0 || forceAddingTag) && (
                 <div className="p-2 bg-background">
                   <TagsSection
                     paper={paper}

@@ -3,10 +3,10 @@ import type { TagWithCount } from '../types/library.types';
 export type { TagWithCount };
 
 export const TagsService = {
-  list: async (workspaceId?: string): Promise<TagWithCount[]> => {
-    const isProject = workspaceId && workspaceId !== 'user';
+  list: async (scopeId?: string): Promise<TagWithCount[]> => {
+    const isProject = scopeId && scopeId !== 'user';
     const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(workspaceId)}/library/tags`
+      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/tags`
       : `/api/v1/library/tags`;
     const raw = await apiGet<any>(basePath);
     if (Array.isArray(raw)) return raw;
@@ -17,14 +17,14 @@ export const TagsService = {
   },
 
   create: async (
-    workspaceId: string,
+    scopeId: string,
     name: string,
     color?: string,
     type: string = 'manual',
   ): Promise<TagWithCount> => {
-    const isProject = workspaceId && workspaceId !== 'user';
+    const isProject = scopeId && scopeId !== 'user';
     const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(workspaceId)}/library/tags`
+      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/tags`
       : `/api/v1/library/tags`;
     const raw = await apiPost<any>(
       basePath,
@@ -32,16 +32,16 @@ export const TagsService = {
         name,
         color,
         type,
-        ...(isProject ? { projectId: workspaceId } : {}),
+        ...(isProject ? { projectId: scopeId } : {}),
       },
     );
     return raw?.data || raw;
   },
 
-  delete: async (workspaceId: string, tagId: string): Promise<void> => {
-    const isProject = workspaceId && workspaceId !== 'user';
+  delete: async (scopeId: string, tagId: string): Promise<void> => {
+    const isProject = scopeId && scopeId !== 'user';
     const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(workspaceId)}/library/tags`
+      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/tags`
       : `/api/v1/library/tags`;
     await apiDelete<any>(
       `${basePath}/${encodeURIComponent(tagId)}`,
@@ -49,11 +49,11 @@ export const TagsService = {
   },
 
   deleteAutomatic: async (
-    workspaceId?: string,
+    scopeId?: string,
   ): Promise<{ count: number }> => {
-    const isProject = workspaceId && workspaceId !== 'user';
+    const isProject = scopeId && scopeId !== 'user';
     const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(workspaceId)}/library/tags`
+      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/tags`
       : `/api/v1/library/tags`;
     const raw = await apiDelete<any>(
       `${basePath}/automatic`,
@@ -62,13 +62,13 @@ export const TagsService = {
   },
 
   assignToItem: async (
-    workspaceId: string,
+    scopeId: string,
     tagId: string,
     itemId: string,
   ): Promise<void> => {
-    const isProject = workspaceId && workspaceId !== 'user';
+    const isProject = scopeId && scopeId !== 'user';
     const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(workspaceId)}/library/tags`
+      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/tags`
       : `/api/v1/library/tags`;
     await apiPost<any>(
       `${basePath}/${encodeURIComponent(tagId)}/items/${encodeURIComponent(itemId)}`,
@@ -77,13 +77,13 @@ export const TagsService = {
   },
 
   removeFromItem: async (
-    workspaceId: string,
+    scopeId: string,
     tagId: string,
     itemId: string,
   ): Promise<void> => {
-    const isProject = workspaceId && workspaceId !== 'user';
+    const isProject = scopeId && scopeId !== 'user';
     const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(workspaceId)}/library/tags`
+      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/tags`
       : `/api/v1/library/tags`;
     await apiDelete<any>(
       `${basePath}/${encodeURIComponent(tagId)}/items/${encodeURIComponent(itemId)}`,

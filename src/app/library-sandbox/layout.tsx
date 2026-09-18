@@ -4,7 +4,7 @@ import React, { useEffect, useState, Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import Sidebar from '@/features/library/components/Sidebar';
 import { useLibrarySidebarStore } from '@/features/library/store/sidebar.store';
-import { TooltipProvider, Button } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
 import { ShieldCheck, Server, RefreshCw, Sparkles, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -55,8 +55,7 @@ export default function LibrarySandboxLayout({
   };
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <div className="flex h-dvh w-full flex-col bg-background overflow-hidden relative select-none">
+    <div className="flex h-dvh w-full flex-col bg-background overflow-hidden relative select-none">
         {/* Isolated Sandbox Header Banner */}
         <header className="h-10 shrink-0 bg-primary/10 border-b border-primary/20 px-4 flex items-center justify-between text-xs z-50">
           <div className="flex items-center gap-2 font-medium">
@@ -133,6 +132,5 @@ export default function LibrarySandboxLayout({
           </div>
         )}
       </div>
-    </TooltipProvider>
   );
 }

@@ -13,8 +13,19 @@ import {
   Search,
   FileText,
   RotateCcw,
+  ArrowUpDown,
+  User,
+  Download,
+  StickyNote,
 } from 'lucide-react';
-import { Button, Form } from "@/shared/components/ui";
+import {
+  Button,
+  Form,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { useAnnotations } from '../../hooks/use-annotations';
 import { annotationFormSchema } from '../../schemas/reader.schema';
@@ -24,7 +35,8 @@ export interface AnnotationsPanelProps {
   paper: ReaderDocument;
   workspaceId: string;
   attachmentId?: string;
-  onNavigateToPage?: (pageNumber: number) => void;
+  onNavigateToPage?: (pageNumber: number, annotationId?: string) => void;
+  onAddToNote?: (text: string, pageNumber?: number) => void;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
   onSelectAll?: () => void;
@@ -47,6 +59,7 @@ function AnnotationEditForm({
   initialQuote,
   initialComment,
   initialColor,
+  initialTags = [],
   isSaving,
   onSave,
   onCancel,
@@ -54,24 +67,35 @@ function AnnotationEditForm({
   initialQuote?: string;
   initialComment?: string;
   initialColor?: string;
+  initialTags?: string[];
   isSaving: boolean;
   onSave: (data: AnnotationFormData) => Promise<void>;
   onCancel: () => void;
 }) {
+  const [tagText, setTagText] = useState((initialTags || []).join(', '));
   const form = useForm<AnnotationFormData>({
     resolver: zodResolver(annotationFormSchema),
     defaultValues: {
       quoteText: initialQuote || '',
       comment: initialComment || '',
       color: initialColor,
+      tags: initialTags,
     },
   });
 
   const { register, handleSubmit } = form;
 
+  const handleFormSubmit = (data: AnnotationFormData) => {
+    const parsedTags = tagText
+      .split(',')
+      .map((t) => t.trim().replace(/^#/, ''))
+      .filter((t) => t.length > 0);
+    return onSave({ ...data, tags: parsedTags });
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit(onSave)} className="space-y-2 rounded-md border border-border p-2 bg-muted/20">
+      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-2 rounded-md border border-border p-2 bg-muted/20">
         <input
           {...register('quoteText')}
           aria-label="Quote text"
@@ -84,6 +108,13 @@ function AnnotationEditForm({
           placeholder="Add a note/comment..."
           rows={2}
           className="w-full resize-none bg-transparent text-12 outline-none text-foreground leading-relaxed font-sans"
+        />
+        <input
+          value={tagText}
+          onChange={(e) => setTagText(e.target.value)}
+          aria-label="Tags"
+          placeholder="Tags (e.g. methodology, result)..."
+          className="w-full bg-transparent text-11 font-mono outline-none text-muted-foreground placeholder:text-muted-foreground/60 border-t border-border/40 pt-1"
         />
         <div className="flex justify-end gap-1">
           <Button
@@ -114,6 +145,7 @@ export function AnnotationsPanel({
   workspaceId,
   attachmentId,
   onNavigateToPage,
+  onAddToNote,
   selectedIds = new Set(),
   onToggleSelect,
 }: AnnotationsPanelProps) {
@@ -126,30 +158,62 @@ export function AnnotationsPanel({
     updateAnnotation,
     deleteAnnotation,
     extractNotes,
+    importExternal,
     isUpdating,
     isExtracting,
+    isImporting,
   } = useAnnotations(workspaceId, effectiveAttachmentId);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedColor, setSelectedColor] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'position' | 'newest' | 'oldest' | 'color'>('position');
+  const [authorFilter, setAuthorFilter] = useState<'all' | string>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const availableAuthors = useMemo(() => {
+    const set = new Set<string>();
+    for (const a of annotations) {
+      if (a.authorId) set.add(a.authorId);
+    }
+    return Array.from(set);
+  }, [annotations]);
+
   const filteredAnnotations = useMemo(() => {
-    return annotations.filter((a) => {
+    const list = annotations.filter((a) => {
       const matchSearch =
         !searchQuery.trim() ||
         (a.quoteText && a.quoteText.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (a.comment && a.comment.toLowerCase().includes(searchQuery.toLowerCase()));
+        (a.comment && a.comment.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (a.tags && a.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
 
       const matchColor =
         selectedColor === 'all' ||
         (a.color && a.color.toLowerCase() === selectedColor.toLowerCase()) ||
         (selectedColor === 'yellow' && (!a.color || a.color.toLowerCase() === 'yellow' || a.color === '#ffd400'));
 
-      return matchSearch && matchColor;
+      const matchAuthor =
+        authorFilter === 'all' || a.authorId === authorFilter;
+
+      return matchSearch && matchColor && matchAuthor;
     });
-  }, [annotations, searchQuery, selectedColor]);
+
+    return list.sort((a, b) => {
+      if (sortBy === 'newest') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (sortBy === 'oldest') {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+      if (sortBy === 'color') {
+        return (a.color || '').localeCompare(b.color || '');
+      }
+      const pA = a.pageIndex ?? 0;
+      const pB = b.pageIndex ?? 0;
+      if (pA !== pB) return pA - pB;
+      return (a.annotationSortIndex || a.id).localeCompare(b.annotationSortIndex || b.id);
+    });
+  }, [annotations, searchQuery, selectedColor, authorFilter, sortBy]);
 
   const handleSaveEdit = async (
     annotation: ReaderAnnotation,
@@ -161,6 +225,7 @@ export function AnnotationsPanel({
         comment: data.comment?.trim(),
         quoteText: data.quoteText?.trim(),
         color: data.color || annotation.color,
+        tags: data.tags,
       });
       setEditingId(null);
     } catch {
@@ -178,9 +243,9 @@ export function AnnotationsPanel({
     }
   };
 
-  const handleJumpToPage = (pageIndex?: number) => {
+  const handleJumpToPage = (pageIndex?: number, annotationId?: string) => {
     if (pageIndex !== undefined && onNavigateToPage) {
-      onNavigateToPage(pageIndex + 1);
+      onNavigateToPage(pageIndex + 1, annotationId);
     }
   };
 
@@ -213,6 +278,22 @@ export function AnnotationsPanel({
             <Button
               variant="outline"
               size="sm"
+              onClick={() => importExternal()}
+              disabled={isImporting}
+              className="h-6 gap-1 px-1.5 text-11 font-medium rounded-md shrink-0 cursor-pointer border-border"
+              title="Import embedded annotations from PDF (/Annots dictionary)"
+            >
+              {isImporting ? (
+                <Loader2 className="size-3 animate-spin shrink-0" strokeWidth={1.5} />
+              ) : (
+                <Download className="size-3 text-muted-foreground shrink-0" strokeWidth={1.5} />
+              )}
+              <span>Import</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => extractNotes(paper.id)}
               disabled={isExtracting || annotations.length === 0}
               className="h-6 gap-1 px-2 text-11 font-medium rounded-md shrink-0 cursor-pointer border-border"
@@ -227,32 +308,120 @@ export function AnnotationsPanel({
             </Button>
           </div>
 
-          {/* Color Dots */}
-          <div className="flex items-center gap-1 overflow-x-auto py-0.5 thin-scrollbar">
-            {COLOR_FILTERS.map((filter) => {
-              const active = selectedColor === filter.id;
-              return (
-                <button
-                  key={filter.id}
-                  type="button"
-                  onClick={() => setSelectedColor(filter.id)}
-                  className={cn(
-                    'inline-flex h-4 items-center gap-1 rounded-md px-1.5 text-10 font-medium transition-colors shrink-0 cursor-pointer',
-                    active
-                      ? 'bg-foreground text-background font-semibold'
-                      : 'bg-muted text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {filter.color && (
-                    <span
-                      className="size-1.5 rounded-full shrink-0"
-                      style={{ backgroundColor: filter.color }}
-                    />
-                  )}
-                  <span>{filter.label}</span>
-                </button>
-              );
-            })}
+          {/* Sub-header: Color dots, Author Filter & Sort Menu */}
+          <div className="flex items-center justify-between gap-1 pt-0.5">
+            {/* Color Dots */}
+            <div className="flex items-center gap-1 overflow-x-auto py-0.5 thin-scrollbar">
+              {COLOR_FILTERS.map((filter) => {
+                const active = selectedColor === filter.id;
+                return (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    onClick={() => setSelectedColor(filter.id)}
+                    className={cn(
+                      'inline-flex h-4 items-center gap-1 rounded-md px-1.5 text-10 font-medium transition-colors shrink-0 cursor-pointer',
+                      active
+                        ? 'bg-foreground text-background font-semibold'
+                        : 'bg-muted text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {filter.color && (
+                      <span
+                        className="size-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: filter.color }}
+                      />
+                    )}
+                    <span>{filter.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Author & Sort Controls */}
+            <div className="flex items-center gap-1 shrink-0">
+              {/* Author Filter Dropdown */}
+              {availableAuthors.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "h-4.5 px-1.5 flex items-center gap-1 rounded text-10 font-sans border border-border cursor-pointer transition-colors",
+                        authorFilter !== 'all' ? "bg-primary/10 text-primary border-primary/30" : "bg-muted text-muted-foreground hover:text-foreground"
+                      )}
+                      title="Filter by Author"
+                    >
+                      <User className="size-2.5 shrink-0" strokeWidth={1.5} />
+                      <span>{authorFilter === 'all' ? 'All' : 'Author'}</span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-32 text-xs p-1 bg-popover border border-border shadow-none rounded-md">
+                    <DropdownMenuItem
+                      onClick={() => setAuthorFilter('all')}
+                      className="cursor-pointer text-11 flex items-center justify-between"
+                    >
+                      <span>All Authors</span>
+                      {authorFilter === 'all' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
+                    </DropdownMenuItem>
+                    {availableAuthors.map((aid) => (
+                      <DropdownMenuItem
+                        key={aid}
+                        onClick={() => setAuthorFilter(aid)}
+                        className="cursor-pointer text-11 flex items-center justify-between font-mono"
+                      >
+                        <span className="truncate max-w-[90px]">{aid.slice(0, 8)}</span>
+                        {authorFilter === aid && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
+              {/* Sort Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="h-4.5 px-1.5 flex items-center gap-1 rounded text-10 font-sans border border-border bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                    title="Sort annotations"
+                  >
+                    <ArrowUpDown className="size-2.5 shrink-0" strokeWidth={1.5} />
+                    <span className="capitalize">{sortBy}</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-36 text-xs p-1 bg-popover border border-border shadow-none rounded-md">
+                  <DropdownMenuItem
+                    onClick={() => setSortBy('position')}
+                    className="cursor-pointer text-11 flex items-center justify-between"
+                  >
+                    <span>Document Order</span>
+                    {sortBy === 'position' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setSortBy('newest')}
+                    className="cursor-pointer text-11 flex items-center justify-between"
+                  >
+                    <span>Newest First</span>
+                    {sortBy === 'newest' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setSortBy('oldest')}
+                    className="cursor-pointer text-11 flex items-center justify-between"
+                  >
+                    <span>Oldest First</span>
+                    {sortBy === 'oldest' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setSortBy('color')}
+                    className="cursor-pointer text-11 flex items-center justify-between"
+                  >
+                    <span>By Color</span>
+                    {sortBy === 'color' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       )}
@@ -307,6 +476,7 @@ export function AnnotationsPanel({
                       initialQuote={annotation.quoteText}
                       initialComment={annotation.comment}
                       initialColor={annotation.color}
+                      initialTags={annotation.tags}
                       isSaving={isUpdating}
                       onSave={(data) => handleSaveEdit(annotation, data)}
                       onCancel={() => setEditingId(null)}
@@ -327,7 +497,7 @@ export function AnnotationsPanel({
                           )}
                           <button
                             type="button"
-                            onClick={() => handleJumpToPage(annotation.pageIndex)}
+                            onClick={() => handleJumpToPage(annotation.pageIndex, annotation.id)}
                             className="font-mono text-muted-foreground hover:text-foreground cursor-pointer tabular-nums"
                           >
                             P. {(annotation.pageIndex ?? 0) + 1}
@@ -357,6 +527,22 @@ export function AnnotationsPanel({
                             </div>
                           ) : (
                             <>
+                              {onAddToNote && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    onAddToNote(
+                                      annotation.quoteText || annotation.comment || '',
+                                      (annotation.pageIndex ?? 0) + 1,
+                                    )
+                                  }
+                                  aria-label="Add to Note"
+                                  className="size-5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
+                                  title="Add to Note"
+                                >
+                                  <StickyNote className="size-3" strokeWidth={1.5} />
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => setEditingId(annotation.id)}
@@ -382,7 +568,7 @@ export function AnnotationsPanel({
                       {annotation.quoteText && (
                         <button
                           type="button"
-                          onClick={() => handleJumpToPage(annotation.pageIndex)}
+                          onClick={() => handleJumpToPage(annotation.pageIndex, annotation.id)}
                           className="text-left w-full cursor-pointer select-text"
                         >
                           <p
@@ -399,6 +585,20 @@ export function AnnotationsPanel({
                         <p className="text-11 text-muted-foreground pl-2 leading-relaxed select-text">
                           {annotation.comment}
                         </p>
+                      )}
+
+                      {/* Tags */}
+                      {annotation.tags && annotation.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pl-2 pt-0.5">
+                          {annotation.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center px-1.5 py-0.5 rounded text-10 font-mono bg-muted text-muted-foreground border border-border/60"
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
                       )}
                     </div>
                   )}

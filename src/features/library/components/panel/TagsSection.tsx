@@ -134,6 +134,10 @@ export default function TagsSection({
     saveTags(Array.from(new Set(updated)));
   };
 
+  if (tags.length === 0 && !isAdding && hideHeader) {
+    return null;
+  }
+
   return (
     <div className="space-y-0.5 text-xs select-none font-sans">
       {!hideHeader && (
@@ -191,16 +195,6 @@ export default function TagsSection({
           >
             <MinusCircle className="size-3.5 text-foreground shrink-0" />
           </button>
-        </div>
-      )}
-
-      {/* Empty State when no tags and not adding */}
-      {tags.length === 0 && !isAdding && (
-        <div
-          onClick={() => setIsAdding(true)}
-          className="px-2 py-1 text-xs text-foreground cursor-pointer"
-        >
-          No tags
         </div>
       )}
     </div>

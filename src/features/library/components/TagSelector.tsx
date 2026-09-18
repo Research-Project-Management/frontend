@@ -52,12 +52,14 @@ function FilterCheckbox({ checked }: { checked: boolean }) {
 
 export interface TagFilterPopoverProps {
   scopeId?: string;
+  projectId?: string;
   workspaceId?: string;
   className?: string;
 }
 
 export function TagFilterPopover({
   scopeId: propScopeId,
+  projectId: propProjectId,
   workspaceId: propWorkspaceId,
   className,
 }: TagFilterPopoverProps) {
@@ -68,7 +70,7 @@ export function TagFilterPopover({
   const params = useParams() as { collectionId?: string };
   const collectionId = params?.collectionId;
 
-  const scopeId = propScopeId || propWorkspaceId || 'user';
+  const scopeId = propScopeId || propProjectId || propWorkspaceId || 'user';
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -268,7 +270,7 @@ export function TagFilterPopover({
               value={tagSearch}
               onChange={(e) => setTagSearch(e.target.value)}
               placeholder="Search tags..."
-              className="h-8 w-full pl-8 pr-7 text-12 bg-muted/50 hover:bg-muted focus:bg-background border border-border rounded-md outline-none focus:ring-1 focus:ring-primary transition-colors placeholder:text-muted-foreground/60 text-foreground"
+              className="h-8 w-full pl-8 pr-7 text-12 bg-background border border-border rounded-md outline-none focus:outline-none focus:border-border focus:ring-0 placeholder:text-muted-foreground text-foreground shadow-none"
             />
             {tagSearch ? (
               <button

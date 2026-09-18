@@ -15,12 +15,14 @@ import {
   ChevronRight,
   X,
   Trash2,
+  Strikethrough,
 } from 'lucide-react';
 import type {
   DocumentFulltext,
   ReaderDocument,
   ReaderAnnotation,
   AnnotationRect,
+  ReaderNavigationTarget,
 } from '../../types/reader.types';
 import type { ReaderAnnotationTool } from '../../store/reader.store';
 import { formatInTextCitation } from '../../utils/reader.util';
@@ -76,12 +78,13 @@ interface ViewerProps {
     pageNumber: number,
     colorHex?: string,
     rects?: AnnotationRect[],
+    type?: 'highlight' | 'underline' | 'strike' | 'note' | 'text' | 'rect' | 'area',
   ) => void;
   annotations?: ReaderAnnotation[];
   onDeleteAnnotation?: (annotation: ReaderAnnotation) => void;
   fulltext?: DocumentFulltext | null;
   isLoadingFulltext?: boolean;
-  targetPage?: { pageNumber: number; timestamp: number } | null;
+  targetPage?: ReaderNavigationTarget | null;
   paper?: ReaderDocument;
   onVisiblePageChange?: (page: number) => void;
   onTotalPagesChange?: (total: number) => void;
@@ -93,6 +96,8 @@ interface ViewerProps {
   activeTool?: ReaderAnnotationTool;
   isSearchOpen?: boolean;
   onCloseSearch?: () => void;
+  viewMode?: 'single' | 'continuous' | 'spread';
+  fitMode?: 'fit-width' | 'fit-page' | 'auto';
 }
 
 export default function Viewer({
@@ -119,6 +124,8 @@ export default function Viewer({
   activeTool = 'highlight',
   isSearchOpen = false,
   onCloseSearch,
+  viewMode = 'continuous',
+  fitMode = 'fit-width',
 }: ViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [visiblePage, setVisiblePage] = useState<number>(1);
@@ -150,6 +157,16 @@ export default function Viewer({
     top: number;
     left: number;
     ann: ReaderAnnotation;
+  } | null>(null);
+
+  // Area Selection (Scan Tool) State for marquee dragging
+  const [areaSelection, setAreaSelection] = useState<{
+    pageNum: number;
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+    active: boolean;
   } | null>(null);
 
   // Group annotations by 1-based page number
@@ -223,13 +240,18 @@ export default function Viewer({
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number>(600);
+  const [containerHeight, setContainerHeight] = useState<number>(800);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  // Track container width for fit-to-width layout
+  // Track container width and height for fit layout
   useEffect(() => {
     if (!scrollContainerRef.current) return;
     const el = scrollContainerRef.current;
-    const update = () => setContainerWidth(el.getBoundingClientRect().width);
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      setContainerWidth(rect.width);
+      setContainerHeight(rect.height);
+    };
     update();
     const obs = new ResizeObserver(update);
     obs.observe(el);
@@ -282,9 +304,40 @@ export default function Viewer({
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
+  const [pulsingAnnotationId, setPulsingAnnotationId] = useState<string | null>(null);
+
+  // Zotero-standard Active Backlink navigation handler
   useEffect(() => {
-    if (targetPage && targetPage.pageNumber >= 1) {
-      scrollToPage(targetPage.pageNumber);
+    if (!targetPage || targetPage.pageNumber < 1) return;
+
+    // 1. Scroll to the page
+    scrollToPage(targetPage.pageNumber);
+
+    // 2. If target specifies an annotationId, focus & pulse it
+    if (targetPage.annotationId) {
+      const annId = targetPage.annotationId;
+      setPulsingAnnotationId(annId);
+
+      const attemptFocus = (retries = 8) => {
+        const el = document.querySelector(`[data-annotation-id="${annId}"]`) as HTMLElement | null;
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (retries > 0) {
+          setTimeout(() => attemptFocus(retries - 1), 120);
+        }
+      };
+
+      // Slight delay to allow react-pdf TextLayer/AnnotationLayer rendering
+      const focusTimer = setTimeout(() => attemptFocus(), 80);
+
+      const clearTimer = setTimeout(() => {
+        setPulsingAnnotationId(null);
+      }, 2500);
+
+      return () => {
+        clearTimeout(focusTimer);
+        clearTimeout(clearTimer);
+      };
     }
   }, [targetPage, scrollToPage]);
 
@@ -294,6 +347,91 @@ export default function Viewer({
     },
     [scrollToPage],
   );
+
+  // Area Selection (Scan Tool) Mouse Handlers
+  const handlePageMouseDown = (e: React.MouseEvent<HTMLDivElement>, pageNum: number) => {
+    if (activeTool !== 'area' || e.button !== 0) return;
+    e.preventDefault();
+    const pageEl = e.currentTarget;
+    const pageRect = pageEl.getBoundingClientRect();
+    const startX = e.clientX - pageRect.left;
+    const startY = e.clientY - pageRect.top;
+    setAreaSelection({
+      pageNum,
+      startX,
+      startY,
+      currentX: startX,
+      currentY: startY,
+      active: true,
+    });
+  };
+
+  const handlePageMouseMove = (e: React.MouseEvent<HTMLDivElement>, pageNum: number) => {
+    if (!areaSelection?.active || areaSelection.pageNum !== pageNum) return;
+    const pageEl = e.currentTarget;
+    const pageRect = pageEl.getBoundingClientRect();
+    const currentX = Math.max(0, Math.min(pageRect.width, e.clientX - pageRect.left));
+    const currentY = Math.max(0, Math.min(pageRect.height, e.clientY - pageRect.top));
+    setAreaSelection((prev) => (prev ? { ...prev, currentX, currentY } : null));
+  };
+
+  const handlePageMouseUp = (e: React.MouseEvent<HTMLDivElement>, pageNum: number) => {
+    if (!areaSelection?.active || areaSelection.pageNum !== pageNum) return;
+    const pageEl = e.currentTarget;
+    const pageRect = pageEl.getBoundingClientRect();
+    const xMin = Math.min(areaSelection.startX, areaSelection.currentX);
+    const yMin = Math.min(areaSelection.startY, areaSelection.currentY);
+    const widthPx = Math.abs(areaSelection.currentX - areaSelection.startX);
+    const heightPx = Math.abs(areaSelection.currentY - areaSelection.startY);
+
+    setAreaSelection(null);
+
+    // Minimum area threshold: 16px x 16px to prevent accidental clicks
+    if (widthPx >= 16 && heightPx >= 16) {
+      const normX1 = xMin / pageRect.width;
+      const normY1 = yMin / pageRect.height;
+      const normW = widthPx / pageRect.width;
+      const normH = heightPx / pageRect.height;
+
+      const rect: AnnotationRect = {
+        x1: normX1,
+        y1: normY1,
+        x2: normX1 + normW,
+        y2: normY1 + normH,
+        width: normW,
+        height: normH,
+      };
+
+      onAnnotate?.('', pageNum, activeColor || '#ffd400', [rect], 'rect');
+    }
+  };
+
+  // Floating text tool placement on page click
+  const handlePageClick = (e: React.MouseEvent<HTMLDivElement>, pageNum: number) => {
+    if (activeTool !== 'text') return;
+    const pageEl = e.currentTarget;
+    const rect = pageEl.getBoundingClientRect();
+    const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    const promptText = window.prompt('Enter floating text annotation:');
+    if (promptText && promptText.trim()) {
+      const annotationRect: AnnotationRect = {
+        x1: normX,
+        y1: normY,
+        x2: Math.min(1, normX + 0.25),
+        y2: Math.min(1, normY + 0.04),
+        width: 0.25,
+        height: 0.04,
+      };
+      onAnnotate?.(
+        promptText.trim(),
+        pageNum,
+        activeColor || '#ffd400',
+        [annotationRect],
+        'text',
+      );
+    }
+  };
 
   // Text selection floating menu
   const handleMouseUp = useCallback(() => {
@@ -441,7 +579,23 @@ export default function Viewer({
   };
 
   const currentZoom = zoomProp ?? zoom;
-  const pageWidth = Math.max(320, Math.round((containerWidth - 56) * currentZoom));
+  const containerH = containerHeight || 800;
+  const fitPageWidth = Math.max(260, Math.round(((containerH - 72) / 1.414) * currentZoom));
+  const fitWidthWidth = Math.max(320, Math.round((containerWidth - 56) * currentZoom));
+  const spreadPageWidth = Math.max(260, Math.round(((containerWidth - 72) / 2) * currentZoom));
+
+  const standardPageWidth = fitMode === 'fit-page' ? fitPageWidth : fitWidthWidth;
+  const effectivePageWidth = viewMode === 'spread' ? spreadPageWidth : standardPageWidth;
+
+  const spreadPairs = useMemo(() => {
+    if (numPages === 0) return [];
+    const pairs: [number, number | null][] = [];
+    for (let i = 1; i <= numPages; i += 2) {
+      pairs.push([i, i + 1 <= numPages ? i + 1 : null]);
+    }
+    return pairs;
+  }, [numPages]);
+
   const showLoading = isLoading || (blobUrl && docLoading);
 
   return (
@@ -546,7 +700,7 @@ export default function Viewer({
           <div className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center gap-4 py-6">
-                <DocumentPageSkeleton width={pageWidth} />
+                <DocumentPageSkeleton width={effectivePageWidth} />
               </div>
             ) : (
               <>
@@ -566,12 +720,12 @@ export default function Viewer({
             onLoadError={onDocumentLoadError}
             loading={
               <div className="flex flex-col items-center gap-4 py-5 px-4">
-                <DocumentPageSkeleton width={pageWidth} />
+                <DocumentPageSkeleton width={effectivePageWidth} />
               </div>
             }
           >
-            <div className="flex flex-col items-center gap-3 py-5 px-4">
-              {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => (
+            {(() => {
+              const renderPageCard = (pageNum: number) => (
                 <div
                   key={pageNum}
                   data-page-num={pageNum}
@@ -579,41 +733,70 @@ export default function Viewer({
                     if (el) pageRefs.current.set(pageNum, el);
                     else pageRefs.current.delete(pageNum);
                   }}
+                  onClick={(e) => handlePageClick(e, pageNum)}
+                  onMouseDown={(e) => handlePageMouseDown(e, pageNum)}
+                  onMouseMove={(e) => handlePageMouseMove(e, pageNum)}
+                  onMouseUp={(e) => handlePageMouseUp(e, pageNum)}
                   className={cn(
-                    "bg-card border border-border rounded-md overflow-hidden transition-all shadow-xs relative",
+                    "bg-card border border-border rounded-md overflow-hidden transition-all shadow-xs relative shrink-0",
                     themeMode === 'dark' && "invert-[0.9] hue-rotate-180 contrast-90 brightness-95",
-                    themeMode === 'sepia' && "sepia-[0.3] contrast-95 brightness-95"
+                    themeMode === 'sepia' && "sepia-[0.3] contrast-95 brightness-95",
+                    activeTool === 'area' && "cursor-crosshair select-none",
+                    activeTool === 'text' && "cursor-text"
                   )}
                 >
                   <Page
                     pageNumber={pageNum}
-                    width={pageWidth}
+                    width={effectivePageWidth}
                     rotate={rotation}
                     renderTextLayer={true}
                     renderAnnotationLayer={true}
-                    loading={<DocumentPageSkeleton width={pageWidth} />}
+                    loading={<DocumentPageSkeleton width={effectivePageWidth} />}
                   />
 
-                  {/* VISUAL HIGHLIGHTS OVERLAY */}
+                  {/* ACTIVE AREA SELECTION MARQUEE */}
+                  {areaSelection?.active && areaSelection.pageNum === pageNum && (
+                    <div
+                      className="absolute pointer-events-none border-2 border-dashed rounded-sm z-30 transition-none"
+                      style={{
+                        borderColor: activeColor || '#ffd400',
+                        backgroundColor: activeColor ? `${activeColor}25` : '#ffd40025',
+                        left: Math.min(areaSelection.startX, areaSelection.currentX),
+                        top: Math.min(areaSelection.startY, areaSelection.currentY),
+                        width: Math.abs(areaSelection.currentX - areaSelection.startX),
+                        height: Math.abs(areaSelection.currentY - areaSelection.startY),
+                      }}
+                    />
+                  )}
+
+                  {/* VISUAL HIGHLIGHTS / UNDERLINE / STRIKE / TEXT OVERLAY */}
                   {pageAnnotationsMap[pageNum] && pageAnnotationsMap[pageNum].length > 0 && (
                     <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
                       {pageAnnotationsMap[pageNum].map((ann: ReaderAnnotation) => {
                         const rects = (Array.isArray(ann.rects) ? ann.rects : []) as AnnotationRect[];
                         const colorHex = ann.color || '#ffd400';
+                        const isUnderline = ann.type === 'underline';
+                        const isStrike = ann.type === 'strike';
+                        const isRect = ann.type === 'rect' || ann.type === 'image' || ann.type === 'area';
+                        const isText = ann.type === 'text';
+                        const isPulsing = pulsingAnnotationId === ann.id;
 
-                        if (rects.length > 0) {
-                          return rects.map((r, rIdx) => (
+                        if (isText && rects.length > 0) {
+                          const r = rects[0];
+                          return (
                             <div
-                              key={`${ann.id}-${rIdx}`}
-                              className="absolute pointer-events-auto rounded-[2px] transition-all cursor-pointer hover:opacity-75"
+                              key={ann.id}
+                              id={`annotation-${ann.id}`}
+                              data-annotation-id={ann.id}
+                              className={cn(
+                                "absolute pointer-events-auto cursor-pointer text-11 font-sans font-medium px-1.5 py-0.5 rounded shadow-xs bg-background/95 border backdrop-blur-xs flex items-center gap-1 z-20 transition-all",
+                                isPulsing && "ring-4 ring-primary ring-offset-1 animate-pulse"
+                              )}
                               style={{
                                 left: `${r.x1 * 100}%`,
                                 top: `${r.y1 * 100}%`,
-                                width: `${r.width * 100}%`,
-                                height: `${r.height * 100}%`,
-                                backgroundColor: colorHex,
-                                opacity: 0.38,
-                                mixBlendMode: 'multiply',
+                                borderColor: colorHex,
+                                color: colorHex,
                               }}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -627,7 +810,67 @@ export default function Viewer({
                                     : { id: ann.id, quote: ann.quoteText, comment: ann.comment, color: colorHex, top, left, ann },
                                 );
                               }}
-                            />
+                            >
+                              <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: colorHex }} />
+                              <span className="truncate max-w-[140px] text-foreground font-normal">
+                                {ann.quoteText || ann.comment || 'Text'}
+                              </span>
+                            </div>
+                          );
+                        }
+
+                        if (rects.length > 0) {
+                          return rects.map((r, rIdx) => (
+                            <div
+                              key={`${ann.id}-${rIdx}`}
+                              id={`annotation-${ann.id}`}
+                              data-annotation-id={ann.id}
+                              className={cn(
+                                "absolute pointer-events-auto transition-all cursor-pointer",
+                                isRect && "border-2 rounded-sm",
+                                isUnderline && "border-b-2 rounded-none",
+                                !isRect && !isUnderline && !isStrike && "rounded-[2px] hover:opacity-75",
+                                isStrike && "hover:opacity-80",
+                                isPulsing && "ring-4 ring-primary ring-offset-1 animate-pulse z-30 shadow-md"
+                              )}
+                              style={{
+                                left: `${r.x1 * 100}%`,
+                                top: `${r.y1 * 100}%`,
+                                width: `${r.width * 100}%`,
+                                height: `${r.height * 100}%`,
+                                borderColor: (isRect || isUnderline) ? colorHex : undefined,
+                                backgroundColor: (isUnderline || isStrike) ? 'transparent' : (isRect ? `${colorHex}25` : colorHex),
+                                opacity: isRect ? 0.95 : ((isUnderline || isStrike) ? 1 : 0.38),
+                                mixBlendMode: (isRect || isUnderline || isStrike) ? 'normal' : 'multiply',
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const target = e.currentTarget.getBoundingClientRect();
+                                const container = scrollContainerRef.current?.getBoundingClientRect();
+                                const top = target.bottom - (container?.top || 0) + (scrollContainerRef.current?.scrollTop || 0) + 4;
+                                const left = Math.max(10, target.left - (container?.left || 0) + (scrollContainerRef.current?.scrollLeft || 0));
+                                setActiveHighlightTooltip(
+                                  activeHighlightTooltip?.id === ann.id
+                                    ? null
+                                    : { id: ann.id, quote: ann.quoteText, comment: ann.comment, color: colorHex, top, left, ann },
+                                );
+                              }}
+                            >
+                              {isStrike && (
+                                <div
+                                  className="w-full h-[2px] absolute top-1/2 -translate-y-1/2 pointer-events-none rounded-full"
+                                  style={{ backgroundColor: colorHex }}
+                                />
+                              )}
+                              {isRect && (
+                                <span
+                                  className="absolute -top-3.5 left-0 px-1 py-0.2 text-[9px] font-mono uppercase rounded text-white font-semibold pointer-events-none tracking-wide"
+                                  style={{ backgroundColor: colorHex }}
+                                >
+                                  Area
+                                </span>
+                              )}
+                            </div>
                           ));
                         }
 
@@ -635,7 +878,12 @@ export default function Viewer({
                         return (
                           <div
                             key={ann.id}
-                            className="absolute top-2 left-2 z-20 pointer-events-auto flex items-center gap-1 px-1.5 py-0.5 rounded-md text-10 font-mono border shadow-none cursor-pointer bg-background/85 backdrop-blur-xs"
+                            id={`annotation-${ann.id}`}
+                            data-annotation-id={ann.id}
+                            className={cn(
+                              "absolute top-2 left-2 z-20 pointer-events-auto flex items-center gap-1 px-1.5 py-0.5 rounded-md text-10 font-mono border shadow-none cursor-pointer bg-background/85 backdrop-blur-xs",
+                              isPulsing && "ring-4 ring-primary ring-offset-1 animate-pulse"
+                            )}
                             style={{ borderColor: colorHex }}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -658,8 +906,37 @@ export default function Viewer({
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
+              );
+
+              if (viewMode === 'spread') {
+                return (
+                  <div className="flex flex-col items-center gap-4 py-5 px-4 max-w-[1920px] mx-auto">
+                    {spreadPairs.map(([p1, p2]) => (
+                      <div key={p1} className="flex flex-row justify-center items-start gap-4">
+                        {renderPageCard(p1)}
+                        {p2 && renderPageCard(p2)}
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+
+              if (viewMode === 'single') {
+                return (
+                  <div className="flex flex-col items-center gap-3 py-5 px-4 min-h-full justify-center">
+                    {renderPageCard(Math.min(Math.max(1, visiblePage), numPages || 1))}
+                  </div>
+                );
+              }
+
+              return (
+                <div className="flex flex-col items-center gap-3 py-5 px-4">
+                  {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) =>
+                    renderPageCard(pageNum),
+                  )}
+                </div>
+              );
+            })()}
           </Document>
         )}
 
@@ -679,6 +956,22 @@ export default function Viewer({
                 <span className="text-11 font-medium text-foreground">Highlight</span>
               </div>
               <div className="flex items-center gap-0.5">
+                {onAddToNote && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onAddToNote(
+                        activeHighlightTooltip.quote || activeHighlightTooltip.comment || '',
+                        activeHighlightTooltip.ann.pageNumber || visiblePage,
+                      );
+                      setActiveHighlightTooltip(null);
+                    }}
+                    className="size-5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
+                    title="Add to Note"
+                  >
+                    <StickyNote className="size-3 shrink-0" strokeWidth={1.5} />
+                  </button>
+                )}
                 {onDeleteAnnotation && (
                   <button
                     type="button"
@@ -749,7 +1042,19 @@ export default function Viewer({
                       type="button"
                       aria-label={`Highlight in ${c.label}`}
                       onClick={() => {
-                        onAnnotate(selectedText, selectedPageNum, c.hex, selectedRects);
+                        const targetType =
+                          activeTool === 'strike'
+                            ? 'strike'
+                            : activeTool === 'underline'
+                              ? 'underline'
+                              : 'highlight';
+                        onAnnotate(
+                          selectedText,
+                          selectedPageNum,
+                          c.hex,
+                          selectedRects,
+                          targetType,
+                        );
                         setShowFloatingMenu(false);
                         window.getSelection()?.removeAllRanges();
                       }}
@@ -763,6 +1068,30 @@ export default function Viewer({
                   );
                 })}
               </div>
+            )}
+
+            {/* Strike Action */}
+            {onAnnotate && (
+              <button
+                type="button"
+                aria-label="Strikethrough selected text"
+                onClick={() => {
+                  onAnnotate(
+                    selectedText,
+                    selectedPageNum,
+                    activeColor || '#ff6666',
+                    selectedRects,
+                    'strike',
+                  );
+                  setShowFloatingMenu(false);
+                  window.getSelection()?.removeAllRanges();
+                }}
+                className="flex items-center gap-1 px-1.5 py-1 rounded-md text-12 font-medium hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                title="Strikethrough text (S)"
+              >
+                <Strikethrough className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
+                <span>Strike</span>
+              </button>
             )}
 
             {/* Note Action */}

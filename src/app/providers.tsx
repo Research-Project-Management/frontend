@@ -54,7 +54,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <ErrorBoundary>
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
-          <TooltipProvider delayDuration={300}>
+          <TooltipProvider delayDuration={1000} skipDelayDuration={300} disableHoverableContent={true}>
             {children}
           </TooltipProvider>
           {process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_ENABLE_DEVTOOLS === 'true' && (

@@ -17,7 +17,10 @@ export type ItemId = Brand<string, 'ItemId'>;
 export type PaperId = ItemId;
 export type CollectionId = Brand<string, 'CollectionId'>;
 export type NoteId = Brand<string, 'NoteId'>;
-export type TagId = Brand<string, 'TagId'>;
+export type ScopeId = Brand<string, 'ScopeId'>;
+export type UserId = Brand<string, 'UserId'>;
+export type ProjectId = Brand<string, 'ProjectId'>;
+/** @deprecated Project uses User - Project dual-scope instead of workspaces */
 export type WorkspaceId = Brand<string, 'WorkspaceId'>;
 
 // ── Domain Type Re-Exports ───────────────────────────────────────────────────

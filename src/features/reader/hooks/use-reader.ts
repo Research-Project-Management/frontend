@@ -11,7 +11,7 @@ import { ReadingService, StateService } from '../services/state.service';
 import { AnnotationsService } from '../services/annotations.service';
 import { readerAnnotationKeys, useAnnotations } from './use-annotations';
 import { useLibraryReaderStore } from '../store/reader.store';
-import type { ReaderPanel, ReaderDocument, AnnotationRect } from '../types/reader.types';
+import type { ReaderPanel, ReaderDocument, AnnotationRect, ReaderNavigationTarget } from '../types/reader.types';
 
 const MIN_PANEL_WIDTH = 320;
 const MAX_PANEL_WIDTH = 560;
@@ -90,7 +90,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const [selectionContext, setSelectionContext] = useState('');
   const [pendingNoteText, setPendingNoteText] = useState('');
   const [bibtexOpen, setBibtexOpen] = useState(false);
-  const [targetPage, setTargetPage] = useState<{ pageNumber: number; timestamp: number } | null>(null);
+  const [targetPage, setTargetPage] = useState<ReaderNavigationTarget | null>(null);
 
   const effectiveAttachmentId =
     paper?.attachments?.[0]?.id || paper?.primaryFile?.fileId || undefined;
@@ -205,17 +205,53 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     setActivePanel('ai');
   };
 
-  const handleAddToNote = (text: string, pageNumber?: number) => {
-    const trimmed = text.trim();
-    const formatted = pageNumber ? `> "${trimmed}"\n\n— *Page ${pageNumber}*` : `> "${trimmed}"`;
-    setPendingNoteText(formatted);
-    setActivePanel('notes');
+  const handleNavigateToAnnotation = (
+    pageNumber: number,
+    annotationId?: string,
+    coords?: AnnotationRect,
+  ) => {
+    if (pageNumber >= 1) {
+      setTargetPage({
+        pageNumber,
+        annotationId,
+        coords,
+        timestamp: Date.now(),
+      });
+    }
   };
 
   const handleNavigateToPage = (pageNumber: number) => {
-    if (pageNumber >= 1) {
-      setTargetPage({ pageNumber, timestamp: Date.now() });
+    handleNavigateToAnnotation(pageNumber);
+  };
+
+  const handleAddToNote = (
+    text: string,
+    pageNumber?: number,
+    annotationId?: string,
+  ) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    let citationLink = '';
+    if (pageNumber) {
+      const creators = paper?.creators || [];
+      const firstAuthor =
+        creators[0]?.lastName ||
+        creators[0]?.fullName?.split(' ').slice(-1)[0] ||
+        'Unknown';
+      const year = paper?.year || 'n.d.';
+      const authorCitation =
+        creators.length > 1 ? `${firstAuthor} et al., ${year}` : `${firstAuthor}, ${year}`;
+      const citationLabel = `(${authorCitation}, p. ${pageNumber})`;
+      const backlink = effectiveAttachmentId
+        ? `flux://open-pdf/library/items/${effectiveAttachmentId}?page=${pageNumber}&annotation=${annotationId || ''}`
+        : `flux://open-pdf/library/items?page=${pageNumber}&annotation=${annotationId || ''}`;
+      citationLink = `\n> — [${citationLabel}](${backlink})`;
     }
+
+    const formatted = `> "${trimmed}"${citationLink}`;
+    setPendingNoteText(formatted);
+    setActivePanel('notes');
   };
 
   const handleAnnotate = async (
@@ -223,20 +259,22 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     pageNum?: number,
     colorHex: string = '#ffd400',
     rects?: AnnotationRect[],
+    type: 'highlight' | 'underline' | 'strike' | 'note' | 'text' | 'rect' | 'area' = 'highlight',
   ) => {
     setActivePanel('annotations');
     if (!effectiveAttachmentId) return;
 
     const quote = text?.trim();
-    if (!quote) return;
+    if (!quote && type !== 'rect' && type !== 'area' && type !== 'text') return;
 
     try {
       const pageIndex = pageNum !== undefined && pageNum > 0 ? pageNum - 1 : 0;
+      const effectiveType = type === 'area' ? 'rect' : type;
       await AnnotationsService.create(scopeId, effectiveAttachmentId, {
-        type: 'highlight',
+        type: effectiveType as any,
         pageIndex,
         color: colorHex,
-        quoteText: quote,
+        quoteText: quote || undefined,
         rects,
       });
       qc.invalidateQueries({
@@ -434,6 +472,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       handleAddToNote,
       handleAnnotate,
       handleNavigateToPage,
+      handleNavigateToAnnotation,
       setPendingNoteText,
       clearSelectionContext,
       handleReindex,

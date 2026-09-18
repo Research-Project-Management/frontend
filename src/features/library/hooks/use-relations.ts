@@ -32,16 +32,33 @@ export function useRelations(scopeId?: string, itemId?: string) {
   const linkMutation = useMutation({
     mutationFn: ({
       targetItemId,
+      targetItemIds,
       relationType = 'related',
     }: {
-      targetItemId: string;
+      targetItemId?: string;
+      targetItemIds?: string[];
       relationType?: string;
-    }) => RelationService.link(scopeId || '', effectiveItemId, targetItemId, relationType),
-    onSuccess: () => {
+    }) => {
+      const targets = targetItemIds && targetItemIds.length > 0
+        ? targetItemIds
+        : (targetItemId ? [targetItemId] : []);
+      return RelationService.link(scopeId || '', effectiveItemId, targets.length === 1 ? targets[0] : targets, relationType);
+    },
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
         queryKey: relationKeys.all(scopeId, effectiveItemId),
       });
-      toast.success('Item linked', { id: 'relation-mutation' });
+      // Also invalidate target items' relations cache for instant bidirectional sync
+      const targets = variables.targetItemIds || (variables.targetItemId ? [variables.targetItemId] : []);
+      for (const tId of targets) {
+        queryClient.invalidateQueries({
+          queryKey: relationKeys.all(scopeId, tId),
+        });
+      }
+      const count = targets.length;
+      toast.success(count > 1 ? `Linked ${count} items` : 'Item linked', {
+        id: 'relation-mutation',
+      });
     },
     onError: (err: any) => {
       toast.error('Failed to link items', {
@@ -54,10 +71,15 @@ export function useRelations(scopeId?: string, itemId?: string) {
   const unlinkMutation = useMutation({
     mutationFn: ({ targetItemId }: { targetItemId: string }) =>
       RelationService.unlink(scopeId || '', effectiveItemId, targetItemId),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
         queryKey: relationKeys.all(scopeId, effectiveItemId),
       });
+      if (variables.targetItemId) {
+        queryClient.invalidateQueries({
+          queryKey: relationKeys.all(scopeId, variables.targetItemId),
+        });
+      }
       toast.success('Item unlinked', { id: 'relation-mutation' });
     },
     onError: (err: any) => {

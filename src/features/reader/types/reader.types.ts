@@ -130,6 +130,13 @@ export interface PdfThumbnail {
   aspectRatio: number;
 }
 
+export interface ReaderNavigationTarget {
+  pageNumber: number;
+  annotationId?: string;
+  coords?: AnnotationRect;
+  timestamp: number;
+}
+
 export interface ReaderState {
   paper: ReaderDocument | null;
   collection?: ReaderCollection | null;

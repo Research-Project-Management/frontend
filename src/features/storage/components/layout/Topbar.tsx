@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { cn } from "@/shared/lib/utils";
-import { HardDrive, Search, Plus, Upload, FolderUp, FolderPlus, Columns3, AlignJustify, ListFilter, ChevronRight } from 'lucide-react';
+import { Search, Plus, Upload, FolderUp, FolderPlus, Columns3, AlignJustify, ListFilter, ChevronRight } from 'lucide-react';
+import { StorageIcon } from '@/shared/components/icons';
 import { Button } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
 import { Popover, PopoverTrigger, PopoverContent } from "@/shared/components/ui";
@@ -34,7 +35,7 @@ interface TopbarProps {
 
 export default function Topbar({
   title,
-  icon: Icon = HardDrive,
+  icon: Icon = StorageIcon,
   breadcrumbs,
   onBreadcrumbNavigate,
   searchQuery = "",

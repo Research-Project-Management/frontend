@@ -153,13 +153,17 @@ export function normalizeAuthors(
 
   if (creatorList.length > 0) {
     const fromCreators: string[] = [];
+    const hasExplicitAuthors = creatorList.some(
+      (c: any) => c && typeof c === 'object' && c.creatorType === 'author',
+    );
+
     for (const c of creatorList) {
       if (!c) continue;
       if (typeof c === 'string') {
         fromCreators.push(...splitAuthorString(c));
         continue;
       }
-      if (c.creatorType && c.creatorType !== 'author' && c.creatorType !== 'editor' && c.creatorType !== 'contributor') {
+      if (hasExplicitAuthors && c.creatorType && c.creatorType !== 'author') {
         continue;
       }
       const fullName = (c.fullName || c.name || '').trim();

@@ -17,12 +17,16 @@ export const relationTypeSchema = z.enum([
 
 export const relatedItemSchema = z.object({
   id: z.string(),
+  relationId: z.string().optional(),
   title: z.string(),
   authors: z.array(z.string()).default([]),
   year: z.number().nullable().optional(),
   doi: z.string().optional(),
+  itemType: z.string().optional(),
   citationKey: z.string().optional(),
   relationType: relationTypeSchema.default('related'),
+  direction: z.enum(['outgoing', 'incoming']).optional(),
+  description: z.string().optional(),
   symmetric: z.boolean().default(true),
   linkedAt: z.string().optional(),
 });
@@ -30,6 +34,9 @@ export const relatedItemSchema = z.object({
 export const relatedPaperItemSchema = relatedItemSchema;
 
 export const linkRelationSchema = z.object({
-  targetItemId: z.string().min(1, 'targetItemId is required'),
+  targetItemId: z.string().optional(),
+  targetItemIds: z.array(z.string()).optional(),
   relationType: relationTypeSchema.optional().default('related'),
+  note: z.string().optional(),
 });
+

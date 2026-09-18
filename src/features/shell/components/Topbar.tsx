@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Mail, Search } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import AccountDropdown from './AccountDropdown';
 
 export default function Topbar() {
@@ -12,7 +12,7 @@ export default function Topbar() {
       className='flex h-11 max-h-11 w-full shrink-0 items-center justify-between gap-4 bg-muted px-2 select-none'
     >
       {/* Left: Project logo */}
-      <div className='flex w-8 md:w-11 items-center justify-center shrink-0'>
+      <div className='flex w-11 items-center justify-center shrink-0'>
         <Link
           href='/home'
           className='flex size-8 items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary select-none cursor-pointer'
@@ -39,22 +39,20 @@ export default function Topbar() {
 
       {/* Right: Inbox & User Avatar */}
       <div className='flex items-center gap-1.5 shrink-0'>
-        <TooltipProvider delayDuration={150}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type='button'
-                className='group flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
-                aria-label='Inbox'
-              >
-                <Mail className='size-4 text-foreground shrink-0' />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side='bottom' sideOffset={6}>
-              Inbox
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type='button'
+              className='group flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
+              aria-label='Inbox'
+            >
+              <Mail className='size-4 text-foreground shrink-0' />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side='bottom' sideOffset={6}>
+            Inbox
+          </TooltipContent>
+        </Tooltip>
 
         <AccountDropdown />
       </div>

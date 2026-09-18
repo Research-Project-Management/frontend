@@ -7,6 +7,7 @@ import { Library, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 import { cn } from "@/shared/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import { useCollections } from '@/features/library/hooks/use-library';
 import { useItems } from '@/features/library/hooks/use-items';
 import { useDuplicateGroups } from '@/features/library/hooks/use-curation';
@@ -220,22 +221,36 @@ export default function LibrarySideBar() {
                   </span>
                 </Link>
 
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsLibraryExpanded((v) => !v);
-                  }}
-                  aria-label={isLibraryExpanded ? 'Collapse My Library' : 'Expand My Library'}
-                  className="absolute right-2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer"
-                >
-                  <ChevronRight
-                    className={cn(
-                      'size-3.5 text-foreground transition-transform duration-150 shrink-0',
-                      isLibraryExpanded && 'rotate-90'
-                    )}
-                  />
-                </button>
+                <Tooltip delayDuration={700}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsLibraryExpanded((v) => !v);
+                      }}
+                      aria-label={isLibraryExpanded ? 'Collapse My Library' : 'Expand My Library'}
+                      className="absolute right-2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer"
+                    >
+                      <ChevronRight
+                        className={cn(
+                          'size-3.5 text-foreground transition-transform duration-150 shrink-0',
+                          isLibraryExpanded && 'rotate-90'
+                        )}
+                        strokeWidth={1.5}
+                      />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    align="start"
+                    sideOffset={6}
+                    alignOffset={2}
+                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                  >
+                    {isLibraryExpanded ? 'Collapse' : 'Expand'}
+                  </TooltipContent>
+                </Tooltip>
               </div>
 
               {/* Sub-items directly nested under My Library */}

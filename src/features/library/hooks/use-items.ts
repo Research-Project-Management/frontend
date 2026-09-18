@@ -15,6 +15,7 @@ import type {
   UpdateItemDTO,
   ItemQueryParams,
 } from '../types/library.types';
+import { getPublicationVenue } from '../utils/library.util';
 
 // ── Canonical Query Keys (Self-Managed) ───────────────────────────────────────
 export const itemKeys = {
@@ -64,8 +65,10 @@ export function useViewItems(
 // ── 1. Main Items Hook ───────────────────────────────────────────────────────
 
 export interface UseItemsOptions {
-  workspaceId?: string;
+  projectId?: string;
   scopeId?: string;
+  /** @deprecated Use scopeId or projectId */
+  workspaceId?: string;
   collectionId?: string;
   paperId?: string;
   itemId?: string;
@@ -73,8 +76,8 @@ export interface UseItemsOptions {
 
 export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
   const options = typeof optionsOrScope === 'string' ? { scopeId: optionsOrScope } : optionsOrScope;
-  const { workspaceId, scopeId, collectionId, paperId, itemId } = options;
-  const targetScope = scopeId || workspaceId || 'user';
+  const { scopeId, projectId, workspaceId, collectionId, paperId, itemId } = options as any;
+  const targetScope = scopeId || projectId || workspaceId || 'user';
   const activeItemId = itemId || paperId || '';
   const queryClient = useQueryClient();
 
@@ -500,6 +503,7 @@ export type SortField =
   | 'title'
   | 'authors'
   | 'year'
+  | 'publicationTitle'
   | 'journal'
   | 'createdAt'
   | 'updatedAt'
@@ -603,11 +607,13 @@ export function useItemTable({
           comparisonResult = firstCitationCount - secondCitationCount;
           break;
         }
-        case 'journal':
-          comparisonResult = (firstItem.journal || firstItem.publisher || '').localeCompare(
-            secondItem.journal || secondItem.publisher || '',
-          );
+        case 'publicationTitle':
+        case 'journal': {
+          const v1 = getPublicationVenue(firstItem);
+          const v2 = getPublicationVenue(secondItem);
+          comparisonResult = v1.localeCompare(v2);
           break;
+        }
         case 'lastReadAt': {
           const firstTimestamp = new Date(
             firstItem.lastReadAt || firstItem.accessedAt || firstItem.updatedAt || firstItem.createdAt || 0,

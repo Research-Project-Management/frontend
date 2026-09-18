@@ -28,7 +28,7 @@ import { toast } from 'sonner';
 import { logger } from '@/shared/lib/logger';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import {
   Popover,
   PopoverTrigger,
@@ -462,27 +462,25 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <aside className="flex flex-col h-full w-60 overflow-hidden border-r border-border bg-transparent p-2 py-3 select-none">
+    <aside className="flex flex-col h-full w-60 shrink-0 overflow-hidden border-r border-border bg-transparent p-2 py-3 select-none">
       {/* Header */}
       <div className="mb-2 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground shrink-0">
         <span className="text-14 font-semibold text-foreground">Projects</span>
         <div className="flex items-center gap-0.5">
-          <TooltipProvider delayDuration={150}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={onToggle}
-                  aria-label="Toggle sidebar"
-                  className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                >
-                  <PanelLeft className="size-4 text-foreground shrink-0" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={6}>
-                Toggle sidebar
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={onToggle}
+                aria-label="Toggle sidebar"
+                className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              >
+                <PanelLeft className="size-4 text-foreground shrink-0" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={6}>
+              Toggle sidebar
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -551,29 +549,27 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
               </button>
             </CollapsibleTrigger>
 
-            <TooltipProvider delayDuration={150}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <CollapsibleTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label={overviewSectionOpen ? "Collapse overview" : "Expand overview"}
-                      className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none"
-                    >
-                      <ChevronDown
-                        className={cn(
-                          "size-3 text-inherit transition-transform duration-200",
-                          overviewSectionOpen ? "" : "-rotate-90"
-                        )}
-                      />
-                    </button>
-                  </CollapsibleTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={6}>
-                  {overviewSectionOpen ? "Collapse overview" : "Expand overview"}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={overviewSectionOpen ? "Collapse overview" : "Expand overview"}
+                    className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none"
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "size-3 text-inherit transition-transform duration-200",
+                        overviewSectionOpen ? "" : "-rotate-90"
+                      )}
+                    />
+                  </button>
+                </CollapsibleTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6}>
+                {overviewSectionOpen ? "Collapse overview" : "Expand overview"}
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           <CollapsibleContent className="overflow-hidden mt-1">
@@ -671,29 +667,27 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                 Favorites
               </Link>
               
-              <TooltipProvider delayDuration={150}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <CollapsibleTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label={favoritesSectionOpen ? "Collapse favorites" : "Expand favorites"}
-                        className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none"
-                      >
-                        <ChevronDown
-                          className={cn(
-                            "size-3 text-inherit transition-transform duration-200",
-                            favoritesSectionOpen ? "" : "-rotate-90"
-                          )}
-                        />
-                      </button>
-                    </CollapsibleTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={6}>
-                    {favoritesSectionOpen ? "Collapse favorites" : "Expand favorites"}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={favoritesSectionOpen ? "Collapse favorites" : "Expand favorites"}
+                      className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none"
+                    >
+                      <ChevronDown
+                        className={cn(
+                          "size-3 text-inherit transition-transform duration-200",
+                          favoritesSectionOpen ? "" : "-rotate-90"
+                        )}
+                      />
+                    </button>
+                  </CollapsibleTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6}>
+                  {favoritesSectionOpen ? "Collapse favorites" : "Expand favorites"}
+                </TooltipContent>
+              </Tooltip>
             </div>
 
             <CollapsibleContent className="overflow-hidden mt-1">
@@ -720,53 +714,49 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
             {/* Right Action Icons: Plus (+), Chevron (v) */}
             <div className="flex items-center gap-0.5">
               {/* New Project Button with Tooltip */}
-              <TooltipProvider delayDuration={150}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label="Create project"
-                      onClick={() => setCreateProjectOpen(true)}
-                      className={cn(
-                        "size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none",
-                        createProjectOpen
-                          ? "bg-muted text-foreground"
-                          : "opacity-0 group-hover/proj-header:opacity-100 focus:opacity-100"
-                      )}
-                    >
-                      <Plus className="size-3 text-inherit shrink-0" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={6}>
-                    Create project
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Create project"
+                    onClick={() => setCreateProjectOpen(true)}
+                    className={cn(
+                      "size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none",
+                      createProjectOpen
+                        ? "bg-muted text-foreground"
+                        : "opacity-0 group-hover/proj-header:opacity-100 focus:opacity-100"
+                    )}
+                  >
+                    <Plus className="size-3 text-inherit shrink-0" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6}>
+                  Create project
+                </TooltipContent>
+              </Tooltip>
 
               {/* Collapse / Expand Toggle Button with Tooltip */}
-              <TooltipProvider delayDuration={150}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <CollapsibleTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label={projectsSectionOpen ? "Collapse projects" : "Expand projects"}
-                        className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none"
-                      >
-                        <ChevronDown
-                          className={cn(
-                            "size-3 text-inherit transition-transform duration-200",
-                            projectsSectionOpen ? "" : "-rotate-90"
-                          )}
-                        />
-                      </button>
-                    </CollapsibleTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={6}>
-                    {projectsSectionOpen ? "Collapse projects" : "Expand projects"}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={projectsSectionOpen ? "Collapse projects" : "Expand projects"}
+                      className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none"
+                    >
+                      <ChevronDown
+                        className={cn(
+                          "size-3 text-inherit transition-transform duration-200",
+                          projectsSectionOpen ? "" : "-rotate-90"
+                        )}
+                      />
+                    </button>
+                  </CollapsibleTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6}>
+                  {projectsSectionOpen ? "Collapse projects" : "Expand projects"}
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
 

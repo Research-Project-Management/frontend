@@ -21,10 +21,10 @@ export interface RawDuplicateCluster {
 }
 
 export const QualityService = {
-  getDuplicates: async (workspaceId?: string) => {
+  getDuplicates: async (scopeId?: string) => {
     const scopeParam =
-      workspaceId && workspaceId !== 'user'
-        ? `?projectId=${encodeURIComponent(workspaceId)}`
+      scopeId && scopeId !== 'user'
+        ? `?projectId=${encodeURIComponent(scopeId)}`
         : '';
     const res = await apiGet<any>(
       `/api/v1/library/curation/duplicates${scopeParam}`,
@@ -59,14 +59,14 @@ export const QualityService = {
   },
 
   mergePapers: async (
-    workspaceId: string,
+    scopeId: string,
     masterPaperId: string,
     sourcePaperIds: string[],
     fieldSelections?: Record<string, any>,
   ) => {
     const scopeParam =
-      workspaceId && workspaceId !== 'user'
-        ? `?projectId=${encodeURIComponent(workspaceId)}`
+      scopeId && scopeId !== 'user'
+        ? `?projectId=${encodeURIComponent(scopeId)}`
         : '';
     const res = await apiPost<any>(
       `/api/v1/library/curation/merge${scopeParam}`,
@@ -101,7 +101,7 @@ export const QualityService = {
   },
 
   getIntegrityReport: async (
-    _workspaceId?: string,
+    _scopeId?: string,
   ): Promise<LibraryIntegrityReport> => {
     const res = await apiGet<any>(
       `/api/v1/library/curation/integrity`,

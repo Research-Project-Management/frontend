@@ -13,7 +13,7 @@ export const ExportService = {
    * Export library with format and filters (POST /exports)
    */
   exportLibrary: (
-    workspaceId?: string,
+    scopeId?: string,
     options?: {
       format?: string;
       collectionId?: string;
@@ -24,7 +24,7 @@ export const ExportService = {
   ) => {
     const projectId =
       options?.projectId ||
-      (workspaceId && workspaceId !== 'personal' ? workspaceId : undefined);
+      (scopeId && scopeId !== 'personal' && scopeId !== 'user' ? scopeId : undefined);
     return apiPost<{ content: string; filename: string; itemCount: number }>(
       `/api/v1/library/exports`,
       {
@@ -37,7 +37,7 @@ export const ExportService = {
   /**
    * Export citations by specific citation keys in BibTeX format (POST /exports/citations/bibtex)
    */
-  exportByCitationKeys: (_workspaceId: string, keys: string[]) =>
+  exportByCitationKeys: (_scopeId?: string, keys: string[] = []) =>
     apiPost<{ bibtex: string; count: number }>(
       `/api/v1/library/exports/citations/bibtex`,
       { keys },
@@ -46,33 +46,33 @@ export const ExportService = {
   /**
    * Export collection items to BibTeX format
    */
-  exportBibtex: (_workspaceId: string, collectionId: string) =>
+  exportBibtex: (_scopeId?: string, collectionId?: string) =>
     apiGet<{ bibtex: string; total: number; filename: string }>(
-      `/api/v1/library/exports?format=bibtex&collectionId=${encodeURIComponent(collectionId)}`,
+      `/api/v1/library/exports?format=bibtex&collectionId=${encodeURIComponent(collectionId || '')}`,
     ),
 
   /**
    * Export full bundle containing BibTeX and associated file metadata
    */
-  exportBundle: (_workspaceId: string, collectionId: string) =>
+  exportBundle: (_scopeId?: string, collectionId?: string) =>
     apiGet<ExportBundleResponse>(
-      `/api/v1/library/exports/${encodeURIComponent(collectionId)}/export-bundle`,
+      `/api/v1/library/exports/${encodeURIComponent(collectionId || '')}/export-bundle`,
     ),
 
   /**
    * Export item PDF with baked annotations (highlights, sticky notes, rectangles)
    */
-  exportAnnotatedPdf: (_workspaceId: string, itemId: string) =>
+  exportAnnotatedPdf: (_scopeId?: string, itemId?: string) =>
     apiGet<{ filename: string; mimeType: string; base64: string }>(
-      `/api/v1/library/exports/items/${encodeURIComponent(itemId)}/annotated-pdf`,
+      `/api/v1/library/exports/items/${encodeURIComponent(itemId || '')}/annotated-pdf`,
     ),
 
   /**
    * Download item PDF with baked annotations directly in browser
    */
-  downloadAnnotatedPdf: async (_workspaceId: string, itemId: string, fallbackFilename?: string) => {
+  downloadAnnotatedPdf: async (_scopeId?: string, itemId?: string, fallbackFilename?: string) => {
     const res = await apiGet<{ filename: string; mimeType: string; base64: string }>(
-      `/api/v1/library/exports/items/${encodeURIComponent(itemId)}/annotated-pdf`,
+      `/api/v1/library/exports/items/${encodeURIComponent(itemId || '')}/annotated-pdf`,
     );
     if (!res || !res.base64) {
       throw new Error('Failed to generate annotated PDF: No content received');

@@ -16,7 +16,6 @@ import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-  TooltipProvider,
 } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 import { stripHtml } from '@/features/projects/stickies/utils/sticky.utils';
@@ -157,32 +156,30 @@ export default function StickyDock() {
     <>
       <div ref={dockRef} className="relative flex items-center justify-center size-8">
         {/* ── A. Rail Icon Button at Bottom of Sidebar (Single sticky note) ──── */}
-        <TooltipProvider delayDuration={150}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => setIsPillOpen(true)}
-                aria-label="Stickies"
-                className={cn(
-                  'relative flex size-8 shrink-0 items-center justify-center rounded-md text-foreground transition-colors duration-200 outline-none select-none cursor-pointer focus-visible:ring-2 focus-visible:ring-primary',
-                  isPillOpen
-                    ? 'opacity-0 pointer-events-none'
-                    : activeStickyId
-                    ? 'bg-sidebar-accent'
-                    : 'hover:bg-sidebar-hover'
-                )}
-              >
-                <StickyRailIcon className="size-5 shrink-0" />
-              </button>
-            </TooltipTrigger>
-            {!isPillOpen && (
-              <TooltipContent side="right" sideOffset={10}>
-                Stickies
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setIsPillOpen(true)}
+              aria-label="Stickies"
+              className={cn(
+                'relative flex size-8 shrink-0 items-center justify-center rounded-md text-foreground transition-colors duration-200 outline-none select-none cursor-pointer focus-visible:ring-2 focus-visible:ring-primary',
+                isPillOpen
+                  ? 'opacity-0 pointer-events-none'
+                  : activeStickyId
+                  ? 'bg-sidebar-accent'
+                  : 'hover:bg-sidebar-hover'
+              )}
+            >
+              <StickyRailIcon className="size-5 shrink-0" />
+            </button>
+          </TooltipTrigger>
+          {!isPillOpen && (
+            <TooltipContent side="right" sideOffset={10}>
+              Stickies
+            </TooltipContent>
+          )}
+        </Tooltip>
 
         {/* ── B. Action Pill Aligned IN Sidebar (Matching Reference Image) ──── */}
         <AnimatePresence>
@@ -194,72 +191,70 @@ export default function StickyDock() {
               transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
               className="absolute bottom-11 md:bottom-0 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-1.5 py-1.5 px-[2px] w-[38px] rounded-full border border-border bg-background shadow-md select-none"
             >
-              <TooltipProvider delayDuration={150}>
-                {/* 1. Stickies List (Top) */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsModalOpen(true);
-                        setIsPillOpen(false);
-                      }}
-                      className={cn(
-                        'size-8 flex items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted cursor-pointer outline-none',
-                        isModalOpen && 'bg-muted text-primary'
-                      )}
-                      aria-label="Your stickies"
-                    >
-                      <StickiesIcon className="size-4.5" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={12}>
-                    Your stickies
-                  </TooltipContent>
-                </Tooltip>
+              {/* 1. Stickies List (Top) */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsModalOpen(true);
+                      setIsPillOpen(false);
+                    }}
+                    className={cn(
+                      'size-8 flex items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted cursor-pointer outline-none',
+                      isModalOpen && 'bg-muted text-primary'
+                    )}
+                    aria-label="Your stickies"
+                  >
+                    <StickiesIcon className="size-4.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={12}>
+                  Your stickies
+                </TooltipContent>
+              </Tooltip>
 
-                {/* 2. Add Sticky (+) (Middle) */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await handleCreateSticky();
-                        setIsPillOpen(false);
-                      }}
-                      disabled={mutations.create.isPending}
-                      className="size-8 flex items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted cursor-pointer outline-none disabled:opacity-50"
-                      aria-label="Add sticky"
-                    >
-                      {mutations.create.isPending ? (
-                        <Loader2 className="size-4 animate-spin text-primary" />
-                      ) : (
-                        <Plus className="size-4.5 text-foreground" strokeWidth={2} />
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={12}>
-                    Add sticky
-                  </TooltipContent>
-                </Tooltip>
+              {/* 2. Add Sticky (+) (Middle) */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await handleCreateSticky();
+                      setIsPillOpen(false);
+                    }}
+                    disabled={mutations.create.isPending}
+                    className="size-8 flex items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted cursor-pointer outline-none disabled:opacity-50"
+                    aria-label="Add sticky"
+                  >
+                    {mutations.create.isPending ? (
+                      <Loader2 className="size-4 animate-spin text-primary" />
+                    ) : (
+                      <Plus className="size-4.5 text-foreground" strokeWidth={2} />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={12}>
+                  Add sticky
+                </TooltipContent>
+              </Tooltip>
 
-                {/* 3. Close Pill (X) (Bottom) */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => setIsPillOpen(false)}
-                      className="size-8 rounded-full bg-muted flex items-center justify-center text-foreground transition-colors hover:bg-muted/80 cursor-pointer outline-none"
-                      aria-label="Close"
-                    >
-                      <X className="size-4" strokeWidth={2} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={12}>
-                    Close
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              {/* 3. Close Pill (X) (Bottom) */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setIsPillOpen(false)}
+                    className="size-8 rounded-full bg-muted flex items-center justify-center text-foreground transition-colors hover:bg-muted/80 cursor-pointer outline-none"
+                    aria-label="Close"
+                  >
+                    <X className="size-4" strokeWidth={2} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={12}>
+                  Close
+                </TooltipContent>
+              </Tooltip>
             </motion.div>
           )}
         </AnimatePresence>

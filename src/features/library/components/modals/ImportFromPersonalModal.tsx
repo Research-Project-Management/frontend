@@ -4,12 +4,12 @@ import React, { useState, useMemo } from 'react';
 import {
   Search,
   Loader2,
-  BookOpen,
   Folder,
   FolderOpen,
   FileText,
   X,
 } from 'lucide-react';
+import { LibraryIcon } from '@/shared/components/icons';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -173,7 +173,7 @@ export default function ImportFromPersonalModal({
         <DialogHeader className="px-5 py-3.5 border-b border-border flex flex-row items-center justify-between shrink-0 bg-background">
           <div>
             <div className="flex items-center gap-2">
-              <BookOpen className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <LibraryIcon className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
               <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
                 Import from My Library
               </DialogTitle>
@@ -206,7 +206,7 @@ export default function ImportFromPersonalModal({
                 )}
               >
                 <div className="flex items-center gap-2 truncate">
-                  <BookOpen className="size-3.5 shrink-0" strokeWidth={1.5} />
+                  <LibraryIcon className="size-3.5 shrink-0" strokeWidth={1.5} />
                   <span className="truncate">All References</span>
                 </div>
                 <span className="text-10 font-mono text-muted-foreground tabular-nums shrink-0">
@@ -314,7 +314,7 @@ export default function ImportFromPersonalModal({
                 </div>
               ) : filteredItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground px-4">
-                  <BookOpen className="size-6 mb-2 opacity-60" />
+                  <LibraryIcon className="size-6 mb-2 opacity-60" strokeWidth={1.5} />
                   <p className="text-12 font-medium text-foreground">No references found</p>
                   <p className="text-11 text-muted-foreground mt-0.5 max-w-xs">
                     {search.trim()

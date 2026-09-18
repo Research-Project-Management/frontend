@@ -5,20 +5,20 @@ import { StateService, type ItemStateData } from '../services/state.service';
 
 export const stateKeys = {
   all: ['library', 'state'] as const,
-  item: (workspaceId?: string, itemId?: string) =>
-    [...stateKeys.all, workspaceId || 'default', itemId || 'none'] as const,
-  batch: (workspaceId?: string, itemIds: string[] = []) =>
-    [...stateKeys.all, 'batch', workspaceId || 'default', itemIds.join(',')] as const,
+  item: (scopeId?: string, itemId?: string) =>
+    [...stateKeys.all, scopeId || 'user', itemId || 'none'] as const,
+  batch: (scopeId?: string, itemIds: string[] = []) =>
+    [...stateKeys.all, 'batch', scopeId || 'user', itemIds.join(',')] as const,
 };
 
 /**
  * Hook to retrieve reading state for a specific library item
  */
-export function useItemState(workspaceId?: string, itemId?: string) {
+export function useItemState(scopeId?: string, itemId?: string) {
   return useQuery({
-    queryKey: stateKeys.item(workspaceId, itemId),
+    queryKey: stateKeys.item(scopeId, itemId),
     queryFn: async () => {
-      const res = await StateService.getState(workspaceId || 'default', itemId || '');
+      const res = await StateService.getState(scopeId || 'user', itemId || '');
       return (res as any)?.data ?? res ?? null;
     },
     enabled: Boolean(itemId),
@@ -31,7 +31,7 @@ export const useLibraryState = useItemState;
 /**
  * Hook to update reading state for a specific library item
  */
-export function useUpdateItemState(workspaceId?: string, itemId?: string) {
+export function useUpdateItemState(scopeId?: string, itemId?: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -39,11 +39,11 @@ export function useUpdateItemState(workspaceId?: string, itemId?: string) {
       readStatus?: 'unread' | 'reading' | 'completed';
       rating?: number;
     }) => {
-      return StateService.updateState(workspaceId || 'default', itemId || '', data);
+      return StateService.updateState(scopeId || 'user', itemId || '', data);
     },
     onSuccess: () => {
       if (itemId) {
-        queryClient.invalidateQueries({ queryKey: stateKeys.item(workspaceId, itemId) });
+        queryClient.invalidateQueries({ queryKey: stateKeys.item(scopeId, itemId) });
         queryClient.invalidateQueries({ queryKey: stateKeys.all });
       }
     },

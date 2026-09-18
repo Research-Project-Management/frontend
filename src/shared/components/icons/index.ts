@@ -6,3 +6,5 @@ export * from "./DraftsIcon";
 export * from "./StatusIcon";
 export * from "./PriorityIcons";
 export * from "./ViewIcons";
+export * from "./LibraryIcon";
+export * from "./StorageIcon";

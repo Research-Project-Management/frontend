@@ -30,7 +30,7 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
   ];
 
   return (
-    <aside className='h-full w-60 flex flex-col justify-between overflow-x-hidden border-r border-border bg-transparent p-2.5 py-4 select-none max-md:w-full max-md:border-r-0 max-md:border-b max-md:py-2'>
+    <aside className='h-full w-60 shrink-0 flex flex-col justify-between overflow-x-hidden border-r border-border bg-transparent p-2.5 py-4 select-none max-md:w-full max-md:border-r-0 max-md:border-b max-md:py-2'>
       <div>
         {/* Header */}
         <div className='mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground max-md:hidden'>

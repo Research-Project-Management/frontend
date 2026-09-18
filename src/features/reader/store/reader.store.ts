@@ -10,6 +10,7 @@ export type ReaderAnnotationTool =
   | 'select'
   | 'highlight'
   | 'underline'
+  | 'strike'
   | 'note'
   | 'text'
   | 'area'

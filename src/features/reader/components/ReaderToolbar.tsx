@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Highlighter,
   Underline,
+  Strikethrough,
   StickyNote,
   Type,
   Scan,
@@ -84,7 +85,12 @@ export interface ReaderToolbarProps {
   onFitWidth?: () => void;
   rotation?: number;
   onRotate?: () => void;
-  themeMode?: 'normal' | 'sepia' | 'dark';
+  // Presentation Mode & Page Fit (Zotero 7: Continuous, Single, Spread)
+  viewMode?: 'single' | 'continuous' | 'spread';
+  onSelectViewMode?: (mode: 'single' | 'continuous' | 'spread') => void;
+  fitMode?: 'fit-width' | 'fit-page' | 'auto';
+  onSelectFitMode?: (mode: 'fit-width' | 'fit-page' | 'auto') => void;
+  themeMode?: 'normal' | 'dark' | 'sepia' | 'invert';
   onToggleThemeMode?: () => void;
 
   // Reading Mode & Split View (Zotero Features)
@@ -147,6 +153,10 @@ export function ReaderToolbar({
   onRotate,
   themeMode = 'normal',
   onToggleThemeMode,
+  viewMode = 'continuous',
+  onSelectViewMode,
+  fitMode = 'fit-width',
+  onSelectFitMode,
   isReadingMode = false,
   onToggleReadingMode,
   splitMode = 'none',
@@ -195,6 +205,9 @@ export function ReaderToolbar({
       } else if (key === '2' || (e.altKey && key === '2') || key === 'u') {
         e.preventDefault();
         onSelectTool?.('underline');
+      } else if (key === 's' || (e.altKey && key === 's')) {
+        e.preventDefault();
+        onSelectTool?.('strike');
       } else if (key === '3' || (e.altKey && key === '3') || key === 'n') {
         e.preventDefault();
         onSelectTool?.('note');
@@ -348,7 +361,10 @@ export function ReaderToolbar({
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={onFitWidth}
+                  onClick={() => {
+                    onSelectFitMode?.('fit-width');
+                    onFitWidth();
+                  }}
                   className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   aria-label="Fit to width"
                 >
@@ -357,6 +373,70 @@ export function ReaderToolbar({
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-11">Fit to Width</TooltipContent>
             </Tooltip>
+          )}
+
+          {/* Page Presentation Dropdown (Zotero 7: Continuous Scroll, Single Page, Two Pages/Spread, Fit Mode) */}
+          {(onSelectViewMode || onSelectFitMode) && (
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="h-6 px-1.5 flex items-center gap-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground text-11 transition-colors cursor-pointer"
+                      aria-label="Page presentation mode"
+                    >
+                      <span className="capitalize text-11 font-sans">
+                        {viewMode === 'spread' ? 'Spread' : viewMode === 'single' ? 'Single' : 'Scroll'}
+                      </span>
+                      <ChevronDown className="size-2.5 opacity-60 shrink-0" strokeWidth={1.5} />
+                    </button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-11">Page Presentation</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="center" className="w-44 text-xs p-1 bg-popover border border-border shadow-none rounded-md">
+                <DropdownMenuItem
+                  onClick={() => onSelectViewMode?.('continuous')}
+                  className="cursor-pointer text-11 flex items-center justify-between"
+                >
+                  <span>Continuous Scroll</span>
+                  {viewMode === 'continuous' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onSelectViewMode?.('single')}
+                  className="cursor-pointer text-11 flex items-center justify-between"
+                >
+                  <span>Single Page</span>
+                  {viewMode === 'single' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onSelectViewMode?.('spread')}
+                  className="cursor-pointer text-11 flex items-center justify-between"
+                >
+                  <span>Two Pages (Spread)</span>
+                  {viewMode === 'spread' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    onSelectFitMode?.('fit-width');
+                    onFitWidth?.();
+                  }}
+                  className="cursor-pointer text-11 flex items-center justify-between"
+                >
+                  <span>Fit to Width</span>
+                  {fitMode === 'fit-width' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onSelectFitMode?.('fit-page')}
+                  className="cursor-pointer text-11 flex items-center justify-between"
+                >
+                  <span>Fit to Page</span>
+                  {fitMode === 'fit-page' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {/* Zotero Reading Mode Toggle */}
@@ -546,6 +626,26 @@ export function ReaderToolbar({
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-11">Underline (U)</TooltipContent>
+          </Tooltip>
+
+          {/* 2.1 Strikethrough Text */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onSelectTool?.('strike')}
+                className={cn(
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  activeTool === 'strike'
+                    ? "bg-background text-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+                aria-label="Strikethrough text"
+              >
+                <Strikethrough className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-11">Strikethrough (S)</TooltipContent>
           </Tooltip>
 
           {/* 3. Sticky Note */}

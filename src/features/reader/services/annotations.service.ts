@@ -12,6 +12,7 @@ export interface CreateAnnotationDTO {
   color?: string;
   quoteText?: string;
   comment?: string;
+  tags?: string[];
   rectCoords?: unknown;
   rects?: unknown;
   boundingRect?: unknown;
@@ -21,6 +22,7 @@ export interface UpdateAnnotationDTO {
   color?: string;
   quoteText?: string;
   comment?: string;
+  tags?: string[];
   rectCoords?: unknown;
   rects?: unknown;
   boundingRect?: unknown;
@@ -36,6 +38,7 @@ export interface UpsertBatchItem {
   color?: string;
   quoteText?: string;
   comment?: string;
+  tags?: string[];
   rectCoords?: unknown;
   rects?: unknown;
   boundingRect?: unknown;
@@ -113,9 +116,7 @@ export const AnnotationsService = {
     const resolvedType =
       rawType === 'box' || rawType === 'area'
         ? 'rect'
-        : rawType === 'strike'
-          ? 'underline'
-          : rawType;
+        : rawType;
     const payload = { ...dto, ...(resolvedType ? { type: resolvedType } : {}) };
 
     const raw = await apiPost<AnnotationSingleResponse>(
@@ -224,6 +225,32 @@ export const AnnotationsService = {
       };
     }
     return { success: true, totalExtracted: 0 };
+  },
+
+  /**
+   * Import embedded annotations from underlying PDF (/Annots dictionary)
+   */
+  importExternal: async (
+    _scopeId: string | undefined,
+    attachmentId: string,
+  ): Promise<{ imported: number; totalFound: number }> => {
+    const raw = await apiPost<{ imported?: number; totalFound?: number; data?: { imported?: number; totalFound?: number } }>(
+      `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/annotations/import-external`,
+      {},
+    );
+    if (raw && typeof raw === 'object') {
+      if (raw.data) {
+        return {
+          imported: Number(raw.data.imported ?? 0),
+          totalFound: Number(raw.data.totalFound ?? 0),
+        };
+      }
+      return {
+        imported: Number(raw.imported ?? 0),
+        totalFound: Number(raw.totalFound ?? 0),
+      };
+    }
+    return { imported: 0, totalFound: 0 };
   },
 };
 

@@ -6,22 +6,33 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cn } from '@/shared/lib/utils';
 
 function TooltipProvider({
-  delayDuration = 700,
+  delayDuration = 1000,
+  skipDelayDuration = 300,
+  disableHoverableContent = true,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
   return (
     <TooltipPrimitive.Provider
       data-slot='tooltip-provider'
       delayDuration={delayDuration}
+      skipDelayDuration={skipDelayDuration}
+      disableHoverableContent={disableHoverableContent}
       {...props}
     />
   );
 }
 
 function Tooltip({
+  disableHoverableContent = true,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
-  return <TooltipPrimitive.Root data-slot='tooltip' {...props} />;
+  return (
+    <TooltipPrimitive.Root
+      data-slot='tooltip'
+      disableHoverableContent={disableHoverableContent}
+      {...props}
+    />
+  );
 }
 
 function TooltipTrigger({
@@ -43,7 +54,7 @@ function TooltipContent({
         data-slot='tooltip-content'
         sideOffset={sideOffset}
         className={cn(
-          'z-50 w-fit origin-(--radix-tooltip-content-transform-origin) animate-in rounded-md border border-border bg-background px-2.5 py-1 text-11 font-medium text-foreground fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
+          'z-50 w-fit origin-(--radix-tooltip-content-transform-origin) pointer-events-none select-none animate-in rounded-md border border-border bg-background px-2.5 py-1 text-11 font-medium text-foreground fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
           className
         )}
         {...props}

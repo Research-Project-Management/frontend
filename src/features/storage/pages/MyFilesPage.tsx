@@ -216,6 +216,8 @@ export default function MyFilesPage() {
         <StorageViewContainer
           isLoading={isFilesLoading && !data}
           viewProps={viewProps}
+          searchQuery={searchQuery}
+          onClearSearch={() => setSearchQuery('')}
         />
       </StorageDropzoneOverlay>
       <BulkActionBar items={files} />

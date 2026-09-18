@@ -40,7 +40,8 @@ const VALID_ITEM_PAYLOAD_KEYS = new Set([
   'conferenceName', 'eventPlace', 'websiteTitle', 'websiteType',
   'university', 'institution', 'organization', 'identifier', 'country',
   'assignee', 'issuingAuthority', 'patentNumber', 'applicationNumber',
-  'reportNumber', 'reportType', 'thesisType', 'genre', 'filingDate', 'legalStatus',
+  'reportNumber', 'reportType', 'thesisType', 'genre', 'filingDate', 'issueDate',
+  'priorityDate', 'priorityNumbers', 'references', 'legalStatus',
   'versionNumber', 'blogTitle', 'forumTitle', 'postType', 'presentationType',
   'meetingName', 'letterType', 'manuscriptType', 'mapType', 'scale',
   'artworkMedium', 'artworkSize', 'distributor', 'videoRecordingFormat',
@@ -484,3 +485,4 @@ export {
   CurationService,
   type RawDuplicateCluster,
 } from './curation.service';
+export { ItemTypesService, TypesService } from './types.service';

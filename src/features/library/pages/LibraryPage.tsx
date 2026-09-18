@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   BookOpen,
@@ -25,6 +25,7 @@ import {
   Check,
   Plus,
   Link2,
+  ExternalLink,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -33,6 +34,8 @@ import InspectorPanel from '../components/Panel';
 import { useLibrarySidebarStore } from '../store/sidebar.store';
 import AddLinkModal from '../components/modals/AddLinkModal';
 import CreateCollectionModal from '../components/modals/CreateCollectionModal';
+import LibraryEmptyState from '../components/LibraryEmptyState';
+import { LibraryIcon } from '@/shared/components/icons';
 import FlagRetractionModal from '../components/modals/FlagRetractionModal';
 import AuthorshipModal from '../components/modals/AuthorshipModal';
 import TrashModal, { type MoveToTrashTarget } from '../components/modals/TrashModal';
@@ -65,76 +68,29 @@ import {
 } from "@/shared/components/ui";
 import { useLibrary } from '../hooks/use-library';
 import { useItemTable, type SortField } from '../hooks/use-items';
-import { normalizeAuthors, formatCreatorCompact, cleanPaperTitle } from '../utils/library.util';
+import {
+  normalizeAuthors,
+  formatCreatorCompact,
+  cleanPaperTitle,
+  getPublicationVenue,
+  formatItemTypeLabel,
+  formatExtraDisplay,
+} from '../utils/library.util';
+import { ITEM_TYPE_LABELS } from '../schemas/item-type.schema';
 import { cn, copyToClipboard } from "@/shared/lib/utils";
 import { CitationService } from '../services/citation.service';
 import { generateCitationKey } from '../utils/bibtex.util';
 import type { Item } from '../types/library.types';
-
-/** Formats item type with proper words and casing (e.g. journalArticle -> Journal Article) */
-function formatItemTypeLabel(rawType?: string | null): string {
-  if (!rawType) return '—';
-  const str = String(rawType).trim();
-  const withSpaces = str
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ');
-  return withSpaces
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-/** Formats extra / extraFields into human-readable text instead of raw JSON brackets */
-function formatExtraDisplay(paper: Item): string {
-  // 1. If paper.extra is a clean non-JSON string, use it
-  if (typeof paper.extra === 'string' && paper.extra.trim()) {
-    const trimmed = paper.extra.trim();
-    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-      return trimmed.replace(/\r?\n+/g, ', ');
-    }
-  }
-
-  // 2. Extract key-values from extraFields or parsed extra JSON
-  let fields: Record<string, unknown> | null = null;
-  if (paper.extraFields && typeof paper.extraFields === 'object' && !Array.isArray(paper.extraFields)) {
-    fields = paper.extraFields;
-  } else if (typeof paper.extra === 'string') {
-    const trimmed = paper.extra.trim();
-    if (trimmed.startsWith('{')) {
-      try {
-        fields = JSON.parse(trimmed) as Record<string, unknown>;
-      } catch {
-        // Ignore JSON error
-      }
-    }
-  }
-
-  if (fields && typeof fields === 'object') {
-    const parts: string[] = [];
-    for (const [k, v] of Object.entries(fields)) {
-      if (v !== null && v !== undefined && v !== '') {
-        const valStr = typeof v === 'object' ? JSON.stringify(v) : String(v);
-        const keyLabel = k
-          .replace(/([a-z])([A-Z])/g, '$1 $2')
-          .replace(/[_-]+/g, ' ');
-        parts.push(`${keyLabel}: ${valStr}`);
-      }
-    }
-    if (parts.length > 0) {
-      return parts.join(', ');
-    }
-  }
-
-  return '—';
-}
 
 export default function LibraryPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { state, actions } = useLibrary();
   const {
-    workspaceId,
     effectiveScopeId,
-    workspaceSlug,
+    scopeId,
+    projectId,
+    userId,
     isLoading,
     search,
     activeFilter,
@@ -182,16 +138,17 @@ export default function LibraryPage() {
   const queryClient = useQueryClient();
 
   const handleConfirmAuthorship = async (itemId: string, isMyPublication: boolean) => {
+    const activeScope = effectiveScopeId || 'user';
     try {
       setIsUpdatingAuthorship(true);
-      await ItemService.setMyPublication(workspaceId, itemId, isMyPublication);
+      await ItemService.setMyPublication(activeScope, itemId, isMyPublication);
       toast.success(
         isMyPublication
           ? 'Added to My Publications'
           : 'Removed from My Publications',
         { id: 'authorship-status' }
       );
-      queryClient.invalidateQueries({ queryKey: ['items', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['items', activeScope] });
     } catch (err: any) {
       toast.error('Failed to update publication status', {
         description: err?.message,
@@ -209,7 +166,7 @@ export default function LibraryPage() {
       Boolean((paper as any).states?.[0]?.rating > 0);
     const newRating = isStarred ? 0 : 5;
     try {
-      await ItemService.updateItem(effectiveScopeId || workspaceId, paper.id, { rating: newRating });
+      await ItemService.updateItem(effectiveScopeId || 'user', paper.id, { rating: newRating });
       toast.success(isStarred ? 'Removed from Starred' : 'Added to Starred', { id: 'star-status' });
       queryClient.invalidateQueries({ queryKey: ['items'] });
       queryClient.invalidateQueries({ queryKey: ['library'] });
@@ -221,10 +178,10 @@ export default function LibraryPage() {
   const {
     flagItem: flagRetraction,
     unflagItem: unflagRetraction,
-    checkWorkspace,
-    isCheckingWorkspace,
+    checkLibrary,
+    isCheckingLibrary,
     isFlagging,
-  } = useRetraction(effectiveScopeId || workspaceId);
+  } = useRetraction(effectiveScopeId || 'user');
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -298,6 +255,17 @@ export default function LibraryPage() {
     }
   }, []);
 
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [isTableScrolled, setIsTableScrolled] = useState(false);
+
+  // Reset scroll to top when changing filter, view, or search to prevent ghost cut-off rows
+  useEffect(() => {
+    if (tableContainerRef.current) {
+      tableContainerRef.current.scrollTop = 0;
+      setIsTableScrolled(false);
+    }
+  }, [activeFilter, pathname, search]);
+
   const handleDisplayOptionsChange = useCallback(
     (newOpts: LibraryDisplayOptions) => {
       setDisplayOptions(newOpts);
@@ -348,6 +316,7 @@ export default function LibraryPage() {
     if (cols.doi) width += 250;
     if (cols.citationKey) width += 210;
     if (cols.citations) width += 84;
+    if (cols.references) width += 84;
     if (cols.pages) width += 84;
     if (cols.volume) width += 76;
     if (cols.issue) width += 76;
@@ -469,7 +438,7 @@ export default function LibraryPage() {
       const itemIds = targetItems.map((p) => p.id).filter(Boolean);
       try {
         const res = await CitationService.batchFormat(
-          effectiveScopeId || workspaceId,
+          effectiveScopeId || 'user',
           itemIds,
           'apa',
         );
@@ -499,7 +468,7 @@ export default function LibraryPage() {
         id: 'quick-cite-shortcut',
       });
     },
-    [selectedIds, sortedItems, selectedItem, effectiveScopeId, workspaceId],
+    [selectedIds, sortedItems, selectedItem, effectiveScopeId],
   );
 
   // Global Zotero Hotkey: Ctrl+Shift+C / Cmd+Shift+C to Quick Copy Citation
@@ -573,7 +542,7 @@ export default function LibraryPage() {
           icon: Search,
         };
       default:
-        return { title: 'Library', icon: BookOpen };
+        return { title: 'Library', icon: LibraryIcon };
     }
   };
 
@@ -589,13 +558,13 @@ export default function LibraryPage() {
     <div className="flex-1 flex overflow-hidden font-sans">
       {/* Central Content Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-background overflow-hidden">
-        {/* Workspace Toolbar */}
+        {/* Library Toolbar */}
         <Topbar
           title={pageTitle}
           icon={PageIcon}
           search={search}
           onSearchChange={setSearch}
-          workspaceId={workspaceId}
+          scopeId={effectiveScopeId}
           items={state.items}
           showFilter={activeFilter !== 'trash'}
           displayOptions={displayOptions}
@@ -611,12 +580,12 @@ export default function LibraryPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => checkWorkspace(undefined)}
-              disabled={isCheckingWorkspace}
+              onClick={() => checkLibrary(undefined)}
+              disabled={isCheckingLibrary}
               className="h-8 gap-1.5 px-3 rounded-md text-xs font-normal border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
             >
               <ShieldAlert className="size-3.5 shrink-0" />
-              <span>{isCheckingWorkspace ? 'Scanning...' : 'Scan Retractions'}</span>
+              <span>{isCheckingLibrary ? 'Scanning...' : 'Scan Retractions'}</span>
             </Button>
           )}
         </Topbar>
@@ -653,56 +622,29 @@ export default function LibraryPage() {
               ))}
             </div>
           ) : filteredItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center flex-1 h-full min-h-[300px] text-center p-8 select-none">
-              <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                {activeFilter === 'my-publications' || activeFilter === 'publications' ? (
-                  <Award className="size-6 text-muted-foreground shrink-0" />
-                ) : activeFilter === 'retracted' ? (
-                  <ShieldAlert className="size-6 text-muted-foreground shrink-0" />
-                ) : activeFilter === 'saved-search' ? (
-                  <Search className="size-6 text-muted-foreground shrink-0" />
-                ) : activeFilter === 'starred' || activeFilter === 'favorites' ? (
-                  <Star className="size-6 text-muted-foreground shrink-0" />
-                ) : (
-                  <BookOpen className="size-6 text-muted-foreground shrink-0" />
-                )}
-              </div>
-              <h2 className="text-sm font-semibold text-foreground">
-                {activeFilter === 'my-publications' || activeFilter === 'publications'
-                  ? 'No publications listed'
-                  : activeFilter === 'retracted'
-                  ? 'No retracted items'
-                  : activeFilter === 'saved-search'
-                  ? 'No matching results'
-                  : activeFilter === 'starred' || activeFilter === 'favorites'
-                  ? 'No starred items'
-                  : 'No references found'}
-              </h2>
-              <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                {search.trim()
-                  ? 'No references matching your search query.'
-                  : activeFilter === 'my-publications' || activeFilter === 'publications'
-                  ? 'No authored publications yet. Flag items with your authorship to list them here.'
-                  : activeFilter === 'retracted'
-                  ? 'No retracted items detected in your library. All items appear clear.'
-                  : activeFilter === 'saved-search'
-                  ? 'No references currently match the conditions of this saved search.'
-                  : activeFilter === 'starred' || activeFilter === 'favorites'
-                  ? "You haven't starred any references yet. Rate or star references to easily access your key papers."
-                  : 'Add references, PDFs, or BibTeX entries to build your research library.'}
-              </p>
-              {search.trim() ? (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="mt-3 text-xs text-foreground hover:bg-muted rounded-md px-2.5 py-1 cursor-pointer font-medium"
-                >
-                  Clear search
-                </button>
-              ) : null}
-            </div>
+            <LibraryEmptyState
+              search={search}
+              activeFilter={activeFilter}
+              onClearSearch={() => setSearch('')}
+              onDirectFilesUpload={canEdit && activeFilter !== 'trash' ? handleDirectFilesUpload : undefined}
+              onAddLink={canEdit && activeFilter !== 'trash' ? () => setAddLinkOpen(true) : undefined}
+              onAddCollection={canEdit && activeFilter !== 'trash' ? () => setCreateCollectionOpen(true) : undefined}
+              canEdit={canEdit && activeFilter !== 'trash'}
+            />
           ) : (
-            <div className="flex-1 overflow-auto">
+            <div
+              ref={tableContainerRef}
+              className="flex-1 overflow-auto"
+              style={{
+                scrollPaddingTop: displayOptions.density === 'compact' ? '32px' : '36px',
+              }}
+              onScroll={(e) => {
+                const scrolled = e.currentTarget.scrollTop > 2;
+                if (scrolled !== isTableScrolled) {
+                  setIsTableScrolled(scrolled);
+                }
+              }}
+            >
               <table
                 className="w-full table-fixed text-left border-collapse"
                 style={{ minWidth: minTableWidth }}
@@ -718,6 +660,7 @@ export default function LibraryPage() {
                   {displayOptions.columns.doi && <col style={{ width: 250 }} />}
                   {displayOptions.columns.citationKey && <col style={{ width: 210 }} />}
                   {displayOptions.columns.citations && <col style={{ width: 84 }} />}
+                  {displayOptions.columns.references && <col style={{ width: 84 }} />}
                   {displayOptions.columns.pages && <col style={{ width: 84 }} />}
                   {displayOptions.columns.volume && <col style={{ width: 76 }} />}
                   {displayOptions.columns.issue && <col style={{ width: 76 }} />}
@@ -740,7 +683,10 @@ export default function LibraryPage() {
                 </colgroup>
                 <ContextMenu>
                   <ContextMenuTrigger asChild>
-                    <thead className="sticky top-0 z-20 bg-background border-b border-border select-none">
+                    <thead className={cn(
+                      "sticky top-0 z-20 bg-background border-b border-border select-none transition-shadow",
+                      isTableScrolled && "shadow-2xs"
+                    )}>
                       <tr className={cn(
                         "type-dense font-normal text-foreground [&_th]:font-normal [&_th]:text-foreground",
                         displayOptions.density === 'compact' ? "h-8" : "h-9"
@@ -828,13 +774,13 @@ export default function LibraryPage() {
                           <th
                             scope="col"
                             role="columnheader"
-                            aria-sort={hasUserSorted && sortField === 'journal' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                            aria-sort={hasUserSorted && (sortField === 'publicationTitle' || sortField === 'journal') ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
                             tabIndex={0}
-                            onClick={() => onColumnSort('journal')}
+                            onClick={() => onColumnSort('publicationTitle')}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' || e.key === ' ') {
                                 e.preventDefault();
-                                onColumnSort('journal');
+                                onColumnSort('publicationTitle');
                               }
                             }}
                             className={cn(
@@ -844,7 +790,7 @@ export default function LibraryPage() {
                           >
                             <div className="flex items-center">
                               <span className="whitespace-nowrap">Publication</span>
-                              {renderSortIcon('journal')}
+                              {renderSortIcon('publicationTitle') || renderSortIcon('journal')}
                             </div>
                           </th>
                         )}
@@ -1021,7 +967,7 @@ export default function LibraryPage() {
                       </tr>
                     </thead>
                   </ContextMenuTrigger>
-                  <ContextMenuContent className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 text-xs shadow-raised-200">
+                  <ContextMenuContent className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 text-xs shadow-none">
                     <div className="px-2 py-1 text-11 font-semibold text-muted-foreground select-none">Toggle Columns</div>
                     {COLUMN_ITEMS.map((col) => (
                       <ContextMenuItem
@@ -1046,95 +992,11 @@ export default function LibraryPage() {
                     const addedByUser = (paper as any).user || (paper as any).uploadedBy;
                     const addedByName = addedByUser?.name || addedByUser?.email || '—';
                     const rawItemType = (paper as any).itemType || (paper as any).item_type || (paper as any).type || (paper as any).cslType;
-                    const itemTypeLabel = formatItemTypeLabel(rawItemType);
+                    const itemTypeLabel = (rawItemType && ITEM_TYPE_LABELS[rawItemType]) || formatItemTypeLabel(rawItemType);
                     const extraDisplay = formatExtraDisplay(paper);
                     const paperDoi = paper.doi || (paper.extraFields as any)?.doi || '—';
                     const citeKey = paper.citationKey || (paper as any)?.bibtexKey || generateCitationKey(paper);
-                    const publicationVenue = (() => {
-                      const type = String(rawItemType || '').toLowerCase();
-                      const p = paper as any;
-                      const ef = (paper.extraFields as any) || {};
-
-                      if (type === 'conferencepaper') {
-                        return (
-                          p.proceedingsTitle ||
-                          paper.publicationTitle ||
-                          p.conferenceName ||
-                          ef.proceedingsTitle ||
-                          ef.conferenceName ||
-                          '—'
-                        );
-                      }
-                      if (type === 'booksection') {
-                        return (
-                          p.bookTitle ||
-                          paper.publicationTitle ||
-                          paper.publisher ||
-                          ef.bookTitle ||
-                          '—'
-                        );
-                      }
-                      if (type === 'book') {
-                        return paper.publisher || paper.publicationTitle || '—';
-                      }
-                      if (type === 'thesis') {
-                        return (
-                          p.university ||
-                          p.institution ||
-                          paper.publisher ||
-                          ef.university ||
-                          ef.institution ||
-                          paper.publicationTitle ||
-                          '—'
-                        );
-                      }
-                      if (type === 'report') {
-                        return (
-                          p.institution ||
-                          paper.publisher ||
-                          ef.institution ||
-                          paper.publicationTitle ||
-                          '—'
-                        );
-                      }
-                      if (type === 'patent') {
-                        return (
-                          p.issuingAuthority ||
-                          ef.issuingAuthority ||
-                          p.assignee ||
-                          ef.assignee ||
-                          '—'
-                        );
-                      }
-                      if (type === 'preprint') {
-                        return (
-                          p.repository ||
-                          ef.repository ||
-                          (paper.arxivId ? 'arXiv' : '') ||
-                          paper.publicationTitle ||
-                          '—'
-                        );
-                      }
-                      if (type === 'webpage' || type === 'blogpost') {
-                        return (
-                          p.websiteTitle ||
-                          p.blogTitle ||
-                          paper.publicationTitle ||
-                          ef.websiteTitle ||
-                          ef.blogTitle ||
-                          '—'
-                        );
-                      }
-                      return (
-                        paper.publicationTitle ||
-                        paper.journal ||
-                        paper.publisher ||
-                        p.repository ||
-                        ef.repository ||
-                        (paper.arxivId ? 'arXiv' : '') ||
-                        '—'
-                      );
-                    })();
+                    const publicationVenue = getPublicationVenue(paper);
 
                     const isPending = Boolean((paper as any).isPending);
                     const pendingStatus = (paper as any).pendingStatus as 'uploading' | 'processing' | 'succeeded' | 'failed' | undefined;
@@ -1383,7 +1245,7 @@ export default function LibraryPage() {
                                       align="end"
                                       sideOffset={4}
                                       collisionPadding={12}
-                                      className="w-64 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 text-xs shadow-raised-200 space-y-0.5"
+                                      className="w-64 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 text-xs shadow-none space-y-0.5"
                                     >
                                       <DropdownMenuItem
                                         onClick={() => router.push(`/library/papers/${paper.id}`)}
@@ -1393,14 +1255,18 @@ export default function LibraryPage() {
                                         <span>Open in Reader</span>
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
-                                        onClick={() => handleQuickCopyCitation([paper])}
-                                        className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary justify-between"
+                                        onClick={() => window.open(`/library/papers/${paper.id}`, '_blank', 'noopener,noreferrer')}
+                                        className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                       >
-                                        <div className="flex items-center gap-2.5">
-                                          <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                                          <span>Copy Citation</span>
-                                        </div>
-                                        <span className="text-10 text-muted-foreground font-mono">Ctrl+Shift+C</span>
+                                        <ExternalLink className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                                        <span>Open in New Tab</span>
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => handleQuickCopyCitation([paper])}
+                                        className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                      >
+                                        <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                                        <span>Copy Citation</span>
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
                                         onClick={() => handleToggleStar(paper)}
@@ -1454,12 +1320,16 @@ export default function LibraryPage() {
                               <BookOpen className="size-3.5 text-foreground shrink-0" />
                               <span>Open in Reader</span>
                             </ContextMenuItem>
-                            <ContextMenuItem onClick={() => handleQuickCopyCitation([paper])} className="gap-2 text-foreground justify-between">
-                              <div className="flex items-center gap-2">
-                                <Quote className="size-3.5 text-foreground shrink-0" />
-                                <span>Copy Citation</span>
-                              </div>
-                              <span className="text-10 text-muted-foreground font-mono">Ctrl+Shift+C</span>
+                            <ContextMenuItem
+                              onClick={() => window.open(`/library/papers/${paper.id}`, '_blank', 'noopener,noreferrer')}
+                              className="gap-2 text-foreground"
+                            >
+                              <ExternalLink className="size-3.5 text-foreground shrink-0" />
+                              <span>Open in New Tab</span>
+                            </ContextMenuItem>
+                            <ContextMenuItem onClick={() => handleQuickCopyCitation([paper])} className="gap-2 text-foreground">
+                              <Quote className="size-3.5 text-foreground shrink-0" />
+                              <span>Copy Citation</span>
                             </ContextMenuItem>
                             <ContextMenuItem onClick={() => handleToggleStar(paper)} className="gap-2 text-foreground">
                               <Star className={cn("size-3.5 shrink-0", ((typeof paper.rating === 'number' && paper.rating > 0) || Boolean((paper as any).isStarred) || Boolean((paper as any).states?.[0]?.rating > 0)) ? "fill-amber-400 text-amber-500" : "text-foreground")} />
@@ -1513,8 +1383,12 @@ export default function LibraryPage() {
         paper={selectedItem || null}
         item={selectedItem || null}
         collection={selectedCollection || null}
-        workspaceId={workspaceId}
+        scopeId={effectiveScopeId}
         onClose={handleCloseInspector}
+        onSelectPaper={(paperId) => {
+          setSelectedItemId(paperId);
+          setIsInspectorOpen(true);
+        }}
       />
 
       {/* Dedicated Add Link to File Modal */}

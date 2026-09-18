@@ -11,6 +11,7 @@ import { getFileType, getFileIcon, getFileColor, formatFileSize } from '../../ut
 import { ItemActions, type StorageViewProps } from './ListView';
 import { useStorageSelectionStore } from '../../store/use-selection-store';
 import { createFolderDropHandlers } from '../../utils/drag-drop.util';
+import StorageEmptyState from '../layout/StorageEmptyState';
 
 function GridFileIconItem({ item }: { item: StorageItem }) {
   const [hasError, setHasError] = useState(false);
@@ -71,47 +72,7 @@ export default function GridView({
   const files = items.filter((i) => !i.isFolder);
 
   if (items.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12 sm:p-16 text-center rounded-md border border-dashed border-border bg-muted my-4">
-        <div className="size-12 rounded-md bg-background border border-border flex items-center justify-center text-muted-foreground mb-4">
-          <Folder className="size-6 stroke-[1.5] shrink-0" />
-        </div>
-        <h3 className="text-base font-semibold text-foreground tracking-tight mb-1">
-          No files or folders yet
-        </h3>
-        <p className="text-sm text-muted-foreground max-w-sm mb-6">
-          Drag and drop files here, or use the buttons below to get started.
-        </p>
-
-        {!isReadOnly && !isTrash && (
-          <div className="flex items-center gap-3">
-            <Button
-              size="sm"
-              onClick={() => {
-                const event = new CustomEvent('trigger-upload-file');
-                window.dispatchEvent(event);
-              }}
-              className="gap-1.5 rounded-md"
-            >
-              <Upload className="size-3.5 shrink-0" />
-              <span>Upload file</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                const event = new CustomEvent('open-create-folder');
-                window.dispatchEvent(event);
-              }}
-              className="gap-1.5 rounded-md hover:bg-muted"
-            >
-              <FolderPlus className="size-3.5 shrink-0" />
-              <span>New folder</span>
-            </Button>
-          </div>
-        )}
-      </div>
-    );
+    return <StorageEmptyState isTrash={isTrash} isReadOnly={isReadOnly} />;
   }
 
   return (

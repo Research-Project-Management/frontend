@@ -51,6 +51,9 @@ export type ZoteroIngestionPayload = z.infer<typeof ZoteroIngestionPayloadSchema
 export interface IngestItemDTO {
   source?: 'upload' | 'storage' | 'identifier' | 'doi' | 'bibtex' | 'ris' | 'manual';
   sourceType?: 'DOI' | 'IDENTIFIER' | 'BIBTEX' | 'RIS' | 'PDF' | 'STORAGE' | 'MANUAL';
+  scopeId?: string;
+  projectId?: string;
+  userId?: string;
   workspaceId?: string;
   fileId?: string | null;
   storageFileId?: string | null;

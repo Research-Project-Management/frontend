@@ -40,6 +40,8 @@ export interface MergeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   duplicates: Item[];
+  scopeId?: string;
+  projectId?: string;
   workspaceId?: string;
   onMerge: (
     masterPaper: Item,
@@ -55,6 +57,8 @@ export function MergeModal({
   open,
   onOpenChange,
   duplicates = [],
+  scopeId,
+  projectId,
   workspaceId,
   onMerge,
   onDismissDuplicate,
@@ -100,7 +104,7 @@ export function MergeModal({
     let isMounted = true;
     setIsLoadingFull(true);
 
-    const effectiveScope = workspaceId || 'user';
+    const effectiveScope = scopeId || projectId || workspaceId || 'user';
     Promise.all(
       duplicates.map(async (dup) => {
         try {
@@ -125,7 +129,7 @@ export function MergeModal({
     return () => {
       isMounted = false;
     };
-  }, [open, duplicates, workspaceId]);
+  }, [open, duplicates, scopeId, projectId]);
 
   // Master paper reference
   const masterPaper = useMemo(

@@ -5,19 +5,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, LayoutGroup } from 'framer-motion';
 import {
-  Cloud,
   Layers,
   Settings,
-  BookOpen,
 } from 'lucide-react';
+import { LibraryIcon, StorageIcon } from '@/shared/components/icons';
 import { cn } from "@/shared/lib/utils";
 import StickyDock from './StickyDock';
 
 const NAV_ITEMS = [
   { label: 'Projects', icon: Layers, to: '/home' },
   { label: 'AI', imageSrc: '/Chat.svg', to: '/ai' },
-  { label: 'Library', icon: BookOpen, to: '/library' },
-  { label: 'Storage', icon: Cloud, to: '/storage' },
+  { label: 'Library', icon: LibraryIcon, to: '/library' },
+  { label: 'Storage', icon: StorageIcon, to: '/storage' },
   { label: 'Settings', icon: Settings, to: '/settings' },
 ] as const;
 
@@ -29,7 +28,7 @@ export default function Sidebar() {
     <LayoutGroup id={id}>
       <nav
         aria-label='Main Navigation'
-        className='order-2 flex h-14 shrink-0 items-center justify-around gap-1 border-t border-border bg-muted p-1 md:order-1 md:h-full md:w-[52px] md:flex-col md:justify-between md:rounded-none md:border-t-0 md:border-r-0 md:bg-muted md:p-0 md:py-2 select-none'
+        className='order-2 flex h-11 shrink-0 items-center justify-around gap-1 border-t border-border bg-muted p-1 md:order-1 md:h-full md:w-11 md:flex-col md:justify-between md:rounded-none md:border-t-0 md:border-r-0 md:bg-muted md:p-0 md:py-2 select-none'
       >
         {/* Top: Nav Items */}
         <div className='flex items-center gap-1 md:flex-col md:justify-start md:gap-3 md:w-full'>

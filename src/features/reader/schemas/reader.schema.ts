@@ -18,6 +18,7 @@ export const annotationTypeSchema = z.enum([
   'box',
   'area',
   'image',
+  'text',
 ]);
 
 const baseAnnotationFields = {
@@ -29,6 +30,7 @@ const baseAnnotationFields = {
   rects: z.array(annotationRectSchema).optional(),
   boundingRect: annotationRectSchema.optional(),
   rectCoords: z.unknown().optional(),
+  tags: z.array(z.string()).default([]),
 };
 
 export const readerAnnotationSchema = z.object({
@@ -58,6 +60,7 @@ export const updateAnnotationSchema = z.object({
   comment: z.string().optional(),
   text: z.string().optional(),
   quoteText: z.string().optional(),
+  tags: z.array(z.string()).optional(),
   rects: z.array(annotationRectSchema).optional(),
   boundingRect: annotationRectSchema.optional(),
 });
@@ -288,6 +291,7 @@ export const annotationFormSchema = z.object({
   quoteText: z.string().trim().optional(),
   comment: z.string().trim().optional(),
   color: z.string().optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 export const chatMessageFormSchema = z.object({

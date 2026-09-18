@@ -4,7 +4,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, FileText } from 'lucide-react';
 import { Button } from "@/shared/components/ui";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 
 const ZOTERO_COLORS = [
   { id: 'yellow', label: 'Yellow', hex: '#ffd400' },
@@ -69,23 +69,21 @@ export function Systembar({
             {onChangeColor && (
               <div className="flex items-center gap-1 px-1 border-r border-border">
                 {ZOTERO_COLORS.map((c) => (
-                  <TooltipProvider key={c.id}>
-                    <Tooltip delayDuration={200}>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => onChangeColor(c.hex)}
-                          disabled={isProcessing}
-                          aria-label={`Set color ${c.label}`}
-                          className="size-4 rounded-full border border-border transition-transform hover:scale-125 focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
-                          style={{ backgroundColor: c.hex }}
-                        />
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="text-11 py-0.5 px-1.5">
-                        {c.label}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <Tooltip key={c.id}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => onChangeColor(c.hex)}
+                        disabled={isProcessing}
+                        aria-label={`Set color ${c.label}`}
+                        className="size-4 rounded-full border border-border transition-transform hover:scale-125 focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+                        style={{ backgroundColor: c.hex }}
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-11 py-0.5 px-1.5">
+                      {c.label}
+                    </TooltipContent>
+                  </Tooltip>
                 ))}
               </div>
             )}

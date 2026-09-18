@@ -28,6 +28,7 @@ export function useAnnotations(workspaceId?: string, attachmentId?: string) {
       return AnnotationsService.getByAttachment(workspaceId, attachmentId);
     },
     enabled: Boolean(attachmentId),
+    refetchInterval: 4000,
   });
 
   const createMutation = useMutation({
@@ -117,10 +118,31 @@ export function useAnnotations(workspaceId?: string, attachmentId?: string) {
     },
   });
 
+  const importExternalMutation = useMutation({
+    mutationFn: () => {
+      if (!attachmentId) throw new Error('Attachment ID required to import annotations.');
+      return AnnotationsService.importExternal(workspaceId, attachmentId);
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({
+        queryKey: readerAnnotationKeys.byAttachment(workspaceId, attachmentId),
+      });
+      toast.success('Annotations imported', {
+        description: `Imported ${res?.imported ?? 0} annotations from PDF.`,
+        id: 'reader-annotation-toast',
+      });
+    },
+    onError: (err: unknown) => {
+      toast.error('Failed to import annotations', {
+        description: getErrorMessage(err) || 'Please try again.',
+        id: 'reader-annotation-toast',
+      });
+    },
+  });
+
   const annotations = useMemo(() => {
     return PdfAnnotationEngine.sortAnnotations(query.data || []);
   }, [query.data]);
-
 
   return {
     annotations,
@@ -133,10 +155,12 @@ export function useAnnotations(workspaceId?: string, attachmentId?: string) {
     deleteAnnotation: (annotationId: string, expectedVersion?: number) =>
       deleteMutation.mutateAsync({ annotationId, expectedVersion }),
     extractNotes: extractNotesMutation.mutateAsync,
+    importExternal: importExternalMutation.mutateAsync,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
     isExtracting: extractNotesMutation.isPending,
+    isImporting: importExternalMutation.isPending,
     refetch: query.refetch,
   };
 }

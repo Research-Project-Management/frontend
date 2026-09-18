@@ -22,6 +22,7 @@ import { DeleteModal } from '../modal/DeleteModal';
 import { resolveFileUrl } from "@/shared/lib/file-client";
 import { useInfiniteSentinel } from '../../hooks/use-infinite-sentinel';
 import type { StorageItem } from '@/features/storage/types/storage.types';
+import StorageEmptyState from '../layout/StorageEmptyState';
 import {
   getFileType,
   getFileIcon,
@@ -337,10 +338,7 @@ export default function ListView({
       </div>
 
       {items.length === 0 ? (
-        <div className="p-12 text-center text-muted-foreground">
-          <Folder className="size-12 mx-auto mb-3 opacity-20 shrink-0" />
-          <p className="text-sm">No files or folders</p>
-        </div>
+        <StorageEmptyState isTrash={isTrash} isReadOnly={isReadOnly} />
       ) : (
         <div className="divide-y divide-border/30">
           <AnimatePresence initial={false}>

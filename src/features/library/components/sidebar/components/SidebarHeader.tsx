@@ -61,18 +61,25 @@ export function SidebarHeader({
             }}
             className="h-full text-xs font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/60 placeholder:font-normal transition-opacity duration-200 pl-7 pr-7 text-foreground"
           />
-          <button
-            type="button"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            onClick={handleClearSearch}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-md"
-            aria-label="Clear search"
-          >
-            <Plus className="size-3.5 rotate-45 text-foreground shrink-0" />
-          </button>
+          <Tooltip delayDuration={700}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onClick={handleClearSearch}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer p-0.5 rounded-md"
+                aria-label="Clear search"
+              >
+                <Plus className="size-3.5 rotate-45 text-foreground shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2}>
+              Clear search
+            </TooltipContent>
+          </Tooltip>
         </div>
       ) : (
         <>
@@ -80,47 +87,53 @@ export function SidebarHeader({
 
           <div className="flex items-center gap-0.5 shrink-0">
             {/* Search collections toggle button */}
-            <Tooltip>
+            <Tooltip delayDuration={700}>
               <TooltipTrigger asChild>
                 <button
                   onClick={expandSearch}
-                  className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="rounded-md p-1.5 text-foreground hover:bg-sidebar-accent cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   aria-label="Search collections"
                 >
-                  <Search className="size-4 shrink-0 text-foreground" />
+                  <Search className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Search collections</TooltipContent>
+              <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2}>
+                Search collections
+              </TooltipContent>
             </Tooltip>
 
             {/* New collection button */}
             {canManageCollections && (
-              <Tooltip>
+              <Tooltip delayDuration={700}>
                 <TooltipTrigger asChild>
                   <button
                     onClick={onOpenCreateRoot}
-                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="rounded-md p-1.5 text-foreground hover:bg-sidebar-accent cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     aria-label="New collection"
                   >
-                    <FolderPlus className="size-4 shrink-0 text-foreground" />
+                    <FolderPlus className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">New collection</TooltipContent>
+                <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2}>
+                  New collection
+                </TooltipContent>
               </Tooltip>
             )}
 
             {/* Toggle / Collapse Sidebar Button */}
-            <Tooltip>
+            <Tooltip delayDuration={700}>
               <TooltipTrigger asChild>
                 <button
                   onClick={onToggleCollapse}
                   aria-label="Toggle sidebar"
-                  className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="rounded-md p-1.5 text-foreground hover:bg-sidebar-accent cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
-                  <PanelLeft className="size-4 shrink-0 text-foreground" />
+                  <PanelLeft className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Collapse sidebar</TooltipContent>
+              <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2}>
+                Collapse sidebar
+              </TooltipContent>
             </Tooltip>
           </div>
         </>

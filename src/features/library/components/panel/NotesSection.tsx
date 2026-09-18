@@ -11,6 +11,7 @@ import type { Paper } from '@/features/library/types/library.types';
 export interface NotesSectionProps {
   paper: Paper;
   scopeId?: string;
+  projectId?: string;
   workspaceId?: string;
   onUpdatePaper?: (data: Partial<Paper>) => void;
   onAddNote?: (content: string) => void;
@@ -19,6 +20,7 @@ export interface NotesSectionProps {
   onUpdateNote?: (noteId: string, content: string) => void;
   hideHeader?: boolean;
   forceAdding?: boolean;
+  onCancelAdding?: () => void;
 }
 
 export function NoteIcon({ className = 'size-3.5' }: { className?: string }) {
@@ -44,6 +46,7 @@ export function NoteIcon({ className = 'size-3.5' }: { className?: string }) {
 export default function NotesSection({
   paper,
   scopeId,
+  projectId,
   workspaceId,
   onAddNote,
   onDeleteNote,
@@ -51,9 +54,10 @@ export default function NotesSection({
   onUpdateNote,
   hideHeader = false,
   forceAdding = false,
+  onCancelAdding,
 }: NotesSectionProps) {
   const paperId = paper.id;
-  const activeScopeId = scopeId || (paper as any)?.projectId || (paper as any)?.workspaceId || workspaceId;
+  const activeScopeId = scopeId || projectId || (paper as any)?.projectId || 'user';
   const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
@@ -164,6 +168,7 @@ export default function NotesSection({
     }
     setNewNoteContent('');
     setIsAdding(false);
+    onCancelAdding?.();
   };
 
   const handleStartEdit = (selectedNote: NormalizedNote) => {
@@ -198,7 +203,9 @@ export default function NotesSection({
     setEditingContent('');
   };
 
-
+  if (notes.length === 0 && !isAdding && hideHeader) {
+    return null;
+  }
 
   return (
     <div className="space-y-1 min-w-0 font-sans">
@@ -228,6 +235,7 @@ export default function NotesSection({
                 e.preventDefault();
                 setIsAdding(false);
                 setNewNoteContent('');
+                onCancelAdding?.();
               }
             }}
             rows={2}
@@ -238,18 +246,6 @@ export default function NotesSection({
             <span>Enter to save · Esc to cancel</span>
           </div>
         </div>
-      )}
-
-      {/* Empty State when no notes and not adding */}
-      {notes.length === 0 && !isAdding && (
-        <button
-          type="button"
-          onClick={() => setIsAdding(true)}
-          className="w-full flex items-center justify-center gap-1.5 py-2 px-3 text-xs text-foreground hover:bg-muted rounded-md border border-dashed border-border cursor-pointer"
-        >
-          <Plus className="size-3.5 text-foreground shrink-0" />
-          <span>Add note or comment...</span>
-        </button>
       )}
 
       {/* Flat Notes List - Matching UI in media_1788420362997.png */}

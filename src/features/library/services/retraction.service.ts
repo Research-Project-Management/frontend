@@ -6,17 +6,17 @@ import type {
 } from '../types/library.types';
 
 export const RetractionService = {
-  getRetractedItems: (_workspaceId?: string) =>
+  getRetractedItems: (_scopeId?: string) =>
     apiGet<Item[]>(
       `/api/v1/library/retraction/items`,
     ),
 
-  getStats: (_workspaceId?: string) =>
+  getStats: (_scopeId?: string) =>
     apiGet<RetractionStats>(
       `/api/v1/library/retraction/stats`,
     ),
 
-  checkItem: (_workspaceId: string, itemId: string) =>
+  checkItem: (_scopeId: string, itemId: string) =>
     apiPost<{
       itemId: string;
       isRetracted: boolean;
@@ -27,19 +27,21 @@ export const RetractionService = {
       {},
     ),
 
-  checkWorkspace: (_workspaceId: string, itemIds?: string[]) =>
+  checkLibrary: (_scopeId: string, itemIds?: string[]) =>
     apiPost<{ scanned: number; newlyRetracted: number }>(
       `/api/v1/library/retraction/check-all`,
       { itemIds },
     ),
 
-  flagItem: (_workspaceId: string, itemId: string, data: FlagRetractionInput) =>
+
+
+  flagItem: (_scopeId: string, itemId: string, data: FlagRetractionInput) =>
     apiPost<Item>(
       `/api/v1/library/retraction/items/${encodeURIComponent(itemId)}/flag`,
       data,
     ),
 
-  unflagItem: (_workspaceId: string, itemId: string) =>
+  unflagItem: (_scopeId: string, itemId: string) =>
     apiDelete<Item>(
       `/api/v1/library/retraction/items/${encodeURIComponent(itemId)}/flag`,
     ),

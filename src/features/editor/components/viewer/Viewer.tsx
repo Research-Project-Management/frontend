@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { usePageStore, useSettingsStore, useCompileStore } from '@/features/editor/store';
@@ -27,47 +27,43 @@ import DetachedViewerPlaceholder from './DetachedViewerPlaceholder';
 
 export default function Viewer() {
   const lastCheckpointTimeRef = useRef<number>(0);
-  const {
-    getEditorContent,
-    compileRef,
-    currentPage,
-    gotoPageRef,
-    pdfDocRef,
-    scrollToPdfLineRef,
-    scrollToLineRef,
-    activeFilePage,
-    setActiveFilePage,
-  } = usePageStore();
-  const {
-    engine,
-    setEngine,
-    compileMode,
-    setCompileMode,
-    mainFile,
-    useCache,
-    autoCompile,
-    setAutoCompile,
-    texLiveVersion,
-  } = useSettingsStore();
+  // Fine-grained Zustand store subscriptions
+  const getEditorContent = usePageStore((s) => s.getEditorContent);
+  const compileRef = usePageStore((s) => s.compileRef);
+  const currentPage = usePageStore((s) => s.currentPage);
+  const gotoPageRef = usePageStore((s) => s.gotoPageRef);
+  const pdfDocRef = usePageStore((s) => s.pdfDocRef);
+  const scrollToPdfLineRef = usePageStore((s) => s.scrollToPdfLineRef);
+  const scrollToLineRef = usePageStore((s) => s.scrollToLineRef);
+  const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const setActiveFilePage = usePageStore((s) => s.setActiveFilePage);
 
-  const {
-    compileStatus,
-    setCompileStatus,
-    compileLog,
-    setCompileLog,
-    setCompileErrors,
-    pdfUrl,
-    setPdfUrl,
-    lastCompiledAt,
-    setLastCompiledAt,
-    pendingCompile,
-    setPendingCompile,
-    getDirtyFiles,
-    clearDirty,
-    clearAllDirty,
-    isViewerPoppedOut,
-    setIsViewerPoppedOut,
-  } = useCompileStore();
+  const engine = useSettingsStore((s) => s.engine);
+  const setEngine = useSettingsStore((s) => s.setEngine);
+  const compileMode = useSettingsStore((s) => s.compileMode);
+  const setCompileMode = useSettingsStore((s) => s.setCompileMode);
+  const mainFile = useSettingsStore((s) => s.mainFile);
+  const useCache = useSettingsStore((s) => s.useCache);
+  const autoCompile = useSettingsStore((s) => s.autoCompile);
+  const setAutoCompile = useSettingsStore((s) => s.setAutoCompile);
+  const texLiveVersion = useSettingsStore((s) => s.texLiveVersion);
+
+  const compileStatus = useCompileStore((s) => s.compileStatus);
+  const setCompileStatus = useCompileStore((s) => s.setCompileStatus);
+  const compileLog = useCompileStore((s) => s.compileLog);
+  const setCompileLog = useCompileStore((s) => s.setCompileLog);
+  const setCompileErrors = useCompileStore((s) => s.setCompileErrors);
+  const pdfUrl = useCompileStore((s) => s.pdfUrl);
+  const setPdfUrl = useCompileStore((s) => s.setPdfUrl);
+  const lastCompiledAt = useCompileStore((s) => s.lastCompiledAt);
+  const setLastCompiledAt = useCompileStore((s) => s.setLastCompiledAt);
+  const pendingCompile = useCompileStore((s) => s.pendingCompile);
+  const setPendingCompile = useCompileStore((s) => s.setPendingCompile);
+  const getDirtyFiles = useCompileStore((s) => s.getDirtyFiles);
+  const clearDirty = useCompileStore((s) => s.clearDirty);
+  const clearAllDirty = useCompileStore((s) => s.clearAllDirty);
+  const isViewerPoppedOut = useCompileStore((s) => s.isViewerPoppedOut);
+  const setIsViewerPoppedOut = useCompileStore((s) => s.setIsViewerPoppedOut);
 
   const { updateThumbnail: saveThumbnailMutation } = usePageActions();
 
@@ -131,28 +127,28 @@ export default function Viewer() {
     }
   }, [autoFit, fittedScale]);
 
-  const handleZoomIn = () => {
+  const handleZoomIn = useCallback(() => {
     setAutoFit(false);
     setScale((s) => Math.min(s + 0.15, 3.0));
-  };
+  }, []);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     setAutoFit(false);
     setScale((s) => Math.max(s - 0.15, 0.4));
-  };
+  }, []);
 
-  const handleResetZoom = () => {
+  const handleResetZoom = useCallback(() => {
     setAutoFit(false);
     setScale(1.0);
-  };
+  }, []);
 
-  const handleToggleAutoFit = () => {
+  const handleToggleAutoFit = useCallback(() => {
     setAutoFit((prev) => {
       const next = !prev;
       if (next) setScale(fittedScale);
       return next;
     });
-  };
+  }, [fittedScale]);
 
   useEffect(() => {
     const unsubZoomIn = EditorEventBus.on('flux:zoom-in', handleZoomIn);
@@ -171,7 +167,7 @@ export default function Viewer() {
       unsubFitWidth();
       unsubFitHeight();
     };
-  }, [fittedScale]);
+  }, [fittedScale, handleZoomIn, handleZoomOut]);
 
   const showZoomGroup = containerWidth >= 480;
   const showUtilityGroup = containerWidth >= 380;
@@ -187,7 +183,7 @@ export default function Viewer() {
     enabled: !!rootPageId,
   });
 
-  const findPageByBasename = (basename: string) => {
+  const findPageByBasename = useCallback((basename: string) => {
     const cleanName = basename.replace(/^\.\//, '').toLowerCase();
     const baseNoExt = cleanName.replace(/\.(tex|bib|sty|cls)$/i, '');
     return pageFiles.find((p: any) => {
@@ -197,10 +193,10 @@ export default function Viewer() {
         titleLower.replace(/\.(tex|bib|sty|cls)$/i, '') === baseNoExt
       );
     });
-  };
+  }, [pageFiles]);
 
   // Compile runner using unified LatexCompilerEngine
-  const handleCompile = async (options?: { forceClean?: boolean }) => {
+  const handleCompile = useCallback(async (options?: { forceClean?: boolean }) => {
     const rootId = parentPageIdRef.current;
     if (!rootId) return;
 
@@ -280,10 +276,29 @@ export default function Viewer() {
         res.flushedFileIds.forEach((fid) => clearDirty(fid));
       }
     }
-  };
+  }, [
+    getDirtyFiles,
+    getEditorContent,
+    activeFilePage,
+    currentPage?.projectId,
+    projectId,
+    mainFile,
+    engine,
+    texLiveVersion,
+    compileMode,
+    useCache,
+    setCompileStatus,
+    saveThumbnailMutation,
+    setPdfUrl,
+    setCompileLog,
+    setLastCompiledAt,
+    setCompileErrors,
+    clearDirty,
+    clearAllDirty,
+  ]);
 
   // Force re-sync full project
-  const handleForceSync = async () => {
+  const handleForceSync = useCallback(async () => {
     const rootId = parentPageIdRef.current;
     if (!rootId) return;
 
@@ -294,12 +309,12 @@ export default function Viewer() {
     } catch {
       setCompileStatus('error');
     }
-  };
+  }, [setCompileStatus, handleCompile]);
 
   // Expose compile trigger globally
   useEffect(() => {
     compileRef.current = handleCompile;
-  }, [mainFile, engine, compileMode, useCache]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [compileRef, handleCompile]);
 
   // Handle pending compile trigger from auto-compile
   useEffect(() => {
@@ -307,18 +322,18 @@ export default function Viewer() {
       setPendingCompile(false);
       handleCompile();
     }
-  }, [pendingCompile]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pendingCompile, setPendingCompile, handleCompile]);
 
-  const handlePrevPage = () => setPageNumber((p) => Math.max(p - 1, 1));
-  const handleNextPage = () => setPageNumber((p) => Math.min(p + 1, numPages));
+  const handlePrevPage = useCallback(() => setPageNumber((p) => Math.max(p - 1, 1)), []);
+  const handleNextPage = useCallback(() => setPageNumber((p) => Math.min(p + 1, numPages)), [numPages]);
 
-  const handleDownload = () => {
+  const handleDownload = useCallback(() => {
     if (!pdfUrl) return;
     const a = downloadRef.current || document.createElement('a');
     a.href = pdfUrl;
     a.download = `${currentPage?.title?.replace(/\s+/g, '_') || 'document'}.pdf`;
     a.click();
-  };
+  }, [pdfUrl, currentPage?.title]);
 
   // Cleanup blob object URLs on unmount
   useEffect(() => {
@@ -395,7 +410,7 @@ export default function Viewer() {
   }, [numPages, activeFilePage, scrollToPdfLineRef, projectId, scale]);
 
   // SyncTeX reverse search (PDF double-click -> Code jump)
-  const handleJumpToSource = async (
+  const handleJumpToSource = useCallback(async (
     sourcePath: string | null,
     line: number,
     pageNum?: number,
@@ -452,7 +467,7 @@ export default function Viewer() {
     }
 
     scrollToLineRef.current?.(line);
-  };
+  }, [projectId, findPageByBasename, activeFilePage?.id, setActiveFilePage, router, scrollToLineRef]);
 
   // SyncTeX reverse search event listener (Floating widget backward arrow)
   useEffect(() => {
@@ -469,16 +484,21 @@ export default function Viewer() {
     });
   }, [pageNumber, handleJumpToSource]);
 
-  const handleJumpToFirstError = () => {
+  const parsedLog = useMemo(
+    () => (compileLog ? parseLatexLog(compileLog) : null),
+    [compileLog],
+  );
+
+  const handleJumpToFirstError = useCallback(() => {
     const firstErr = parsedLog?.errors.find((e) => e.line !== undefined);
     if (firstErr && firstErr.line) {
       handleJumpToSource(firstErr.file || null, firstErr.line);
     } else {
       setShowLog(true);
     }
-  };
+  }, [parsedLog, handleJumpToSource]);
 
-  const handlePopoutWindow = () => {
+  const handlePopoutWindow = useCallback(() => {
     const rootId = parentPageIdRef.current;
     if (!rootId) return;
 
@@ -501,9 +521,9 @@ export default function Viewer() {
       popupWinRef.current = popup;
       setIsViewerPoppedOut(true);
     }
-  };
+  }, [projectId, setIsViewerPoppedOut]);
 
-  const handleReattach = () => {
+  const handleReattach = useCallback(() => {
     bridgeRef.current?.postMessage({ type: 'REATTACH_REQUEST' });
     if (popupWinRef.current && !popupWinRef.current.closed) {
       try {
@@ -514,13 +534,13 @@ export default function Viewer() {
     }
     popupWinRef.current = null;
     setIsViewerPoppedOut(false);
-  };
+  }, [setIsViewerPoppedOut]);
 
-  const handleFocusPopout = () => {
+  const handleFocusPopout = useCallback(() => {
     if (popupWinRef.current && !popupWinRef.current.closed) {
       popupWinRef.current.focus();
     }
-  };
+  }, []);
 
   // Cross-window communication bridge setup
   useEffect(() => {
@@ -593,12 +613,7 @@ export default function Viewer() {
     return () => clearInterval(interval);
   }, [isViewerPoppedOut, setIsViewerPoppedOut]);
 
-  const parsedLog = useMemo(
-    () => (compileLog ? parseLatexLog(compileLog) : null),
-    [compileLog],
-  );
-
-  const onDocumentLoadSuccess = async (pdf: any) => {
+  const onDocumentLoadSuccess = useCallback(async (pdf: any) => {
     pdfDocRef.current = pdf;
 
     try {
@@ -614,13 +629,23 @@ export default function Viewer() {
     const content = getEditorContent.current?.() || activeFilePage?.content || '';
     const fallback = extractOutlineFromContent(content, pdf.numPages || 1, synctexMapRef.current as any);
     setPdfOutline(fallback);
-  };
+  }, [pdfDocRef, getEditorContent, activeFilePage?.content]);
 
-  const handleJumpToPage = (targetPage: number) => {
+  const handleJumpToPage = useCallback((targetPage: number) => {
     const p = Math.max(1, Math.min(targetPage, numPages || 1));
     setPageNumber(p);
     pdfSurfaceRef.current?.scrollToPage(p);
-  };
+  }, [numPages]);
+
+  const handleToggleLog = useCallback(() => setShowLog((p) => !p), []);
+  const handleToggleAutoCompile = useCallback(() => setAutoCompile(!autoCompile), [autoCompile, setAutoCompile]);
+  const handleClearCacheAndCompile = useCallback(() => handleCompile({ forceClean: true }), [handleCompile]);
+  const handleToggleInvertColors = useCallback(() => setInvertColors((v) => !v), []);
+  const handleSetScale = useCallback((s: number) => {
+    setAutoFit(false);
+    setScale(s);
+  }, []);
+  const handleSetCompileMode = useCallback((m: 'full' | 'draft') => setCompileMode(m), [setCompileMode]);
 
   // If detached, show placeholder with toolbar controls
   if (isViewerPoppedOut) {
@@ -631,10 +656,10 @@ export default function Viewer() {
           engine={engine}
           setEngine={setEngine}
           compileMode={compileMode as 'full' | 'draft'}
-          setCompileMode={(m) => setCompileMode(m as any)}
+          setCompileMode={handleSetCompileMode}
           autoCompile={autoCompile}
-          onToggleAutoCompile={() => setAutoCompile(!autoCompile)}
-          onClearCacheAndCompile={() => handleCompile({ forceClean: true })}
+          onToggleAutoCompile={handleToggleAutoCompile}
+          onClearCacheAndCompile={handleClearCacheAndCompile}
           onCompile={handleCompile}
           onForceSync={handleForceSync}
           scale={scale}
@@ -652,18 +677,15 @@ export default function Viewer() {
           compileLog={compileLog || ''}
           showLog={false}
           showUtilityGroup={showUtilityGroup}
-          onToggleLog={() => setShowLog((p) => !p)}
+          onToggleLog={handleToggleLog}
           onDownload={handleDownload}
           onPopout={handleReattach}
           isPoppedOut={true}
           outline={pdfOutline}
           onJumpToPage={handleJumpToPage}
           invertColors={invertColors}
-          onToggleInvertColors={() => setInvertColors((v) => !v)}
-          onSetScale={(s) => {
-            setAutoFit(false);
-            setScale(s);
-          }}
+          onToggleInvertColors={handleToggleInvertColors}
+          onSetScale={handleSetScale}
         />
 
         <div className="flex-1 overflow-hidden relative flex flex-col">
@@ -680,7 +702,7 @@ export default function Viewer() {
           lastCompiledAt={lastCompiledAt}
           pdfUrl={pdfUrl}
           parsedLog={parsedLog}
-          onToggleLog={() => setShowLog((p) => !p)}
+          onToggleLog={handleToggleLog}
           onJumpToFirstError={handleJumpToFirstError}
         />
       </div>
@@ -695,10 +717,10 @@ export default function Viewer() {
         engine={engine}
         setEngine={setEngine}
         compileMode={compileMode as 'full' | 'draft'}
-        setCompileMode={(m) => setCompileMode(m as any)}
+        setCompileMode={handleSetCompileMode}
         autoCompile={autoCompile}
-        onToggleAutoCompile={() => setAutoCompile(!autoCompile)}
-        onClearCacheAndCompile={() => handleCompile({ forceClean: true })}
+        onToggleAutoCompile={handleToggleAutoCompile}
+        onClearCacheAndCompile={handleClearCacheAndCompile}
         onCompile={handleCompile}
         onForceSync={handleForceSync}
         scale={scale}
@@ -708,10 +730,7 @@ export default function Viewer() {
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onResetZoom={handleResetZoom}
-        onSetScale={(s) => {
-          setAutoFit(false);
-          setScale(s);
-        }}
+        onSetScale={handleSetScale}
         pageNumber={pageNumber}
         numPages={numPages}
         onPrevPage={handlePrevPage}
@@ -720,14 +739,14 @@ export default function Viewer() {
         compileLog={compileLog || ''}
         showLog={showLog}
         showUtilityGroup={showUtilityGroup}
-        onToggleLog={() => setShowLog((p) => !p)}
+        onToggleLog={handleToggleLog}
         onDownload={handleDownload}
         onPopout={handlePopoutWindow}
         isPoppedOut={false}
         outline={pdfOutline}
         onJumpToPage={handleJumpToPage}
         invertColors={invertColors}
-        onToggleInvertColors={() => setInvertColors((v) => !v)}
+        onToggleInvertColors={handleToggleInvertColors}
       />
 
       <a ref={downloadRef} className="hidden" aria-hidden="true" />
@@ -766,7 +785,7 @@ export default function Viewer() {
         lastCompiledAt={lastCompiledAt}
         pdfUrl={pdfUrl}
         parsedLog={parsedLog}
-        onToggleLog={() => setShowLog((p) => !p)}
+        onToggleLog={handleToggleLog}
         onJumpToFirstError={handleJumpToFirstError}
       />
     </div>

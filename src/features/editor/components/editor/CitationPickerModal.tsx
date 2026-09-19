@@ -20,9 +20,8 @@ import {
 } from "@/shared/components/ui";
 import { BookOpen, FileText, AlertTriangle } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
-import type { Item } from '@/features/library/types/library.types';
 import { formatCitationSnippet, formatItemAuthorSummary } from '../../utils/citation.util';
-import { generateCitationKey } from '@/features/library/utils/bibtex.util';
+import { generateCitationKey, type Item } from '@/features/library';
 
 export type CitationStyle =
   | 'latex-cite'

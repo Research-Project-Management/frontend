@@ -1,8 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import Sidebar from '@/features/library/components/Sidebar';
-import { useLibrarySidebarStore } from '@/features/library/store/sidebar.store';
+import { Sidebar, useLibrarySidebarStore } from '@/features/library';
 import React from "react";
 
 export default function LibraryLayout({

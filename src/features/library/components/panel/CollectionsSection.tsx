@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { Library, Folder, X } from 'lucide-react';
-import { useItems } from '@/features/library/hooks/use-items';
-import { useCollections } from '@/features/library/hooks/use-library';
-import type { Item, Collection } from '@/features/library/types/library.types';
+import { useItems } from '../../hooks/use-items';
+import { useCollections } from '../../hooks/use-collections';
+import type { Item, Collection } from '../../types/library.types';
 
 interface CollectionsSectionProps {
   paper: Item;

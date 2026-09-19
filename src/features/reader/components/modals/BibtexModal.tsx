@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { generateCitationKey } from '../../utils/reader.util';
-import { ExportService } from '@/features/library/services/exports.service';
+import { ExportService } from '@/features/library';
 import type { ReaderDocument } from '../../types/reader.types';
 
 export interface PaperBibtexDialogProps {

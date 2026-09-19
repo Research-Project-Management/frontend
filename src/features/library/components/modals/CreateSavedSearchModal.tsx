@@ -57,6 +57,41 @@ interface FieldConfig {
   defaultValue?: string;
 }
 
+export const READ_STATUS_OPTIONS = [
+  { value: 'unread', label: 'Unread' },
+  { value: 'reading', label: 'Reading' },
+  { value: 'read', label: 'Read' },
+  { value: 'skimming', label: 'Skimming' },
+];
+
+export const RATING_OPTIONS = [
+  { value: '1', label: '★☆☆☆☆ (1 Star)' },
+  { value: '2', label: '★★☆☆☆ (2 Stars)' },
+  { value: '3', label: '★★★☆☆ (3 Stars)' },
+  { value: '4', label: '★★★★☆ (4 Stars)' },
+  { value: '5', label: '★★★★★ (5 Stars)' },
+];
+
+export const HAS_ATTACHMENT_OPTIONS = [
+  { value: 'true', label: 'Has Attachments' },
+  { value: 'false', label: 'No Attachments' },
+];
+
+export function formatConditionValue(
+  field: SavedSearchField,
+  value: string,
+): string | number | boolean {
+  const trimmed = value.trim();
+  if (field === 'year' || field === 'rating') {
+    const num = Number(trimmed);
+    return !isNaN(num) ? num : trimmed;
+  }
+  if (field === 'hasAttachment') {
+    return trimmed === 'true';
+  }
+  return trimmed;
+}
+
 const FIELD_CONFIGS: FieldConfig[] = [
   {
     value: 'title',
@@ -81,6 +116,8 @@ const FIELD_CONFIGS: FieldConfig[] = [
       { value: 'isNot', label: 'is not' },
       { value: 'isPresent', label: 'is not empty' },
       { value: 'isAbsent', label: 'is empty' },
+      { value: 'beginsWith', label: 'begins with' },
+      { value: 'endsWith', label: 'ends with' },
     ],
     placeholder: 'e.g. Vaswani, Bengio, LeCun',
   },
@@ -92,8 +129,53 @@ const FIELD_CONFIGS: FieldConfig[] = [
       { value: 'isGreaterThan', label: 'is after (>)' },
       { value: 'isLessThan', label: 'is before (<)' },
       { value: 'isNot', label: 'is not equal to (≠)' },
+      { value: 'isPresent', label: 'has year' },
+      { value: 'isAbsent', label: 'no year' },
     ],
     placeholder: 'e.g. 2024',
+  },
+  {
+    value: 'readStatus',
+    label: 'Read Status',
+    operators: [
+      { value: 'is', label: 'is' },
+      { value: 'isNot', label: 'is not' },
+    ],
+    placeholder: 'Select reading status...',
+    defaultValue: 'unread',
+  },
+  {
+    value: 'rating',
+    label: 'Rating',
+    operators: [
+      { value: 'is', label: 'equals (=)' },
+      { value: 'isGreaterThan', label: 'is greater than (>)' },
+      { value: 'isLessThan', label: 'is less than (<)' },
+      { value: 'isNot', label: 'is not equal to (≠)' },
+      { value: 'isPresent', label: 'is rated' },
+      { value: 'isAbsent', label: 'is unrated' },
+    ],
+    placeholder: 'Select rating...',
+    defaultValue: '3',
+  },
+  {
+    value: 'hasAttachment',
+    label: 'Has Attachment',
+    operators: [
+      { value: 'is', label: 'is' },
+    ],
+    placeholder: 'Select attachment status...',
+    defaultValue: 'true',
+  },
+  {
+    value: 'dateAdded',
+    label: 'Date Added',
+    operators: [
+      { value: 'isGreaterThan', label: 'is after (>)' },
+      { value: 'isLessThan', label: 'is before (<)' },
+      { value: 'isPresent', label: 'is set' },
+    ],
+    placeholder: 'YYYY-MM-DD (e.g. 2024-01-01)',
   },
   {
     value: 'abstract',
@@ -111,6 +193,8 @@ const FIELD_CONFIGS: FieldConfig[] = [
       { value: 'contains', label: 'contains' },
       { value: 'is', label: 'is exact tag' },
       { value: 'doesNotContain', label: 'does not contain' },
+      { value: 'isPresent', label: 'has tags' },
+      { value: 'isAbsent', label: 'no tags' },
     ],
     placeholder: 'e.g. deep-learning, survey',
   },
@@ -136,6 +220,28 @@ const FIELD_CONFIGS: FieldConfig[] = [
     placeholder: '10.1145/... or 10.1038/...',
   },
   {
+    value: 'isbn',
+    label: 'ISBN',
+    operators: [
+      { value: 'contains', label: 'contains' },
+      { value: 'is', label: 'is exact ISBN' },
+      { value: 'isPresent', label: 'has ISBN' },
+      { value: 'isAbsent', label: 'no ISBN' },
+    ],
+    placeholder: '978-0-...',
+  },
+  {
+    value: 'collection',
+    label: 'Collection',
+    operators: [
+      { value: 'is', label: 'is in collection ID' },
+      { value: 'isNot', label: 'is not in collection ID' },
+      { value: 'isPresent', label: 'is in any collection' },
+      { value: 'isAbsent', label: 'is unfiled (no collection)' },
+    ],
+    placeholder: 'Collection ID...',
+  },
+  {
     value: 'itemType',
     label: 'Item Type',
     operators: [
@@ -145,6 +251,7 @@ const FIELD_CONFIGS: FieldConfig[] = [
       { value: 'isAbsent', label: 'is empty' },
     ],
     placeholder: 'Select item type...',
+    defaultValue: 'journalArticle',
   },
 ];
 
@@ -236,10 +343,7 @@ export function CreateSavedSearchModal({
           .map((c) => ({
             field: c.field,
             operator: c.operator,
-            value:
-              c.field === 'year' && !isNaN(Number(c.value.trim()))
-                ? Number(c.value.trim())
-                : c.value.trim(),
+            value: formatConditionValue(c.field, c.value),
           }));
 
         if (payloadConditions.length === 0) {
@@ -294,8 +398,18 @@ export function CreateSavedSearchModal({
   const handleFieldChange = (id: string, newField: SavedSearchField) => {
     const config = FIELD_CONFIGS.find((f) => f.value === newField);
     const defaultOp = config?.operators[0]?.value || 'contains';
-    const defaultValue =
-      newField === 'itemType' ? itemTypeOptions[0]?.value || 'journalArticle' : '';
+    let defaultValue = '';
+    if (newField === 'itemType') {
+      defaultValue = itemTypeOptions[0]?.value || 'journalArticle';
+    } else if (newField === 'readStatus') {
+      defaultValue = 'unread';
+    } else if (newField === 'rating') {
+      defaultValue = '3';
+    } else if (newField === 'hasAttachment') {
+      defaultValue = 'true';
+    } else if (config?.defaultValue) {
+      defaultValue = config.defaultValue;
+    }
 
     setConditions((prev) =>
       prev.map((c) =>
@@ -348,10 +462,7 @@ export function CreateSavedSearchModal({
       conditions: conditions.map((c) => ({
         field: c.field,
         operator: c.operator,
-        value:
-          c.field === 'year' && !isNaN(Number(c.value.trim()))
-            ? Number(c.value.trim())
-            : c.value.trim(),
+        value: formatConditionValue(c.field, c.value),
       })),
     };
 
@@ -503,6 +614,72 @@ export function CreateSavedSearchModal({
                             </SelectTrigger>
                             <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
                               {itemTypeOptions.map((opt: { value: string; label: string }) => (
+                                <SelectItem
+                                  key={opt.value}
+                                  value={opt.value}
+                                  className="text-12 rounded-sm cursor-pointer"
+                                >
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ) : cond.field === 'readStatus' ? (
+                        <div className="flex-1 min-w-0">
+                          <Select
+                            value={cond.value || 'unread'}
+                            onValueChange={(val) => handleValueChange(cond.id, val)}
+                          >
+                            <SelectTrigger className="w-full h-8 text-12 text-foreground rounded-md border-border">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
+                              {READ_STATUS_OPTIONS.map((opt) => (
+                                <SelectItem
+                                  key={opt.value}
+                                  value={opt.value}
+                                  className="text-12 rounded-sm cursor-pointer"
+                                >
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ) : cond.field === 'rating' ? (
+                        <div className="flex-1 min-w-0">
+                          <Select
+                            value={cond.value || '3'}
+                            onValueChange={(val) => handleValueChange(cond.id, val)}
+                          >
+                            <SelectTrigger className="w-full h-8 text-12 text-foreground rounded-md border-border">
+                              <SelectValue placeholder="Select rating" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
+                              {RATING_OPTIONS.map((opt) => (
+                                <SelectItem
+                                  key={opt.value}
+                                  value={opt.value}
+                                  className="text-12 rounded-sm cursor-pointer"
+                                >
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ) : cond.field === 'hasAttachment' ? (
+                        <div className="flex-1 min-w-0">
+                          <Select
+                            value={cond.value || 'true'}
+                            onValueChange={(val) => handleValueChange(cond.id, val)}
+                          >
+                            <SelectTrigger className="w-full h-8 text-12 text-foreground rounded-md border-border">
+                              <SelectValue placeholder="Select option" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
+                              {HAS_ATTACHMENT_OPTIONS.map((opt) => (
                                 <SelectItem
                                   key={opt.value}
                                   value={opt.value}

@@ -10,16 +10,19 @@ import {
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from "@/shared/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/components/ui";
 import { Button } from "@/shared/components/ui";
 import { Checkbox } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
 import { Skeleton } from "@/shared/components/ui";
 import { useChatMode } from '../../hooks/use-chat-mode';
-import { cn } from "@/shared/lib/utils";
-import { useCollections } from '@/features/library/hooks/use-library';
-import { useItems as usePapers } from '@/features/library/hooks/use-items';
-import type { Collection, Paper } from '@/features/library/types/library.types';
+import {
+  useCollections,
+  useItems as usePapers,
+  type Collection,
+  type Paper,
+} from '@/features/library';
 
 export interface SourcePickerModalProps {
   open: boolean;

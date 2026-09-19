@@ -22,7 +22,7 @@ export interface SuggestEditModalProps {
   onChangeState: (updater: (prev: SuggestModalState | null) => SuggestModalState | null) => void;
 }
 
-export function SuggestEditModal({
+export const SuggestEditModal = React.memo(function SuggestEditModal({
   suggestModal,
   isPending,
   onClose,
@@ -168,4 +168,4 @@ export function SuggestEditModal({
     </div>,
     document.body,
   );
-}
+});

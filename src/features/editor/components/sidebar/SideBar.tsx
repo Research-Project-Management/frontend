@@ -5,7 +5,7 @@ import {
   Search,
   BookMarked,
 } from "lucide-react";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 
@@ -65,7 +65,7 @@ export interface SideBarProps {
   onActivePanelChange?: (panel: SidebarTab | null) => void;
 }
 
-export default function SideBar({
+const SideBar = React.memo(function SideBar({
   activePanel: controlledActivePanel,
   onActivePanelChange,
 }: SideBarProps = {}) {
@@ -75,10 +75,17 @@ export default function SideBar({
   const isControlled = controlledActivePanel !== undefined;
   const activePanel = isControlled ? controlledActivePanel : internalActivePanel;
 
+  const activePanelRef = useRef<SidebarTab | null>(activePanel);
+  activePanelRef.current = activePanel;
+
   const setActivePanel = useCallback((panel: SidebarTab | null) => {
     if (!isControlled) setInternalActivePanel(panel);
     onActivePanelChange?.(panel);
   }, [isControlled, onActivePanelChange]);
+
+  const handleClosePanel = useCallback(() => {
+    setActivePanel(null);
+  }, [setActivePanel]);
 
   useEffect(() => {
     setMounted(true);
@@ -88,9 +95,9 @@ export default function SideBar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const togglePanel = (name: SidebarTab) => {
-    setActivePanel(activePanel === name ? null : name);
-  };
+  const togglePanel = useCallback((name: SidebarTab) => {
+    setActivePanel(activePanelRef.current === name ? null : name);
+  }, [setActivePanel]);
 
   useEffect(() => {
     if (mounted && activePanel !== undefined) {
@@ -178,18 +185,20 @@ export default function SideBar({
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <PanelContent
               tab={"Files"}
-              onClose={() => setActivePanel(null)}
+              onClose={handleClosePanel}
             />
           </div>
         ) : activePanel === null ? null : (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <PanelContent
               tab={activePanel}
-              onClose={() => setActivePanel(null)}
+              onClose={handleClosePanel}
             />
           </div>
         )}
       </div>
     </div>
   );
-}
+});
+
+export default SideBar;

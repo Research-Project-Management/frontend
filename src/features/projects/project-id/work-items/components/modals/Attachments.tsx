@@ -27,7 +27,7 @@ import {
   DialogFooter,
 } from "@/shared/components/ui";
 import { useProjectPages } from '@/features/projects/project-id/pages/hooks/use-page';
-import { useViewItems } from '@/features/library/hooks/use-items';
+import { useViewItems } from '@/features/library';
 import { useUploadFilesWithToast } from '../../hooks/use-attachment';
 import type {
   AttachPageItem,

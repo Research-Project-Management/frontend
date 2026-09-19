@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState, useCallback } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 import type { OnMount } from '@monaco-editor/react';
 import { useParams } from 'next/navigation';
@@ -13,9 +13,8 @@ import {
   useAcceptSuggestion,
   useRejectSuggestion,
 } from '@/features/editor/hooks/use-suggestion';
-import { useViewItems } from '@/features/library/hooks/use-items';
 import type { Page, PageFile, PageSuggestion } from '@/features/editor/types';
-import type { Item } from '@/features/library/types/library.types';
+import { useViewItems, type Item } from '@/features/library';
 import { usePageStore, useSettingsStore } from '@/features/editor/store';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { toast } from 'sonner';
@@ -54,26 +53,23 @@ interface EditorProps {
 type CtxPos = { x: number; y: number };
 
 export default function Editor({ page }: EditorProps) {
-  const {
-    editorRef,
-    compileRef,
-    scrollToLineRef,
-    scrollToPdfLineRef,
-    isAiPreviewingRef,
-  } = usePageStore();
+  const editorRef = usePageStore((s) => s.editorRef);
+  const compileRef = usePageStore((s) => s.compileRef);
+  const scrollToLineRef = usePageStore((s) => s.scrollToLineRef);
+  const scrollToPdfLineRef = usePageStore((s) => s.scrollToPdfLineRef);
+  const isAiPreviewingRef = usePageStore((s) => s.isAiPreviewingRef);
+  const getEditorContent = usePageStore((s) => s.getEditorContent);
   const monacoRef = useRef<any>(null);
 
-  const {
-    editorTheme,
-    fontSize,
-    wordWrap,
-    lineNumbers,
-    editorMode,
-    setEditorMode,
-    keybinding,
-    reviewMode,
-    toggleReviewMode,
-  } = useSettingsStore();
+  const editorTheme = useSettingsStore((s) => s.editorTheme);
+  const fontSize = useSettingsStore((s) => s.fontSize);
+  const wordWrap = useSettingsStore((s) => s.wordWrap);
+  const lineNumbers = useSettingsStore((s) => s.lineNumbers);
+  const editorMode = useSettingsStore((s) => s.editorMode);
+  const setEditorMode = useSettingsStore((s) => s.setEditorMode);
+  const keybinding = useSettingsStore((s) => s.keybinding);
+  const reviewMode = useSettingsStore((s) => s.reviewMode);
+  const toggleReviewMode = useSettingsStore((s) => s.toggleReviewMode);
 
   const { pageId: pageIdParam, projectId: projectIdParam } = useParams<{
     pageId?: string;
@@ -109,9 +105,22 @@ export default function Editor({ page }: EditorProps) {
     updateMutation,
   } = useEditorSave({ page });
 
+  // Wire getEditorContent bridge ref to current active editor/content
+  useEffect(() => {
+    getEditorContent.current = () => {
+      if (editorRef.current) {
+        return editorRef.current.getValue();
+      }
+      return currentContent ?? '';
+    };
+    return () => {
+      getEditorContent.current = null;
+    };
+  }, [currentContent, editorRef, getEditorContent]);
+
   const vimStatusRef = useRef<HTMLDivElement>(null);
 
-  const handleSaveAndCompile = () => {
+  const handleSaveAndCompile = useCallback(() => {
     if (page?.id && currentContent !== undefined) {
       updateMutation.mutate({
         pageId: page.id,
@@ -119,7 +128,7 @@ export default function Editor({ page }: EditorProps) {
       });
     }
     compileRef.current?.();
-  };
+  }, [compileRef, currentContent, page?.id, updateMutation]);
 
   const { isVimActive } = useEditorVim({
     editor: editorMounted ? editorRef.current : null,
@@ -141,7 +150,7 @@ export default function Editor({ page }: EditorProps) {
     editorMounted,
   });
 
-  const handleAcceptSuggestion = async (s: PageSuggestion) => {
+  const handleAcceptSuggestion = useCallback(async (s: PageSuggestion) => {
     try {
       await acceptSuggestionMutation.mutateAsync({
         pageId: page.id,
@@ -152,9 +161,9 @@ export default function Editor({ page }: EditorProps) {
     } catch {
       toast.error('Failed to accept suggestion');
     }
-  };
+  }, [acceptSuggestionMutation, page.id, setActiveSuggestionWidgetData]);
 
-  const handleRejectSuggestion = async (s: PageSuggestion) => {
+  const handleRejectSuggestion = useCallback(async (s: PageSuggestion) => {
     try {
       await rejectSuggestionMutation.mutateAsync({
         pageId: page.id,
@@ -165,7 +174,7 @@ export default function Editor({ page }: EditorProps) {
     } catch {
       toast.error('Failed to reject suggestion');
     }
-  };
+  }, [page.id, rejectSuggestionMutation, setActiveSuggestionWidgetData]);
 
   const {
     citationModalOpen,
@@ -208,9 +217,9 @@ export default function Editor({ page }: EditorProps) {
   const disposablesRef = useRef<Array<{ dispose: () => void }>>([]);
   const domCleanupRef = useRef<(() => void) | null>(null);
 
-  const closeMenu = () => setCtxMenu(null);
+  const closeMenu = useCallback(() => setCtxMenu(null), []);
 
-  const openRenameDialog = () => {
+  const openRenameDialog = useCallback(() => {
     const ed = editorRef.current;
     if (!ed) return;
     const pos = ed.getPosition();
@@ -218,10 +227,12 @@ export default function Editor({ page }: EditorProps) {
     if (!word) return;
     closeMenu();
     setRenameDialog({ word: word.word, newName: word.word });
-  };
+  }, [closeMenu, editorRef]);
 
   const openRenameDialogLatestRef = useRef(openRenameDialog);
   openRenameDialogLatestRef.current = openRenameDialog;
+
+  const handleOpenCitationModal = useCallback(() => setCitationModalOpen(true), []);
 
   const {
     menuGroups,
@@ -230,7 +241,7 @@ export default function Editor({ page }: EditorProps) {
     editorRef,
     closeMenu,
     openRenameDialog,
-    openCitationModal: () => setCitationModalOpen(true),
+    openCitationModal: handleOpenCitationModal,
     openSuggestModal: setSuggestModal,
     ctxStartLine,
     ctxEndLine,
@@ -301,6 +312,7 @@ export default function Editor({ page }: EditorProps) {
     }
   }, [renameDialog]);
 
+  const hasComments = (comments?.length ?? 0) > 0;
   // Synchronize options with Monaco
   useEffect(() => {
     editorRef.current?.updateOptions({
@@ -310,7 +322,7 @@ export default function Editor({ page }: EditorProps) {
       lineNumbers: lineNumbers ? 'on' : 'off',
       lineNumbersMinChars: 3,
       lineDecorationsWidth: 0,
-      glyphMargin: (comments?.length ?? 0) > 0,
+      glyphMargin: hasComments,
       folding: false,
       renderLineHighlight: 'all',
       renderLineHighlightOnlyWhenFocus: false,
@@ -333,11 +345,12 @@ export default function Editor({ page }: EditorProps) {
         alwaysConsumeMouseWheel: false,
       },
     });
-  }, [fontSize, wordWrap, lineNumbers, comments, editorRef]);
+  }, [fontSize, wordWrap, lineNumbers, hasComments, editorRef]);
 
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    getEditorContent.current = () => editor.getValue();
     setEditorMounted(true);
 
     // Show scrollbar on interaction/scroll then hide after idle
@@ -421,13 +434,17 @@ export default function Editor({ page }: EditorProps) {
 
     // SyncTeX Forward jump highlight
     scrollToLineRef.current = (line: number) => {
-      editor.revealLineInCenter(line);
-      editor.setPosition({ lineNumber: line, column: 1 });
+      const model = editor.getModel();
+      const maxLine = model ? model.getLineCount() : 1;
+      const targetLine = Math.max(1, Math.min(line, maxLine));
+
+      editor.revealLineInCenter(targetLine);
+      editor.setPosition({ lineNumber: targetLine, column: 1 });
       editor.focus();
 
       const flashColl = editor.createDecorationsCollection([
         {
-          range: new monaco.Range(line, 1, line, 1),
+          range: new monaco.Range(targetLine, 1, targetLine, 1),
           options: {
             isWholeLine: true,
             className:
@@ -549,7 +566,7 @@ export default function Editor({ page }: EditorProps) {
     });
   }, [editorRef, scrollToPdfLineRef]);
 
-  const handleSuggestionSubmit = async () => {
+  const handleSuggestionSubmit = useCallback(async () => {
     if (!suggestModal) return;
     await createSuggestionMutation.mutateAsync({
       pageId: page.id,
@@ -563,7 +580,39 @@ export default function Editor({ page }: EditorProps) {
     });
     setSuggestModal(null);
     EditorEventBus.emit('flux:open-panel', 'Review');
-  };
+  }, [createSuggestionMutation, page.id, suggestModal]);
+
+  const handleCloseSuggestionWidget = useCallback(() => {
+    setActiveSuggestionWidgetData(null);
+  }, [setActiveSuggestionWidgetData]);
+
+  const handleOpenReviewTab = useCallback((suggestionId: string) => {
+    EditorEventBus.emit('flux:open-panel', {
+      panel: 'Review',
+      suggestionId,
+    });
+  }, []);
+
+  const handleCloseFloating = useCallback(() => {
+    setSelFloating(null);
+  }, []);
+
+  const handleChangeRenameName = useCallback((name: string) => {
+    setRenameDialog((d) => (d ? { ...d, newName: name } : null));
+  }, []);
+
+  const handleApplyRename = useCallback((word: string, newName: string) => {
+    applyRename(word, newName);
+    setRenameDialog(null);
+  }, [applyRename]);
+
+  const handleCancelRename = useCallback(() => {
+    setRenameDialog(null);
+  }, []);
+
+  const handleCloseSuggestModal = useCallback(() => {
+    setSuggestModal(null);
+  }, []);
 
   const isReadOnly = Boolean((page as any).isLocked || isDocumentLocked);
 
@@ -805,13 +854,8 @@ export default function Editor({ page }: EditorProps) {
         isRejecting={rejectSuggestionMutation.isPending}
         onAccept={handleAcceptSuggestion}
         onReject={handleRejectSuggestion}
-        onClose={() => setActiveSuggestionWidgetData(null)}
-        onOpenReviewTab={(suggestionId) => {
-          EditorEventBus.emit('flux:open-panel', {
-            panel: 'Review',
-            suggestionId,
-          });
-        }}
+        onClose={handleCloseSuggestionWidget}
+        onOpenReviewTab={handleOpenReviewTab}
       />
 
       {/* Selection floating action bar */}
@@ -819,7 +863,7 @@ export default function Editor({ page }: EditorProps) {
         selFloating={selFloating}
         selFloatingRef={selFloatingRef}
         reviewMode={reviewMode}
-        onClose={() => setSelFloating(null)}
+        onClose={handleCloseFloating}
         onOpenSuggest={setSuggestModal}
       />
 
@@ -835,21 +879,16 @@ export default function Editor({ page }: EditorProps) {
       <RenameSymbolDialog
         renameDialog={renameDialog}
         renameInputRef={renameInputRef}
-        onChangeNewName={(name) =>
-          setRenameDialog((d) => (d ? { ...d, newName: name } : null))
-        }
-        onApply={(word, newName) => {
-          applyRename(word, newName);
-          setRenameDialog(null);
-        }}
-        onCancel={() => setRenameDialog(null)}
+        onChangeNewName={handleChangeRenameName}
+        onApply={handleApplyRename}
+        onCancel={handleCancelRename}
       />
 
       {/* Suggestion (Track Changes) modal dialog */}
       <SuggestEditModal
         suggestModal={suggestModal}
         isPending={createSuggestionMutation.isPending}
-        onClose={() => setSuggestModal(null)}
+        onClose={handleCloseSuggestModal}
         onSubmit={handleSuggestionSubmit}
         onChangeState={setSuggestModal}
       />

@@ -24,39 +24,43 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/shared/components/ui";
-import dynamic from 'next/dynamic';
-import InfoSection from '@/features/library/components/panel/InfoSection';
-import AbstractSection from '@/features/library/components/panel/AbstractSection';
-import CollectionsSection from '@/features/library/components/panel/CollectionsSection';
-import NotesSection from '@/features/library/components/panel/NotesSection';
+import {
+  InfoSection,
+  AbstractSection,
+  CollectionsSection,
+  NotesSection,
+  TagsSection,
+  CiteSection,
+  RelatedSection,
+  AttachmentsSection,
+  CreateCollectionModal,
+  DeleteModal,
+  type DeleteModalConfig,
+  useItems as usePapers,
+  ItemService,
+  useCollections,
+  useAttachments,
+  useNotes,
+  useRelations,
+  useLibrarySidebarStore,
+  type InspectorSectionId,
+  normalizeNotes,
+  normalizeTags,
+  getPaperFileUrl,
+  ExportService,
+  ALL_ITEM_TYPES_FLAT,
+  uploadLibraryFile,
+  type Item,
+  type Collection,
+  type CollectionInput,
+} from '@/features/library';
 import NotesPanel from './panel/NotesPanel';
-import TagsSection from '@/features/library/components/panel/TagsSection';
-import CiteSection from '@/features/library/components/panel/CiteSection';
-import RelatedSection from '@/features/library/components/panel/RelatedSection';
-
-const AttachmentsSection = dynamic(() => import('@/features/library/components/panel/AttachmentsSection'), {
-  ssr: false,
-});
-import CreateCollectionModal from '@/features/library/components/modals/CreateCollectionModal';
-import { useItems as usePapers } from '@/features/library/hooks/use-items';
-import { ItemService } from '@/features/library/services/items.service';
-import { useCollections } from '@/features/library/hooks/use-collections';
-import { useAttachments } from '@/features/library/hooks/use-attachments';
-import { useNotes } from '@/features/library/hooks/use-notes';
-import { useRelations } from '@/features/library/hooks/use-relations';
-import { useLibrarySidebarStore, type InspectorSectionId } from '@/features/library/store/sidebar.store';
-import { normalizeNotes, normalizeTags, getPaperFileUrl } from '@/features/library/utils/library.util';
-import { ExportService } from '@/features/library/services/exports.service';
-import { ALL_ITEM_TYPES_FLAT } from '@/features/library/schemas/item-type.schema';
 import { cn } from "@/shared/lib/utils";
-import { uploadLibraryFile } from '@/features/library/services/upload.service';
 import { toast } from 'sonner';
 import { copyToClipboard } from "@/shared/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import { apiPost, apiDelete } from "@/shared/lib/api";
 import { useQueryClient } from '@tanstack/react-query';
-import DeleteModal, { type DeleteModalConfig } from '@/features/library/components/modals/DeleteModal';
-import type { Item, Collection, CollectionInput } from '@/features/library/types/library.types';
 
 export interface InspectorPanelProps {
   paper?: Item | null;

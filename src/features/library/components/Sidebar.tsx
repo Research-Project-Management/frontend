@@ -8,12 +8,12 @@ import Link from 'next/link';
 
 import { cn } from "@/shared/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
-import { useCollections } from '@/features/library/hooks/use-library';
-import { useItems } from '@/features/library/hooks/use-items';
-import { useDuplicateGroups } from '@/features/library/hooks/use-curation';
-import { useRetraction } from '@/features/library/hooks/use-retraction';
-import { useSavedSearches } from '@/features/library/hooks/use-saved-searches';
-import { useLibrarySidebarStore } from '@/features/library/store/sidebar.store';
+import { useCollections } from '../hooks/use-collections';
+import { useItems } from '../hooks/use-items';
+import { useDuplicateGroups } from '../hooks/use-curation';
+import { useRetraction } from '../hooks/use-retraction';
+import { useSavedSearches } from '../hooks/use-saved-searches';
+import { useLibrarySidebarStore } from '../store/sidebar.store';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 

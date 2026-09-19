@@ -8,8 +8,7 @@
  */
 
 import { useMemo, useCallback } from 'react';
-import { useViewItems } from '@/features/library/hooks/use-items';
-import type { Item } from '@/features/library/types/library.types';
+import { useViewItems, type Item } from '@/features/library';
 import {
   extractCitationKeys,
   formatCitationSnippet,

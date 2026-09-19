@@ -48,7 +48,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/shared/components/ui";
-import { useLibrary } from '../hooks/use-library';
+import { useLibrarySidebarStore } from '../store/sidebar.store';
 import { useTrash, useItemTable, type SortField } from '../hooks/use-items';
 import {
   normalizeAuthors,
@@ -65,26 +65,21 @@ import { cn } from "@/shared/lib/utils";
 import type { Item } from '../types/library.types';
 
 export default function TrashPage() {
-  const { state, actions } = useLibrary();
-  const {
-    effectiveScopeId,
-    selectedItemId,
-    selectedItem,
-    selectedCollection,
-  } = state;
-
-  const { setSelectedItemId } = actions;
+  const activeScope = useLibrarySidebarStore((s) => s.activeScope);
+  const effectiveScopeId = activeScope.type === 'project' ? activeScope.id : 'user';
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const selectedCollection = null;
 
   const [search, setSearch] = useState('');
   const [emptyTrashDialogOpen, setEmptyTrashDialogOpen] = useState(false);
   const [singlePurgeTarget, setSinglePurgeTarget] = useState<Item | null>(null);
 
-  const isProjectScope = state.activeScope?.type === 'project';
-  const isOwner = !isProjectScope || state.activeScope?.role === 'owner';
+  const isProjectScope = activeScope?.type === 'project';
+  const isOwner = !isProjectScope || activeScope?.role === 'owner';
   const canEdit =
     !isProjectScope ||
-    state.activeScope?.role === 'owner' ||
-    state.activeScope?.role === 'contributor';
+    activeScope?.role === 'owner' ||
+    activeScope?.role === 'contributor';
 
   const searchParams = useSearchParams();
   const fileStatus = (searchParams.get('fileStatus') as any) || 'all';
@@ -167,6 +162,11 @@ export default function TrashPage() {
     initialSortField: 'createdAt',
     initialSortOrder: 'desc',
   });
+
+  const selectedItem = useMemo(
+    () => sortedItems.find((i) => i.id === selectedItemId) || null,
+    [sortedItems, selectedItemId],
+  );
 
   const DISPLAY_OPTIONS_STORAGE_KEY = 'flux_library_display_options_v3';
 

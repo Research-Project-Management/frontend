@@ -22,7 +22,7 @@ export interface InlineSuggestionWidgetProps {
   onOpenReviewTab?: (suggestionId: string) => void;
 }
 
-export function InlineSuggestionWidget({
+export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget({
   data,
   isAccepting = false,
   isRejecting = false,
@@ -213,4 +213,4 @@ export function InlineSuggestionWidget({
     </div>,
     document.body,
   );
-}
+});

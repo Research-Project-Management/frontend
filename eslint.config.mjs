@@ -51,6 +51,25 @@ const eslintConfig = [
       '@tanstack/query/no-unstable-deps': 'warn',
     },
   },
+  {
+    name: 'enforce-library-public-boundary',
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/features/library/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/features/library/**', '@/features/library/*'],
+              message:
+                'Direct imports from library internals are forbidden. Import from the Public API (@/features/library) instead.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;

@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import LibraryPage from '@/features/library/pages/LibraryPage';
+import { ModernLibraryPage } from '@/features/library';
 
 export const metadata: Metadata = { title: 'Starred Items · Library · Flux' };
 
 export default function LibraryStarredPage() {
   return (
     <Suspense fallback={null}>
-      <LibraryPage />
+      <ModernLibraryPage view="starred" title="Starred Items" />
     </Suspense>
   );
 }

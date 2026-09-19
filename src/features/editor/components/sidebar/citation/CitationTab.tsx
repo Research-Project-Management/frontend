@@ -20,9 +20,8 @@ import { usePageStore } from '@/features/editor/store';
 import { useFileActions, filesQuery } from '@/features/editor/hooks/use-core';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useEditorCitations } from '@/features/editor/hooks/use-citation';
-import { generateCitationKey } from '@/features/library/utils/bibtex.util';
 import { formatItemToBibtex } from '@/features/editor/utils/citation.util';
-import type { Item } from '@/features/library/types/library.types';
+import { generateCitationKey, type Item } from '@/features/library';
 
 interface CitationTabProps {
   onClose?: () => void;

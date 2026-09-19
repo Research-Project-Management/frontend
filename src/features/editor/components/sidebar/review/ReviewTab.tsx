@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -94,7 +94,7 @@ function Avatar({
 }
 
 // ── Single comment card ──────────────────────────────────────────────────────
-function CommentCard({
+const CommentCard = React.memo(function CommentCard({
   comment,
   pageId,
   currentUserId,
@@ -296,9 +296,9 @@ function CommentCard({
       )}
     </li>
   );
-}
+});
 
-function ReplyRow({
+const ReplyRow = React.memo(function ReplyRow({
   reply,
   currentUserId,
   onDelete,
@@ -337,10 +337,10 @@ function ReplyRow({
       </div>
     </div>
   );
-}
+});
 
 // ── Suggestion Card (Track Changes) ──────────────────────────────────────────
-function SuggestionCard({
+const SuggestionCard = React.memo(function SuggestionCard({
   suggestion,
   pageId,
   onNavigate,
@@ -458,13 +458,15 @@ function SuggestionCard({
       )}
     </div>
   );
-}
+});
 
-export default function ReviewTab({ onClose }: { onClose?: () => void }) {
+const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => void }) {
   const { pageId: rootPageId } = useParams<{ pageId: string }>();
   const storeActivePageId = usePageStore((s) => s.activePageId);
   const pageId = storeActivePageId || rootPageId;
-  const { editorRef, scrollToLineRef, scrollToPdfLineRef } = usePageStore();
+  const editorRef = usePageStore((s) => s.editorRef);
+  const scrollToLineRef = usePageStore((s) => s.scrollToLineRef);
+  const scrollToPdfLineRef = usePageStore((s) => s.scrollToPdfLineRef);
   const { user } = useAuth();
 
   const [subTab, setSubTab] = useState<'comments' | 'changes'>('comments');
@@ -499,12 +501,13 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
   const rejectMutation = useRejectSuggestion();
   const acceptAllMutation = useAcceptAllSuggestions();
   const rejectAllMutation = useRejectAllSuggestions();
-  const { pendingComment, clearPendingComment } = useActionsStore();
+  const pendingComment = useActionsStore((s) => s.pendingComment);
+  const clearPendingComment = useActionsStore((s) => s.clearPendingComment);
 
-  const handleNavigateToLine = (line: number) => {
+  const handleNavigateToLine = useCallback((line: number) => {
     scrollToLineRef.current?.(line);
     scrollToPdfLineRef.current?.(line);
-  };
+  }, [scrollToLineRef, scrollToPdfLineRef]);
 
   useEffect(() => {
     if (!pendingComment) return;
@@ -782,4 +785,6 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
       )}
     </div>
   );
-}
+});
+
+export default ReviewTab;

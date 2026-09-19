@@ -1,5 +1,5 @@
 import type * as Monaco from 'monaco-editor';
-import type { Item } from '@/features/library/types/library.types';
+import type { Item } from '@/features/library';
 import { detectCitationTrigger, formatItemAuthorSummary } from '../../utils/citation.util';
 
 /**

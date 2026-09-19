@@ -10,7 +10,7 @@ import {
 } from '../services/chat.service';
 import { buildResponseWidgetsFromActions } from '../components/chat/response-widgets';
 import { useChatMode } from './use-chat-mode';
-import { ItemService } from '@/features/library/services/items.service';
+import { ItemService } from '@/features/library';
 
 export function useChat() {
   const { chatId } = useParams() as { chatId?: string };

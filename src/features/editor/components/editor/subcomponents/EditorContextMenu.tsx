@@ -12,7 +12,7 @@ export interface EditorContextMenuProps {
   menuGroups: MenuAction[][];
 }
 
-export function EditorContextMenu({
+export const EditorContextMenu = React.memo(function EditorContextMenu({
   ctxMenu,
   ctxPos,
   ctxMenuRef,
@@ -68,4 +68,4 @@ export function EditorContextMenu({
     </div>,
     document.body,
   );
-}
+});

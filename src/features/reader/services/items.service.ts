@@ -2,7 +2,7 @@ import {
   ItemsService as LibraryItemsService,
   fetchPdfBlob,
   getPaperFileUrl,
-} from '@/features/library/services/items.service';
+} from '@/features/library';
 import type { ReaderDocument, DocumentFulltext } from '../types/reader.types';
 
 export { getPaperFileUrl, fetchPdfBlob };

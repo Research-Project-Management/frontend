@@ -44,7 +44,10 @@ import {
   COLUMN_ITEMS,
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
 } from '../components/LibraryDisplayPopover';
-import { useLibrary } from '../hooks/use-library';
+import { useLibrarySidebarStore } from '../store/sidebar.store';
+import { useDeleteLibraryItemsMutation, useUpdateLibraryItemMutation } from '../data/items.queries';
+import { useCollections } from '../hooks/use-collections';
+import { uploadLibraryFile } from '../services/upload.service';
 import { useDuplicateGroups, useMergePapers } from '../hooks/use-curation';
 import { useItemTable, type SortField } from '../hooks/use-items';
 import {
@@ -64,38 +67,90 @@ import type { Item, DuplicateGroup } from '../types/library.types';
 export default function DuplicatesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { state, actions } = useLibrary();
-  const {
-    effectiveScopeId,
-    search,
-    selectedItemId,
-    selectedItem,
-    selectedCollection,
-    collections,
-    addLinkOpen,
-    createCollectionOpen,
-    isAddingItem,
-    isCreatingCollection,
-  } = state;
 
-  const {
-    setSearch,
-    setSelectedItemId,
-    setAddLinkOpen,
-    handleDirectFilesUpload,
-    handleDirectFolderUpload,
-    handleAddLinkSubmit,
-    setCreateCollectionOpen,
-    handleCreateCollection,
-    handleDeleteItem,
-    handleBatchMoveItems,
-  } = actions;
+  const activeScope = useLibrarySidebarStore((s) => s.activeScope);
+  const effectiveScopeId = activeScope.type === 'project' ? activeScope.id : 'user';
 
-  const isProjectScope = state.activeScope?.type === 'project';
+  const [search, setSearch] = useState('');
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const selectedCollection = null;
+  const [addLinkOpen, setAddLinkOpen] = useState(false);
+  const [createCollectionOpen, setCreateCollectionOpen] = useState(false);
+  const [isAddingItem, setIsAddingItem] = useState(false);
+
+  const { state: colState, actions: colActions } = useCollections(effectiveScopeId);
+  const collections = colState.collections;
+  const isCreatingCollection = colState.isCreating;
+
+  const deleteItemsMutation = useDeleteLibraryItemsMutation(effectiveScopeId);
+  const updateItemMutation = useUpdateLibraryItemMutation(effectiveScopeId);
+
+  const handleDeleteItem = useCallback(
+    (id: string) => {
+      deleteItemsMutation.mutate([id]);
+    },
+    [deleteItemsMutation],
+  );
+
+  const handleBatchMoveItems = useCallback(
+    async (ids: string[], collectionId: string | null) => {
+      const loadingId = toast.loading(`Moving ${ids.length} item(s)...`);
+      try {
+        await Promise.all(
+          ids.map((id) =>
+            updateItemMutation.mutateAsync({
+              id,
+              payload: { collectionId: collectionId ?? undefined },
+            }),
+          ),
+        );
+        toast.success(`Moved ${ids.length} item(s)`, { id: loadingId });
+      } catch (err: any) {
+        toast.error('Failed to move items', { id: loadingId });
+      }
+    },
+    [updateItemMutation],
+  );
+
+  const handleCreateCollection = useCallback(
+    (data: { name: string; description: string; color: string; parent?: string | null; parentId?: string | null }) => {
+      colActions.create({
+        name: data.name,
+        description: data.description,
+        color: data.color,
+        parentId: data.parentId || data.parent || null,
+      });
+    },
+    [colActions],
+  );
+
+  const handleDirectFilesUpload = useCallback(
+    async (files: File[]) => {
+      for (const file of files) {
+        await uploadLibraryFile(effectiveScopeId, file);
+      }
+    },
+    [effectiveScopeId],
+  );
+
+  const handleDirectFolderUpload = useCallback(
+    async (files: File[]) => {
+      for (const file of files) {
+        await uploadLibraryFile(effectiveScopeId, file);
+      }
+    },
+    [effectiveScopeId],
+  );
+
+  const handleAddLinkSubmit = useCallback(async () => {
+    // Handled by modal
+  }, []);
+
+  const isProjectScope = activeScope?.type === 'project';
   const canEdit =
     !isProjectScope ||
-    state.activeScope?.role === 'owner' ||
-    state.activeScope?.role === 'contributor';
+    activeScope?.role === 'owner' ||
+    activeScope?.role === 'contributor';
 
   const { data: duplicateData, isLoading: isDupLoading } = useDuplicateGroups(effectiveScopeId || 'user');
   const mergeMutation = useMergePapers(effectiveScopeId || 'user');
@@ -226,6 +281,11 @@ export default function DuplicatesPage() {
     initialSortField: 'createdAt',
     initialSortOrder: 'desc',
   });
+
+  const selectedItem = useMemo(
+    () => sortedItems.find((i) => i.id === selectedItemId) || null,
+    [sortedItems, selectedItemId],
+  );
 
   const DISPLAY_OPTIONS_STORAGE_KEY = 'flux_library_display_options_v3';
 

@@ -54,7 +54,7 @@ export interface CompileButtonProps {
   onClearCacheAndCompile?: () => void;
 }
 
-export function CompileButton({
+export const CompileButton = React.memo(function CompileButton({
   compileStatus,
   onCompile,
   engine,
@@ -206,7 +206,7 @@ export function CompileButton({
       </DropdownMenu>
     </div>
   );
-}
+});
 
 // ── Main Viewer Toolbar ─────────────────────────────────────────────────────
 
@@ -251,7 +251,7 @@ export interface ToolbarProps {
   outline?: PdfOutlineItem[];
 }
 
-export default function Toolbar({
+const Toolbar = React.memo(function Toolbar({
   compileStatus,
   engine,
   setEngine,
@@ -534,4 +534,6 @@ export default function Toolbar({
       </div>
     </div>
   );
-}
+});
+
+export default Toolbar;

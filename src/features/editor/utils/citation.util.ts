@@ -3,7 +3,7 @@
  * across LaTeX and Markdown documents in the Flux Editor.
  */
 
-import type { Item } from '@/features/library/types/library.types';
+import type { Item } from '@/features/library';
 
 /**
  * Regex matching LaTeX citation commands with optional square-bracket arguments:

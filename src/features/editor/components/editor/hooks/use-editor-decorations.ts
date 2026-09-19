@@ -105,6 +105,8 @@ export function useEditorDecorations({
     const ed = editorRef.current;
     const monaco = monacoRef.current;
     if (!ed || !monaco) return;
+    const model = ed.getModel();
+    if (!model) return;
 
     if (!suggestionDecorationsRef.current) {
       suggestionDecorationsRef.current = ed.createDecorationsCollection([]);
@@ -115,16 +117,24 @@ export function useEditorDecorations({
       return;
     }
 
+    const maxLine = model.getLineCount();
+
     const newDecs = suggestions.map((s) => {
       const isDelete = s.type === 'delete';
       const isInsert = s.type === 'insert';
 
+      const fromLine = Math.max(1, Math.min(s.fromLine || 1, maxLine));
+      const toLine = Math.max(fromLine, Math.min(s.toLine || fromLine, maxLine));
+      const lineContent = model.getLineContent(toLine);
+      const maxCol = Math.max(1, lineContent.length + 1);
+      const toCol = Math.min(s.toColumn || maxCol, maxCol);
+
       return {
         range: new monaco.Range(
-          s.fromLine,
+          fromLine,
           s.fromColumn || 1,
-          s.toLine,
-          s.toColumn || 1000,
+          toLine,
+          toCol,
         ),
         options: {
           isWholeLine: false,

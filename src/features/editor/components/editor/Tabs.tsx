@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useCallback } from 'react';
 import { LayoutGroup } from 'framer-motion';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { X, FileText } from 'lucide-react';
@@ -17,7 +17,7 @@ interface TabItemProps {
   onCloseTab: () => void;
 }
 
-function TabItem({ tab, isActive, onActivate, onCloseTab }: TabItemProps) {
+const TabItem = React.memo(function TabItem({ tab, isActive, onActivate, onCloseTab }: TabItemProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -78,7 +78,7 @@ function TabItem({ tab, isActive, onActivate, onCloseTab }: TabItemProps) {
       </button>
     </div>
   );
-}
+});
 
 // ── Main Tabs Component (Only File Tabs - Clean Overleaf style) ───────────────
 
@@ -93,26 +93,26 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
   const pathname = usePathname();
   const tabListRef = useRef<HTMLDivElement>(null);
 
-  const { getTabs, closeTab } = useTabsStore();
-  const tabs = getTabs(rootPageId);
+  const tabs = useTabsStore((s) => s.tabsByProject[rootPageId] ?? []);
+  const closeTab = useTabsStore((s) => s.closeTab);
 
-  const updateQueryParams = (newFile: string | null) => {
+  const updateQueryParams = useCallback((newFile: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
     if (newFile) {
       params.set('file', newFile);
     } else {
       params.delete('file');
     }
-    router.push(`${pathname}?${params.toString()}`);
-  };
+    router.replace(`${pathname}?${params.toString()}`);
+  }, [pathname, router, searchParams]);
 
-  const handleTabActivate = (tabId: string) => {
+  const handleTabActivate = useCallback((tabId: string) => {
     if (tabId !== activeFileId) {
       updateQueryParams(tabId);
     }
-  };
+  }, [activeFileId, updateQueryParams]);
 
-  const handleTabClose = (tabId: string) => {
+  const handleTabClose = useCallback((tabId: string) => {
     closeTab(rootPageId, tabId, (nextId) => {
       if (nextId) {
         updateQueryParams(nextId);
@@ -120,7 +120,7 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
         updateQueryParams(null);
       }
     });
-  };
+  }, [closeTab, rootPageId, updateQueryParams]);
 
   const handleTabListKeyDown = (e: React.KeyboardEvent) => {
     if (tabs.length === 0) return;

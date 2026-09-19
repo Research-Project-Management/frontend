@@ -16,9 +16,9 @@ import {
   TooltipContent,
   TooltipProvider,
 } from "@/shared/components/ui";
-import { useCslCitation } from '@/features/library/hooks/use-library';
-import type { Item, CslStyle } from '@/features/library/types/library.types';
-import { getPaperCitationKey, cleanDoi } from '@/features/library/utils/library.util';
+import { useCslCitation } from '../../data';
+import type { Item, CslStyle } from '../../types/library.types';
+import { getPaperCitationKey, cleanDoi } from '../../utils/library.util';
 
 export interface CiteSectionProps {
   paper: Item;

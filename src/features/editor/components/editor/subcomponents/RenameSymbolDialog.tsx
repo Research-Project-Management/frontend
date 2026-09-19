@@ -16,7 +16,7 @@ export interface RenameSymbolDialogProps {
   onCancel: () => void;
 }
 
-export function RenameSymbolDialog({
+export const RenameSymbolDialog = React.memo(function RenameSymbolDialog({
   renameDialog,
   renameInputRef,
   onChangeNewName,
@@ -88,4 +88,4 @@ export function RenameSymbolDialog({
     </div>,
     document.body,
   );
-}
+});

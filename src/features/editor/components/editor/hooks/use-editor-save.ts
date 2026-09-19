@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Page, PageFile } from '@/features/editor/types';
 import { useCompileStore, usePageStore, useSettingsStore } from '@/features/editor/store';
 import { useDebounce } from '@/shared/hooks';
@@ -18,15 +18,19 @@ export interface UseEditorSaveOptions {
 }
 
 export function useEditorSave({ page }: UseEditorSaveOptions) {
-  const { compileRef } = usePageStore();
-  const { markDirty, clearDirty } = useCompileStore();
-  const { autoCompile } = useSettingsStore();
+  const compileRef = usePageStore((s) => s.compileRef);
+  const markDirty = useCompileStore((s) => s.markDirty);
+  const clearDirty = useCompileStore((s) => s.clearDirty);
+  const autoCompile = useSettingsStore((s) => s.autoCompile);
   const { updateContent: updateMutation } = usePageActions();
 
   const pageRef = useRef(page);
   pageRef.current = page;
+  const prevPageRef = useRef(page);
   const activePageIdRef = useRef(page.id);
   const pendingCompileRef = useRef(false);
+  const updateMutationRef = useRef(updateMutation);
+  updateMutationRef.current = updateMutation;
 
   const [contentPayload, setContentPayload] = useState<{
     pageId: string;
@@ -35,6 +39,9 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
     pageId: page.id,
     text: extractStringContent(page.content),
   });
+
+  const latestPayloadRef = useRef(contentPayload);
+  latestPayloadRef.current = contentPayload;
 
   const debouncedPayload = useDebounce(contentPayload, 1000);
 
@@ -84,8 +91,34 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
     }
   }, [updateMutation.isSuccess, updateMutation.isPending]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Switch document/page reset
+  // Switch document/page reset & flush unsaved changes for previous page
   useEffect(() => {
+    const prevPage = prevPageRef.current;
+    if (prevPage && prevPage.id !== page.id) {
+      const latest = latestPayloadRef.current;
+      if (latest && latest.pageId === prevPage.id) {
+        const prevSavedText = extractStringContent(prevPage.content);
+        if (latest.text !== prevSavedText) {
+          updateMutationRef.current.mutate(
+            {
+              pageId: prevPage.id,
+              content: latest.text,
+            },
+            {
+              onSuccess: () => {
+                const currentDirty = useCompileStore
+                  .getState()
+                  .dirtyContentMap.get(prevPage.id);
+                if (currentDirty === latest.text) {
+                  clearDirty(prevPage.id);
+                }
+              },
+            },
+          );
+        }
+      }
+    }
+    prevPageRef.current = page;
     activePageIdRef.current = page.id;
     pendingCompileRef.current = false;
     setContentPayload({
@@ -94,14 +127,31 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
     });
   }, [page.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleContentChange = (value: string | undefined) => {
+  // Flush unsaved changes on unmount
+  useEffect(() => {
+    return () => {
+      const latest = latestPayloadRef.current;
+      const currentPage = pageRef.current;
+      if (latest && currentPage && latest.pageId === currentPage.id) {
+        const currentSavedText = extractStringContent(currentPage.content);
+        if (latest.text !== currentSavedText) {
+          updateMutationRef.current.mutate({
+            pageId: latest.pageId,
+            content: latest.text,
+          });
+        }
+      }
+    };
+  }, []);
+
+  const handleContentChange = useCallback((value: string | undefined) => {
     const text = value || '';
     setContentPayload({
       pageId: pageRef.current.id,
       text,
     });
     markDirty(pageRef.current.id, text);
-  };
+  }, [markDirty]);
 
   const currentContent =
     contentPayload.pageId === page.id

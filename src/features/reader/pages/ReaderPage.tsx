@@ -18,7 +18,7 @@ import { Button } from "@/shared/components/ui";
 import { useRouter } from 'next/navigation';
 import { useReader } from '../hooks/use-reader';
 import { useReaderStore } from '../store/reader.store';
-import { useLibrarySidebarStore } from '@/features/library/store/sidebar.store';
+import { useLibrarySidebarStore } from '@/features/library';
 import Topbar from '../components/Topbar';
 import MenuBar from '../components/MenuBar';
 import ReaderToolbar from '../components/ReaderToolbar';

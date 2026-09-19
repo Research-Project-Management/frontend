@@ -37,6 +37,8 @@ export function useEditorCollaborators({
 
   const cursorManagerRef = useRef<RemoteCursorManager>(new RemoteCursorManager());
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pageIdRef = useRef(pageId);
+  pageIdRef.current = pageId;
 
   // Initialize RemoteCursorManager with Monaco editor instance
   useEffect(() => {
@@ -176,16 +178,18 @@ export function useEditorCollaborators({
       const pos = ed?.getPosition();
       const sel = ed?.getSelection();
 
-      collaborationService.sendHeartbeat(pageId, pos ? {
-        line: pos.lineNumber,
-        column: pos.column,
-        selection: sel && !sel.isEmpty() ? {
-          startLineNumber: sel.startLineNumber,
-          startColumn: sel.startColumn,
-          endLineNumber: sel.endLineNumber,
-          endColumn: sel.endColumn,
-        } : undefined,
-      } : undefined);
+      if (pageIdRef.current) {
+        collaborationService.sendHeartbeat(pageIdRef.current, pos ? {
+          line: pos.lineNumber,
+          column: pos.column,
+          selection: sel && !sel.isEmpty() ? {
+            startLineNumber: sel.startLineNumber,
+            startColumn: sel.startColumn,
+            endLineNumber: sel.endLineNumber,
+            endColumn: sel.endColumn,
+          } : undefined,
+        } : undefined);
+      }
     }, 10_000);
 
     return () => {
@@ -213,7 +217,10 @@ export function useEditorCollaborators({
 
         debounceTimerRef.current = setTimeout(() => {
           const sel = ed.getSelection();
-          collaborationService.sendHeartbeat(pageId, {
+          const targetPageId = pageIdRef.current;
+          if (!targetPageId) return;
+
+          collaborationService.sendHeartbeat(targetPageId, {
             line: e.position.lineNumber,
             column: e.position.column,
             selection: sel && !sel.isEmpty() ? {

@@ -16,9 +16,8 @@ import {
   TooltipTrigger,
 } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { useLibrarySidebarStore } from '@/features/library/store/sidebar.store';
+import { useLibrarySidebarStore, ExportService } from '@/features/library';
 import { useReaderStore } from '@/features/reader/store/reader.store';
-import { ExportService } from '@/features/library/services/exports.service';
 import { toast } from 'sonner';
 
 export function FluxLogo({ className }: { className?: string }) {

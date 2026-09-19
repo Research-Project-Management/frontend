@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useImperativeHandle, forwardRef, useState, useEffect } from 'react';
+import React, { useRef, useImperativeHandle, forwardRef, useState, useEffect, useCallback } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { AlertCircle, FileText, Loader2, Play } from 'lucide-react';
 import { LatexCompilerEngine, type SyncTeXMap } from '@/features/editor/utils/viewer.util';
@@ -45,7 +45,7 @@ interface OptimizedPDFPageProps {
   clickIndicator?: ClickIndicator | null;
 }
 
-function OptimizedPDFPage({
+const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
   pageIndex,
   scale,
   pageElemRefs,
@@ -131,7 +131,7 @@ function OptimizedPDFPage({
       )}
     </div>
   );
-}
+});
 
 // ── Surface Imperative Handle ─────────────────────────────────────────────────
 
@@ -169,7 +169,7 @@ export interface SurfaceProps {
 
 export type PdfSurfaceProps = SurfaceProps;
 
-export const Surface = forwardRef<SurfaceHandle, SurfaceProps>(function Surface(
+export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(function Surface(
   {
     pdfUrl,
     synctexMap,
@@ -199,13 +199,13 @@ export const Surface = forwardRef<SurfaceHandle, SurfaceProps>(function Surface(
     };
   }, []);
 
-  const triggerClickIndicator = (page: number, x: number, y: number) => {
+  const triggerClickIndicator = useCallback((page: number, x: number, y: number) => {
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
     setClickIndicator({ page, x, y, id: Date.now() });
     clickTimerRef.current = setTimeout(() => {
       setClickIndicator(null);
     }, 1500);
-  };
+  }, []);
 
   // Expose container, scrollToPage, and target highlighting via ref
   useImperativeHandle(ref, () => ({
@@ -234,13 +234,13 @@ export const Surface = forwardRef<SurfaceHandle, SurfaceProps>(function Surface(
     },
   }));
 
-  const handleDocumentLoadSuccess = (pdf: any) => {
+  const handleDocumentLoadSuccess = useCallback((pdf: any) => {
     onNumPagesChange?.(pdf.numPages);
     parentOnLoadSuccess?.(pdf);
-  };
+  }, [onNumPagesChange, parentOnLoadSuccess]);
 
   // SyncTeX inverse search (PDF double-click -> LaTeX source jump)
-  const handleDoubleClickPage = (
+  const handleDoubleClickPage = useCallback((
     pageNum: number,
     clickFraction: number,
     ptX?: number,
@@ -262,7 +262,7 @@ export const Surface = forwardRef<SurfaceHandle, SurfaceProps>(function Surface(
       ptX,
       ptY,
     );
-  };
+  }, [triggerClickIndicator, onJumpToSource, synctexMap]);
 
   return (
     <div
@@ -414,7 +414,7 @@ export const Surface = forwardRef<SurfaceHandle, SurfaceProps>(function Surface(
       )}
     </div>
   );
-});
+}));
 
 export const PdfSurface = Surface;
 export default Surface;

@@ -7,43 +7,56 @@ import type {
   SavedSearchPreviewResponse,
   SavedSearchConditionGroup,
 } from '../types/library.types';
+import { isProjectScope } from './items.service';
 
 export const SavedSearchesService = {
-  getAll: (_scopeId?: string) =>
+  getAll: (scopeId?: string) =>
     apiGet<SavedSearch[]>(
       `/api/v1/library/saved-searches`,
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
-  getById: (_scopeId: string, id: string) =>
+  getById: (scopeId: string | undefined, id: string) =>
     apiGet<SavedSearch>(
       `/api/v1/library/saved-searches/${encodeURIComponent(id)}`,
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
-  create: (_scopeId: string, data: CreateSavedSearchInput) =>
+  create: (scopeId: string | undefined, data: CreateSavedSearchInput) =>
     apiPost<SavedSearch>(
       `/api/v1/library/saved-searches`,
-      data,
+      {
+        ...data,
+        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+      },
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
-  update: (_scopeId: string, id: string, data: UpdateSavedSearchInput) =>
+  update: (scopeId: string | undefined, id: string, data: UpdateSavedSearchInput) =>
     apiPatch<SavedSearch>(
       `/api/v1/library/saved-searches/${encodeURIComponent(id)}`,
       data,
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
-  delete: (_scopeId: string, id: string) =>
+  delete: (scopeId: string | undefined, id: string) =>
     apiDelete<{ success: boolean; id: string }>(
       `/api/v1/library/saved-searches/${encodeURIComponent(id)}`,
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
-  preview: (_scopeId: string, conditions: SavedSearchConditionGroup) =>
+  preview: (scopeId: string | undefined, conditions: SavedSearchConditionGroup) =>
     apiPost<SavedSearchPreviewResponse>(
       `/api/v1/library/saved-searches/preview`,
-      { conditions },
+      {
+        conditions,
+        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+      },
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
   getResults: (
-    _scopeId: string,
+    scopeId: string | undefined,
     id: string,
     params?: {
       limit?: number;
@@ -54,8 +67,14 @@ export const SavedSearchesService = {
   ) =>
     apiGet<SavedSearchResultsResponse>(
       `/api/v1/library/saved-searches/${encodeURIComponent(id)}/results`,
-      { params },
+      {
+        params: {
+          ...params,
+          ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+        },
+      },
     ),
 };
 
 export const SavedSearchService = SavedSearchesService;
+

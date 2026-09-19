@@ -3,10 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import type { editor } from 'monaco-editor';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
-import { ItemService } from '@/features/library/services/items.service';
-import { generateCitationKey } from '@/features/library/utils/library.util';
+import { ItemService, generateCitationKey, type Item } from '@/features/library';
 import { logger } from '@/shared/lib/utils';
-import type { Item } from '@/features/library/types/library.types';
 
 export interface UseEditorCitationOptions {
   editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;

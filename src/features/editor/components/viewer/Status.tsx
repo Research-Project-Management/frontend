@@ -24,7 +24,7 @@ export interface StatusProps {
   onJumpToFirstError?: () => void;
 }
 
-export default function Status({
+export default React.memo(function Status({
   compileStatus,
   lastCompiledAt,
   pdfUrl,
@@ -32,7 +32,7 @@ export default function Status({
   onToggleLog,
   onJumpToFirstError,
 }: StatusProps) {
-  const { getEditorContent } = usePageStore();
+  const getEditorContent = usePageStore((s) => s.getEditorContent);
   const compileLog = useCompileStore((s) => s.compileLog);
   const [wordCount, setWordCount] = useState<number | null>(null);
   const [rawLogOpen, setRawLogOpen] = useState(false);
@@ -171,4 +171,4 @@ export default function Status({
       />
     </div>
   );
-}
+});

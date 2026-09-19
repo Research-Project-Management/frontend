@@ -30,7 +30,7 @@ import type { TagWithCount } from '../services/tags.service';
 import type { Item } from '../types/library.types';
 import { ALL_ITEM_TYPES_FLAT, LIBRARY_ITEM_TYPES, mapRegistryItemTypes } from '../schemas/item-type.schema';
 import { itemKeys, useItems, useItemTypes } from '../hooks/use-items';
-import { libraryKeys } from '../hooks/use-library';
+import { libraryKeys } from '../data';
 
 // ── Checkbox Component (DESIGN.md Flat Precision) ───────────────────────────
 function FilterCheckbox({ checked }: { checked: boolean }) {

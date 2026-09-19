@@ -27,7 +27,7 @@ function getContrastTextColor(hexColor: string): string {
   return '#ffffff';
 }
 
-export function CollaboratorPresenceBar({
+export const CollaboratorPresenceBar = React.memo(function CollaboratorPresenceBar({
   collaborators,
   className,
 }: CollaboratorPresenceBarProps) {
@@ -112,4 +112,4 @@ export function CollaboratorPresenceBar({
       </div>
     </div>
   );
-}
+});

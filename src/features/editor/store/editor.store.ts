@@ -73,15 +73,26 @@ export const useDocumentEditorStore = create<DocumentEditorState>((set) => ({
   setSelectedAsset: (selectedAsset) => set({ selectedAsset }),
   setTexFiles: (texFiles) => set({ texFiles }),
   resetPageState: () =>
-    set({
-      currentPage: null,
-      projectId: '',
-      parentPageId: null,
-      activePageId: null,
-      fileHierarchy: null,
-      activeFilePage: null,
-      selectedAsset: null,
-      texFiles: [],
+    set((state) => {
+      state.editorRef.current = null;
+      state.getEditorContent.current = null;
+      state.compileRef.current = null;
+      state.scrollToLineRef.current = null;
+      state.scrollToPdfLineRef.current = null;
+      state.gotoPageRef.current = null;
+      state.pdfDocRef.current = null;
+      state.isAiPreviewingRef.current = false;
+
+      return {
+        currentPage: null,
+        projectId: '',
+        parentPageId: null,
+        activePageId: null,
+        fileHierarchy: null,
+        activeFilePage: null,
+        selectedAsset: null,
+        texFiles: [],
+      };
     }),
 }));
 

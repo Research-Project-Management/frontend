@@ -16,7 +16,7 @@ export interface GlyphTooltipProps {
   tooltip: GlyphTooltipData | null;
 }
 
-export function GlyphTooltip({ tooltip }: GlyphTooltipProps) {
+export const GlyphTooltip = React.memo(function GlyphTooltip({ tooltip }: GlyphTooltipProps) {
   if (!tooltip || typeof document === 'undefined') return null;
 
   return createPortal(
@@ -64,4 +64,4 @@ export function GlyphTooltip({ tooltip }: GlyphTooltipProps) {
     </div>,
     document.body,
   );
-}
+});

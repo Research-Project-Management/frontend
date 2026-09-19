@@ -64,8 +64,8 @@ export function useEditorShortcuts({
   ctxEndLine,
   ctxSelText,
 }: UseEditorShortcutsOptions) {
-  const { compileRef } = usePageStore();
-  const { setPendingComment } = useActionsStore();
+  const compileRef = usePageStore((s) => s.compileRef);
+  const setPendingComment = useActionsStore((s) => s.setPendingComment);
 
   const trigger = (action: string) => {
     editorRef.current?.trigger('ctx-menu', action, null);

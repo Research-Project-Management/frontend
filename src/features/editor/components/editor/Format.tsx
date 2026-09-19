@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { usePageStore, useSettingsStore } from '@/features/editor/store';
 import {
   Bot,
@@ -81,7 +81,7 @@ interface ToolbarButtonProps {
   children?: React.ReactNode;
 }
 
-function ToolbarButton({
+const ToolbarButton = React.memo(function ToolbarButton({
   onClick,
   icon: Icon,
   label,
@@ -119,49 +119,52 @@ function ToolbarButton({
       </TooltipContent>
     </Tooltip>
   );
-}
+});
 
 // ── Master Format Toolbar Component (Overleaf 1:1) ────────────────────────────
 
-export default function Format() {
-  const { editorRef } = usePageStore();
-  const { editorMode, setEditorMode, reviewMode, setReviewMode } = useSettingsStore();
+const Format = React.memo(function Format() {
+  const editorRef = usePageStore((s) => s.editorRef);
+  const editorMode = useSettingsStore((s) => s.editorMode);
+  const setEditorMode = useSettingsStore((s) => s.setEditorMode);
+  const reviewMode = useSettingsStore((s) => s.reviewMode);
+  const setReviewMode = useSettingsStore((s) => s.setReviewMode);
 
   const [tableModalOpen, setTableModalOpen] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false);
 
-  const handleFormat = (type: LatexFormatType) => {
+  const handleFormat = useCallback((type: LatexFormatType) => {
     if (type === 'cite') {
       EditorEventBus.emit('flux:open-citation-picker');
       return;
     }
     EditorCommandBus.format(editorRef.current, type);
-  };
+  }, [editorRef]);
 
-  const handleInsert = (snippet: string) => {
+  const handleInsert = useCallback((snippet: string) => {
     EditorCommandBus.insertSnippet(editorRef.current, snippet);
-  };
+  }, [editorRef]);
 
-  const handleHeadingSelect = (level: 'section' | 'subsection' | 'subsubsection' | 'paragraph') => {
+  const handleHeadingSelect = useCallback((level: 'section' | 'subsection' | 'subsubsection' | 'paragraph') => {
     if (level === 'paragraph') {
       EditorCommandBus.wrapSelection(editorRef.current, '\\paragraph{', '}', 'Paragraph');
     } else {
       EditorCommandBus.format(editorRef.current, level);
     }
-  };
+  }, [editorRef]);
 
-  const handleFind = () => {
+  const handleFind = useCallback(() => {
     if (editorRef.current) {
       editorRef.current.trigger('toolbar', 'actions.find', null);
       editorRef.current.focus();
     }
-  };
+  }, [editorRef]);
 
-  const handleAddComment = () => {
+  const handleAddComment = useCallback(() => {
     EditorEventBus.emit('flux:open-panel', 'Review');
-  };
+  }, []);
 
-  const handleOpenAi = () => {
+  const handleOpenAi = useCallback(() => {
     let selectedText: string | undefined = undefined;
     if (editorRef.current) {
       const selection = editorRef.current.getSelection();
@@ -174,7 +177,7 @@ export default function Format() {
       }
     }
     EditorEventBus.emit('flux:open-ai-panel', { selectedText });
-  };
+  }, [editorRef]);
 
   return (
     <div className="h-9 px-2 flex items-center justify-between flex-1 min-w-0 select-none bg-background text-foreground">
@@ -515,4 +518,6 @@ export default function Format() {
       />
     </div>
   );
-}
+});
+
+export default Format;

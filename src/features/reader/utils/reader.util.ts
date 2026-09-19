@@ -1,11 +1,9 @@
 import type { ReaderAnnotation, AnnotationRect, ReaderDocument, DocumentCreator } from '../types/reader.types';
 import {
   generateCitationKey as libGenerateCitationKey,
-} from '@/features/library/utils/bibtex.util';
-import {
   normalizeAuthors as libNormalizeAuthors,
   cleanDoi as libCleanDoi,
-} from '@/features/library/utils/author-doi.util';
+} from '@/features/library';
 
 export const ANNOTATION_COLORS = {
   yellow: { id: 'yellow', name: 'Yellow', bg: 'rgba(250, 204, 21, 0.35)', border: '#eab308' },

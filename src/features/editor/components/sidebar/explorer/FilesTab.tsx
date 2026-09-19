@@ -102,7 +102,7 @@ const OUTLINE_COLORS: Record<number, string> = {
 
 // ── Main FilesTab ───────────────────────────────────────────────────────────
 
-export default function FilesTab({ onClose }: { onClose?: () => void }) {
+const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => void }) {
   const { pageId } = useParams<{ pageId: string }>();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -113,17 +113,15 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       if (!v) params.delete(k);
       else params.set(k, v);
     });
-    router.push(`${pathname}?${params.toString()}`);
+    router.replace(`${pathname}?${params.toString()}`);
   }, [searchParams, router, pathname]);
-  const {
-    currentPage,
-    activeFilePage,
-    setTexFiles,
-    setSelectedAsset,
-    editorRef,
-    scrollToLineRef,
-  } = usePageStore();
-  const { openTab } = useTabsStore();
+  const currentPage = usePageStore((s) => s.currentPage);
+  const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const setTexFiles = usePageStore((s) => s.setTexFiles);
+  const setSelectedAsset = usePageStore((s) => s.setSelectedAsset);
+  const editorRef = usePageStore((s) => s.editorRef);
+  const scrollToLineRef = usePageStore((s) => s.scrollToLineRef);
+  const openTab = useTabsStore((s) => s.openTab);
 
   const [isFileTreeOpen, setIsFileTreeOpen] = useState(true);
   const [isOutlineOpen, setIsOutlineOpen] = useState(false);
@@ -157,7 +155,10 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   }, [outlineHeight]);
 
   const docContent = currentPage?.content || "";
-  const outline = useMemo(() => parseDocumentOutline(docContent), [docContent]);
+  const outline = useMemo(
+    () => (isOutlineOpen ? parseDocumentOutline(docContent) : []),
+    [docContent, isOutlineOpen],
+  );
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -190,7 +191,14 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   // IMPORTANT: Use parentPageId (root page) as the key for fetching files
   // Each root page has its own independent file system
   // projectId is derived from parentPage for tab management
-  const projectId = (parentPage?.projectId as any)?.id ?? "";
+  const projectId =
+    (typeof parentPage?.projectId === "string"
+      ? parentPage.projectId
+      : (parentPage?.projectId as any)?.id) ||
+    (typeof currentPage?.projectId === "string"
+      ? currentPage.projectId
+      : (currentPage?.projectId as any)?.id) ||
+    "";
   const mainFileId =
     parentPage?.mainFile && typeof parentPage.mainFile === "object"
       ? parentPage.mainFile.id
@@ -248,15 +256,18 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     [parentPageId, openTab, setSearchParams, setSelectedAsset],
   );
 
-  const handleFileClick = (fileId: string, title: string) => {
-    // Don't re-open the already-active file
-    const activeFileId = searchParams.get("file") ?? pageId;
-    if (fileId === activeFileId) return;
-    // Use parentPageId as the tab key (matches EditorLayout's rootPageId)
-    if (parentPageId) openTab(parentPageId, { id: fileId, title });
-    // Update only the ?file= query param GÇö pageId (project root) stays stable
-    setSearchParams({ file: fileId });
-  };
+  const handleFileClick = useCallback(
+    (fileId: string, title: string) => {
+      // Don't re-open the already-active file
+      const activeFileId = searchParams.get("file") ?? pageId;
+      if (fileId === activeFileId) return;
+      // Use parentPageId as the tab key (matches EditorLayout's rootPageId)
+      if (parentPageId) openTab(parentPageId, { id: fileId, title });
+      // Update only the ?file= query param — pageId (project root) stays stable
+      setSearchParams({ file: fileId });
+    },
+    [searchParams, pageId, parentPageId, openTab, setSearchParams],
+  );
 
   const handleStartCreate = () => {
     setIsCreatingFile(true);
@@ -829,7 +840,12 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const handleUploadToFolder = useCallback(
     (files: File[], folderId: string) => {
       if (!parentPageId) return;
-      const tabProjectId = (parentPage?.projectId as any)?.id ?? "";
+      const tabProjectId =
+        (typeof parentPage?.projectId === "string"
+          ? parentPage.projectId
+          : (parentPage?.projectId as any)?.id) ||
+        projectId ||
+        "";
       setUploadingCount((prev) => prev + files.length);
 
       const settle = () =>
@@ -1320,4 +1336,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
     </>
   );
-}
+});
+
+export default FilesTab;

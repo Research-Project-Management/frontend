@@ -35,9 +35,8 @@ import { useEditorStorage } from '@/features/editor/hooks/use-storage';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
 import { pageService } from '@/features/editor/services/core.service';
-import { useViewItems } from '@/features/library/hooks/use-items';
 import { formatItemToBibtex } from '@/features/editor/utils/citation.util';
-import type { Item } from '@/features/library/types/library.types';
+import { useViewItems, type Item } from '@/features/library';
 
 export type AddFilesTab = 'new-file' | 'upload' | 'project' | 'url' | 'library';
 

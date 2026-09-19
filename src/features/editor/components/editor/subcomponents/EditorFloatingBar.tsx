@@ -30,14 +30,14 @@ export interface EditorFloatingBarProps {
   }) => void;
 }
 
-export function EditorFloatingBar({
+export const EditorFloatingBar = React.memo(function EditorFloatingBar({
   selFloating,
   selFloatingRef,
   reviewMode = false,
   onClose,
   onOpenSuggest,
 }: EditorFloatingBarProps) {
-  const { setPendingComment } = useActionsStore();
+  const setPendingComment = useActionsStore((s) => s.setPendingComment);
 
   if (!selFloating || typeof document === 'undefined') return null;
 
@@ -102,4 +102,4 @@ export function EditorFloatingBar({
     </div>,
     document.body,
   );
-}
+});

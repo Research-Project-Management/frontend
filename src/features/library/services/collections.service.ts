@@ -52,16 +52,18 @@ export const CollectionsService = {
       { params: strategy ? { strategy } : undefined },
     ),
 
-  moveItems: (_scopeId: string | undefined, collectionId: string, itemIds: string[]) =>
+  moveItems: (scopeId: string | undefined, collectionId: string, itemIds: string[]) =>
     apiPost<{ message: string; count: number; targetCollectionId: string | null }>(
       `/api/v1/library/collections/${encodeURIComponent(collectionId)}/move-items`,
-      { itemIds, paperIds: itemIds }
+      { itemIds, paperIds: itemIds },
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined }
     ),
 
-  movePapers: (_scopeId: string | undefined, collectionId: string, paperIds: string[]) =>
+  movePapers: (scopeId: string | undefined, collectionId: string, paperIds: string[]) =>
     apiPost<{ message: string; count: number; targetCollectionId: string | null }>(
       `/api/v1/library/collections/${encodeURIComponent(collectionId)}/move-items`,
-      { itemIds: paperIds, paperIds }
+      { itemIds: paperIds, paperIds },
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined }
     ),
 
   reorder: (_scopeId: string | undefined, collections: Array<{ id: string; parentId?: string | null }>) =>
@@ -75,13 +77,14 @@ export const CollectionsService = {
    * Backed by POST /collections/:collectionId/items
    */
   assignItems: (
-    _scopeId: string | undefined,
+    scopeId: string | undefined,
     collectionId: string,
     itemIds: string[],
   ) =>
     apiPost<{ count: number; collectionId: string }>(
       `/api/v1/library/collections/${encodeURIComponent(collectionId)}/items`,
       { itemIds },
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined }
     ),
 
   /**

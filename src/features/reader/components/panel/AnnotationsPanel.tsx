@@ -95,7 +95,7 @@ function AnnotationEditForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-2 rounded-md border border-border p-2 bg-muted/20">
+      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-2 rounded-md border border-border p-2 bg-background shadow-2xs">
         <input
           {...register('quoteText')}
           aria-label="Quote text"
@@ -114,14 +114,14 @@ function AnnotationEditForm({
           onChange={(e) => setTagText(e.target.value)}
           aria-label="Tags"
           placeholder="Tags (e.g. methodology, result)..."
-          className="w-full bg-transparent text-11 font-mono outline-none text-muted-foreground placeholder:text-muted-foreground/60 border-t border-border/40 pt-1"
+          className="w-full bg-transparent text-11 font-mono outline-none text-foreground placeholder:text-foreground/70 border-t border-border/40 pt-1"
         />
         <div className="flex justify-end gap-1">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="h-6 text-11 px-2 cursor-pointer rounded-md"
+            className="h-6 text-11 px-2 cursor-pointer rounded-md border-border bg-background shadow-2xs text-foreground hover:bg-muted"
             onClick={onCancel}
           >
             Cancel
@@ -129,7 +129,7 @@ function AnnotationEditForm({
           <Button
             type="submit"
             size="sm"
-            className="h-6 text-11 px-2.5 font-medium cursor-pointer rounded-md"
+            className="h-6 text-11 px-2.5 font-medium cursor-pointer rounded-md shadow-2xs"
             disabled={isSaving}
           >
             {isSaving ? <Loader2 className="size-3 animate-spin shrink-0" strokeWidth={1.5} /> : 'Save'}
@@ -253,22 +253,22 @@ export function AnnotationsPanel({
     <div className="flex h-full flex-col bg-background min-h-0 select-none">
       {/* Filter & Search Bar */}
       {annotations.length > 0 && (
-        <div className="space-y-1.5 border-b border-border px-3 py-2 bg-muted/20">
+        <div className="space-y-1.5 border-b border-border px-3 py-2 bg-background">
           <div className="flex items-center gap-1.5">
             <div className="relative flex-1 flex items-center">
-              <Search className="absolute left-2 size-3 text-muted-foreground pointer-events-none shrink-0" strokeWidth={1.5} />
+              <Search className="absolute left-2 size-3 text-foreground pointer-events-none shrink-0" strokeWidth={1.5} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search highlights..."
-                className="h-6 w-full rounded-md border border-border bg-background pl-6 pr-6 text-11 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
+                className="h-6 w-full rounded-md border border-border bg-background pl-6 pr-6 text-11 text-foreground placeholder:text-foreground/70 shadow-2xs focus:outline-none focus:ring-1 focus:ring-primary font-sans"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-1.5 flex size-3.5 items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="absolute right-1.5 flex size-3.5 items-center justify-center text-foreground hover:bg-muted rounded cursor-pointer"
                 >
                   <X className="size-2.5" strokeWidth={1.5} />
                 </button>
@@ -280,13 +280,13 @@ export function AnnotationsPanel({
               size="sm"
               onClick={() => importExternal()}
               disabled={isImporting}
-              className="h-6 gap-1 px-1.5 text-11 font-medium rounded-md shrink-0 cursor-pointer border-border"
+              className="h-6 gap-1 px-1.5 text-11 font-medium rounded-md shrink-0 cursor-pointer border border-border bg-background shadow-2xs text-foreground hover:bg-muted"
               title="Import embedded annotations from PDF (/Annots dictionary)"
             >
               {isImporting ? (
                 <Loader2 className="size-3 animate-spin shrink-0" strokeWidth={1.5} />
               ) : (
-                <Download className="size-3 text-muted-foreground shrink-0" strokeWidth={1.5} />
+                <Download className="size-3 text-foreground shrink-0" strokeWidth={1.5} />
               )}
               <span>Import</span>
             </Button>
@@ -296,13 +296,13 @@ export function AnnotationsPanel({
               size="sm"
               onClick={() => extractNotes(paper.id)}
               disabled={isExtracting || annotations.length === 0}
-              className="h-6 gap-1 px-2 text-11 font-medium rounded-md shrink-0 cursor-pointer border-border"
+              className="h-6 gap-1 px-2 text-11 font-medium rounded-md shrink-0 cursor-pointer border border-border bg-background shadow-2xs text-foreground hover:bg-muted"
               title="Extract all highlights into a Literature Note"
             >
               {isExtracting ? (
                 <Loader2 className="size-3 animate-spin shrink-0" strokeWidth={1.5} />
               ) : (
-                <FileText className="size-3 text-muted-foreground shrink-0" strokeWidth={1.5} />
+                <FileText className="size-3 text-foreground shrink-0" strokeWidth={1.5} />
               )}
               <span>Add to Notes</span>
             </Button>
@@ -320,10 +320,10 @@ export function AnnotationsPanel({
                     type="button"
                     onClick={() => setSelectedColor(filter.id)}
                     className={cn(
-                      'inline-flex h-4 items-center gap-1 rounded-md px-1.5 text-10 font-medium transition-colors shrink-0 cursor-pointer',
+                      'inline-flex h-4 items-center gap-1 rounded-md px-1.5 text-10 font-medium transition-colors shrink-0 cursor-pointer shadow-2xs',
                       active
                         ? 'bg-foreground text-background font-semibold'
-                        : 'bg-muted text-muted-foreground hover:text-foreground',
+                        : 'bg-background border border-border text-foreground hover:bg-muted',
                     )}
                   >
                     {filter.color && (
@@ -347,19 +347,19 @@ export function AnnotationsPanel({
                     <button
                       type="button"
                       className={cn(
-                        "h-4.5 px-1.5 flex items-center gap-1 rounded text-10 font-sans border border-border cursor-pointer transition-colors",
-                        authorFilter !== 'all' ? "bg-primary/10 text-primary border-primary/30" : "bg-muted text-muted-foreground hover:text-foreground"
+                        "h-4.5 px-1.5 flex items-center gap-1 rounded-md text-10 font-sans border border-border bg-background shadow-2xs text-foreground hover:bg-muted cursor-pointer transition-colors",
+                        authorFilter !== 'all' && "border-primary/50 text-foreground font-medium"
                       )}
                       title="Filter by Author"
                     >
-                      <User className="size-2.5 shrink-0" strokeWidth={1.5} />
+                      <User className="size-2.5 text-foreground shrink-0" strokeWidth={1.5} />
                       <span>{authorFilter === 'all' ? 'All' : 'Author'}</span>
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-32 text-xs p-1 bg-popover border border-border shadow-none rounded-md">
+                  <DropdownMenuContent align="end" className="w-32 text-xs p-1 bg-popover border border-border shadow-2xs rounded-md">
                     <DropdownMenuItem
                       onClick={() => setAuthorFilter('all')}
-                      className="cursor-pointer text-11 flex items-center justify-between"
+                      className="cursor-pointer text-11 flex items-center justify-between text-foreground"
                     >
                       <span>All Authors</span>
                       {authorFilter === 'all' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
@@ -368,7 +368,7 @@ export function AnnotationsPanel({
                       <DropdownMenuItem
                         key={aid}
                         onClick={() => setAuthorFilter(aid)}
-                        className="cursor-pointer text-11 flex items-center justify-between font-mono"
+                        className="cursor-pointer text-11 flex items-center justify-between font-mono text-foreground"
                       >
                         <span className="truncate max-w-[90px]">{aid.slice(0, 8)}</span>
                         {authorFilter === aid && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
@@ -383,38 +383,38 @@ export function AnnotationsPanel({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="h-4.5 px-1.5 flex items-center gap-1 rounded text-10 font-sans border border-border bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                    className="h-4.5 px-1.5 flex items-center gap-1 rounded-md text-10 font-sans border border-border bg-background shadow-2xs text-foreground hover:bg-muted cursor-pointer transition-colors"
                     title="Sort annotations"
                   >
-                    <ArrowUpDown className="size-2.5 shrink-0" strokeWidth={1.5} />
+                    <ArrowUpDown className="size-2.5 text-foreground shrink-0" strokeWidth={1.5} />
                     <span className="capitalize">{sortBy}</span>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-36 text-xs p-1 bg-popover border border-border shadow-none rounded-md">
+                <DropdownMenuContent align="end" className="w-36 text-xs p-1 bg-popover border border-border shadow-2xs rounded-md">
                   <DropdownMenuItem
                     onClick={() => setSortBy('position')}
-                    className="cursor-pointer text-11 flex items-center justify-between"
+                    className="cursor-pointer text-11 flex items-center justify-between text-foreground"
                   >
                     <span>Document Order</span>
                     {sortBy === 'position' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setSortBy('newest')}
-                    className="cursor-pointer text-11 flex items-center justify-between"
+                    className="cursor-pointer text-11 flex items-center justify-between text-foreground"
                   >
                     <span>Newest First</span>
                     {sortBy === 'newest' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setSortBy('oldest')}
-                    className="cursor-pointer text-11 flex items-center justify-between"
+                    className="cursor-pointer text-11 flex items-center justify-between text-foreground"
                   >
                     <span>Oldest First</span>
                     {sortBy === 'oldest' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setSortBy('color')}
-                    className="cursor-pointer text-11 flex items-center justify-between"
+                    className="cursor-pointer text-11 flex items-center justify-between text-foreground"
                   >
                     <span>By Color</span>
                     {sortBy === 'color' && <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />}
@@ -430,24 +430,24 @@ export function AnnotationsPanel({
       <div className="flex-1 overflow-y-auto p-2 space-y-1.5 min-h-0 thin-scrollbar">
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
-            <Loader2 className="size-4 animate-spin text-muted-foreground" strokeWidth={1.5} />
+            <Loader2 className="size-4 animate-spin text-foreground" strokeWidth={1.5} />
           </div>
         ) : !annotations || annotations.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center p-6">
-            <Highlighter className="size-6 text-muted-foreground/40 mb-2" strokeWidth={1.5} />
+            <Highlighter className="size-6 text-foreground/40 mb-2" strokeWidth={1.5} />
             <p className="text-12 font-medium text-foreground">No highlights yet</p>
-            <p className="mt-1 text-11 text-muted-foreground max-w-[200px] leading-relaxed">
+            <p className="mt-1 text-11 text-foreground/80 max-w-[200px] leading-relaxed">
               Select any text in the PDF to highlight and add notes.
             </p>
           </div>
         ) : filteredAnnotations.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center p-6 gap-2">
-            <p className="text-12 text-muted-foreground">No matching highlights</p>
+            <p className="text-12 font-medium text-foreground">No matching highlights</p>
             <Button
               variant="outline"
               size="sm"
               onClick={() => { setSearchQuery(''); setSelectedColor('all'); }}
-              className="h-6 text-11 gap-1 rounded-md border-border cursor-pointer"
+              className="h-6 text-11 gap-1 rounded-md border-border bg-background shadow-2xs text-foreground hover:bg-muted cursor-pointer"
             >
               <RotateCcw className="size-2.5" strokeWidth={1.5} />
               Reset filters
@@ -467,8 +467,8 @@ export function AnnotationsPanel({
                   className={cn(
                     "group rounded-md border p-2 text-12 transition-colors relative",
                     isSelected
-                      ? "border-primary/60 bg-primary/5"
-                      : "border-border/60 hover:border-border bg-card"
+                      ? "border-primary/60 bg-primary/5 shadow-2xs"
+                      : "border-border hover:border-border/80 bg-background shadow-2xs"
                   )}
                 >
                   {isEditing ? (
@@ -498,7 +498,7 @@ export function AnnotationsPanel({
                           <button
                             type="button"
                             onClick={() => handleJumpToPage(annotation.pageIndex, annotation.id)}
-                            className="font-mono text-muted-foreground hover:text-foreground cursor-pointer tabular-nums"
+                            className="font-mono text-foreground hover:underline cursor-pointer tabular-nums font-medium"
                           >
                             P. {(annotation.pageIndex ?? 0) + 1}
                           </button>
@@ -520,7 +520,7 @@ export function AnnotationsPanel({
                                 type="button"
                                 onClick={() => setDeletingId(null)}
                                 aria-label="Cancel"
-                                className="size-5 rounded-md text-muted-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
+                                className="size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
                               >
                                 <X className="size-3" strokeWidth={1.5} />
                               </button>
@@ -537,7 +537,7 @@ export function AnnotationsPanel({
                                     )
                                   }
                                   aria-label="Add to Note"
-                                  className="size-5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
+                                  className="size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
                                   title="Add to Note"
                                 >
                                   <StickyNote className="size-3" strokeWidth={1.5} />
@@ -547,7 +547,7 @@ export function AnnotationsPanel({
                                 type="button"
                                 onClick={() => setEditingId(annotation.id)}
                                 aria-label="Edit annotation"
-                                className="size-5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
+                                className="size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
                               >
                                 <Edit3 className="size-3" strokeWidth={1.5} />
                               </button>
@@ -555,7 +555,7 @@ export function AnnotationsPanel({
                                 type="button"
                                 onClick={() => setDeletingId(annotation.id)}
                                 aria-label="Delete annotation"
-                                className="size-5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer"
+                                className="size-5 rounded-md text-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer"
                               >
                                 <Trash2 className="size-3" strokeWidth={1.5} />
                               </button>
@@ -582,7 +582,7 @@ export function AnnotationsPanel({
 
                       {/* Comment */}
                       {annotation.comment && (
-                        <p className="text-11 text-muted-foreground pl-2 leading-relaxed select-text">
+                        <p className="text-11 text-foreground pl-2 leading-relaxed select-text">
                           {annotation.comment}
                         </p>
                       )}
@@ -593,7 +593,7 @@ export function AnnotationsPanel({
                           {annotation.tags.map((tag) => (
                             <span
                               key={tag}
-                              className="inline-flex items-center px-1.5 py-0.5 rounded text-10 font-mono bg-muted text-muted-foreground border border-border/60"
+                              className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-10 font-mono bg-background text-foreground border border-border shadow-2xs"
                             >
                               #{tag}
                             </span>

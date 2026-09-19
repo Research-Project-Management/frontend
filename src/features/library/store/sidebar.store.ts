@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { LibraryScope } from '../types/core.types';
 
 export type InspectorSectionId =
@@ -29,34 +30,46 @@ interface LibrarySidebarStore {
   toggleInspectorTab: (tab: InspectorSectionId) => void;
 }
 
-export const useLibrarySidebarStore = create<LibrarySidebarStore>((set) => ({
-  activeScope: {
-    type: 'personal',
-    id: 'user',
-    name: 'My Library',
-    role: 'owner',
-  },
-  setActiveScope: (activeScope) => set({ activeScope }),
-  isOpen: true,
-  width: 240,
-  inspectorWidth: 360,
-  isInspectorOpen: false,
-  activeInspectorTab: 'info',
-  setIsOpen: (isOpen) => set({ isOpen }),
-  toggle: () => set((state) => ({ isOpen: !state.isOpen })),
-  setWidth: (width) => set({ width: Math.min(Math.max(width, 180), 400) }),
-  setInspectorWidth: (inspectorWidth) =>
-    set({ inspectorWidth: Math.min(Math.max(inspectorWidth, 300), 640) }),
-  setIsInspectorOpen: (isInspectorOpen) => set({ isInspectorOpen }),
-  toggleInspector: () => set((state) => ({ isInspectorOpen: !state.isInspectorOpen })),
-  setActiveInspectorTab: (activeInspectorTab) => set({ activeInspectorTab, isInspectorOpen: true }),
-  toggleInspectorTab: (tab) =>
-    set((state) => {
-      if (state.isInspectorOpen && state.activeInspectorTab === tab) {
-        return { isInspectorOpen: false };
-      }
-      return { activeInspectorTab: tab, isInspectorOpen: true };
+export const useLibrarySidebarStore = create<LibrarySidebarStore>()(
+  persist(
+    (set) => ({
+      activeScope: {
+        type: 'personal',
+        id: 'user',
+        name: 'My Library',
+        role: 'owner',
+      },
+      setActiveScope: (activeScope) => set({ activeScope }),
+      isOpen: true,
+      width: 240,
+      inspectorWidth: 360,
+      isInspectorOpen: false,
+      activeInspectorTab: 'info',
+      setIsOpen: (isOpen) => set({ isOpen }),
+      toggle: () => set((state) => ({ isOpen: !state.isOpen })),
+      setWidth: (width) => set({ width: Math.min(Math.max(width, 180), 400) }),
+      setInspectorWidth: (inspectorWidth) =>
+        set({ inspectorWidth: Math.min(Math.max(inspectorWidth, 300), 640) }),
+      setIsInspectorOpen: (isInspectorOpen) => set({ isInspectorOpen }),
+      toggleInspector: () => set((state) => ({ isInspectorOpen: !state.isInspectorOpen })),
+      setActiveInspectorTab: (activeInspectorTab) => set({ activeInspectorTab, isInspectorOpen: true }),
+      toggleInspectorTab: (tab) =>
+        set((state) => {
+          if (state.isInspectorOpen && state.activeInspectorTab === tab) {
+            return { isInspectorOpen: false };
+          }
+          return { activeInspectorTab: tab, isInspectorOpen: true };
+        }),
     }),
-}));
+    {
+      name: 'flux_library_sidebar_v1',
+      partialize: (state) => ({
+        activeScope: state.activeScope,
+        width: state.width,
+        inspectorWidth: state.inspectorWidth,
+      }),
+    },
+  ),
+);
 
 

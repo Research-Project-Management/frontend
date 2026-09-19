@@ -299,6 +299,13 @@ export async function uploadLibraryFileDirect(
     throw new Error('Upload aborted by user');
   }
 
+  // U-3: Size check BEFORE any network call — avoids a wasted presign round-trip
+  const MULTIPART_THRESHOLD = 50 * 1024 * 1024; // 50MB
+  if (file.size >= MULTIPART_THRESHOLD) {
+    const contentHash = await computeFileSha256(file);
+    return uploadLibraryFileMultipartResumable(scopeId, file, options, contentHash);
+  }
+
   // 1. Calculate client-side SHA-256 for CAS deduplication
   const contentHash = await computeFileSha256(file);
 
@@ -362,13 +369,7 @@ export async function uploadLibraryFileDirect(
     };
   }
 
-  // Case B: Large file (>= 50MB) -> Use Resumable S3 Multipart Upload
-  const MULTIPART_THRESHOLD = 50 * 1024 * 1024; // 50MB
-  if (file.size >= MULTIPART_THRESHOLD) {
-    return uploadLibraryFileMultipartResumable(scopeId, file, options, contentHash);
-  }
-
-  // Case C: Standard file (< 50MB) -> Direct Single-part PUT
+  // Case B: Standard file (< 50MB) -> Direct Single-part PUT
   if (!presignData.uploadUrl || !presignData.storageKey) {
     throw new Error('Invalid presign response: missing uploadUrl or storageKey');
   }
@@ -441,6 +442,8 @@ export async function uploadLibraryFileDirect(
   };
 }
 
+let isDirectUploadCorsBlocked = false;
+
 /**
  * Main upload entry point for Library files.
  * Defaults to Direct-to-Storage Presigned Upload, with automatic fallback
@@ -453,13 +456,30 @@ export async function uploadLibraryFile(
 ): Promise<LibraryUploadResult> {
   const targetFile = file as File;
 
-  if (options.preferDirect !== false) {
+  if (options.preferDirect !== false && !isDirectUploadCorsBlocked) {
     try {
       return await uploadLibraryFileDirect(scopeId, targetFile, options);
     } catch (err: any) {
-      console.warn(
-        `Direct upload failed (${err?.message || err}). Gracefully falling back to multipart upload.`,
-      );
+      // U-1: Only treat genuine network/CORS failures as permanent session-level blocks.
+      // HTTP 4xx/5xx errors come with a status and should bubble up to the caller, not
+      // silently flip the flag and fall back to multipart.
+      const isCorsOrNetworkError =
+        err instanceof TypeError ||
+        err?.name === 'TypeError' ||
+        err?.status === 0 ||
+        err?.message?.toLowerCase().includes('cors') ||
+        err?.message?.toLowerCase().includes('network') ||
+        err?.message?.toLowerCase().includes('failed to fetch');
+
+      if (isCorsOrNetworkError) {
+        isDirectUploadCorsBlocked = true;
+        console.warn(
+          `Direct upload blocked by CORS/network error (${err?.message || err}). Falling back to multipart upload for this session.`,
+        );
+      } else {
+        // Server-side error (4xx/5xx) — do NOT set the flag, re-throw so the caller can handle it
+        throw err;
+      }
     }
   }
 

@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
+import { ErrorBoundary } from '@/shared/components/ui';
 
 export default function EditorLayout({
   children,
@@ -39,5 +40,13 @@ export default function EditorLayout({
     );
   }
 
-  return <>{children}</>;
+  return (
+    <ErrorBoundary
+      variant="full"
+      featureName="Trình soạn thảo văn bản"
+      description="Đã xảy ra sự cố trong quá trình kết xuất trình soạn thảo. Nhấn Thử lại để khôi phục trạng thái."
+    >
+      {children}
+    </ErrorBoundary>
+  );
 }

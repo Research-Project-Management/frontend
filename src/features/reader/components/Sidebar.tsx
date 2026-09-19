@@ -61,9 +61,10 @@ export function Sidebar({
       aria-label="Document navigation"
       className="w-72 h-full border-r border-border bg-background flex flex-col shrink-0 select-none z-20"
     >
-      {/* Header with 3 tabs: Outline, Annotations, Thumbnails */}
+      {/* Header with 3 tabs: Outline | Thumbnails | Annotations — Zotero 7 official order */}
       <div className="h-9 shrink-0 border-b border-border px-1.5 flex items-center justify-between">
         <div className="flex items-center gap-0.5">
+          {/* Tab 1: Outline — Zotero 7 order: Outline first */}
           <button
             type="button"
             onClick={() => setActiveTab('outline')}
@@ -71,32 +72,14 @@ export function Sidebar({
               "flex items-center gap-1 px-2 py-1 text-12 font-medium rounded-md transition-colors cursor-pointer",
               activeTab === 'outline'
                 ? "bg-muted text-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                : "text-foreground hover:bg-muted"
             )}
           >
             <ListTree className="size-3.5 shrink-0" strokeWidth={1.5} />
             Outline
           </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('annotations')}
-            className={cn(
-              "flex items-center gap-1 px-2 py-1 text-12 font-medium rounded-md transition-colors cursor-pointer",
-              activeTab === 'annotations'
-                ? "bg-muted text-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
-            )}
-          >
-            <Highlighter className="size-3.5 shrink-0" strokeWidth={1.5} />
-            Annotations
-            {annotationsCount > 0 && (
-              <span className="text-10 font-mono tabular-nums text-muted-foreground ml-0.5">
-                ({annotationsCount})
-              </span>
-            )}
-          </button>
-
+          {/* Tab 2: Thumbnails/Pages — Zotero 7 order: Pages second */}
           <button
             type="button"
             onClick={() => setActiveTab('pages')}
@@ -104,11 +87,31 @@ export function Sidebar({
               "flex items-center gap-1 px-2 py-1 text-12 font-medium rounded-md transition-colors cursor-pointer",
               activeTab === 'pages'
                 ? "bg-muted text-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                : "text-foreground hover:bg-muted"
             )}
           >
             <LayoutGrid className="size-3.5 shrink-0" strokeWidth={1.5} />
             Thumbnails
+          </button>
+
+          {/* Tab 3: Annotations — Zotero 7 order: Annotations third */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('annotations')}
+            className={cn(
+              "flex items-center gap-1 px-2 py-1 text-12 font-medium rounded-md transition-colors cursor-pointer",
+              activeTab === 'annotations'
+                ? "bg-muted text-foreground"
+                : "text-foreground hover:bg-muted"
+            )}
+          >
+            <Highlighter className="size-3.5 shrink-0" strokeWidth={1.5} />
+            Annotations
+            {annotationsCount > 0 && (
+              <span className="text-10 font-mono tabular-nums text-foreground ml-0.5">
+                ({annotationsCount})
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -117,19 +120,19 @@ export function Sidebar({
       {activeTab === 'outline' && sections.length > 0 && (
         <div className="p-1.5 border-b border-border bg-background shrink-0">
           <div className="relative flex items-center">
-            <Search className="size-3 absolute left-2 text-muted-foreground pointer-events-none" strokeWidth={1.5} />
+            <Search className="size-3.5 absolute left-2 text-foreground pointer-events-none shrink-0" strokeWidth={1.5} />
             <input
               type="text"
               value={outlineFilter}
               onChange={(e) => setOutlineFilter(e.target.value)}
               placeholder="Filter outline..."
-              className="w-full h-6.5 pl-6.5 pr-6 text-11 bg-muted/40 hover:bg-muted/70 focus:bg-background border border-border rounded text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors font-sans"
+              className="w-full h-7 pl-7 pr-6 text-11 bg-background border border-border rounded-md shadow-2xs text-foreground placeholder:text-foreground/70 outline-none focus:border-primary transition-colors font-sans"
             />
             {outlineFilter && (
               <button
                 type="button"
                 onClick={() => setOutlineFilter('')}
-                className="size-4.5 absolute right-1 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
+                className="size-4.5 absolute right-1 flex items-center justify-center text-foreground hover:bg-muted rounded-sm cursor-pointer"
                 aria-label="Clear filter"
               >
                 <X className="size-2.5" strokeWidth={1.5} />
@@ -159,16 +162,16 @@ export function Sidebar({
                       "w-full flex items-start gap-1.5 px-2 py-1.5 text-left rounded-md text-12 leading-snug transition-colors cursor-pointer",
                       isCurrent
                         ? "bg-muted text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        : "text-foreground hover:bg-muted"
                     )}
                     style={{ paddingLeft: `${Math.max(8, level * 10)}px` }}
                   >
-                    <ChevronRight className="size-3 shrink-0 mt-0.5 opacity-50" strokeWidth={1.5} />
+                    <ChevronRight className="size-3 shrink-0 mt-0.5 text-foreground" strokeWidth={1.5} />
                     <span className="truncate flex-1">
                       {s.num ? `${s.num} ` : ''}{s.title}
                     </span>
                     {s.page && (
-                      <span className="text-11 font-mono tabular-nums text-muted-foreground shrink-0 ml-1">
+                      <span className="text-11 font-mono tabular-nums text-foreground shrink-0 ml-1">
                         {s.page}
                       </span>
                     )}
@@ -177,7 +180,7 @@ export function Sidebar({
               })}
             </div>
           ) : (
-            <div className="p-4 text-center text-12 text-muted-foreground">
+            <div className="p-4 text-center text-12 text-foreground/80">
               {outlineFilter ? 'No matching headings.' : 'No outline detected in PDF.'}
             </div>
           )
@@ -193,7 +196,7 @@ export function Sidebar({
               onAddToNote={onAddToNote}
             />
           ) : (
-            <div className="p-4 text-center text-12 text-muted-foreground">
+            <div className="p-4 text-center text-12 text-foreground/80">
               No document loaded.
             </div>
           )
@@ -203,7 +206,7 @@ export function Sidebar({
             <Document
               file={pdfBlobUrl}
               loading={
-                <div className="p-4 text-center text-11 text-muted-foreground">
+                <div className="p-4 text-center text-11 text-foreground font-mono">
                   Loading thumbnails...
                 </div>
               }
@@ -230,7 +233,7 @@ export function Sidebar({
                           renderTextLayer={false}
                           renderAnnotationLayer={false}
                           loading={
-                            <div className="size-full flex items-center justify-center text-muted-foreground text-11 font-mono">
+                            <div className="size-full flex items-center justify-center text-foreground text-11 font-mono">
                               {pageNum}
                             </div>
                           }
@@ -238,7 +241,7 @@ export function Sidebar({
                       </div>
                       <span className={cn(
                         "text-11 font-mono tabular-nums mt-1",
-                        isCurrent ? "font-semibold text-primary" : "text-muted-foreground"
+                        isCurrent ? "font-semibold text-primary" : "text-foreground"
                       )}>
                         Page {pageNum}
                       </span>
@@ -263,12 +266,12 @@ export function Sidebar({
                         : "border-border hover:border-border-hover bg-card"
                     )}
                   >
-                    <div className="w-full aspect-[1/1.4] rounded-sm bg-background border border-border flex items-center justify-center text-muted-foreground group-hover:text-foreground transition-colors">
+                    <div className="w-full aspect-[1/1.4] rounded-sm bg-background border border-border flex items-center justify-center text-foreground group-hover:text-foreground transition-colors">
                       <span className="text-11 font-mono tabular-nums">{pageNum}</span>
                     </div>
                     <span className={cn(
                       "text-11 font-mono tabular-nums mt-1",
-                      isCurrent ? "font-medium text-primary" : "text-muted-foreground"
+                      isCurrent ? "font-medium text-primary" : "text-foreground"
                     )}>
                       Page {pageNum}
                     </span>

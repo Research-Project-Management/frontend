@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, type ReactNode } from 'react';
+import { useRef, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/features/auth/hooks/use-auth';
@@ -97,7 +97,13 @@ export default function LandingPage() {
 
   const router = useRouter();
   const { user } = useAuth();
-  const isAuthenticated = Boolean(user || (typeof window !== 'undefined' && hasAuthToken()));
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isAuthenticated = mounted && Boolean(user || (typeof window !== 'undefined' && hasAuthToken()));
 
   useEffect(() => {
     if (isAuthenticated) {

@@ -86,7 +86,7 @@ export function AnalyticsDrawer({
             <div className="p-3 rounded-md border border-border bg-card space-y-1">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>Total Items</span>
-                <BarChart3 className="size-3.5 text-muted-foreground shrink-0" />
+                <BarChart3 className="size-3.5 text-foreground shrink-0" />
               </div>
               <div className="text-xl font-semibold text-foreground font-mono">
                 {isLoading ? <Skeleton className="h-7 w-12" /> : totalItems}
@@ -185,22 +185,22 @@ export function AnalyticsDrawer({
           <div className="p-4 rounded-md border border-border bg-card space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-foreground">Phân công công việc</span>
-              <Users className="size-3.5 text-muted-foreground shrink-0" />
+              <Users className="size-3.5 text-foreground shrink-0" />
             </div>
             {isLoading ? (
               <div className="space-y-2.5">
                 <div className="flex items-center gap-2">
                   <Skeleton className="size-6 rounded-full shrink-0" />
                   <div className="flex-1 space-y-1">
-                    <Skeleton className="h-3 w-28 rounded" />
-                    <Skeleton className="h-2 w-full rounded" />
+                    <Skeleton className="h-3 w-28 rounded-md" />
+                    <Skeleton className="h-2 w-full rounded-md" />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Skeleton className="size-6 rounded-full shrink-0" />
                   <div className="flex-1 space-y-1">
-                    <Skeleton className="h-3 w-36 rounded" />
-                    <Skeleton className="h-2 w-3/4 rounded" />
+                    <Skeleton className="h-3 w-36 rounded-md" />
+                    <Skeleton className="h-2 w-3/4 rounded-md" />
                   </div>
                 </div>
               </div>

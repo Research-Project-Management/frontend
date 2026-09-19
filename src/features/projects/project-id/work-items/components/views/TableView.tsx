@@ -259,27 +259,27 @@ export function TableColumnPropertiesPopover({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted border border-border/60 bg-background transition-colors cursor-pointer select-none"
+          className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-foreground hover:bg-muted border border-border/60 bg-background transition-colors cursor-pointer select-none"
         >
           <SlidersHorizontal className="size-3.5 shrink-0" />
           <span>Display</span>
-          <span className="rounded bg-muted px-1.5 py-0.2 text-10 font-mono font-medium text-muted-foreground tabular-nums">
+          <span className="rounded-md bg-muted px-1.5 py-0.2 text-10 font-mono font-medium text-foreground tabular-nums">
             {activeCount}
           </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-64 p-2 border-border bg-popover shadow-md z-100">
+      <PopoverContent align="end" className="w-64 p-2 border-border bg-popover shadow-md z-100 rounded-md">
         <div className="flex items-center justify-between pb-2 mb-2 border-b border-border px-1">
           <span className="text-xs font-semibold text-foreground">Display properties</span>
         </div>
 
         <div className="relative mb-2 px-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-foreground shrink-0" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search properties..."
-            className="h-7 pl-7 text-xs bg-background border-border"
+            className="h-7 pl-7 text-xs bg-background border-border shadow-2xs placeholder:text-foreground/70 text-foreground rounded-md"
           />
         </div>
 
@@ -291,16 +291,16 @@ export function TableColumnPropertiesPopover({
             return (
               <label
                 key={p.key}
-                className="flex items-center justify-between px-2 py-1.5 rounded-sm text-xs cursor-pointer hover:bg-muted transition-colors text-foreground select-none"
+                className="flex items-center justify-between px-2 py-1.5 rounded-md text-xs cursor-pointer hover:bg-muted transition-colors text-foreground select-none"
               >
                 <div className="flex items-center gap-2">
-                  <Icon className="size-3.5 text-muted-foreground shrink-0" />
+                  <Icon className="size-3.5 text-foreground shrink-0" />
                   <span>{p.label}</span>
                 </div>
                 <Checkbox
                   checked={isChecked}
                   onCheckedChange={() => onToggleProperty(p.key)}
-                  className="size-3.5"
+                  className="size-3.5 rounded-sm"
                 />
               </label>
             );
@@ -450,11 +450,11 @@ export function TableHeaderRow({
               style={{ width: `${propWidth}px`, minWidth: `${propWidth}px` }}
               onClick={() => isSortable && onSort?.(p.key as TableSortField)}
               className={cn(
-                'relative flex items-center gap-1.5 px-3 h-full text-xs font-medium text-muted-foreground select-none transition-colors outline-none border-r border-border/40 shrink-0 group/col',
+                'relative flex items-center gap-1.5 px-3 h-full text-xs font-medium text-foreground select-none transition-colors outline-none border-r border-border/40 shrink-0 group/col',
                 isSortable && 'cursor-pointer hover:bg-muted/50 hover:text-foreground'
               )}
             >
-              <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+              <Icon className="size-3.5 shrink-0 text-foreground" />
               <span className="truncate">{p.label}</span>
               {isSortable && renderSortIndicator(p.key as TableSortField)}
 
@@ -515,7 +515,7 @@ export function TableGroupHeader({
             e.stopPropagation();
             onToggle();
           }}
-          className="size-4 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+          className="size-4 flex items-center justify-center text-foreground hover:text-foreground transition-colors"
           aria-label={isExpanded ? 'Collapse group' : 'Expand group'}
         >
           {isExpanded ? (
@@ -536,7 +536,7 @@ export function TableGroupHeader({
 
         <span className="text-xs font-semibold text-foreground truncate">{title}</span>
 
-        <span className="rounded-full bg-muted px-1.5 py-0.2 text-10 font-mono font-medium text-muted-foreground tabular-nums">
+        <span className="rounded-md bg-muted px-1.5 py-0.2 text-10 font-mono font-medium text-foreground tabular-nums">
           {count}
         </span>
       </div>
@@ -548,7 +548,7 @@ export function TableGroupHeader({
             e.stopPropagation();
             onQuickAdd();
           }}
-          className="opacity-0 group-hover/groupHeader:opacity-100 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+          className="opacity-0 group-hover/groupHeader:opacity-100 p-1 rounded-md text-foreground hover:text-foreground hover:bg-muted transition-all"
           title={`Add item to ${title}`}
         >
           <Plus className="size-3.5 shrink-0" />
@@ -759,7 +759,7 @@ export function TableRowItem({
             type="button"
             onClick={handleCopyIdentifier}
             title="Click to copy identifier"
-            className="text-11 font-mono text-muted-foreground hover:text-foreground hover:bg-muted/80 px-1 py-0.5 rounded mr-2 shrink-0 transition-colors"
+            className="text-11 font-mono text-foreground hover:bg-muted/80 px-1 py-0.5 rounded-md mr-2 shrink-0 transition-colors"
           >
             {item.identifier}
           </button>
@@ -768,10 +768,10 @@ export function TableRowItem({
         {/* Sub-item Indicator */}
         {childCount > 0 && (
           <div
-            className="flex items-center gap-1 text-10 font-mono text-muted-foreground mr-1.5 shrink-0"
+            className="flex items-center gap-1 text-10 font-mono text-foreground mr-1.5 shrink-0"
             title={`${childCount} sub-items`}
           >
-            <Layers className="size-3 text-muted-foreground" />
+            <Layers className="size-3 text-foreground" />
             <span>{childCount}</span>
           </div>
         )}
@@ -785,7 +785,7 @@ export function TableRowItem({
               onChange={(e) => setTitleValue(e.target.value)}
               onBlur={handleSaveTitle}
               onKeyDown={handleKeyDownTitle}
-              className="w-full bg-background border border-primary px-1.5 py-0.5 rounded text-xs text-foreground outline-none shadow-xs"
+              className="w-full bg-background border border-primary px-1.5 py-0.5 rounded-md text-xs text-foreground outline-none shadow-2xs"
             />
           </div>
         ) : (
@@ -805,7 +805,7 @@ export function TableRowItem({
                   e.stopPropagation();
                   setIsEditingTitle(true);
                 }}
-                className="opacity-0 group-hover/row:opacity-100 p-0.5 text-muted-foreground hover:text-foreground transition-opacity shrink-0"
+                className="opacity-0 group-hover/row:opacity-100 p-0.5 text-foreground hover:text-foreground transition-opacity shrink-0"
                 title="Edit title"
               >
                 <Pencil className="size-3" />
@@ -848,7 +848,7 @@ export function TableRowItem({
                       </span>
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-44 p-1 text-xs z-100">
+                  <DropdownMenuContent align="start" className="w-44 p-1 text-xs z-100 rounded-md">
                     {stateList.map((col) => {
                       const cId = resolveColumnId(col);
                       const isCurrent = cId === item.columnId;
@@ -861,7 +861,7 @@ export function TableRowItem({
                           key={cId}
                           onClick={() => onUpdateCard?.({ id: item.id, columnId: cId })}
                           className={cn(
-                            'flex items-center gap-2 cursor-pointer py-1.5 text-xs rounded-sm',
+                            'flex items-center gap-2 cursor-pointer py-1.5 text-xs rounded-md',
                             isCurrent && 'bg-muted font-medium'
                           )}
                         >
@@ -907,7 +907,7 @@ export function TableRowItem({
                       className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-muted/80 transition-colors w-full text-left truncate cursor-pointer"
                     >
                       <AvatarStack users={resolvedAssignees} size="xs" max={3} />
-                      <span className="text-11 font-mono text-muted-foreground">
+                      <span className="text-11 font-mono text-foreground">
                         +{resolvedAssignees.length}
                       </span>
                     </button>
@@ -931,10 +931,10 @@ export function TableRowItem({
                       type="button"
                       onClick={() => !isReadOnly && setAssigneeOpen(true)}
                       disabled={isReadOnly}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-muted-foreground/60 hover:text-foreground hover:bg-muted/80 transition-colors w-full text-left cursor-pointer group/assign"
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-foreground hover:text-foreground hover:bg-muted/80 transition-colors w-full text-left cursor-pointer group/assign"
                     >
-                      <div className="size-4 rounded-full border border-dashed border-border/80 flex items-center justify-center group-hover/assign:border-foreground/60">
-                        <Plus className="size-2.5 text-muted-foreground group-hover/assign:text-foreground" />
+                      <div className="size-4 rounded-md border border-dashed border-border/80 flex items-center justify-center group-hover/assign:border-foreground/60">
+                        <Plus className="size-2.5 text-foreground" />
                       </div>
                       <span className="text-11 opacity-0 group-hover/row:opacity-100 transition-opacity">
                         Assign
@@ -987,7 +987,7 @@ export function TableRowItem({
                         ? isOverdue
                           ? 'text-destructive bg-destructive/10 hover:bg-destructive/20 font-medium'
                           : 'bg-transparent hover:bg-muted/80 text-foreground'
-                        : 'bg-transparent text-muted-foreground/40 hover:text-foreground hover:bg-muted/80'
+                        : 'bg-transparent text-foreground hover:bg-muted/80'
                     )}
                   />
                 </div>
@@ -1016,7 +1016,7 @@ export function TableRowItem({
                             <span
                               key={labelItem?.id || idx}
                               style={labelColor ? { borderColor: `${labelColor}40` } : undefined}
-                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-10 font-medium bg-muted/60 text-muted-foreground border border-border truncate max-w-[80px]"
+                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md text-10 font-medium bg-muted/60 text-foreground border border-border truncate max-w-[80px]"
                             >
                               {labelColor && (
                                 <span
@@ -1029,13 +1029,13 @@ export function TableRowItem({
                           );
                         })}
                         {item.labels.length > 2 && (
-                          <span className="text-10 font-mono text-muted-foreground">
+                          <span className="text-10 font-mono text-foreground">
                             +{item.labels.length - 2}
                           </span>
                         )}
                       </div>
                     ) : (
-                      <span className="text-muted-foreground/40 hover:text-foreground">-</span>
+                      <span className="text-foreground hover:text-foreground">-</span>
                     )}
                   </button>
 
@@ -1074,13 +1074,13 @@ export function TableRowItem({
                   >
                     {item.cycleId ? (
                       <>
-                        <CycleIcon className="size-3.5 text-muted-foreground shrink-0" />
+                        <CycleIcon className="size-3.5 text-foreground shrink-0" />
                         <span className="truncate">
                           {cycles.find((c) => c.id === item.cycleId)?.name || 'Cycle'}
                         </span>
                       </>
                     ) : (
-                      <span className="text-muted-foreground/40 hover:text-foreground">-</span>
+                      <span className="text-foreground hover:text-foreground">-</span>
                     )}
                   </button>
 
@@ -1115,21 +1115,21 @@ export function TableRowItem({
 
               {/* CREATED ON CELL */}
               {p.key === 'createdOn' && (
-                <span className="text-xs text-muted-foreground px-2 truncate">
+                <span className="text-xs text-foreground px-2 truncate">
                   {formattedCreated || '-'}
                 </span>
               )}
 
               {/* CREATED BY CELL */}
               {p.key === 'createdBy' && (
-                <span className="text-xs text-muted-foreground px-2 truncate">
+                <span className="text-xs text-foreground px-2 truncate">
                   {(item as any).author?.name || (item as any).created_by_name || '-'}
                 </span>
               )}
 
               {/* UPDATED ON CELL */}
               {p.key === 'updatedOn' && (
-                <span className="text-xs text-muted-foreground px-2 truncate">
+                <span className="text-xs text-foreground px-2 truncate">
                   {formattedUpdated || '-'}
                 </span>
               )}
@@ -1139,7 +1139,7 @@ export function TableRowItem({
                 <button
                   type="button"
                   onClick={() => onEditCard(item)}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
                 >
                   <Paperclip className="size-3.5 shrink-0" />
                   <span>{attachmentsCount > 0 ? attachmentsCount : '-'}</span>
@@ -1151,7 +1151,7 @@ export function TableRowItem({
                 <button
                   type="button"
                   onClick={() => onEditCard(item)}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
                 >
                   <Layers className="size-3.5 shrink-0" />
                   <span>{childCount > 0 ? `${childCount} sub-items` : '-'}</span>
@@ -1160,7 +1160,7 @@ export function TableRowItem({
 
               {/* LINK CELL */}
               {p.key === 'link' && (
-                <span className="text-xs text-muted-foreground px-2 truncate">-</span>
+                <span className="text-xs text-foreground px-2 truncate">-</span>
               )}
             </div>
           );
@@ -1172,7 +1172,7 @@ export function TableRowItem({
         <button
           type="button"
           onClick={handleCopyLink}
-          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          className="p-1 rounded-md text-foreground hover:text-foreground hover:bg-muted transition-colors"
           title="Copy link"
         >
           <Link2 className="size-3.5" />
@@ -1186,7 +1186,7 @@ export function TableRowItem({
                 e.stopPropagation();
                 onEditCard(item);
               }}
-              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="p-1 rounded-md text-foreground hover:text-foreground hover:bg-muted transition-colors"
               title="Edit work item"
             >
               <Pencil className="size-3.5" />
@@ -1198,7 +1198,7 @@ export function TableRowItem({
                 e.stopPropagation();
                 onDuplicateCard(item);
               }}
-              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="p-1 rounded-md text-foreground hover:text-foreground hover:bg-muted transition-colors"
               title="Duplicate"
             >
               <Copy className="size-3.5" />
@@ -1210,7 +1210,7 @@ export function TableRowItem({
                 e.stopPropagation();
                 onDeleteCard(item);
               }}
-              className="p-1 rounded text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors"
+              className="p-1 rounded-md text-destructive/80 hover:text-destructive hover:bg-destructive/10 transition-colors"
               title="Delete"
             >
               <Trash2 className="size-3.5" />
@@ -1275,9 +1275,9 @@ export function TableInlineAddRow({
         <button
           type="button"
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 h-9 px-3 w-full text-xs text-muted-foreground/70 hover:text-foreground hover:bg-muted/30 transition-colors cursor-pointer text-left group/add"
+          className="flex items-center gap-2 h-9 px-3 w-full text-xs text-foreground hover:bg-muted/30 transition-colors cursor-pointer text-left group/add"
         >
-          <Plus className="size-3.5 text-muted-foreground group-hover/add:text-foreground transition-colors" />
+          <Plus className="size-3.5 text-foreground transition-colors" />
           <span>{groupTitle ? `Add item to ${groupTitle}...` : 'New work item...'}</span>
         </button>
       </div>
@@ -1304,7 +1304,7 @@ export function TableInlineAddRow({
           type="submit"
           size="sm"
           disabled={!title.trim()}
-          className="h-7 px-3 text-xs font-medium"
+          className="h-7 px-3 text-xs font-medium rounded-md"
         >
           Add
         </Button>
@@ -1316,7 +1316,7 @@ export function TableInlineAddRow({
             setIsAdding(false);
             setTitle('');
           }}
-          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+          className="h-7 w-7 p-0 text-foreground hover:text-foreground rounded-md"
         >
           <X className="size-3.5" />
         </Button>
@@ -1671,8 +1671,8 @@ export function TableView({
           {/* Zero items state */}
           {items.length === 0 && (
             <div className="py-20 flex flex-col items-center justify-center text-center">
-              <div className="size-10 rounded-full bg-muted flex items-center justify-center mb-3">
-                <FileText className="size-5 text-muted-foreground" />
+              <div className="size-10 rounded-md bg-muted flex items-center justify-center mb-3">
+                <FileText className="size-5 text-foreground" />
               </div>
               <h4 className="text-sm font-semibold text-foreground mb-1">No work items found</h4>
               <p className="text-xs text-muted-foreground mb-4">

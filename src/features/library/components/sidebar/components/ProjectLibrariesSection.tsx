@@ -26,7 +26,60 @@ interface ProjectLibrariesSectionProps extends CollectionActionHandlers {
   searchQuery: string;
   renamingId: string | null;
   renameValue: string;
+  canManageCollections?: boolean;
   onSelectProject: (scope: any) => void;
+}
+
+/**
+ * Safely resolves the current user's role across the 4 standard roles:
+ * 'owner' | 'contributor' | 'commenter' | 'viewer'.
+ * The owner is matched when owner = userId (project.userId / createdById / ownerId).
+ */
+export function resolveProjectRole(
+  project: any,
+  currentUserId?: string,
+): 'owner' | 'contributor' | 'commenter' | 'viewer' {
+  if (!currentUserId || !project) return 'viewer';
+
+  // 1. Owner = userId check
+  const isOwner =
+    project.userId === currentUserId ||
+    project.createdById === currentUserId ||
+    project.ownerId === currentUserId ||
+    project.createdBy?.id === currentUserId;
+
+  if (isOwner) {
+    return 'owner';
+  }
+
+  // 2. Direct server-provided yourRole check
+  const rawYourRole = project.yourRole;
+  if (rawYourRole) {
+    const norm = String(rawYourRole).toLowerCase();
+    if (norm === 'owner' || norm === 'admin') return 'owner';
+    if (norm === 'contributor' || norm === 'member') return 'contributor';
+    if (norm === 'commenter') return 'commenter';
+    if (norm === 'viewer') return 'viewer';
+  }
+
+  // 3. Find matching member in project.members array
+  const member = (project.members || []).find(
+    (m: any) =>
+      m.userId === currentUserId ||
+      m.user?.id === currentUserId ||
+      m.id === currentUserId,
+  );
+
+  if (member?.role) {
+    const norm = String(member.role).toLowerCase();
+    if (norm === 'owner' || norm === 'admin') return 'owner';
+    if (norm === 'contributor' || norm === 'member') return 'contributor';
+    if (norm === 'commenter') return 'commenter';
+    if (norm === 'viewer') return 'viewer';
+  }
+
+  // 4. Default to least privilege
+  return 'viewer';
 }
 
 export function ProjectLibrariesSection({
@@ -45,6 +98,7 @@ export function ProjectLibrariesSection({
   searchQuery,
   renamingId,
   renameValue,
+  canManageCollections: propCanManageCollections,
   onSelectProject,
   onStartRename,
   onSubmitRename,
@@ -122,18 +176,18 @@ export function ProjectLibrariesSection({
             projects.map((project) => {
               const isProjectActive =
                 activeScope.type === 'project' && activeScope.id === project.id;
+              const projectCanManageCollections =
+                propCanManageCollections !== undefined
+                  ? propCanManageCollections
+                  : isProjectActive &&
+                    (activeScope.role === 'owner' || activeScope.role === 'contributor');
+
               return (
                 <div key={project.id} className="flex flex-col gap-0.5 w-full">
                   <button
                     type="button"
                     onClick={() => {
-                      const member = (project.members || []).find(
-                        (m: any) => m.userId === currentUserId || m.user?.id === currentUserId,
-                      );
-                      const role =
-                        project.createdById === currentUserId
-                          ? 'owner'
-                          : (member?.role as any) || 'contributor';
+                      const role = resolveProjectRole(project, currentUserId);
                       onSelectProject({
                         type: 'project',
                         id: project.id,
@@ -176,6 +230,7 @@ export function ProjectLibrariesSection({
                           renameValue={renameValue}
                           isSearching={isSearching}
                           searchQuery={searchQuery}
+                          canManageCollections={projectCanManageCollections}
                           onStartRename={onStartRename}
                           onSubmitRename={onSubmitRename}
                           onRenameValueChange={onRenameValueChange}

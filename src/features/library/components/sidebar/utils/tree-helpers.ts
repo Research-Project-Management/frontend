@@ -14,7 +14,7 @@ export function buildTree(collections: Collection[]): TreeNode[] {
   }
 
   for (const node of map.values()) {
-    const parentId = node.parentId || node.parent;
+    const parentId = node.parentId;
     if (parentId && map.has(parentId)) {
       map.get(parentId)!.children.push(node);
     } else {
@@ -35,7 +35,7 @@ export function getValidMoveTargets(allCollections: Collection[], currentId: str
   while (added) {
     added = false;
     for (const c of allCollections) {
-      const parentId = c.parentId || c.parent;
+      const parentId = c.parentId || (c as any).parent;
       if (parentId && descendantIds.has(parentId) && !descendantIds.has(c.id)) {
         descendantIds.add(c.id);
         added = true;
@@ -57,13 +57,13 @@ export function filterCollections(cols: Collection[], searchQuery: string): Coll
     if (c.name.toLowerCase().includes(q)) {
       matchingIds.add(c.id);
       let curr = c;
-      let currParentId = curr.parentId || curr.parent;
+      let currParentId = curr.parentId || (curr as any).parent;
       while (currParentId) {
         matchingIds.add(currParentId);
         const parentObj = cols.find((p) => p.id === currParentId);
         if (!parentObj) break;
         curr = parentObj;
-        currParentId = curr.parentId || curr.parent;
+        currParentId = curr.parentId || (curr as any).parent;
       }
     }
   }

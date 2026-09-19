@@ -14,6 +14,7 @@ interface CollectionTreeProps extends CollectionActionHandlers {
   renameValue: string;
   isSearching: boolean;
   searchQuery: string;
+  canManageCollections?: boolean;
 }
 
 export function CollectionTree({
@@ -26,6 +27,7 @@ export function CollectionTree({
   renameValue,
   isSearching,
   searchQuery,
+  canManageCollections = true,
   onStartRename,
   onSubmitRename,
   onRenameValueChange,
@@ -65,6 +67,7 @@ export function CollectionTree({
           renameValue={renameValue}
           allCollections={allCollections}
           isSearching={isSearching}
+          canManageCollections={canManageCollections}
           onStartRename={onStartRename}
           onSubmitRename={onSubmitRename}
           onRenameValueChange={onRenameValueChange}

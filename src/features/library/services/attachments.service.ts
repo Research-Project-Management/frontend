@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiDelete } from "@/shared/lib/api";
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/shared/lib/api";
 import type { AttachmentDto, AttachmentRevisionDto } from "../types/library.types";
 import { isProjectScope } from '../utils/library.util';
 export type { AttachmentDto, AttachmentRevisionDto };
@@ -9,9 +9,48 @@ export interface AddRevisionDto {
   comment?: string;
 }
 
-export async function getAttachments(_scopeId: string, itemId: string): Promise<AttachmentDto[]> {
+export interface RenameAttachmentInput {
+  filename?: string;
+  pattern?: string;
+}
+
+export interface BatchRenameAttachmentsInput {
+  itemIds?: string[];
+  attachmentIds?: string[];
+  pattern?: string;
+}
+
+// ── Scope URL helpers ─────────────────────────────────────────────────────────
+
+/** Builds a scoped URL for item-level attachment routes. */
+function getItemAttachmentUrl(scopeId: string | undefined, itemId: string, suffix = ''): string {
+  const base = isProjectScope(scopeId)
+    ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/items/${encodeURIComponent(itemId)}/attachments`
+    : `/api/v1/library/items/${encodeURIComponent(itemId)}/attachments`;
+  return suffix ? `${base}/${suffix}` : base;
+}
+
+/** Builds a scoped URL for attachment-level routes. */
+function getAttachmentUrl(scopeId: string | undefined, attachmentId: string, suffix = ''): string {
+  const base = isProjectScope(scopeId)
+    ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/attachments/${encodeURIComponent(attachmentId)}`
+    : `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}`;
+  return suffix ? `${base}/${suffix}` : base;
+}
+
+/** Builds a scoped URL for file-level content routes. */
+function getFileUrl(scopeId: string | undefined, fileId: string, suffix = ''): string {
+  const base = isProjectScope(scopeId)
+    ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/files/${encodeURIComponent(fileId)}`
+    : `/api/v1/library/files/${encodeURIComponent(fileId)}`;
+  return suffix ? `${base}/${suffix}` : base;
+}
+
+// ── Exported functions ────────────────────────────────────────────────────────
+
+export async function getAttachments(scopeId: string, itemId: string): Promise<AttachmentDto[]> {
   const response = await apiGet<{ attachments: AttachmentDto[] }>(
-    `/api/v1/library/items/${encodeURIComponent(itemId)}/attachments`,
+    getItemAttachmentUrl(scopeId, itemId),
   );
   return response.attachments || [];
 }
@@ -21,21 +60,21 @@ export async function getAttachments(_scopeId: string, itemId: string): Promise<
  * Backed by GET /api/v1/library/attachments/:attachmentId
  */
 export async function getAttachment(
-  _scopeId: string,
+  scopeId: string,
   attachmentId: string,
 ): Promise<AttachmentDto> {
   const response = await apiGet<{ attachment: AttachmentDto }>(
-    `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}`,
+    getAttachmentUrl(scopeId, attachmentId),
   );
   return (response as any).attachment ?? response;
 }
 
 export async function getAttachmentRevisions(
-  _scopeId: string,
+  scopeId: string,
   attachmentId: string,
 ): Promise<AttachmentRevisionDto[]> {
   const response = await apiGet<{ revisions: AttachmentRevisionDto[] }>(
-    `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/revisions`,
+    getAttachmentUrl(scopeId, attachmentId, 'revisions'),
   );
   return response.revisions || [];
 }
@@ -45,80 +84,76 @@ export async function getAttachmentRevisions(
  * Backed by POST /api/v1/library/attachments/:attachmentId/revisions
  */
 export async function addRevision(
-  _scopeId: string,
+  scopeId: string,
   attachmentId: string,
   dto: AddRevisionDto,
 ): Promise<AttachmentRevisionDto> {
   const response = await apiPost<{ revision: AttachmentRevisionDto }>(
-    `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/revisions`,
+    getAttachmentUrl(scopeId, attachmentId, 'revisions'),
     dto,
   );
   return (response as any).revision ?? response;
 }
 
 export async function deleteAttachment(
-  _scopeId: string,
+  scopeId: string,
   attachmentId: string,
 ): Promise<boolean> {
   const response = await apiDelete<{ success: boolean }>(
-    `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}`,
+    getAttachmentUrl(scopeId, attachmentId),
   );
   return response.success;
 }
 
 export async function captureSnapshot(
-  _scopeId: string,
+  scopeId: string,
   itemId: string,
   url?: string,
 ): Promise<AttachmentDto> {
   const response = await apiPost<{ attachment: AttachmentDto } | AttachmentDto>(
-    `/api/v1/library/items/${encodeURIComponent(itemId)}/attachments/snapshot`,
+    getItemAttachmentUrl(scopeId, itemId, 'snapshot'),
     url ? { url } : {},
   );
   return (response as { attachment?: AttachmentDto }).attachment ?? (response as AttachmentDto);
 }
 
 export async function createAttachment(
-  _scopeId: string,
+  scopeId: string,
   itemId: string,
   data: Record<string, unknown>,
 ): Promise<AttachmentDto> {
   const response = await apiPost<{ attachment?: AttachmentDto } | AttachmentDto>(
-    `/api/v1/library/items/${encodeURIComponent(itemId)}/attachments`,
+    getItemAttachmentUrl(scopeId, itemId),
     data,
   );
   return (response as { attachment?: AttachmentDto }).attachment ?? (response as AttachmentDto);
 }
 
 export async function setPrimaryAttachment(
-  _scopeId: string,
+  scopeId: string,
   itemId: string,
   attachmentId: string,
 ): Promise<{ success: boolean }> {
   return apiPost(
-    `/api/v1/library/items/${encodeURIComponent(itemId)}/attachments/${encodeURIComponent(attachmentId)}/set-primary`,
+    getItemAttachmentUrl(scopeId, itemId, `${encodeURIComponent(attachmentId)}/set-primary`),
     {},
   );
 }
 
-export function getFileContentUrl(_scopeId: string, fileId: string): string {
-  return `/api/v1/library/files/${encodeURIComponent(fileId)}/content`;
+export function getFileContentUrl(scopeId: string, fileId: string): string {
+  return getFileUrl(scopeId, fileId, 'content');
 }
 
-export async function fetchFileContent(_scopeId: string, fileId: string): Promise<Blob> {
-  return apiGet<Blob>(
-    `/api/v1/library/files/${encodeURIComponent(fileId)}/content`,
-  );
+export async function fetchFileContent(scopeId: string, fileId: string): Promise<Blob> {
+  return apiGet<Blob>(getFileUrl(scopeId, fileId, 'content'));
 }
 
-export function getAttachmentContentUrl(_scopeId: string, attachmentId: string): string {
-  return `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/content`;
+export function getAttachmentContentUrl(scopeId: string, attachmentId: string): string {
+  return getAttachmentUrl(scopeId, attachmentId, 'content');
 }
 
-export async function fetchAttachmentContent(_scopeId: string, attachmentId: string): Promise<Blob> {
-  return apiGet<Blob>(
-    `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/content`,
-  );
+export async function fetchAttachmentContent(scopeId: string, attachmentId: string): Promise<Blob> {
+  return apiGet<Blob>(getAttachmentUrl(scopeId, attachmentId, 'content'));
 }
 
 export async function uploadLibraryAttachment(
@@ -140,6 +175,38 @@ export async function uploadLibraryAttachment(
   };
 }
 
+export async function renameAttachment(
+  scopeId: string,
+  attachmentId: string,
+  dto: RenameAttachmentInput,
+): Promise<{ attachment: AttachmentDto; oldFilename: string; newFilename: string }> {
+  const response = await apiPatch<{ attachment: AttachmentDto; oldFilename: string; newFilename: string }>(
+    getAttachmentUrl(scopeId, attachmentId, 'rename'),
+    dto,
+  );
+  return response;
+}
+
+export async function batchRenameAttachments(
+  scopeId: string,
+  dto: BatchRenameAttachmentsInput,
+): Promise<{
+  renamedCount: number;
+  results: Array<{ attachmentId: string; itemId: string; oldFilename: string; newFilename: string }>;
+}> {
+  const batchBase = isProjectScope(scopeId)
+    ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/attachments/batch-rename`
+    : `/api/v1/library/attachments/batch-rename`;
+  const response = await apiPost<{
+    renamedCount: number;
+    results: Array<{ attachmentId: string; itemId: string; oldFilename: string; newFilename: string }>;
+  }>(
+    batchBase,
+    dto,
+  );
+  return response;
+}
+
 export const AttachmentsService = {
   getAttachments,
   getAttachment,
@@ -147,6 +214,8 @@ export const AttachmentsService = {
   addRevision,
   deleteAttachment,
   createAttachment,
+  renameAttachment,
+  batchRenameAttachments,
   setPrimaryAttachment,
   getFileContentUrl,
   fetchFileContent,
@@ -163,6 +232,8 @@ export const AttachmentsService = {
   get: getAttachment,
   revisions: getAttachmentRevisions,
   delete: deleteAttachment,
+  rename: renameAttachment,
+  batchRename: batchRenameAttachments,
   add: createAttachment,
   create: createAttachment,
   setPrimary: setPrimaryAttachment,
@@ -170,3 +241,4 @@ export const AttachmentsService = {
 
 export const AttachmentService = AttachmentsService;
 export const uploadAttachment = uploadLibraryAttachment;
+

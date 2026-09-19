@@ -27,6 +27,7 @@ import Panel from '../components/Panel';
 import BibtexModal from '../components/modals/BibtexModal';
 import Systembar from '../components/Systembar';
 import DocumentNavDrawer from '../components/viewer/DocumentNavDrawer';
+import type { AnnotationRect } from '../types/reader.types';
 
 const Viewer = dynamic(() => import('../components/viewer/Viewer'), {
   ssr: false,
@@ -241,6 +242,23 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     toast.success(`Extracted ${annotations.length} annotations to Note draft`, { id: 'reader-extract-notes' });
   };
 
+  // Zotero 7 behavior: If tool is not locked and is not 'select', revert back to 'select' after creating annotation
+  const handleAnnotateWithLock = useCallback(
+    async (
+      text: string,
+      pageNum?: number,
+      colorHex?: string,
+      rects?: AnnotationRect[],
+      type?: 'highlight' | 'underline' | 'note' | 'text' | 'rect' | 'area',
+    ) => {
+      await handleAnnotate(text, pageNum, colorHex, rects, type);
+      if (!isToolLocked && activeTool !== 'select') {
+        setActiveTool('select');
+      }
+    },
+    [handleAnnotate, isToolLocked, activeTool, setActiveTool]
+  );
+
   return (
     <div className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background ${isResizingPanel ? 'select-none' : ''}`}>
       {/* 0. ZOTERO 7 APPLICATION MENU BAR (File, Edit, View, Go) - Hidden in Reading Mode */}
@@ -356,17 +374,17 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden relative">
           {isLoadingPapers ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-2">
-              <Loader2 className="size-6 animate-spin text-muted-foreground" strokeWidth={1.5} />
-              <p className="text-12 text-muted-foreground font-mono">Loading document...</p>
+              <Loader2 className="size-6 animate-spin text-foreground" strokeWidth={1.5} />
+              <p className="text-12 text-foreground font-mono">Loading document...</p>
             </div>
           ) : !paper ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center max-w-sm mx-auto">
-              <div className="size-10 rounded-md bg-muted border border-border flex items-center justify-center text-muted-foreground">
-                <FileQuestion className="size-5" strokeWidth={1.5} />
+              <div className="size-10 rounded-md bg-background border border-border shadow-2xs flex items-center justify-center text-foreground">
+                <FileQuestion className="size-5 text-foreground" strokeWidth={1.5} />
               </div>
               <div className="space-y-1">
                 <h3 className="text-13 font-semibold text-foreground">Document not found</h3>
-                <p className="text-12 text-muted-foreground leading-relaxed">
+                <p className="text-12 text-foreground/80 leading-relaxed">
                   The document could not be found or you do not have permission.
                 </p>
               </div>
@@ -374,9 +392,9 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 variant="outline"
                 size="sm"
                 onClick={goBack}
-                className="h-8 px-3 mt-1 text-12 font-medium rounded-md shadow-none cursor-pointer border-border"
+                className="h-8 px-3 mt-1 text-12 font-medium rounded-md shadow-2xs cursor-pointer border border-border bg-background text-foreground hover:bg-muted"
               >
-                <ChevronLeft className="size-3.5 mr-1 shrink-0" strokeWidth={1.5} />
+                <ChevronLeft className="size-3.5 mr-1 shrink-0 text-foreground" strokeWidth={1.5} />
                 Return to Library
               </Button>
             </div>
@@ -389,7 +407,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 onRetry={handleRetryPdf}
                 onAskAi={handleAskAi}
                 onAddToNote={handleAddToNote}
-                onAnnotate={handleAnnotate}
+                onAnnotate={handleAnnotateWithLock}
                 annotations={annotations}
                 onDeleteAnnotation={(ann) => deleteAnnotation && deleteAnnotation(ann.id, ann.version)}
                 fulltext={fulltext}
@@ -423,7 +441,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                     onRetry={handleRetryPdf}
                     onAskAi={handleAskAi}
                     onAddToNote={handleAddToNote}
-                    onAnnotate={handleAnnotate}
+                    onAnnotate={handleAnnotateWithLock}
                     annotations={annotations}
                     onDeleteAnnotation={(ann) => deleteAnnotation && deleteAnnotation(ann.id, ann.version)}
                     fulltext={fulltext}
@@ -453,7 +471,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                     onRetry={handleRetryPdf}
                     onAskAi={handleAskAi}
                     onAddToNote={handleAddToNote}
-                    onAnnotate={handleAnnotate}
+                    onAnnotate={handleAnnotateWithLock}
                     annotations={annotations}
                     onDeleteAnnotation={(ann) => deleteAnnotation && deleteAnnotation(ann.id, ann.version)}
                     fulltext={fulltext}
@@ -477,14 +495,14 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
               <p className="text-13 font-medium text-foreground mb-1">
                 {paper.title || 'Paper Reference'}
               </p>
-              <p className="text-12 text-muted-foreground leading-relaxed mb-4">
+              <p className="text-12 text-foreground/80 leading-relaxed mb-4">
                 No PDF file attached to this entry. You can review metadata or notes using the side panel.
               </p>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsInspectorOpen(true)}
-                className="h-8 px-3 text-12 font-medium rounded-md shadow-none cursor-pointer border-border"
+                className="h-8 px-3 text-12 font-medium rounded-md shadow-2xs cursor-pointer border border-border bg-background text-foreground hover:bg-muted"
               >
                 Open Details
               </Button>

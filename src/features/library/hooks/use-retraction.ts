@@ -24,12 +24,14 @@ export function useRetraction(scopeId?: string) {
     queryKey: retractionKeys.stats(effectiveScope),
     queryFn: () => RetractionService.getStats(effectiveScope),
     enabled: true,
+    staleTime: 1000 * 60 * 60, // 1 hour — retraction status changes rarely
   });
 
   const itemsQuery = useQuery({
     queryKey: retractionKeys.items(effectiveScope),
     queryFn: () => RetractionService.getRetractedItems(effectiveScope),
     enabled: true,
+    staleTime: 1000 * 60 * 60, // 1 hour — retraction status changes rarely
   });
 
   const checkItemMutation = useMutation({

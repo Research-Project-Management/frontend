@@ -14,7 +14,7 @@ import {
   ChevronDown,
   Highlighter,
   Underline,
-  Strikethrough,
+  Eraser,
   StickyNote,
   Type,
   Scan,
@@ -180,8 +180,26 @@ export function ReaderToolbar({
     reset({ page: visiblePage });
   }, [visiblePage, reset]);
 
-  // Zotero-standard quick tool keyboard shortcuts (Alt+1..6 or single keys, Alt+Left for Back)
+  // Zotero 7 official keyboard shortcuts:
+  // S → Select (text pointer mode)
+  // H → Hand (pan mode)
+  // Alt+1 → Highlight | Alt+2 → Underline | Alt+3 → Note
+  // Alt+4 → Text | Alt+5 → Area | Alt+6 → Ink/Draw | Alt+7 → Eraser
+  // Alt+8 → Cycle to next annotation color
+  // 1-8 (no Alt, while NOT in an input) → Select color by index (Zotero: press digit while tool active)
+  // Alt+Left → Navigate back in document history
   useEffect(() => {
+    const ZOTERO_COLOR_ORDER = [
+      '#ffd400', // 1 Yellow
+      '#ff6666', // 2 Red
+      '#5fb236', // 3 Green
+      '#2ea8e5', // 4 Blue
+      '#a28ae5', // 5 Purple
+      '#e56eee', // 6 Magenta
+      '#f19837', // 7 Orange
+      '#aaaaaa', // 8 Gray
+    ];
+
     const handleToolShortcuts = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName?.toLowerCase();
@@ -189,7 +207,7 @@ export function ReaderToolbar({
         return;
       }
 
-      // Navigate Back: Alt+Left
+      // Navigate Back: Alt+Left (Zotero official)
       if (e.altKey && e.key === 'ArrowLeft') {
         e.preventDefault();
         onNavigateBack?.();
@@ -199,32 +217,64 @@ export function ReaderToolbar({
       if (e.ctrlKey || e.metaKey) return;
 
       const key = e.key.toLowerCase();
-      if (key === '1' || (e.altKey && key === '1') || key === 'h') {
+
+      // ── Interaction mode shortcuts (S = Select, H = Hand) ────────────────
+      // These are Zotero 7 official: S and H toggle cursor mode, NOT annotation tools
+      if (!e.altKey && key === 's') {
+        e.preventDefault();
+        onSelectInteractionMode?.('select');
+        return;
+      }
+      if (!e.altKey && key === 'h') {
+        e.preventDefault();
+        onSelectInteractionMode?.('hand');
+        return;
+      }
+
+      // ── Alt+N → Annotation tool shortcuts (Alt+1 through Alt+7) ─────────
+      if (e.altKey && key === '1') {
         e.preventDefault();
         onSelectTool?.('highlight');
-      } else if (key === '2' || (e.altKey && key === '2') || key === 'u') {
+      } else if (e.altKey && key === '2') {
         e.preventDefault();
         onSelectTool?.('underline');
-      } else if (key === 's' || (e.altKey && key === 's')) {
-        e.preventDefault();
-        onSelectTool?.('strike');
-      } else if (key === '3' || (e.altKey && key === '3') || key === 'n') {
+      } else if (e.altKey && key === '3') {
         e.preventDefault();
         onSelectTool?.('note');
-      } else if (key === '4' || (e.altKey && key === '4') || key === 't') {
+      } else if (e.altKey && key === '4') {
         e.preventDefault();
         onSelectTool?.('text');
-      } else if (key === '5' || (e.altKey && key === '5') || key === 'a') {
+      } else if (e.altKey && key === '5') {
         e.preventDefault();
         onSelectTool?.('area');
-      } else if (key === '6' || (e.altKey && key === '6') || key === 'd') {
+      } else if (e.altKey && key === '6') {
         e.preventDefault();
         onSelectTool?.('ink');
+      } else if (e.altKey && key === '7') {
+        e.preventDefault();
+        onSelectTool?.('eraser');
+      } else if (e.altKey && key === '8') {
+        // Alt+8 → Cycle to next annotation color (Zotero official)
+        e.preventDefault();
+        if (onSelectColor) {
+          const currentIdx = ZOTERO_COLOR_ORDER.indexOf(activeColor || '#ffd400');
+          const nextIdx = (currentIdx + 1) % ZOTERO_COLOR_ORDER.length;
+          onSelectColor(ZOTERO_COLOR_ORDER[nextIdx]);
+        }
+      } else if (!e.altKey && ['1','2','3','4','5','6','7','8'].includes(key)) {
+        // 1-8 (no modifier) → Select color by index when a tool is active
+        // Only active when cursor is in document view (not during input focus)
+        e.preventDefault();
+        const colorIdx = parseInt(key, 10) - 1;
+        if (colorIdx >= 0 && colorIdx < ZOTERO_COLOR_ORDER.length) {
+          onSelectColor?.(ZOTERO_COLOR_ORDER[colorIdx]);
+        }
       }
     };
     window.addEventListener('keydown', handleToolShortcuts);
     return () => window.removeEventListener('keydown', handleToolShortcuts);
-  }, [onSelectTool, onNavigateBack]);
+  }, [onSelectTool, onNavigateBack, onSelectInteractionMode, onSelectColor, activeColor]);
+
 
   const handlePageSubmit = (data: PageNavFormData) => {
     const p = data.page;
@@ -238,9 +288,11 @@ export function ReaderToolbar({
   return (
     <div className="h-9 shrink-0 border-b border-border bg-background px-2 flex items-center justify-between select-none z-20 text-xs overflow-x-auto min-w-0 thin-scrollbar gap-2">
       <TooltipProvider delayDuration={300}>
-        {/* ── CỤM 1 (START): Điều hướng tài liệu, Zoom, Reading Mode & Lịch sử ────── */}
+        {/* ── CỤM TRÁI: Sidebar toggle | Back | Page Navigation ─────────────────
+            Zotero 7 official left cluster order:
+            [◀ Sidebar] | [← Back] | [‹ Prev] [Page / Total] [Next ›]            */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Sidebar Toggle (Left Sidebar) */}
+          {/* Sidebar Toggle (Left Sidebar) — Ctrl+\ */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -250,7 +302,7 @@ export function ReaderToolbar({
                   "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
                   isSidebarOpen
                     ? "bg-muted text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    : "text-foreground hover:bg-muted"
                 )}
                 aria-label="Toggle navigation sidebar"
               >
@@ -262,45 +314,396 @@ export function ReaderToolbar({
             </TooltipContent>
           </Tooltip>
 
-          {/* Academic Entities Drawer Toggle (Figures, Tables, Math) */}
-          {onToggleEntitiesDrawer && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onToggleEntitiesDrawer}
-                  className={cn(
-                    "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
-                    isEntitiesDrawerOpen
-                      ? "bg-muted text-foreground font-medium"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  )}
-                  aria-label="Toggle academic entities drawer"
-                >
-                  <Layers className="size-4 shrink-0" strokeWidth={1.5} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-11">
-                {isEntitiesDrawerOpen ? "Close Entities" : "Entities (Figures/Tables/Math)"}
-              </TooltipContent>
-            </Tooltip>
+          {/* Navigate Back (Alt+Left) — Zotero history navigation */}
+          {onNavigateBack && (
+            <>
+              <div className="w-px h-3.5 bg-border mx-0.5" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onNavigateBack}
+                    disabled={!canNavigateBack}
+                    className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                    aria-label="Navigate back in document"
+                  >
+                    <Undo2 className="size-3.5 shrink-0" strokeWidth={1.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-11">Back (Alt+Left)</TooltipContent>
+              </Tooltip>
+            </>
           )}
 
-          <div className="w-px h-3.5 bg-border mx-1" />
+          <div className="w-px h-3.5 bg-border mx-0.5" />
 
+          {/* Previous Page — PageUp */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onNavigateToPage(Math.max(1, visiblePage - 1))}
+                disabled={visiblePage <= 1}
+                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                aria-label="Previous page"
+                data-reader-first-page={visiblePage <= 1 ? undefined : undefined}
+              >
+                <ChevronLeft className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-11">Previous page (PageUp)</TooltipContent>
+          </Tooltip>
+
+          {/* Page input / total [3] / 18 */}
+          <Form {...pageNavForm}>
+            <form onSubmit={handleSubmit(handlePageSubmit)} className="flex items-center gap-1 font-mono text-11">
+              <input
+                type="number"
+                min={1}
+                max={numPages || 1}
+                {...register('page', { valueAsNumber: true })}
+                onBlur={handleSubmit(handlePageSubmit)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    reset({ page: visiblePage });
+                    e.currentTarget.blur();
+                  }
+                }}
+                className="w-9 h-6 text-center text-11 font-mono rounded-md border border-border bg-card text-foreground shadow-2xs focus:outline-none focus:ring-1 focus:ring-primary tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                aria-label="Current page number"
+              />
+              <span className="text-foreground text-11 font-mono">/</span>
+              <span className="text-foreground min-w-[14px] text-11 font-mono tabular-nums">{numPages || 1}</span>
+            </form>
+          </Form>
+
+          {/* Next Page — PageDown */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onNavigateToPage(Math.min(numPages || 1, visiblePage + 1))}
+                disabled={visiblePage >= (numPages || 1)}
+                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                aria-label="Next page"
+              >
+                <ChevronRight className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-11">Next page (PageDown)</TooltipContent>
+          </Tooltip>
+        </div>
+
+
+        {/* ── CỤM GIỮA: Chú thích & Bảng màu nhanh (Annotation & Color) ────────── */}
+        <div className="flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded-md border border-border shrink-0">
+          {/* Mode toggle: Select (S) vs Hand (H) — Zotero 7 official shortcuts */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onSelectInteractionMode?.('select')}
+                className={cn(
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  interactionMode === 'select'
+                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    : "text-foreground hover:bg-muted"
+                )}
+                aria-label="Text selection mode"
+              >
+                <MousePointer className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-11">Select (S)</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onSelectInteractionMode?.('hand')}
+                className={cn(
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  interactionMode === 'hand'
+                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    : "text-foreground hover:bg-muted"
+                )}
+                aria-label="Hand / Pan mode"
+              >
+                <Hand className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-11">Hand (H)</TooltipContent>
+          </Tooltip>
+
+          <div className="w-px h-3.5 bg-border mx-0.5" />
+
+          {/* 1. Highlight Text (Alt+1) */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onSelectTool?.('highlight')}
+                className={cn(
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative",
+                  activeTool === 'highlight'
+                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    : "text-foreground hover:bg-muted"
+                )}
+                aria-label="Highlight text"
+              >
+                <Highlighter className="size-3.5 shrink-0" strokeWidth={1.5} />
+                <span
+                  className="absolute bottom-1 w-3 h-0.5 rounded-full"
+                  style={{ backgroundColor: activeColor }}
+                />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-11">Highlight (Alt+1)</TooltipContent>
+          </Tooltip>
+
+          {/* 2. Underline Text (Alt+2) */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onSelectTool?.('underline')}
+                className={cn(
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  activeTool === 'underline'
+                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    : "text-foreground hover:bg-muted"
+                )}
+                aria-label="Underline text"
+              >
+                <Underline className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-11">Underline (Alt+2)</TooltipContent>
+          </Tooltip>
+
+          {/* 3. Sticky Note (Alt+3) */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onSelectTool?.('note')}
+                className={cn(
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  activeTool === 'note'
+                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    : "text-foreground hover:bg-muted"
+                )}
+                aria-label="Add note"
+              >
+                <StickyNote className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-11">Add Note (Alt+3)</TooltipContent>
+          </Tooltip>
+
+          {/* 4. Text Tool (Alt+4) */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onSelectTool?.('text')}
+                className={cn(
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  activeTool === 'text'
+                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    : "text-foreground hover:bg-muted"
+                )}
+                aria-label="Add text"
+              >
+                <Type className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-11">Add Text (Alt+4)</TooltipContent>
+          </Tooltip>
+
+          {/* 5. Area Selection / Image (Alt+5) */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onSelectTool?.('area')}
+                className={cn(
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  activeTool === 'area'
+                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    : "text-foreground hover:bg-muted"
+                )}
+                aria-label="Select area / image"
+              >
+                <Scan className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-11">Select Area / Image (Alt+5)</TooltipContent>
+          </Tooltip>
+
+          {/* 6. Ink / Draw (Alt+6) */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onSelectTool?.('ink')}
+                className={cn(
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  activeTool === 'ink'
+                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    : "text-foreground hover:bg-muted"
+                )}
+                aria-label="Draw ink"
+              >
+                <PenTool className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-11">Draw (Alt+6)</TooltipContent>
+          </Tooltip>
+
+          <div className="w-px h-3.5 bg-border mx-0.5" />
+
+          {/* 7. Eraser (Alt+7) — Zotero 7 official: erase ink strokes */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onSelectTool?.('eraser')}
+                className={cn(
+                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
+                  activeTool === 'eraser'
+                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    : "text-foreground hover:bg-muted"
+                )}
+                aria-label="Eraser"
+              >
+                <Eraser className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-11">Eraser (Alt+7)</TooltipContent>
+          </Tooltip>
+
+          <div className="w-px h-3.5 bg-border mx-0.5" />
+
+          {/* 8. Quick Color Palette (Top 5 visible + Dropdown for remaining) */}
+          <div className="flex items-center gap-1 pl-0.5">
+            {ZOTERO_COLORS.slice(0, 5).map((c) => {
+              const isSelected = activeColor === c.hex;
+              return (
+                <Tooltip key={c.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => onSelectColor?.(c.hex)}
+                      className={cn(
+                        "size-4 rounded-full border border-border hover:scale-125 transition-all cursor-pointer",
+                        isSelected && "ring-2 ring-primary ring-offset-1 scale-110"
+                      )}
+                      style={{ backgroundColor: c.hex }}
+                      aria-label={`Color ${c.label}`}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-11">{c.label}</TooltipContent>
+                </Tooltip>
+              );
+            })}
+
+            {/* Dropdown for all 8 colors */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="size-4.5 flex items-center justify-center rounded hover:bg-muted text-foreground transition-colors cursor-pointer ml-0.5"
+                  aria-label="More colors"
+                >
+                  <ChevronDown className="size-3" strokeWidth={1.5} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="p-1.5 flex items-center gap-1 min-w-0 bg-popover border border-border shadow-2xs rounded-md">
+                {ZOTERO_COLORS.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => onSelectColor?.(c.hex)}
+                    title={c.label}
+                    className={cn(
+                      "size-4 rounded-full border border-border hover:scale-125 transition-transform cursor-pointer",
+                      activeColor === c.hex && "ring-2 ring-primary ring-offset-1"
+                    )}
+                    style={{ backgroundColor: c.hex }}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Lock Tool Mode (Zotero: Keep tool selected after use) */}
+            {onToggleToolLocked && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onToggleToolLocked}
+                    className={cn(
+                      "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ml-0.5",
+                      isToolLocked
+                        ? "bg-primary/10 text-primary border border-primary/20 font-medium"
+                        : "text-foreground hover:bg-muted"
+                    )}
+                    aria-label={isToolLocked ? "Unlock tool" : "Lock tool"}
+                  >
+                    {isToolLocked ? (
+                      <Lock className="size-3.5 shrink-0" strokeWidth={1.5} />
+                    ) : (
+                      <Unlock className="size-3.5 shrink-0" strokeWidth={1.5} />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-11">
+                  {isToolLocked ? "Tool Locked (Tool stays active after use)" : "Lock Tool (Stay active)"}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+
+          {/* 8. Zotero-style 1-click Extract Annotations to Note */}
+          {onExtractToNote && (
+            <>
+              <div className="w-px h-3.5 bg-border mx-0.5" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onExtractToNote}
+                    className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
+                    aria-label="Add note from annotations"
+                  >
+                    <FileText className="size-3.5 shrink-0" strokeWidth={1.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-11">
+                  Add Note from Annotations
+                </TooltipContent>
+              </Tooltip>
+            </>
+          )}
+        </div>
+
+        {/* ── CỤM PHẢI: Zoom | Presentation Mode | Appearance & Rotate & Split | Find & Context Pane ──── */}
+        <div className="flex items-center gap-1 shrink-0">
           {/* Zoom Out */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 type="button"
                 onClick={onZoomOut}
-                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
                 aria-label="Zoom out"
               >
                 <ZoomOut className="size-3.5 shrink-0" strokeWidth={1.5} />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">Zoom Out</TooltipContent>
+            <TooltipContent side="bottom" className="text-11">Zoom Out (Ctrl+-)</TooltipContent>
           </Tooltip>
 
           {/* Zoom Preset Dropdown */}
@@ -308,14 +711,14 @@ export function ReaderToolbar({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="h-6 px-1.5 flex items-center gap-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground font-mono text-11 transition-colors cursor-pointer tabular-nums"
+                className="h-6 px-1.5 flex items-center gap-1 rounded-md hover:bg-muted text-foreground font-mono text-11 transition-colors cursor-pointer tabular-nums"
                 aria-label="Zoom percentage"
               >
                 <span>{Math.round(zoom * 100)}%</span>
                 <ChevronDown className="size-2.5 opacity-60 shrink-0" strokeWidth={1.5} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-28 text-xs p-1 bg-popover border border-border shadow-none rounded-md">
+            <DropdownMenuContent align="center" className="w-28 text-xs p-1 bg-popover border border-border shadow-2xs rounded-md">
               {ZOOM_PRESETS.map((preset) => (
                 <DropdownMenuItem
                   key={preset.label}
@@ -346,13 +749,13 @@ export function ReaderToolbar({
               <button
                 type="button"
                 onClick={onZoomIn}
-                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
                 aria-label="Zoom in"
               >
                 <ZoomIn className="size-3.5 shrink-0" strokeWidth={1.5} />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">Zoom In</TooltipContent>
+            <TooltipContent side="bottom" className="text-11">Zoom In (Ctrl++)</TooltipContent>
           </Tooltip>
 
           {/* Fit to Width */}
@@ -365,7 +768,7 @@ export function ReaderToolbar({
                     onSelectFitMode?.('fit-width');
                     onFitWidth();
                   }}
-                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
                   aria-label="Fit to width"
                 >
                   <Maximize2 className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -383,7 +786,7 @@ export function ReaderToolbar({
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="h-6 px-1.5 flex items-center gap-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground text-11 transition-colors cursor-pointer"
+                      className="h-6 px-1.5 flex items-center gap-1 rounded-md hover:bg-muted text-foreground text-11 transition-colors cursor-pointer"
                       aria-label="Page presentation mode"
                     >
                       <span className="capitalize text-11 font-sans">
@@ -395,7 +798,7 @@ export function ReaderToolbar({
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-11">Page Presentation</TooltipContent>
               </Tooltip>
-              <DropdownMenuContent align="center" className="w-44 text-xs p-1 bg-popover border border-border shadow-none rounded-md">
+              <DropdownMenuContent align="center" className="w-44 text-xs p-1 bg-popover border border-border shadow-2xs rounded-md">
                 <DropdownMenuItem
                   onClick={() => onSelectViewMode?.('continuous')}
                   className="cursor-pointer text-11 flex items-center justify-between"
@@ -439,402 +842,8 @@ export function ReaderToolbar({
             </DropdownMenu>
           )}
 
-          {/* Zotero Reading Mode Toggle */}
-          {onToggleReadingMode && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onToggleReadingMode}
-                  className={cn(
-                    "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
-                    isReadingMode
-                      ? "bg-primary text-primary-foreground font-medium"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  )}
-                  aria-label="Toggle Reading Mode"
-                >
-                  <BookOpen className="size-3.5 shrink-0" strokeWidth={1.5} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-11">
-                {isReadingMode ? "Exit Reading Mode" : "Reading Mode (Clean Text View)"}
-              </TooltipContent>
-            </Tooltip>
-          )}
-
-          <div className="w-px h-3.5 bg-border mx-1" />
-
-          {/* Zotero Navigate Back button (History stack) */}
-          {onNavigateBack && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onNavigateBack}
-                  disabled={!canNavigateBack}
-                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-                  aria-label="Navigate back in document"
-                >
-                  <Undo2 className="size-3.5 shrink-0" strokeWidth={1.5} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-11">Back (Alt+Left)</TooltipContent>
-            </Tooltip>
-          )}
-
-          <div className="w-px h-3.5 bg-border mx-1" />
-
-          {/* Previous Page ‹ */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => onNavigateToPage(Math.max(1, visiblePage - 1))}
-                disabled={visiblePage <= 1}
-                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-                aria-label="Previous page"
-              >
-                <ChevronLeft className="size-3.5 shrink-0" strokeWidth={1.5} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">Previous page</TooltipContent>
-          </Tooltip>
-
-          {/* Page input / total [ 3 ] / 18 */}
-          <Form {...pageNavForm}>
-            <form onSubmit={handleSubmit(handlePageSubmit)} className="flex items-center gap-1 font-mono text-11">
-              <input
-                type="number"
-                min={1}
-                max={numPages || 1}
-                {...register('page', { valueAsNumber: true })}
-                onBlur={handleSubmit(handlePageSubmit)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    reset({ page: visiblePage });
-                    e.currentTarget.blur();
-                  }
-                }}
-                className="w-9 h-6 text-center text-11 font-mono rounded-md border border-border bg-card text-foreground focus:outline-none focus:ring-1 focus:ring-primary tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                aria-label="Current page number"
-              />
-              <span className="text-muted-foreground text-11">/</span>
-              <span className="text-muted-foreground min-w-[14px] text-11 tabular-nums">{numPages || 1}</span>
-            </form>
-          </Form>
-
-          {/* Next Page › */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => onNavigateToPage(Math.min(numPages || 1, visiblePage + 1))}
-                disabled={visiblePage >= (numPages || 1)}
-                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-                aria-label="Next page"
-              >
-                <ChevronRight className="size-3.5 shrink-0" strokeWidth={1.5} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">Next page</TooltipContent>
-          </Tooltip>
-        </div>
-
-        {/* ── CỤM GIỮA: Chú thích & Bảng màu nhanh (Annotation & Color) ────────── */}
-        <div className="flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded-md border border-border shrink-0">
-          {/* Mode toggle: Pointer vs Hand */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => onSelectInteractionMode?.('select')}
-                className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
-                  interactionMode === 'select'
-                    ? "bg-background text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-                aria-label="Text selection mode"
-              >
-                <MousePointer className="size-3.5 shrink-0" strokeWidth={1.5} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">Select Text</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => onSelectInteractionMode?.('hand')}
-                className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
-                  interactionMode === 'hand'
-                    ? "bg-background text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-                aria-label="Hand / Pan mode"
-              >
-                <Hand className="size-3.5 shrink-0" strokeWidth={1.5} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">Hand Tool (Pan)</TooltipContent>
-          </Tooltip>
-
           <div className="w-px h-3.5 bg-border mx-0.5" />
 
-          {/* 1. Highlight Text */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => onSelectTool?.('highlight')}
-                className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative",
-                  activeTool === 'highlight'
-                    ? "bg-background text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-                aria-label="Highlight text"
-              >
-                <Highlighter className="size-3.5 shrink-0" strokeWidth={1.5} />
-                <span
-                  className="absolute bottom-1 w-3 h-0.5 rounded-full"
-                  style={{ backgroundColor: activeColor }}
-                />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">Highlight (H)</TooltipContent>
-          </Tooltip>
-
-          {/* 2. Underline Text */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => onSelectTool?.('underline')}
-                className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
-                  activeTool === 'underline'
-                    ? "bg-background text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-                aria-label="Underline text"
-              >
-                <Underline className="size-3.5 shrink-0" strokeWidth={1.5} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">Underline (U)</TooltipContent>
-          </Tooltip>
-
-          {/* 2.1 Strikethrough Text */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => onSelectTool?.('strike')}
-                className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
-                  activeTool === 'strike'
-                    ? "bg-background text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-                aria-label="Strikethrough text"
-              >
-                <Strikethrough className="size-3.5 shrink-0" strokeWidth={1.5} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">Strikethrough (S)</TooltipContent>
-          </Tooltip>
-
-          {/* 3. Sticky Note */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => onSelectTool?.('note')}
-                className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
-                  activeTool === 'note'
-                    ? "bg-background text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-                aria-label="Add sticky note"
-              >
-                <StickyNote className="size-3.5 shrink-0" strokeWidth={1.5} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">Add Note (N)</TooltipContent>
-          </Tooltip>
-
-          {/* 4. Text Tool */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => onSelectTool?.('text')}
-                className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
-                  activeTool === 'text'
-                    ? "bg-background text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-                aria-label="Add text"
-              >
-                <Type className="size-3.5 shrink-0" strokeWidth={1.5} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">Add Text (T)</TooltipContent>
-          </Tooltip>
-
-          {/* 5. Area Selection (Figures & Equations) */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => onSelectTool?.('area')}
-                className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
-                  activeTool === 'area'
-                    ? "bg-background text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-                aria-label="Select area to capture equation or figure"
-              >
-                <Scan className="size-3.5 shrink-0" strokeWidth={1.5} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">Select Area / Figure (A)</TooltipContent>
-          </Tooltip>
-
-          {/* 6. Ink / Draw */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => onSelectTool?.('ink')}
-                className={cn(
-                  "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
-                  activeTool === 'ink'
-                    ? "bg-background text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-                aria-label="Draw ink"
-              >
-                <PenTool className="size-3.5 shrink-0" strokeWidth={1.5} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">Draw Ink</TooltipContent>
-          </Tooltip>
-
-          <div className="w-px h-3.5 bg-border mx-0.5" />
-
-          {/* 7. Quick Color Palette (Top 5 visible + Dropdown for remaining) */}
-          <div className="flex items-center gap-1 pl-0.5">
-            {ZOTERO_COLORS.slice(0, 5).map((c) => {
-              const isSelected = activeColor === c.hex;
-              return (
-                <Tooltip key={c.id}>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => onSelectColor?.(c.hex)}
-                      className={cn(
-                        "size-4 rounded-full border border-border hover:scale-125 transition-all cursor-pointer",
-                        isSelected && "ring-2 ring-primary ring-offset-1 scale-110"
-                      )}
-                      style={{ backgroundColor: c.hex }}
-                      aria-label={`Color ${c.label}`}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-11">{c.label}</TooltipContent>
-                </Tooltip>
-              );
-            })}
-
-            {/* Dropdown for all 8 colors */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="size-4.5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer ml-0.5"
-                  aria-label="More colors"
-                >
-                  <ChevronDown className="size-3" strokeWidth={1.5} />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="p-1.5 flex items-center gap-1 min-w-0 bg-popover border border-border shadow-none rounded-md">
-                {ZOTERO_COLORS.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => onSelectColor?.(c.hex)}
-                    title={c.label}
-                    className={cn(
-                      "size-4 rounded-full border border-border hover:scale-125 transition-transform cursor-pointer",
-                      activeColor === c.hex && "ring-2 ring-primary ring-offset-1"
-                    )}
-                    style={{ backgroundColor: c.hex }}
-                  />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Lock Tool Mode (Zotero: Keep tool selected after use) */}
-            {onToggleToolLocked && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={onToggleToolLocked}
-                    className={cn(
-                      "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ml-0.5",
-                      isToolLocked
-                        ? "bg-primary/10 text-primary border border-primary/20 font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                    )}
-                    aria-label={isToolLocked ? "Unlock tool" : "Lock tool"}
-                  >
-                    {isToolLocked ? (
-                      <Lock className="size-3.5 shrink-0" strokeWidth={1.5} />
-                    ) : (
-                      <Unlock className="size-3.5 shrink-0" strokeWidth={1.5} />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-11">
-                  {isToolLocked ? "Tool Locked (Tool stays active after use)" : "Lock Tool (Stay active)"}
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-
-          {/* 8. Zotero-style 1-click Extract Annotations to Note */}
-          {onExtractToNote && (
-            <>
-              <div className="w-px h-3.5 bg-border mx-0.5" />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={onExtractToNote}
-                    className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                    aria-label="Add note from annotations"
-                  >
-                    <FileText className="size-3.5 shrink-0" strokeWidth={1.5} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-11">
-                  Add Note from Annotations
-                </TooltipContent>
-              </Tooltip>
-            </>
-          )}
-        </div>
-
-        {/* ── CỤM PHẢI: END (Appearance, Rotate, Split View, Find & Context Pane) ──────────── */}
-        <div className="flex items-center gap-1 shrink-0">
           {/* Rotate Clockwise 90° */}
           {onRotate && (
             <Tooltip>
@@ -842,7 +851,7 @@ export function ReaderToolbar({
                 <button
                   type="button"
                   onClick={onRotate}
-                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
                   aria-label="Rotate clockwise"
                 >
                   <RotateCw className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -862,7 +871,7 @@ export function ReaderToolbar({
                   type="button"
                   onClick={onToggleThemeMode}
                   className={cn(
-                    "size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer",
+                    "size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer",
                     themeMode !== 'normal' && "text-primary font-medium"
                   )}
                   aria-label="Toggle reading appearance theme"
@@ -891,7 +900,7 @@ export function ReaderToolbar({
                     <button
                       type="button"
                       className={cn(
-                        "size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer",
+                        "size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer",
                         splitMode && splitMode !== 'none' && "bg-muted text-primary font-medium"
                       )}
                       aria-label="Split view"
@@ -910,7 +919,7 @@ export function ReaderToolbar({
                   Split View ({splitMode === 'vertical' ? 'Vertical' : splitMode === 'horizontal' ? 'Horizontal' : 'Single'})
                 </TooltipContent>
               </Tooltip>
-              <DropdownMenuContent align="end" className="w-36 text-xs p-1 bg-popover border border-border shadow-none rounded-md">
+              <DropdownMenuContent align="end" className="w-36 text-xs p-1 bg-popover border border-border shadow-2xs rounded-md">
                 <DropdownMenuItem
                   onClick={() => onSelectSplitMode('none')}
                   className="cursor-pointer text-11 flex items-center justify-between"
@@ -942,6 +951,8 @@ export function ReaderToolbar({
             </DropdownMenu>
           )}
 
+          <div className="w-px h-3.5 bg-border mx-0.5" />
+
           {/* Search in Document 🔍 */}
           {onToggleSearch && (
             <Tooltip>
@@ -949,7 +960,7 @@ export function ReaderToolbar({
                 <button
                   type="button"
                   onClick={onToggleSearch}
-                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
                   aria-label="Find in document"
                 >
                   <Search className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -959,9 +970,9 @@ export function ReaderToolbar({
             </Tooltip>
           )}
 
-          <div className="w-px h-3.5 bg-border mx-1" />
+          <div className="w-px h-3.5 bg-border mx-0.5" />
 
-          {/* Inspector Panel Toggle [ |] */}
+          {/* Context Pane / Inspector Toggle [ |] — Zotero 7 naming */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -971,15 +982,15 @@ export function ReaderToolbar({
                   "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
                   isInspectorOpen
                     ? "bg-muted text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    : "text-foreground hover:bg-muted"
                 )}
-                aria-label="Toggle inspector panel"
+                aria-label="Toggle context pane"
               >
                 <PanelRight className="size-4 shrink-0" strokeWidth={1.5} />
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-11">
-              {isInspectorOpen ? "Close panel (Ctrl+/)" : "Open panel (Ctrl+/)"}
+              {isInspectorOpen ? "Close context pane (Ctrl+/)" : "Open context pane (Ctrl+/)"}
             </TooltipContent>
           </Tooltip>
         </div>

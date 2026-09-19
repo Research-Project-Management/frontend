@@ -23,9 +23,12 @@ export const attachmentTypeSchema = z.enum([
 
 export const attachmentExtractionStatusSchema = z.enum([
   'PENDING',
-  'EXTRACTING',
+  'PROCESSING',
+  'READY',
   'COMPLETED',
   'FAILED',
+  'FAILED_RETRYABLE',
+  'FAILED_FINAL',
 ]);
 
 export const attachmentSchema = z.object({

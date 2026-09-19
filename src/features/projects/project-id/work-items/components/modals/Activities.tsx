@@ -265,8 +265,8 @@ export function Activities({
       {/* Header */}
       <div className="flex items-center justify-between pb-2 border-b border-border">
         <div className="flex items-center gap-1.5">
-          <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" />
-          <h3 className="text-11 font-semibold tracking-normal text-muted-foreground">
+          <MessageSquare className="size-3.5 shrink-0 text-foreground" />
+          <h3 className="text-11 font-semibold tracking-normal text-foreground">
             Comments & Activity
           </h3>
         </div>
@@ -274,7 +274,7 @@ export function Activities({
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 px-1.5 text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer shadow-none rounded-md"
+          className="h-6 px-1.5 text-11 font-medium text-foreground hover:bg-muted cursor-pointer shadow-none rounded-md"
           onClick={() => setShowDetailActivity((prev) => !prev)}
         >
           {showDetailActivity ? "Hide details" : "Show details"}
@@ -328,7 +328,7 @@ export function Activities({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground rounded-md shadow-none"
+              className="h-7 px-2 text-xs text-foreground hover:bg-muted rounded-md shadow-none"
               onClick={handleCancelComment}
               disabled={isSavingComment}
             >
@@ -405,7 +405,7 @@ export function Activities({
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground rounded-md shadow-none"
+                                className="h-6 px-2 text-xs text-foreground hover:bg-muted rounded-md shadow-none"
                                 onClick={handleCancelEditComment}
                                 disabled={isSubmittingEdit}
                               >
@@ -431,7 +431,7 @@ export function Activities({
                               {renderCommentContent(item.content, attachmentLinks)}
                             </div>
                             {item.reactionEmoji ? (
-                              <div className="inline-flex items-center rounded-full border border-border bg-background px-1.5 py-0.5 text-11 shadow-xs">
+                              <div className="inline-flex items-center rounded-md border border-border bg-background px-1.5 py-0.5 text-11 shadow-xs">
                                 {item.reactionEmoji}
                               </div>
                             ) : null}
@@ -441,7 +441,7 @@ export function Activities({
                                 type="button"
                                 disabled={isReadOnly}
                                 className={cn(
-                                  "inline-flex size-5 items-center justify-center rounded-full text-muted-foreground transition-colors focus:outline-none",
+                                  "inline-flex size-5 items-center justify-center rounded-md text-foreground transition-colors focus:outline-none",
                                   isReadOnly ? "cursor-not-allowed opacity-30" : "hover:bg-muted hover:text-foreground cursor-pointer"
                                 )}
                                 aria-label="Open reaction picker"
@@ -452,26 +452,22 @@ export function Activities({
                                   )
                                 }
                               >
-                                <SmilePlus className="size-3 shrink-0" />
+                                <SmilePlus className="size-3" />
                               </button>
-                              {item.permissions?.canEdit && !isReadOnly ? (
+
+                              {!isReadOnly && (item.permissions?.canEdit ?? true) ? (
                                 <>
-                                  <span className="text-muted-foreground">•</span>
                                   <button
                                     type="button"
-                                    className="rounded px-1 py-0.5 hover:underline cursor-pointer"
+                                    className="hover:text-foreground cursor-pointer transition-colors"
                                     onClick={() => handleStartEditComment(item.id, item.content)}
                                   >
                                     Edit
                                   </button>
-                                </>
-                              ) : null}
-                              {item.permissions?.canDelete && !isReadOnly ? (
-                                <>
-                                  <span className="text-muted-foreground">•</span>
+                                  <span>·</span>
                                   <button
                                     type="button"
-                                    className="rounded px-1 py-0.5 text-destructive hover:underline cursor-pointer"
+                                    className="hover:text-destructive cursor-pointer transition-colors"
                                     onClick={() => setDeleteCommentId(item.id)}
                                   >
                                     Delete
@@ -480,12 +476,12 @@ export function Activities({
                               ) : null}
 
                               {reactionPickerCommentId === item.id ? (
-                                <div className="absolute bottom-full left-0 z-20 mb-1 rounded-full border border-border bg-popover text-popover-foreground px-1.5 py-0.5 flex items-center gap-0.5">
+                                <div className="absolute bottom-full left-0 z-20 mb-1 rounded-md border border-border bg-popover text-popover-foreground px-1.5 py-0.5 flex items-center gap-0.5 shadow-md">
                                   {reactionOptions.map((emoji) => (
                                     <button
                                       key={emoji}
                                       type="button"
-                                      className="flex size-7 items-center justify-center rounded-full text-base transition-transform hover:scale-115 hover:bg-muted active:scale-95 cursor-pointer"
+                                      className="flex size-7 items-center justify-center rounded-md text-base transition-transform hover:scale-115 hover:bg-muted active:scale-95 cursor-pointer"
                                       onClick={() => handlePickReaction(item.id, emoji)}
                                       aria-label={`Pick reaction ${emoji}`}
                                     >
@@ -531,7 +527,7 @@ export function Activities({
           if (!open) setDeleteCommentId(null);
         }}
       >
-        <DialogContent className="max-w-xs rounded-lg border border-border p-4 " showCloseButton={false}>
+        <DialogContent className="max-w-xs rounded-md border border-border p-4" showCloseButton={false}>
           <DialogHeader className="space-y-1 text-left">
             <DialogTitle className="text-sm font-semibold text-foreground">
               Delete comment?
@@ -546,7 +542,7 @@ export function Activities({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 text-xs px-2.5 text-muted-foreground hover:bg-muted rounded-md shadow-none"
+              className="h-7 text-xs px-2.5 text-foreground hover:bg-muted rounded-md shadow-none cursor-pointer"
               onClick={() => setDeleteCommentId(null)}
             >
               Cancel

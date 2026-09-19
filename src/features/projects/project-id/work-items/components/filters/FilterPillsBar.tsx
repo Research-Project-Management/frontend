@@ -162,12 +162,12 @@ export function FilterPillsBar({
         {/* 1. Search Query Pill */}
         {activeSearch && (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 h-7 rounded-md bg-background border border-border text-12 text-foreground shadow-2xs shrink-0 select-none">
-            <TextLinesIcon className="size-3 text-muted-foreground shrink-0" />
+            <TextLinesIcon className="size-3 text-foreground shrink-0" />
             <span className="truncate max-w-44 font-medium">&quot;{activeSearch}&quot;</span>
             <button
               type="button"
               onClick={() => onRemoveFilter?.('search')}
-              className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+              className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
               aria-label="Remove search filter"
             >
               <X className="size-3 shrink-0" />
@@ -199,7 +199,7 @@ export function FilterPillsBar({
                   if (onRemoveFilter) onRemoveFilter('state', colId);
                   else onRemoveColumn?.(colId);
                 }}
-                className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove ${title} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -227,7 +227,7 @@ export function FilterPillsBar({
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('state_group', group)}
-                className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove ${label} group filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -260,7 +260,7 @@ export function FilterPillsBar({
                   if (onRemoveFilter) onRemoveFilter('priority', priority);
                   else onRemovePriority?.(priority);
                 }}
-                className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove priority ${priority} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -281,7 +281,7 @@ export function FilterPillsBar({
               className="inline-flex items-center gap-1.5 px-2 py-0.5 h-7 rounded-md bg-background border border-border text-12 text-foreground shadow-2xs shrink-0 select-none"
             >
               {isUnassigned ? (
-                <User className="size-3.5 text-muted-foreground shrink-0" />
+                <User className="size-3.5 text-foreground shrink-0" />
               ) : user?.avatar ? (
                 <Avatar className="size-3.5 shrink-0">
                   <AvatarImage src={user.avatar} />
@@ -301,7 +301,7 @@ export function FilterPillsBar({
                   if (onRemoveFilter) onRemoveFilter('assignees', userId);
                   else onRemoveAssignee?.(userId);
                 }}
-                className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove ${name} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -319,12 +319,12 @@ export function FilterPillsBar({
               key={`mention-${m}`}
               className="inline-flex items-center gap-1.5 px-2 py-0.5 h-7 rounded-md bg-background border border-border text-12 text-foreground shadow-2xs shrink-0 select-none"
             >
-              <AtSign className="size-3 text-muted-foreground shrink-0" />
+              <AtSign className="size-3 text-foreground shrink-0" />
               <span className="truncate max-w-40 font-medium">{name}</span>
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('mentions', m)}
-                className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove mention ${name} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -342,12 +342,12 @@ export function FilterPillsBar({
               key={`created-by-${cId}`}
               className="inline-flex items-center gap-1.5 px-2 py-0.5 h-7 rounded-md bg-background border border-border text-12 text-foreground shadow-2xs shrink-0 select-none"
             >
-              <UserCircle className="size-3.5 text-muted-foreground shrink-0" />
+              <UserCircle className="size-3.5 text-foreground shrink-0" />
               <span className="truncate max-w-40 font-medium">{name}</span>
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('created_by', cId)}
-                className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove creator ${name} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -373,13 +373,13 @@ export function FilterPillsBar({
                   style={{ backgroundColor: color }}
                 />
               ) : (
-                <Tag className="size-3 text-muted-foreground shrink-0" />
+                <Tag className="size-3 text-foreground shrink-0" />
               )}
               <span className="truncate max-w-40 font-medium">{displayName}</span>
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('labels', lbl)}
-                className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove label ${displayName} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -398,12 +398,12 @@ export function FilterPillsBar({
               key={`cycle-${cId}`}
               className="inline-flex items-center gap-1.5 px-2 py-0.5 h-7 rounded-md bg-background border border-border text-12 text-foreground shadow-2xs shrink-0 select-none"
             >
-              <CycleContrastIcon className="size-3 text-primary shrink-0" />
+              <CycleContrastIcon className="size-3 text-foreground shrink-0" />
               <span className="truncate max-w-44 font-medium">{name}</span>
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('cycle', cId)}
-                className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove ${name} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -414,19 +414,19 @@ export function FilterPillsBar({
 
         {/* 10. Attach Pills (Academic Research Attachments) */}
         {activeAttach.map((att) => {
-          let AttachIcon = <Paperclip className="size-3 text-muted-foreground shrink-0" />;
+          let AttachIcon = <Paperclip className="size-3 text-foreground shrink-0" />;
           let label = 'Has attach';
           if (att === 'pages') {
-            AttachIcon = <FileText className="size-3 text-muted-foreground shrink-0" />;
+            AttachIcon = <FileText className="size-3 text-foreground shrink-0" />;
             label = 'Pages';
           } else if (att === 'papers') {
-            AttachIcon = <BookOpen className="size-3 text-muted-foreground shrink-0" />;
+            AttachIcon = <BookOpen className="size-3 text-foreground shrink-0" />;
             label = 'Papers';
           } else if (att === 'files') {
-            AttachIcon = <Paperclip className="size-3 text-muted-foreground shrink-0" />;
+            AttachIcon = <Paperclip className="size-3 text-foreground shrink-0" />;
             label = 'Files';
           } else if (att === 'links') {
-            AttachIcon = <Link2 className="size-3 text-muted-foreground shrink-0" />;
+            AttachIcon = <Link2 className="size-3 text-foreground shrink-0" />;
             label = 'Links';
           }
           return (
@@ -439,7 +439,7 @@ export function FilterPillsBar({
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('attach', att)}
-                className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove ${label} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -465,7 +465,7 @@ export function FilterPillsBar({
                   onRemoveFilter?.('items', tId);
                   onRemoveFilter?.('work_items', tId);
                 }}
-                className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove ${label} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -489,7 +489,7 @@ export function FilterPillsBar({
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('parent', pId)}
-                className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove ${label} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -506,7 +506,7 @@ export function FilterPillsBar({
               key={`due-${d}`}
               className="inline-flex items-center gap-1.5 px-2 py-0.5 h-7 rounded-md bg-background border border-border text-12 text-foreground shadow-2xs shrink-0 select-none"
             >
-              <Calendar className="size-3 text-muted-foreground shrink-0" />
+              <Calendar className="size-3 text-foreground shrink-0" />
               <span className="truncate max-w-40 font-medium">{label}</span>
               <button
                 type="button"
@@ -514,7 +514,7 @@ export function FilterPillsBar({
                   if (onRemoveFilter) onRemoveFilter('due_date', d);
                   else onRemoveDueDate?.();
                 }}
-                className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove due date ${label} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -531,12 +531,12 @@ export function FilterPillsBar({
               key={`start-${s}`}
               className="inline-flex items-center gap-1.5 px-2 py-0.5 h-7 rounded-md bg-background border border-border text-12 text-foreground shadow-2xs shrink-0 select-none"
             >
-              <CalendarClock className="size-3 text-muted-foreground shrink-0" />
+              <CalendarClock className="size-3 text-foreground shrink-0" />
               <span className="truncate max-w-40 font-medium">{label}</span>
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('start_date', s)}
-                className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove start date ${label} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -553,12 +553,12 @@ export function FilterPillsBar({
               key={`created-${c}`}
               className="inline-flex items-center gap-1.5 px-2 py-0.5 h-7 rounded-md bg-background border border-border text-12 text-foreground shadow-2xs shrink-0 select-none"
             >
-              <Calendar className="size-3 text-muted-foreground shrink-0" />
+              <Calendar className="size-3 text-foreground shrink-0" />
               <span className="truncate max-w-40 font-medium">{label}</span>
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('created_at', c)}
-                className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove created date ${label} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -575,12 +575,12 @@ export function FilterPillsBar({
               key={`updated-${u}`}
               className="inline-flex items-center gap-1.5 px-2 py-0.5 h-7 rounded-md bg-background border border-border text-12 text-foreground shadow-2xs shrink-0 select-none"
             >
-              <Calendar className="size-3 text-muted-foreground shrink-0" />
+              <Calendar className="size-3 text-foreground shrink-0" />
               <span className="truncate max-w-40 font-medium">{label}</span>
               <button
                 type="button"
                 onClick={() => onRemoveFilter?.('updated_at', u)}
-                className="text-muted-foreground hover:text-foreground cursor-pointer rounded-xs p-0.5 transition-colors"
+                className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
                 aria-label={`Remove updated date ${label} filter`}
               >
                 <X className="size-3 shrink-0" />
@@ -596,15 +596,15 @@ export function FilterPillsBar({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="h-7 w-7 rounded-md border border-border bg-background hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
+                className="h-7 w-7 rounded-md border border-border bg-background hover:bg-muted flex items-center justify-center text-foreground hover:text-foreground transition-colors cursor-pointer shrink-0 shadow-2xs"
                 title="Filter by due date"
                 aria-label="Filter by due date"
               >
                 <Calendar className="size-3.5 shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
-              <div className="px-2 py-1 text-11 font-medium text-muted-foreground">
+            <DropdownMenuContent align="start" className="w-48 rounded-md">
+              <div className="px-2 py-1 text-11 font-medium text-foreground">
                 Due date
               </div>
               {DUE_DATE_QUICK_OPTIONS.map((opt) => {
@@ -613,7 +613,7 @@ export function FilterPillsBar({
                   <DropdownMenuItem
                     key={opt.id}
                     onClick={() => onToggleFilter?.('due_date', opt.id)}
-                    className="flex items-center justify-between text-xs cursor-pointer"
+                    className="flex items-center justify-between text-xs cursor-pointer rounded-md"
                   >
                     <span>{opt.label}</span>
                     {active && <Check className="size-3.5 text-primary shrink-0" />}
@@ -628,15 +628,15 @@ export function FilterPillsBar({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="h-7 w-6.5 rounded-md border border-border bg-background hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
+                className="h-7 w-6.5 rounded-md border border-border bg-background hover:bg-muted flex items-center justify-center text-foreground hover:text-foreground transition-colors cursor-pointer shrink-0 shadow-2xs"
                 title="Filter by assignee"
                 aria-label="Filter by assignee"
               >
                 <Users className="size-3.5 shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56 max-h-64 overflow-y-auto">
-              <div className="px-2 py-1 text-11 font-medium text-muted-foreground">
+            <DropdownMenuContent align="start" className="w-56 max-h-64 overflow-y-auto rounded-md">
+              <div className="px-2 py-1 text-11 font-medium text-foreground">
                 Assignees
               </div>
               {assignees.map((u) => {
@@ -646,12 +646,12 @@ export function FilterPillsBar({
                   <DropdownMenuItem
                     key={u.id}
                     onClick={() => onToggleFilter?.('assignees', u.id)}
-                    className="flex items-center justify-between text-xs cursor-pointer"
+                    className="flex items-center justify-between text-xs cursor-pointer rounded-md"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       {isUnassigned ? (
                         <div className="size-4 rounded-full bg-muted flex items-center justify-center shrink-0">
-                          <User className="size-3 text-muted-foreground shrink-0" />
+                          <User className="size-3 text-foreground shrink-0" />
                         </div>
                       ) : u.avatar ? (
                         <Avatar className="size-4 shrink-0">
@@ -678,7 +678,7 @@ export function FilterPillsBar({
       <button
         type="button"
         onClick={onClearAll}
-        className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline cursor-pointer ml-auto shrink-0 px-1 py-0.5 rounded-md transition-colors"
+        className="inline-flex items-center gap-1 text-xs font-medium text-foreground hover:underline cursor-pointer ml-auto shrink-0 px-1 py-0.5 rounded-md transition-colors"
       >
         <RotateCcw className="size-3 shrink-0" />
         <span>Clear all</span>

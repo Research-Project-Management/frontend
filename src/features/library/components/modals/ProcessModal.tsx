@@ -24,13 +24,30 @@ interface ProcessModalProps {
   onViewLibrary?: () => void;
 }
 
+function formatSourceLabel(raw?: string): string {
+  if (!raw) return '—';
+  const str = raw.trim();
+  if (str.startsWith('http://') || str.startsWith('https://')) {
+    try {
+      const url = new URL(str);
+      const pathname = url.pathname;
+      const lastSeg = pathname.split('/').filter(Boolean).pop();
+      if (lastSeg && lastSeg.length > 2) {
+        return decodeURIComponent(lastSeg);
+      }
+      return `${url.hostname}${pathname}`;
+    } catch {
+      return str;
+    }
+  }
+  return str;
+}
+
 export default function ProcessModal({
   state,
   onClose,
   onMinimize,
 }: ProcessModalProps) {
-  if (!state.isOpen) return null;
-
   const data = state.data;
   const total = data?.total || 1;
   const processed = data?.processed || 0;
@@ -103,16 +120,20 @@ export default function ProcessModal({
               {/* Table Rows */}
               <div className="max-h-[240px] overflow-y-auto divide-y divide-border/30">
                 {items.map((item, idx) => {
-                  const isItemSuccess = item.status === 'SUCCEEDED';
                   const isItemFailed = item.status === 'FAILED';
+                  const isItemSuccess =
+                    item.status === 'SUCCEEDED' ||
+                    (state.isComplete && !isItemFailed && !state.error);
                   const isItemProcessing =
-                    (item.status as string) === 'PROCESSING' ||
-                    (item.status as string) === 'UPLOADING' ||
-                    (idx === activeIndex && !isItemSuccess && !isItemFailed);
+                    !isItemSuccess &&
+                    !isItemFailed &&
+                    ((item.status as string) === 'PROCESSING' ||
+                      (item.status as string) === 'UPLOADING' ||
+                      idx === activeIndex);
 
                   return (
                     <div
-                      key={idx}
+                      key={item.title || idx}
                       className="grid grid-cols-[48%_52%] px-3 py-2 items-center gap-2 hover:bg-muted/40 transition-colors"
                     >
                       {/* Column 1: Attachment Name */}
@@ -130,7 +151,7 @@ export default function ProcessModal({
                           className="truncate font-normal text-foreground text-12"
                           title={item.title}
                         >
-                          {item.title}
+                          {formatSourceLabel(item.title)}
                         </span>
                       </div>
 
@@ -168,25 +189,14 @@ export default function ProcessModal({
 
         {/* Modal Footer */}
         <div className="pt-3 bg-background flex items-center justify-end gap-2">
-          {onMinimize && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onMinimize}
-              className="h-8 px-3.5 text-13 font-medium rounded-md border border-border bg-background shadow-2xs hover:bg-muted text-foreground cursor-pointer"
-            >
-              Minimize
-            </Button>
-          )}
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={onClose}
+            onClick={isRunning ? (onMinimize || onClose) : onClose}
             className="h-8 px-3.5 text-13 font-medium rounded-md border border-border bg-background shadow-2xs hover:bg-muted text-foreground cursor-pointer"
           >
-            {isRunning ? 'Cancel' : 'Close'}
+            {isRunning ? 'Minimize' : 'Close'}
           </Button>
         </div>
       </DialogContent>

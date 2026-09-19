@@ -21,7 +21,6 @@ import {
   isSameMonth,
   isSameWeek,
   isToday,
-  isWeekend,
   startOfMonth,
   startOfWeek,
   subMonths,
@@ -81,7 +80,7 @@ function CalendarCard({ card }: CalendarCardProps) {
           </span>
         )}
         {priorityConfig && (
-          <span className="text-10 font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+          <span className="text-10 font-medium px-2 py-0.5 rounded-md bg-muted text-foreground">
             {priorityConfig.label}
           </span>
         )}
@@ -176,6 +175,7 @@ export function CalendarView({
   const onAssignExistingItems = propOnAssignExistingItems || (() => {});
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [layoutMode, setLayoutMode] = useState<CalendarLayoutMode>("month");
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const [quickAddDateKey, setQuickAddDateKey] = useState<string | null>(null);
   const [quickAddTitle, setQuickAddTitle] = useState("");
   const [addItemMenuDateKey, setAddItemMenuDateKey] = useState<string | null>(null);
@@ -429,49 +429,65 @@ export function CalendarView({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
               onClick={handleToday}
-              className="h-8 px-3 text-13 font-medium bg-background border border-border text-foreground hover:bg-muted shadow-2xs rounded-md cursor-pointer"
+              className="h-7 px-2.5 text-13 font-medium text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer select-none"
             >
               Today
-            </Button>
+            </button>
 
-            {/* Month | Week inline segment switcher */}
-            <div className="inline-flex items-center p-0.5 rounded-md bg-muted border border-border text-12">
-              <button
-                type="button"
-                onClick={() => setLayoutMode("month")}
-                className={`px-2.5 py-1 rounded-sm text-12 transition-all cursor-pointer ${
-                  layoutMode === "month"
-                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+            <DropdownMenu open={optionsOpen} onOpenChange={setOptionsOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "h-7 px-2.5 flex items-center gap-1 text-13 font-medium text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer select-none outline-none",
+                    optionsOpen && "bg-muted"
+                  )}
+                >
+                  <span>Options</span>
+                  <ChevronDown
+                    className={cn(
+                      "size-3.5 text-foreground transition-transform duration-150 shrink-0",
+                      optionsOpen && "rotate-180"
+                    )}
+                  />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-44 p-1 rounded-md border border-border bg-popover shadow-md z-50"
               >
-                Month
-              </button>
-              <button
-                type="button"
-                onClick={() => setLayoutMode("week")}
-                className={`px-2.5 py-1 rounded-sm text-12 transition-all cursor-pointer ${
-                  layoutMode === "week"
-                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Week
-              </button>
-            </div>
+                <DropdownMenuItem
+                  onClick={() => setLayoutMode("month")}
+                  className="flex items-center justify-between px-2.5 py-1.5 text-13 text-foreground hover:bg-muted rounded cursor-pointer select-none"
+                >
+                  <span>Month layout</span>
+                  {layoutMode === "month" && (
+                    <Check className="size-4 text-foreground shrink-0 ml-auto" strokeWidth={1.5} />
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setLayoutMode("week")}
+                  className="flex items-center justify-between px-2.5 py-1.5 text-13 text-foreground hover:bg-muted rounded cursor-pointer select-none"
+                >
+                  <span>Week layout</span>
+                  {layoutMode === "week" && (
+                    <Check className="size-4 text-foreground shrink-0 ml-auto" strokeWidth={1.5} />
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
         {/* Scrollable Calendar Grid (Unified 7-Column Grid with sleek custom scrollbar) */}
         <div className="flex-1 overflow-auto vertical-scrollbar custom-scrollbar">
           <div className="min-h-full min-w-[560px] bg-background">
-            {/* Week Day Labels (Row 1 of Grid - Centralized bg-secondary, Natural Title Case, No Bottom Border) */}
-            <div className="grid grid-cols-7 sticky top-0 z-20 bg-secondary">
+            {/* Week Day Labels (Row 1 of Grid) */}
+            <div className="grid grid-cols-7 bg-muted/40">
               {WEEK_DAY_LABELS.map((label) => (
                 <div
                   key={label}
@@ -541,12 +557,9 @@ export function CalendarView({
                           ? isSameWeek(day, currentMonth, { weekStartsOn: 1 })
                           : isSameMonth(day, currentMonth);
                       const isThisToday = isToday(day);
-                      const isWeekendDay = isWeekend(day);
                       const dayTextClass = !isCurrentMonth
                         ? "text-muted-foreground"
-                        : isWeekendDay
-                            ? "text-muted-foreground"
-                            : "text-foreground";
+                        : "text-foreground";
 
                       return (
                         <CalendarDayCell
@@ -591,18 +604,18 @@ export function CalendarView({
             if (!open) handleCloseExistingDialog();
           }}
         >
-          <DialogContent className="w-145 max-w-[90vw] overflow-hidden rounded-lg border border-border p-0" showCloseButton={false}>
+          <DialogContent className="w-145 max-w-[90vw] overflow-hidden rounded-md border border-border p-0" showCloseButton={false}>
             {/* Search bar */}
             <div className="px-2 pt-6 pb-2">
               <div className="relative flex items-center">
-                <Search className="absolute left-4 size-5 text-muted-foreground shrink-0" strokeWidth={1.75} />
+                <Search className="absolute left-4 size-5 text-foreground shrink-0" strokeWidth={1.75} />
                 <input
                   type="text"
                   value={existingSearch}
                   onChange={(event) => setExistingSearch(event.target.value)}
                   placeholder="Type to search"
                   autoFocus
-                  className="h-10 w-full pl-13 pr-3 text-lg font-medium text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-muted-foreground focus:border-border"
+                  className="h-10 w-full pl-13 pr-3 text-lg font-medium text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-foreground/70 focus:border-border"
                 />
               </div>
             </div>
@@ -620,7 +633,7 @@ export function CalendarView({
                       key={itemId}
                       type="button"
                       onClick={() => handleToggleExistingItem(itemId)}
-                      className="group inline-flex items-center gap-1.5 rounded-sm border border-border bg-card px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+                      className="group inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
                       title={selectedItem.title || "Untitled"}
                     >
                       <span className="max-w-45 truncate">
@@ -636,7 +649,7 @@ export function CalendarView({
             {/* Item list */}
             <div className="max-h-80 overflow-y-auto px-1 py-2">
               {filteredExistingItemCandidates.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                <div className="flex flex-col items-center justify-center py-12 text-center text-foreground">
                   <Search className="size-8 mb-2 opacity-20 shrink-0" strokeWidth={1.5} />
                   <p className="text-sm font-medium">No work items found</p>
                 </div>
@@ -649,7 +662,7 @@ export function CalendarView({
                       <button
                         type="button"
                         onClick={() => handleToggleExistingItem(item.id)}
-                        className="group flex w-full items-center gap-3 rounded-sm px-3 py-2.5 text-left transition-colors hover:bg-muted"
+                        className="group flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-muted"
                       >
                         <Checkbox
                           checked={checked}
@@ -661,7 +674,7 @@ export function CalendarView({
                             const col = columns.find(c => c.id === item.columnId);
                             if (!col) return null;
                             return (
-                              <span className="shrink-0 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-sm truncate max-w-[80px]">
+                              <span className="shrink-0 text-xs font-medium text-foreground bg-muted px-1.5 py-0.5 rounded-md truncate max-w-[80px]">
                                 {col.title}
                               </span>
                             );
@@ -676,7 +689,7 @@ export function CalendarView({
                             event.stopPropagation();
                             onOpenCardDetail(item);
                           }}
-                          className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-foreground transition-colors hover:bg-muted"
+                          className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted"
                           aria-label="Open item detail"
                         >
                           <ChevronRight className="size-3.5 shrink-0" />
@@ -710,7 +723,7 @@ export function CalendarView({
                   }
                 }}
                 disabled={filteredExistingItemCandidates.length === 0}
-                className="h-8 rounded-sm px-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"
+                className="h-8 rounded-md px-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-30"
               >
                 {allFilteredItemsSelected ? "Deselect all" : "Select all"}
               </button>
@@ -720,7 +733,7 @@ export function CalendarView({
                   type="button"
                   variant="ghost"
                   onClick={handleCloseExistingDialog}
-                  className="h-9 px-3 text-muted-foreground hover:bg-muted"
+                  className="h-9 px-3 text-foreground hover:bg-muted rounded-md"
                 >
                   Cancel
                 </Button>
@@ -728,7 +741,7 @@ export function CalendarView({
                   type="button"
                   onClick={handleSubmitExistingItems}
                   disabled={selectedExistingItemIds.length === 0}
-                  className="h-9 min-w-17.5 bg-primary px-4 text-primary-foreground shadow-none hover:bg-primary-hover disabled:opacity-30"
+                  className="h-9 min-w-17.5 bg-primary px-4 text-primary-foreground shadow-none hover:bg-primary-hover disabled:opacity-30 rounded-md"
                 >
                   Add
                 </Button>
@@ -788,7 +801,6 @@ const CalendarDayCell = memo(({
   quickAddTitle = '',
 }: any) => {
   const isAddItemMenuOpen = addItemMenuDateKey === dateKey;
-  const isWeekendDay = isWeekend(day);
   const { setNodeRef, isOver } = useDroppable({
     id: dateKey,
   });
@@ -800,20 +812,13 @@ const CalendarDayCell = memo(({
       className={cn(
         "group flex flex-col transition-colors border-b [&:not(:nth-child(7n))]:border-r border-border",
         !isCurrentMonth
-          ? "bg-muted text-muted-foreground"
-          : isWeekendDay
-          ? "bg-secondary"
-          : "bg-background",
-        isOver && "bg-muted ring-1 ring-inset ring-ring"
+          ? "bg-muted/40 text-muted-foreground"
+          : "bg-background text-foreground",
+        isOver && "bg-muted/60 ring-1 ring-inset ring-ring"
       )}
     >
       {/* Day number header row - perfectly positioned top right */}
       <div className="flex items-center justify-end px-3 pt-2 pb-1 text-right select-none">
-        {day.getDate() === 1 && (
-          <span className="text-11 font-medium text-muted-foreground mr-1">
-            {format(day, "MMM")}
-          </span>
-        )}
         {isThisToday ? (
           <span className="inline-flex size-5.5 items-center justify-center rounded-full bg-primary text-11 font-semibold text-primary-foreground shadow-xs">
             {format(day, "d")}
@@ -822,11 +827,7 @@ const CalendarDayCell = memo(({
           <span
             className={cn(
               "text-11 font-medium leading-none",
-              !isCurrentMonth
-                ? "text-muted-foreground"
-                : isWeekendDay
-                ? "text-muted-foreground"
-                : "text-foreground"
+              !isCurrentMonth ? "text-muted-foreground" : "text-foreground"
             )}
           >
             {format(day, "d")}
@@ -883,14 +884,14 @@ const CalendarDayCell = memo(({
             >
               <DropdownMenuItem
                 onSelect={() => onAddWorkItem(dateKey)}
-                className="rounded-sm px-2.5 py-1.5 text-11 font-medium text-foreground flex items-center gap-2 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring hover:bg-muted"
+                className="rounded-md px-2.5 py-1.5 text-11 font-medium text-foreground flex items-center gap-2 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring hover:bg-muted"
               >
                 <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.75} />
                 <span>Add work item</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => onAddExistingWorkItem(dateKey)}
-                className="rounded-sm px-2.5 py-1.5 text-11 font-medium text-foreground flex items-center gap-2 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring hover:bg-muted"
+                className="rounded-md px-2.5 py-1.5 text-11 font-medium text-foreground flex items-center gap-2 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring hover:bg-muted"
               >
                 <FolderKanban className="size-3.5 text-foreground shrink-0" strokeWidth={1.75} />
                 <span>Add existing</span>
@@ -901,7 +902,7 @@ const CalendarDayCell = memo(({
 
         {isQuickAdding && (
           <div className="mt-2 flex flex-col gap-2">
-            <div className="relative flex w-full items-center rounded-md border border-border bg-background focus-within:border-ring">
+            <div className="relative flex w-full items-center rounded-md border border-border bg-background focus-within:border-ring shadow-2xs">
               <input
                 type="text"
                 autoFocus
@@ -919,7 +920,7 @@ const CalendarDayCell = memo(({
                   }
                 }}
                 placeholder="Title..."
-                className="h-7 min-w-0 flex-1 bg-transparent px-2 text-12 text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+                className="h-7 min-w-0 flex-1 bg-transparent px-2 text-12 text-foreground outline-none placeholder:text-foreground/70 disabled:cursor-not-allowed"
                 disabled={isAddingCard}
               />
             </div>

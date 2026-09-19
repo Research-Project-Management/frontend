@@ -29,7 +29,7 @@ export function DeleteModal({
 }: DeleteModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-md p-6 gap-4 rounded-lg border border-border bg-background shadow-lg">
+      <DialogContent className="w-full max-w-md p-6 gap-4 rounded-md border border-border bg-background shadow-lg">
         <DialogHeader className="text-left space-y-1.5">
           <DialogTitle className="text-base font-semibold text-foreground">
             Delete work item
@@ -45,7 +45,7 @@ export function DeleteModal({
             size="sm"
             onClick={() => onOpenChange(false)}
             disabled={isDeleting}
-            className="h-8 px-3 text-13 font-medium rounded-md cursor-pointer"
+            className="h-8 px-3 text-13 font-medium rounded-md text-foreground hover:bg-muted cursor-pointer"
           >
             Cancel
           </Button>

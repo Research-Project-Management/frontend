@@ -25,8 +25,8 @@ export function useSavedSearches(scopeId?: string) {
   const effectiveScope = scopeId || 'user';
 
   const savedSearchesQuery = useQuery({
-    queryKey: savedSearchKeys.all(scopeId),
-    queryFn: () => SavedSearchService.getAll(scopeId),
+    queryKey: savedSearchKeys.all(effectiveScope),
+    queryFn: () => SavedSearchService.getAll(effectiveScope),
     enabled: true,
   });
 
@@ -34,7 +34,7 @@ export function useSavedSearches(scopeId?: string) {
     mutationFn: (data: CreateSavedSearchInput) =>
       SavedSearchService.create(effectiveScope, data),
     onSuccess: () => {
-      invalidateSavedSearches(queryClient, scopeId);
+      invalidateSavedSearches(queryClient, effectiveScope);
       toast.success('Smart collection created', { id: 'saved-search-mutation' });
     },
     onError: (err: any) => {
@@ -49,9 +49,9 @@ export function useSavedSearches(scopeId?: string) {
     mutationFn: ({ id, data }: { id: string; data: UpdateSavedSearchInput }) =>
       SavedSearchService.update(effectiveScope, id, data),
     onSuccess: (_, variables) => {
-      invalidateSavedSearches(queryClient, scopeId);
+      invalidateSavedSearches(queryClient, effectiveScope);
       queryClient.invalidateQueries({
-        queryKey: savedSearchKeys.byId(scopeId, variables.id),
+        queryKey: savedSearchKeys.byId(effectiveScope, variables.id),
       });
       toast.success('Smart collection updated', { id: 'saved-search-mutation' });
     },
@@ -66,7 +66,7 @@ export function useSavedSearches(scopeId?: string) {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => SavedSearchService.delete(effectiveScope, id),
     onSuccess: () => {
-      invalidateSavedSearches(queryClient, scopeId);
+      invalidateSavedSearches(queryClient, effectiveScope);
       toast.success('Smart collection deleted', { id: 'saved-search-mutation' });
     },
     onError: (err: any) => {
@@ -109,9 +109,16 @@ export function useSavedSearchResults(
     sortOrder?: string;
   },
 ) {
+  // Normalise scopeId: treat '' and undefined identically so cache keys are stable
+  const effectiveScope = scopeId || null;
+
   return useQuery({
-    queryKey: savedSearchKeys.results(scopeId, id || '', params),
-    queryFn: () => SavedSearchService.getResults(scopeId || 'user', id!, params),
-    enabled: Boolean(id),
+    queryKey: savedSearchKeys.results(effectiveScope ?? undefined, id || '', params),
+    queryFn: () => {
+      // id is guaranteed non-null here because enabled guards against falsy id
+      if (!id) return null;
+      return SavedSearchService.getResults(effectiveScope || 'user', id, params);
+    },
+    enabled: !!id && !!effectiveScope,
   });
 }

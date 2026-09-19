@@ -15,6 +15,7 @@ import {
   Globe,
   Star,
   FileDown,
+  FolderSync,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Document, Page, pdfjs } from 'react-pdf';
@@ -27,10 +28,11 @@ import {
 } from "@/shared/components/ui";
 import { getPaperFileUrl } from '@/features/library/utils/library.util';
 import { usePdf } from '@/features/reader/hooks/use-pdf';
-import { useAttachments, useAttachmentRevisions } from '@/features/library/hooks/use-attachments';
+import { useAttachments, useAttachmentRevisions, useRenameAttachment } from '@/features/library/hooks/use-attachments';
 import { downloadAnnotatedPdf } from '@/features/library/services/exports.service';
 import SnapshotViewerModal from '../modals/SnapshotViewerModal';
 import type { Item, ItemAttachment } from '@/features/library/types/library.types';
+
 
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -243,6 +245,7 @@ interface AttachmentsSectionProps {
   onAddAttachment?: () => void;
   isUploading?: boolean;
   hideHeader?: boolean;
+  canEdit?: boolean;
 }
 
 const EMPTY_ATTACHMENTS: ItemAttachment[] = [];
@@ -253,8 +256,9 @@ export default function AttachmentsSection({
   projectId,
   workspaceId,
   hideHeader = false,
+  canEdit = true,
 }: AttachmentsSectionProps) {
-  const router = RouterHookWrapper();
+  const router = useRouter();
   const params = useParams();
   const rawScopeId = (scopeId || projectId || (paper as any)?.projectId || (params as any)?.projectId || 'user') as string;
 
@@ -266,12 +270,24 @@ export default function AttachmentsSection({
   } = useAttachments(rawScopeId, paper.id || '');
   const [activeSnapshot, setActiveSnapshot] = useState<{ url: string; title: string; sourceUrl?: string } | null>(null);
   const [isDownloadingAnnotated, setIsDownloadingAnnotated] = useState(false);
+  const renameAttachmentMutation = useRenameAttachment(rawScopeId);
 
   const rawAttachments = paper.attachments || (paper as any).files || EMPTY_ATTACHMENTS;
   const paperUrl = getPaperFileUrl(paper);
 
   const paperFilename = paper.filename;
   const openAccessPdfUrl = (paper as any)?.openAccessPdfUrl;
+
+  const primaryAttachment = useMemo(() => {
+    return (
+      rawAttachments.find(
+        (att: any) =>
+          att.attachmentType === 'primary_pdf' ||
+          att.type === 'primary_pdf' ||
+          (paperFilename && (att.filename === paperFilename || att.name === paperFilename)),
+      ) || null
+    );
+  }, [rawAttachments, paperFilename]);
 
   const otherAttachments = useMemo(() => {
     const list = rawAttachments.filter((att: ItemAttachment | any) => {
@@ -438,6 +454,16 @@ export default function AttachmentsSection({
                   <ExternalLink className="size-3.5 text-foreground shrink-0" />
                   <span>Open in New Tab</span>
                 </DropdownMenuItem>
+                {canEdit && primaryAttachment && (
+                  <DropdownMenuItem
+                    onClick={() => renameAttachmentMutation.mutate({ attachmentId: primaryAttachment.id })}
+                    disabled={renameAttachmentMutation.isPending}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <FolderSync className="size-3.5 text-foreground shrink-0" />
+                    <span>Rename File from Parent Metadata</span>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -525,7 +551,7 @@ export default function AttachmentsSection({
                       <ExternalLink className="size-3.5 text-foreground shrink-0" />
                       <span>Open in New Tab</span>
                     </DropdownMenuItem>
-                    {rawScopeId && att.id && att.id !== 'open-access-pdf' && !isSnapshot && (
+                    {canEdit && rawScopeId && att.id && att.id !== 'open-access-pdf' && !isSnapshot && (
                       <DropdownMenuItem
                         onClick={() => handleSetPrimary(att.id)}
                         disabled={isSettingPrimary}
@@ -533,6 +559,16 @@ export default function AttachmentsSection({
                       >
                         <Star className="size-3.5 text-foreground shrink-0" />
                         <span>Set as Primary Document</span>
+                      </DropdownMenuItem>
+                    )}
+                    {canEdit && rawScopeId && att.id && att.id !== 'open-access-pdf' && (
+                      <DropdownMenuItem
+                        onClick={() => renameAttachmentMutation.mutate({ attachmentId: att.id })}
+                        disabled={renameAttachmentMutation.isPending}
+                        className="gap-2 cursor-pointer"
+                      >
+                        <FolderSync className="size-3.5 text-foreground shrink-0" />
+                        <span>Rename File from Parent Metadata</span>
                       </DropdownMenuItem>
                     )}
                     {rawScopeId && att.id && (
@@ -553,7 +589,7 @@ export default function AttachmentsSection({
       </div>
 
       {/* Capture Snapshot Action for Web URLs */}
-      {paper.url && (
+      {canEdit && paper.url && (
         <button
           type="button"
           disabled={isCapturingSnapshot}
@@ -586,10 +622,6 @@ export default function AttachmentsSection({
       />
     </div>
   );
-}
-
-function RouterHookWrapper() {
-  return useRouter();
 }
 
 function formatSize(bytes?: number): string {

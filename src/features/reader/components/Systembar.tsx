@@ -55,7 +55,7 @@ export function Systembar({
           transition={{ duration: 0.15, ease: 'easeOut' }}
         >
           <div
-            className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 shadow-none select-none font-sans"
+            className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 shadow-lg select-none font-sans"
           >
             {/* Selected Count */}
             <div className="flex items-center gap-1.5 pr-2 border-r border-border text-12 font-mono font-medium text-foreground">
@@ -98,7 +98,7 @@ export function Systembar({
                   disabled={isProcessing}
                   className="h-7 px-2.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer"
                 >
-                  <FileText className="mr-1 size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
+                  <FileText className="mr-1 size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                   Add to Note
                 </Button>
               )}
@@ -124,7 +124,7 @@ export function Systembar({
               onClick={onClearSelection}
               disabled={isProcessing}
               aria-label="Clear selection"
-              className="h-7 px-2.5 text-12 font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md ml-1 cursor-pointer"
+              className="h-7 px-2.5 text-12 font-medium text-foreground hover:bg-muted rounded-md ml-1 cursor-pointer"
             >
               Clear
             </Button>

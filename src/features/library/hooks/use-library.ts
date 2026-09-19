@@ -93,6 +93,7 @@ async function uploadFilesWithConcurrency(
   concurrencyLimit: number,
   uploadWorker: (file: File, count: number) => Promise<void>,
 ): Promise<{ successCount: number; lastErrorMessage: string | null }> {
+  let taskIndex = 0;
   let completedCount = 0;
   let successCount = 0;
   let lastErrorMessage: string | null = null;
@@ -104,8 +105,10 @@ async function uploadFilesWithConcurrency(
       while (pool.length > 0) {
         const file = pool.shift();
         if (!file) break;
+        taskIndex++;
+        const currentTaskNumber = taskIndex;
         try {
-          await uploadWorker(file, completedCount + 1);
+          await uploadWorker(file, currentTaskNumber);
           successCount++;
         } catch (err: any) {
           lastErrorMessage = err?.message || 'File upload error';
@@ -131,7 +134,17 @@ export interface PendingUploadItem {
   fileId?: string;
   runId?: string;
   createdAt: string;
+  resolvedTitle?: string;
 }
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUuid = (id?: string | null): id is string => Boolean(id && UUID_REGEX.test(id));
+
+const isPendingId = (id: string, pendingUploads: PendingUploadItem[] = []) =>
+  !isUuid(id) ||
+  id.startsWith('temp-') ||
+  id.startsWith('upload-') ||
+  pendingUploads.some((p) => p.id === id);
 
 // ── 1. Unified Main Library View Model Hook ──────────────────────────────────
 
@@ -189,7 +202,7 @@ export function useLibrary() {
   const optimisticItems: Item[] = useMemo(() => {
     return pendingUploads.map((p) => ({
       id: p.id,
-      title: p.filename,
+      title: p.resolvedTitle || p.filename,
       itemType: 'document',
       creators: [],
       publicationTitle: `${(p.size / (1024 * 1024)).toFixed(1)} MB`,
@@ -206,8 +219,58 @@ export function useLibrary() {
 
   const allPapers = useMemo(() => {
     if (!optimisticItems.length) return rawPapers;
-    return [...optimisticItems, ...rawPapers];
-  }, [optimisticItems, rawPapers]);
+
+    // Seamlessly replace optimistic attachment items once processed (matching Zotero):
+    // Filter out any optimistic placeholder that:
+    // 1. Is marked 'succeeded'
+    // 2. Or already has a corresponding paper in rawPapers (by attachment fileId/filename, or matching title)
+    const activeOptimistic = optimisticItems.filter((opt) => {
+      const p = pendingUploads.find((item) => item.id === opt.id);
+      if (!p || p.status === 'succeeded') return false;
+
+      const existsInRaw = rawPapers.some((raw) => {
+        const rawAttachments = (raw as any).attachments;
+        if (Array.isArray(rawAttachments) && rawAttachments.length > 0) {
+          const hasMatch = rawAttachments.some((att: any) => {
+            if (
+              p.fileId &&
+              (att.fileId === p.fileId ||
+                att.id === p.fileId ||
+                att.storageKey === p.fileId)
+            ) {
+              return true;
+            }
+            if (
+              p.filename &&
+              (att.name === p.filename ||
+                att.originalName === p.filename ||
+                att.filename === p.filename)
+            ) {
+              return true;
+            }
+            return false;
+          });
+          if (hasMatch) return true;
+        }
+
+        if (
+          p.resolvedTitle &&
+          raw.title &&
+          raw.title.trim().toLowerCase() === p.resolvedTitle.trim().toLowerCase()
+        ) {
+          return true;
+        }
+
+        // Only deduplicate by fileId or resolved title match (title===filename match is too loose and can hide unrelated papers)
+
+        return false;
+      });
+
+      return !existsInRaw;
+    });
+
+    return [...activeOptimistic, ...rawPapers];
+  }, [optimisticItems, rawPapers, pendingUploads]);
   const isPapersLoading = itemsHook.state.isLoadingAll;
   const collectionService = useCollections(effectiveScopeId);
   const collections = collectionService.state.collections;
@@ -285,12 +348,25 @@ export function useLibrary() {
     }
 
     if (optimisticItems.length > 0) {
-      const matchingOptimistic = searchQuery.trim()
-        ? optimisticItems.filter((p) =>
+      // Only show optimistic upload placeholders in views where they make sense:
+      // - If a collection is active, only show optimistic items belonging to that collection.
+      // - If a special filter is active (duplicates, flagged, retracted, etc.),
+      //   don't show optimistic items at all — they can't satisfy those criteria.
+      const matchingOptimistic = collectionId
+        ? optimisticItems.filter((o) => (o as any).collectionId === collectionId)
+        : activeFilter && activeFilter !== 'all' && activeFilter !== 'recent'
+        ? [] // don't show optimistic items in filtered views like duplicates/flagged
+        : optimisticItems;
+
+      const visibleOptimistic = searchQuery.trim()
+        ? matchingOptimistic.filter((p) =>
             p.title?.toLowerCase().includes(searchQuery.toLowerCase()),
           )
-        : optimisticItems;
-      return [...matchingOptimistic, ...list];
+        : matchingOptimistic;
+
+      if (visibleOptimistic.length > 0) {
+        return [...visibleOptimistic, ...list];
+      }
     }
 
     return list;
@@ -510,10 +586,16 @@ export function useLibrary() {
                     succeededCount++;
                     batchChanged = true;
                     const resolvedTitle =
-                      (res?.data as any)?.item?.title ||
-                      (res?.data as any)?.snapshot?.title ||
                       (res?.data as any)?.title ||
-                      (res as any)?.title;
+                      (res?.data as any)?.item?.title ||
+                      (res?.data as any)?.executionLog?.currentTitle ||
+                      (res?.data as any)?.executionLog?.items?.[0]?.title ||
+                      (res?.data as any)?.executionLog?.item?.title ||
+                      (res?.data as any)?.snapshot?.title ||
+                      (res as any)?.title ||
+                      (res as any)?.item?.title ||
+                      (res as any)?.executionLog?.currentTitle ||
+                      (res as any)?.executionLog?.items?.[0]?.title;
                     ingestProgress.updateBatchItem(
                       itemInfo.file.name,
                       'SUCCEEDED',
@@ -521,17 +603,8 @@ export function useLibrary() {
                       resolvedTitle,
                     );
                     setPendingUploads((prev) =>
-                      prev.map((p) =>
-                        p.id === itemInfo.tempId
-                          ? { ...p, status: 'succeeded' }
-                          : p,
-                      ),
+                      prev.filter((p) => p.id !== itemInfo.tempId),
                     );
-                    setTimeout(() => {
-                      setPendingUploads((prev) =>
-                        prev.filter((p) => p.id !== itemInfo.tempId),
-                      );
-                    }, 800);
                   } else if (s.startsWith('FAIL') || s === 'ERROR') {
                     pendingRunMap.delete(runId);
                     batchChanged = true;
@@ -559,8 +632,9 @@ export function useLibrary() {
                       );
                     }, 6000);
                   }
-                } catch {
+                } catch (err: unknown) {
                   // Transient polling error, keep waiting
+                  console.warn('[Ingestion Poll Error]:', err);
                 }
               }),
             );
@@ -580,6 +654,11 @@ export function useLibrary() {
 
       // 5. Wrap up batch progress
       ingestProgress.finishBatchProgress(lastErrorMessage || undefined);
+      setPendingUploads((prev) =>
+        prev.filter(
+          (p) => !files.some((f) => f === p.file || f.name === p.filename),
+        ),
+      );
       invalidateLibraryItems(
         queryClient,
         effectiveScopeId,
@@ -628,7 +707,7 @@ export function useLibrary() {
         if (rawInput) {
           const doiMatch = rawInput.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9<>+=[\]~]+)\b/i);
           const arxivMatch = rawInput.match(
-            /(?:arxiv:\s*|https?:\/\/arxiv\.org\/(?:abs|pdf|html)\/)?(\d{4}\.\d{4,5}(?:v\d+)?|[a-z-]+(?:\.[a-z]{2})?\/\d{7})/i,
+            /(?:arxiv:\s*|https?:\/\/arxiv\.org\/(?:abs|pdf|html)\/)?(\d{4}\.\d{4,5}(?:v\d+)?|[a-z-]+(?:\.[a-z]{2})?\/\d{7})(?:\.pdf)?/i,
           );
           const pmidMatch = rawInput.match(
             /(?:pmid:\s*|https?:\/\/pubmed\.ncbi\.nlm\.nih\.gov\/)(\d{1,9})/i,
@@ -640,12 +719,14 @@ export function useLibrary() {
               /^\d+X?$/i.test(cleanDigits) &&
               !cleanDigits.startsWith('10.'));
 
-          const isPureDoi =
-            rawInput.startsWith('10.') ||
-            (doiMatch && !rawInput.includes('http') && !rawInput.includes('arxiv'));
           const isArxiv = Boolean(
             rawInput.toLowerCase().includes('arxiv') ||
-              (arxivMatch && !doiMatch && /^\d{4}\.\d{4,5}/.test(rawInput)),
+            rawInput.toLowerCase().startsWith('arxiv:') ||
+            (/^\d{4}\.\d{4,5}(?:v\d+)?$/i.test(rawInput)) ||
+            (/^[a-z-]+(?:\.[a-z]{2})?\/\d{7}$/i.test(rawInput))
+          );
+          const isDoi = Boolean(
+            !isArxiv && (doiMatch || linkData.doi || rawInput.startsWith('10.'))
           );
           const isPmid = Boolean(
             rawInput.toLowerCase().startsWith('pmid:') ||
@@ -655,20 +736,25 @@ export function useLibrary() {
 
           let submissionPayload: Parameters<typeof IngestionService.submit>[1];
 
-          if (isPureDoi || linkData.doi) {
-            const doi = linkData.doi || (doiMatch ? doiMatch[1] : rawInput);
-            submissionPayload = {
-              kind: 'IDENTIFIER',
-              identifierType: 'DOI',
-              value: doi,
-              collectionId: collectionId || undefined,
-              overrides: linkData.title ? { title: linkData.title } : undefined,
-            };
-          } else if (isArxiv && arxivMatch) {
+          if (isArxiv && arxivMatch && arxivMatch[1]) {
+            const cleanArxiv = arxivMatch[1].replace(/^arxiv:\s*/i, '').replace(/\.pdf$/i, '').trim();
             submissionPayload = {
               kind: 'IDENTIFIER',
               identifierType: 'ARXIV',
-              value: arxivMatch[1],
+              value: cleanArxiv,
+              collectionId: collectionId || undefined,
+              overrides: linkData.title ? { title: linkData.title } : undefined,
+            };
+          } else if (isDoi) {
+            let cleanDoi = (linkData.doi || (doiMatch ? doiMatch[1] : rawInput)).trim();
+            cleanDoi = cleanDoi.replace(/[.,;]+$/, '');
+            if (cleanDoi.endsWith(')') && !cleanDoi.includes('(')) cleanDoi = cleanDoi.slice(0, -1);
+            if (cleanDoi.endsWith(']') && !cleanDoi.includes('[')) cleanDoi = cleanDoi.slice(0, -1);
+
+            submissionPayload = {
+              kind: 'IDENTIFIER',
+              identifierType: 'DOI',
+              value: cleanDoi,
               collectionId: collectionId || undefined,
               overrides: linkData.title ? { title: linkData.title } : undefined,
             };
@@ -692,6 +778,7 @@ export function useLibrary() {
             submissionPayload = {
               kind: 'URL',
               url: rawInput,
+              filename: linkData.filename,
               collectionId: collectionId || undefined,
               overrides: linkData.title ? { title: linkData.title } : undefined,
             };
@@ -702,12 +789,16 @@ export function useLibrary() {
           if (runId) {
             ingestProgress.startMonitoring(runId, linkData.title || rawInput);
             return;
+          } else {
+            // Item was likely already in library (deduplication) — refresh the list
+            await queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
+            toast.success('Item added to library');
           }
         } else {
           await handleAddPaper({
             title: linkData.title || 'Document',
             authors: linkData.authors || [],
-            year: linkData.year,
+            year: typeof linkData.year === 'number' ? linkData.year : (linkData.year ? parseInt(String(linkData.year), 10) || null : null),
             doi: linkData.doi,
             abstract: linkData.abstract,
             fileUrl: linkData.fileUrl || '',
@@ -734,6 +825,32 @@ export function useLibrary() {
     [effectiveScopeId, collectionId, handleAddPaper, queryClient, ingestProgress],
   );
 
+  const handleCreateManualItem = useCallback(
+    async (itemType: string = 'journalArticle') => {
+      try {
+        const created = await itemsHook.actions.createItem({
+          title: 'Untitled Reference',
+          itemType,
+          collectionId: collectionId || undefined,
+        });
+        const createdItem = (created as any)?.item || created;
+        if (createdItem?.id) {
+          setSelectedPaperId(createdItem.id);
+        }
+        invalidateLibraryItems(queryClient, effectiveScopeId, collectionId);
+        toast.success('Created new reference', {
+          description: `Added new ${itemType} to library.`,
+        });
+        return createdItem;
+      } catch (err: any) {
+        toast.error('Failed to create reference', {
+          description: err?.message || 'Could not create new item.',
+        });
+      }
+    },
+    [itemsHook.actions, collectionId, queryClient, effectiveScopeId],
+  );
+
 
   const handleCreateCollection = useCallback(
     (collectionData: CollectionInput) => {
@@ -755,25 +872,48 @@ export function useLibrary() {
 
   const handleDeletePaper = useCallback(
     (paperId: string) => {
+      if (isPendingId(paperId, pendingUploads)) {
+        setPendingUploads((prev) => prev.filter((p) => p.id !== paperId));
+        if (selectedPaperId === paperId) setSelectedPaperId(null);
+        return;
+      }
       itemsHook.actions.deletePaper({ paperId });
       if (selectedPaperId === paperId) setSelectedPaperId(null);
     },
-    [itemsHook.actions, selectedPaperId],
+    [itemsHook.actions, pendingUploads, selectedPaperId],
   );
 
   const handleBatchDeletePapers = useCallback(
     async (paperIds: string[]) => {
       if (!paperIds.length) return;
-      const loadingId = toast.loading(`Moving ${paperIds.length} item(s) to trash...`, { id: 'batch-trash-action' });
+
+      const optimisticIds = paperIds.filter((id) => isPendingId(id, pendingUploads));
+      const persistedIds = paperIds.filter((id) => !optimisticIds.includes(id));
+
+      if (optimisticIds.length > 0) {
+        setPendingUploads((prev) => prev.filter((p) => !optimisticIds.includes(p.id)));
+      }
+
+      if (persistedIds.length === 0) {
+        if (selectedPaperId && paperIds.includes(selectedPaperId)) {
+          setSelectedPaperId(null);
+        }
+        toast.success('Removed', {
+          description: `${optimisticIds.length} temporary item(s) removed.`,
+        });
+        return;
+      }
+
+      const loadingId = toast.loading(`Moving ${persistedIds.length} item(s) to trash...`, { id: 'batch-trash-action' });
       try {
         await Promise.all(
-          paperIds.map((paperId) => itemsHook.actions.deletePaper({ paperId, silent: true })),
+          persistedIds.map((paperId) => itemsHook.actions.deletePaper({ paperId, silent: true })),
         );
         if (selectedPaperId && paperIds.includes(selectedPaperId)) {
           setSelectedPaperId(null);
         }
         toast.success('Moved to trash', {
-          description: `${paperIds.length} document(s) moved to trash.`,
+          description: `${persistedIds.length} document(s) moved to trash.`,
           id: loadingId,
         });
       } catch (err: any) {
@@ -783,16 +923,21 @@ export function useLibrary() {
         });
       }
     },
-    [itemsHook.actions, selectedPaperId],
+    [itemsHook.actions, pendingUploads, selectedPaperId],
   );
 
   const handleBatchMovePapers = useCallback(
     async (paperIds: string[], targetCollectionId: string | null) => {
       if (!paperIds.length) return;
-      const loadingId = toast.loading(`Moving ${paperIds.length} item(s)...`, { id: 'batch-move-action' });
+      const persistedIds = paperIds.filter((id) => !isPendingId(id, pendingUploads));
+      if (persistedIds.length === 0) {
+        toast.info('Selected pending uploads cannot be moved until processing finishes.');
+        return;
+      }
+      const loadingId = toast.loading(`Moving ${persistedIds.length} item(s)...`, { id: 'batch-move-action' });
       try {
         await Promise.all(
-          paperIds.map((paperId) =>
+          persistedIds.map((paperId) =>
             itemsHook.actions.updatePaper({
               paperId,
               collectionId: targetCollectionId ?? undefined,
@@ -801,7 +946,7 @@ export function useLibrary() {
           ),
         );
         toast.success('Documents moved', {
-          description: `Moved ${paperIds.length} item(s) to target collection.`,
+          description: `Moved ${persistedIds.length} item(s) to target collection.`,
           id: loadingId,
         });
       } catch (err: any) {
@@ -811,7 +956,7 @@ export function useLibrary() {
         });
       }
     },
-    [itemsHook.actions],
+    [itemsHook.actions, pendingUploads],
   );
 
   return {
@@ -864,6 +1009,7 @@ export function useLibrary() {
       setCreateCollectionOpen: setIsCreateCollectionModalOpen,
       handleAddItem: handleAddPaper,
       handleAddPaper,
+      handleCreateManualItem,
       handleCreateCollection,
       handleDeleteItem: handleDeletePaper,
       handleDeletePaper,

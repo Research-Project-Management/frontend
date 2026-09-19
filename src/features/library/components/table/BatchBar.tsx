@@ -227,7 +227,7 @@ export function BatchBar({
                 </DropdownMenuTrigger>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-                Move selected items to collection
+                Move to collection
               </TooltipContent>
             </Tooltip>
             <DropdownMenuContent
@@ -268,11 +268,11 @@ export function BatchBar({
                 className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
               >
                 <GitMerge className="size-3.5 shrink-0 text-foreground" />
-                <span>Merge ({selectedCount})</span>
+                <span>Merge {selectedCount} items</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-              Merge {selectedCount} selected duplicate items into one master record
+              Merge items
             </TooltipContent>
           </Tooltip>
         )}
@@ -294,7 +294,7 @@ export function BatchBar({
               </DropdownMenuTrigger>
             </TooltipTrigger>
             <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-              Copy formatted citations (APA, IEEE, MLA...)
+              Copy citation
             </TooltipContent>
           </Tooltip>
           <DropdownMenuContent
@@ -368,7 +368,7 @@ export function BatchBar({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-            Copy BibTeX entries to clipboard
+            Copy BibTeX
           </TooltipContent>
         </Tooltip>
 
@@ -386,7 +386,7 @@ export function BatchBar({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-            Download BibTeX (.bib) file
+            Download BibTeX
           </TooltipContent>
         </Tooltip>
 
@@ -407,7 +407,7 @@ export function BatchBar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-                  Restore selected items to library
+                  Restore
                 </TooltipContent>
               </Tooltip>
             )}
@@ -425,7 +425,7 @@ export function BatchBar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-                  Permanently delete selected items
+                  Delete permanently
                 </TooltipContent>
               </Tooltip>
             )}
@@ -445,7 +445,7 @@ export function BatchBar({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-                Move selected items to trash
+                Move to trash
               </TooltipContent>
             </Tooltip>
           )

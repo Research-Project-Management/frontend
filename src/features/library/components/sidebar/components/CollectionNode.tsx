@@ -21,6 +21,7 @@ export interface CollectionNodeProps extends CollectionActionHandlers {
   renameValue: string;
   allCollections: Collection[];
   isSearching: boolean;
+  canManageCollections?: boolean;
 }
 
 export function CollectionNode({
@@ -33,6 +34,7 @@ export function CollectionNode({
   renameValue,
   allCollections,
   isSearching,
+  canManageCollections = true,
   onStartRename,
   onSubmitRename,
   onRenameValueChange,
@@ -53,6 +55,7 @@ export function CollectionNode({
   const [isDragOverTarget, setIsDragOverTarget] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
+    if (!canManageCollections) return;
     if (e.dataTransfer.types.includes('application/x-flux-items')) {
       e.preventDefault();
       e.stopPropagation();
@@ -68,6 +71,7 @@ export function CollectionNode({
   };
 
   const handleDrop = (e: React.DragEvent) => {
+    if (!canManageCollections) return;
     if (e.dataTransfer.types.includes('application/x-flux-items')) {
       e.preventDefault();
       e.stopPropagation();
@@ -107,7 +111,7 @@ export function CollectionNode({
           />
         )}
 
-        {renamingId === node.id ? (
+        {renamingId === node.id && canManageCollections ? (
           <div
             className="relative z-10 flex h-9.5 w-full items-center pr-2 min-w-0"
             style={{ paddingLeft: `${paddingLeft}px` }}
@@ -187,6 +191,7 @@ export function CollectionNode({
             <CollectionContextMenu
               node={node}
               validMoveTargets={validMoveTargets}
+              canManageCollections={canManageCollections}
               onCreateSub={onCreateSub}
               onStartRename={onStartRename}
               onMove={onMove}
@@ -214,6 +219,7 @@ export function CollectionNode({
               renameValue={renameValue}
               allCollections={allCollections}
               isSearching={isSearching}
+              canManageCollections={canManageCollections}
               onStartRename={onStartRename}
               onSubmitRename={onSubmitRename}
               onRenameValueChange={onRenameValueChange}

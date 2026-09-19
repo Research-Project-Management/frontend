@@ -16,6 +16,30 @@ import {
   FolderInput,
   Link2,
   PanelRight,
+  FilePlus2,
+  Wand2,
+  Book,
+  BookOpen,
+  Users,
+  ScrollText,
+  FileBarChart,
+  GraduationCap,
+  Globe,
+  Database,
+  PenLine,
+  Scale,
+  Bookmark,
+  Presentation,
+  Code2,
+  Newspaper,
+  File,
+  Briefcase,
+  Music,
+  Video,
+  Mic,
+  UserCheck,
+  Map,
+  Palette,
 } from "lucide-react";
 import { LibraryIcon } from "@/shared/components/icons";
 import { Button, Input } from "@/shared/components/ui";
@@ -24,6 +48,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/shared/components/ui";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import { LibraryFilterPopover } from "./LibraryFilterPopover";
@@ -53,6 +82,7 @@ export interface TopbarProps {
   workspaceId?: string;
   items?: Item[];
   onAddPaper?: (mode?: 'file' | 'folder' | 'link') => void;
+  onNewManualItem?: (itemType: string) => void;
   onDirectFilesUpload?: (files: File[]) => void;
   onDirectFolderUpload?: (files: File[], folderName: string) => void;
   onAddCollection?: () => void;
@@ -82,6 +112,7 @@ export default function Topbar({
   workspaceId: propWorkspaceId,
   items,
   onAddPaper,
+  onNewManualItem,
   onDirectFilesUpload,
   onDirectFolderUpload,
   onAddCollection,
@@ -297,7 +328,7 @@ export default function Topbar({
         )}
 
         {/* + New Button with Dropdown Menu (Includes Import from My Library when in Project scope) */}
-        {(onAddPaper || onAddCollection || onDirectFilesUpload || onDirectFolderUpload || onAddLink || onImportFromPersonal) && (
+        {(onNewManualItem || onAddPaper || onAddCollection || onDirectFilesUpload || onDirectFolderUpload || onAddLink || onImportFromPersonal) && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" className="h-8 px-3 rounded-md cursor-pointer font-medium text-13 shadow-none inline-flex items-center justify-center">
@@ -308,20 +339,288 @@ export default function Topbar({
               align="end"
               sideOffset={4}
               onCloseAutoFocus={(e) => e.preventDefault()}
-              className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+              className="w-60 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
             >
-              {/* Group 1: Collection / Structure Creation */}
-              {onAddCollection && (
+              {/* Group 1: Create Reference (Manual Reference Creation - Zotero Standard) */}
+              {onNewManualItem && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
+                    <PenLine className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                    <span className="text-foreground">Create Reference</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent
+                    collisionPadding={16}
+                    sideOffset={4}
+                    alignOffset={-4}
+                    className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+                  >
+                    {/* Top 9 Academic Quick List */}
+                    <DropdownMenuItem
+                      onClick={() => onNewManualItem('journalArticle')}
+                      className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                    >
+                      <FileText className="size-3.5 text-foreground shrink-0" />
+                      <span>Journal Article</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onNewManualItem('book')}
+                      className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                    >
+                      <Book className="size-3.5 text-foreground shrink-0" />
+                      <span>Book</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onNewManualItem('bookSection')}
+                      className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                    >
+                      <BookOpen className="size-3.5 text-foreground shrink-0" />
+                      <span>Book Section</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onNewManualItem('conferencePaper')}
+                      className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                    >
+                      <Users className="size-3.5 text-foreground shrink-0" />
+                      <span>Conference Paper</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onNewManualItem('preprint')}
+                      className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                    >
+                      <ScrollText className="size-3.5 text-foreground shrink-0" />
+                      <span>Preprint</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onNewManualItem('report')}
+                      className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                    >
+                      <FileBarChart className="size-3.5 text-foreground shrink-0" />
+                      <span>Report</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onNewManualItem('thesis')}
+                      className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                    >
+                      <GraduationCap className="size-3.5 text-foreground shrink-0" />
+                      <span>Thesis</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onNewManualItem('webpage')}
+                      className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                    >
+                      <Globe className="size-3.5 text-foreground shrink-0" />
+                      <span>Web Page</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onNewManualItem('dataset')}
+                      className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                    >
+                      <Database className="size-3.5 text-foreground shrink-0" />
+                      <span>Dataset</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator className="mx-1 my-1" />
+
+                    {/* Zotero Standard "More Types..." Submenu (Clean Flat List A-Z) */}
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted">
+                        <MoreHorizontal className="size-3.5 text-foreground shrink-0" />
+                        <span>More Types...</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent
+                        collisionPadding={16}
+                        sideOffset={4}
+                        alignOffset={-4}
+                        className="w-56 max-h-[min(380px,var(--radix-dropdown-menu-content-available-height,calc(100vh-64px)))] overflow-y-auto overflow-x-hidden p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+                      >
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('artwork')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Palette className="size-3.5 text-foreground shrink-0" />
+                          <span>Artwork</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('audioRecording')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Music className="size-3.5 text-foreground shrink-0" />
+                          <span>Audio Recording</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('bill')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <FileText className="size-3.5 text-foreground shrink-0" />
+                          <span>Bill</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('blogPost')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Globe className="size-3.5 text-foreground shrink-0" />
+                          <span>Blog Post</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('case')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Briefcase className="size-3.5 text-foreground shrink-0" />
+                          <span>Case</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('computerProgram')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Code2 className="size-3.5 text-foreground shrink-0" />
+                          <span>Computer Program</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('dictionaryEntry')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Book className="size-3.5 text-foreground shrink-0" />
+                          <span>Dictionary Entry</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('document')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <File className="size-3.5 text-foreground shrink-0" />
+                          <span>Document</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('encyclopediaArticle')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <BookOpen className="size-3.5 text-foreground shrink-0" />
+                          <span>Encyclopedia Article</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('film')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Video className="size-3.5 text-foreground shrink-0" />
+                          <span>Film</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('forumPost')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Globe className="size-3.5 text-foreground shrink-0" />
+                          <span>Forum Post</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('hearing')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Users className="size-3.5 text-foreground shrink-0" />
+                          <span>Hearing</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('interview')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <UserCheck className="size-3.5 text-foreground shrink-0" />
+                          <span>Interview</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('magazineArticle')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <FileText className="size-3.5 text-foreground shrink-0" />
+                          <span>Magazine Article</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('manuscript')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <ScrollText className="size-3.5 text-foreground shrink-0" />
+                          <span>Manuscript</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('map')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Map className="size-3.5 text-foreground shrink-0" />
+                          <span>Map</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('newspaperArticle')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Newspaper className="size-3.5 text-foreground shrink-0" />
+                          <span>Newspaper Article</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('patent')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Scale className="size-3.5 text-foreground shrink-0" />
+                          <span>Patent</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('podcast')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Mic className="size-3.5 text-foreground shrink-0" />
+                          <span>Podcast</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('presentation')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Presentation className="size-3.5 text-foreground shrink-0" />
+                          <span>Presentation</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('standard')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Bookmark className="size-3.5 text-foreground shrink-0" />
+                          <span>Standard</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('statute')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Scale className="size-3.5 text-foreground shrink-0" />
+                          <span>Statute</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('tvBroadcast')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Video className="size-3.5 text-foreground shrink-0" />
+                          <span>TV Broadcast</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onNewManualItem('videoRecording')}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <Video className="size-3.5 text-foreground shrink-0" />
+                          <span>Video Recording</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
+
+              {/* Group 2: Add by Identifier (Magic Wand) */}
+              {(onAddLink || onAddPaper) && (
                 <DropdownMenuItem
-                  onClick={onAddCollection}
+                  onClick={handleAddLinkClick}
                   className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                 >
-                  <FolderPlus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                  <span className="text-foreground">{isSubcollection ? "New Subcollection" : "New Collection"}</span>
+                  <Wand2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span className="text-foreground">Add by Identifier</span>
                 </DropdownMenuItem>
               )}
 
-              {/* Group 2: External Ingestion (File, Folder, Link) */}
+              <DropdownMenuSeparator className="mx-1 my-1" />
+
+              {/* Group 3: File & Folder Upload */}
               {(onDirectFilesUpload || onAddPaper) && (
                 <DropdownMenuItem
                   onClick={handleAddFileClick}
@@ -340,17 +639,21 @@ export default function Topbar({
                   <span className="text-foreground">Upload Folder</span>
                 </DropdownMenuItem>
               )}
-              {(onAddLink || onAddPaper) && (
+
+              <DropdownMenuSeparator className="mx-1 my-1" />
+
+              {/* Group 4: Collection / Structure Creation */}
+              {onAddCollection && (
                 <DropdownMenuItem
-                  onClick={handleAddLinkClick}
+                  onClick={onAddCollection}
                   className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                 >
-                  <Link2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                  <span className="text-foreground">Add Link</span>
+                  <FolderPlus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span className="text-foreground">{isSubcollection ? "New Subcollection" : "New Collection"}</span>
                 </DropdownMenuItem>
               )}
 
-              {/* Group 3: Project Ingestion from Personal Library */}
+              {/* Group 5: Project Ingestion from Personal Library */}
               {onImportFromPersonal && (
                 <DropdownMenuItem
                   onClick={onImportFromPersonal}
@@ -366,7 +669,7 @@ export default function Topbar({
 
         {children}
 
-        {/* Line dọc ngăn cách giữa button New và icon đóng mở: line gốc mỏng 1px (border-l border-border), căn giữa chuẩn quang học 12px mỗi bên */}
+        {/* Line dọc ngăn cách giữa button New và icon đóng mở: mỏng 1px, h-4 căn giữa quang học, cách xa biên trên dưới */}
         {showInspectorToggle && !isInspectorOpen && (
           <div className="flex items-center gap-1 shrink-0 ml-0.5">
             <div className="h-4 border-l border-border shrink-0" aria-hidden="true" />

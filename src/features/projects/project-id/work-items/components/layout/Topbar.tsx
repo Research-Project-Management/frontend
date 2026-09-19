@@ -215,7 +215,7 @@ export function Topbar({
   return (
     <header
       className={cn(
-        'h-11 border-b border-border px-4 flex items-center justify-between gap-3 bg-background shrink-0 text-13 w-full min-w-0 overflow-x-auto scrollbar-none',
+        'h-11 border-b border-border px-4 flex items-center justify-between gap-3 bg-background shrink-0 text-13 w-full min-w-0 overflow-x-auto scrollbar-none sticky top-0 z-20',
         className,
       )}
     >
@@ -229,7 +229,7 @@ export function Topbar({
         {isCyclesEnabled && cycleId && currentCycle && cycles.length > 0 && (
           <>
             <ChevronRight className="size-3.5 text-muted-foreground/40 shrink-0 mx-0.5" strokeWidth={1.75} />
-            <span className="text-13 font-medium text-muted-foreground truncate max-w-[120px]">
+            <span className="text-13 font-medium text-foreground truncate max-w-[120px]">
               {currentCycle.name}
             </span>
           </>
@@ -267,7 +267,7 @@ export function Topbar({
                       onClick={() => onViewChange(v.id)}
                       className={cn(
                         'relative size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                        isSelected ? 'text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-background/40',
+                        isSelected ? 'text-foreground' : 'text-foreground/70 hover:text-foreground hover:bg-background/40',
                       )}
                       aria-label={v.label}
                     >

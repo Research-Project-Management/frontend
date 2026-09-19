@@ -6,15 +6,18 @@ export interface ReaderTab {
   type: 'library' | 'paper';
 }
 
+// Zotero 7 official annotation tools (in order, Alt+1 through Alt+7):
+// highlight, underline, note, text, area, ink, eraser
+// 'select' is an internal interaction mode, not an annotation tool
 export type ReaderAnnotationTool =
   | 'select'
   | 'highlight'
   | 'underline'
-  | 'strike'
   | 'note'
   | 'text'
   | 'area'
-  | 'ink';
+  | 'ink'
+  | 'eraser';
 
 export interface ReaderStoreState {
   tabs: ReaderTab[];

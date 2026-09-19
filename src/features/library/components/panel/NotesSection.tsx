@@ -21,6 +21,7 @@ export interface NotesSectionProps {
   hideHeader?: boolean;
   forceAdding?: boolean;
   onCancelAdding?: () => void;
+  canEdit?: boolean;
 }
 
 export function NoteIcon({ className = 'size-3.5' }: { className?: string }) {
@@ -55,16 +56,17 @@ export default function NotesSection({
   hideHeader = false,
   forceAdding = false,
   onCancelAdding,
+  canEdit = true,
 }: NotesSectionProps) {
   const paperId = paper.id;
   const activeScopeId = scopeId || projectId || (paper as any)?.projectId || 'user';
   const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
-    if (forceAdding) {
+    if (forceAdding && canEdit) {
       setIsAdding(true);
     }
-  }, [forceAdding]);
+  }, [forceAdding, canEdit]);
 
   const [newNoteContent, setNewNoteContent] = useState('');
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
@@ -163,12 +165,20 @@ export default function NotesSection({
 
     try {
       await createNote({ itemId: paper.id, contentMd: trimmedContent });
+      setNewNoteContent('');
+      setIsAdding(false);
+      onCancelAdding?.();
     } catch (caughtError) {
-      if (onAddNote) onAddNote(trimmedContent);
+      if (onAddNote) {
+        onAddNote(trimmedContent);
+        setNewNoteContent('');
+        setIsAdding(false);
+        onCancelAdding?.();
+      } else {
+        console.error(caughtError);
+        // Keep content intact so user can retry
+      }
     }
-    setNewNoteContent('');
-    setIsAdding(false);
-    onCancelAdding?.();
   };
 
   const handleStartEdit = (selectedNote: NormalizedNote) => {
@@ -188,11 +198,16 @@ export default function NotesSection({
         if (onUpdateNote) onUpdateNote(noteId, trimmedContent);
       }
     } else {
-      try {
-        await createNote({ itemId: paper.id, contentMd: trimmedContent });
-      } catch (caughtError) {
-        if (onAddNote) onAddNote(trimmedContent);
+      // This is a synthetic imported note — only create a real note for known synthetic ids
+      if (noteId.startsWith('imported-comment-')) {
+        try {
+          await createNote({ itemId: paper.id, contentMd: trimmedContent });
+          // The synthetic note will disappear naturally once the real note is created
+        } catch (caughtError) {
+          if (onAddNote) onAddNote(trimmedContent);
+        }
       }
+      // Do not create a new note for unknown note IDs (silent no-op)
     }
     setEditingNoteId(null);
     setEditingContent('');
@@ -285,38 +300,43 @@ export default function NotesSection({
           return (
             <div
               key={n.id}
-              onClick={() => handleStartEdit(n)}
-              className="group/note flex items-center justify-between gap-2 px-2 py-0.5 rounded-md hover:bg-muted text-xs cursor-pointer select-none min-w-0"
+              onClick={canEdit ? () => handleStartEdit(n) : undefined}
+              className={cn(
+                "group/note flex items-center justify-between gap-2 px-2 py-0.5 rounded-md text-xs select-none min-w-0",
+                canEdit ? "hover:bg-muted cursor-pointer" : "cursor-default"
+              )}
             >
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <div className="size-4 shrink-0 flex items-center justify-center">
                   <NoteIcon className="size-3.5 text-foreground shrink-0" />
                 </div>
-                <span className="truncate text-xs font-normal text-foreground tracking-tight" title={n.content}>
+                <span className="truncate text-xs font-normal text-foreground tracking-tight select-text" title={n.content}>
                   {n.content}
                 </span>
               </div>
 
               {/* Minus circle button on hover */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (onRequestDelete) {
-                    onRequestDelete({ id: n.id, content: n.content });
-                  } else if (onDeleteNote) {
-                    onDeleteNote(n.id, n.content);
-                  } else if (deleteNote) {
-                    const target = canonicalNotes.find((cn) => cn.id === n.id);
-                    deleteNote(n.id, target?.version);
-                  }
-                }}
-                className="invisible group-hover/note:visible size-5 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0"
-                title="Delete note"
-                aria-label="Delete note"
-              >
-                <MinusCircle className="size-3.5 text-foreground shrink-0" />
-              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onRequestDelete) {
+                      onRequestDelete({ id: n.id, content: n.content });
+                    } else if (onDeleteNote) {
+                      onDeleteNote(n.id, n.content);
+                    } else if (deleteNote) {
+                      const target = canonicalNotes.find((cn) => cn.id === n.id);
+                      deleteNote(n.id, target?.version);
+                    }
+                  }}
+                  className="invisible group-hover/note:visible size-5 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0"
+                  title="Delete note"
+                  aria-label="Delete note"
+                >
+                  <MinusCircle className="size-3.5 text-foreground shrink-0" />
+                </button>
+              )}
             </div>
           );
         })}

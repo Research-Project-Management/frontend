@@ -3,7 +3,7 @@ import { attachmentSchema } from './attachment.schema';
 import { noteSchema } from './note.schema';
 
 export const userSchema = z.object({
-  id: z.string().optional().default(''),
+  id: z.string().optional(),
   name: z.string().optional().default(''),
   email: z.string().optional().default(''),
   avatar: z.string().optional().default(''),
@@ -11,11 +11,11 @@ export const userSchema = z.object({
 
 export const creatorCreditSchema = z.object({
   id: z.string().optional(),
-  orderIndex: z.number().optional().default(0),
-  creatorType: z.string().optional().default('author'),
+  orderIndex: z.number(),
+  creatorType: z.string(),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
-  fullName: z.string().optional().default(''),
+  fullName: z.string(),
   name: z.string().optional(),
 });
 
@@ -91,14 +91,14 @@ export const itemTagRelationSchema = z.object({
   }).optional(),
   tagId: z.string().optional(),
   itemId: z.string().optional(),
-  addedAt: z.string().optional(),
+  assignedAt: z.string().optional(),
 });
 
 export const itemSchema = z.object({
   id: z.string().optional().default(''),
   title: z.string().optional().default('Untitled Item'),
   authors: z.array(z.string()).optional().default([]),
-  year: z.union([z.number(), z.string()]).nullish(),
+  year: z.coerce.number().int().nullish(),
   doi: z.string().optional().default(''),
   DOI: z.string().optional(),
   abstract: z.string().optional().default(''),
@@ -216,7 +216,7 @@ export const itemSchema = z.object({
   tags: z.array(z.string()).optional().default([]),
   crossrefEnriched: z.boolean().optional().default(false),
   ragDocId: z.string().nullish(),
-  ragStatus: z.enum(['none', 'pending', 'indexing', 'indexed', 'failed']).nullish(),
+  ragStatus: z.enum(['pending', 'indexed', 'failed']).nullish(),
   ragIndexedAt: z.string().nullish(),
   ragError: z.string().optional().default(''),
   ragAttempts: z.number().optional().default(0),
@@ -230,8 +230,8 @@ export const itemSchema = z.object({
   projectId: z.string().nullish(),
   scopeId: z.string().nullish(),
   deletedAt: z.string().nullish(),
-  createdAt: z.string().optional().default(''),
-  updatedAt: z.string().optional().default(''),
+  createdAt: z.string().datetime().optional(),
+  updatedAt: z.string().datetime().optional(),
   lastReadAt: z.string().nullish(),
   readStatus: z.enum(['unread', 'reading', 'completed']).optional().default('unread'),
   version: z.number().optional().default(1),

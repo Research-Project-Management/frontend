@@ -44,6 +44,7 @@ import { useConversion } from '@/features/library/hooks/use-conversion';
 interface InfoSectionProps {
   paper: Item;
   onUpdatePaper?: (data: Partial<Item>) => void;
+  canEdit?: boolean;
 }
 
 /** Fields backed by first-class Item columns. All other registry fields
@@ -236,18 +237,34 @@ function InlineField({
   onSave,
   className,
   mono,
+  readOnly = false,
 }: {
   value: string;
   ariaLabel?: string;
   onSave: (val: string) => void;
   className?: string;
   mono?: boolean;
+  readOnly?: boolean;
 }) {
   const [draft, setDraft] = useState(value);
 
   useEffect(() => {
     setDraft(value);
   }, [value]);
+
+  if (readOnly) {
+    return (
+      <div
+        className={cn(
+          'w-full h-7 text-foreground px-2 py-1 rounded-md text-12 leading-normal font-normal truncate select-text flex items-center font-sans',
+          mono && 'font-mono text-11 tabular-nums tracking-normal',
+          className,
+        )}
+      >
+        {value || ''}
+      </div>
+    );
+  }
 
   const commit = () => {
     const trimmed = draft.trim();
@@ -289,12 +306,14 @@ function InlineTextarea({
   onSave,
   className,
   rows = 1,
+  readOnly = false,
 }: {
   value: string;
   ariaLabel?: string;
   onSave: (val: string) => void;
   className?: string;
   rows?: number;
+  readOnly?: boolean;
 }) {
   const [draft, setDraft] = useState(value);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -323,6 +342,19 @@ function InlineTextarea({
     observer.observe(el);
     return () => observer.disconnect();
   }, [adjustHeight]);
+
+  if (readOnly) {
+    return (
+      <div
+        className={cn(
+          'w-full min-h-7 text-foreground px-2 py-1 rounded-md text-12 leading-normal font-normal break-words [overflow-wrap:anywhere] whitespace-pre-wrap select-text font-sans',
+          className,
+        )}
+      >
+        {value || ''}
+      </div>
+    );
+  }
 
   const commit = () => {
     const trimmed = draft.trim();
@@ -360,7 +392,7 @@ function InlineTextarea({
   );
 }
 
-export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) {
+export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: InfoSectionProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isAuthorsExpanded, setIsAuthorsExpanded] = useState(false);
   const [focusAuthorIndex, setFocusAuthorIndex] = useState<number | null>(null);
@@ -383,6 +415,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
   }, [registryItemTypes]);
   const selectableItemTypes = useMemo(
     () => itemTypeDefinitions
+      .filter((t) => t.isBibliographic !== false && !t.isSpecial && t.itemType !== 'attachment' && t.itemType !== 'note' && t.itemType !== 'annotation')
       .map(({ itemType, label }) => ({ value: itemType, label }))
       .sort((a, b) => a.label.localeCompare(b.label)),
     [itemTypeDefinitions],
@@ -613,11 +646,17 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       if (keyLower === 'citationkey' || keyLower === 'citekey') {
         return cleanValue(p.citationKey || generateCitationKey(p));
       }
-      if (keyLower === 'series' || keyLower === 'seriestitle') {
-        return cleanValue(p.series || p.seriesTitle || ef.series || ef.seriesTitle);
+      if (keyLower === 'series') {
+        return cleanValue(p.series || ef.series);
       }
-      if (keyLower === 'seriesnumber' || keyLower === 'seriestext') {
-        return cleanValue(p.seriesNumber || p.seriesText || ef.seriesNumber || ef.seriesText);
+      if (keyLower === 'seriestitle') {
+        return cleanValue(p.seriesTitle || ef.seriesTitle);
+      }
+      if (keyLower === 'seriesnumber') {
+        return cleanValue(p.seriesNumber || ef.seriesNumber);
+      }
+      if (keyLower === 'seriestext') {
+        return cleanValue(p.seriesText || ef.seriesText);
       }
       if (keyLower === 'rights' || keyLower === 'license') {
         return cleanValue(p.rights || p.license || ef.rights || ef.license);
@@ -628,8 +667,11 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       if (keyLower === 'place') {
         return cleanValue(p.place || ef.place);
       }
+      if (keyLower === 'eventplace') {
+        return cleanValue(p.eventPlace || ef.eventPlace);
+      }
       if (keyLower === 'genre') {
-        return cleanValue(p.genre || p.type || ef.genre);
+        return cleanValue(p.genre || ef.genre);
       }
       if (keyLower === 'language') {
         return cleanValue(p.language || ef.language);
@@ -653,28 +695,31 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         return cleanValue(p.abstract || p.abstractNote || ef.abstractNote || ef.abstract);
       }
       if (keyLower === 'booktitle') {
-        return cleanValue(p.bookTitle || ef.bookTitle);
+        return cleanValue(p.bookTitle || p.publicationTitle || ef.bookTitle);
       }
       if (keyLower === 'proceedingstitle') {
-        return cleanValue(p.proceedingsTitle || ef.proceedingsTitle);
+        return cleanValue(p.proceedingsTitle || p.publicationTitle || ef.proceedingsTitle);
       }
       if (keyLower === 'conferencename') {
         return cleanValue(p.conferenceName || ef.conferenceName);
       }
       if (keyLower === 'eventplace') {
-        return cleanValue(p.eventPlace || ef.eventPlace || p.place || ef.place);
+        return cleanValue(p.eventPlace || p.place || ef.eventPlace);
       }
-      if (keyLower === 'university' || keyLower === 'institution') {
-        return cleanValue(p.university || p.institution || ef.university || ef.institution);
+      if (keyLower === 'university') {
+        return cleanValue(p.university || p.publisher || ef.university);
+      }
+      if (keyLower === 'institution') {
+        return cleanValue(p.institution || p.publisher || ef.institution);
       }
       if (keyLower === 'repository') {
-        return cleanValue(p.repository || ef.repository);
+        return cleanValue(p.repository || ef.repository || (p.itemType === 'preprint' ? p.publisher : ''));
       }
       if (keyLower === 'company' || keyLower === 'distributor' || keyLower === 'studio' || keyLower === 'network' || keyLower === 'label') {
-        return cleanValue(p[fieldKey] || ef[fieldKey] || p.publisher || ef.publisher);
+        return cleanValue(p[fieldKey] || ef[fieldKey]);
       }
       if (keyLower === 'issuingauthority' || keyLower === 'authority') {
-        return cleanValue(p.issuingAuthority || ef.issuingAuthority || p.authority || p.country);
+        return cleanValue(p.issuingAuthority || ef.issuingAuthority || p.authority);
       }
       if (keyLower === 'patentnumber') {
         return cleanValue(p.patentNumber || ef.patentNumber || (p as any).number);
@@ -683,7 +728,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         return cleanValue(p.assignee || ef.assignee);
       }
       if (keyLower === 'websitetitle' || keyLower === 'blogtitle' || keyLower === 'dictionarytitle' || keyLower === 'encyclopediatitle' || keyLower === 'forumtitle' || keyLower === 'sessiontitle' || keyLower === 'programtitle') {
-        return cleanValue(p[fieldKey] || ef[fieldKey]);
+        return cleanValue(p[fieldKey] || ef[fieldKey] || (['websitetitle', 'blogtitle'].includes(keyLower) ? p.publicationTitle : ''));
       }
       if (keyLower === 'websitetype' || keyLower === 'thesistype' || keyLower === 'reporttype' || keyLower === 'posttype') {
         return cleanValue(p[fieldKey] || ef[fieldKey] || p.type || p.genre);
@@ -692,7 +737,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         return cleanValue(p.reportNumber || (p as any).number || ef.reportNumber);
       }
       if (keyLower === 'country') {
-        return cleanValue(p.country || p.place || ef.country);
+        return cleanValue(p.country || ef.country);
       }
       if (keyLower === 'numpages' || keyLower === 'numberofpages') {
         return cleanValue(p.numPages || p.numberOfPages || ef.numPages || ef.numberOfPages);
@@ -827,6 +872,46 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         issuingAuthority: val || '',
         authority: val || '',
       };
+    } else if (keyLower === 'proceedingstitle') {
+      patch = {
+        proceedingsTitle: val || '',
+        publicationTitle: val || '',
+      };
+    } else if (keyLower === 'booktitle') {
+      patch = {
+        bookTitle: val || '',
+        publicationTitle: val || '',
+      };
+    } else if (keyLower === 'websitetitle') {
+      patch = {
+        websiteTitle: val || '',
+        publicationTitle: val || '',
+      };
+    } else if (keyLower === 'blogtitle') {
+      patch = {
+        blogTitle: val || '',
+        publicationTitle: val || '',
+      };
+    } else if (keyLower === 'university') {
+      patch = {
+        university: val || '',
+        publisher: val || '',
+      };
+    } else if (keyLower === 'institution') {
+      patch = {
+        institution: val || '',
+        publisher: val || '',
+      };
+    } else if (keyLower === 'eventplace') {
+      patch = {
+        eventPlace: val || '',
+        place: val || '',
+      };
+    } else if (keyLower === 'repository') {
+      patch = {
+        repository: val || '',
+        ...(paper.itemType === 'preprint' ? {} : { publisher: val || '' }),
+      };
     } else if (DIRECT_METADATA_FIELDS.has(key) || DIRECT_METADATA_FIELDS.has(keyLower)) {
       patch = { [key]: val || '' };
     } else {
@@ -898,7 +983,32 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         raw.push(refDef);
       }
     }
-    return raw;
+
+    // Filter out duplicate/conflicting venue fields per Zotero Schema v42
+    return raw.filter((f: SchemaFieldDefinition) => {
+      const k = f.field.toLowerCase();
+      if (currentItemType === 'preprint') {
+        if (k === 'publicationtitle' || k === 'journal' || k === 'publisher') {
+          return false;
+        }
+      }
+      if (currentItemType === 'conferencePaper') {
+        if (k === 'publicationtitle' || k === 'journal') {
+          return false;
+        }
+      }
+      if (currentItemType === 'bookSection') {
+        if (k === 'publicationtitle' || k === 'journal') {
+          return false;
+        }
+      }
+      if (currentItemType === 'webpage' || currentItemType === 'blogPost') {
+        if (k === 'publicationtitle' || k === 'journal') {
+          return false;
+        }
+      }
+      return true;
+    });
   }, [typeDefinition, currentItemType]);
 
   const formattedExtraMetadata = useMemo(() => {
@@ -946,76 +1056,82 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
           Item Type
         </span>
         <div className="flex items-center gap-1.5 min-w-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="w-full h-7 text-left px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary data-[state=open]:border-primary data-[state=open]:bg-muted text-12 leading-normal font-normal text-foreground bg-transparent cursor-pointer outline-none select-none truncate flex items-center justify-between"
-                aria-label="Item Type"
-              >
-                <div className="flex items-center gap-1.5 truncate">
-                  {isCheckingType ? (
-                    <Loader2 className="size-3 animate-spin text-foreground shrink-0" />
-                  ) : null}
-                  <span className="truncate">
-                    {selectableItemTypes.find((t) => t.value === currentItemType)?.label || typeDefinition.label || currentItemType}
-                  </span>
-                </div>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="max-h-[420px] min-w-[250px] overflow-y-auto p-1.5 rounded-md shadow-raised-200 border border-border bg-popover text-popover-foreground space-y-0.5">
-              {selectableItemTypes.map((t) => {
-                const isSelected = t.value === currentItemType;
-                return (
-                  <DropdownMenuItem
-                    key={t.value}
-                    onClick={async () => {
-                      if (t.value === currentItemType || isCheckingType) return;
-                      setIsCheckingType(true);
-                      try {
-                        const prev = await previewAsync({
-                          itemId: paper.id,
-                          targetType: t.value,
-                          retainUnmappedInExtra: true,
-                        });
-                        if (!prev.hasLoss) {
-                          // Lossless: convert immediately without dialog and without notification
-                          const result = await convertAsync({
+          {canEdit ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="w-full h-7 text-left px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary data-[state=open]:border-primary data-[state=open]:bg-muted text-12 leading-normal font-normal text-foreground bg-transparent cursor-pointer outline-none select-none truncate flex items-center justify-between"
+                  aria-label="Item Type"
+                >
+                  <div className="flex items-center gap-1.5 truncate">
+                    {isCheckingType ? (
+                      <Loader2 className="size-3 animate-spin text-foreground shrink-0" />
+                    ) : null}
+                    <span className="truncate">
+                      {selectableItemTypes.find((t) => t.value === currentItemType)?.label || typeDefinition.label || currentItemType}
+                    </span>
+                  </div>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="max-h-[420px] min-w-[250px] overflow-y-auto p-1.5 rounded-md shadow-raised-200 border border-border bg-popover text-popover-foreground space-y-0.5">
+                {selectableItemTypes.map((t) => {
+                  const isSelected = t.value === currentItemType;
+                  return (
+                    <DropdownMenuItem
+                      key={t.value}
+                      onClick={async () => {
+                        if (t.value === currentItemType || isCheckingType) return;
+                        setIsCheckingType(true);
+                        try {
+                          const prev = await previewAsync({
                             itemId: paper.id,
                             targetType: t.value,
-                            expectedVersion: (paper as any).version,
                             retainUnmappedInExtra: true,
-                            silent: true,
                           });
-                          const updated = (result as any)?.item ?? (result as any)?.data ?? result;
-                          onUpdatePaper?.(updated);
-                        } else {
-                          // Lossy: open modal with preview already loaded
-                          setTargetConversionType(t.value);
-                          setIsConversionDialogOpen(true);
+                          if (!prev.hasLoss) {
+                            // Lossless: convert immediately without dialog and without notification
+                            const result = await convertAsync({
+                              itemId: paper.id,
+                              targetType: t.value,
+                              expectedVersion: (paper as any).version,
+                              retainUnmappedInExtra: true,
+                              silent: true,
+                            });
+                            const updated = (result as any)?.item ?? (result as any)?.data ?? result;
+                            onUpdatePaper?.(updated);
+                          } else {
+                            // Lossy: open modal with preview already loaded
+                            setTargetConversionType(t.value);
+                            setIsConversionDialogOpen(true);
+                          }
+                        } catch {
+                          // Errors are already surfaced by useItemTypeConversion hook via toast
+                        } finally {
+                          setIsCheckingType(false);
                         }
-                      } catch {
-                        // Errors surfaced by hooks via toast
-                        setTargetConversionType(t.value);
-                        setIsConversionDialogOpen(true);
-                      } finally {
-                        setIsCheckingType(false);
-                      }
-                    }}
-                    className={cn(
-                      'flex items-center gap-2.5 h-7 px-2.5 text-xs font-normal rounded-md cursor-pointer text-foreground hover:bg-muted',
-                      isSelected && 'bg-muted text-foreground font-medium',
-                    )}
-                  >
-                    <span className="w-2.5 text-center text-xs font-normal text-foreground shrink-0 select-none">
-                      {isSelected ? '•' : ''}
-                    </span>
-                    <span className="truncate text-foreground">{t.label}</span>
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                      }}
+                      className={cn(
+                        'flex items-center gap-2.5 h-7 px-2.5 text-xs font-normal rounded-md cursor-pointer text-foreground hover:bg-muted',
+                        isSelected && 'bg-muted text-foreground font-medium',
+                      )}
+                    >
+                      <span className="w-2.5 text-center text-xs font-normal text-foreground shrink-0 select-none">
+                        {isSelected ? '•' : ''}
+                      </span>
+                      <span className="truncate text-foreground">{t.label}</span>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className="w-full h-7 text-left px-2 py-1 text-12 leading-normal font-normal text-foreground truncate flex items-center select-text font-sans">
+              <span className="truncate">
+                {selectableItemTypes.find((t) => t.value === currentItemType)?.label || typeDefinition.label || currentItemType}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1030,41 +1146,23 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
           onSave={(val) => handleFieldChange('title', val || undefined)}
           className="font-normal text-foreground text-12 leading-normal"
           rows={1}
+          readOnly={!canEdit}
         />
       </div>
 
       {/* Creators / Authors */}
       <div className="py-0.5 space-y-0.5">
         {localCreators.length === 0 ? (
-          <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5">
-            <span className="text-muted-foreground text-right font-normal select-none pr-2 text-12 leading-normal truncate">
-              {typeDefinition.creatorTypes[0]?.label || 'Author'}
-            </span>
-            <input
-              type="text"
-              aria-label="Author"
-              onBlur={(blurEvent) => {
-                const trimmedValue = blurEvent.target.value.trim();
-                const existingAuthors = normalizeAuthors(paper.authors, paper.creators, paper.contributors);
-                if (trimmedValue && (!existingAuthors.length || existingAuthors[0] !== trimmedValue)) {
-                  if (onUpdatePaper) {
-                    onUpdatePaper({
-                      authors: [trimmedValue],
-                      creators: [
-                        {
-                          orderIndex: 0,
-                          creatorType: 'author',
-                          fullName: trimmedValue,
-                          name: trimmedValue,
-                        },
-                      ],
-                    });
-                  }
-                }
-              }}
-              onKeyDown={(keyboardEvent) => {
-                if (keyboardEvent.key === 'Enter') {
-                  const trimmedValue = (keyboardEvent.target as HTMLInputElement).value.trim();
+          canEdit ? (
+            <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5">
+              <span className="text-muted-foreground text-right font-normal select-none pr-2 text-12 leading-normal truncate">
+                {typeDefinition.creatorTypes[0]?.label || 'Author'}
+              </span>
+              <input
+                type="text"
+                aria-label="Author"
+                onBlur={(blurEvent) => {
+                  const trimmedValue = blurEvent.target.value.trim();
                   const existingAuthors = normalizeAuthors(paper.authors, paper.creators, paper.contributors);
                   if (trimmedValue && (!existingAuthors.length || existingAuthors[0] !== trimmedValue)) {
                     if (onUpdatePaper) {
@@ -1081,154 +1179,191 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                       });
                     }
                   }
-                  (keyboardEvent.target as HTMLInputElement).blur();
-                }
-              }}
-              className="flex-1 h-7 bg-transparent px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-12 leading-normal outline-none min-w-0 font-normal font-sans"
-            />
-          </div>
+                }}
+                onKeyDown={(keyboardEvent) => {
+                  if (keyboardEvent.key === 'Enter') {
+                    const trimmedValue = (keyboardEvent.target as HTMLInputElement).value.trim();
+                    const existingAuthors = normalizeAuthors(paper.authors, paper.creators, paper.contributors);
+                    if (trimmedValue && (!existingAuthors.length || existingAuthors[0] !== trimmedValue)) {
+                      if (onUpdatePaper) {
+                        onUpdatePaper({
+                          authors: [trimmedValue],
+                          creators: [
+                            {
+                              orderIndex: 0,
+                              creatorType: 'author',
+                              fullName: trimmedValue,
+                              name: trimmedValue,
+                            },
+                          ],
+                        });
+                      }
+                    }
+                    (keyboardEvent.target as HTMLInputElement).blur();
+                  }
+                }}
+                className="flex-1 h-7 bg-transparent px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-12 leading-normal outline-none min-w-0 font-normal font-sans"
+              />
+            </div>
+          ) : null
         ) : (
           <>
             {visibleCreators.map((creatorEntry, creatorIndex) => (
               <div key={creatorIndex} className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5 group">
                 {/* Left Role Column */}
                 <div className="flex items-center justify-end min-w-0">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className="w-full h-7 flex items-center justify-end pr-2 rounded-md text-12 leading-normal font-normal text-muted-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-right"
-                        aria-label={`Change role for creator ${creatorIndex + 1}`}
-                      >
-                        <span className="truncate">
-                          {ALL_CREATOR_TYPES[creatorEntry.creatorType] || creatorEntry.creatorType || 'Author'}
-                        </span>
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="min-w-[170px] p-1.5 rounded-md shadow-raised-200 border border-border bg-popover text-popover-foreground space-y-0.5">
-                      {creatorTypesList.map((creatorTypeItem) => (
-                        <DropdownMenuItem
-                          key={creatorTypeItem.creatorType}
-                          onClick={() => handleUpdateCreatorType(creatorIndex, creatorTypeItem.creatorType)}
-                          className={cn(
-                            'flex items-center justify-between h-7 px-2 text-xs font-normal rounded-md cursor-pointer text-foreground hover:bg-muted',
-                            creatorEntry.creatorType === creatorTypeItem.creatorType && 'bg-muted text-foreground font-medium',
-                          )}
+                  {canEdit ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="w-full h-7 flex items-center justify-end pr-2 rounded-md text-12 leading-normal font-normal text-muted-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-right"
+                          aria-label={`Change role for creator ${creatorIndex + 1}`}
                         >
-                          <span className="text-foreground">{creatorTypeItem.label}</span>
-                          {creatorEntry.creatorType === creatorTypeItem.creatorType && (
-                            <Check className="size-3 text-foreground shrink-0" aria-hidden="true" />
-                          )}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                          <span className="truncate">
+                            {ALL_CREATOR_TYPES[creatorEntry.creatorType] || creatorEntry.creatorType || 'Author'}
+                          </span>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="min-w-[170px] p-1.5 rounded-md shadow-raised-200 border border-border bg-popover text-popover-foreground space-y-0.5">
+                        {creatorTypesList.map((creatorTypeItem) => (
+                          <DropdownMenuItem
+                            key={creatorTypeItem.creatorType}
+                            onClick={() => handleUpdateCreatorType(creatorIndex, creatorTypeItem.creatorType)}
+                            className={cn(
+                              'flex items-center justify-between h-7 px-2 text-xs font-normal rounded-md cursor-pointer text-foreground hover:bg-muted',
+                              creatorEntry.creatorType === creatorTypeItem.creatorType && 'bg-muted text-foreground font-medium',
+                            )}
+                          >
+                            <span className="text-foreground">{creatorTypeItem.label}</span>
+                            {creatorEntry.creatorType === creatorTypeItem.creatorType && (
+                              <Check className="size-3 text-foreground shrink-0" aria-hidden="true" />
+                            )}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    <div className="w-full h-7 flex items-center justify-end pr-2 text-12 leading-normal font-normal text-muted-foreground select-text text-right truncate">
+                      <span className="truncate">
+                        {ALL_CREATOR_TYPES[creatorEntry.creatorType] || creatorEntry.creatorType || 'Author'}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 {/* Right Input Column */}
                 <div className="flex items-center gap-1 min-w-0">
-                  <input
-                    ref={(inputElement) => {
-                      authorInputRefs.current[creatorIndex] = inputElement;
-                    }}
-                    type="text"
-                    value={creatorEntry.name}
-                    aria-label={`Creator ${creatorIndex + 1}`}
-                    onChange={(changeEvent) => {
-                      const inputValue = changeEvent.target.value;
-                      if (inputValue.includes(';') || /\s+and\s+/i.test(inputValue) || inputValue.includes('\n')) {
-                        const splitParts = splitAuthorString(inputValue);
-                        if (splitParts.length > 1) {
+                  {canEdit ? (
+                    <>
+                      <input
+                        ref={(inputElement) => {
+                          authorInputRefs.current[creatorIndex] = inputElement;
+                        }}
+                        type="text"
+                        value={creatorEntry.name}
+                        aria-label={`Creator ${creatorIndex + 1}`}
+                        onChange={(changeEvent) => {
+                          const inputValue = changeEvent.target.value;
+                          if (inputValue.includes(';') || /\s+and\s+/i.test(inputValue) || inputValue.includes('\n')) {
+                            const splitParts = splitAuthorString(inputValue);
+                            if (splitParts.length > 1) {
+                              const updatedCreators = [...localCreators];
+                              const newCreatorEntries = splitParts.map((authorNamePart) => ({
+                                creatorType: updatedCreators[creatorIndex]?.creatorType || 'author',
+                                name: authorNamePart,
+                              }));
+                              updatedCreators.splice(creatorIndex, 1, ...newCreatorEntries);
+                              setLocalCreators(updatedCreators);
+                              return;
+                            }
+                          }
                           const updatedCreators = [...localCreators];
-                          const newCreatorEntries = splitParts.map((authorNamePart) => ({
-                            creatorType: updatedCreators[creatorIndex]?.creatorType || 'author',
-                            name: authorNamePart,
-                          }));
-                          updatedCreators.splice(creatorIndex, 1, ...newCreatorEntries);
+                          updatedCreators[creatorIndex] = { ...updatedCreators[creatorIndex], name: inputValue };
                           setLocalCreators(updatedCreators);
-                          return;
-                        }
-                      }
-                      const updatedCreators = [...localCreators];
-                      updatedCreators[creatorIndex] = { ...updatedCreators[creatorIndex], name: inputValue };
-                      setLocalCreators(updatedCreators);
-                    }}
-                    onBlur={() => {
-                      const originalCreators = parseCreators(paper);
-                      if (areCreatorsEqual(localCreators, originalCreators)) {
-                        return;
-                      }
-                      const primaryRole = typeDefinition.primaryCreatorType || getPrimaryCreatorType(currentItemType) || 'author';
-                      const allCreatorNames = localCreators
-                        .map((creatorItem) => creatorItem.name.trim())
-                        .filter(Boolean);
-                      const primaryCreatorNames = localCreators
-                        .filter((creatorItem) => (creatorItem.creatorType || primaryRole) === primaryRole)
-                        .map((creatorItem) => creatorItem.name.trim())
-                        .filter(Boolean);
-                      const finalAuthors = primaryCreatorNames.length ? primaryCreatorNames : allCreatorNames;
-                      if (onUpdatePaper) {
-                        onUpdatePaper({
-                          authors: finalAuthors.length ? finalAuthors : undefined,
-                          creators: toItemCreators(localCreators),
-                        });
-                      }
-                    }}
-                    onKeyDown={(keyboardEvent) => {
-                      if (keyboardEvent.key === 'Enter') {
-                        keyboardEvent.preventDefault();
-                        handleAddCreator(creatorIndex);
-                      }
-                    }}
-                    className="flex-1 h-7 bg-transparent px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-12 leading-normal outline-none min-w-0 font-normal font-sans"
-                  />
-                  {/* Action Buttons (Add / Remove) */}
-                  <div className="invisible group-hover:visible flex items-center gap-0.5 shrink-0">
-                    <Tooltip delayDuration={700}>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => handleAddCreator(creatorIndex)}
-                          className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer focus-visible:outline-none"
-                          aria-label="Add creator below"
-                        >
-                          <Plus className="size-3.5 text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent
-                        side="bottom"
-                        align="start"
-                        sideOffset={6}
-                        alignOffset={2}
-                        className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
-                      >
-                        Add author below
-                      </TooltipContent>
-                    </Tooltip>
-
-                    {localCreators.length > 1 && (
-                      <Tooltip delayDuration={700}>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveCreator(creatorIndex)}
-                            className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer focus-visible:outline-none"
-                            aria-label="Remove creator"
+                        }}
+                        onBlur={() => {
+                          const originalCreators = parseCreators(paper);
+                          if (areCreatorsEqual(localCreators, originalCreators)) {
+                            return;
+                          }
+                          const primaryRole = typeDefinition.primaryCreatorType || getPrimaryCreatorType(currentItemType) || 'author';
+                          const allCreatorNames = localCreators
+                            .map((creatorItem) => creatorItem.name.trim())
+                            .filter(Boolean);
+                          const primaryCreatorNames = localCreators
+                            .filter((creatorItem) => (creatorItem.creatorType || primaryRole) === primaryRole)
+                            .map((creatorItem) => creatorItem.name.trim())
+                            .filter(Boolean);
+                          const finalAuthors = primaryCreatorNames.length ? primaryCreatorNames : allCreatorNames;
+                          if (onUpdatePaper) {
+                            onUpdatePaper({
+                              authors: finalAuthors.length ? finalAuthors : undefined,
+                              creators: toItemCreators(localCreators),
+                            });
+                          }
+                        }}
+                        onKeyDown={(keyboardEvent) => {
+                          if (keyboardEvent.key === 'Enter') {
+                            keyboardEvent.preventDefault();
+                            handleAddCreator(creatorIndex);
+                          }
+                        }}
+                        className="flex-1 h-7 bg-transparent px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-12 leading-normal outline-none min-w-0 font-normal font-sans"
+                      />
+                      {/* Action Buttons (Add / Remove) */}
+                      <div className="invisible group-hover:visible flex items-center gap-0.5 shrink-0">
+                        <Tooltip delayDuration={700}>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => handleAddCreator(creatorIndex)}
+                              className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer focus-visible:outline-none"
+                              aria-label="Add creator below"
+                            >
+                              <Plus className="size-3.5 text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="bottom"
+                            align="start"
+                            sideOffset={6}
+                            alignOffset={2}
+                            className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
                           >
-                            <Minus className="size-3.5 text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent
-                          side="bottom"
-                          align="start"
-                          sideOffset={6}
-                          alignOffset={2}
-                          className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
-                        >
-                          Remove author
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
+                            Add author below
+                          </TooltipContent>
+                        </Tooltip>
+
+                        {localCreators.length > 1 && (
+                          <Tooltip delayDuration={700}>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveCreator(creatorIndex)}
+                                className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer focus-visible:outline-none"
+                                aria-label="Remove creator"
+                              >
+                                <Minus className="size-3.5 text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="bottom"
+                              align="start"
+                              sideOffset={6}
+                              alignOffset={2}
+                              className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                            >
+                              Remove author
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex-1 h-7 px-2 py-1 text-foreground text-12 leading-normal min-w-0 font-normal font-sans truncate select-text flex items-center">
+                      {creatorEntry.name}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -1307,6 +1442,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                 ariaLabel={isCitationKey ? 'BibTeX Citation Key' : fieldDef.label}
                 onSave={onSaveField}
                 mono={fieldDef.mono || isCitationKey}
+                readOnly={!canEdit}
               />
 
               {/* Citations Provider Quick Action */}
@@ -1441,6 +1577,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
           ariaLabel="Extra"
           rows={Math.min(4, Math.max(1, formattedExtraMetadata ? formattedExtraMetadata.split('\n').length : 1))}
           onSave={(savedValue) => handleFieldChange('extra', savedValue || undefined)}
+          readOnly={!canEdit}
         />
       </div>
 

@@ -68,12 +68,12 @@ function NoteEditForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit(onSave)} className="space-y-2 rounded-sm border border-border p-2 bg-muted/20">
-        <div className="flex items-center gap-1 border-b border-border/50 pb-1 text-muted-foreground">
+      <form onSubmit={handleSubmit(onSave)} className="space-y-2 rounded-md border border-border p-2 bg-background shadow-2xs">
+        <div className="flex items-center gap-1 border-b border-border/50 pb-1 text-foreground">
           <button
             type="button"
             onClick={() => insertSnippet('**', '**')}
-            className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer"
+            className="p-1 rounded-md hover:bg-muted text-xs text-foreground cursor-pointer"
             title="Bold"
           >
             <Bold className="size-3" />
@@ -81,7 +81,7 @@ function NoteEditForm({
           <button
             type="button"
             onClick={() => insertSnippet('*', '*')}
-            className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer"
+            className="p-1 rounded-md hover:bg-muted text-xs text-foreground cursor-pointer"
             title="Italic"
           >
             <Italic className="size-3" />
@@ -89,7 +89,7 @@ function NoteEditForm({
           <button
             type="button"
             onClick={() => insertSnippet('\n> ', '\n')}
-            className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer"
+            className="p-1 rounded-md hover:bg-muted text-xs text-foreground cursor-pointer"
             title="Quote"
           >
             <Quote className="size-3" />
@@ -97,7 +97,7 @@ function NoteEditForm({
           <button
             type="button"
             onClick={() => insertSnippet('$', '$')}
-            className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer"
+            className="p-1 rounded-md hover:bg-muted text-xs text-foreground cursor-pointer"
             title="LaTeX Math"
           >
             <Sigma className="size-3" />
@@ -106,7 +106,7 @@ function NoteEditForm({
             <button
               type="button"
               onClick={() => insertSnippet(`@${citationKey} `)}
-              className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer flex items-center gap-0.5"
+              className="p-1 rounded-md hover:bg-muted text-xs text-foreground cursor-pointer flex items-center gap-0.5"
               title={`Cite: @${citationKey}`}
             >
               <AtSign className="size-3" />
@@ -117,7 +117,7 @@ function NoteEditForm({
         <textarea
           {...register('contentMd')}
           aria-label="Edit note content"
-          className="w-full resize-none bg-transparent text-xs leading-relaxed outline-none placeholder:text-muted-foreground/50 text-foreground"
+          className="w-full resize-none bg-transparent text-xs leading-relaxed outline-none placeholder:text-foreground/70 text-foreground"
           rows={3}
           autoFocus
         />
@@ -127,9 +127,9 @@ function NoteEditForm({
         <div className="flex justify-end gap-1">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="h-6 text-xs px-2 cursor-pointer rounded-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+            className="h-6 text-xs px-2 cursor-pointer rounded-md border-border bg-background shadow-2xs text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
             onClick={onCancel}
           >
             Cancel
@@ -137,7 +137,7 @@ function NoteEditForm({
           <Button
             type="submit"
             size="sm"
-            className="h-6 text-xs px-2.5 font-medium cursor-pointer rounded-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+            className="h-6 text-xs px-2.5 font-medium cursor-pointer rounded-md shadow-2xs focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
             disabled={isSaving}
           >
             {isSaving ? <Loader2 className="size-3 animate-spin shrink-0" /> : 'Save'}
@@ -325,13 +325,13 @@ export default function NotesPanel({
         <Form {...newNoteForm}>
           <form
             onSubmit={handleSubmitNewNote(handleAddNote)}
-            className="rounded-sm border border-border bg-background focus-within:ring-1 focus-within:ring-ring p-2 space-y-1.5"
+            className="rounded-md border border-border bg-background shadow-2xs focus-within:ring-1 focus-within:ring-ring p-2 space-y-1.5"
           >
-            <div className="flex items-center gap-1 border-b border-border/50 pb-1 text-muted-foreground">
+            <div className="flex items-center gap-1 border-b border-border/50 pb-1 text-foreground">
               <button
                 type="button"
                 onClick={() => insertNewSnippet('**', '**')}
-                className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer"
+                className="p-1 rounded-md hover:bg-muted text-xs text-foreground cursor-pointer"
                 title="Bold"
               >
                 <Bold className="size-3" />
@@ -339,7 +339,7 @@ export default function NotesPanel({
               <button
                 type="button"
                 onClick={() => insertNewSnippet('*', '*')}
-                className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer"
+                className="p-1 rounded-md hover:bg-muted text-xs text-foreground cursor-pointer"
                 title="Italic"
               >
                 <Italic className="size-3" />
@@ -347,7 +347,7 @@ export default function NotesPanel({
               <button
                 type="button"
                 onClick={() => insertNewSnippet('\n> ', '\n')}
-                className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer"
+                className="p-1 rounded-md hover:bg-muted text-xs text-foreground cursor-pointer"
                 title="Quote"
               >
                 <Quote className="size-3" />
@@ -355,7 +355,7 @@ export default function NotesPanel({
               <button
                 type="button"
                 onClick={() => insertNewSnippet('$', '$')}
-                className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer"
+                className="p-1 rounded-md hover:bg-muted text-xs text-foreground cursor-pointer"
                 title="LaTeX Math"
               >
                 <Sigma className="size-3" />
@@ -364,7 +364,7 @@ export default function NotesPanel({
                 <button
                   type="button"
                   onClick={() => insertNewSnippet(`@${citationKey} `)}
-                  className="p-1 rounded hover:bg-muted text-xs hover:text-foreground cursor-pointer flex items-center gap-0.5"
+                  className="p-1 rounded-md hover:bg-muted text-xs text-foreground cursor-pointer flex items-center gap-0.5"
                   title={`Cite: @${citationKey}`}
                 >
                   <AtSign className="size-3" />
@@ -376,7 +376,7 @@ export default function NotesPanel({
               aria-label="New note content"
               placeholder="Write a note (Markdown & LaTeX $...$ supported)..."
               rows={2}
-              className="w-full resize-none bg-transparent text-xs leading-relaxed outline-none placeholder:text-muted-foreground/50 text-foreground"
+              className="w-full resize-none bg-transparent text-xs leading-relaxed outline-none placeholder:text-foreground/70 text-foreground"
             />
             {newNoteErrors.contentMd && (
               <p className="text-11 text-destructive mt-0.5">{newNoteErrors.contentMd.message}</p>
@@ -386,7 +386,7 @@ export default function NotesPanel({
                 type="submit"
                 size="sm"
                 disabled={!currentNewNoteContent?.trim() || isBusy}
-                className="h-6 text-xs px-2.5 font-medium cursor-pointer rounded-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+                className="h-6 text-xs px-2.5 font-medium cursor-pointer rounded-md shadow-2xs focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
               >
                 {isCreating ? (
                   <Loader2 className="size-3 animate-spin mr-1 shrink-0" />
@@ -403,15 +403,15 @@ export default function NotesPanel({
       <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
         {isNotesLoading ? (
           <div className="flex h-full items-center justify-center">
-            <Loader2 className="size-5 animate-spin text-muted-foreground shrink-0" />
+            <Loader2 className="size-5 animate-spin text-foreground shrink-0" />
           </div>
         ) : displayNotes.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center px-4 py-8">
-            <div className="flex size-9 items-center justify-center rounded-sm border border-border bg-muted">
-              <FileText className="size-4 text-muted-foreground shrink-0" />
+            <div className="flex size-9 items-center justify-center rounded-md border border-border bg-background shadow-2xs">
+              <FileText className="size-4 text-foreground shrink-0" />
             </div>
             <p className="mt-2 text-xs font-medium text-foreground">No notes recorded</p>
-            <p className="mt-1 max-w-[200px] text-11 leading-relaxed text-muted-foreground">
+            <p className="mt-1 max-w-[200px] text-11 leading-relaxed text-foreground/80">
               Select text in the document or write notes directly above.
             </p>
           </div>
@@ -487,7 +487,7 @@ export default function NotesPanel({
                                 onClick={() => setDeletingId(null)}
                                 title="Cancel"
                                 aria-label="Cancel"
-                                className="flex size-5 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer"
+                                className="flex size-5 items-center justify-center rounded-md text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer"
                               >
                                 <X className="size-3.5 shrink-0" />
                               </button>
@@ -497,7 +497,7 @@ export default function NotesPanel({
                               <button
                                 type="button"
                                 onClick={() => setEditingId(note.id)}
-                                className="flex size-6 items-center justify-center rounded-sm text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer"
+                                className="flex size-6 items-center justify-center rounded-md text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer"
                                 title="Edit note"
                                 aria-label="Edit note"
                               >
@@ -506,7 +506,7 @@ export default function NotesPanel({
                               <button
                                 type="button"
                                 onClick={() => setDeletingId(note.id)}
-                                className="flex size-6 items-center justify-center rounded-sm text-muted-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-destructive focus-visible:outline-none transition-colors cursor-pointer"
+                                className="flex size-6 items-center justify-center rounded-md text-foreground hover:text-destructive hover:bg-destructive/10 focus-visible:ring-1 focus-visible:ring-destructive focus-visible:outline-none transition-colors cursor-pointer"
                                 title="Delete note"
                                 aria-label="Delete note"
                               >
@@ -517,16 +517,16 @@ export default function NotesPanel({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 text-10 text-muted-foreground font-mono">
+                      <div className="flex items-center gap-2 text-10 text-foreground font-mono">
                         {note.createdAt && <span>{formatNoteDate(note.createdAt)}</span>}
                         {note.tags && note.tags.length > 0 && (
                           <div className="flex items-center gap-1 font-sans">
                             {note.tags.map((t) => (
                               <span
                                 key={t}
-                                className="inline-flex items-center gap-0.5 px-1 rounded text-10 bg-muted text-muted-foreground"
+                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm text-10 font-mono bg-background text-foreground border border-border shadow-2xs"
                               >
-                                <Tag className="size-2.5 opacity-60 shrink-0" />
+                                <Tag className="size-2.5 text-foreground shrink-0" />
                                 <span>{t}</span>
                               </span>
                             ))}

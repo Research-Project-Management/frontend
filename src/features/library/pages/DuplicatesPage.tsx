@@ -91,6 +91,12 @@ export default function DuplicatesPage() {
     handleBatchMoveItems,
   } = actions;
 
+  const isProjectScope = state.activeScope?.type === 'project';
+  const canEdit =
+    !isProjectScope ||
+    state.activeScope?.role === 'owner' ||
+    state.activeScope?.role === 'contributor';
+
   const { data: duplicateData, isLoading: isDupLoading } = useDuplicateGroups(effectiveScopeId || 'user');
   const mergeMutation = useMergePapers(effectiveScopeId || 'user');
 
@@ -416,10 +422,10 @@ export default function DuplicatesPage() {
           showDisplay={true}
           displayOptions={displayOptions}
           onDisplayOptionsChange={handleDisplayOptionsChange}
-          onDirectFilesUpload={handleDirectFilesUpload}
-          onDirectFolderUpload={handleDirectFolderUpload}
-          onAddCollection={() => setCreateCollectionOpen(true)}
-          onAddLink={() => setAddLinkOpen(true)}
+          onDirectFilesUpload={canEdit ? handleDirectFilesUpload : undefined}
+          onDirectFolderUpload={canEdit ? handleDirectFolderUpload : undefined}
+          onAddCollection={canEdit ? () => setCreateCollectionOpen(true) : undefined}
+          onAddLink={canEdit ? () => setAddLinkOpen(true) : undefined}
         />
 
         {/* Central Duplicate Table - Managed Directly by DuplicatesPage */}
@@ -434,7 +440,7 @@ export default function DuplicatesPage() {
                 <span className="text-muted-foreground font-mono">({filteredItems.length} items)</span>
               </div>
               <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-0.5">
-                {filteredDuplicateGroups.map((group: DuplicateGroup, idx: number) => {
+                {canEdit && filteredDuplicateGroups.map((group: DuplicateGroup, idx: number) => {
                   const items = (group as unknown as { items?: Item[]; papers?: Item[] }).items || (group as unknown as { items?: Item[]; papers?: Item[] }).papers || [];
                   if (items.length < 2) return null;
                   const matchLabel = group.matchType === 'DOI' ? 'DOI' : 'Title';
@@ -950,7 +956,7 @@ export default function DuplicatesPage() {
                                   <DropdownMenuTrigger asChild>
                                     <button
                                       type="button"
-                                      className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                      className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted-foreground/20 hover:text-foreground transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                       aria-label="Actions"
                                     >
                                       <MoreVertical className="size-4 text-foreground shrink-0" />
@@ -978,7 +984,7 @@ export default function DuplicatesPage() {
                                       <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                                       <span>Cite</span>
                                     </DropdownMenuItem>
-                                    {handleDeleteItem && (
+                                    {canEdit && handleDeleteItem && (
                                       <DropdownMenuItem
                                         onClick={() => handleDeleteItem(paper.id)}
                                         className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
@@ -1009,7 +1015,7 @@ export default function DuplicatesPage() {
                             <Quote className="size-3.5 shrink-0" />
                             <span>Cite</span>
                           </ContextMenuItem>
-                          {handleDeleteItem && (
+                          {canEdit && handleDeleteItem && (
                             <ContextMenuItem onClick={() => handleDeleteItem(paper.id)} className="gap-2 text-destructive">
                               <Trash2 className="size-3.5 shrink-0" />
                               <span>Move to Trash</span>
@@ -1030,17 +1036,17 @@ export default function DuplicatesPage() {
             selectedItems={sortedItems.filter((i) => selectedIds.has(i.id))}
             collections={collections}
             onClearSelection={clearSelection}
-            onBatchMerge={() => {
+            onBatchMerge={canEdit ? () => {
               const items = sortedItems.filter((i) => selectedIds.has(i.id));
               if (items.length >= 2) {
                 handleOpenMerge(items);
               }
-            }}
-            onBatchMove={handleBatchMoveItems ? (collectionId) => {
+            } : undefined}
+            onBatchMove={canEdit && handleBatchMoveItems ? (collectionId) => {
               handleBatchMoveItems(Array.from(selectedIds), collectionId);
               clearSelection();
             } : undefined}
-            onBatchDelete={handleDeleteItem ? () => {
+            onBatchDelete={canEdit && handleDeleteItem ? () => {
               Array.from(selectedIds).forEach((id) => handleDeleteItem(id));
               clearSelection();
             } : undefined}
@@ -1054,6 +1060,7 @@ export default function DuplicatesPage() {
         item={selectedItem || null}
         collection={selectedCollection || null}
         scopeId={effectiveScopeId || 'user'}
+        canEdit={canEdit}
         onClose={() => setSelectedItemId(null)}
         onSelectPaper={(paperId) => setSelectedItemId(paperId)}
       />

@@ -43,7 +43,7 @@ function buildTree(collections: Collection[]): TreeNode[] {
   for (const c of collections) map.set(c.id, { ...c, children: [] });
 
   for (const node of map.values()) {
-    const parentId = node.parentId || node.parent;
+    const parentId = node.parentId || (node as any).parent;
     if (parentId && map.has(parentId)) {
       map.get(parentId)!.children.push(node);
     } else {

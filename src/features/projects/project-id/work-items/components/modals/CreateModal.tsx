@@ -122,9 +122,8 @@ export function CreateModal({
   onSubmit,
   isSubmitting = false,
 }: CreateModalProps) {
-  const { projectId: routeProjectId, workspaceId = '' } = useParams() as {
+  const { projectId: routeProjectId } = useParams() as {
     projectId?: string;
-    workspaceId?: string;
   };
   const { projects = [] } = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -615,8 +614,8 @@ export function CreateModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="w-full max-w-[960px] sm:max-w-[960px] p-0 gap-0 rounded-lg border border-border overflow-hidden bg-background flex flex-col max-h-[92vh]"
-        style={{ width: 'min(960px, 96vw)', maxWidth: '960px' }}
+        className="w-full max-w-[1100px] sm:max-w-[1100px] p-0 gap-0 rounded-md border border-border overflow-hidden bg-background flex flex-col max-h-[90vh] sm:min-h-[580px]"
+        style={{ width: 'min(1100px, 96vw)', maxWidth: '1100px' }}
         onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
             e.preventDefault();
@@ -694,13 +693,13 @@ export function CreateModal({
                 aria-label="Work item description"
                 placeholder="Click to add description"
                 disabled={isSubmitting}
-                rows={5}
-                className="w-full resize-none text-xs sm:text-sm text-foreground placeholder:text-muted-foreground outline-none bg-transparent border-none p-0 focus:ring-0 leading-relaxed min-h-[140px]"
+                rows={8}
+                className="w-full resize-none text-xs sm:text-sm text-foreground placeholder:text-muted-foreground outline-none bg-transparent border-none p-0 focus:ring-0 leading-relaxed min-h-[220px]"
               />
             </div>
 
-          {/* Property Pills Toolbar (9 Pills) */}
-          <div className="flex items-center gap-2 flex-wrap py-0.5">
+          {/* Property Pills Toolbar (10 Pills) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap py-0.5">
             {/* 1. Status / Column */}
             <StatePopover
               open={openStatePopover}
@@ -824,7 +823,7 @@ export function CreateModal({
               </PopoverTrigger>
               <PopoverContent align="start" className="w-64 p-1.5 rounded-md border-border bg-popover z-100 flex flex-col space-y-1">
                 <div className="flex items-center justify-between px-2 py-1 border-b border-border mb-1">
-                  <span className="text-11 font-semibold text-muted-foreground">Work Item Templates</span>
+                  <span className="text-11 font-semibold text-foreground">Work Item Templates</span>
                 </div>
                 <div className="max-h-48 overflow-y-auto space-y-0.5">
                   {projectTemplates.length === 0 ? (
@@ -835,7 +834,7 @@ export function CreateModal({
                         key={t.id}
                         type="button"
                         onClick={() => handleApplyTemplate(t)}
-                        className="w-full flex flex-col items-start px-2 py-1.5 rounded text-xs hover:bg-muted text-left transition-colors cursor-pointer"
+                        className="w-full flex flex-col items-start px-2 py-1.5 rounded-md text-xs hover:bg-muted text-left transition-colors cursor-pointer"
                       >
                         <span className="font-semibold text-foreground truncate w-full">{t.name}</span>
                         {t.description && (
@@ -850,7 +849,7 @@ export function CreateModal({
                     <button
                       type="button"
                       onClick={handleSaveAsTemplateFromModal}
-                      className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium text-foreground hover:bg-muted text-left transition-colors cursor-pointer"
+                      className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-foreground hover:bg-muted text-left transition-colors cursor-pointer"
                     >
                       <Plus className="size-3 shrink-0" />
                       <span>Save as template</span>
@@ -896,7 +895,7 @@ export function CreateModal({
               />
               <label
                 htmlFor="create-more-switch"
-                className="text-12 text-muted-foreground cursor-pointer select-none font-medium"
+                className="text-12 text-foreground cursor-pointer select-none font-medium"
               >
                 Create more
               </label>

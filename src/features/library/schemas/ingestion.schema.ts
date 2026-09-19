@@ -140,22 +140,30 @@ export type UnifiedIngestionResponse = z.infer<
   typeof UnifiedIngestionResponseSchema
 >;
 
-export const IngestionRunSnapshotDataSchema = z.object({
-  id: z.string().optional(),
-  runId: z.string().optional(),
-  workspaceId: z.string().optional(),
-  scopeId: z.string().optional(),
-  projectId: z.string().optional(),
-  userId: z.string().optional(),
-  sourceType: z.string().optional().default('unknown'),
-  status: z.string(),
-  totalItems: z.number().optional().default(1),
-  processedItems: z.number().optional().default(0),
-  failedItems: z.number().optional().default(0),
-  itemId: z.string().optional(),
-  startedAt: z.string().optional().default(() => new Date().toISOString()),
-  completedAt: z.string().nullable().optional(),
-});
+export const IngestionRunSnapshotDataSchema = z
+  .object({
+    id: z.string().nullable().optional(),
+    runId: z.string().nullable().optional(),
+    workspaceId: z.string().nullable().optional(),
+    scopeId: z.string().nullable().optional(),
+    projectId: z.string().nullable().optional(),
+    userId: z.string().nullable().optional(),
+    sourceType: z.string().nullable().optional().default('unknown'),
+    status: z.string(),
+    totalItems: z.number().nullable().optional().default(1),
+    processedItems: z.number().nullable().optional().default(0),
+    failedItems: z.number().nullable().optional().default(0),
+    itemId: z.string().nullable().optional(),
+    startedAt: z.string().nullable().optional().default(() => new Date().toISOString()),
+    completedAt: z.string().nullable().optional(),
+    item: z.unknown().nullable().optional(),
+    snapshot: z.unknown().nullable().optional(),
+    title: z.string().nullable().optional(),
+    lastError: z.string().nullable().optional(),
+    errorMessage: z.string().nullable().optional(),
+    executionLog: z.unknown().nullable().optional(),
+  })
+  .passthrough();
 
 export type IngestionRunSnapshotData = z.infer<typeof IngestionRunSnapshotDataSchema>;
 

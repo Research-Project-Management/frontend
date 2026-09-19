@@ -294,7 +294,7 @@ export function Attachments({
             Attach Center
           </h3>
           {totalAttachments > 0 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted text-muted-foreground">
               {totalAttachments}
             </span>
           )}
@@ -305,16 +305,16 @@ export function Attachments({
           <button
             type="button"
             onClick={() => setActiveTab('pages')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-sm transition-colors cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
               activeTab === 'pages'
                 ? 'bg-background text-foreground shadow-xs font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
+                : 'text-foreground/80 hover:text-foreground'
             }`}
           >
             <FileText className="size-3.5 shrink-0" />
             <span>Pages</span>
             {pagesCount > 0 && (
-              <span className="ml-0.5 rounded-full bg-muted px-1.5 py-0.5 text-10 font-semibold">
+              <span className="ml-0.5 rounded-md bg-muted px-1.5 py-0.5 text-10 font-semibold">
                 {pagesCount}
               </span>
             )}
@@ -323,16 +323,16 @@ export function Attachments({
           <button
             type="button"
             onClick={() => setActiveTab('papers')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-sm transition-colors cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
               activeTab === 'papers'
                 ? 'bg-background text-foreground shadow-xs font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
+                : 'text-foreground/80 hover:text-foreground'
             }`}
           >
             <BookOpen className="size-3.5 shrink-0" />
             <span>Papers</span>
             {papersCount > 0 && (
-              <span className="ml-0.5 rounded-full bg-muted px-1.5 py-0.5 text-10 font-semibold">
+              <span className="ml-0.5 rounded-md bg-muted px-1.5 py-0.5 text-10 font-semibold">
                 {papersCount}
               </span>
             )}
@@ -341,16 +341,16 @@ export function Attachments({
           <button
             type="button"
             onClick={() => setActiveTab('files')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-sm transition-colors cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
               activeTab === 'files'
                 ? 'bg-background text-foreground shadow-xs font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
+                : 'text-foreground/80 hover:text-foreground'
             }`}
           >
             <Paperclip className="size-3.5 shrink-0" />
             <span>Files</span>
             {filesCount > 0 && (
-              <span className="ml-0.5 rounded-full bg-muted px-1.5 py-0.5 text-10 font-semibold">
+              <span className="ml-0.5 rounded-md bg-muted px-1.5 py-0.5 text-10 font-semibold">
                 {filesCount}
               </span>
             )}
@@ -359,16 +359,16 @@ export function Attachments({
           <button
             type="button"
             onClick={() => setActiveTab('links')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-sm transition-colors cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
               activeTab === 'links'
                 ? 'bg-background text-foreground shadow-none font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
+                : 'text-foreground/80 hover:text-foreground'
             }`}
           >
             <Link2 className="size-3.5 shrink-0" />
             <span>Links</span>
             {linksCount > 0 && (
-              <span className="ml-0.5 rounded-full bg-muted px-1.5 py-0.5 text-10 font-semibold">
+              <span className="ml-0.5 rounded-md bg-muted px-1.5 py-0.5 text-10 font-semibold">
                 {linksCount}
               </span>
             )}
@@ -425,7 +425,7 @@ export function Attachments({
                       <Link
                         href={`/editor/${page.id}`}
                         target="_blank"
-                        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+                        className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors shrink-0"
                         title="Open in LaTeX Editor"
                       >
                         <ExternalLink className="size-3.5 shrink-0" />
@@ -434,7 +434,7 @@ export function Attachments({
                         <button
                           type="button"
                           onClick={() => onDetachPage?.((page as any).pageId || page.id || '')}
-                          className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-muted transition-colors cursor-pointer"
+                          className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:text-destructive hover:bg-muted transition-colors cursor-pointer"
                           title="Detach Page"
                         >
                           <Trash2 className="size-3.5 shrink-0" />
@@ -503,7 +503,7 @@ export function Attachments({
                         </p>
                         <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                           {paper.citationKey && (
-                            <span className="font-mono text-10 px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                            <span className="font-mono text-10 px-1.5 py-0.5 rounded-md bg-muted text-foreground">
                               @{paper.citationKey}
                             </span>
                           )}
@@ -520,7 +520,7 @@ export function Attachments({
                       <button
                         type="button"
                         onClick={() => onDetachPaper?.((paper as any).paperId || paper.id || '')}
-                        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-muted transition-colors cursor-pointer"
+                        className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:text-destructive hover:bg-muted transition-colors cursor-pointer"
                         title="Detach Paper"
                       >
                         <Trash2 className="size-3.5 shrink-0" />
@@ -646,7 +646,7 @@ export function Attachments({
                       href={item.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors"
                       title="Open file"
                     >
                       <ExternalLink className="size-3.5 shrink-0" />
@@ -660,7 +660,7 @@ export function Attachments({
                           if (onDetachFile) onDetachFile(id);
                           else if (onRemoveAttachment) onRemoveAttachment(id);
                         }}
-                        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-muted transition-colors cursor-pointer"
+                        className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:text-destructive hover:bg-muted transition-colors cursor-pointer"
                         title="Remove file"
                       >
                         <Trash2 className="size-3.5 shrink-0" />
@@ -730,7 +730,7 @@ export function Attachments({
                         href={link.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors"
                         title="Open Link"
                       >
                         <ExternalLink className="size-3.5 shrink-0" />
@@ -739,7 +739,7 @@ export function Attachments({
                         <button
                           type="button"
                           onClick={() => onDetachLink?.(idx)}
-                          className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-muted transition-colors cursor-pointer"
+                          className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:text-destructive hover:bg-muted transition-colors cursor-pointer"
                           title="Remove Link"
                         >
                           <Trash2 className="size-3.5 shrink-0" />
@@ -756,7 +756,7 @@ export function Attachments({
                   variant="ghost"
                   size="sm"
                   onClick={() => setOpenLinkDialog(true)}
-                  className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground mt-1"
+                  className="h-7 text-xs gap-1 text-foreground hover:bg-muted mt-1 rounded-md cursor-pointer"
                 >
                   <Plus className="size-3.5 shrink-0" />
                   Add Another Link
@@ -769,7 +769,7 @@ export function Attachments({
 
       {/* ── DIALOG: ATTACH EDITOR PAGE ─────────────────────────────────────── */}
       <Dialog open={openPageDialog} onOpenChange={setOpenPageDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-md">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold flex items-center gap-2">
               <FileText className="size-4 text-primary shrink-0" />
@@ -851,7 +851,7 @@ export function Attachments({
 
       {/* ── DIALOG: ATTACH RESEARCH PAPER ──────────────────────────────────── */}
       <Dialog open={openPaperDialog} onOpenChange={setOpenPaperDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg rounded-md">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold flex items-center gap-2">
               <BookOpen className="size-4 text-amber-500 shrink-0" />
@@ -867,10 +867,10 @@ export function Attachments({
             <button
               type="button"
               onClick={() => setPaperDialogMode('library')}
-              className={`px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
                 paperDialogMode === 'library'
                   ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-foreground/80 hover:text-foreground'
               }`}
             >
               <BookOpen className="size-3.5" />
@@ -879,10 +879,10 @@ export function Attachments({
             <button
               type="button"
               onClick={() => setPaperDialogMode('manual')}
-              className={`px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
                 paperDialogMode === 'manual'
                   ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-foreground/80 hover:text-foreground'
               }`}
             >
               <FileText className="size-3.5" />
@@ -893,7 +893,7 @@ export function Attachments({
           {paperDialogMode === 'library' ? (
             <div className="space-y-3 py-2">
               <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
+                <Search className="absolute left-2.5 top-2.5 size-3.5 text-foreground" />
                 <Input
                   placeholder="Search papers in library by title, author, DOI..."
                   value={paperSearchQuery}
@@ -941,17 +941,17 @@ export function Attachments({
                             )}
                             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                               {paper.year && (
-                                <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-10 font-mono">
+                                <span className="px-1.5 py-0.5 rounded-md bg-muted text-foreground text-10 font-mono">
                                   {paper.year}
                                 </span>
                               )}
                               {doi && (
-                                <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 text-10 font-mono">
+                                <span className="px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 text-10 font-mono">
                                   DOI: {doi}
                                 </span>
                               )}
                               {citationKey && (
-                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-10 font-mono">
+                                <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-10 font-mono">
                                   @{citationKey}
                                 </span>
                               )}
@@ -1043,7 +1043,7 @@ export function Attachments({
 
       {/* ── DIALOG: ATTACH EXTERNAL LINK ───────────────────────────────────── */}
       <Dialog open={openLinkDialog} onOpenChange={setOpenLinkDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-md">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold flex items-center gap-2">
               <Link2 className="size-4 text-primary shrink-0" />

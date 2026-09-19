@@ -62,7 +62,7 @@ export default function DeleteModal({
   const isRed = buttonVariant === 'red' || buttonVariant === 'destructive';
 
   return (
-    <Dialog open={open} onOpenChange={isDeleting ? undefined : onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (isDeleting) return; onOpenChange(v); }}>
       <DialogContent
         className="sm:max-w-[520px] p-6 rounded-lg border border-border bg-background shadow-raised-200"
         onCloseAutoFocus={(e) => e.preventDefault()}
@@ -123,7 +123,7 @@ export default function DeleteModal({
             {isDeleting ? (
               <span className="inline-flex items-center gap-1.5">
                 <Loader2 className="size-3.5 animate-spin shrink-0" />
-                <span>Moving...</span>
+                <span>Processing...</span>
               </span>
             ) : (
               <span>{confirmLabel}</span>

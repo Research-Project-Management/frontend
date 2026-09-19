@@ -32,7 +32,7 @@ import {
   Link2,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
+import { Button, Checkbox } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -333,32 +333,37 @@ export function CardUI({
       }}
       aria-label={`Work item: ${card.title}`}
       className={cn(
-        'group relative min-w-0 rounded-md border border-border/70 dark:border-border/60 bg-card p-3 shadow-2xs hover:shadow-xs hover:border-border transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none',
-        isDragging && 'opacity-40 border-primary',
+        'group relative min-w-0 rounded-md border border-border/70 dark:border-border/60 bg-card p-3 shadow-2xs hover:shadow-xs hover:border-border transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none',
+        isDragging && 'opacity-40',
         isSelected && 'ring-1 ring-ring border-ring bg-muted/40'
       )}
     >
       {/* Row 1: Identifier + Options Menu */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="flex items-center gap-1.5 min-w-0"
+        >
           {(isSelected || onToggleSelect) && (
-            <input
-              type="checkbox"
-              checked={isSelected}
-              aria-label={isSelected ? `Deselect ${card.title}` : `Select ${card.title}`}
+            <div
               onClick={(e) => e.stopPropagation()}
-              onChange={(e) => {
-                e.stopPropagation();
-                onToggleSelect?.(card.id);
-              }}
-              className={cn(
-                'size-3.5 rounded border-border transition-opacity cursor-pointer accent-primary shrink-0',
-                isSelected ? 'block opacity-100' : 'hidden group-hover:block max-sm:block opacity-70 hover:opacity-100'
-              )}
-            />
+              onPointerDown={(e) => e.stopPropagation()}
+              className="flex items-center justify-center shrink-0 cursor-pointer"
+            >
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={() => onToggleSelect?.(card.id)}
+                aria-label={isSelected ? `Deselect ${card.title}` : `Select ${card.title}`}
+                className={cn(
+                  'size-3.5 rounded-sm border-border data-[state=checked]:border-primary transition-opacity cursor-pointer',
+                  !isSelected && 'sm:opacity-0 sm:group-hover:opacity-100 max-sm:opacity-100'
+                )}
+              />
+            </div>
           )}
           {(card.identifier || card.sequenceNumber) && (displayOptions?.properties?.id !== false) && (
-            <span className="font-mono text-11 font-medium text-muted-foreground uppercase tracking-tight shrink-0 tabular-nums">
+            <span className="font-mono text-11 font-medium text-foreground uppercase tracking-tight shrink-0 tabular-nums">
               {card.identifier || `ISSUE-${card.sequenceNumber}`}
             </span>
           )}
@@ -371,43 +376,46 @@ export function CardUI({
                 variant="ghost"
                 size="icon"
                 aria-label={`Options for ${card.title}`}
-                className="size-6 -mr-1.5 -mt-1 text-muted-foreground hover:text-foreground max-sm:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                className={cn(
+                  'size-6 -mr-1.5 -mt-1 text-foreground hover:text-foreground transition-opacity rounded-md',
+                  isSelected ? 'opacity-100' : 'max-sm:opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
+                )}
               >
                 <MoreHorizontal className="size-3.5 shrink-0" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40 z-100">
+            <DropdownMenuContent align="end" className="w-40 z-100 rounded-md">
               {onDuplicate && (
-                <DropdownMenuItem onClick={duplicate}>
-                  <Copy className="mr-2 size-3.5 shrink-0" />
+                <DropdownMenuItem onClick={duplicate} className="rounded-md cursor-pointer">
+                  <Copy className="mr-2 size-3.5 shrink-0 text-foreground" />
                   Duplicate
                 </DropdownMenuItem>
               )}
               {currentUserId && (
-                <DropdownMenuItem onClick={assignee.isCurrentUser ? leave : join}>
+                <DropdownMenuItem onClick={assignee.isCurrentUser ? leave : join} className="rounded-md cursor-pointer">
                   {assignee.isCurrentUser ? (
                     <>
-                      <UserMinus className="mr-2 size-3.5 shrink-0" />
+                      <UserMinus className="mr-2 size-3.5 shrink-0 text-foreground" />
                       Leave card
                     </>
                   ) : (
                     <>
-                      <UserPlus className="mr-2 size-3.5 shrink-0" />
+                      <UserPlus className="mr-2 size-3.5 shrink-0 text-foreground" />
                       Join card
                     </>
                   )}
                 </DropdownMenuItem>
               )}
               {onRemoveFromCycle && card.cycleId && (
-                <DropdownMenuItem onClick={removeFromCycle}>
-                  <RotateCcw className="mr-2 size-3.5 shrink-0" />
+                <DropdownMenuItem onClick={removeFromCycle} className="rounded-md cursor-pointer">
+                  <RotateCcw className="mr-2 size-3.5 shrink-0 text-foreground" />
                   Remove from cycle
                 </DropdownMenuItem>
               )}
               {onDelete && (
                 <DropdownMenuItem
                   onClick={remove}
-                  className="text-destructive focus:text-destructive"
+                  className="text-destructive focus:text-destructive rounded-md cursor-pointer"
                 >
                   <Trash2 className="mr-2 size-3.5 shrink-0" />
                   Delete
@@ -436,7 +444,7 @@ export function CardUI({
             <DropdownMenuTrigger asChild disabled={isReadOnly} onClick={(e) => e.stopPropagation()}>
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border/70 bg-muted/20 text-xs font-normal text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors cursor-pointer outline-none shrink-0"
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border/70 bg-muted/20 text-xs font-normal text-foreground hover:bg-muted/50 transition-colors cursor-pointer outline-none shrink-0"
               >
                 <StatusIcon
                   id={card.columnId}
@@ -448,7 +456,7 @@ export function CardUI({
                 <span className="truncate max-w-[75px]">{matchedState?.title || matchedState?.name || 'Backlog'}</span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-44 p-1 text-xs z-100">
+            <DropdownMenuContent align="start" className="w-44 p-1 text-xs z-100 rounded-md">
               {((projectStates && projectStates.length > 0 ? projectStates : columns) || []).map((col) => {
                 const cId = resolveColumnId(col);
                 const isCurr = cId === card.columnId;
@@ -465,7 +473,7 @@ export function CardUI({
                       }
                     }}
                     className={cn(
-                      'flex items-center gap-2 cursor-pointer py-1.5 text-xs rounded-sm',
+                      'flex items-center gap-2 cursor-pointer py-1.5 text-xs rounded-md',
                       isCurr && 'bg-muted font-medium'
                     )}
                   >
@@ -514,7 +522,7 @@ export function CardUI({
                 'rounded-md border border-border/70 flex items-center justify-center transition-colors hover:bg-muted/60 cursor-pointer',
                 card.startDate
                   ? 'h-6 px-2 text-11 font-normal bg-muted/20 text-foreground gap-1'
-                  : 'size-6 p-0 bg-transparent text-muted-foreground hover:text-foreground [&>span]:hidden'
+                  : 'size-6 p-0 bg-transparent text-foreground [&>span]:hidden'
               )}
             />
           </div>
@@ -536,7 +544,7 @@ export function CardUI({
                       'h-6 px-2 text-11 font-normal bg-muted/20 gap-1',
                       isOverdue ? 'text-destructive border-destructive/40 bg-destructive/5' : 'text-foreground'
                     )
-                  : 'size-6 p-0 bg-transparent text-muted-foreground hover:text-foreground [&>span]:hidden'
+                  : 'size-6 p-0 bg-transparent text-foreground [&>span]:hidden'
               )}
             />
           </div>
@@ -560,7 +568,7 @@ export function CardUI({
                 type="button"
                 onClick={() => setMemberOpen(true)}
                 disabled={isReadOnly}
-                className="size-6 rounded-md border border-border/70 bg-transparent hover:bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                className="size-6 rounded-md border border-border/70 bg-transparent hover:bg-muted/60 flex items-center justify-center text-foreground cursor-pointer transition-colors"
                 title={resolvedAssignees[0].name || ''}
               >
                 <Avatar className="size-5 shrink-0">
@@ -575,10 +583,10 @@ export function CardUI({
                 type="button"
                 onClick={() => setMemberOpen(true)}
                 disabled={isReadOnly}
-                className="size-6 p-0 rounded-md border border-border/70 bg-transparent hover:bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                className="size-6 p-0 rounded-md border border-border/70 bg-transparent hover:bg-muted/60 flex items-center justify-center text-foreground cursor-pointer transition-colors"
                 title="Assign member"
               >
-                <User className="size-3.5 text-muted-foreground" />
+                <User className="size-3.5 text-foreground" />
               </button>
             )}
 
@@ -593,20 +601,6 @@ export function CardUI({
           </div>
         )}
 
-        {/* Unassigned Module button (Plane-style, e.g. TIEPT-8) */}
-        {!hasModules && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit?.(card);
-            }}
-            title="Attach module"
-            className="size-6 rounded-md border border-border/70 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer shrink-0"
-          >
-            <ModuleGridIcon className="size-3.5" />
-          </button>
-        )}
       </div>
 
       {/* Row 4: Secondary Badges (Modules, Cycle, Labels, Subitems, Attachments, Links) */}
@@ -630,7 +624,7 @@ export function CardUI({
                   e.stopPropagation();
                   onEdit?.(card);
                 }}
-                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border/70 bg-muted/20 text-11 text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors cursor-pointer shrink-0"
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border/70 bg-muted/20 text-11 text-foreground hover:bg-muted/50 transition-colors cursor-pointer shrink-0"
                 title={moduleText}
               >
                 <ModuleGridIcon className="size-3.5 shrink-0" />
@@ -648,7 +642,7 @@ export function CardUI({
                   setCycleId={(cId) => onUpdateItem?.(card.id, { cycleId: cId || null })}
                   cycles={cycles}
                   isReadOnly={isReadOnly}
-                  actionBtnClass="h-6 px-2 text-11 font-normal rounded-md border border-border/70 bg-muted/20 hover:bg-muted/60 text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors cursor-pointer"
+                  actionBtnClass="h-6 px-2 text-11 font-normal rounded-md border border-border/70 bg-muted/20 hover:bg-muted/60 text-foreground flex items-center gap-1.5 transition-colors cursor-pointer"
                 />
               </div>
             )}
@@ -662,7 +656,7 @@ export function CardUI({
                   return (
                     <span
                       key={lbl.id || lblName}
-                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border/70 bg-muted/20 text-11 text-muted-foreground font-normal hover:bg-muted/50 transition-colors shrink-0"
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border/70 bg-muted/20 text-11 text-foreground font-normal hover:bg-muted/50 transition-colors shrink-0"
                     >
                       <span
                         className="size-2 rounded-full shrink-0"
@@ -683,7 +677,7 @@ export function CardUI({
                       const next = typeof updater === 'function' ? updater(current) : updater;
                       onUpdateItem?.(card.id, { labels: next });
                     }}
-                    actionBtnClass="size-6 p-0 rounded-md border border-border/70 bg-transparent hover:bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    actionBtnClass="size-6 p-0 rounded-md border border-border/70 bg-transparent hover:bg-muted/60 flex items-center justify-center text-foreground transition-colors cursor-pointer"
                   />
                 </div>
               </>
@@ -692,7 +686,7 @@ export function CardUI({
             {/* Subitem Indicator */}
             {showSubItems && (
               <div
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-11 text-muted-foreground border border-border/70 bg-muted/20 shrink-0"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-11 text-foreground border border-border/70 bg-muted/20 shrink-0"
                 title={`${childWorkItemDone}/${childWorkItemTotal} sub-items`}
               >
                 <CycleHalfIcon className="size-3 shrink-0" />
@@ -703,7 +697,7 @@ export function CardUI({
             {/* Attachments Indicator */}
             {showAttach && (
               <div
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-11 text-muted-foreground border border-border/70 bg-muted/20 shrink-0"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-11 text-foreground border border-border/70 bg-muted/20 shrink-0"
                 title={`${attachmentsCount} attachment${attachmentsCount > 1 ? 's' : ''}`}
               >
                 <Paperclip className="size-3 shrink-0" />
@@ -714,7 +708,7 @@ export function CardUI({
             {/* Links Indicator */}
             {showLinks && (
               <div
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-11 text-muted-foreground border border-border/70 bg-muted/20 shrink-0"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-11 text-foreground border border-border/70 bg-muted/20 shrink-0"
                 title={`${linksCount} link${linksCount > 1 ? 's' : ''}`}
               >
                 <Link2 className="size-3 shrink-0" />
@@ -851,7 +845,7 @@ export function Column({
         onClick={() => setIsCollapsed(false)}
         className={cn(
           'flex flex-col items-center py-3 w-11 shrink-0 rounded-md bg-muted/40 dark:bg-muted/15 border border-border/50 transition-all cursor-pointer hover:bg-muted/60 h-full min-h-[350px] select-none',
-          isOver && 'border-primary ring-1 ring-primary bg-primary/5'
+          isOver && 'bg-muted/60'
         )}
       >
         <div className="shrink-0 mb-2">
@@ -864,13 +858,10 @@ export function Column({
           />
         </div>
 
-        <div className="flex-1 flex items-center justify-center my-3 select-none">
-          <span
-            className="text-xs font-semibold text-foreground tracking-wide flex items-center gap-1.5 whitespace-nowrap"
-            style={{ writingMode: 'vertical-rl' }}
-          >
-            <span>{column.title || column.name}</span>
-            <span className="font-mono text-11 text-muted-foreground tabular-nums">
+        <div className="flex-1 relative w-full flex items-center justify-center my-3 select-none overflow-hidden">
+          <span className="text-xs font-semibold text-foreground tracking-tight flex items-center gap-1.5 whitespace-nowrap rotate-90 select-none">
+            <span className="max-w-[160px] truncate">{column.title || column.name}</span>
+            <span className="font-mono text-11 text-foreground tabular-nums">
               {cards.length}
             </span>
           </span>
@@ -883,7 +874,7 @@ export function Column({
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 text-muted-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-background/80 transition-colors"
+            className="size-7 text-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-background/80 transition-colors"
             onClick={() => setIsCollapsed(false)}
             title="Expand column"
           >
@@ -894,7 +885,7 @@ export function Column({
             <Button
               variant="ghost"
               size="icon"
-              className="size-7 text-muted-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-background/80 transition-colors"
+              className="size-7 text-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-background/80 transition-colors"
               onClick={() => {
                 setIsCollapsed(false);
                 setIsQuickAdding(true);
@@ -914,8 +905,8 @@ export function Column({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex flex-col w-[320px] shrink-0 max-h-full min-h-[350px] rounded-md bg-muted/40 dark:bg-muted/15 border border-border/50 transition-colors',
-        isOver && 'border-primary ring-1 ring-primary bg-muted/60'
+        'flex flex-col w-[320px] shrink-0 h-full min-h-[350px] rounded-md bg-muted/40 dark:bg-muted/15 border border-border/50 transition-colors',
+        isOver && 'bg-muted/60'
       )}
     >
       {/* Column Header */}
@@ -931,7 +922,7 @@ export function Column({
           <h3 className="text-xs font-semibold text-foreground truncate">
             {column.title || column.name}
           </h3>
-          <span className="text-xs font-normal text-muted-foreground ml-0.5 tabular-nums">
+          <span className="text-xs font-normal text-foreground ml-0.5 tabular-nums">
             {cards.length}
           </span>
         </div>
@@ -940,7 +931,7 @@ export function Column({
           <Button
             variant="ghost"
             size="icon"
-            className="size-6 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+            className="size-6 text-foreground hover:text-foreground cursor-pointer transition-colors rounded-md"
             onClick={() => setIsCollapsed(true)}
             title="Collapse column"
           >
@@ -951,7 +942,7 @@ export function Column({
             <Button
               variant="ghost"
               size="icon"
-              className="size-6 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              className="size-6 text-foreground hover:text-foreground cursor-pointer transition-colors rounded-md"
               onClick={() => setIsQuickAdding(true)}
               title="Add work item"
             >
@@ -983,7 +974,7 @@ export function Column({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-6 text-11 px-2 text-muted-foreground hover:text-foreground"
+                className="h-6 text-11 px-2 text-foreground hover:text-foreground rounded-md"
                 onClick={() => setIsQuickAdding(false)}
               >
                 Cancel
@@ -991,7 +982,7 @@ export function Column({
               <Button
                 type="submit"
                 size="sm"
-                className="h-6 text-11 px-2.5"
+                className="h-6 text-11 px-2.5 rounded-md"
                 disabled={!quickTitle.trim()}
               >
                 Add
@@ -1032,7 +1023,7 @@ export function Column({
           <button
             type="button"
             onClick={() => setIsQuickAdding(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-13 text-muted-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-muted/60 transition-colors w-full text-left font-normal"
+            className="flex items-center gap-1.5 px-3 py-2 text-13 text-foreground hover:text-foreground cursor-pointer rounded-md hover:bg-muted/60 transition-colors w-full text-left font-normal"
           >
             <Plus className="size-3.5 shrink-0" />
             <span>New work item</span>
@@ -1145,7 +1136,7 @@ export function BoardView({
           id: '__unassigned__',
           title: 'Unassigned',
           color: '#9ca3af',
-          icon: <User className="size-3.5 text-muted-foreground shrink-0" />,
+          icon: <User className="size-3.5 text-foreground shrink-0" />,
         },
       ];
     } else if (subGroupBy === 'cycle') {
@@ -1161,7 +1152,7 @@ export function BoardView({
           id: '__no_cycle__',
           title: 'No Cycle',
           color: '#9ca3af',
-          icon: <RotateCcw className="size-3.5 text-muted-foreground shrink-0" />,
+          icon: <RotateCcw className="size-3.5 text-foreground shrink-0" />,
         },
       ];
     } else if (subGroupBy === 'labels') {
@@ -1188,7 +1179,7 @@ export function BoardView({
           id: '__no_label__',
           title: 'No Label',
           color: '#9ca3af',
-          icon: <Tag className="size-3.5 text-muted-foreground shrink-0" />,
+          icon: <Tag className="size-3.5 text-foreground shrink-0" />,
         },
       ];
     } else {
@@ -1288,7 +1279,7 @@ export function BoardView({
   };
 
   return (
-    <div className="flex-1 overflow-x-auto overflow-y-auto p-4 sm:p-5 min-w-0 bg-background select-none">
+    <div className="flex-1 h-full overflow-x-auto overflow-y-auto p-2 sm:p-2.5 min-w-0 bg-background select-none">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -1297,7 +1288,7 @@ export function BoardView({
         onDragCancel={dragCancel}
       >
         {isSwimlanesActive && swimlanes.length > 0 ? (
-          <div className="space-y-4 pb-6 min-w-max">
+          <div className="space-y-3 pb-3 min-w-max">
             {swimlanes.map((lane) => {
               const isCollapsed = Boolean(collapsedLanes[lane.id]);
               return (
@@ -1321,7 +1312,7 @@ export function BoardView({
                     <div className="flex items-center gap-2">
                       <ChevronDown
                         className={cn(
-                          'size-4 text-muted-foreground transition-transform duration-150',
+                          'size-4 text-foreground transition-transform duration-150',
                           isCollapsed && '-rotate-90'
                         )}
                       />
@@ -1336,11 +1327,11 @@ export function BoardView({
                       <span className="text-xs font-semibold text-foreground">
                         {lane.title}
                       </span>
-                      <span className="font-mono text-10 font-medium text-muted-foreground bg-muted px-1.5 py-0.2 rounded-full tabular-nums">
+                      <span className="font-mono text-10 font-medium text-foreground bg-muted px-1.5 py-0.2 rounded-md tabular-nums">
                         {lane.count}
                       </span>
                       {lane.count > 0 && lane.completedCount > 0 && (
-                        <span className="text-10 text-muted-foreground font-medium flex items-center gap-1">
+                        <span className="text-10 text-foreground font-medium flex items-center gap-1">
                           <span>•</span>
                           <span>{Math.round((lane.completedCount / lane.count) * 100)}% done</span>
                         </span>
@@ -1350,7 +1341,7 @@ export function BoardView({
 
                   {/* Swimlane Columns Grid */}
                   {!isCollapsed && (
-                    <div className="flex items-start gap-3.5 p-3.5 overflow-x-auto min-w-max">
+                    <div className="flex items-stretch gap-3 p-2.5 overflow-x-auto min-w-max">
                       {columns.map((col) => {
                         const colId = resolveColumnId(col);
                         const columnCards = lane.itemsByColumn.get(colId) || [];
@@ -1393,7 +1384,7 @@ export function BoardView({
             })}
           </div>
         ) : (
-          <div className="flex h-full items-start gap-3.5 min-w-max pb-4">
+          <div className="flex h-full items-stretch gap-3 min-w-max pb-2">
             {visibleColumns.map((col) => {
               const colId = resolveColumnId(col);
               const columnCards = (itemsByColumnId ? itemsByColumnId.get(colId) : itemsByColumn.get(colId)) || [];
@@ -1445,7 +1436,7 @@ export function BoardView({
                     members={members}
                     cycles={cycles}
                     isReadOnly={isReadOnly}
-                    isDragging
+                    isDragging={false}
                   />
                 </div>
               ) : null}

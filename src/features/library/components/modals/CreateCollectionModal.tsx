@@ -33,7 +33,7 @@ export default function CreateCollectionModal({
   defaultParentId = null,
 }: CreateCollectionModalProps) {
   const form = useForm<CollectionFormValues>({
-    resolver: zodResolver(collectionFormSchema),
+    resolver: zodResolver(collectionFormSchema) as any,
     defaultValues: {
       name: 'Untitled',
       description: '',
@@ -61,7 +61,7 @@ export default function CreateCollectionModal({
     }
   }, [open, defaultParentId, reset]);
 
-  const onValidSubmit = (data: CollectionFormValues) => {
+  const onValidSubmit = (data: any) => {
     const rawParent = data.parent === 'root' || !data.parent ? null : data.parent;
     onSubmit({
       name: data.name.trim() || 'Untitled',

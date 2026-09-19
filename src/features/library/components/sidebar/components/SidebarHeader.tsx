@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Search, Plus, FolderPlus, PanelLeft } from 'lucide-react';
+import { Search, Plus, FolderPlus, SlidersHorizontal, PanelLeft } from 'lucide-react';
 import { Input } from "@/shared/components/ui";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 
@@ -10,6 +10,7 @@ interface SidebarHeaderProps {
   onSearchChange: (query: string) => void;
   canManageCollections: boolean;
   onOpenCreateRoot: () => void;
+  onOpenCreateSavedSearch?: () => void;
   onToggleCollapse: () => void;
 }
 
@@ -18,6 +19,7 @@ export function SidebarHeader({
   onSearchChange,
   canManageCollections,
   onOpenCreateRoot,
+  onOpenCreateSavedSearch,
   onToggleCollapse,
 }: SidebarHeaderProps) {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -116,6 +118,24 @@ export function SidebarHeader({
                 </TooltipTrigger>
                 <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2}>
                   New collection
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* New saved search button */}
+            {canManageCollections && onOpenCreateSavedSearch && (
+              <Tooltip delayDuration={700}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onOpenCreateSavedSearch}
+                    className="rounded-md p-1.5 text-foreground hover:bg-sidebar-accent cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    aria-label="New saved search"
+                  >
+                    <SlidersHorizontal className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2}>
+                  New saved search
                 </TooltipContent>
               </Tooltip>
             )}

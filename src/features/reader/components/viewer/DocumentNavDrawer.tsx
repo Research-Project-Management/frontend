@@ -106,9 +106,9 @@ export default function DocumentNavDrawer({
       case 'discussion':
         return 'bg-warning/10 text-warning border-warning/20';
       case 'conclusion':
-        return 'bg-muted text-muted-foreground border-border';
+        return 'bg-muted text-foreground border-border';
       default:
-        return 'bg-muted text-muted-foreground border-border';
+        return 'bg-muted text-foreground border-border';
     }
   };
 
@@ -150,7 +150,7 @@ export default function DocumentNavDrawer({
         >
           <ListTree className="size-3.5 shrink-0" strokeWidth={1.5} />
           <span>Outline</span>
-          <span className="text-10 font-mono text-muted-foreground tabular-nums">
+          <span className="text-10 font-mono text-foreground tabular-nums">
             ({sections.length})
           </span>
         </button>
@@ -167,7 +167,7 @@ export default function DocumentNavDrawer({
         >
           <ImageIcon className="size-3.5 shrink-0" strokeWidth={1.5} />
           <span>Figures</span>
-          <span className="text-10 font-mono text-muted-foreground tabular-nums">
+          <span className="text-10 font-mono text-foreground tabular-nums">
             ({figures.length})
           </span>
         </button>
@@ -184,7 +184,7 @@ export default function DocumentNavDrawer({
         >
           <Table2 className="size-3.5 shrink-0" strokeWidth={1.5} />
           <span>Tables</span>
-          <span className="text-10 font-mono text-muted-foreground tabular-nums">
+          <span className="text-10 font-mono text-foreground tabular-nums">
             ({tables.length})
           </span>
         </button>
@@ -201,7 +201,7 @@ export default function DocumentNavDrawer({
         >
           <Sigma className="size-3.5 shrink-0" strokeWidth={1.5} />
           <span>Math</span>
-          <span className="text-10 font-mono text-muted-foreground tabular-nums">
+          <span className="text-10 font-mono text-foreground tabular-nums">
             ({formulas.length})
           </span>
         </button>
@@ -210,12 +210,12 @@ export default function DocumentNavDrawer({
       {/* Filter / Search bar */}
       <div className="p-2 border-b border-border bg-card">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={`Filter ${activeTab}...`}
-            className="h-8 pl-8 text-12 bg-background border-border rounded-md focus-visible:ring-1 focus-visible:ring-primary"
+            className="h-8 pl-8 text-12 bg-background border border-border rounded-md shadow-2xs text-foreground placeholder:text-foreground/70 focus-visible:ring-1 focus-visible:ring-primary"
           />
           {searchQuery ? (
             <button
@@ -234,14 +234,14 @@ export default function DocumentNavDrawer({
         {isLoading ? (
           <div className="flex flex-col items-center justify-center p-8 text-center gap-2">
             <div className="size-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs text-muted-foreground">Analyzing document layout...</span>
+            <span className="text-xs text-foreground">Analyzing document layout...</span>
           </div>
         ) : null}
 
         {/* ── TAB 1: OUTLINE ── */}
         {activeTab === 'outline' && !isLoading ? (
           filteredSections.length === 0 ? (
-            <div className="p-6 text-center text-xs text-muted-foreground">
+            <div className="p-6 text-center text-xs text-foreground/80">
               {sections.length === 0
                 ? 'No structured sections detected in this document.'
                 : 'No sections match your filter.'}
@@ -285,14 +285,14 @@ export default function DocumentNavDrawer({
                         </span>
                       ) : null}
                       {sec.paragraphs && sec.paragraphs.length > 0 ? (
-                        <span className="text-10 text-muted-foreground font-mono">
+                        <span className="text-10 text-foreground font-mono">
                           {sec.paragraphs.length} {sec.paragraphs.length === 1 ? 'para' : 'paras'}
                         </span>
                       ) : null}
                     </div>
                   </div>
 
-                  <span className="text-10 font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0 self-center tabular-nums">
+                  <span className="text-10 font-mono text-foreground bg-muted px-1.5 py-0.5 rounded-sm shrink-0 self-center tabular-nums">
                     p. {sec.page}
                   </span>
                 </button>
@@ -335,7 +335,7 @@ export default function DocumentNavDrawer({
                     </button>
                   </div>
                   {fig.caption ? (
-                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
+                    <p className="text-xs text-foreground/80 leading-relaxed line-clamp-3">
                       {fig.caption}
                     </p>
                   ) : null}
@@ -348,7 +348,7 @@ export default function DocumentNavDrawer({
         {/* ── TAB 3: TABLES ── */}
         {activeTab === 'tables' && !isLoading ? (
           filteredTables.length === 0 ? (
-            <div className="p-6 text-center text-xs text-muted-foreground">
+            <div className="p-6 text-center text-xs text-foreground/80">
               {tables.length === 0
                 ? 'No tables extracted from this document.'
                 : 'No tables match your filter.'}
@@ -383,7 +383,7 @@ export default function DocumentNavDrawer({
                   </div>
 
                   {tab.caption ? (
-                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                    <p className="text-xs text-foreground/80 leading-relaxed line-clamp-2">
                       {tab.caption}
                     </p>
                   ) : null}
@@ -397,11 +397,11 @@ export default function DocumentNavDrawer({
                       >
                         {isExpanded ? <ChevronDown className="size-3 shrink-0" strokeWidth={1.5} /> : <ChevronRight className="size-3 shrink-0" strokeWidth={1.5} />}
                         <span>{isExpanded ? 'Hide Data Matrix' : 'Preview Data Matrix'}</span>
-                        <span className="font-mono text-10">({tab.rows?.length} rows)</span>
+                        <span className="font-mono text-10 text-foreground">({tab.rows?.length} rows)</span>
                       </button>
 
                       {isExpanded ? (
-                        <div className="mt-2 overflow-x-auto border border-border rounded-sm bg-card text-11">
+                        <div className="mt-2 overflow-x-auto border border-border rounded-md shadow-2xs bg-card text-11">
                           <table className="w-full border-collapse text-left">
                             {tab.headers && tab.headers.length > 0 ? (
                               <thead>
@@ -418,7 +418,7 @@ export default function DocumentNavDrawer({
                               {tab.rows?.map((row, rIdx) => (
                                 <tr key={rIdx} className="border-b border-border hover:bg-muted">
                                   {row.map((cell, cIdx) => (
-                                    <td key={cIdx} className="p-1.5 text-muted-foreground">
+                                    <td key={cIdx} className="p-1.5 text-foreground">
                                       {cell}
                                     </td>
                                   ))}

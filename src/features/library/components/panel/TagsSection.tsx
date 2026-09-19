@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import { Tag, MinusCircle } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import type { Item } from '@/features/library/types/library.types';
-import { normalizeTags } from '@/features/library/utils/library.util';
+import { normalizeTags, cleanSingleFrontendTag } from '@/features/library/utils/library.util';
 
 interface TagsSectionProps {
   onUpdatePaper?: (data: Partial<Item>) => void;
@@ -13,6 +13,7 @@ interface TagsSectionProps {
   hideHeader?: boolean;
   forceAdding?: boolean;
   onCancelAdding?: () => void;
+  canEdit?: boolean;
 }
 
 /** Individual Tag Item matching InfoSection's exact InlineField input interaction style */
@@ -20,10 +21,12 @@ function TagItemInput({
   tag,
   onCommit,
   onRemove,
+  canEdit = true,
 }: {
   tag: string;
   onCommit: (oldTag: string, newTag: string) => void;
   onRemove: (tag: string) => void;
+  canEdit?: boolean;
 }) {
   const [value, setValue] = useState(tag);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -31,6 +34,19 @@ function TagItemInput({
   React.useEffect(() => {
     setValue(tag);
   }, [tag]);
+
+  if (!canEdit) {
+    return (
+      <div className="flex items-center gap-1.5 px-1 py-0.5 min-h-7">
+        <div className="size-4 shrink-0 flex items-center justify-center">
+          <Tag className="size-3.5 text-foreground shrink-0" />
+        </div>
+        <span className="flex-1 min-w-0 h-7 text-foreground px-2 py-1 text-xs font-normal truncate select-text flex items-center font-sans">
+          {tag}
+        </span>
+      </div>
+    );
+  }
 
   const handleBlur = () => {
     const trimmed = value.trim();
@@ -91,16 +107,17 @@ export default function TagsSection({
   hideHeader = false,
   forceAdding = false,
   onCancelAdding,
+  canEdit = true,
 }: TagsSectionProps) {
   const [newTag, setNewTag] = useState('');
-  const [isAdding, setIsAdding] = useState(forceAdding);
+  const [isAdding, setIsAdding] = useState(forceAdding && canEdit);
   const newTagInputRef = useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
-    if (forceAdding) {
+    if (forceAdding && canEdit) {
       setIsAdding(true);
     }
-  }, [forceAdding]);
+  }, [forceAdding, canEdit]);
 
   const tags: string[] = React.useMemo(() => normalizeTags(paper), [paper]);
 
@@ -111,8 +128,9 @@ export default function TagsSection({
 
   const handleAddTag = () => {
     const trimmed = newTag.trim();
-    if (trimmed && !tags.includes(trimmed)) {
-      const updated = [...tags, trimmed];
+    const cleaned = cleanSingleFrontendTag(trimmed) || trimmed;
+    if (cleaned && !tags.includes(cleaned)) {
+      const updated = [...tags, cleaned];
       saveTags(updated);
       setNewTag('');
       setIsAdding(false);
@@ -130,7 +148,12 @@ export default function TagsSection({
   };
 
   const handleCommitEdit = (oldTag: string, updatedTag: string) => {
-    const updated = tags.map((t) => (t === oldTag ? updatedTag : t));
+    const cleaned = cleanSingleFrontendTag(updatedTag) || updatedTag.trim();
+    if (!cleaned) {
+      handleRemoveTag(oldTag);
+      return;
+    }
+    const updated = tags.map((t) => (t === oldTag ? cleaned : t));
     saveTags(Array.from(new Set(updated)));
   };
 
@@ -153,6 +176,7 @@ export default function TagsSection({
           tag={tag}
           onCommit={handleCommitEdit}
           onRemove={handleRemoveTag}
+          canEdit={canEdit}
         />
       ))}
 

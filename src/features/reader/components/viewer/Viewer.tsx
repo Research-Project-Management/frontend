@@ -15,7 +15,6 @@ import {
   ChevronRight,
   X,
   Trash2,
-  Strikethrough,
 } from 'lucide-react';
 import type {
   DocumentFulltext,
@@ -78,7 +77,8 @@ interface ViewerProps {
     pageNumber: number,
     colorHex?: string,
     rects?: AnnotationRect[],
-    type?: 'highlight' | 'underline' | 'strike' | 'note' | 'text' | 'rect' | 'area',
+    // Zotero 7 annotation types: highlight, underline, note, text, rect/area (no 'strike')
+    type?: 'highlight' | 'underline' | 'note' | 'text' | 'rect' | 'area',
   ) => void;
   annotations?: ReaderAnnotation[];
   onDeleteAnnotation?: (annotation: ReaderAnnotation) => void;
@@ -481,10 +481,11 @@ export default function Viewer({
       const pNum = pageEl ? Number(pageEl.dataset.pageNum) : visiblePage;
       setSelectedPageNum(pNum);
 
+      let relative: AnnotationRect[] = [];
       if (pageEl) {
         const pageRect = pageEl.getBoundingClientRect();
         const clientRects = Array.from(range.getClientRects());
-        const relative = clientRects
+        relative = clientRects
           .map((cr) => {
             const x1 = Math.max(0, (cr.left - pageRect.left) / pageRect.width);
             const y1 = Math.max(0, (cr.top - pageRect.top) / pageRect.height);
@@ -500,9 +501,23 @@ export default function Viewer({
             };
           })
           .filter((r) => r.width > 0.001 && r.height > 0.001);
-        setSelectedRects(relative);
-      } else {
-        setSelectedRects([]);
+      }
+      setSelectedRects(relative);
+
+      // Zotero 7 official behavior:
+      // If a text annotation tool (highlight or underline) is actively selected,
+      // immediately create the annotation without requiring an extra click on the floating popup.
+      if ((activeTool === 'highlight' || activeTool === 'underline') && onAnnotate) {
+        onAnnotate(
+          text,
+          pNum,
+          activeColor || '#ffd400',
+          relative,
+          activeTool,
+        );
+        setShowFloatingMenu(false);
+        window.getSelection()?.removeAllRanges();
+        return;
       }
 
       setShowFloatingMenu(true);
@@ -511,7 +526,7 @@ export default function Viewer({
     } catch {
       setShowFloatingMenu(false);
     }
-  }, [visiblePage]);
+  }, [visiblePage, activeTool, activeColor, onAnnotate]);
 
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
@@ -618,8 +633,8 @@ export default function Viewer({
       >
         {/* Floating In-Document Search Bar (Ctrl+F) */}
         {isSearchOpen && (
-          <div className="absolute top-3 right-4 z-40 flex items-center gap-1.5 rounded-md border border-border bg-card p-1.5 shadow-none text-12 font-sans select-none animate-in fade-in slide-in-from-top-2 duration-150">
-            <Search className="size-3.5 text-muted-foreground ml-1 shrink-0" strokeWidth={1.5} />
+          <div className="absolute top-3 right-4 z-40 flex items-center gap-1.5 rounded-md border border-border bg-background p-1.5 shadow-2xs text-12 font-sans select-none animate-in fade-in slide-in-from-top-2 duration-150">
+            <Search className="size-3.5 text-foreground ml-1 shrink-0" strokeWidth={1.5} />
             <input
               ref={searchInputRef}
               type="text"
@@ -634,21 +649,21 @@ export default function Viewer({
                 }
               }}
               placeholder="Find in document..."
-              className="h-6 w-44 bg-transparent text-12 text-foreground placeholder:text-muted-foreground outline-none font-sans"
+              className="h-6 w-44 bg-transparent text-12 text-foreground placeholder:text-foreground/70 outline-none font-sans"
             />
             {searchMatches.length > 0 ? (
-              <span className="text-11 font-mono tabular-nums text-muted-foreground px-1 shrink-0">
+              <span className="text-11 font-mono tabular-nums text-foreground px-1 shrink-0">
                 {currentMatchIdx + 1} / {searchMatches.length}
               </span>
             ) : searchQuery ? (
-              <span className="text-11 font-mono text-muted-foreground px-1 shrink-0">0 matches</span>
+              <span className="text-11 font-mono text-foreground px-1 shrink-0">0 matches</span>
             ) : null}
 
             <button
               type="button"
               onClick={handlePrevMatch}
               disabled={searchMatches.length === 0}
-              className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer"
+              className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 cursor-pointer"
               title="Previous match (Shift+Enter)"
             >
               <ChevronLeft className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -658,7 +673,7 @@ export default function Viewer({
               type="button"
               onClick={handleNextMatch}
               disabled={searchMatches.length === 0}
-              className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer"
+              className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 cursor-pointer"
               title="Next match (Enter)"
             >
               <ChevronRight className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -667,7 +682,7 @@ export default function Viewer({
             <button
               type="button"
               onClick={() => onCloseSearch?.()}
-              className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer ml-0.5"
+              className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer ml-0.5"
               title="Close (Escape)"
             >
               <X className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -683,13 +698,13 @@ export default function Viewer({
             <p className="text-sm font-semibold text-foreground">
               Unable to load document
             </p>
-            <p className="text-xs text-muted-foreground leading-relaxed">{error || docError}</p>
+            <p className="text-xs text-foreground/80 leading-relaxed">{error || docError}</p>
             {onRetry && (
               <div className="flex items-center gap-2 mt-2">
                 <button
                   type="button"
                   onClick={onRetry}
-                  className="px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary-hover focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors shadow-none cursor-pointer"
+                  className="px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary-hover focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors shadow-2xs cursor-pointer"
                 >
                   Retry
                 </button>
@@ -704,10 +719,10 @@ export default function Viewer({
               </div>
             ) : (
               <>
-                <div className="size-12 rounded-md bg-card border border-border flex items-center justify-center text-muted-foreground">
+                <div className="size-12 rounded-md bg-background border border-border flex items-center justify-center text-foreground">
                   <AlertTriangle className="size-6 shrink-0" />
                 </div>
-                <p className="text-xs text-muted-foreground max-w-sm leading-relaxed">
+                <p className="text-xs text-foreground/80 max-w-sm leading-relaxed">
                   No valid PDF document path found for this entry.
                 </p>
               </>
@@ -769,14 +784,13 @@ export default function Viewer({
                     />
                   )}
 
-                  {/* VISUAL HIGHLIGHTS / UNDERLINE / STRIKE / TEXT OVERLAY */}
+                  {/* VISUAL HIGHLIGHTS / UNDERLINE / TEXT OVERLAY */}
                   {pageAnnotationsMap[pageNum] && pageAnnotationsMap[pageNum].length > 0 && (
                     <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
                       {pageAnnotationsMap[pageNum].map((ann: ReaderAnnotation) => {
                         const rects = (Array.isArray(ann.rects) ? ann.rects : []) as AnnotationRect[];
                         const colorHex = ann.color || '#ffd400';
                         const isUnderline = ann.type === 'underline';
-                        const isStrike = ann.type === 'strike';
                         const isRect = ann.type === 'rect' || ann.type === 'image' || ann.type === 'area';
                         const isText = ann.type === 'text';
                         const isPulsing = pulsingAnnotationId === ann.id;
@@ -829,8 +843,7 @@ export default function Viewer({
                                 "absolute pointer-events-auto transition-all cursor-pointer",
                                 isRect && "border-2 rounded-sm",
                                 isUnderline && "border-b-2 rounded-none",
-                                !isRect && !isUnderline && !isStrike && "rounded-[2px] hover:opacity-75",
-                                isStrike && "hover:opacity-80",
+                                !isRect && !isUnderline && "rounded-[2px] hover:opacity-75",
                                 isPulsing && "ring-4 ring-primary ring-offset-1 animate-pulse z-30 shadow-md"
                               )}
                               style={{
@@ -839,9 +852,9 @@ export default function Viewer({
                                 width: `${r.width * 100}%`,
                                 height: `${r.height * 100}%`,
                                 borderColor: (isRect || isUnderline) ? colorHex : undefined,
-                                backgroundColor: (isUnderline || isStrike) ? 'transparent' : (isRect ? `${colorHex}25` : colorHex),
-                                opacity: isRect ? 0.95 : ((isUnderline || isStrike) ? 1 : 0.38),
-                                mixBlendMode: (isRect || isUnderline || isStrike) ? 'normal' : 'multiply',
+                                backgroundColor: isUnderline ? 'transparent' : (isRect ? `${colorHex}25` : colorHex),
+                                opacity: isRect ? 0.95 : (isUnderline ? 1 : 0.38),
+                                mixBlendMode: (isRect || isUnderline) ? 'normal' : 'multiply',
                               }}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -856,13 +869,8 @@ export default function Viewer({
                                 );
                               }}
                             >
-                              {isStrike && (
-                                <div
-                                  className="w-full h-[2px] absolute top-1/2 -translate-y-1/2 pointer-events-none rounded-full"
-                                  style={{ backgroundColor: colorHex }}
-                                />
-                              )}
                               {isRect && (
+
                                 <span
                                   className="absolute -top-3.5 left-0 px-1 py-0.2 text-[9px] font-mono uppercase rounded text-white font-semibold pointer-events-none tracking-wide"
                                   style={{ backgroundColor: colorHex }}
@@ -943,7 +951,7 @@ export default function Viewer({
         {/* Highlight Tooltip Popover */}
         {activeHighlightTooltip && (
           <div
-            className="absolute z-40 rounded-md border border-border bg-card p-2.5 shadow-none text-12 select-none max-w-xs animate-in fade-in zoom-in-95 duration-100 font-sans"
+            className="absolute z-40 rounded-md border border-border bg-background p-2.5 shadow-2xs text-12 select-none max-w-xs animate-in fade-in zoom-in-95 duration-100 font-sans"
             style={{
               top: `${activeHighlightTooltip.top}px`,
               left: `${activeHighlightTooltip.left}px`,
@@ -966,7 +974,7 @@ export default function Viewer({
                       );
                       setActiveHighlightTooltip(null);
                     }}
-                    className="size-5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
+                    className="size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
                     title="Add to Note"
                   >
                     <StickyNote className="size-3 shrink-0" strokeWidth={1.5} />
@@ -979,7 +987,7 @@ export default function Viewer({
                       onDeleteAnnotation(activeHighlightTooltip.ann);
                       setActiveHighlightTooltip(null);
                     }}
-                    className="size-5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer"
+                    className="size-5 rounded-md text-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer"
                     title="Delete highlight"
                   >
                     <Trash2 className="size-3 shrink-0" strokeWidth={1.5} />
@@ -988,7 +996,7 @@ export default function Viewer({
                 <button
                   type="button"
                   onClick={() => setActiveHighlightTooltip(null)}
-                  className="size-5 rounded-md text-muted-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
+                  className="size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
                   title="Close"
                 >
                   <X className="size-3 shrink-0" strokeWidth={1.5} />
@@ -1004,7 +1012,7 @@ export default function Viewer({
               </p>
             )}
             {activeHighlightTooltip.comment && (
-              <p className="text-11 text-muted-foreground leading-relaxed pl-1.5 select-text">
+              <p className="text-11 text-foreground leading-relaxed pl-1.5 select-text">
                 {activeHighlightTooltip.comment}
               </p>
             )}
@@ -1014,7 +1022,7 @@ export default function Viewer({
         {/* Floating selection action menu: highlight colors, note, ask AI, cite, copy */}
         {showFloatingMenu && selectedText && (
           <div
-            className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1.5 bg-card text-foreground px-2 py-1 rounded-md border border-border shadow-none duration-150 select-none"
+            className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1.5 bg-background text-foreground px-2 py-1 rounded-md border border-border shadow-2xs duration-150 select-none"
             style={{
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,
@@ -1043,11 +1051,9 @@ export default function Viewer({
                       aria-label={`Highlight in ${c.label}`}
                       onClick={() => {
                         const targetType =
-                          activeTool === 'strike'
-                            ? 'strike'
-                            : activeTool === 'underline'
-                              ? 'underline'
-                              : 'highlight';
+                          activeTool === 'underline'
+                            ? 'underline'
+                            : 'highlight';
                         onAnnotate(
                           selectedText,
                           selectedPageNum,
@@ -1070,30 +1076,6 @@ export default function Viewer({
               </div>
             )}
 
-            {/* Strike Action */}
-            {onAnnotate && (
-              <button
-                type="button"
-                aria-label="Strikethrough selected text"
-                onClick={() => {
-                  onAnnotate(
-                    selectedText,
-                    selectedPageNum,
-                    activeColor || '#ff6666',
-                    selectedRects,
-                    'strike',
-                  );
-                  setShowFloatingMenu(false);
-                  window.getSelection()?.removeAllRanges();
-                }}
-                className="flex items-center gap-1 px-1.5 py-1 rounded-md text-12 font-medium hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                title="Strikethrough text (S)"
-              >
-                <Strikethrough className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
-                <span>Strike</span>
-              </button>
-            )}
-
             {/* Note Action */}
             {onAddToNote && (
               <button
@@ -1107,7 +1089,7 @@ export default function Viewer({
                 className="flex items-center gap-1 px-1.5 py-1 rounded-md text-12 font-medium hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 title="Add selected text to Note"
               >
-                <StickyNote className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
+                <StickyNote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                 <span>Note</span>
               </button>
             )}
@@ -1134,13 +1116,13 @@ export default function Viewer({
                 type="button"
                 aria-label="Copy in-text citation"
                 onClick={handleCopyCitation}
-                className="flex items-center gap-1 px-1.5 py-1 rounded-md text-12 font-medium hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                className="flex items-center gap-1 px-1.5 py-1 rounded-md text-12 font-medium hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 title="Copy in-text citation: (Author, Year, p. X)"
               >
                 {copiedCitation ? (
                   <Check className="size-3.5 text-primary shrink-0" strokeWidth={1.5} />
                 ) : (
-                  <Quote className="size-3.5 shrink-0" strokeWidth={1.5} />
+                  <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                 )}
                 <span>{copiedCitation ? 'Cited' : 'Cite'}</span>
               </button>
@@ -1151,13 +1133,13 @@ export default function Viewer({
               type="button"
               aria-label="Copy selected text"
               onClick={handleCopySelection}
-              className="flex items-center gap-1 px-1.5 py-1 rounded-md text-12 font-medium hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="flex items-center gap-1 px-1.5 py-1 rounded-md text-12 font-medium hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
               title="Copy text"
             >
               {copiedSelection ? (
                 <Check className="size-3.5 text-primary shrink-0" strokeWidth={1.5} />
               ) : (
-                <Copy className="size-3.5 shrink-0" strokeWidth={1.5} />
+                <Copy className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
               )}
               <span>{copiedSelection ? 'Copied' : 'Copy'}</span>
             </button>

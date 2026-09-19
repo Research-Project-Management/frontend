@@ -129,7 +129,7 @@ export function MergeModal({
     return () => {
       isMounted = false;
     };
-  }, [open, duplicates, scopeId, projectId]);
+  }, [open, duplicates, scopeId, projectId, workspaceId]);
 
   // Master paper reference
   const masterPaper = useMemo(
@@ -224,7 +224,7 @@ export function MergeModal({
   if (!items || items.length === 0) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (isMerging || isDismissing) return; onOpenChange(v); }}>
       <DialogContent
         className="sm:max-w-5xl w-[95vw] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-background border border-border rounded-lg shadow-raised-200 font-sans"
       >
@@ -453,7 +453,9 @@ export function MergeModal({
                           // Determine if this cell's value is currently selected
                           const isExplicitOverride =
                             activeOverrideValue !== undefined &&
-                            opt.rawValue === activeOverrideValue;
+                            (typeof opt.rawValue === 'object'
+                              ? JSON.stringify(opt.rawValue) === JSON.stringify(activeOverrideValue)
+                              : opt.rawValue === activeOverrideValue);
                           const isMasterDefault =
                             activeOverrideValue === undefined &&
                             opt.isMaster &&

@@ -49,11 +49,16 @@ export function useAttachments(scopeId?: string, itemId?: string) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (attachmentId: string) =>
-      AttachmentsService.deleteAttachment(scopeId || '', attachmentId),
-    onSuccess: () => {
+    mutationFn: async ({ attachmentId, itemId: callerItemId }: { attachmentId: string; itemId?: string }) => {
+      await AttachmentsService.deleteAttachment(scopeId || '', attachmentId);
+      return { itemId: callerItemId };
+    },
+    onSuccess: (result) => {
+      // Use the itemId threaded from the caller, falling back to the hook's outer itemId.
+      // This ensures the correct item's attachment cache is invalidated.
+      const effectiveItemId = result.itemId || itemId;
       queryClient.invalidateQueries({
-        queryKey: attachmentKeys.byItem(scopeId, itemId),
+        queryKey: attachmentKeys.byItem(scopeId, effectiveItemId),
       });
       toast.success('Attachment deleted', { id: 'attachment-mutation' });
     },
@@ -133,3 +138,71 @@ export function useAttachmentRevisions(scopeId?: string, attachmentId?: string) 
     enabled: Boolean(attachmentId),
   });
 }
+
+/**
+ * Rename a single attachment file.
+ * Backed by PATCH /api/v1/library/attachments/:attachmentId/rename
+ */
+export function useRenameAttachment(scopeId?: string) {
+  const queryClient = useQueryClient();
+  const effectiveScope = scopeId || 'user';
+
+  return useMutation({
+    mutationFn: ({
+      attachmentId,
+      filename,
+      pattern,
+    }: {
+      attachmentId: string;
+      filename?: string;
+      pattern?: string;
+    }) =>
+      AttachmentsService.renameAttachment(effectiveScope, attachmentId, {
+        filename,
+        pattern,
+      }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['attachments'] });
+      queryClient.invalidateQueries({ queryKey: ['items'] });
+      toast.success('File renamed', {
+        description: `Renamed to "${res.newFilename}"`,
+        id: 'attachment-rename',
+      });
+    },
+    onError: (err: any) => {
+      toast.error('Rename failed', {
+        description: err?.message || 'Could not rename file.',
+        id: 'attachment-rename',
+      });
+    },
+  });
+}
+
+/**
+ * Batch rename attachments matching items or attachment IDs.
+ * Backed by POST /api/v1/library/attachments/batch-rename
+ */
+export function useBatchRenameAttachments(scopeId?: string) {
+  const queryClient = useQueryClient();
+  const effectiveScope = scopeId || 'user';
+
+  return useMutation({
+    mutationFn: (dto: { itemIds?: string[]; attachmentIds?: string[]; pattern?: string }) =>
+      AttachmentsService.batchRenameAttachments(effectiveScope, dto),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['attachments'] });
+      queryClient.invalidateQueries({ queryKey: ['items'] });
+      toast.success('Files renamed', {
+        description: `Successfully renamed ${res.renamedCount} attachment file(s) according to pattern.`,
+        id: 'batch-attachment-rename',
+      });
+    },
+    onError: (err: any) => {
+      toast.error('Batch rename failed', {
+        description: err?.message || 'Could not rename files.',
+        id: 'batch-attachment-rename',
+      });
+    },
+  });
+}
+

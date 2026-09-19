@@ -9,9 +9,15 @@ import { hasAuthToken } from '@/shared/lib/token-storage';
 
 export default function Navbar() {
   const { user } = useAuth();
-  const isAuthenticated = Boolean(user || (typeof window !== 'undefined' && hasAuthToken()));
+  const [mounted, setMounted] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isAuthenticated = mounted && Boolean(user || (typeof window !== 'undefined' && hasAuthToken()));
 
   // Harden: debounce + passive scroll listener
   const handleScroll = useCallback(() => {

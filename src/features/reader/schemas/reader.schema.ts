@@ -9,10 +9,10 @@ export const annotationRectSchema = z.object({
   height: z.number(),
 });
 
+// Zotero 7 official annotation types (no 'strike' — strikethrough does not exist in Zotero 7)
 export const annotationTypeSchema = z.enum([
   'highlight',
   'underline',
-  'strike',
   'note',
   'rect',
   'box',

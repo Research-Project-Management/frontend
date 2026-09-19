@@ -81,8 +81,8 @@ export const Relations: React.FC<RelationsProps> = ({
   return (
     <div className="space-y-1.5 pt-1">
       <div className="flex items-center justify-between">
-        <label className="text-11 font-semibold text-muted-foreground tracking-normal flex items-center gap-1.5">
-          <Link2 className="size-3.5 shrink-0" />
+        <label className="text-11 font-semibold text-foreground tracking-normal flex items-center gap-1.5">
+          <Link2 className="size-3.5 shrink-0 text-foreground" />
           <span>Dependencies & Relations ({relations.length})</span>
         </label>
 
@@ -98,9 +98,9 @@ export const Relations: React.FC<RelationsProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 px-1.5 text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1 rounded-md"
+                className="h-6 px-1.5 text-11 font-medium text-foreground hover:bg-muted cursor-pointer flex items-center gap-1 rounded-md"
               >
-                <Plus className="size-3 shrink-0" />
+                <Plus className="size-3 shrink-0 text-foreground" />
                 <span>Add</span>
               </Button>
             </PopoverTrigger>
@@ -113,7 +113,7 @@ export const Relations: React.FC<RelationsProps> = ({
               </div>
               <form onSubmit={handleAdd} className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-11 font-medium text-muted-foreground">Relation Type</label>
+                  <label className="text-11 font-medium text-foreground">Relation Type</label>
                   <div className="grid grid-cols-2 gap-1">
                     {(Object.keys(RELATION_TYPE_CONFIG) as RelationType[]).map((type) => {
                       const cfg = RELATION_TYPE_CONFIG[type];
@@ -127,7 +127,7 @@ export const Relations: React.FC<RelationsProps> = ({
                             'px-2 py-1.5 rounded-md text-11 font-medium text-left border transition-all cursor-pointer',
                             isSelected
                               ? 'bg-muted border-primary text-primary font-semibold'
-                              : 'border-border hover:bg-muted text-muted-foreground'
+                              : 'border-border hover:bg-muted text-foreground'
                           )}
                         >
                           {cfg.label}
@@ -138,9 +138,9 @@ export const Relations: React.FC<RelationsProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-11 font-medium text-muted-foreground">Target Work Item</label>
+                  <label className="text-11 font-medium text-foreground">Target Work Item</label>
                   <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground pointer-events-none shrink-0" />
+                    <Search className="absolute left-2.5 top-2.5 size-3.5 text-foreground pointer-events-none shrink-0" />
                     <Input
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -170,7 +170,7 @@ export const Relations: React.FC<RelationsProps> = ({
                           >
                             <div className="flex items-center gap-2 min-w-0 flex-1">
                               {t.identifier && (
-                                <span className="font-mono text-11 text-muted-foreground shrink-0">
+                                <span className="font-mono text-11 text-foreground shrink-0">
                                   {t.identifier}
                                 </span>
                               )}
@@ -189,7 +189,7 @@ export const Relations: React.FC<RelationsProps> = ({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-7 text-xs rounded-md"
+                    className="h-7 text-xs rounded-md text-foreground hover:bg-muted cursor-pointer"
                     onClick={() => setOpenAddPopover(false)}
                   >
                     Cancel
@@ -234,14 +234,14 @@ export const Relations: React.FC<RelationsProps> = ({
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <span
                     className={cn(
-                      'px-1.5 py-0.5 rounded-sm text-10 font-semibold tracking-normal border',
+                      'px-1.5 py-0.5 rounded-md text-10 font-semibold tracking-normal border',
                       config.badgeColor
                     )}
                   >
                     {config.label}
                   </span>
                   {rel.targetIdentifier && (
-                    <span className="font-mono font-semibold text-muted-foreground text-11">
+                    <span className="font-mono font-semibold text-foreground text-11">
                       {rel.targetIdentifier}
                     </span>
                   )}
@@ -252,7 +252,7 @@ export const Relations: React.FC<RelationsProps> = ({
                   <button
                     type="button"
                     onClick={() => onRemoveRelation(rel.id, rel.targetId || rel.targetWorkItemId)}
-                    className="opacity-0 group-hover:opacity-100 hover:text-red-500 p-1 text-muted-foreground cursor-pointer transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 hover:text-red-500 p-1 text-foreground cursor-pointer transition-opacity"
                     title="Remove relation"
                   >
                     <X className="size-3.5 shrink-0" />

@@ -19,6 +19,7 @@ import {
   Tag,
 } from 'lucide-react';
 import { Button } from "@/shared/components/ui";
+import { CycleIcon } from "@/shared/components/icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -107,14 +108,14 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
 
   return (
     <>
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-background/95 backdrop-blur-md border border-border rounded-md px-3 py-1.5 flex items-center gap-2 max-w-[calc(100vw-2rem)] overflow-x-auto shadow-lg animate-in fade-in slide-in-from-bottom-3 duration-200">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-background/95 backdrop-blur-md border border-border rounded-md px-4 py-2 h-11 flex items-center gap-2 w-max max-w-[calc(100vw-2rem)] overflow-x-auto no-scrollbar shadow-lg animate-in fade-in slide-in-from-bottom-3 duration-200 select-none">
         {/* Selection count badge */}
         <div className="flex items-center gap-1.5 bg-muted px-2 py-1 rounded-md text-12 font-medium text-foreground shrink-0">
           <span>{count} selected</span>
           <button
             type="button"
             onClick={onClearSelection}
-            className="hover:text-foreground text-muted-foreground p-0.5 rounded-sm cursor-pointer transition-colors"
+            className="hover:text-foreground text-foreground/80 hover:bg-muted p-0.5 rounded-md cursor-pointer transition-colors"
             title="Clear selection"
             aria-label="Clear selection"
           >
@@ -131,11 +132,11 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               variant="ghost"
               size="sm"
               disabled={isUpdating}
-              className="h-7 text-12 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
+              className="h-7 text-12 font-medium text-foreground hover:bg-muted flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
             >
-              <CheckCircle2 className="size-3.5 text-muted-foreground shrink-0" />
+              <CheckCircle2 className="size-3.5 text-foreground shrink-0" />
               <span>State</span>
-              <ChevronDown className="size-3 opacity-50 shrink-0" />
+              <ChevronDown className="size-3 text-foreground shrink-0" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="w-48 p-1 rounded-md border-border bg-popover">
@@ -162,11 +163,11 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               variant="ghost"
               size="sm"
               disabled={isUpdating}
-              className="h-7 text-12 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
+              className="h-7 text-12 font-medium text-foreground hover:bg-muted flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
             >
-              <Flame className="size-3.5 text-muted-foreground shrink-0" />
+              <Flame className="size-3.5 text-foreground shrink-0" />
               <span>Priority</span>
-              <ChevronDown className="size-3 opacity-50 shrink-0" />
+              <ChevronDown className="size-3 text-foreground shrink-0" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="w-40 p-1 rounded-md border-border bg-popover">
@@ -194,17 +195,17 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               variant="ghost"
               size="sm"
               disabled={isUpdating}
-              className="h-7 text-12 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
+              className="h-7 text-12 font-medium text-foreground hover:bg-muted flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
             >
-              <User className="size-3.5 text-muted-foreground shrink-0" />
+              <User className="size-3.5 text-foreground shrink-0" />
               <span>Assignee</span>
-              <ChevronDown className="size-3 opacity-50 shrink-0" />
+              <ChevronDown className="size-3 text-foreground shrink-0" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="w-52 p-1 rounded-md border-border bg-popover max-h-56 overflow-y-auto">
             <DropdownMenuItem
               onClick={() => onUpdateAssignee(null)}
-              className="text-12 cursor-pointer flex items-center gap-2 py-1.5 rounded-md text-muted-foreground"
+              className="text-12 cursor-pointer flex items-center gap-2 py-1.5 rounded-md text-foreground"
             >
               <UserMinus className="size-3.5 shrink-0" />
               <span>Unassign</span>
@@ -240,42 +241,42 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               variant="ghost"
               size="sm"
               disabled={isUpdating}
-              className="h-7 text-12 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
+              className="h-7 text-12 font-medium text-foreground hover:bg-muted flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
             >
-              <Calendar className="size-3.5 text-muted-foreground shrink-0" />
+              <Calendar className="size-3.5 text-foreground shrink-0" />
               <span>Due Date</span>
-              <ChevronDown className="size-3 opacity-50 shrink-0" />
+              <ChevronDown className="size-3 text-foreground shrink-0" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="w-44 p-1 rounded-md border-border bg-popover">
             <DropdownMenuItem
               onClick={() => onUpdateDueDate(new Date().toISOString())}
-              className="text-12 cursor-pointer py-1.5"
+              className="text-12 cursor-pointer py-1.5 rounded-md"
             >
               Today ({format(new Date(), 'MMM d')})
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onUpdateDueDate(addDays(new Date(), 1).toISOString())}
-              className="text-12 cursor-pointer py-1.5"
+              className="text-12 cursor-pointer py-1.5 rounded-md"
             >
               Tomorrow ({format(addDays(new Date(), 1), 'MMM d')})
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onUpdateDueDate(endOfWeek(new Date()).toISOString())}
-              className="text-12 cursor-pointer py-1.5"
+              className="text-12 cursor-pointer py-1.5 rounded-md"
             >
               End of week
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onUpdateDueDate(addDays(new Date(), 7).toISOString())}
-              className="text-12 cursor-pointer py-1.5"
+              className="text-12 cursor-pointer py-1.5 rounded-md"
             >
               In 1 week
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => onUpdateDueDate(null)}
-              className="text-12 cursor-pointer py-1.5 text-muted-foreground"
+              className="text-12 cursor-pointer py-1.5 rounded-md text-foreground"
             >
               Clear due date
             </DropdownMenuItem>
@@ -289,17 +290,17 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               variant="ghost"
               size="sm"
               disabled={isUpdating}
-              className="h-7 text-12 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
+              className="h-7 text-12 font-medium text-foreground hover:bg-muted flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
             >
-              <RotateCcw className="size-3.5 text-muted-foreground shrink-0" />
+              <CycleIcon className="size-3.5 text-foreground shrink-0" />
               <span>Cycle</span>
-              <ChevronDown className="size-3 opacity-50 shrink-0" />
+              <ChevronDown className="size-3 text-foreground shrink-0" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="w-52 p-1 rounded-md border-border bg-popover max-h-56 overflow-y-auto">
             <DropdownMenuItem
               onClick={() => onUpdateCycle(null)}
-              className="text-12 cursor-pointer py-1.5 text-muted-foreground"
+              className="text-12 cursor-pointer py-1.5 rounded-md text-foreground"
             >
               Remove from cycle
             </DropdownMenuItem>
@@ -308,11 +309,11 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
               <DropdownMenuItem
                 key={c.id}
                 onClick={() => onUpdateCycle(c.id)}
-                className="text-12 cursor-pointer flex items-center justify-between py-1.5"
+                className="text-12 cursor-pointer flex items-center justify-between py-1.5 rounded-md"
               >
                 <span className="truncate">{c.name}</span>
                 {c.status === 'active' && (
-                  <span className="text-10 font-semibold text-emerald-500 bg-emerald-500/10 px-1 rounded-sm">
+                  <span className="text-10 font-semibold text-emerald-500 bg-emerald-500/10 px-1 rounded-md">
                     Active
                   </span>
                 )}
@@ -329,11 +330,11 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 variant="ghost"
                 size="sm"
                 disabled={isUpdating}
-                className="h-7 text-12 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
+                className="h-7 text-12 font-medium text-foreground hover:bg-muted flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
               >
-                <Tag className="size-3.5 text-muted-foreground shrink-0" />
+                <Tag className="size-3.5 text-foreground shrink-0" />
                 <span>Label</span>
-                <ChevronDown className="size-3 opacity-50 shrink-0" />
+                <ChevronDown className="size-3 text-foreground shrink-0" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="center" className="w-52 p-1 rounded-md border-border bg-popover max-h-56 overflow-y-auto">
@@ -355,7 +356,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={onClearLabels}
-                    className="text-12 cursor-pointer py-1.5 text-muted-foreground"
+                    className="text-12 cursor-pointer py-1.5 rounded-md text-foreground"
                   >
                     Clear all labels
                   </DropdownMenuItem>
@@ -389,7 +390,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
             size="sm"
             disabled={isUpdating}
             onClick={() => setArchiveDialogOpen(true)}
-            className="h-7 text-12 font-medium text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-1 px-2 rounded-md cursor-pointer shrink-0"
+            className="h-7 text-12 font-medium text-foreground hover:bg-muted flex items-center gap-1 px-2 rounded-md cursor-pointer shrink-0"
             title="Archive selected work items"
           >
             <Archive className="size-3.5 shrink-0" />
@@ -403,7 +404,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           size="sm"
           disabled={isUpdating}
           onClick={() => setDeleteDialogOpen(true)}
-          className="h-7 text-12 font-medium text-destructive hover:bg-muted flex items-center gap-1 px-2 rounded-md cursor-pointer shrink-0"
+          className="h-7 text-12 font-medium text-foreground hover:bg-muted flex items-center gap-1 px-2 rounded-md cursor-pointer shrink-0"
           title="Delete selected work items"
         >
           <Trash2 className="size-3.5 shrink-0" />
@@ -413,7 +414,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
 
       {/* Restore Confirmation Dialog */}
       <Dialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
-        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-lg border border-border bg-background shadow-lg">
+        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-md border border-border bg-background shadow-lg">
           <DialogHeader className="text-left space-y-1.5">
             <DialogTitle className="text-base font-semibold text-foreground">
               Restore {count} Work Items?
@@ -450,7 +451,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
 
       {/* Archive Confirmation Dialog */}
       <Dialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
-        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-lg border border-border bg-background shadow-lg">
+        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-md border border-border bg-background shadow-lg">
           <DialogHeader className="text-left space-y-1.5">
             <DialogTitle className="text-base font-semibold text-foreground">
               Archive {count} Work Items?
@@ -487,7 +488,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-lg border border-border bg-background shadow-lg">
+        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-md border border-border bg-background shadow-lg">
           <DialogHeader className="text-left space-y-1.5">
             <DialogTitle className="text-base font-semibold text-foreground">
               Delete {count} Work Items?

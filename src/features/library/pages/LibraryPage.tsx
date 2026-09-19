@@ -26,6 +26,9 @@ import {
   Plus,
   Link2,
   ExternalLink,
+  FolderMinus,
+  GitMerge,
+  FolderSync,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -34,6 +37,7 @@ import InspectorPanel from '../components/Panel';
 import { useLibrarySidebarStore } from '../store/sidebar.store';
 import AddLinkModal from '../components/modals/AddLinkModal';
 import CreateCollectionModal from '../components/modals/CreateCollectionModal';
+import MergeModal from '../components/modals/MergeModal';
 import LibraryEmptyState from '../components/LibraryEmptyState';
 import { LibraryIcon } from '@/shared/components/icons';
 import FlagRetractionModal from '../components/modals/FlagRetractionModal';
@@ -42,7 +46,10 @@ import TrashModal, { type MoveToTrashTarget } from '../components/modals/TrashMo
 import ProcessModal from '../components/modals/ProcessModal';
 import ImportFromPersonalModal from '../components/modals/ImportFromPersonalModal';
 import { useRetraction } from '../hooks/use-retraction';
+import { useMergePapers } from '../hooks/use-curation';
+import { useBatchRenameAttachments } from '../hooks/use-attachments';
 import { ItemService } from '../services/items.service';
+import { CollectionsService } from '../services/collections.service';
 import BatchBar from '../components/table/BatchBar';
 import {
   type LibraryDisplayOptions,
@@ -113,6 +120,7 @@ export default function LibraryPage() {
     handleDirectFilesUpload,
     handleDirectFolderUpload,
     handleAddLinkSubmit,
+    handleCreateManualItem,
     setCreateCollectionOpen,
     handleCreateCollection,
     handleDeleteItem,
@@ -120,6 +128,8 @@ export default function LibraryPage() {
     handleBatchMoveItems,
     navigate,
   } = actions;
+
+  const currentCollectionId = selectedCollection?.id;
 
   const [trashTarget, setTrashTarget] = useState<MoveToTrashTarget | null>(null);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
@@ -136,6 +146,26 @@ export default function LibraryPage() {
     state.activeScope?.role === 'contributor';
 
   const queryClient = useQueryClient();
+
+  const handleRemoveFromCollection = async (paper: Item) => {
+    if (!currentCollectionId) return;
+    try {
+      await CollectionsService.detachItem(effectiveScopeId, currentCollectionId, paper.id);
+      toast.success('Removed from collection', {
+        description: `"${paper.title || 'Item'}" was removed from this collection.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['items'] });
+      queryClient.invalidateQueries({ queryKey: ['library'] });
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+      if (selectedItemId === paper.id) {
+        setSelectedItemId(null);
+      }
+    } catch (err: any) {
+      toast.error('Failed to remove from collection', {
+        description: err?.message || 'Please try again.',
+      });
+    }
+  };
 
   const handleConfirmAuthorship = async (itemId: string, isMyPublication: boolean) => {
     const activeScope = effectiveScopeId || 'user';
@@ -226,6 +256,39 @@ export default function LibraryPage() {
     initialSortField: 'createdAt',
     initialSortOrder: 'desc',
   });
+
+  const mergeMutation = useMergePapers(effectiveScopeId || 'user');
+  const [mergeCluster, setMergeCluster] = useState<Item[] | null>(null);
+  const [mergeOpen, setMergeOpen] = useState(false);
+
+  const batchRenameMutation = useBatchRenameAttachments(effectiveScopeId || 'user');
+
+  const handleExecuteBatchRename = useCallback((itemsToRename: Item[]) => {
+    if (!itemsToRename || itemsToRename.length === 0) return;
+    batchRenameMutation.mutate({
+      itemIds: itemsToRename.map((i) => i.id),
+    });
+  }, [batchRenameMutation]);
+
+  const handleOpenMerge = useCallback((itemsToMerge: Item[]) => {
+    if (!itemsToMerge || itemsToMerge.length < 2) return;
+    setMergeCluster(itemsToMerge);
+    setMergeOpen(true);
+  }, []);
+
+  const handleExecuteMerge = async (
+    masterItem: Item,
+    mergedFields: Partial<Item>,
+    duplicateIdsToDelete: string[],
+  ) => {
+    await mergeMutation.mutateAsync({
+      masterPaperId: masterItem.id,
+      sourcePaperIds: duplicateIdsToDelete,
+      fieldSelections: Object.keys(mergedFields).length > 0 ? mergedFields : undefined,
+    });
+    clearSelection();
+    setMergeOpen(false);
+  };
 
   const DISPLAY_OPTIONS_STORAGE_KEY = 'flux_library_display_options_v3';
 
@@ -380,6 +443,7 @@ export default function LibraryPage() {
       return;
     }
     if (item.id) {
+      if ((item as any).isPending) return;
       const isSandbox = pathname?.includes('library-sandbox');
       const prefix = isSandbox ? '/library-sandbox/papers' : '/library/papers';
       router.push(`${prefix}/${item.id}`);
@@ -571,6 +635,12 @@ export default function LibraryPage() {
           onDisplayOptionsChange={handleDisplayOptionsChange}
           onDirectFilesUpload={canEdit && activeFilter !== 'trash' ? handleDirectFilesUpload : undefined}
           onDirectFolderUpload={canEdit && activeFilter !== 'trash' ? handleDirectFolderUpload : undefined}
+          onNewManualItem={canEdit && activeFilter !== 'trash' ? async (itemType) => {
+            const newItem = await handleCreateManualItem(itemType);
+            if (newItem) {
+              setIsInspectorOpen(true);
+            }
+          } : undefined}
           onAddCollection={canEdit && activeFilter !== 'trash' ? () => setCreateCollectionOpen(true) : undefined}
           onAddLink={canEdit && activeFilter !== 'trash' ? () => setAddLinkOpen(true) : undefined}
           onImportFromPersonal={isProjectScope && canEdit && activeFilter !== 'trash' ? () => setIsImportModalOpen(true) : undefined}
@@ -960,10 +1030,7 @@ export default function LibraryPage() {
                             </div>
                           </th>
                         )}
-                        <th
-                          scope="col"
-                          className="w-11 px-2 py-1 whitespace-nowrap bg-background"
-                        />
+                        <th scope="col" className="w-11 px-2 py-1 whitespace-nowrap bg-background" />
                       </tr>
                     </thead>
                   </ContextMenuTrigger>
@@ -1234,7 +1301,7 @@ export default function LibraryPage() {
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                       <button
-                                        className="flex size-7 shrink-0 items-center justify-center rounded-md text-foreground opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-muted transition-opacity cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                        className="flex size-7 shrink-0 items-center justify-center rounded-md text-foreground opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-muted-foreground/20 hover:text-foreground transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                         aria-label={`Options for ${paper.title || 'reference'}`}
                                       >
                                         <MoreVertical className="size-3.5 text-foreground shrink-0" />
@@ -1282,79 +1349,126 @@ export default function LibraryPage() {
                                         <FileText className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                                         <span>View Details</span>
                                       </DropdownMenuItem>
-                                      {canEdit && (
-                                        <DropdownMenuItem
-                                          onClick={() => setRetractionModalItem(paper)}
-                                          className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                                        >
-                                          <ShieldAlert className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                                          <span>{paper.isRetracted ? 'Manage Retraction' : 'Flag Retraction'}</span>
-                                        </DropdownMenuItem>
-                                      )}
-                                      <DropdownMenuItem
-                                        onClick={() => setAuthorshipModalItem(paper)}
-                                        className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                                      >
-                                        <Award className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                                        <span>Manage Authorship</span>
-                                      </DropdownMenuItem>
-                                      {canEdit && (
-                                        <DropdownMenuItem
-                                          onClick={() => handleInitiateSingleTrash(paper)}
-                                          className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-destructive focus:text-destructive rounded-md hover:bg-destructive/10 focus:bg-destructive/10 outline-none focus-visible:ring-1 focus-visible:ring-destructive"
-                                        >
-                                          <Trash2 className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                                          <span>Move to Trash</span>
-                                        </DropdownMenuItem>
-                                      )}
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        </ContextMenuTrigger>
-                        {!isPending && (
-                          <ContextMenuContent className="w-56 text-12 font-sans">
-                            <ContextMenuItem onClick={() => router.push(`/library/papers/${paper.id}`)} className="gap-2 text-foreground">
-                              <BookOpen className="size-3.5 text-foreground shrink-0" />
-                              <span>Open in Reader</span>
-                            </ContextMenuItem>
-                            <ContextMenuItem
-                              onClick={() => window.open(`/library/papers/${paper.id}`, '_blank', 'noopener,noreferrer')}
-                              className="gap-2 text-foreground"
-                            >
-                              <ExternalLink className="size-3.5 text-foreground shrink-0" />
-                              <span>Open in New Tab</span>
-                            </ContextMenuItem>
-                            <ContextMenuItem onClick={() => handleQuickCopyCitation([paper])} className="gap-2 text-foreground">
-                              <Quote className="size-3.5 text-foreground shrink-0" />
-                              <span>Copy Citation</span>
-                            </ContextMenuItem>
-                            <ContextMenuItem onClick={() => handleToggleStar(paper)} className="gap-2 text-foreground">
-                              <Star className={cn("size-3.5 shrink-0", ((typeof paper.rating === 'number' && paper.rating > 0) || Boolean((paper as any).isStarred) || Boolean((paper as any).states?.[0]?.rating > 0)) ? "fill-amber-400 text-amber-500" : "text-foreground")} />
-                              <span>{((typeof paper.rating === 'number' && paper.rating > 0) || Boolean((paper as any).isStarred) || Boolean((paper as any).states?.[0]?.rating > 0)) ? 'Remove from Starred' : 'Add to Starred'}</span>
-                            </ContextMenuItem>
-                            <ContextMenuItem onClick={() => handleSelectItem(paper)} className="gap-2 text-foreground">
-                              <Quote className="size-3.5 text-foreground shrink-0" />
-                              <span>Cite in Inspector</span>
-                            </ContextMenuItem>
-                            <ContextMenuItem onClick={() => setAuthorshipModalItem(paper)} className="gap-2 text-foreground">
-                              <Award className="size-3.5 text-foreground shrink-0" />
-                              <span>{paper.isMyPublication ? 'Authorship Details' : 'Add to My Publications'}</span>
-                            </ContextMenuItem>
-                            <ContextMenuItem onClick={() => setRetractionModalItem(paper)} className="gap-2 text-foreground">
-                              <ShieldAlert className="size-3.5 text-foreground shrink-0" />
-                              <span>{paper.isRetracted ? 'Retraction Details' : 'Flag as Retracted'}</span>
-                            </ContextMenuItem>
-                            {canEdit && (
-                              <ContextMenuItem onClick={() => handleInitiateSingleTrash(paper)} className="gap-2 text-foreground">
-                                <Trash2 className="size-3.5 text-foreground shrink-0" />
-                                <span>Move to Trash</span>
-                              </ContextMenuItem>
-                            )}
-                          </ContextMenuContent>
-                        )}
+                                       {canEdit && (
+                                         <DropdownMenuItem
+                                           onClick={() => setRetractionModalItem(paper)}
+                                           className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                         >
+                                           <ShieldAlert className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                                           <span>{paper.isRetracted ? 'Manage Retraction' : 'Flag Retraction'}</span>
+                                         </DropdownMenuItem>
+                                       )}
+                                       {canEdit && (
+                                         <DropdownMenuItem
+                                           onClick={() => setAuthorshipModalItem(paper)}
+                                           className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                         >
+                                           <Award className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                                           <span>Manage Authorship</span>
+                                         </DropdownMenuItem>
+                                       )}
+                                       {canEdit && currentCollectionId && (
+                                         <DropdownMenuItem
+                                           onClick={() => handleRemoveFromCollection(paper)}
+                                           className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                         >
+                                           <FolderMinus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                                           <span>Remove from Collection</span>
+                                         </DropdownMenuItem>
+                                       )}
+                                       {canEdit && (
+                                         <DropdownMenuItem
+                                           onClick={() => handleInitiateSingleTrash(paper)}
+                                           className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-destructive focus:text-destructive rounded-md hover:bg-destructive/10 focus:bg-destructive/10 outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+                                         >
+                                           <Trash2 className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
+                                           <span>Move to Trash</span>
+                                         </DropdownMenuItem>
+                                       )}
+                                     </DropdownMenuContent>
+                                   </DropdownMenu>
+                                 </div>
+                               )}
+                             </td>
+                           </tr>
+                         </ContextMenuTrigger>
+                         {!isPending && (
+                           <ContextMenuContent className="w-56 text-12 font-sans">
+                             <ContextMenuItem onClick={() => router.push(`/library/papers/${paper.id}`)} className="gap-2 text-foreground">
+                               <BookOpen className="size-3.5 text-foreground shrink-0" />
+                               <span>Open in Reader</span>
+                             </ContextMenuItem>
+                             <ContextMenuItem
+                               onClick={() => window.open(`/library/papers/${paper.id}`, '_blank', 'noopener,noreferrer')}
+                               className="gap-2 text-foreground"
+                             >
+                               <ExternalLink className="size-3.5 text-foreground shrink-0" />
+                               <span>Open in New Tab</span>
+                             </ContextMenuItem>
+                             <ContextMenuItem onClick={() => handleQuickCopyCitation([paper])} className="gap-2 text-foreground">
+                               <Quote className="size-3.5 text-foreground shrink-0" />
+                               <span>Copy Citation</span>
+                             </ContextMenuItem>
+                             <ContextMenuItem onClick={() => handleToggleStar(paper)} className="gap-2 text-foreground">
+                               <Star className={cn("size-3.5 shrink-0", ((typeof paper.rating === 'number' && paper.rating > 0) || Boolean((paper as any).isStarred) || Boolean((paper as any).states?.[0]?.rating > 0)) ? "fill-amber-400 text-amber-500" : "text-foreground")} />
+                               <span>{((typeof paper.rating === 'number' && paper.rating > 0) || Boolean((paper as any).isStarred) || Boolean((paper as any).states?.[0]?.rating > 0)) ? 'Remove from Starred' : 'Add to Starred'}</span>
+                             </ContextMenuItem>
+                             <ContextMenuItem onClick={() => handleSelectItem(paper)} className="gap-2 text-foreground">
+                               <Quote className="size-3.5 text-foreground shrink-0" />
+                               <span>Cite in Inspector</span>
+                             </ContextMenuItem>
+                             {canEdit && (
+                               <ContextMenuItem onClick={() => setAuthorshipModalItem(paper)} className="gap-2 text-foreground">
+                                 <Award className="size-3.5 text-foreground shrink-0" />
+                                 <span>{paper.isMyPublication ? 'Authorship Details' : 'Add to My Publications'}</span>
+                               </ContextMenuItem>
+                             )}
+                             {canEdit && (
+                               <ContextMenuItem onClick={() => setRetractionModalItem(paper)} className="gap-2 text-foreground">
+                                 <ShieldAlert className="size-3.5 text-foreground shrink-0" />
+                                 <span>{paper.isRetracted ? 'Retraction Details' : 'Flag as Retracted'}</span>
+                               </ContextMenuItem>
+                             )}
+                             {canEdit && selectedIds.size >= 2 && selectedIds.has(paper.id) && (
+                               <ContextMenuItem
+                                 onClick={() => {
+                                   const selectedItemList = sortedItems.filter((tableItem) => selectedIds.has(tableItem.id));
+                                   handleOpenMerge(selectedItemList);
+                                 }}
+                                 className="gap-2 text-foreground"
+                               >
+                                 <GitMerge className="size-3.5 text-foreground shrink-0" />
+                                 <span>Merge Items…</span>
+                               </ContextMenuItem>
+                             )}
+                             {canEdit && (
+                               <ContextMenuItem
+                                 onClick={() => {
+                                   const itemsToRename = selectedIds.has(paper.id) && selectedIds.size > 1
+                                     ? sortedItems.filter((tableItem) => selectedIds.has(tableItem.id))
+                                     : [paper];
+                                   handleExecuteBatchRename(itemsToRename);
+                                 }}
+                                 className="gap-2 text-foreground"
+                               >
+                                 <FolderSync className="size-3.5 text-foreground shrink-0" />
+                                 <span>Rename File from Parent Metadata</span>
+                               </ContextMenuItem>
+                             )}
+                             {canEdit && currentCollectionId && (
+                               <ContextMenuItem onClick={() => handleRemoveFromCollection(paper)} className="gap-2 text-foreground">
+                                 <FolderMinus className="size-3.5 text-foreground shrink-0" />
+                                 <span>Remove from Collection</span>
+                               </ContextMenuItem>
+                             )}
+                             {canEdit && (
+                               <ContextMenuItem onClick={() => handleInitiateSingleTrash(paper)} className="gap-2 text-destructive focus:text-destructive">
+                                 <Trash2 className="size-3.5 text-destructive shrink-0" />
+                                 <span>Move to Trash</span>
+                               </ContextMenuItem>
+                             )}
+                           </ContextMenuContent>
+                         )}
                       </ContextMenu>
                     );
                   })}
@@ -1384,6 +1498,7 @@ export default function LibraryPage() {
         item={selectedItem || null}
         collection={selectedCollection || null}
         scopeId={effectiveScopeId}
+        canEdit={canEdit}
         onClose={handleCloseInspector}
         onSelectPaper={(paperId) => {
           setSelectedItemId(paperId);
@@ -1460,6 +1575,18 @@ export default function LibraryPage() {
           }}
         />
       )}
+
+      {/* Merge Duplicates Modal (Zotero standard) */}
+      {mergeCluster && (
+        <MergeModal
+          open={mergeOpen}
+          onOpenChange={setMergeOpen}
+          duplicates={mergeCluster}
+          scopeId={effectiveScopeId || 'user'}
+          onMerge={handleExecuteMerge}
+        />
+      )}
+
     </div>
   );
 }

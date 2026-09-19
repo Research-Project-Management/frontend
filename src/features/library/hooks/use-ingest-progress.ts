@@ -29,6 +29,7 @@ export function useIngestProgress(scopeId: string = 'user') {
 
   const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
   const activeRunIdRef = useRef<string | null>(null);
+  const pollRef = useRef<((runId: string) => Promise<void>) | undefined>(undefined);
 
   const stopPolling = useCallback(() => {
     if (pollTimerRef.current) {
@@ -68,17 +69,22 @@ export function useIngestProgress(scopeId: string = 'user') {
           queryClient.invalidateQueries({ queryKey: ['items'] });
           queryClient.invalidateQueries({ queryKey: ['papers'] });
         } else {
-          pollTimerRef.current = setTimeout(() => poll(runId), 600);
+          // IP-1: Use pollRef so the closure always invokes the latest poll function
+          pollTimerRef.current = setTimeout(() => pollRef.current?.(runId), 600);
         }
       } catch {
         if (activeRunIdRef.current === runId) {
           // Retry on transient poll error
-          pollTimerRef.current = setTimeout(() => poll(runId), 1200);
+          // IP-1: Use pollRef so the closure always invokes the latest poll function
+          pollTimerRef.current = setTimeout(() => pollRef.current?.(runId), 1200);
         }
       }
     },
     [scopeId, queryClient, stopPolling],
   );
+
+  // IP-1: Keep pollRef in sync with the latest poll callback after every render
+  pollRef.current = poll;
 
   const startMonitoring = useCallback(
     (runId: string, fileName = 'References') => {
@@ -158,8 +164,18 @@ export function useIngestProgress(scopeId: string = 'user') {
       setModalState((prev) => {
         if (!prev.data) return prev;
         let matched = false;
+        const normalizedTarget = (fileName || '').trim().toLowerCase();
+        const baseTarget = normalizedTarget.split(/[/\\]/).pop() || normalizedTarget;
+
         const items = prev.data.items.map((item) => {
-          if (item.title === fileName) {
+          const itemTitle = (item.title || '').trim().toLowerCase();
+          const itemBase = itemTitle.split(/[/\\]/).pop() || itemTitle;
+          const isMatch =
+            item.title === fileName ||
+            itemTitle === normalizedTarget ||
+            itemBase === baseTarget;
+
+          if (isMatch) {
             matched = true;
             return {
               ...item,
@@ -179,7 +195,7 @@ export function useIngestProgress(scopeId: string = 'user') {
         const duplicates = finalItems.filter((i) => i.status === 'DUPLICATE').length;
         const failed = finalItems.filter((i) => i.status === 'FAILED').length;
         const total = Math.max(prev.data.total, finalItems.length);
-        const percentage = Math.round((processed / total) * 100);
+        const percentage = Math.min(100, Math.round((processed / total) * 100));
         const isComplete = processed >= total && total > 0;
 
         return {
@@ -206,12 +222,38 @@ export function useIngestProgress(scopeId: string = 'user') {
     (errorMessage?: string) => {
       setModalState((prev) => {
         if (!prev.data) return prev;
+        const updatedItems = prev.data.items.map((item) => {
+          const itemStatus = item.status as string;
+          const isStillRunning =
+            itemStatus !== 'SUCCEEDED' &&
+            itemStatus !== 'FAILED' &&
+            itemStatus !== 'DUPLICATE';
+
+          if (!errorMessage && isStillRunning) {
+            return {
+              ...item,
+              status: 'SUCCEEDED' as const,
+              itemName: (item as any).itemName || item.title,
+            };
+          }
+          return item;
+        });
+
+        const succeeded = updatedItems.filter((i) => i.status === 'SUCCEEDED').length;
+        const duplicates = updatedItems.filter((i) => i.status === 'DUPLICATE').length;
+        const failed = updatedItems.filter((i) => i.status === 'FAILED').length;
+
         return {
           ...prev,
           isComplete: true,
           error: errorMessage || null,
           data: {
             ...prev.data,
+            items: updatedItems,
+            processed: updatedItems.length,
+            succeeded,
+            duplicates,
+            failed,
             status: errorMessage ? 'FAILED_FINAL' : 'COMPLETED',
             percentage: 100,
             completedAt: new Date().toISOString(),
@@ -239,6 +281,7 @@ export function useIngestProgress(scopeId: string = 'user') {
   useEffect(() => {
     return () => {
       stopPolling();
+      activeRunIdRef.current = null;
     };
   }, [stopPolling]);
 

@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useRef, useEffect } from 'react';
 import { IngestionService } from '../services/ingestion.service';
 import type {
   UnifiedIngestionPayload,
@@ -20,6 +21,15 @@ export const ingestKeys = {
 export function useIngestion(scopeId: string = 'user') {
   const queryClient = useQueryClient();
 
+  // IG-1: Cancellation flag — set false on unmount to break the async polling loop
+  const isMonitoringActiveRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    return () => {
+      isMonitoringActiveRef.current = false;
+    };
+  }, []);
+
   const invalidateLibrary = () => {
     queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
     queryClient.invalidateQueries({ queryKey: ['library', scopeId] });
@@ -29,13 +39,17 @@ export function useIngestion(scopeId: string = 'user') {
 
   const monitorRun = async (runId: string, silent?: boolean) => {
     for (let attempt = 0; attempt < 90; attempt += 1) {
+      // IG-1: Bail out immediately if the component has unmounted
+      if (!isMonitoringActiveRef.current) return;
       await new Promise((resolve) => setTimeout(resolve, 2000));
+      // IG-1: Re-check after the await in case unmount occurred during sleep
+      if (!isMonitoringActiveRef.current) return;
       try {
         const response = await IngestionService.getRunStatus(scopeId, runId);
         const snapshot: any = (response as any)?.data || response;
         const status = String(snapshot?.status || '').toUpperCase();
 
-        if (status === 'READY' || status === 'COMMITTED') {
+        if (status === 'READY' || status === 'COMMITTED' || status === 'COMPLETED') {
           invalidateLibrary();
           if (!silent) {
             toast.success('Document added', {
@@ -82,6 +96,8 @@ export function useIngestion(scopeId: string = 'user') {
       invalidateLibrary();
       const runId = data?.data?.runId;
       if (runId) {
+        // IG-1: Activate cancellation guard before starting the async loop
+        isMonitoringActiveRef.current = true;
         void monitorRun(runId, Boolean((variables as any)?.silent));
       }
       if (!(variables as any)?.silent) {
@@ -183,11 +199,41 @@ export function useIngestStatus(
       if (options?.refetchInterval !== undefined) return options.refetchInterval;
       const data = query.state.data;
       if (!data) return 1000;
-      const status = (data as any)?.status || (data as any)?.data?.status;
-      if (status === 'queued' || status === 'running' || status === 'pending') {
+      const rawStatus = (data as any)?.status || (data as any)?.data?.status;
+      const status = String(rawStatus || '').toUpperCase();
+      // Terminal statuses — stop polling
+      if (
+        status === 'READY' ||
+        status === 'COMPLETED' ||
+        status === 'COMMITTED' ||
+        status === 'FAILED_FINAL' ||
+        status === 'FAILED'
+      ) {
+        return false;
+      }
+      // Non-terminal statuses — keep polling
+      if (
+        status === 'QUEUED' ||
+        status === 'RUNNING' ||
+        status === 'PENDING' ||
+        status === 'PROCESSING' ||
+        status === 'RECEIVED' ||
+        status === 'EXTRACTING' ||
+        status === 'NORMALIZING' ||
+        status === 'RECONCILING' ||
+        status === 'INDEXING' ||
+        status === 'ENRICHING' ||
+        status === 'DETECTED' ||
+        status === 'EXTRACTED' ||
+        status === 'RESOLVED' ||
+        status === 'NORMALIZED' ||
+        status === 'MERGED' ||
+        status === 'NEEDS_REVIEW'
+      ) {
         return 2000;
       }
-      return false;
+      // Unknown status — poll conservatively
+      return 2000;
     },
   });
 }

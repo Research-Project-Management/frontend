@@ -82,11 +82,11 @@ interface SectionDefinition {
 const SECTIONS_CONFIG: SectionDefinition[] = [
   { id: 'info', label: 'Info', icon: Info },
   { id: 'abstract', label: 'Abstract', icon: AlignLeft },
-  { id: 'files', label: 'Attachments', icon: Paperclip },
   { id: 'notes', label: 'Notes', icon: StickyNote },
-  { id: 'collections', label: 'Libraries and Collections', icon: FolderTree },
   { id: 'tags', label: 'Tags', icon: Tag },
   { id: 'relations', label: 'Related', icon: Network },
+  { id: 'files', label: 'Attachments', icon: Paperclip },
+  { id: 'collections', label: 'Libraries and Collections', icon: FolderTree },
   { id: 'cite', label: 'Citation', icon: Quote },
 ];
 
@@ -139,7 +139,7 @@ function InspectorSectionHeader({
           <Icon className="size-4 text-foreground shrink-0" />
         </div>
         <span className="truncate text-13 text-foreground font-sans font-medium tracking-tight">
-          {label}{count !== undefined && count > 0 && <span className="text-11 font-normal text-muted-foreground font-mono tabular-nums ml-1">({count})</span>}
+          {label}{count !== undefined && count > 0 && <span className="text-11 font-normal text-foreground font-mono tabular-nums ml-1">({count})</span>}
         </span>
       </div>
 
@@ -180,7 +180,7 @@ function InspectorSectionHeader({
             >
               <ChevronDown
                 className={cn(
-                  "size-3.5 text-foreground shrink-0",
+                  "size-3.5 text-foreground transition-transform duration-150 shrink-0",
                   paper && isOpen && "rotate-180"
                 )}
               />
@@ -513,7 +513,7 @@ export default function InspectorPanel({
         if ((data as any).id === currentPaper.id && (data as any).version !== undefined) {
           latestPaperRef.current = { ...currentPaper, ...data };
           setPaper((current) =>
-            current?.id === currentPaper.id ? { ...current, ...data } : current,
+            current?.id === currentPaper.id ? ({ ...current, ...data } as Item) : current,
           );
           return;
         }
@@ -529,7 +529,7 @@ export default function InspectorPanel({
 
         latestPaperRef.current = { ...currentPaper, ...updated };
         setPaper((current) =>
-          current?.id === updated.id ? { ...current, ...updated } : current,
+          current?.id === updated.id ? ({ ...current, ...updated } as Item) : current,
         );
       })
       .catch(async () => {
@@ -714,7 +714,7 @@ export default function InspectorPanel({
                 <button
                   type="button"
                   onClick={() => setIsInspectorOpen(false)}
-                  className="size-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0" title="Close panel"
+                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0" title="Close panel"
                   aria-label="Close inspector"
                 >
                   <X className="size-4 shrink-0 text-foreground" />
@@ -726,7 +726,7 @@ export default function InspectorPanel({
                 <button
                   type="button"
                   onClick={() => setIsInspectorOpen(false)}
-                  className="size-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0" title="Close panel"
+                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0" title="Close panel"
                   aria-label="Close inspector"
                 >
                   <X className="size-4 shrink-0 text-foreground" />
@@ -780,33 +780,7 @@ export default function InspectorPanel({
               )}
             </div>
 
-            {/* 3. Attachments / Files Section */}
-            <div id="inspector-section-files" className="bg-background">
-              <InspectorSectionHeader
-                id="files"
-                label="Attachments"
-                icon={Paperclip}
-                count={filesCount}
-                isOpen={isSectionOpen('files')}
-                hasAdd={true}
-                paper={paper}
-                onToggle={toggleSection}
-                onAdd={handleAddClick}
-              />
-              {paper && isSectionOpen('files') && filesCount > 0 && (
-                <div className="p-2 bg-background">
-                  <AttachmentsSection
-                    paper={paper}
-                    workspaceId={activeWorkspaceId}
-                    onAddAttachment={() => attachFileInputRef.current?.click()}
-                    isUploading={isUploadingAttachment}
-                    hideHeader
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* 4. Notes Section */}
+            {/* 3. Notes Section */}
             <div id="inspector-section-notes" className="bg-background">
               <InspectorSectionHeader
                 id="notes"
@@ -832,7 +806,85 @@ export default function InspectorPanel({
               )}
             </div>
 
-            {/* 5. Collections Section */}
+            {/* 4. Tags Section */}
+            <div id="inspector-section-tags" className="bg-background">
+              <InspectorSectionHeader
+                id="tags"
+                label="Tags"
+                icon={Tag}
+                count={tagsCount}
+                isOpen={isSectionOpen('tags')}
+                hasAdd={true}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('tags') && (tagsCount > 0 || forceAddingTag) && (
+                <div className="p-2 bg-background">
+                  <TagsSection
+                    paper={paper}
+                    onUpdatePaper={handleUpdatePaper}
+                    hideHeader
+                    forceAdding={forceAddingTag}
+                    onCancelAdding={() => setForceAddingTag(false)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* 5. Related Papers Section */}
+            <div id="inspector-section-relations" className="bg-background">
+              <InspectorSectionHeader
+                id="relations"
+                label="Related"
+                icon={Network}
+                count={relationsCount}
+                isOpen={isSectionOpen('relations')}
+                hasAdd={true}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('relations') && relationsCount > 0 && (
+                <div className="p-2 bg-background">
+                  <RelatedSection
+                    paper={paper}
+                    workspaceId={activeWorkspaceId}
+                    hideHeader
+                    isAddOpen={isAddRelatedOpen}
+                    onAddOpenChange={setIsAddRelatedOpen}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* 6. Attachments / Files Section */}
+            <div id="inspector-section-files" className="bg-background">
+              <InspectorSectionHeader
+                id="files"
+                label="Attachments"
+                icon={Paperclip}
+                count={filesCount}
+                isOpen={isSectionOpen('files')}
+                hasAdd={true}
+                paper={paper}
+                onToggle={toggleSection}
+                onAdd={handleAddClick}
+              />
+              {paper && isSectionOpen('files') && filesCount > 0 && (
+                <div className="p-2 bg-background">
+                  <AttachmentsSection
+                    paper={paper}
+                    workspaceId={activeWorkspaceId}
+                    onAddAttachment={() => attachFileInputRef.current?.click()}
+                    isUploading={isUploadingAttachment}
+                    hideHeader
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* 7. Collections Section */}
             <div id="inspector-section-collections" className="bg-background">
               <InspectorSectionHeader
                 id="collections"
@@ -892,58 +944,6 @@ export default function InspectorPanel({
                     workspaceId={activeWorkspaceId}
                     onCreateCollection={() => setIsCreateCollectionOpen(true)}
                     hideHeader
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* 6. Tags Section */}
-            <div id="inspector-section-tags" className="bg-background">
-              <InspectorSectionHeader
-                id="tags"
-                label="Tags"
-                icon={Tag}
-                count={tagsCount}
-                isOpen={isSectionOpen('tags')}
-                hasAdd={true}
-                paper={paper}
-                onToggle={toggleSection}
-                onAdd={handleAddClick}
-              />
-              {paper && isSectionOpen('tags') && (tagsCount > 0 || forceAddingTag) && (
-                <div className="p-2 bg-background">
-                  <TagsSection
-                    paper={paper}
-                    onUpdatePaper={handleUpdatePaper}
-                    hideHeader
-                    forceAdding={forceAddingTag}
-                    onCancelAdding={() => setForceAddingTag(false)}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* 7. Related Papers Section */}
-            <div id="inspector-section-relations" className="bg-background">
-              <InspectorSectionHeader
-                id="relations"
-                label="Related"
-                icon={Network}
-                count={relationsCount}
-                isOpen={isSectionOpen('relations')}
-                hasAdd={true}
-                paper={paper}
-                onToggle={toggleSection}
-                onAdd={handleAddClick}
-              />
-              {paper && isSectionOpen('relations') && relationsCount > 0 && (
-                <div className="p-2 bg-background">
-                  <RelatedSection
-                    paper={paper}
-                    workspaceId={activeWorkspaceId}
-                    hideHeader
-                    isAddOpen={isAddRelatedOpen}
-                    onAddOpenChange={setIsAddRelatedOpen}
                   />
                 </div>
               )}

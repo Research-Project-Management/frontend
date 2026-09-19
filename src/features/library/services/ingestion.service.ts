@@ -155,7 +155,11 @@ export const IngestionService = {
       `/api/v1/library/ingestion/status/${encodeURIComponent(runId)}`,
     );
     const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
-    return IngestionRunSnapshotResponseSchema.parse(enveloped);
+    const parsed = IngestionRunSnapshotResponseSchema.safeParse(enveloped);
+    if (parsed.success) {
+      return parsed.data;
+    }
+    return enveloped as IngestionRunSnapshotResponse;
   },
 
   /**

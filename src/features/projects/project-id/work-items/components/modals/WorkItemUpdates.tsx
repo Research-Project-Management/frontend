@@ -89,7 +89,7 @@ export function WorkItemUpdates({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Activity className="size-4 text-muted-foreground" />
+          <Activity className="size-4 text-foreground" />
           <h4 className="text-xs font-semibold text-foreground">
             Progress Updates
           </h4>
@@ -100,9 +100,9 @@ export function WorkItemUpdates({
             variant="ghost"
             size="sm"
             onClick={() => setIsAdding(true)}
-            className="h-7 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5"
+            className="h-7 text-xs text-foreground hover:bg-muted flex items-center gap-1.5 rounded-md cursor-pointer"
           >
-            <Plus className="size-3.5" />
+            <Plus className="size-3.5 shrink-0 text-foreground" />
             <span>Post update</span>
           </Button>
         )}
@@ -114,12 +114,12 @@ export function WorkItemUpdates({
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Share a quick progress update..."
-            className="w-full text-xs bg-background border border-border rounded p-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none h-20"
+            className="w-full text-xs bg-background border border-border rounded-md p-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none h-20"
           />
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="text-11 text-muted-foreground">Status:</span>
+              <span className="text-11 text-foreground font-medium">Status:</span>
               <div className="flex items-center gap-1">
                 {(['on_track', 'at_risk', 'delayed', 'completed'] as const).map((s) => {
                   const cfg = STATUS_CONFIG[s];
@@ -130,13 +130,13 @@ export function WorkItemUpdates({
                       type="button"
                       onClick={() => setStatus(s)}
                       className={cn(
-                        'px-2 py-1 text-10 rounded border flex items-center gap-1 transition-colors',
+                        'px-2 py-1 text-10 rounded-md border flex items-center gap-1 transition-colors cursor-pointer',
                         status === s
                           ? cfg.badgeClass
-                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                          : 'border-transparent text-foreground/80 hover:text-foreground hover:bg-muted'
                       )}
                     >
-                      <Icon className="size-3" />
+                      <Icon className="size-3 shrink-0" />
                       <span>{cfg.label}</span>
                     </button>
                   );
@@ -145,16 +145,16 @@ export function WorkItemUpdates({
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-11 text-muted-foreground">Percent:</span>
+              <span className="text-11 text-foreground font-medium">Percent:</span>
               <input
                 type="number"
                 min={0}
                 max={100}
                 value={percent}
                 onChange={(e) => setPercent(Number(e.target.value))}
-                className="w-14 h-6 text-xs bg-background border border-border rounded px-1 text-center"
+                className="w-14 h-6 text-xs bg-background border border-border rounded-md px-1 text-center text-foreground font-mono"
               />
-              <span className="text-11 text-muted-foreground">%</span>
+              <span className="text-11 text-foreground">%</span>
             </div>
           </div>
 
@@ -164,7 +164,7 @@ export function WorkItemUpdates({
               variant="ghost"
               size="sm"
               onClick={() => setIsAdding(false)}
-              className="h-7 text-xs"
+              className="h-7 text-xs text-foreground hover:bg-muted rounded-md cursor-pointer"
             >
               Cancel
             </Button>
@@ -173,7 +173,7 @@ export function WorkItemUpdates({
               size="sm"
               onClick={handleCreate}
               disabled={!content.trim() || createMutation.isPending}
-              className="h-7 text-xs"
+              className="h-7 text-xs rounded-md shadow-none cursor-pointer"
             >
               {createMutation.isPending ? 'Posting...' : 'Post'}
             </Button>
@@ -183,8 +183,8 @@ export function WorkItemUpdates({
 
       {isLoading ? (
         <div className="space-y-2">
-          <Skeleton className="h-14 w-full rounded" />
-          <Skeleton className="h-14 w-full rounded" />
+          <Skeleton className="h-14 w-full rounded-md" />
+          <Skeleton className="h-14 w-full rounded-md" />
         </div>
       ) : updates.length === 0 ? (
         <p className="text-xs text-muted-foreground italic">No updates recorded yet.</p>
@@ -217,7 +217,7 @@ export function WorkItemUpdates({
                     {statusCfg && StatusIcon && (
                       <span
                         className={cn(
-                          'px-1.5 py-0.5 rounded text-10 border flex items-center gap-1',
+                          'px-1.5 py-0.5 rounded-md text-10 border flex items-center gap-1',
                           statusCfg.badgeClass
                         )}
                       >
@@ -236,10 +236,10 @@ export function WorkItemUpdates({
                         type="button"
                         onClick={() => handleDelete(u.id)}
                         disabled={deleteMutation.isPending}
-                        className="opacity-0 group-hover:opacity-100 hover:text-destructive text-muted-foreground transition-opacity cursor-pointer p-0.5"
+                        className="opacity-0 group-hover:opacity-100 hover:text-destructive text-foreground transition-opacity cursor-pointer p-0.5"
                         title="Delete update"
                       >
-                        <Trash2 className="size-3" />
+                        <Trash2 className="size-3 shrink-0" />
                       </button>
                     )}
                   </div>

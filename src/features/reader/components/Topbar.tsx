@@ -74,7 +74,7 @@ export function Topbar({
                   "h-8 px-3 flex items-center gap-1.5 rounded-t-md transition-colors cursor-pointer shrink-0 text-12 outline-none focus-visible:ring-1 focus-visible:ring-primary",
                   isActive
                     ? "bg-background text-foreground font-medium border-x border-t border-border border-b-transparent -mb-px z-10"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    : "text-foreground hover:bg-muted"
                 )}
                 title={tabTitle}
               >
@@ -101,11 +101,11 @@ export function Topbar({
                 "h-8 px-2.5 flex items-center gap-1.5 rounded-t-md transition-colors cursor-pointer shrink-0 text-12 max-w-[240px] group outline-none focus-visible:ring-1 focus-visible:ring-primary",
                 isActive
                   ? "bg-background text-foreground font-medium border-x border-t border-border border-b-transparent -mb-px z-10"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  : "text-foreground hover:bg-muted"
               )}
               title={tab.title}
             >
-              <FileText className="size-3.5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
+              <FileText className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
               <span className="truncate flex-1 font-medium">{tab.title || 'Untitled Document'}</span>
               
               {onCloseTab && (
@@ -116,7 +116,7 @@ export function Topbar({
                     onCloseTab(tab.id);
                   }}
                   className={cn(
-                    "size-4 flex items-center justify-center rounded-sm hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer shrink-0",
+                    "size-4 flex items-center justify-center rounded-sm hover:bg-muted text-foreground transition-all cursor-pointer shrink-0",
                     isActive ? "opacity-70 hover:opacity-100" : "opacity-0 group-hover:opacity-100"
                   )}
                   title="Close tab"

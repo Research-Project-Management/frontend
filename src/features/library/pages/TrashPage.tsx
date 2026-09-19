@@ -79,6 +79,13 @@ export default function TrashPage() {
   const [emptyTrashDialogOpen, setEmptyTrashDialogOpen] = useState(false);
   const [singlePurgeTarget, setSinglePurgeTarget] = useState<Item | null>(null);
 
+  const isProjectScope = state.activeScope?.type === 'project';
+  const isOwner = !isProjectScope || state.activeScope?.role === 'owner';
+  const canEdit =
+    !isProjectScope ||
+    state.activeScope?.role === 'owner' ||
+    state.activeScope?.role === 'contributor';
+
   const searchParams = useSearchParams();
   const fileStatus = (searchParams.get('fileStatus') as any) || 'all';
   const readStatus = (searchParams.get('readStatus') as any) || 'all';
@@ -344,7 +351,7 @@ export default function TrashPage() {
           displayOptions={displayOptions}
           onDisplayOptionsChange={handleDisplayOptionsChange}
         >
-          {trashItems.length > 0 && (
+          {isOwner && trashItems.length > 0 && (
             <div className="flex items-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -848,29 +855,33 @@ export default function TrashPage() {
                               <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <button
-                                      type="button"
-                                      className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary touch-manipulation"
-                                      aria-label="More actions"
-                                    >
-                                      <MoreVertical className="size-4 text-foreground shrink-0" />
-                                    </button>
+                                     <button
+                                       type="button"
+                                       className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted-foreground/20 hover:text-foreground transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary touch-manipulation"
+                                       aria-label="More actions"
+                                     >
+                                       <MoreVertical className="size-4 text-foreground shrink-0" />
+                                     </button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" sideOffset={4} className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
-                                    <DropdownMenuItem
-                                      onClick={() => handleRestoreItem(paper.id)}
-                                      className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-                                    >
-                                      <RotateCcw className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                                      <span>Restore to Library</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => setSinglePurgeTarget(paper)}
-                                      className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-                                    >
-                                      <Trash2 className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                                      <span>Delete Permanently</span>
-                                    </DropdownMenuItem>
+                                    {canEdit && (
+                                      <DropdownMenuItem
+                                        onClick={() => handleRestoreItem(paper.id)}
+                                        className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                                      >
+                                        <RotateCcw className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                                        <span>Restore to Library</span>
+                                      </DropdownMenuItem>
+                                    )}
+                                    {isOwner && (
+                                      <DropdownMenuItem
+                                        onClick={() => setSinglePurgeTarget(paper)}
+                                        className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                                      >
+                                        <Trash2 className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                                        <span>Delete Permanently</span>
+                                      </DropdownMenuItem>
+                                    )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
@@ -878,14 +889,18 @@ export default function TrashPage() {
                           </tr>
                         </ContextMenuTrigger>
                         <ContextMenuContent className="w-56 p-1.5 text-12 font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5">
-                          <ContextMenuItem onClick={() => handleRestoreItem(paper.id)} className="gap-2 cursor-pointer text-foreground">
-                            <RotateCcw className="size-3.5 text-foreground shrink-0" />
-                            <span>Restore to Library</span>
-                          </ContextMenuItem>
-                          <ContextMenuItem onClick={() => setSinglePurgeTarget(paper)} className="gap-2 cursor-pointer text-foreground">
-                            <Trash2 className="size-3.5 text-foreground shrink-0" />
-                            <span>Delete Permanently</span>
-                          </ContextMenuItem>
+                          {canEdit && (
+                            <ContextMenuItem onClick={() => handleRestoreItem(paper.id)} className="gap-2 cursor-pointer text-foreground">
+                              <RotateCcw className="size-3.5 text-foreground shrink-0" />
+                              <span>Restore to Library</span>
+                            </ContextMenuItem>
+                          )}
+                          {isOwner && (
+                            <ContextMenuItem onClick={() => setSinglePurgeTarget(paper)} className="gap-2 cursor-pointer text-foreground">
+                              <Trash2 className="size-3.5 text-foreground shrink-0" />
+                              <span>Delete Permanently</span>
+                            </ContextMenuItem>
+                          )}
                         </ContextMenuContent>
                       </ContextMenu>
                     );
@@ -902,8 +917,8 @@ export default function TrashPage() {
             selectedItems={sortedItems.filter((i) => selectedIds.has(i.id))}
             collections={[]}
             onClearSelection={clearSelection}
-            onBatchRestore={handleBatchRestoreItems}
-            onBatchDelete={handleBatchPurgeItems}
+            onBatchRestore={canEdit ? handleBatchRestoreItems : undefined}
+            onBatchDelete={isOwner ? handleBatchPurgeItems : undefined}
           />
         </div>
       </div>
@@ -914,6 +929,7 @@ export default function TrashPage() {
         item={selectedItem || null}
         collection={selectedCollection || null}
         scopeId={effectiveScopeId || 'user'}
+        canEdit={false}
         onClose={() => setSelectedItemId(null)}
       />
 

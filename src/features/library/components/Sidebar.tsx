@@ -18,6 +18,7 @@ import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 
 import CreateCollectionModal from './modals/CreateCollectionModal';
+import { CreateSavedSearchModal } from './modals/CreateSavedSearchModal';
 import TrashModal from './modals/TrashModal';
 
 import { buildTree, filterCollections } from './sidebar/utils/tree-helpers';
@@ -27,7 +28,7 @@ import { SidebarHeader } from './sidebar/components/SidebarHeader';
 import { SidebarResizer } from './sidebar/components/SidebarResizer';
 import { CollectionTree } from './sidebar/components/CollectionTree';
 import { SidebarSystemNav } from './sidebar/components/SidebarSystemNav';
-import { ProjectLibrariesSection } from './sidebar/components/ProjectLibrariesSection';
+import { ProjectLibrariesSection, resolveProjectRole } from './sidebar/components/ProjectLibrariesSection';
 
 export default function LibrarySideBar() {
   const { collectionId: activeId } = useParams() as {
@@ -57,6 +58,7 @@ export default function LibrarySideBar() {
 
   const [isLibraryExpanded, setIsLibraryExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isCreateSavedSearchOpen, setIsCreateSavedSearchOpen] = useState(false);
 
   const { isDragging, handleMouseDown } = useSidebarResize(width, setWidth);
 
@@ -76,8 +78,29 @@ export default function LibrarySideBar() {
     activeScope.role === 'owner' ||
     activeScope.role === 'contributor';
 
+  // Synchronize active project role with server-provided project list
+  useEffect(() => {
+    if (activeScope.type === 'project' && currentUserId && projects && projects.length > 0) {
+      const currentProject = projects.find((p: any) => p.id === activeScope.id);
+      if (currentProject) {
+        const accurateRole = resolveProjectRole(currentProject, currentUserId);
+        if (accurateRole !== activeScope.role) {
+          setActiveScope({
+            ...activeScope,
+            role: accurateRole,
+          });
+        }
+      }
+    }
+  }, [activeScope, currentUserId, projects, setActiveScope]);
+
   const { stats: retractionStats } = useRetraction(effectiveScopeId);
-  const { savedSearches } = useSavedSearches(effectiveScopeId);
+  const {
+    savedSearches,
+    createSavedSearch,
+    deleteSavedSearch,
+    isCreating: isCreatingSavedSearch,
+  } = useSavedSearches(effectiveScopeId);
   const { data: allItems, actions: itemActions } = useItems(effectiveScopeId);
   const { data: duplicateData } = useDuplicateGroups(effectiveScopeId);
 
@@ -178,6 +201,7 @@ export default function LibrarySideBar() {
             onSearchChange={setSearchQuery}
             canManageCollections={canManageCollections}
             onOpenCreateRoot={handlers.openCreateRoot}
+            onOpenCreateSavedSearch={() => setIsCreateSavedSearchOpen(true)}
             onToggleCollapse={toggle}
           />
 
@@ -276,6 +300,7 @@ export default function LibrarySideBar() {
                       });
                       handleMobileLinkClick();
                     }}
+                    onDeleteSavedSearch={(id) => deleteSavedSearch(id)}
                   >
                     {/* User Collections Tree */}
                     <CollectionTree
@@ -288,6 +313,7 @@ export default function LibrarySideBar() {
                       renameValue={rename.renameValue}
                       isSearching={searchQuery.trim().length > 0}
                       searchQuery={searchQuery}
+                      canManageCollections={canManageCollections}
                       onStartRename={handlers.startRename}
                       onSubmitRename={handlers.submitRename}
                       onRenameValueChange={rename.setRenameValue}
@@ -322,6 +348,7 @@ export default function LibrarySideBar() {
                 searchQuery={searchQuery}
                 renamingId={rename.renamingId}
                 renameValue={rename.renameValue}
+                canManageCollections={canManageCollections}
                 onSelectProject={(scope) => {
                   setActiveScope(scope);
                   router.push(basePath);
@@ -373,6 +400,15 @@ export default function LibrarySideBar() {
           target={modals.trashTarget}
           onConfirm={handlers.handleConfirmTrash}
           isPending={collectionService.state.isDeleting}
+        />
+
+        <CreateSavedSearchModal
+          open={isCreateSavedSearchOpen}
+          onOpenChange={setIsCreateSavedSearchOpen}
+          onSubmit={async (data: any) => {
+            await createSavedSearch(data);
+          }}
+          isPending={isCreatingSavedSearch}
         />
       </aside>
     </>

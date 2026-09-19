@@ -22,6 +22,7 @@ import {
 } from '@/shared/components/ui';
 import type { Item, RelatedItem } from '@/features/library/types/library.types';
 import { cn } from '@/shared/lib/utils';
+import { toast } from 'sonner';
 
 interface RelatedSectionProps {
   paper: Item;
@@ -33,6 +34,7 @@ interface RelatedSectionProps {
   forceAdding?: boolean;
   isAddOpen?: boolean;
   onAddOpenChange?: (open: boolean) => void;
+  canEdit?: boolean;
 }
 
 const RELATION_TYPE_OPTIONS = [
@@ -73,6 +75,7 @@ export default function RelatedSection({
   forceAdding = false,
   isAddOpen,
   onAddOpenChange,
+  canEdit = true,
 }: RelatedSectionProps) {
   const activeScopeId =
     scopeId ||
@@ -94,10 +97,10 @@ export default function RelatedSection({
   const setModalOpen = onAddOpenChange || setInternalAddOpen;
 
   useEffect(() => {
-    if (forceAdding) {
+    if (forceAdding && canEdit) {
       setModalOpen(true);
     }
-  }, [forceAdding, setModalOpen]);
+  }, [forceAdding, canEdit, setModalOpen]);
 
   // Modal State
   const [selectedTargetIds, setSelectedTargetIds] = useState<Set<string>>(new Set());
@@ -174,21 +177,32 @@ export default function RelatedSection({
     if (selectedTargetIds.size === 0) return;
     const targets = Array.from(selectedTargetIds);
 
-    await link({
-      targetItemIds: targets,
-      relationType: selectedRelationType,
-    });
+    try {
+      await link({
+        targetItemIds: targets,
+        relationType: selectedRelationType,
+      });
 
-    setSelectedTargetIds(new Set());
-    setSelectedRelationType('related');
-    setSearchQuery('');
-    setSelectedCollectionFilter('all');
-    setModalOpen(false);
+      setSelectedTargetIds(new Set());
+      setSelectedRelationType('related');
+      setSearchQuery('');
+      setSelectedCollectionFilter('all');
+      setModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to link items');
+      // Keep modal open and selection intact so user can retry
+    }
   };
 
   const handleUnlink = async (targetItemId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    await unlink({ targetItemId });
+    try {
+      await unlink({ targetItemId });
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to unlink item');
+    }
   };
 
   // If there are no items and modal is closed, show nothing (clean zero empty state)
@@ -271,15 +285,17 @@ export default function RelatedSection({
                     </a>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={(e) => handleUnlink(item.id, e)}
-                    className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted invisible group-hover:visible cursor-pointer transition-colors"
-                    title="Unlink item"
-                    aria-label="Unlink item"
-                  >
-                    <X className="size-3.5 shrink-0" strokeWidth={1.5} />
-                  </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleUnlink(item.id, e)}
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted invisible group-hover:visible cursor-pointer transition-colors"
+                      title="Unlink item"
+                      aria-label="Unlink item"
+                    >
+                      <X className="size-3.5 shrink-0" strokeWidth={1.5} />
+                    </button>
+                  )}
                 </div>
               </div>
             );

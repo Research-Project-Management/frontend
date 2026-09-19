@@ -67,12 +67,12 @@ function CitationPill({
         if (onClick) onClick(citation.pageNumber);
       }}
       title={citation.quote ? `Quote: "${citation.quote}"` : `Jump to Page ${citation.pageNumber}`}
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-11 font-mono text-foreground border border-border bg-background hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer select-none"
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-11 font-mono text-foreground border border-border bg-background shadow-2xs hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer select-none"
     >
-      <BookOpen className="size-3 shrink-0" />
+      <BookOpen className="size-3 text-foreground shrink-0" />
       <span className="tabular-nums">p.{citation.pageNumber}</span>
       {citation.section && (
-        <span className="text-10 truncate max-w-24 font-sans text-muted-foreground/70">
+        <span className="text-10 truncate max-w-24 font-sans text-foreground/80">
           ({citation.section})
         </span>
       )}
@@ -177,7 +177,7 @@ export default function ChatPanel({
           <div className="h-full flex flex-col justify-end pb-2 space-y-3">
             <div className="space-y-1">
               <p className="text-xs font-medium text-foreground">Document Assistant</p>
-              <p className="text-11 text-muted-foreground leading-relaxed">
+              <p className="text-11 text-foreground/80 leading-relaxed">
                 Query hypotheses, extract formulations, or summarize specific sections.
               </p>
             </div>
@@ -187,7 +187,7 @@ export default function ChatPanel({
                   key={item.id}
                   type="button"
                   onClick={() => sendMessage(item.prompt)}
-                  className="w-full text-left py-1.5 px-2.5 rounded-sm text-xs text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors border border-border cursor-pointer flex items-center justify-between group"
+                  className="w-full text-left py-1.5 px-2.5 rounded-md text-xs text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors border border-border bg-background shadow-2xs cursor-pointer flex items-center justify-between group"
                 >
                   <span className="truncate">{item.title}</span>
                   <ArrowRight className="size-3 text-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -208,10 +208,10 @@ export default function ChatPanel({
               >
                 <div
                   className={cn(
-                    'p-2.5 rounded-sm leading-relaxed text-xs max-w-[95%]',
+                    'p-2.5 rounded-md leading-relaxed text-xs max-w-[95%]',
                     isUser
                       ? 'bg-muted text-foreground'
-                      : 'border border-border bg-card text-foreground',
+                      : 'border border-border bg-background text-foreground shadow-2xs',
                   )}
                 >
                   <div className="select-text overflow-hidden">
@@ -246,10 +246,10 @@ export default function ChatPanel({
                       <button
                         type="button"
                         onClick={() => handleSaveNote(msg.content)}
-                        className="inline-flex items-center gap-1 text-11 text-foreground hover:bg-muted px-1.5 py-0.5 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none rounded-sm transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 text-11 text-foreground hover:bg-muted px-1.5 py-0.5 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none rounded-md transition-colors cursor-pointer"
                         title="Save response to paper notes"
                       >
-                        <BookmarkPlus className="size-3 shrink-0" />
+                        <BookmarkPlus className="size-3 text-foreground shrink-0" />
                         <span>Save to Notes</span>
                       </button>
                       <button
@@ -258,10 +258,10 @@ export default function ChatPanel({
                           const ok = await copyToClipboard(msg.content);
                           if (ok) toast.success('Copied response to clipboard', { id: 'reader-clipboard' });
                         }}
-                        className="inline-flex items-center gap-1 text-11 text-muted-foreground hover:text-foreground hover:bg-muted px-1.5 py-0.5 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none rounded-sm transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 text-11 text-foreground hover:bg-muted px-1.5 py-0.5 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none rounded-md transition-colors cursor-pointer"
                         title="Copy text"
                       >
-                        <Copy className="size-3 shrink-0" />
+                        <Copy className="size-3 text-foreground shrink-0" />
                         <span>Copy</span>
                       </button>
                     </div>
@@ -278,7 +278,7 @@ export default function ChatPanel({
           onSubmit={handleSubmit(onSubmit)}
           className="p-2 border-t border-border bg-background shrink-0"
         >
-          <div className="flex items-center gap-1 rounded-sm border border-border bg-background focus-within:ring-1 focus-within:ring-ring px-2 py-1">
+          <div className="flex items-center gap-1 rounded-md border border-border bg-background shadow-2xs focus-within:ring-1 focus-within:ring-ring px-2 py-1">
             <textarea
               {...register('message')}
               onKeyDown={handleKeyDown}
@@ -286,14 +286,14 @@ export default function ChatPanel({
               placeholder="Ask a question..."
               rows={1}
               disabled={isStreaming}
-              className="flex-1 resize-none bg-transparent text-xs outline-none placeholder:text-muted-foreground/50 max-h-24 min-h-7 text-foreground leading-relaxed disabled:opacity-60"
+              className="flex-1 resize-none bg-transparent text-xs outline-none placeholder:text-foreground/70 max-h-24 min-h-7 text-foreground leading-relaxed disabled:opacity-60"
             />
             {isStreaming ? (
               <button
                 type="button"
                 onClick={stopStreaming}
                 aria-label="Stop generation"
-                className="size-6 flex items-center justify-center rounded-sm text-destructive hover:bg-destructive/10 focus-visible:ring-1 focus-visible:ring-destructive focus-visible:outline-none transition-colors shrink-0 cursor-pointer"
+                className="size-6 flex items-center justify-center rounded-md text-destructive hover:bg-destructive/10 focus-visible:ring-1 focus-visible:ring-destructive focus-visible:outline-none transition-colors shrink-0 cursor-pointer"
               >
                 <Square className="size-3 fill-current shrink-0" />
               </button>
@@ -302,13 +302,13 @@ export default function ChatPanel({
                 type="submit"
                 disabled={!canSend}
                 aria-label="Send message"
-                className="size-6 flex items-center justify-center rounded-sm text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors shrink-0 cursor-pointer"
+                className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors shrink-0 cursor-pointer"
               >
-                <ArrowUp className="size-3.5 shrink-0" />
+                <ArrowUp className="size-3.5 text-foreground shrink-0" />
               </button>
             )}
           </div>
-          <div className="flex items-center justify-between px-1 pt-1.5 text-10 text-muted-foreground/60 select-none">
+          <div className="flex items-center justify-between px-1 pt-1.5 text-10 text-foreground/70 select-none font-mono">
             <span>Enter to send, Shift+Enter for newline</span>
           </div>
         </form>

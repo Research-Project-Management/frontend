@@ -103,7 +103,7 @@ export function AddExistingModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-xl p-0 overflow-hidden border border-border bg-background rounded-lg shadow-lg">
+        <DialogContent className="max-w-xl p-0 overflow-hidden border border-border bg-background rounded-md shadow-lg">
           {/* Header */}
           <DialogHeader className="px-6 py-5 border-b border-border bg-background text-left">
             <DialogTitle className="flex items-center gap-2 text-foreground font-semibold text-base">
@@ -119,15 +119,15 @@ export function AddExistingModal({
           {/* Content */}
           <div className="p-6 space-y-4">
             {/* Search */}
-            <div className="relative flex items-center h-9 rounded-sm border border-border bg-background px-3 focus-within:border-primary transition-colors">
-              <Search className="size-3.5 text-muted-foreground mr-2 shrink-0" />
+            <div className="relative flex items-center h-9 rounded-md border border-border bg-background px-3 focus-within:border-primary transition-colors shadow-2xs">
+              <Search className="size-3.5 text-foreground mr-2 shrink-0" />
               <input
                 type="text"
                 placeholder="Search by title or identifier..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 aria-label="Search work items"
-                className="w-full h-full text-xs bg-transparent outline-none placeholder:text-muted-foreground text-foreground"
+                className="w-full h-full text-xs bg-transparent outline-none placeholder:text-foreground/70 text-foreground"
               />
               {searchTerm && (
                 <button
@@ -142,7 +142,7 @@ export function AddExistingModal({
             </div>
 
             {/* Work item list */}
-            <div className="border border-border rounded-sm overflow-hidden bg-background">
+            <div className="border border-border rounded-md overflow-hidden bg-background">
               <div className="px-3 py-2 border-b border-border bg-muted flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -155,7 +155,7 @@ export function AddExistingModal({
                   />
                   <label
                     htmlFor="select-all-add"
-                    className="text-xs font-semibold text-muted-foreground cursor-pointer"
+                    className="text-xs font-semibold text-foreground cursor-pointer"
                   >
                     Select All ({filteredItems.length})
                   </label>
@@ -196,7 +196,7 @@ export function AddExistingModal({
                             {item.title}
                           </p>
                           {item.identifier && (
-                            <span className="text-xs text-muted-foreground font-mono">
+                            <span className="text-xs text-foreground font-mono">
                               {item.identifier}
                             </span>
                           )}

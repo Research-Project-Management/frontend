@@ -7,6 +7,7 @@ import {
   ItemService,
   ItemsService,
 } from '../services/items.service';
+import { CollectionsService } from '../services/collections.service';
 import { StateService as ItemStateService, type ItemStateData } from '../services/state.service';
 import { invalidateCollections } from './use-collections';
 import type {
@@ -166,14 +167,17 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async ({ id, silent }: { id: string; silent?: boolean }) => {
+    mutationFn: async ({ id, silent, itemCollectionId }: { id: string; silent?: boolean; itemCollectionId?: string }) => {
       const res = await ItemService.delete(targetScope, id);
-      return { res, silent };
+      return { res, silent, itemCollectionId };
     },
-    onSuccess: ({ silent }) => {
-      if (collectionId) {
+    onSuccess: ({ silent, itemCollectionId }) => {
+      // Use the collectionId threaded from the deleted item, falling back to the hook's outer collectionId.
+      // This ensures the correct collection cache is invalidated even when the hook has no collectionId.
+      const targetCollection = itemCollectionId || collectionId;
+      if (targetCollection) {
         queryClient.invalidateQueries({
-          queryKey: itemKeys.byCollection(targetScope, collectionId),
+          queryKey: itemKeys.byCollection(targetScope, targetCollection),
         });
       }
       queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
@@ -239,28 +243,37 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
       return updateMutation.mutateAsync({ id: targetItemId, data: targetData, expectedVersion, silent });
     },
 
-    deleteItem: (idOrPayload: string | { paperId?: string; id?: string; silent?: boolean }, maybeOptions?: { silent?: boolean }) => {
+    deleteItem: (idOrPayload: string | { paperId?: string; id?: string; silent?: boolean; collectionId?: string }, maybeOptions?: { silent?: boolean }) => {
       const targetItemId = typeof idOrPayload === 'string' ? idOrPayload : (idOrPayload.id || idOrPayload.paperId || '');
       const silent = typeof idOrPayload === 'object' && 'silent' in idOrPayload ? idOrPayload.silent : maybeOptions?.silent;
-      return deleteMutation.mutateAsync({ id: targetItemId, silent });
+      const itemCollectionId = typeof idOrPayload === 'object' ? idOrPayload.collectionId : undefined;
+      return deleteMutation.mutateAsync({ id: targetItemId, silent, itemCollectionId });
     },
-    deletePaper: (idOrPayload: string | { paperId?: string; id?: string; silent?: boolean }, maybeOptions?: { silent?: boolean }) => {
+    deletePaper: (idOrPayload: string | { paperId?: string; id?: string; silent?: boolean; collectionId?: string }, maybeOptions?: { silent?: boolean }) => {
       const targetItemId = typeof idOrPayload === 'string' ? idOrPayload : (idOrPayload.id || idOrPayload.paperId || '');
       const silent = typeof idOrPayload === 'object' && 'silent' in idOrPayload ? idOrPayload.silent : maybeOptions?.silent;
-      return deleteMutation.mutateAsync({ id: targetItemId, silent });
+      const itemCollectionId = typeof idOrPayload === 'object' ? idOrPayload.collectionId : undefined;
+      return deleteMutation.mutateAsync({ id: targetItemId, silent, itemCollectionId });
     },
     batchDeleteItems: async (ids: string[]) => {
       if (!ids.length) return;
       const toastId = toast.loading(`Moving ${ids.length} item(s) to trash...`, { id: 'batch-trash' });
-      try {
-        await Promise.all(ids.map((id) => deleteMutation.mutateAsync({ id, silent: true })));
+      const results = await Promise.allSettled(ids.map((id) => deleteMutation.mutateAsync({ id, silent: true })));
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      const succeeded = results.length - failed;
+      if (failed === 0) {
         toast.success('Moved to trash', {
-          description: `${ids.length} document(s) moved to trash.`,
+          description: `${succeeded} document(s) moved to trash.`,
           id: toastId,
         });
-      } catch (err: any) {
+      } else if (succeeded === 0) {
         toast.error('Failed to delete items', {
-          description: err?.message || 'Could not move selected documents to trash.',
+          description: 'Could not move selected documents to trash.',
+          id: toastId,
+        });
+      } else {
+        toast.error(`Failed to delete ${failed} of ${ids.length} items`, {
+          description: `${succeeded} item(s) moved to trash; ${failed} could not be deleted.`,
           id: toastId,
         });
       }
@@ -269,15 +282,24 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
       if (!ids.length) return;
       const toastId = toast.loading(`Moving ${ids.length} item(s)...`, { id: 'batch-move' });
       try {
-        await Promise.all(
-          ids.map((id) =>
-            updateMutation.mutateAsync({
-              id,
-              data: { collectionId: targetCollectionId ?? undefined } as any,
-              silent: true,
-            }),
-          ),
+        await CollectionsService.moveItems(
+          targetScope,
+          targetCollectionId || 'unfiled',
+          ids,
         );
+        queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
+        queryClient.invalidateQueries({ queryKey: ['items', targetScope || 'user'] });
+        if (targetCollectionId) {
+          queryClient.invalidateQueries({
+            queryKey: itemKeys.byCollection(targetScope, targetCollectionId),
+          });
+        }
+        if (collectionId) {
+          queryClient.invalidateQueries({
+            queryKey: itemKeys.byCollection(targetScope, collectionId),
+          });
+        }
+        invalidateCollections(queryClient, targetScope);
         toast.success('Documents moved', {
           description: `Moved ${ids.length} item(s) to target collection.`,
           id: toastId,
@@ -544,8 +566,16 @@ export function useItemTable({
     }
   }, [sortField]);
 
+  const selectableItems = useMemo(
+    () => targetItems.filter((item) => !(item as any).isPending),
+    [targetItems],
+  );
+
   const toggleSelect = useCallback((itemId: string, clickEvent?: React.MouseEvent) => {
     if (clickEvent) clickEvent.stopPropagation();
+    const item = targetItems.find((i) => i.id === itemId);
+    if (item && (item as any).isPending) return;
+
     setSelectedIds((previousSelectedIds) => {
       const nextSelectedIds = new Set(previousSelectedIds);
       if (nextSelectedIds.has(itemId)) {
@@ -555,16 +585,16 @@ export function useItemTable({
       }
       return nextSelectedIds;
     });
-  }, []);
+  }, [targetItems]);
 
   const toggleSelectAll = useCallback(() => {
     setSelectedIds((previousSelectedIds) => {
-      if (previousSelectedIds.size === targetItems.length) {
+      if (previousSelectedIds.size === selectableItems.length && selectableItems.length > 0) {
         return new Set();
       }
-      return new Set(targetItems.map((targetItem) => targetItem.id));
+      return new Set(selectableItems.map((targetItem) => targetItem.id));
     });
-  }, [targetItems]);
+  }, [selectableItems]);
 
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
@@ -641,8 +671,8 @@ export function useItemTable({
     });
   }, [targetItems, sortField, sortOrder]);
 
-  const isAllSelected = targetItems.length > 0 && selectedIds.size === targetItems.length;
-  const isPartiallySelected = selectedIds.size > 0 && selectedIds.size < targetItems.length;
+  const isAllSelected = selectableItems.length > 0 && selectedIds.size === selectableItems.length;
+  const isPartiallySelected = selectedIds.size > 0 && selectedIds.size < selectableItems.length;
 
   const state = {
     sortedItems,

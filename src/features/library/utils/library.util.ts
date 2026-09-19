@@ -651,7 +651,7 @@ export const NOISE_TAG_WORDS = new Set([
   'editors',
 ]);
 
-function cleanSingleFrontendTag(raw: string): string | null {
+export function cleanSingleFrontendTag(raw: string): string | null {
   if (!raw || typeof raw !== 'string') return null;
   let str = raw
     .replace(/â€“|â€”/g, '-')
@@ -663,18 +663,13 @@ function cleanSingleFrontendTag(raw: string): string | null {
   // 0. Strip XML/HTML tags and braces
   str = str.replace(/<[^>]+>/g, '').replace(/[{}]/g, '').trim();
 
-  const lower = str.toLowerCase();
-  if (ARXIV_CATEGORY_MAP[lower]) return ARXIV_CATEGORY_MAP[lower];
-  if (NOISE_TAG_WORDS.has(lower)) return null;
+  // 1. Strip Wikipedia disambiguation FIRST before edge quotes/brackets
+  str = str.replace(/(?<=[\w\d])\s+\([^)]*\)$/g, '').trim();
 
-  // 1. Strip Wikipedia disambiguation
-  str = str.replace(/\s*\([^)]*(?:\)|$)/g, '').trim();
-  if (NOISE_TAG_WORDS.has(str.toLowerCase())) return null;
-
-  // 2. Strip prefixes and leading/trailing quotes, brackets, dots, ellipses (...)
+  // 2. Strip prefixes (tag:, tags:, category:, arxiv:), quotes, brackets, dots, ellipses
   str = str
     .replace(
-      /^(?:keywords?|index terms|categories|subject|topics?|terms?)[:—\-\s]+/i,
+      /^(?:tags?|keywords?|index terms?|categor(?:y|ies)|subject(?: areas?)?|topics?|terms?|arxiv)[:—\-\s]+/i,
       '',
     )
     .replace(/^[#"''`([{<•·*—\-\s]+/, '')
@@ -683,7 +678,18 @@ function cleanSingleFrontendTag(raw: string): string | null {
     .replace(/(?:\.{2,}|…|[.,;:—\-\s•·*])+$/, '')
     .trim();
 
-  // 3. Sanity & garbage checks:
+  if (!str) return null;
+
+  // 3. Direct arXiv category mapping (supports cs.cl, cs.CL, cs-cl, cs_cl, [cs.CL])
+  const lower = str.toLowerCase();
+  if (ARXIV_CATEGORY_MAP[lower]) return ARXIV_CATEGORY_MAP[lower];
+  const withDot = lower.replace(/[-_]/g, '.');
+  if (ARXIV_CATEGORY_MAP[withDot]) return ARXIV_CATEGORY_MAP[withDot];
+
+  // 4. Noise blacklist check
+  if (NOISE_TAG_WORDS.has(lower)) return null;
+
+  // 5. Sanity & garbage checks:
   if (str.length < 2 || str.length > 60) return null;
 
   // Must contain at least one alphanumeric character
@@ -711,14 +717,18 @@ function cleanSingleFrontendTag(raw: string): string | null {
   // Cannot be an ellipsis or dots sequence
   if (/^(\.{2,}|…)+$/.test(str)) return null;
 
+  // 6. Generic noise check after prefix removal
   if (NOISE_TAG_WORDS.has(str.toLowerCase())) return null;
 
+  // 7. Format with proper Title Case & Acronyms
   const formatted = str
     .split(/\s+/)
     .filter(Boolean)
     .map((word) => {
       const upper = word.toUpperCase();
       if (SCIENTIFIC_ACRONYMS.has(upper)) return upper;
+      // Preserve isolated dash in compounds or category separator " - "
+      if (word === '-') return '-';
       if (word.includes('-')) {
         return word
           .split('-')
@@ -729,12 +739,21 @@ function cleanSingleFrontendTag(raw: string): string | null {
           })
           .join('-');
       }
+      const lowerWord = word.toLowerCase();
+      if (
+        ['and', 'or', 'of', 'in', 'on', 'for', 'with', 'at', 'by'].includes(
+          lowerWord,
+        )
+      ) {
+        return lowerWord;
+      }
       return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
     })
     .join(' ');
 
-  // Strip any trailing ellipsis or punctuation that might have survived TitleCase
-  const result = formatted.replace(/(?:\.{2,}|…|[.,;:—\-\s])+$/, '').trim();
+  // Ensure the very first letter is capitalized even if a minor word
+  let result = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  result = result.replace(/(?:\.{2,}|…|[.,;:—\-\s])+$/, '').trim();
   return result.length >= 2 ? result : null;
 }
 
@@ -918,6 +937,13 @@ export function formatAndSanitizeExtraMetadata(
   const paperFileUrl = associatedPaperItem?.fileUrl?.trim();
   const paperOaUrl = associatedPaperItem?.openAccessPdfUrl?.trim();
   const paperCiteKey = associatedPaperItem?.citationKey?.trim().toLowerCase();
+  const paperDoi = cleanDoi(associatedPaperItem?.doi || (associatedPaperItem as any)?.DOI);
+  const paperPmid = associatedPaperItem?.pmid?.trim();
+  const paperPmcid = associatedPaperItem?.pmcid?.trim();
+  const paperIsbn = associatedPaperItem?.isbn?.trim();
+  const paperIssn = associatedPaperItem?.issn?.trim();
+  const isPreprint = associatedPaperItem?.itemType === 'preprint';
+  const paperArchiveId = (associatedPaperItem?.archiveId || (associatedPaperItem as any)?.archiveID || associatedPaperItem?.arxivId)?.trim();
 
   const lines = textContent ? textContent.split(/\r?\n/) : [];
   const sanitizedLines: string[] = [];
@@ -957,23 +983,84 @@ export function formatAndSanitizeExtraMetadata(
       continue;
     }
 
-    // 4. Filter out Comments (managed in Notes tab)
+    // 4. Filter out duplicate URL if paper already has dedicated URL field populated
+    const urlMatch = trimmedLine.match(/^url:\s*(https?:\/\/.+)$/i);
+    if (urlMatch && paperUrl) {
+      continue;
+    }
+
+    // 5. Filter out duplicate DOI if paper already has dedicated DOI field populated
+    const doiMatch = trimmedLine.match(/^doi:\s*(.+)$/i);
+    if (doiMatch && paperDoi) {
+      const lineDoi = cleanDoi(doiMatch[1]);
+      if (!lineDoi || lineDoi.toLowerCase() === paperDoi.toLowerCase()) {
+        continue;
+      }
+    }
+
+    // 6. Filter out duplicate PMID / PMCID if paper already has dedicated field
+    const pmidMatch = trimmedLine.match(/^(?:pmid|pubmed\s*id):\s*(.+)$/i);
+    if (pmidMatch && paperPmid) {
+      continue;
+    }
+    const pmcidMatch = trimmedLine.match(/^(?:pmcid|pmc):\s*(.+)$/i);
+    if (pmcidMatch && paperPmcid) {
+      continue;
+    }
+
+    // 7. Filter out duplicate ISBN / ISSN if paper already has dedicated field
+    const isbnMatch = trimmedLine.match(/^isbn:\s*(.+)$/i);
+    if (isbnMatch && paperIsbn) {
+      continue;
+    }
+    const issnMatch = trimmedLine.match(/^issn:\s*(.+)$/i);
+    if (issnMatch && paperIssn) {
+      continue;
+    }
+
+    // 8. Filter out Comments (managed in Notes tab)
     if (/^comments?:\s*/i.test(trimmedLine)) {
       continue;
     }
 
-    // 5. Filter out TLDR (Semantic Scholar AI summary removed)
+    // 9. Filter out TLDR (Semantic Scholar AI summary removed)
     if (/^tl;?dr:\s*/i.test(trimmedLine)) {
       continue;
     }
 
-    // 6. Filter out page count lines (Pages / # of Pages is a native schema field in Zotero)
+    // 10. Filter out page count lines (Pages / # of Pages is a native schema field in Zotero)
     if (/^(?:number\s*of\s*pages|num\s*pages|page\s*count|total\s*pages):\s*/i.test(trimmedLine)) {
       continue;
     }
 
+    // 11. Filter out schema fields that have dedicated input rows in the Inspector form
+    const genericKvMatch = trimmedLine.match(/^([a-zA-Z0-9_\s]+):\s*(.+)$/);
+    if (genericKvMatch) {
+      const rawKey = genericKvMatch[1].trim();
+      const normKey = rawKey.toLowerCase().replace(/[\s_-]+/g, '');
+      const dedicatedFormFields = new Set([
+        'edition', 'eventplace', 'conferencename', 'proceedingstitle',
+        'booktitle', 'websitetitle', 'websitetype', 'blogtitle',
+        'university', 'institution', 'repository', 'reportnumber',
+        'reporttype', 'thesistype', 'patentnumber', 'issuingauthority',
+        'assignee', 'numpages', 'numberofpages', 'pages', 'volume',
+        'issue', 'section', 'publisher', 'place', 'series', 'seriestitle',
+        'seriesnumber', 'seriestext', 'journalabbr', 'journalabbreviation',
+        'publicationtitle', 'date', 'publicationdate', 'accessedat', 'accessdate',
+      ]);
+      if (dedicatedFormFields.has(normKey)) {
+        continue;
+      }
+    }
+
     // Check for native Zotero arXiv syntax (e.g. arXiv: 1406.2661 [stat.ML])
     if (/^arxiv:\s*/i.test(trimmedLine)) {
+      // In Zotero, preprints store the identifier natively in Archive ID (#5).
+      // If this item is a preprint and already has archiveId/arxivId populated, suppress Extra duplicate.
+      if (isPreprint && paperArchiveId) {
+        continue;
+      }
+
       hasArxivLine = true;
       // Standardize spacing: "arXiv: <id> [<category>]" with space after colon, clean ID, and canonical category brackets
       const normalizedLine = trimmedLine.replace(
@@ -995,14 +1082,15 @@ export function formatAndSanitizeExtraMetadata(
       continue;
     }
 
-
-
     // Preserve the clean content line as-is (no artificial label/title prepended!)
     sanitizedLines.push(trimmedLine);
   }
 
-  // Fallback: If paper has an arXiv ID but no arXiv line in Extra, synthesize standard Zotero line
-  if (!hasArxivLine) {
+  // Fallback: If paper has an arXiv ID but no arXiv line in Extra, synthesize standard Zotero line.
+  // CRITICAL: In official Zotero Schema, preprints natively display arXiv in the dedicated "Archive ID" field (#5).
+  // Therefore, only synthesize arXiv into Extra for non-preprint item types (journalArticle, book, etc.)
+  // that do NOT have an Archive ID field.
+  if (!hasArxivLine && !isPreprint) {
     const rawArxiv =
       associatedPaperItem?.arxivId ||
       (typeof additionalExtraFields?.arxivId === 'string' ? additionalExtraFields.arxivId : undefined) ||
@@ -1026,7 +1114,20 @@ export function formatAndSanitizeExtraMetadata(
     }
   }
 
-  return sanitizedLines.join('\n');
+  // Group all structured key: value pairs at the top (per Zotero 2-invalid-lines heuristic),
+  // followed by free-form user notes below.
+  const structuredKeyValLines: string[] = [];
+  const freeTextNotesLines: string[] = [];
+
+  for (const line of sanitizedLines) {
+    if (/^[a-zA-Z_][a-zA-Z0-9_\-]*:\s*.+$/.test(line)) {
+      structuredKeyValLines.push(line);
+    } else {
+      freeTextNotesLines.push(line);
+    }
+  }
+
+  return [...structuredKeyValLines, ...freeTextNotesLines].join('\n');
 }
 
 /**
@@ -1138,18 +1239,27 @@ export function getPublicationVenue(
       return ef.repository.trim();
     }
     if (
-      typeof anyItem.publicationTitle === 'string' &&
-      anyItem.publicationTitle.trim() &&
-      !/^(ieee|acm)$/i.test(anyItem.publicationTitle.trim())
+      typeof anyItem.publisher === 'string' &&
+      anyItem.publisher.trim() &&
+      !/^arxiv$/i.test(anyItem.publisher.trim())
     ) {
-      return anyItem.publicationTitle.trim();
+      return anyItem.publisher.trim();
     }
     const isArxiv = Boolean(
       anyItem.arxivId ||
         (typeof anyItem.doi === 'string' && anyItem.doi.includes('arXiv')) ||
-        (typeof anyItem.callNumber === 'string' && anyItem.callNumber.toLowerCase().startsWith('arxiv:')),
+        (typeof anyItem.callNumber === 'string' && anyItem.callNumber.toLowerCase().startsWith('arxiv:')) ||
+        (typeof anyItem.publicationTitle === 'string' && /arxiv/i.test(anyItem.publicationTitle)) ||
+        (typeof anyItem.publisher === 'string' && /arxiv/i.test(anyItem.publisher)),
     );
     if (isArxiv) return 'arXiv';
+    if (
+      typeof anyItem.publicationTitle === 'string' &&
+      anyItem.publicationTitle.trim() &&
+      !/^(ieee|acm|arxiv(\s*preprint)?)$/i.test(anyItem.publicationTitle.trim())
+    ) {
+      return anyItem.publicationTitle.trim();
+    }
     return '—';
   }
 

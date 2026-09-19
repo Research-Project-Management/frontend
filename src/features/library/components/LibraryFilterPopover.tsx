@@ -28,8 +28,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useTags } from '../hooks/use-tags';
 import type { TagWithCount } from '../services/tags.service';
 import type { Item } from '../types/library.types';
-import { ALL_ITEM_TYPES_FLAT, LIBRARY_ITEM_TYPES } from '../schemas/item-type.schema';
-import { itemKeys, useItems } from '../hooks/use-items';
+import { ALL_ITEM_TYPES_FLAT, LIBRARY_ITEM_TYPES, mapRegistryItemTypes } from '../schemas/item-type.schema';
+import { itemKeys, useItems, useItemTypes } from '../hooks/use-items';
 import { libraryKeys } from '../hooks/use-library';
 
 // ── Checkbox Component (DESIGN.md Flat Precision) ───────────────────────────
@@ -237,6 +237,13 @@ export function LibraryFilterPopover({
   // Tags Hook
   const { tags } = useTags(scopeId);
 
+  // Canonical Item Types from Backend (/api/v1/library/item-types)
+  const { types: registryItemTypes } = useItemTypes(scopeId);
+  const serverItemTypes = useMemo(() => {
+    const mapped = mapRegistryItemTypes(registryItemTypes);
+    return mapped.length > 0 ? mapped : Object.values(LIBRARY_ITEM_TYPES);
+  }, [registryItemTypes]);
+
   // Calculate active filter count
   const activeCount = useMemo(() => {
     let count = 0;
@@ -285,10 +292,10 @@ export function LibraryFilterPopover({
     updateQuery((params) => {
       const lower = typeId.toLowerCase();
       let nextTypes: string[];
-      if (itemTypes.includes(lower)) {
-        nextTypes = itemTypes.filter((t) => t !== lower);
+      if (itemTypes.some((t) => t.toLowerCase() === lower)) {
+        nextTypes = itemTypes.filter((t) => t.toLowerCase() !== lower);
       } else {
-        nextTypes = [...itemTypes, lower];
+        nextTypes = [...itemTypes, typeId];
       }
       params.delete('type');
       if (nextTypes.length > 0) {
@@ -400,7 +407,15 @@ export function LibraryFilterPopover({
   // ── Dynamic Item Types from user's papers (Dynamic Facets) ────────────────
   const dynamicTypes = useMemo(() => {
     // 1. Gather all raw items from props, hook, or query cache fallback
-    let sourceItems: Item[] = (items && items.length > 0 ? items : allItemsFromHook) || [];
+    const hookItems: Item[] = Array.isArray(allItemsFromHook)
+      ? allItemsFromHook
+      : Array.isArray((allItemsFromHook as any)?.items)
+        ? (allItemsFromHook as any).items
+        : Array.isArray((allItemsFromHook as any)?.papers)
+          ? (allItemsFromHook as any).papers
+          : [];
+
+    let sourceItems: Item[] = Array.isArray(items) && items.length > 0 ? items : hookItems;
     if (!sourceItems || sourceItems.length === 0) {
       const targetScope = scopeId || 'user';
       const cacheKeys = [
@@ -426,19 +441,24 @@ export function LibraryFilterPopover({
     }
 
     // 2. Count / collect unique item types existing in user's library
-    const existingTypeMap = new Map<string, string>(); // lowerKey -> canonicalKey
-    if (sourceItems && sourceItems.length > 0) {
+    // lowerKey -> { canonicalKey: string; count: number }
+    const existingTypeMap = new Map<string, { canonicalKey: string; count: number }>();
+    if (Array.isArray(sourceItems) && sourceItems.length > 0) {
       for (const item of sourceItems) {
+        if (!item || item.deletedAt) continue;
         const raw =
           item.itemType ||
           (item as any).item_type ||
           (item as any).type ||
-          (item as any).cslType ||
-          'journalArticle';
-        if (raw && typeof raw === 'string') {
-          const lower = raw.toLowerCase().trim();
-          if (lower && !existingTypeMap.has(lower)) {
-            existingTypeMap.set(lower, raw.trim());
+          (item as any).cslType;
+        if (raw && typeof raw === 'string' && raw.trim()) {
+          const trimmed = raw.trim();
+          const lower = trimmed.toLowerCase();
+          const existing = existingTypeMap.get(lower);
+          if (existing) {
+            existing.count += 1;
+          } else {
+            existingTypeMap.set(lower, { canonicalKey: trimmed, count: 1 });
           }
         }
       }
@@ -448,47 +468,41 @@ export function LibraryFilterPopover({
     for (const activeType of itemTypes) {
       const lower = activeType.toLowerCase().trim();
       if (lower && !existingTypeMap.has(lower)) {
-        existingTypeMap.set(lower, activeType);
+        existingTypeMap.set(lower, { canonicalKey: activeType, count: 0 });
       }
     }
 
-    // If no papers exist in library yet, provide standard academic fallback types
+    // If user has no items or no types present in library, show NO types
+    // (Never show all 35 schema types for the user to pick when none exist)
     if (existingTypeMap.size === 0) {
-      const defaultTypes = [
-        { id: 'journalarticle', canonical: 'journalArticle', label: 'Journal Article' },
-        { id: 'preprint', canonical: 'preprint', label: 'Preprint (arXiv/SSRN)' },
-        { id: 'conferencepaper', canonical: 'conferencePaper', label: 'Conference Paper' },
-        { id: 'book', canonical: 'book', label: 'Book / Chapter' },
-        { id: 'thesis', canonical: 'thesis', label: 'Thesis / Dissertation' },
-        { id: 'report', canonical: 'report', label: 'Report / Whitepaper' },
-      ];
-      return defaultTypes.map((t) => ({
-        id: t.id,
-        label: t.label,
-        aliases: Array.from(new Set([t.label, t.canonical, ...(KNOWN_TYPE_ALIASES[t.id] || [])])),
-      }));
+      return [];
     }
 
-    // 3. Map to options with canonical labels and aliases (Strictly NO count numbers)
-    const options = Array.from(existingTypeMap.entries()).map(([lowerId, canonicalKey]) => {
+    // 3. Map to options with canonical labels, counts, and aliases
+    const options = Array.from(existingTypeMap.entries()).map(([lowerId, { canonicalKey, count }]) => {
+      const serverDef = serverItemTypes.find(
+        (t) => t.itemType.toLowerCase() === lowerId || t.label.toLowerCase() === lowerId,
+      );
       const foundDef = ALL_ITEM_TYPES_FLAT.find(
-        (t) => t.value.toLowerCase() === lowerId || t.label.toLowerCase() === lowerId
+        (t) => t.value.toLowerCase() === lowerId || t.label.toLowerCase() === lowerId,
       );
       const defFromLib = LIBRARY_ITEM_TYPES[canonicalKey];
-      const label = foundDef?.label || defFromLib?.label || formatTypeFallback(canonicalKey);
+      const label = serverDef?.label || foundDef?.label || defFromLib?.label || formatTypeFallback(canonicalKey);
+      const canonicalId = serverDef?.itemType || foundDef?.value || canonicalKey;
       const knownAliases = KNOWN_TYPE_ALIASES[lowerId] || [];
-      const aliases = Array.from(new Set([label, canonicalKey, ...knownAliases]));
+      const aliases = Array.from(new Set([label, canonicalId, canonicalKey, ...knownAliases]));
 
       return {
-        id: lowerId,
+        id: canonicalId,
         label,
+        count,
         aliases,
       };
     });
 
     // Sort alphabetically by label
     return options.sort((a, b) => a.label.localeCompare(b.label));
-  }, [items, allItemsFromHook, scopeId, queryClient, itemTypes]);
+  }, [items, allItemsFromHook, scopeId, queryClient, itemTypes, serverItemTypes]);
 
   const matchingTypeItems = useMemo(() => {
     return dynamicTypes
@@ -647,10 +661,17 @@ export function LibraryFilterPopover({
                       <label
                         key={t.id}
                         onClick={() => handleTypeToggle(t.id)}
-                        className="flex items-center gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted transition-colors"
+                        className="flex items-center justify-between gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted transition-colors"
                       >
-                        <FilterCheckbox checked={itemTypes.includes(t.id)} />
-                        <span className="font-normal leading-none">{t.label}</span>
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <FilterCheckbox checked={itemTypes.some((it) => it.toLowerCase() === t.id.toLowerCase())} />
+                          <span className="font-normal leading-none truncate">{t.label}</span>
+                        </div>
+                        {typeof t.count === 'number' && t.count > 0 && (
+                          <span className="text-11 text-muted-foreground tabular-nums shrink-0">
+                            {t.count}
+                          </span>
+                        )}
                       </label>
                     ))}
                   </div>

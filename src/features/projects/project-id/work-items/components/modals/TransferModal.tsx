@@ -96,7 +96,7 @@ export function TransferModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-xl p-0 overflow-hidden border border-border bg-background rounded-lg shadow-lg">
+        <DialogContent className="max-w-xl p-0 overflow-hidden border border-border bg-background rounded-md shadow-lg">
           {/* Header */}
           <DialogHeader className="px-6 py-5 border-b border-border bg-background text-left">
             <DialogTitle className="flex items-center gap-2 text-foreground font-semibold text-base">
@@ -112,16 +112,16 @@ export function TransferModal({
           {/* Controls */}
           <div className="p-6 space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground">
+              <label className="text-xs font-semibold text-foreground">
                 Destination Cycle
               </label>
               <Select value={targetCycleId} onValueChange={setTargetCycleId}>
-                <SelectTrigger className="w-full h-9 rounded-sm border-border bg-background text-sm">
+                <SelectTrigger className="w-full h-9 rounded-md border-border bg-background text-sm">
                   <SelectValue placeholder="Select target cycle..." />
                 </SelectTrigger>
-                <SelectContent className="rounded-sm border-border">
+                <SelectContent className="rounded-md border-border">
                   <SelectItem value="unassigned" className="cursor-pointer">
-                    <span className="text-muted-foreground font-medium">Remove from Cycle (Unassign)</span>
+                    <span className="text-foreground font-medium">Remove from Cycle (Unassign)</span>
                   </SelectItem>
                   {targetCycles.map((cycle) => (
                     <SelectItem key={cycle.id} value={cycle.id} className="cursor-pointer">
@@ -129,7 +129,7 @@ export function TransferModal({
                         {cycle.status === "active" ? (
                           <PlayCircle className="size-3.5 text-success shrink-0" />
                         ) : (
-                          <CircleDashed className="size-3.5 text-muted-foreground shrink-0" />
+                          <CircleDashed className="size-3.5 text-foreground shrink-0" />
                         )}
                         <span>{cycle.name}</span>
                       </div>
@@ -140,15 +140,15 @@ export function TransferModal({
             </div>
 
             {/* Search */}
-            <div className="relative flex items-center h-9 rounded-sm border border-border bg-background px-3 focus-within:border-primary transition-colors">
-              <Search className="size-3.5 text-muted-foreground mr-2 shrink-0" />
+            <div className="relative flex items-center h-9 rounded-md border border-border bg-background px-3 focus-within:border-primary transition-colors shadow-2xs">
+              <Search className="size-3.5 text-foreground mr-2 shrink-0" />
               <input
                 type="text"
                 placeholder="Search work items to transfer..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 aria-label="Search work items to transfer"
-                className="w-full h-full text-xs bg-transparent outline-none placeholder:text-muted-foreground text-foreground"
+                className="w-full h-full text-xs bg-transparent outline-none placeholder:text-foreground/70 text-foreground"
               />
               {searchTerm && (
                 <button
@@ -163,7 +163,7 @@ export function TransferModal({
             </div>
 
             {/* Work item list */}
-            <div className="border border-border rounded-sm overflow-hidden bg-background">
+            <div className="border border-border rounded-md overflow-hidden bg-background">
               <div className="px-3 py-2 border-b border-border bg-muted flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -176,7 +176,7 @@ export function TransferModal({
                   />
                   <label
                     htmlFor="select-all"
-                    className="text-xs font-semibold text-muted-foreground cursor-pointer"
+                    className="text-xs font-semibold text-foreground cursor-pointer"
                   >
                     Select All ({filteredItems.length})
                   </label>
@@ -213,7 +213,7 @@ export function TransferModal({
                             {item.title}
                           </p>
                           {item.identifier && (
-                            <span className="text-xs text-muted-foreground font-mono">
+                            <span className="text-xs text-foreground font-mono">
                               {item.identifier}
                             </span>
                           )}

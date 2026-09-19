@@ -901,7 +901,7 @@ onSave,
                 key={cId}
                 onClick={() => handleColumnChange(cId)}
                 className={cn(
-                  'flex items-center justify-between px-2.5 py-1.5 rounded-sm text-xs font-medium transition-colors hover:bg-muted cursor-pointer text-left',
+                  'flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium text-foreground transition-colors hover:bg-muted cursor-pointer text-left',
                   isCurrent && 'bg-muted text-foreground font-semibold'
                 )}
               >
@@ -929,7 +929,7 @@ onSave,
       <DialogContent
         ref={dialogScrollRef}
         showCloseButton={false}
-        className="w-[94vw] max-w-[900px] sm:max-w-[900px] max-h-[85vh] p-0 border border-border rounded-lg overflow-hidden flex flex-col bg-background text-foreground duration-150"
+        className="w-[94vw] max-w-[900px] sm:max-w-[900px] max-h-[85vh] p-0 border border-border rounded-md overflow-hidden flex flex-col bg-background text-foreground duration-150"
         style={{
           width: "min(900px, 94vw)",
           maxWidth: "900px",
@@ -942,7 +942,7 @@ onSave,
             <DialogTitle className="text-base sm:text-lg font-semibold text-foreground tracking-tight flex items-center gap-2">
               <span>{card?.identifier ? card.identifier : "Work Item Detail"}</span>
               {isArchived && (
-                <span className="px-1.5 py-0.5 rounded text-10 font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                <span className="px-1.5 py-0.5 rounded-md text-10 font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                   Archived
                 </span>
               )}
@@ -963,7 +963,7 @@ onSave,
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48 rounded-md border-border p-1">
                     {!isReadOnly && onDuplicate && (
-                      <DropdownMenuItem onClick={onDuplicate} className="rounded-sm py-1.5 text-xs">
+                      <DropdownMenuItem onClick={onDuplicate} className="rounded-md py-1.5 text-xs text-foreground cursor-pointer">
                         <Copy className="mr-2 size-3.5 shrink-0 text-foreground" />
                         <span>Duplicate</span>
                       </DropdownMenuItem>
@@ -971,7 +971,7 @@ onSave,
                     {!isReadOnly && workItemId && (
                       <DropdownMenuItem
                         onClick={isArchived ? handleRestoreItem : handleArchiveItem}
-                        className="rounded-sm py-1.5 text-xs"
+                        className="rounded-md py-1.5 text-xs text-foreground cursor-pointer"
                       >
                         {isArchived ? (
                           <>
@@ -987,7 +987,7 @@ onSave,
                       </DropdownMenuItem>
                     )}
                     {!isReadOnly && (
-                      <DropdownMenuItem onClick={handleSaveAsTemplate} className="rounded-sm py-1.5 text-xs">
+                      <DropdownMenuItem onClick={handleSaveAsTemplate} className="rounded-md py-1.5 text-xs text-foreground cursor-pointer">
                         <Bookmark className="mr-2 size-3.5 shrink-0 text-foreground" />
                         <span>Save as template</span>
                       </DropdownMenuItem>
@@ -995,7 +995,7 @@ onSave,
                     {currentUserId && (
                       <DropdownMenuItem
                         onClick={isCurrentUserAssignee ? handleLeaveItem : handleJoinItem}
-                        className="rounded-sm py-1.5 text-xs"
+                        className="rounded-md py-1.5 text-xs text-foreground cursor-pointer"
                       >
                         {isCurrentUserAssignee ? (
                           <UserMinus className="mr-2 size-3.5 shrink-0 text-foreground" />
@@ -1008,7 +1008,7 @@ onSave,
                     {currentUserId && workItemId && (
                       <DropdownMenuItem
                         onClick={handleToggleSubscribe}
-                        className="rounded-sm py-1.5 text-xs cursor-pointer"
+                        className="rounded-md py-1.5 text-xs text-foreground cursor-pointer"
                       >
                         {isSubscribed ? (
                           <BellOff className="mr-2 size-3.5 shrink-0 text-foreground" />
@@ -1019,7 +1019,7 @@ onSave,
                       </DropdownMenuItem>
                     )}
                     {onRemoveFromCycle && (
-                      <DropdownMenuItem onClick={onRemoveFromCycle} className="rounded-sm py-1.5 text-xs">
+                      <DropdownMenuItem onClick={onRemoveFromCycle} className="rounded-md py-1.5 text-xs text-foreground cursor-pointer">
                         <RotateCcw className="mr-2 size-3.5 shrink-0 text-foreground" />
                         <span>Remove from cycle</span>
                       </DropdownMenuItem>
@@ -1027,7 +1027,7 @@ onSave,
                     {!isReadOnly && onDelete && (
                       <DropdownMenuItem
                         onClick={onDelete}
-                        className="rounded-sm py-1.5 text-xs text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                        className="rounded-md py-1.5 text-xs text-destructive focus:bg-destructive focus:text-destructive-foreground cursor-pointer"
                       >
                         <Trash2 className="mr-2 size-3.5 shrink-0" />
                         <span>Delete work item</span>
@@ -1206,7 +1206,7 @@ onSave,
 
                         {(startDate || dueDate) && (
                           <div className="flex items-center gap-1 bg-muted rounded-md px-1.5 py-0.5 text-10 font-medium text-foreground border border-border">
-                            <Clock className="size-3 shrink-0 text-muted-foreground" />
+                            <Clock className="size-3 shrink-0 text-foreground" />
                             <span>
                               {startDate && new Date(startDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}
                               {startDate && dueDate ? ' - ' : ''}
@@ -1307,7 +1307,7 @@ onSave,
                         <Popover open={openAttachmentPopover} onOpenChange={setOpenAttachmentPopover}>
                           <PopoverTrigger asChild>
                             <Button variant="outline" size="sm" className={actionBtnClass}>
-                              <Paperclip className="size-3.5 shrink-0 text-muted-foreground" />
+                              <Paperclip className="size-3.5 shrink-0 text-foreground" />
                               <span>Attach</span>
                             </Button>
                           </PopoverTrigger>
@@ -1336,7 +1336,7 @@ onSave,
                                   dragActive ? 'border-primary bg-muted' : 'border-border hover:bg-muted'
                                 )}
                               >
-                                <Paperclip className="mx-auto h-5 w-5 shrink-0 text-muted-foreground mb-1" />
+                                <Paperclip className="mx-auto h-5 w-5 shrink-0 text-foreground mb-1" />
                                 <p className="text-xs font-semibold text-foreground">Click or drag & drop</p>
                                 <p className="text-10 text-muted-foreground mt-0.5">Images, PDFs, Documents</p>
                                 <input
@@ -1430,7 +1430,7 @@ onSave,
                                     }
                                   }}
                                   className={cn(
-                                    'size-3.5 rounded-sm border flex items-center justify-center transition-colors cursor-pointer',
+                                    'size-3.5 rounded-md border flex items-center justify-center transition-colors cursor-pointer',
                                     isSubDone ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-border hover:border-primary'
                                   )}
                                 >
@@ -1446,7 +1446,7 @@ onSave,
                                   <button
                                     type="button"
                                     onClick={() => handleConvertSubItem(sub, sIdx)}
-                                    className="hover:text-primary p-0.5 text-muted-foreground cursor-pointer transition-colors"
+                                    className="hover:text-primary p-0.5 text-foreground cursor-pointer transition-colors"
                                     title="Convert to independent work item"
                                   >
                                     <ArrowUpRight className="size-3.5 shrink-0" />
@@ -1460,7 +1460,7 @@ onSave,
                                         deleteSubItemMutation.mutate({ id: sub.id });
                                       }
                                     }}
-                                    className="hover:text-red-500 p-0.5 text-muted-foreground cursor-pointer transition-colors"
+                                    className="hover:text-red-500 p-0.5 text-foreground cursor-pointer transition-colors"
                                     title="Delete sub-item"
                                   >
                                     <X className="size-3 shrink-0" />

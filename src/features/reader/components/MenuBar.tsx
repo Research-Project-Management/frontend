@@ -145,21 +145,21 @@ export function MenuBar() {
         <Menubar className="h-6 border-none bg-transparent p-0 gap-0.5 shadow-none">
           {/* 1. FILE MENU */}
           <MenubarMenu>
-            <MenubarTrigger className="h-5 px-2 py-0 text-11 font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-muted data-[state=open]:bg-muted data-[state=open]:text-foreground">
+            <MenubarTrigger className="h-5 px-2 py-0 text-11 font-medium text-foreground hover:bg-muted rounded-sm cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-muted data-[state=open]:bg-muted data-[state=open]:text-foreground">
               File
             </MenubarTrigger>
-            <MenubarContent align="start" className="min-w-[14rem] p-1 text-12 bg-popover border border-border shadow-none rounded-md">
+            <MenubarContent align="start" className="min-w-[14rem] p-1 text-12 bg-popover border border-border shadow-2xs rounded-md">
               <MenubarItem onClick={() => router.push('/library')} className="text-11 cursor-pointer">
-                New Collection...
+                New Collection…
                 <MenubarShortcut>Ctrl+Shift+N</MenubarShortcut>
               </MenubarItem>
               <MenubarItem onClick={() => router.push('/library')} className="text-11 cursor-pointer">
-                New Item / Add Paper...
+                New Item
                 <MenubarShortcut>Ctrl+N</MenubarShortcut>
               </MenubarItem>
               <MenubarSeparator />
               <MenubarItem onClick={() => router.push('/library')} className="text-11 cursor-pointer">
-                Import PDF Files...
+                Import…
                 <MenubarShortcut>Ctrl+I</MenubarShortcut>
               </MenubarItem>
               <MenubarItem onClick={() => router.push('/library')} className="text-11 cursor-pointer">
@@ -167,7 +167,7 @@ export function MenuBar() {
                 <MenubarShortcut>Ctrl+Alt+I</MenubarShortcut>
               </MenubarItem>
               <MenubarItem onClick={() => router.push('/library')} className="text-11 cursor-pointer">
-                Export Library...
+                Export Library…
                 <MenubarShortcut>Ctrl+E</MenubarShortcut>
               </MenubarItem>
               <MenubarItem
@@ -175,7 +175,7 @@ export function MenuBar() {
                 disabled={!isReader}
                 className="text-11 cursor-pointer"
               >
-                Export PDF with Annotations...
+                Export PDF with Annotations…
                 <MenubarShortcut>Ctrl+Shift+E</MenubarShortcut>
               </MenubarItem>
               <MenubarSeparator />
@@ -188,7 +188,7 @@ export function MenuBar() {
                 <MenubarShortcut>Ctrl+W</MenubarShortcut>
               </MenubarItem>
               <MenubarItem onClick={handlePrint} className="text-11 cursor-pointer">
-                Print...
+                Print…
                 <MenubarShortcut>Ctrl+P</MenubarShortcut>
               </MenubarItem>
             </MenubarContent>
@@ -196,10 +196,10 @@ export function MenuBar() {
 
           {/* 2. EDIT MENU */}
           <MenubarMenu>
-            <MenubarTrigger className="h-5 px-2 py-0 text-11 font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-muted data-[state=open]:bg-muted data-[state=open]:text-foreground">
+            <MenubarTrigger className="h-5 px-2 py-0 text-11 font-medium text-foreground hover:bg-muted rounded-sm cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-muted data-[state=open]:bg-muted data-[state=open]:text-foreground">
               Edit
             </MenubarTrigger>
-            <MenubarContent align="start" className="min-w-[14rem] p-1 text-12 bg-popover border border-border shadow-none rounded-md">
+            <MenubarContent align="start" className="min-w-[14rem] p-1 text-12 bg-popover border border-border shadow-2xs rounded-md">
               <MenubarItem
                 onClick={() => {
                   if (typeof document !== 'undefined') document.execCommand('undo');
@@ -239,6 +239,15 @@ export function MenuBar() {
               </MenubarItem>
               <MenubarItem
                 onClick={() => {
+                  if (typeof document !== 'undefined') document.execCommand('paste');
+                }}
+                className="text-11 cursor-pointer"
+              >
+                Paste
+                <MenubarShortcut>Ctrl+V</MenubarShortcut>
+              </MenubarItem>
+              <MenubarItem
+                onClick={() => {
                   if (typeof document !== 'undefined') document.execCommand('selectAll');
                 }}
                 className="text-11 cursor-pointer"
@@ -254,12 +263,12 @@ export function MenuBar() {
                 }}
                 className="text-11 cursor-pointer"
               >
-                Find...
+                Find…
                 <MenubarShortcut>Ctrl+F</MenubarShortcut>
               </MenubarItem>
               <MenubarSeparator />
               <MenubarItem onClick={() => router.push('/settings')} className="text-11 cursor-pointer">
-                Preferences...
+                Preferences…
                 <MenubarShortcut>Ctrl+,</MenubarShortcut>
               </MenubarItem>
             </MenubarContent>
@@ -267,10 +276,10 @@ export function MenuBar() {
 
           {/* 3. VIEW MENU */}
           <MenubarMenu>
-            <MenubarTrigger className="h-5 px-2 py-0 text-11 font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-muted data-[state=open]:bg-muted data-[state=open]:text-foreground">
+            <MenubarTrigger className="h-5 px-2 py-0 text-11 font-medium text-foreground hover:bg-muted rounded-sm cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-muted data-[state=open]:bg-muted data-[state=open]:text-foreground">
               View
             </MenubarTrigger>
-            <MenubarContent align="start" className="min-w-[14rem] p-1 text-12 bg-popover border border-border shadow-none rounded-md">
+            <MenubarContent align="start" className="min-w-[14rem] p-1 text-12 bg-popover border border-border shadow-2xs rounded-md">
               <MenubarItem
                 onClick={() => setIsOpen(!isOpen)}
                 className="text-11 cursor-pointer"
@@ -282,7 +291,7 @@ export function MenuBar() {
                 onClick={() => setIsInspectorOpen(!isInspectorOpen)}
                 className="text-11 cursor-pointer"
               >
-                Toggle Right Inspector
+                Toggle Context Pane
                 <MenubarShortcut>Ctrl+/</MenubarShortcut>
               </MenubarItem>
               <MenubarSeparator />
@@ -290,7 +299,7 @@ export function MenuBar() {
                 <>
                   <MenubarItem
                     onClick={() => {
-                      const zoomInBtn = document.querySelector('[data-reader-zoom-in]') as HTMLButtonElement | null;
+                      const zoomInBtn = document.querySelector('[aria-label="Zoom in"]') as HTMLButtonElement | null;
                       if (zoomInBtn) zoomInBtn.click();
                     }}
                     className="text-11 cursor-pointer"
@@ -300,7 +309,7 @@ export function MenuBar() {
                   </MenubarItem>
                   <MenubarItem
                     onClick={() => {
-                      const zoomOutBtn = document.querySelector('[data-reader-zoom-out]') as HTMLButtonElement | null;
+                      const zoomOutBtn = document.querySelector('[aria-label="Zoom out"]') as HTMLButtonElement | null;
                       if (zoomOutBtn) zoomOutBtn.click();
                     }}
                     className="text-11 cursor-pointer"
@@ -310,7 +319,18 @@ export function MenuBar() {
                   </MenubarItem>
                   <MenubarItem
                     onClick={() => {
-                      const rotateBtn = document.querySelector('[data-reader-rotate]') as HTMLButtonElement | null;
+                      const fitWidthBtn = document.querySelector('[aria-label="Fit to width"]') as HTMLButtonElement | null;
+                      if (fitWidthBtn) fitWidthBtn.click();
+                    }}
+                    className="text-11 cursor-pointer"
+                  >
+                    Fit to Width
+                    <MenubarShortcut>Ctrl+0</MenubarShortcut>
+                  </MenubarItem>
+                  <MenubarSeparator />
+                  <MenubarItem
+                    onClick={() => {
+                      const rotateBtn = document.querySelector('[aria-label="Rotate clockwise"]') as HTMLButtonElement | null;
                       if (rotateBtn) rotateBtn.click();
                     }}
                     className="text-11 cursor-pointer"
@@ -330,10 +350,10 @@ export function MenuBar() {
 
           {/* 4. GO MENU */}
           <MenubarMenu>
-            <MenubarTrigger className="h-5 px-2 py-0 text-11 font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-muted data-[state=open]:bg-muted data-[state=open]:text-foreground">
+            <MenubarTrigger className="h-5 px-2 py-0 text-11 font-medium text-foreground hover:bg-muted rounded-sm cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-muted data-[state=open]:bg-muted data-[state=open]:text-foreground">
               Go
             </MenubarTrigger>
-            <MenubarContent align="start" className="min-w-[14rem] p-1 text-12 bg-popover border border-border shadow-none rounded-md">
+            <MenubarContent align="start" className="min-w-[14rem] p-1 text-12 bg-popover border border-border shadow-2xs rounded-md">
               <MenubarItem onClick={handleGoLibrary} className="text-11 cursor-pointer font-medium">
                 My Library
                 <MenubarShortcut>Alt+Home</MenubarShortcut>
@@ -343,8 +363,22 @@ export function MenuBar() {
                   <MenubarSeparator />
                   <MenubarItem
                     onClick={() => {
-                      const firstPageBtn = document.querySelector('[data-reader-first-page]') as HTMLButtonElement | null;
-                      if (firstPageBtn) firstPageBtn.click();
+                      const backBtn = document.querySelector('[aria-label="Navigate back in document"]') as HTMLButtonElement | null;
+                      if (backBtn) backBtn.click();
+                    }}
+                    className="text-11 cursor-pointer"
+                  >
+                    Back
+                    <MenubarShortcut>Alt+Left</MenubarShortcut>
+                  </MenubarItem>
+                  <MenubarSeparator />
+                  <MenubarItem
+                    onClick={() => {
+                      const firstPageBtn = document.querySelector('[aria-label="Previous page"]') as HTMLButtonElement | null;
+                      // Navigate to first page or click if available
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('reader-navigate-page', { detail: { page: 1 } }));
+                      }
                     }}
                     className="text-11 cursor-pointer"
                   >
@@ -353,8 +387,29 @@ export function MenuBar() {
                   </MenubarItem>
                   <MenubarItem
                     onClick={() => {
-                      const lastPageBtn = document.querySelector('[data-reader-last-page]') as HTMLButtonElement | null;
-                      if (lastPageBtn) lastPageBtn.click();
+                      const prevBtn = document.querySelector('[aria-label="Previous page"]') as HTMLButtonElement | null;
+                      if (prevBtn) prevBtn.click();
+                    }}
+                    className="text-11 cursor-pointer"
+                  >
+                    Previous Page
+                    <MenubarShortcut>PageUp</MenubarShortcut>
+                  </MenubarItem>
+                  <MenubarItem
+                    onClick={() => {
+                      const nextBtn = document.querySelector('[aria-label="Next page"]') as HTMLButtonElement | null;
+                      if (nextBtn) nextBtn.click();
+                    }}
+                    className="text-11 cursor-pointer"
+                  >
+                    Next Page
+                    <MenubarShortcut>PageDown</MenubarShortcut>
+                  </MenubarItem>
+                  <MenubarItem
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('reader-navigate-last-page'));
+                      }
                     }}
                     className="text-11 cursor-pointer"
                   >

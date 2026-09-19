@@ -13,6 +13,7 @@ interface CollectionsSectionProps {
   workspaceId?: string;
   onCreateCollection?: () => void;
   hideHeader?: boolean;
+  canEdit?: boolean;
 }
 
 export default function CollectionsSection({
@@ -21,6 +22,7 @@ export default function CollectionsSection({
   projectId,
   workspaceId,
   hideHeader = false,
+  canEdit = true,
 }: CollectionsSectionProps) {
   const effectiveScope = scopeId || projectId || (paper as any)?.projectId || 'user';
   const { actions } = useItems({ scopeId: effectiveScope });
@@ -124,7 +126,7 @@ export default function CollectionsSection({
                       {col.name}
                     </span>
                   </div>
-                  {isLeaf && (
+                  {isLeaf && canEdit && (
                     <button
                       type="button"
                       onClick={() => handleRemoveFromCollection(colId)}

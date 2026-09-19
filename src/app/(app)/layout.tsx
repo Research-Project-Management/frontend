@@ -6,6 +6,7 @@ import React, { Suspense, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { hasAuthToken } from '@/shared/lib/api';
+import { ErrorBoundary } from '@/shared/components/ui';
 
 const Topbar = dynamic(
   () => import('@/features/shell/components/Topbar'),
@@ -63,26 +64,34 @@ export default function AppLayout({
   if (isPaperReader) {
     return (
       <div className='h-dvh w-full overflow-hidden bg-background'>
-        <Suspense fallback={null}>
-          {children}
-        </Suspense>
+        <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Trình đọc tài liệu">
+          <Suspense fallback={null}>
+            {children}
+          </Suspense>
+        </ErrorBoundary>
       </div>
     );
   }
 
   return (
     <div className='h-dvh max-h-dvh flex flex-col overflow-hidden bg-muted'>
-      <Suspense fallback={null}>
-        <Topbar />
-      </Suspense>
-      <div className='flex w-full flex-1 min-h-0 flex-col gap-2 p-2 pt-0 md:flex-row'>
+      <ErrorBoundary fallback={null} featureName="Thanh công cụ">
         <Suspense fallback={null}>
-          <Sidebar />
+          <Topbar />
         </Suspense>
-        <div className='order-1 flex-1 min-w-0 rounded-md border border-border bg-background overflow-hidden md:order-2 flex flex-col relative'>
+      </ErrorBoundary>
+      <div className='flex w-full flex-1 min-h-0 flex-col gap-2 p-2 pt-0 md:flex-row'>
+        <ErrorBoundary fallback={null} featureName="Thanh điều hướng">
           <Suspense fallback={null}>
-            {children}
+            <Sidebar />
           </Suspense>
+        </ErrorBoundary>
+        <div className='order-1 flex-1 min-w-0 rounded-md border border-border bg-background overflow-hidden md:order-2 flex flex-col relative'>
+          <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Nội dung trang">
+            <Suspense fallback={null}>
+              {children}
+            </Suspense>
+          </ErrorBoundary>
         </div>
       </div>
     </div>

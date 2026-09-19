@@ -3,10 +3,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Item } from '@/features/library/types/library.types';
 
+import { cn } from "@/shared/lib/utils";
+
 interface AbstractSectionProps {
   paper: Item;
   onUpdatePaper?: (data: Partial<Item>) => void;
   hideHeader?: boolean;
+  canEdit?: boolean;
 }
 
 function getAbstractValue(p: Item): string {
@@ -20,6 +23,7 @@ export default function AbstractSection({
   paper,
   onUpdatePaper,
   hideHeader = false,
+  canEdit = true,
 }: AbstractSectionProps) {
   const currentAbstract = getAbstractValue(paper);
   const [draft, setDraft] = useState(currentAbstract);
@@ -63,22 +67,28 @@ export default function AbstractSection({
         </div>
       )}
 
-      {/* Editable abstract textarea */}
-      <div className="rounded-md border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 bg-background transition-colors">
+      {/* Abstract textarea */}
+      <div
+        className={cn(
+          "rounded-md border border-border bg-background transition-colors",
+          canEdit && "focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20"
+        )}
+      >
         <textarea
           ref={textareaRef}
           value={draft}
-          placeholder="No abstract available. Click to add abstract..."
+          readOnly={!canEdit}
+          placeholder={canEdit ? "No abstract available. Click to add abstract..." : "No abstract available."}
           aria-label="Paper abstract summary"
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => {
+          onChange={canEdit ? (e) => setDraft(e.target.value) : undefined}
+          onBlur={canEdit ? commit : undefined}
+          onKeyDown={canEdit ? (e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
               e.preventDefault();
               commit();
               textareaRef.current?.blur();
             }
-          }}
+          } : undefined}
           className="w-full bg-transparent p-2.5 text-foreground text-12 leading-normal outline-none resize-none select-text font-sans focus:outline-none focus-visible:outline-none placeholder:text-muted-foreground/60 text-left"
         />
       </div>

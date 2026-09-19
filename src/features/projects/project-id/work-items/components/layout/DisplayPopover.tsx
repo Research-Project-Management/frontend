@@ -146,9 +146,9 @@ export function DisplayPopover({
           >
             <span>Display properties</span>
             {propertiesOpen ? (
-              <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
+              <ChevronUp className="size-3.5 text-foreground shrink-0" />
             ) : (
-              <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+              <ChevronDown className="size-3.5 text-foreground shrink-0" />
             )}
           </button>
 
@@ -166,7 +166,7 @@ export function DisplayPopover({
                       "px-2.5 py-1 text-12 font-medium rounded-md border transition-colors cursor-pointer select-none",
                       isSelected
                         ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border/70 bg-background text-muted-foreground hover:text-foreground hover:bg-muted"
+                        : "border-border/70 bg-background text-foreground/80 hover:text-foreground hover:bg-muted"
                     )}
                   >
                     {item.label}
@@ -188,9 +188,9 @@ export function DisplayPopover({
           >
             <span>Group by</span>
             {groupByOpen ? (
-              <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
+              <ChevronUp className="size-3.5 text-foreground shrink-0" />
             ) : (
-              <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+              <ChevronDown className="size-3.5 text-foreground shrink-0" />
             )}
           </button>
 
@@ -209,18 +209,18 @@ export function DisplayPopover({
                       "flex w-full items-center gap-2.5 py-1.5 px-2 rounded-md text-12 transition-colors cursor-pointer select-none",
                       isSelected
                         ? "text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                        : "text-foreground/80 hover:text-foreground hover:bg-muted/40"
                     )}
                   >
                     <div
                       className={cn(
                         "size-4 rounded-full border flex items-center justify-center shrink-0 transition-colors",
                         isSelected
-                          ? "border-primary bg-primary text-primary-foreground"
+                          ? "border-primary bg-background"
                           : "border-muted-foreground/40 bg-background"
                       )}
                     >
-                      {isSelected && <Check className="size-2.5 text-primary-foreground stroke-[3] shrink-0" />}
+                      {isSelected && <div className="size-2 rounded-full bg-primary" />}
                     </div>
                     <span>{opt.label}</span>
                   </button>
@@ -242,15 +242,15 @@ export function DisplayPopover({
             >
               <span>Order by</span>
               {orderByOpen ? (
-                <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
+                <ChevronUp className="size-3.5 text-foreground shrink-0" />
               ) : (
-                <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+                <ChevronDown className="size-3.5 text-foreground shrink-0" />
               )}
             </button>
             <button
               type="button"
               onClick={toggleOrderDirection}
-              className="p-1 rounded border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              className="p-1 rounded-md border border-border hover:bg-muted text-foreground transition-colors cursor-pointer"
               title={orderDirection === 'asc' ? 'Ascending' : 'Descending'}
               aria-label="Toggle sort direction"
             >
@@ -277,18 +277,18 @@ export function DisplayPopover({
                       "flex w-full items-center gap-2.5 py-1.5 px-2 rounded-md text-12 transition-colors cursor-pointer select-none",
                       isSelected
                         ? "text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                        : "text-foreground/80 hover:text-foreground hover:bg-muted/40"
                     )}
                   >
                     <div
                       className={cn(
                         "size-4 rounded-full border flex items-center justify-center shrink-0 transition-colors",
                         isSelected
-                          ? "border-primary bg-primary text-primary-foreground"
+                          ? "border-primary bg-background"
                           : "border-muted-foreground/40 bg-background"
                       )}
                     >
-                      {isSelected && <Check className="size-2.5 text-primary-foreground stroke-[3] shrink-0" />}
+                      {isSelected && <div className="size-2 rounded-full bg-primary" />}
                     </div>
                     <span>{opt.label}</span>
                   </button>
@@ -306,7 +306,7 @@ export function DisplayPopover({
             <Checkbox
               checked={isChildWorkItemsShown}
               onCheckedChange={handleShowChildWorkItemsToggle}
-              className="size-4 rounded-xs border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary cursor-pointer"
+              className="size-4 rounded-sm border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary cursor-pointer"
             />
             <span className="font-normal">Show sub-work items</span>
           </label>
@@ -315,7 +315,7 @@ export function DisplayPopover({
             <Checkbox
               checked={showEmptyGroups}
               onCheckedChange={handleShowEmptyGroupsToggle}
-              className="size-4 rounded-xs border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary cursor-pointer"
+              className="size-4 rounded-sm border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary cursor-pointer"
             />
             <span className="font-normal">Show empty groups</span>
           </label>

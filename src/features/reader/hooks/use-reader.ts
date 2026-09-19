@@ -259,7 +259,8 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     pageNum?: number,
     colorHex: string = '#ffd400',
     rects?: AnnotationRect[],
-    type: 'highlight' | 'underline' | 'strike' | 'note' | 'text' | 'rect' | 'area' = 'highlight',
+    // Zotero 7 annotation types (no 'strike' — does not exist in Zotero 7)
+    type: 'highlight' | 'underline' | 'note' | 'text' | 'rect' | 'area' = 'highlight',
   ) => {
     setActivePanel('annotations');
     if (!effectiveAttachmentId) return;

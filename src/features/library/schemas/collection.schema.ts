@@ -9,15 +9,12 @@ export const collectionSchema = z.object({
   icon: z.string().optional().default('📁'),
   scopeId: z.string().optional().default(''),
   projectId: z.string().nullable().optional(),
-  userId: z.string().nullable().optional(),
+  userId: z.string().optional(),
   workspaceId: z.string().optional().default(''),
   parentId: z.string().nullable().optional(),
-  parent: z.string().nullable().optional(),
   createdBy: userSchema.optional(),
   itemCount: z.number().optional().default(0),
-  itemsCount: z.number().optional().default(0),
   paperCount: z.number().optional().default(0),
-  papersCount: z.number().optional().default(0),
   createdAt: z.string().optional().default(''),
   updatedAt: z.string().optional().default(''),
 });
@@ -37,7 +34,6 @@ export const createCollectionSchema = z.object({
   color: z.string().optional().default('#3b82f6'),
   icon: z.string().optional().default('📁'),
   parentId: z.string().nullable().optional(),
-  parent: z.string().nullable().optional(),
 });
 
 export const updateCollectionSchema = createCollectionSchema.partial();

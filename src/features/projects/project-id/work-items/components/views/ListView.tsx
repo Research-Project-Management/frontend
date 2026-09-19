@@ -89,7 +89,7 @@ const PRIORITY_THEME_CLASSES: Record<string, string> = {
   low:
     'text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20 shadow-none font-normal',
   none:
-    'text-muted-foreground bg-background hover:bg-muted border-border shadow-none font-normal',
+    'text-foreground bg-background hover:bg-muted border-border shadow-none font-normal',
 };
 
 function formatDueDate(dateStr?: string | null): string {
@@ -397,7 +397,7 @@ export const ItemRow = ({
                   onToggleExpandChildren?.(item.id);
                 }}
                 aria-label={isChildrenExpanded ? 'Collapse sub-items' : 'Expand sub-items'}
-                className="size-4.5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer -ml-0.5"
+                className="size-4.5 rounded-md flex items-center justify-center text-foreground hover:bg-muted transition-colors cursor-pointer -ml-0.5"
               >
                 <ChevronRight
                   className={cn(
@@ -415,7 +415,7 @@ export const ItemRow = ({
                     onToggleExpandChildren?.(item.id);
                   }}
                   title={`${completedCount} of ${childList.length} sub-items completed`}
-                  className="font-mono text-10 font-medium text-muted-foreground bg-muted px-1.5 py-0.2 rounded-full tabular-nums shrink-0 cursor-pointer hover:bg-muted/80"
+                  className="font-mono text-10 font-medium text-muted-foreground bg-muted px-1.5 py-0.2 rounded-md tabular-nums shrink-0 cursor-pointer hover:bg-muted/80"
                 >
                   {completedCount}/{childList.length}
                 </span>
@@ -464,7 +464,7 @@ export const ItemRow = ({
             <DropdownMenuTrigger asChild disabled={isReadOnly}>
               <button
                 type="button"
-                className="h-6 px-2.5 text-11 font-normal rounded-full border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="h-6 px-2.5 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <StatusIcon
                   id={item.columnId}
@@ -493,7 +493,7 @@ export const ItemRow = ({
                       }
                     }}
                     className={cn(
-                      'flex items-center gap-2 cursor-pointer py-1.5 text-xs rounded-sm',
+                      'flex items-center gap-2 cursor-pointer py-1.5 text-xs rounded-md',
                       isCurr && 'bg-muted font-medium',
                     )}
                   >
@@ -522,7 +522,7 @@ export const ItemRow = ({
               setPriority={(p) => onUpdateItem?.(item.id, { priority: p })}
               isReadOnly={isReadOnly}
               actionBtnClass={cn(
-                'h-6 px-2.5 text-11 font-normal rounded-full border transition-colors shadow-none',
+                'h-6 px-2.5 text-11 font-normal rounded-md border transition-colors shadow-none',
                 PRIORITY_THEME_CLASSES[priorityKey] || PRIORITY_THEME_CLASSES.none,
               )}
             />
@@ -540,8 +540,8 @@ export const ItemRow = ({
               onSelectDate={(d) => onUpdateItem?.(item.id, { startDate: d || null })}
               actionBtnClass={cn(
                 item.startDate
-                  ? 'h-6 px-2.5 text-11 font-normal rounded-full border border-border bg-background hover:bg-muted text-foreground'
-                  : 'size-6 p-0 rounded-full border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center shrink-0 [&>span]:hidden',
+                  ? 'h-6 px-2.5 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground'
+                  : 'size-6 p-0 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 [&>span]:hidden',
               )}
             />
           </div>
@@ -559,14 +559,14 @@ export const ItemRow = ({
               actionBtnClass={cn(
                 item.dueDate
                   ? cn(
-                      'h-6 px-2.5 text-11 font-normal rounded-full border transition-colors shadow-none',
+                      'h-6 px-2.5 text-11 font-normal rounded-md border transition-colors shadow-none',
                       isOverdue
                         ? 'border-destructive bg-destructive/10 text-destructive hover:bg-destructive/20 font-medium'
                         : isDueToday
                           ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 font-medium'
                           : 'border-border bg-background hover:bg-muted text-foreground',
                     )
-                  : 'size-6 p-0 rounded-full border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center shrink-0 [&>span]:hidden',
+                  : 'size-6 p-0 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 [&>span]:hidden',
               )}
             />
           </div>
@@ -580,7 +580,7 @@ export const ItemRow = ({
                 type="button"
                 onClick={() => setAssigneeOpen(true)}
                 disabled={isReadOnly}
-                className="cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all rounded-full shrink-0"
+                className="cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all rounded-md shrink-0"
                 title={`${resolvedAssignees.length} assignees`}
               >
                 <AvatarStack users={resolvedAssignees} size="xs" max={3} />
@@ -590,7 +590,7 @@ export const ItemRow = ({
                 type="button"
                 onClick={() => setAssigneeOpen(true)}
                 disabled={isReadOnly}
-                className="size-6 rounded-full border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all"
+                className="size-6 rounded-md border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all"
                 title={resolvedAssignees[0].name || 'Assignee'}
               >
                 <Avatar className="size-full shrink-0">
@@ -605,7 +605,7 @@ export const ItemRow = ({
                 type="button"
                 onClick={() => setAssigneeOpen(true)}
                 disabled={isReadOnly}
-                className="size-6 rounded-full border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all"
+                className="size-6 rounded-md border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all"
                 title={assignee.name || 'Assignee'}
               >
                 <Avatar className="size-full shrink-0">
@@ -620,7 +620,7 @@ export const ItemRow = ({
                 type="button"
                 onClick={() => setAssigneeOpen(true)}
                 disabled={isReadOnly}
-                className="size-6 rounded-full border border-dashed border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                className="size-6 rounded-md border border-dashed border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                 aria-label="Assign member"
                 title="Assign member"
               >
@@ -652,7 +652,7 @@ export const ItemRow = ({
           <button
             type="button"
             onClick={() => onEditCard(item)}
-            className="h-6 px-2.5 text-11 font-normal rounded-full border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground hidden xl:flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+            className="h-6 px-2.5 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground hidden xl:flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
             title="Attached modules/pages/files"
           >
             <LayoutGrid className="size-3 shrink-0" />
@@ -665,7 +665,7 @@ export const ItemRow = ({
           <button
             type="button"
             onClick={() => onEditCard(item)}
-            className="h-6 px-2 text-11 font-normal rounded-full border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground hidden xl:flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+            className="h-6 px-2 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground hidden xl:flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
             title={`${linksCount} links`}
           >
             <Link2 className="size-3 shrink-0" />
@@ -685,8 +685,8 @@ export const ItemRow = ({
               isReadOnly={isReadOnly}
               actionBtnClass={cn(
                 cycleName
-                  ? 'h-6 px-2.5 text-11 font-normal rounded-full border border-border bg-background hover:bg-muted text-foreground shadow-none max-w-[130px] truncate'
-                  : 'size-6 p-0 rounded-full border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center shrink-0 [&>span]:hidden',
+                  ? 'h-6 px-2.5 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground shadow-none max-w-[130px] truncate'
+                  : 'size-6 p-0 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 [&>span]:hidden',
               )}
             />
           </div>
@@ -704,7 +704,7 @@ export const ItemRow = ({
                   key={i}
                   onClick={() => setLabelOpen(true)}
                   aria-label={`Edit label: ${labelName}`}
-                  className="h-6 px-2.5 text-11 font-normal rounded-full border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 shrink-0 cursor-pointer transition-colors"
+                  className="h-6 px-2.5 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 shrink-0 cursor-pointer transition-colors"
                   title={labelName}
                 >
                   <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: labelColor }} />
@@ -724,7 +724,7 @@ export const ItemRow = ({
                 const nextIds = typeof updater === 'function' ? updater(currentIds) : updater;
                 onUpdateItem?.(item.id, { labels: nextIds });
               }}
-              actionBtnClass="size-6 p-0 rounded-full border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center shrink-0 [&>span]:hidden shadow-none"
+              actionBtnClass="size-6 p-0 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 [&>span]:hidden shadow-none"
             />
           </div>
         )}
@@ -737,42 +737,42 @@ export const ItemRow = ({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-6 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shrink-0 shadow-none focus-visible:ring-1 focus-visible:ring-ring flex items-center justify-center"
+                className="size-6 text-foreground hover:text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shrink-0 shadow-none focus-visible:ring-1 focus-visible:ring-ring flex items-center justify-center"
                 aria-label="More options"
               >
                 <MoreHorizontal className="size-3.5 shrink-0" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44 p-1 text-xs z-100">
+            <DropdownMenuContent align="end" className="w-44 p-1 text-xs z-100 rounded-md">
               <DropdownMenuItem
                 onClick={() => onDuplicateCard(item)}
-                className="cursor-pointer gap-2 py-1.5"
+                className="cursor-pointer gap-2 py-1.5 rounded-md"
               >
-                <Copy className="size-3.5 text-muted-foreground shrink-0" />
+                <Copy className="size-3.5 text-foreground shrink-0" />
                 <span>Duplicate</span>
               </DropdownMenuItem>
 
               <DropdownMenuItem
                 onClick={() => onToggleExpandChildren?.(item.id)}
-                className="cursor-pointer gap-2 py-1.5"
+                className="cursor-pointer gap-2 py-1.5 rounded-md"
               >
-                <CornerDownRight className="size-3.5 text-muted-foreground shrink-0" />
+                <CornerDownRight className="size-3.5 text-foreground shrink-0" />
                 <span>Add sub-item</span>
               </DropdownMenuItem>
 
               {currentUserId && (
                 <DropdownMenuItem
                   onClick={() => (isCurrentUserAssignee ? onLeaveCard(item) : onJoinCard(item))}
-                  className="cursor-pointer gap-2 py-1.5"
+                  className="cursor-pointer gap-2 py-1.5 rounded-md"
                 >
                   {isCurrentUserAssignee ? (
                     <>
-                      <UserMinus className="size-3.5 text-muted-foreground shrink-0" />
+                      <UserMinus className="size-3.5 text-foreground shrink-0" />
                       <span>Leave</span>
                     </>
                   ) : (
                     <>
-                      <UserPlus className="size-3.5 text-muted-foreground shrink-0" />
+                      <UserPlus className="size-3.5 text-foreground shrink-0" />
                       <span>Join</span>
                     </>
                   )}
@@ -782,9 +782,9 @@ export const ItemRow = ({
               {onRemoveFromCycle && item.cycle && (
                 <DropdownMenuItem
                   onClick={() => onRemoveFromCycle(item)}
-                  className="cursor-pointer gap-2 py-1.5"
+                  className="cursor-pointer gap-2 py-1.5 rounded-md"
                 >
-                  <RotateCcw className="size-3.5 text-muted-foreground shrink-0" />
+                  <RotateCcw className="size-3.5 text-foreground shrink-0" />
                   <span>Remove from cycle</span>
                 </DropdownMenuItem>
               )}
@@ -793,7 +793,7 @@ export const ItemRow = ({
 
               <DropdownMenuItem
                 onClick={() => onDeleteCard(item)}
-                className="cursor-pointer gap-2 py-1.5 text-destructive focus:text-destructive-foreground focus:bg-destructive"
+                className="cursor-pointer gap-2 py-1.5 rounded-md text-destructive focus:text-destructive-foreground focus:bg-destructive"
               >
                 <Trash2 className="size-3.5 shrink-0" />
                 <span>Delete</span>
@@ -859,7 +859,7 @@ const ChildItemRow = ({
     <div className="group/sub relative h-9 pl-12 sm:pl-14 pr-3 sm:pr-4 flex items-center justify-between hover:bg-muted/60 select-none text-12 transition-colors duration-150 border-b border-border/40">
       {/* Left Tree Branch & Checkbox & Title */}
       <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
-        <CornerDownRight className="size-3 text-muted-foreground/60 shrink-0 -ml-5" />
+        <CornerDownRight className="size-3 text-foreground shrink-0 -ml-5" />
 
         <button
           type="button"
@@ -873,7 +873,7 @@ const ChildItemRow = ({
           }}
           aria-label={`Mark sub-item as ${isDone ? 'incomplete' : 'complete'}`}
           className={cn(
-            'size-3.5 rounded-sm border flex items-center justify-center transition-colors cursor-pointer shrink-0',
+            'size-3.5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0',
             isDone
               ? 'bg-emerald-500 border-emerald-500 text-white'
               : 'border-border hover:border-primary'
@@ -883,7 +883,7 @@ const ChildItemRow = ({
         </button>
 
         {childItem.identifier && (
-          <span className="font-mono text-11 font-medium text-muted-foreground shrink-0 tabular-nums">
+          <span className="font-mono text-11 font-medium text-foreground shrink-0 tabular-nums">
             {childItem.identifier}
           </span>
         )}
@@ -930,7 +930,7 @@ const ChildItemRow = ({
           <DropdownMenuTrigger asChild disabled={isReadOnly}>
             <button
               type="button"
-              className="h-5 px-2 text-10 font-normal rounded-full border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1 shrink-0 transition-colors cursor-pointer outline-none"
+              className="h-5 px-2 text-10 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1 shrink-0 transition-colors cursor-pointer outline-none"
             >
               <StatusIcon
                 title={colTitle}
@@ -941,7 +941,7 @@ const ChildItemRow = ({
               <span className="truncate max-w-[65px]">{colTitle}</span>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40 p-1 text-xs z-100">
+          <DropdownMenuContent align="end" className="w-40 p-1 text-xs z-100 rounded-md">
             {stateList.map((col) => {
               const cId = resolveColumnId(col);
               const cTitle = col.title || col.name || 'Column';
@@ -954,7 +954,7 @@ const ChildItemRow = ({
                     const completed = col.group === 'completed' || cId === 'done' || cId === 'completed';
                     onUpdateChildItem?.(parentItem, childItem, index, { columnId: cId, completed });
                   }}
-                  className={cn('gap-2 py-1 cursor-pointer text-11', isCurr && 'font-medium bg-muted')}
+                  className={cn('gap-2 py-1 cursor-pointer text-11 rounded-md', isCurr && 'font-medium bg-muted')}
                 >
                   <StatusIcon
                     id={cId}
@@ -978,7 +978,7 @@ const ChildItemRow = ({
               onDeleteChildItem(parentItem, childItem.id, index);
             }}
             aria-label="Delete sub-item"
-            className="opacity-0 group-hover/sub:opacity-100 size-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer"
+            className="opacity-0 group-hover/sub:opacity-100 size-5 rounded-md flex items-center justify-center text-foreground hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer"
           >
             <Trash2 className="size-3 shrink-0" />
           </button>
@@ -1016,7 +1016,7 @@ const ChildItemQuickAdd = ({
     <div className="pl-12 sm:pl-14 pr-3 sm:pr-4 h-8 flex items-center border-b border-border/40 bg-background/50">
       {isAdding ? (
         <div className="flex items-center gap-2 w-full">
-          <CornerDownRight className="size-3 text-muted-foreground/60 shrink-0 -ml-5" />
+          <CornerDownRight className="size-3 text-foreground shrink-0 -ml-5" />
           <input
             ref={inputRef}
             type="text"
@@ -1042,7 +1042,7 @@ const ChildItemQuickAdd = ({
         <button
           type="button"
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-1.5 text-11 text-muted-foreground hover:text-foreground transition-colors cursor-pointer -ml-5"
+          className="flex items-center gap-1.5 text-11 text-foreground hover:text-foreground transition-colors cursor-pointer -ml-5"
         >
           <Plus className="size-3" />
           <span>Add sub-item</span>
@@ -1292,7 +1292,7 @@ const ListViewGroup = ({
           </span>
 
           {/* Item Count (Tabular Numbers, no parentheses) */}
-          <span className="text-13 text-muted-foreground font-medium tabular-nums ml-1 shrink-0">
+          <span className="text-13 text-foreground font-medium tabular-nums ml-1 shrink-0">
             {group.items.length}
           </span>
         </div>
@@ -1310,7 +1310,7 @@ const ListViewGroup = ({
                 if (!isExpanded) onToggleExpand(group.key);
                 setQuickAddKey(group.key);
               }}
-              className="size-5 rounded-xs flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="size-5 rounded-md flex items-center justify-center text-foreground hover:bg-muted transition-colors cursor-pointer"
               aria-label={`Add work item to ${group.label}`}
             >
               <Plus className="size-3.5 shrink-0" />
@@ -1395,16 +1395,16 @@ const ListViewGroup = ({
                     />
                   </div>
                   <div className="pl-5.5 text-11 text-muted-foreground select-none">
-                    Press <kbd className="font-mono px-1 py-0.5 rounded bg-muted text-muted-foreground text-10">Enter</kbd> to add another, <kbd className="font-mono px-1 py-0.5 rounded bg-muted text-muted-foreground text-10">Esc</kbd> to cancel
+                    Press <kbd className="font-mono px-1 py-0.5 rounded-md bg-muted text-foreground text-10">Enter</kbd> to add another, <kbd className="font-mono px-1 py-0.5 rounded-md bg-muted text-foreground text-10">Esc</kbd> to cancel
                   </div>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => setQuickAddKey(group.key)}
-                  className="h-9 pl-7 sm:pl-8 pr-3 sm:pr-4 w-full flex items-center gap-2 text-13 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer border-b border-border text-left font-normal transition-colors focus-visible:outline-none"
+                  className="h-9 pl-7 sm:pl-8 pr-3 sm:pr-4 w-full flex items-center gap-2 text-13 text-foreground hover:bg-muted cursor-pointer border-b border-border text-left font-normal transition-colors focus-visible:outline-none"
                 >
-                  <Plus className="size-3.5 shrink-0 text-muted-foreground" />
+                  <Plus className="size-3.5 shrink-0 text-foreground" />
                   <span>New work item</span>
                 </button>
               )}
@@ -1720,7 +1720,7 @@ export function ListView({
       <div className="w-full flex-1 overflow-y-auto bg-background pb-16">
         {groups.length === 0 ? (
           <div className="w-full py-16 flex flex-col items-center justify-center text-center px-4">
-            <div className="size-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground mb-3">
+            <div className="size-10 rounded-md bg-muted flex items-center justify-center text-foreground mb-3">
               <LayoutGrid className="size-5 shrink-0" />
             </div>
             <h3 className="text-14 font-medium text-foreground mb-1">No columns configured</h3>

@@ -107,15 +107,15 @@ export {
 export const NonePriorityIcon = NonePriorityTriggerIcon;
 
 export function AssigneeUserIcon({ className }: { className?: string }) {
-  return <Users className={cn("size-3.5 shrink-0 text-muted-foreground", className)} />;
+  return <Users className={cn("size-3.5 shrink-0 text-foreground", className)} />;
 }
 
 export function LabelTagIcon({ className }: { className?: string }) {
-  return <Tag className={cn("size-3.5 shrink-0 text-muted-foreground", className)} />;
+  return <Tag className={cn("size-3.5 shrink-0 text-foreground", className)} />;
 }
 
 export function DateCalendarIcon({ className }: { className?: string }) {
-  return <CalendarDays className={cn("size-3.5 shrink-0 text-muted-foreground", className)} />;
+  return <CalendarDays className={cn("size-3.5 shrink-0 text-foreground", className)} />;
 }
 
 export function CycleHalfIcon({ className }: { className?: string }) {
@@ -123,7 +123,7 @@ export function CycleHalfIcon({ className }: { className?: string }) {
     <svg
       viewBox="0 0 16 16"
       fill="none"
-      className={cn("size-3.5 shrink-0 text-muted-foreground", className)}
+      className={cn("size-3.5 shrink-0 text-foreground", className)}
     >
       <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3" />
       <path
@@ -139,7 +139,7 @@ export function CycleHalfIcon({ className }: { className?: string }) {
 export const CycleIcon = CycleHalfIcon;
 
 export function AttachPaperclipIcon({ className }: { className?: string }) {
-  return <Paperclip className={cn("size-3.5 shrink-0 text-muted-foreground", className)} />;
+  return <Paperclip className={cn("size-3.5 shrink-0 text-foreground", className)} />;
 }
 
 export function ParentHierarchyIcon({ className }: { className?: string }) {
@@ -151,7 +151,7 @@ export function ParentHierarchyIcon({ className }: { className?: string }) {
       strokeWidth="1.3"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={cn("size-3.5 shrink-0 text-muted-foreground", className)}
+      className={cn("size-3.5 shrink-0 text-foreground", className)}
     >
       <rect x="2" y="2.5" width="12" height="4" rx="1" />
       <rect x="9.5" y="9.5" width="4.5" height="4" rx="1" />
@@ -212,7 +212,7 @@ export const ProjectSelectorPopover: React.FC<ProjectSelectorPopoverProps> = ({
           <span className="text-xs text-foreground tracking-normal font-normal">
             {project?.name || project?.identifier || 'Select Project'}
           </span>
-          <ChevronDown className="size-3 text-muted-foreground ml-0.5 shrink-0" />
+          <ChevronDown className="size-3 text-foreground ml-0.5 shrink-0" />
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -221,13 +221,13 @@ export const ProjectSelectorPopover: React.FC<ProjectSelectorPopoverProps> = ({
         sideOffset={4}
         className="w-64 p-1.5 rounded-md border border-border bg-popover z-100 flex flex-col"
       >
-        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-background mb-1">
-          <Search className="size-3.5 text-muted-foreground shrink-0" />
+        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-background mb-1 shadow-2xs">
+          <Search className="size-3.5 text-foreground shrink-0" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search projects..."
-            className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+            className="w-full bg-transparent text-xs outline-none placeholder:text-foreground/70 text-foreground"
             autoFocus
           />
         </div>
@@ -322,13 +322,13 @@ export const StatePopover: React.FC<StatePopoverProps> = ({
         sideOffset={6}
         className="w-48 p-1.5 rounded-md border border-border bg-popover z-100 flex flex-col"
       >
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1">
-          <Search className="size-3.5 text-muted-foreground shrink-0" />
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1 shadow-2xs">
+          <Search className="size-3.5 text-foreground shrink-0" />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search states..."
-            className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+            className="w-full bg-transparent text-xs outline-none placeholder:text-foreground/70 text-foreground"
             autoFocus
           />
         </div>
@@ -409,7 +409,7 @@ export const PriorityPopover: React.FC<PriorityPopoverProps> = ({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+            'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs shrink-0',
             actionBtnClass
           )}
         >
@@ -636,13 +636,13 @@ export function MemberPopover({
         sideOffset={4}
         className="w-64 p-1.5 rounded-md border border-border bg-popover z-100 flex flex-col"
       >
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1">
-          <Search className="size-3.5 text-muted-foreground shrink-0" />
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1 shadow-2xs">
+          <Search className="size-3.5 text-foreground shrink-0" />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search members..."
-            className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+            className="w-full bg-transparent text-xs outline-none placeholder:text-foreground/70 text-foreground"
             autoFocus
           />
         </div>
@@ -651,7 +651,7 @@ export function MemberPopover({
             <button
               type="button"
               onClick={handleClearAll}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors hover:bg-muted cursor-pointer text-left text-muted-foreground hover:text-foreground"
+              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors hover:bg-muted cursor-pointer text-left text-foreground hover:text-destructive"
             >
               <span>Unassign all</span>
             </button>
@@ -752,7 +752,7 @@ export function LabelPopover({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+            'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs shrink-0',
             actionBtnClass,
             isOpen && 'bg-muted border-border',
             labels.length > 0 && 'font-medium'
@@ -768,13 +768,13 @@ export function LabelPopover({
         sideOffset={4}
         className="w-56 p-1.5 rounded-md border border-border bg-popover z-100 flex flex-col"
       >
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1">
-          <Search className="size-3.5 text-muted-foreground shrink-0" />
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1 shadow-2xs">
+          <Search className="size-3.5 text-foreground shrink-0" />
           <input
             placeholder="Search labels..."
             value={labelSearch}
             onChange={(e) => setLabelSearch(e.target.value)}
-            className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+            className="w-full bg-transparent text-xs outline-none placeholder:text-foreground/70 text-foreground"
             autoFocus
           />
         </div>
@@ -907,7 +907,7 @@ export function DatePopover({
             open && 'bg-muted border-border'
           )}
         >
-          <Clock className="size-3.5 shrink-0 text-muted-foreground" />
+          <Clock className="size-3.5 shrink-0 text-foreground" />
           <span>Dates</span>
         </Button>
       </PopoverTrigger>
@@ -949,7 +949,7 @@ export function DatePopover({
 
           <div className="flex-1 p-3.5 space-y-3 flex flex-col justify-between overflow-y-auto max-h-[300px]">
             <div className="space-y-1.5">
-              <span className="text-10 font-medium text-muted-foreground tracking-normal">Quick Select</span>
+              <span className="text-10 font-medium text-foreground tracking-normal">Quick Select</span>
               <div className="grid grid-cols-2 gap-1.5">
                 <Button
                   type="button"
@@ -1037,7 +1037,7 @@ export function DatePopover({
             size="sm"
             variant="ghost"
             onClick={handleRemove}
-            className="h-7 text-xs text-muted-foreground hover:text-destructive cursor-pointer px-2.5 rounded-md"
+            className="h-7 text-xs text-foreground hover:text-destructive cursor-pointer px-2.5 rounded-md"
           >
             Clear
           </Button>
@@ -1046,7 +1046,7 @@ export function DatePopover({
               size="sm"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="h-7 text-xs px-3 cursor-pointer rounded-md shadow-none"
+              className="h-7 text-xs px-3 cursor-pointer rounded-md text-foreground hover:bg-muted shadow-none"
             >
               Cancel
             </Button>
@@ -1145,7 +1145,7 @@ export function SingleDatePopover({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 px-2 text-11 text-muted-foreground hover:text-destructive cursor-pointer rounded-sm"
+              className="h-6 px-2 text-11 text-foreground hover:text-destructive cursor-pointer rounded-md"
               onClick={() => {
                 onSelectDate('');
                 onOpenChange(false);
@@ -1219,13 +1219,13 @@ export const CyclePopover: React.FC<CyclePopoverProps> = ({
         sideOffset={6}
         className="w-52 p-1.5 rounded-md border border-border flex flex-col z-100 bg-popover max-h-64"
       >
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1">
-          <Search className="size-3.5 text-muted-foreground shrink-0" />
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1 shadow-2xs">
+          <Search className="size-3.5 text-foreground shrink-0" />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search cycles..."
-            className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+            className="w-full bg-transparent text-xs outline-none placeholder:text-foreground/70 text-foreground"
             autoFocus
           />
         </div>
@@ -1268,7 +1268,7 @@ export const CyclePopover: React.FC<CyclePopoverProps> = ({
                   <CycleHalfIcon />
                   <span className="truncate">{c.name}</span>
                   {c.status === 'active' && (
-                    <span className="text-10 px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-normal">
+                    <span className="text-10 px-1 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-normal">
                       Active
                     </span>
                   )}
@@ -1349,7 +1349,7 @@ export const ParentItemPopover: React.FC<ParentItemPopoverProps> = ({
         className="w-64 p-1.5 rounded-md border border-border bg-popover z-100 flex flex-col"
       >
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1">
-          <Search className="size-3.5 text-muted-foreground shrink-0" />
+          <Search className="size-3.5 text-foreground shrink-0" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -1366,7 +1366,7 @@ export const ParentItemPopover: React.FC<ParentItemPopoverProps> = ({
                 setParentId(null);
                 onOpenChange(false);
               }}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors hover:bg-muted cursor-pointer text-left text-muted-foreground hover:text-foreground"
+              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors hover:bg-muted cursor-pointer text-left text-foreground hover:text-destructive"
             >
               <span>Remove parent</span>
             </button>
@@ -1393,7 +1393,7 @@ export const ParentItemPopover: React.FC<ParentItemPopoverProps> = ({
                 >
                   <div className="flex items-center gap-1.5 truncate min-w-0">
                     {item.identifier && (
-                      <span className="text-10 font-mono text-muted-foreground shrink-0">
+                      <span className="text-10 font-mono text-foreground shrink-0">
                         {item.identifier}
                       </span>
                     )}

@@ -18,8 +18,11 @@ export function useNotes(scopeId?: string, itemId?: string) {
 
   const notesQuery = useQuery({
     queryKey: noteKeys.list(scopeId, itemId),
-    queryFn: () => NoteService.list(scopeId, itemId),
-    enabled: true,
+    queryFn: () => {
+      if (!itemId) return [];
+      return NoteService.list(scopeId, itemId);
+    },
+    enabled: !!itemId,
   });
 
   const createMutation = useMutation({

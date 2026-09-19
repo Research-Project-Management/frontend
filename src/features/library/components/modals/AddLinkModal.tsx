@@ -115,25 +115,25 @@ export default function AddLinkModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-[540px] p-6 bg-background border border-border shadow-raised-200 rounded-lg"
+        className="sm:max-w-[500px] p-6 bg-background border border-border shadow-raised-200 rounded-lg"
       >
-        <DialogHeader>
+        <DialogHeader className="text-left pb-1">
           <DialogTitle className="text-base font-medium text-foreground">
-            Attach Link to URI
+            Add Item by Identifier
           </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={handleSubmit(onValidSubmit)} className="space-y-4 pt-2">
-            {/* Link Field */}
+          <form onSubmit={handleSubmit(onValidSubmit)} className="space-y-4 pt-1">
+            {/* Identifier / Link Field */}
             <div className="space-y-1.5">
               <Label htmlFor="link-url-input" className="text-11 font-medium text-muted-foreground">
-                Link
+                Identifier or URL
               </Label>
               <Input
                 id="link-url-input"
                 {...register('url')}
-                placeholder="https://..."
+                placeholder="Enter DOI, ISBN, arXiv ID, PubMed ID, or URL..."
                 className="h-8 text-12 font-mono text-foreground rounded-md border-border"
                 autoFocus
               />
@@ -142,14 +142,14 @@ export default function AddLinkModal({
               )}
             </div>
 
-            {/* Title Field */}
+            {/* Title Field (Optional) */}
             <div className="space-y-1.5">
               <Label htmlFor="link-title-input" className="text-11 font-medium text-muted-foreground">
-                Title
+                Title (Optional)
               </Label>
               <Input
                 id="link-title-input"
-                placeholder="(Optional)"
+                placeholder="Leave blank to auto-detect title"
                 {...register('title')}
                 className="h-8 text-12 text-foreground rounded-md border-border"
               />
@@ -169,12 +169,12 @@ export default function AddLinkModal({
               <Button
                 type="submit"
                 disabled={isPending}
-                className="h-8 px-3 text-12 font-medium cursor-pointer min-w-[70px] rounded-md shadow-none"
+                className="h-8 px-3 text-12 font-medium cursor-pointer min-w-[90px] rounded-md shadow-none"
               >
                 {isPending ? (
                   <Loader2 className="size-3.5 animate-spin text-primary-foreground shrink-0" />
                 ) : (
-                  'Confirm'
+                  'Add Item'
                 )}
               </Button>
             </DialogFooter>

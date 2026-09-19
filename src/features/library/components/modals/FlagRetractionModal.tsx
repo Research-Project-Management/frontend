@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { FileText, Flag, FlagOff, Link2 } from 'lucide-react';
+import { FileText, Flag, FlagOff, Link2, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui';
 import {
   Dialog,
@@ -60,6 +61,8 @@ export default function FlagRetractionModal({
 
   const { register, handleSubmit, reset, control } = form;
 
+  const [isUnflagging, setIsUnflagging] = useState(false);
+
   useEffect(() => {
     if (open && item) {
       const details = (item.retractionDetails as any) || {};
@@ -83,19 +86,32 @@ export default function FlagRetractionModal({
   const onValidSubmit = async (data: FlagRetractionFormValues) => {
     if (!item.id) return;
 
-    await onFlag(item.id, {
-      nature: data.nature,
-      reason: data.reason.trim() || undefined,
-      noticeUrl: data.noticeUrl.trim() || undefined,
-      date: data.date || undefined,
-    });
-    onOpenChange(false);
+    try {
+      await onFlag(item.id, {
+        nature: data.nature,
+        reason: data.reason.trim() || undefined,
+        noticeUrl: data.noticeUrl.trim() || undefined,
+        date: data.date || undefined,
+      });
+      onOpenChange(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to flag retraction');
+    }
   };
 
   const handleRemoveFlag = async () => {
     if (!item.id) return;
-    await onUnflag(item.id);
-    onOpenChange(false);
+    setIsUnflagging(true);
+    try {
+      await onUnflag(item.id);
+      onOpenChange(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to remove retraction flag');
+    } finally {
+      setIsUnflagging(false);
+    }
   };
 
   return (
@@ -258,11 +274,15 @@ export default function FlagRetractionModal({
                     variant="outline"
                     size="sm"
                     onClick={handleRemoveFlag}
-                    disabled={isPending}
+                    disabled={isPending || isUnflagging}
                     className="h-8 px-3 text-12 font-medium rounded-md border-border bg-background text-foreground hover:bg-muted shadow-2xs cursor-pointer"
                   >
-                    <FlagOff className="size-3.5 text-foreground mr-1.5 shrink-0" strokeWidth={1.5} />
-                    Clear Flag
+                    {isUnflagging ? (
+                      <Loader2 className="size-3.5 animate-spin mr-1.5 shrink-0" />
+                    ) : (
+                      <FlagOff className="size-3.5 text-foreground mr-1.5 shrink-0" strokeWidth={1.5} />
+                    )}
+                    {isUnflagging ? 'Removing...' : 'Clear Flag'}
                   </Button>
                 ) : null}
               </div>

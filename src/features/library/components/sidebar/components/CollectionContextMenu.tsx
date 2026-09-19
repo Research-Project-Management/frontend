@@ -28,6 +28,7 @@ import type { Collection } from '@/features/library/types/library.types';
 interface CollectionContextMenuProps {
   node: TreeNode;
   validMoveTargets: Collection[];
+  canManageCollections?: boolean;
   onCreateSub: (parentId: string, parentName: string) => void;
   onStartRename: (id: string, name: string) => void;
   onMove: (collectionId: string, newParentId: string | null) => void;
@@ -41,6 +42,7 @@ interface CollectionContextMenuProps {
 export function CollectionContextMenu({
   node,
   validMoveTargets,
+  canManageCollections = true,
   onCreateSub,
   onStartRename,
   onMove,
@@ -69,73 +71,77 @@ export function CollectionContextMenu({
         onCloseAutoFocus={(e) => e.preventDefault()}
         className="w-64 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
       >
-        <DropdownMenuItem
-          onClick={() => onCreateSub(node.id, node.name)}
-          className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-        >
-          <FolderPlus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-          <span>New Subcollection</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem
-          onClick={() => onStartRename(node.id, node.name)}
-          className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-        >
-          <Pencil className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-          <span>Rename Collection</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
-            <FolderOutput className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-            <span>Move to</span>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-60 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-xs shadow-raised-200 space-y-0.5 select-none">
+        {canManageCollections && (
+          <>
             <DropdownMenuItem
-              onClick={() => onMove(node.id, null)}
+              onClick={() => onCreateSub(node.id, node.name)}
               className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
-              <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-              <span>My Library</span>
+              <FolderPlus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <span>New Subcollection</span>
             </DropdownMenuItem>
-            {validMoveTargets.map((target) => (
-              <DropdownMenuItem
-                key={target.id}
-                onClick={() => onMove(node.id, target.id)}
-                className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-              >
-                <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                <span className="truncate">{target.name}</span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
 
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
-            <Copy className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-            <span>Copy to</span>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-60 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-xs shadow-raised-200 space-y-0.5 select-none">
             <DropdownMenuItem
-              onClick={() => onCopy(node.id, null)}
+              onClick={() => onStartRename(node.id, node.name)}
               className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
-              <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-              <span>My Library</span>
+              <Pencil className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <span>Rename Collection</span>
             </DropdownMenuItem>
-            {validMoveTargets.map((target) => (
-              <DropdownMenuItem
-                key={target.id}
-                onClick={() => onCopy(node.id, target.id)}
-                className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-              >
-                <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                <span className="truncate">{target.name}</span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
+                <FolderOutput className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                <span>Move to</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-60 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-xs shadow-raised-200 space-y-0.5 select-none">
+                <DropdownMenuItem
+                  onClick={() => onMove(node.id, null)}
+                  className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                >
+                  <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span>My Library</span>
+                </DropdownMenuItem>
+                {validMoveTargets.map((target) => (
+                  <DropdownMenuItem
+                    key={target.id}
+                    onClick={() => onMove(node.id, target.id)}
+                    className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                  >
+                    <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                    <span className="truncate">{target.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
+                <Copy className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                <span>Copy to</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-60 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-xs shadow-raised-200 space-y-0.5 select-none">
+                <DropdownMenuItem
+                  onClick={() => onCopy(node.id, null)}
+                  className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                >
+                  <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span>My Library</span>
+                </DropdownMenuItem>
+                {validMoveTargets.map((target) => (
+                  <DropdownMenuItem
+                    key={target.id}
+                    onClick={() => onCopy(node.id, target.id)}
+                    className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                  >
+                    <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                    <span className="truncate">{target.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </>
+        )}
 
         <DropdownMenuItem
           className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
@@ -153,21 +159,25 @@ export function CollectionContextMenu({
           <span>Export Bundle (.json)</span>
         </DropdownMenuItem>
 
-        <DropdownMenuItem
-          className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-          onClick={() => onDelete(node.id)}
-        >
-          <FolderMinus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-          <span>Delete Collection</span>
-        </DropdownMenuItem>
+        {canManageCollections && (
+          <>
+            <DropdownMenuItem
+              className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              onClick={() => onDelete(node.id)}
+            >
+              <FolderMinus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <span>Delete Collection</span>
+            </DropdownMenuItem>
 
-        <DropdownMenuItem
-          className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-          onClick={() => onDeleteWithItems(node.id)}
-        >
-          <Trash2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-          <span>Delete Collection and Items</span>
-        </DropdownMenuItem>
+            <DropdownMenuItem
+              className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              onClick={() => onDeleteWithItems(node.id)}
+            >
+              <Trash2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <span>Delete Collection and Items</span>
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

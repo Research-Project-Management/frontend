@@ -596,10 +596,10 @@ function TimelineTopControls({
               type="button"
               onClick={() => onZoomChange(option.id)}
               className={cn(
-                'px-2.5 py-1 rounded text-xs transition-colors cursor-pointer select-none',
+                'px-2.5 py-1 rounded-md text-xs transition-colors cursor-pointer select-none',
                 isActive
                   ? 'bg-muted text-foreground font-medium'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-foreground/75 hover:text-foreground'
               )}
             >
               {option.label}
@@ -612,7 +612,7 @@ function TimelineTopControls({
       <button
         type="button"
         onClick={onTodayClick}
-        className="px-2.5 py-1 text-xs font-normal text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors cursor-pointer select-none"
+        className="px-2.5 py-1 text-xs font-normal text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer select-none"
       >
         Today
       </button>
@@ -621,7 +621,7 @@ function TimelineTopControls({
       <button
         type="button"
         onClick={onToggleFullscreen}
-        className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors cursor-pointer select-none"
+        className="p-1 text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer select-none"
         title={isFullscreen ? 'Exit full screen' : 'Full screen'}
         aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}
       >
@@ -667,11 +667,11 @@ function TimelineSidebar({
     >
       {/* 60px Sidebar Header matching 2-tier timeline header */}
       <div
-        className="flex items-end justify-between px-4 pb-2 border-b border-border bg-background text-muted-foreground text-xs font-normal shrink-0"
+        className="flex items-end justify-between px-4 pb-2 border-b border-border bg-background text-foreground text-xs font-normal shrink-0"
         style={{ height: `${HEADER_HEIGHT}px` }}
       >
-        <span className="text-muted-foreground">Work items</span>
-        <span className="text-muted-foreground">Duration</span>
+        <span className="text-foreground">Work items</span>
+        <span className="text-foreground">Duration</span>
       </div>
 
       {/* Scrollable Work Item Rows */}
@@ -705,7 +705,7 @@ function TimelineSidebar({
             >
               {/* Left: Identifier + Title */}
               <div className="flex items-center gap-2 min-w-0 flex-1 pr-3">
-                <span className="text-xs text-muted-foreground font-normal shrink-0 min-w-[48px]">
+                <span className="text-xs text-foreground font-normal shrink-0 min-w-[48px]">
                   {identifier}
                 </span>
                 <span className="truncate text-xs text-foreground font-normal group-hover:text-primary transition-colors">
@@ -716,7 +716,7 @@ function TimelineSidebar({
               {/* Right: Duration (Blank when no dates, clean string when set) */}
               <div className="shrink-0 text-right">
                 {duration.label ? (
-                  <span className="text-xs text-muted-foreground font-normal">
+                  <span className="text-xs text-foreground font-normal">
                     {duration.label}
                   </span>
                 ) : null}
@@ -735,7 +735,7 @@ function TimelineSidebar({
           <button
             type="button"
             onClick={() => onAddCard(defaultColumnId)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer w-full text-left"
+            className="flex items-center gap-1.5 text-xs text-foreground hover:text-foreground font-medium transition-colors cursor-pointer w-full text-left"
           >
             <Plus className="size-3.5 shrink-0" />
             <span>New work item</span>
@@ -1013,7 +1013,7 @@ function DependencyOverlay({ lines, totalWidth, totalHeight }: DependencyOverlay
           refY="3"
           orient="auto"
         >
-          <path d="M0,0 L0,6 L6,3 z" fill="#0070F3" />
+          <path d="M0,0 L0,6 L6,3 z" fill="var(--primary)" />
         </marker>
         <marker
           id="dep-arrow-violated"
@@ -1023,13 +1023,13 @@ function DependencyOverlay({ lines, totalWidth, totalHeight }: DependencyOverlay
           refY="3"
           orient="auto"
         >
-          <path d="M0,0 L0,6 L6,3 z" fill="#EF4444" />
+          <path d="M0,0 L0,6 L6,3 z" fill="var(--destructive)" />
         </marker>
       </defs>
 
       {lines.map((line, idx) => {
         const { fromX, fromY, toX, toY, violated } = line;
-        const stroke = violated ? '#EF4444' : '#0070F3';
+        const stroke = violated ? 'var(--destructive)' : 'var(--primary)';
         const markerId = violated ? 'dep-arrow-violated' : 'dep-arrow-normal';
 
         let d: string;
@@ -1269,7 +1269,7 @@ function TimelineCanvas({
                     {group.label}
                   </span>
                   {group.isCurrent && (
-                    <span className="bg-primary text-primary-foreground text-10 font-medium px-1.5 py-0.5 rounded-full shrink-0">
+                    <span className="bg-primary text-primary-foreground text-10 font-medium px-1.5 py-0.5 rounded-md shrink-0">
                       Current
                     </span>
                   )}
@@ -1295,7 +1295,7 @@ function TimelineCanvas({
                   >
                     {col.isCurrent ? (
                       <div className="flex items-center">
-                        <span className="bg-primary text-primary-foreground font-medium text-xs rounded-sm px-1 min-w-[20px] h-[18px] inline-flex items-center justify-center mr-1">
+                        <span className="bg-primary text-primary-foreground font-medium text-xs rounded-md px-1 min-w-[20px] h-[18px] inline-flex items-center justify-center mr-1">
                           {col.primaryLabel}
                         </span>
                         <span className="text-primary font-medium text-xs">
@@ -1305,7 +1305,7 @@ function TimelineCanvas({
                     ) : (
                       <div className="flex items-center gap-1 text-foreground">
                         <span className="font-normal text-xs">{col.primaryLabel}</span>
-                        <span className="text-muted-foreground text-xs font-normal">
+                        <span className="text-foreground text-xs font-normal">
                           {col.secondaryLabel}
                         </span>
                       </div>
@@ -1330,11 +1330,11 @@ function TimelineCanvas({
                       {col.primaryLabel}
                     </span>
                     {col.isCurrent ? (
-                      <span className="bg-primary text-primary-foreground font-medium text-xs px-1.5 py-0.5 rounded-sm">
+                      <span className="bg-primary text-primary-foreground font-medium text-xs px-1.5 py-0.5 rounded-md">
                         {col.secondaryLabel}
                       </span>
                     ) : (
-                      <span className="text-muted-foreground text-xs font-normal">
+                      <span className="text-foreground text-xs font-normal">
                         {col.secondaryLabel}
                       </span>
                     )}
@@ -1350,7 +1350,7 @@ function TimelineCanvas({
                   className="shrink-0 px-2 flex items-center justify-center border-r border-border text-xs transition-colors"
                 >
                   {col.isCurrent ? (
-                    <span className="bg-[#0070F3] text-white font-medium text-xs px-2 py-0.5 rounded-[4px]">
+                    <span className="bg-primary text-primary-foreground font-medium text-xs px-2 py-0.5 rounded-md">
                       {col.primaryLabel}
                     </span>
                   ) : (
@@ -1382,7 +1382,7 @@ function TimelineCanvas({
             <div
               aria-hidden="true"
               style={{ left: `${currentColLeft}px`, width: `${currentColWidth}px` }}
-              className="absolute top-0 bottom-0 bg-[#0070F3]/10 dark:bg-[#0070F3]/15 pointer-events-none z-0"
+              className="absolute top-0 bottom-0 bg-primary/10 dark:bg-primary/15 pointer-events-none z-0"
             />
           )}
 
@@ -1411,14 +1411,14 @@ function TimelineCanvas({
                   refY="4"
                   orient="auto"
                 >
-                  <path d="M0,1 L8,4 L0,7 z" fill="#0070F3" />
+                  <path d="M0,1 L8,4 L0,7 z" fill="var(--primary)" />
                 </marker>
               </defs>
               <circle
                 cx={activeDrag.startX}
                 cy={activeDrag.startY}
                 r="4"
-                fill="#0070F3"
+                fill="var(--primary)"
               />
               <path
                 d={`M ${activeDrag.startX} ${activeDrag.startY} C ${
@@ -1427,7 +1427,7 @@ function TimelineCanvas({
                   activeDrag.startX + (activeDrag.currentX - activeDrag.startX) / 2
                 } ${activeDrag.currentY}, ${activeDrag.currentX} ${activeDrag.currentY}`}
                 fill="none"
-                stroke="#0070F3"
+                stroke="var(--primary)"
                 strokeWidth="2.5"
                 strokeDasharray="5 3"
                 markerEnd="url(#live-arrow)"
@@ -1436,8 +1436,8 @@ function TimelineCanvas({
                 cx={activeDrag.currentX}
                 cy={activeDrag.currentY}
                 r="5"
-                fill={activeDrag.hoveredItemId ? '#0070F3' : 'none'}
-                stroke="#0070F3"
+                fill={activeDrag.hoveredItemId ? 'var(--primary)' : 'none'}
+                stroke="var(--primary)"
                 strokeWidth="2"
               />
             </svg>

@@ -73,6 +73,10 @@ export function useTags(scopeId?: string) {
       queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: ['items'] });
     },
+    onError: (error) => {
+      toast.error('Failed to assign tag');
+      console.error(error);
+    },
   });
 
   const removeMutation = useMutation({
@@ -81,6 +85,10 @@ export function useTags(scopeId?: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: ['items'] });
+    },
+    onError: (error) => {
+      toast.error('Failed to remove tag');
+      console.error(error);
     },
   });
 

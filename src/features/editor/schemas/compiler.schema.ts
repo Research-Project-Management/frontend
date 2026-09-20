@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 
-export const compilerEngineSchema = z.enum(['pdflatex', 'xelatex', 'lualatex', 'typst']);
+export const compilerEngineSchema = z.enum(['pdflatex', 'xelatex', 'lualatex']);
 
 export const compileLatexSchema = z.object({
   projectId: z.string().optional(),

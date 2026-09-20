@@ -16,11 +16,11 @@ import { Checkbox } from '@/shared/components/ui';
 import { Label } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 import type { Item } from '../../types/library.types';
-import { normalizeAuthors, formatCreatorCompact } from '../../utils/library.util';
+import { normalizeAuthors, formatCreatorCompact } from '../../domain';
 import {
   authorshipSchema,
   type AuthorshipFormValues,
-} from '../../schemas/library.schema';
+} from '../../types';
 
 interface AuthorshipModalProps {
   open: boolean;

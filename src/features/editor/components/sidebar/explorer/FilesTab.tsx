@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { useParams, useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { logger } from "@/shared/lib/utils";
 import { useEditorStorage } from '@/features/editor/hooks/use-storage';
 import {
@@ -40,7 +41,7 @@ import {
   createFolderSchema,
   renameItemSchema,
 } from "@/features/editor/schemas";
-import { usePageStore, useTabsStore, type AssetInfo } from "@/features/editor/store";
+import { usePageStore, useTabsStore, useSettingsStore, type AssetInfo } from "@/features/editor/store";
 import {
   pageQuery,
   filesQuery,
@@ -203,6 +204,8 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     parentPage?.mainFile && typeof parentPage.mainFile === "object"
       ? parentPage.mainFile.id
       : ((parentPage?.mainFile as string | null | undefined) ?? null);
+
+  const setMainFile = useSettingsStore((s) => s.setMainFile);
 
 
 
@@ -470,6 +473,12 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
   const handleSetMain = (fileId: string) => {
     if (!parentPageId) return;
+    const targetFile = files?.find((f: any) => f.id === fileId);
+    if (targetFile) {
+      const fileName = targetFile.title.endsWith('.tex') ? targetFile.title : `${targetFile.title}.tex`;
+      setMainFile(fileName);
+      toast.success(`Set ${fileName} as main document`);
+    }
     setMainFileMutation.mutate({ pageId: parentPageId, fileId });
   };
 

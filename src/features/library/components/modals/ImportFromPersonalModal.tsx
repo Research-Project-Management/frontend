@@ -22,10 +22,8 @@ import { Input } from '@/shared/components/ui';
 import { Button } from '@/shared/components/ui';
 import { Checkbox } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
-import { useViewItems } from '../../hooks/use-items';
-import { useCollections } from '../../hooks/use-collections';
-import { ItemService } from '../../services/items.service';
-import { formatCreatorCompact, normalizeAuthors } from '../../utils/library.util';
+import { useViewItems, useCollections, ItemService } from '../../data';
+import { formatCreatorCompact, normalizeAuthors } from '../../domain';
 import type { Item, Collection } from '../../types/library.types';
 
 interface ImportFromPersonalModalProps {

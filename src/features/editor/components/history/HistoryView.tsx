@@ -24,17 +24,25 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  Input,
+  Button,
 } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 import { usePageStore, useSettingsStore } from '@/features/editor/store';
 import { filesQuery } from '@/features/editor/hooks/use-core';
 import {
-  versionsQuery,
   useProjectHistory,
   useVersionActions,
   useHistoryActions,
 } from '@/features/editor/hooks/use-history';
-import { versionService } from '@/features/editor/services/history.service';
+import { versionService, type VersionDiffResponse } from '@/features/editor/services/history.service';
 import type { PageVersion, PageEvent } from '@/features/editor/types';
 import { toast } from 'sonner';
 
@@ -96,7 +104,7 @@ export default function HistoryView() {
   });
 
   const { restoreToEvent } = useHistoryActions();
-  const { restoreVersion } = useVersionActions();
+  const { restoreVersion, updateLabel } = useVersionActions();
 
   // Selected revision state
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -106,9 +114,17 @@ export default function HistoryView() {
   // Content of the active file at the selected revision
   const [previewContent, setPreviewContent] = useState<string>('');
   const [isLoadingContent, setIsLoadingContent] = useState(false);
-  const [diffMode, setDiffMode] = useState(false);
+  const [diffMode, setDiffMode] = useState(true);
   const [compareTargetId, setCompareTargetId] = useState<string>('current');
-  const [comparisonContent, setComparisonContent] = useState<string>('');
+
+  // Server-computed visual diff data
+  const [diffData, setDiffData] = useState<VersionDiffResponse | null>(null);
+  const [isDiffLoading, setIsDiffLoading] = useState(false);
+
+  // Label modal state
+  const [labelModalOpen, setLabelModalOpen] = useState(false);
+  const [labelingItem, setLabelingItem] = useState<{ id: string; label?: string } | null>(null);
+  const [labelText, setLabelText] = useState('');
 
   const currentFileContent = useMemo(() => {
     const f = pageFiles.find((p: any) => p.id === activeFileId);
@@ -132,7 +148,9 @@ export default function HistoryView() {
         label: ev.label,
         fileName: ev.fileName || activeFilePage?.title || 'main.tex',
         date: ev.createdAt,
-        author: ev.savedBy?.name || 'You',
+        author: ev.savedBy?.name || 'Collaborator',
+        authorAvatar: ev.savedBy?.avatar,
+        eventType: ev.eventType,
         pageId: ev.page,
       }));
     }
@@ -180,10 +198,9 @@ export default function HistoryView() {
       if (!activeFileId) return;
       setIsLoadingContent(true);
       try {
-        // 1. Try to load content from specific version
         const versions = await versionService.getByPageId(activeFileId);
         if (versions && versions.length > 0) {
-          const match = versions.find((v) => v.id === selectedVersionId) || versions[0];
+          const match = versions.find((v) => v.id === selectedVersionId || v.id === selectedEventId) || versions[0];
           const fullVersion = await versionService.getById(activeFileId, match.id);
           if (!isCancelled && fullVersion?.content !== undefined) {
             setPreviewContent(fullVersion.content);
@@ -192,13 +209,12 @@ export default function HistoryView() {
           }
         }
 
-        // 2. Fallback to current file content
         const activeFile = pageFiles.find((f: any) => f.id === activeFileId);
         if (!isCancelled) {
           setPreviewContent(activeFile?.content || editorRef.current?.getValue() || '');
           setIsLoadingContent(false);
         }
-      } catch (err) {
+      } catch {
         if (!isCancelled) {
           const activeFile = pageFiles.find((f: any) => f.id === activeFileId);
           setPreviewContent(activeFile?.content || '');
@@ -213,41 +229,48 @@ export default function HistoryView() {
     };
   }, [activeFileId, selectedVersionId, selectedEventId, pageFiles, editorRef]);
 
-  // Fetch content for comparison target version
+  // Fetch server-computed diff when diffMode is active
   useEffect(() => {
-    if (!diffMode) return;
-    if (compareTargetId === 'current') {
-      setComparisonContent(currentFileContent);
+    if (!diffMode || !activeFileId || !selectedEventId) {
+      setDiffData(null);
       return;
     }
 
     let isCancelled = false;
-    async function loadTargetContent() {
-      if (!activeFileId) return;
+    setIsDiffLoading(true);
+
+    async function fetchDiff() {
       try {
-        const versions = await versionService.getByPageId(activeFileId);
-        if (versions && versions.length > 0) {
-          const match = versions.find((v) => v.id === compareTargetId) || versions[0];
-          const fullVersion = await versionService.getById(activeFileId, match.id);
-          if (!isCancelled && fullVersion?.content !== undefined) {
-            setComparisonContent(fullVersion.content);
-            return;
-          }
-        }
+        const res = await versionService.compareVersions(
+          activeFileId!,
+          compareTargetId,
+          selectedEventId!,
+        );
         if (!isCancelled) {
-          setComparisonContent(currentFileContent);
+          setDiffData(res);
+          setIsDiffLoading(false);
         }
       } catch {
         if (!isCancelled) {
-          setComparisonContent(currentFileContent);
+          // Fallback to client strings if diff endpoint fails
+          setDiffData({
+            fromVersionId: compareTargetId,
+            toVersionId: selectedEventId!,
+            fromContent: currentFileContent,
+            toContent: previewContent,
+            chunks: [],
+            stats: { addedLines: 0, deletedLines: 0, unchangedLines: 0 },
+          });
+          setIsDiffLoading(false);
         }
       }
     }
-    loadTargetContent();
+
+    fetchDiff();
     return () => {
       isCancelled = true;
     };
-  }, [diffMode, compareTargetId, activeFileId, currentFileContent]);
+  }, [diffMode, activeFileId, selectedEventId, compareTargetId, currentFileContent, previewContent]);
 
   // Handle Restore
   const handleRestore = async () => {
@@ -263,6 +286,23 @@ export default function HistoryView() {
       setIsHistoryOpen(false);
     } catch (err: any) {
       toast.error(err.message || 'Failed to restore revision');
+    }
+  };
+
+  // Handle Save Label
+  const handleSaveLabel = async () => {
+    if (!labelingItem) return;
+    try {
+      await updateLabel.mutateAsync({
+        pageId: activeFileId || rootPageId,
+        versionId: labelingItem.id,
+        label: labelText.trim(),
+        rootPageId,
+      });
+      setLabelModalOpen(false);
+      toast.success(labelText.trim() ? 'Version labeled successfully' : 'Label removed');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update label');
     }
   };
 
@@ -285,15 +325,16 @@ export default function HistoryView() {
         </div>
 
         {/* Center: Project Title */}
-        <div className="flex items-center gap-1 text-xs font-semibold text-zinc-200 hover:text-white cursor-pointer">
-          <span>{currentPage?.title || 'Project'}</span>
-          <ChevronDown className="size-3 opacity-60 ml-0.5" />
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-200 hover:text-white cursor-pointer">
+          <GitBranch className="size-3.5 text-emerald-400" />
+          <span>{currentPage?.title || 'Project History'}</span>
+          <span className="text-[11px] font-normal text-zinc-400">/ Version History</span>
         </div>
 
         {/* Right: Close & Status */}
         <div className="flex items-center gap-2">
           <span className="text-xs text-zinc-400 font-mono hidden sm:inline">
-            History View Mode
+            Overleaf History Mode
           </span>
         </div>
       </header>
@@ -302,6 +343,9 @@ export default function HistoryView() {
       <div className="flex-1 flex overflow-hidden">
         {/* ── Left Pane: Modified Files in this Revision (Width ~220px) ───── */}
         <div className="w-56 shrink-0 border-r border-border bg-background flex flex-col overflow-hidden">
+          <div className="px-3 py-2 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wider select-none">
+            Project Files
+          </div>
           <div className="flex-1 overflow-y-auto py-2 px-1.5 space-y-1">
             {pageFiles.length === 0 ? (
               <div
@@ -312,7 +356,7 @@ export default function HistoryView() {
               >
                 <div className="flex items-center gap-2 truncate">
                   <FileText className="size-3.5 shrink-0" />
-                  <span className="truncate">{activeRevision?.fileName || 'name.tex'}</span>
+                  <span className="truncate">{activeRevision?.fileName || 'main.tex'}</span>
                 </div>
                 <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-white/20 text-white leading-none">
                   Edited
@@ -356,35 +400,37 @@ export default function HistoryView() {
         {/* ── Center Pane: Diff & Document Viewer (Flex-1) ───────────────── */}
         <div className="flex-1 flex flex-col min-w-0 bg-background overflow-hidden">
           {/* Subheader Banner matching Overleaf */}
-          <div className="h-9 px-4 border-b border-border bg-secondary/30 flex items-center justify-between text-xs shrink-0 select-none">
+          <div className="h-10 px-4 border-b border-border bg-secondary/30 flex items-center justify-between text-xs shrink-0 select-none">
             <div className="flex items-center gap-3">
               <span className="font-semibold text-foreground/90">
                 Viewing {formattedDate.full}
               </span>
+
+              {/* View mode toggle: Snapshot vs Compare Diff */}
               <div className="flex items-center rounded-md bg-muted p-0.5 border border-border text-11">
-                <button
-                  type="button"
-                  onClick={() => setDiffMode(false)}
-                  className={cn(
-                    "px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer",
-                    !diffMode
-                      ? "bg-background text-foreground shadow-2xs font-semibold"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  Snapshot
-                </button>
                 <button
                   type="button"
                   onClick={() => setDiffMode(true)}
                   className={cn(
-                    "px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer",
+                    'px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer',
                     diffMode
-                      ? "bg-background text-foreground shadow-2xs font-semibold"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? 'bg-background text-foreground shadow-2xs font-semibold'
+                      : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
                   Compare Diff
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDiffMode(false)}
+                  className={cn(
+                    'px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer',
+                    !diffMode
+                      ? 'bg-background text-foreground shadow-2xs font-semibold'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  Snapshot
                 </button>
               </div>
 
@@ -410,10 +456,36 @@ export default function HistoryView() {
                   </select>
                 </div>
               )}
+
+              {/* Diff Stats Badge */}
+              {diffMode && diffData?.stats && (
+                <div className="flex items-center gap-1.5 text-[11px] font-mono">
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
+                    +{diffData.stats.addedLines}
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 font-semibold border border-rose-500/20">
+                    -{diffData.stats.deletedLines}
+                  </span>
+                </div>
+              )}
             </div>
-            <span className="text-muted-foreground font-mono text-11">
-              {activeRevision?.fileName || 'name.tex'}
-            </span>
+
+            {/* Right actions on Subheader: Restore Button & File Name */}
+            <div className="flex items-center gap-3">
+              <span className="text-muted-foreground font-mono text-11 hidden md:inline">
+                {activeRevision?.fileName || 'main.tex'}
+              </span>
+
+              {/* Prominent Restore Button (Overleaf Standard) */}
+              <button
+                type="button"
+                onClick={handleRestore}
+                className="flex items-center gap-1.5 h-6 px-2.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[11px] transition-colors cursor-pointer shadow-2xs"
+              >
+                <RotateCcw className="size-3 shrink-0" />
+                <span>Restore this version</span>
+              </button>
+            </div>
           </div>
 
           {/* Monaco Code / Snapshot or Diff Viewer */}
@@ -422,8 +494,8 @@ export default function HistoryView() {
               <DiffEditor
                 height="100%"
                 language="latex"
-                original={comparisonContent || currentFileContent}
-                modified={previewContent}
+                original={diffData?.fromContent || currentFileContent}
+                modified={diffData?.toContent || previewContent}
                 theme={editorTheme === 'dark' ? 'vs-dark' : 'light'}
                 options={{
                   readOnly: true,
@@ -549,21 +621,47 @@ export default function HistoryView() {
                                 <MoreVertical className="size-3.5" />
                               </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44 z-[9999]">
+                            <DropdownMenuContent align="end" className="w-48 z-[9999]">
                               <DropdownMenuItem
-                                onClick={() => handleRestore()}
+                                onClick={() => {
+                                  setLabelingItem(item);
+                                  setLabelText(item.label || '');
+                                  setLabelModalOpen(true);
+                                }}
                                 className="cursor-pointer"
                               >
-                                <RotateCcw className="size-3.5 mr-2 text-emerald-600" />
+                                <Tag className="size-3.5 mr-2 text-indigo-500" />
+                                <span className="text-xs">
+                                  {item.label ? 'Edit label' : 'Label this version'}
+                                </span>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleRestore()}
+                                className="cursor-pointer text-emerald-600 focus:text-emerald-600"
+                              >
+                                <RotateCcw className="size-3.5 mr-2" />
                                 <span className="text-xs">Restore this version</span>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
 
+                        {/* Label Badge if present */}
+                        {item.label && (
+                          <div className="mt-1.5 flex items-center gap-1 px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[11px] font-medium w-fit">
+                            <Tag className="size-3 shrink-0" />
+                            <span className="truncate max-w-[200px]">{item.label}</span>
+                          </div>
+                        )}
+
                         {/* Status & Filename */}
-                        <div className="text-xs text-white/90 mt-1 font-medium">
-                          Edited
+                        <div className="text-xs text-white/90 mt-1.5 font-medium">
+                          {item.eventType === 'collaborative_checkpoint'
+                            ? 'Auto Checkpoint'
+                            : item.eventType === 'restore'
+                              ? 'Restored Version'
+                              : 'Edited'}
                         </div>
                         <div className="text-11 text-white/70 font-mono truncate mt-0.5">
                           {item.fileName}
@@ -585,28 +683,90 @@ export default function HistoryView() {
           {/* Bottom Info Box: Overleaf 1:1 Parity Feature Promotion */}
           <div className="p-3 border-t border-border/40 bg-black/20 text-xs">
             <h4 className="font-semibold text-white text-xs mb-1">
-              Get full project history
+              Overleaf-Grade History
             </h4>
             <p className="text-11 text-zinc-400 mb-2 leading-relaxed">
-              You&apos;re currently seeing the full revision history and checkpoints for this project.
+              Full version checkpoints and CRDT delta history with one-click snapshot rollback.
             </p>
             <div className="space-y-1 text-11 text-zinc-300">
               <div className="flex items-center gap-1.5">
                 <Check className="size-3 text-emerald-400 shrink-0" />
-                <span>Full document version checkpoints</span>
+                <span>Realtime Collaborative Restore</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Check className="size-3 text-emerald-400 shrink-0" />
-                <span>One-click snapshot rollback</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Check className="size-3 text-emerald-400 shrink-0" />
-                <span>Collaborator presence & tracking</span>
+                <span>Monaco Side-by-Side Diff</span>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* ── 3. Label / Milestone Dialog Modal ─────────────────────────────────── */}
+      <Dialog open={labelModalOpen} onOpenChange={setLabelModalOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Tag className="size-4 text-indigo-500" />
+              <span>Label this version</span>
+            </DialogTitle>
+            <DialogDescription>
+              Assign a milestone label to easily find and track this revision (e.g. &ldquo;Camera-Ready Submission&rdquo; or &ldquo;Pre-review Draft&rdquo;).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2 space-y-2">
+            <Input
+              value={labelText}
+              onChange={(e) => setLabelText(e.target.value)}
+              placeholder="e.g. Conference Submission v1"
+              className="text-xs"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSaveLabel();
+                }
+              }}
+            />
+          </div>
+
+          <DialogFooter className="flex items-center justify-between sm:justify-between">
+            {labelingItem?.label ? (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  setLabelText('');
+                  handleSaveLabel();
+                }}
+              >
+                Remove label
+              </Button>
+            ) : <div />}
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setLabelModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveLabel}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white"
+              >
+                Save label
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

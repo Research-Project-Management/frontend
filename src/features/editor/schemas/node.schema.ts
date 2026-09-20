@@ -2,7 +2,7 @@
  * node.schema.ts
  *
  * Zod validation schemas for Document Structural Nodes and tree operations.
- * Matches backend document/node module DTOs.
+ * Matches backend document/tree module DTOs.
  */
 
 import { z } from 'zod';

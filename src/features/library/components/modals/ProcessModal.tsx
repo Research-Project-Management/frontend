@@ -14,7 +14,7 @@ import {
   AlertCircle,
   RefreshCw,
 } from 'lucide-react';
-import type { ProcessModalState } from '../../hooks/use-ingest-progress';
+import type { ProcessModalState } from '../../data';
 import { cn } from "@/shared/lib/utils";
 
 interface ProcessModalProps {

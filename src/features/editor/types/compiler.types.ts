@@ -1,11 +1,11 @@
 /**
  * compiler.types.ts
  *
- * Types for LaTeX/Typst compilation, diagnostics, and word count.
+ * Types for LaTeX compilation, diagnostics, and word count.
  * Matches backend document/compiler module.
  */
 
-export type CompilerEngine = 'pdflatex' | 'xelatex' | 'lualatex' | 'typst';
+export type CompilerEngine = 'pdflatex' | 'xelatex' | 'lualatex';
 export type LaTeXEngine = CompilerEngine;
 
 export type CompileMode = 'full' | 'draft';
@@ -23,6 +23,10 @@ export interface CompileError {
   message: string;
   /** Raw surrounding lines from the log for context */
   context: string;
+  file?: string;
+  severity?: 'error' | 'warning' | 'info';
+  code?: string;
+  suggestion?: string;
 }
 
 export interface CompileResult {

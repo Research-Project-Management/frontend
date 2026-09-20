@@ -2,7 +2,7 @@
  * core.schema.ts
  *
  * Zod validation schemas and inferred types for Core Document & File operations.
- * Matches backend document/core module DTOs.
+ * Matches backend document/page module DTOs.
  */
 
 import { z } from 'zod';

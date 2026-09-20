@@ -44,6 +44,8 @@ import {
 import type { PageComment, CommentReply, PageSuggestion } from "@/features/editor/types";
 import { usePageStore, useActionsStore } from "@/features/editor/store";
 import { useAuth } from '@/features/auth/hooks/use-auth';
+import { useQueryClient } from '@tanstack/react-query';
+import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { cn } from "@/shared/lib/utils";
 import { Form } from "@/shared/components/ui";
 
@@ -99,11 +101,13 @@ const CommentCard = React.memo(function CommentCard({
   pageId,
   currentUserId,
   onNavigate,
+  isHighlighted = false,
 }: {
   comment: PageComment;
   pageId: string;
   currentUserId: string | undefined;
   onNavigate?: (line: number) => void;
+  isHighlighted?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -149,7 +153,11 @@ const CommentCard = React.memo(function CommentCard({
 
   return (
     <li
-      className={cn("border-b border-border last:border-b-0 transition-colors")}
+      id={`comment-${comment.id}`}
+      className={cn(
+        "border-b border-border last:border-b-0 transition-all duration-300",
+        isHighlighted && "bg-primary/5 ring-2 ring-primary/40 rounded-sm shadow-xs",
+      )}
     >
       {/* Main comment body */}
       <div className={cn("px-3 py-2.5", isResolved && "opacity-70")}>
@@ -348,6 +356,7 @@ const SuggestionCard = React.memo(function SuggestionCard({
   onReject,
   isAccepting,
   isRejecting,
+  isHighlighted = false,
 }: {
   suggestion: PageSuggestion;
   pageId: string;
@@ -356,6 +365,7 @@ const SuggestionCard = React.memo(function SuggestionCard({
   onReject: (id: string) => void;
   isAccepting?: boolean;
   isRejecting?: boolean;
+  isHighlighted?: boolean;
 }) {
   const isPending = suggestion.status === 'pending';
   const typeColor =
@@ -367,8 +377,10 @@ const SuggestionCard = React.memo(function SuggestionCard({
 
   return (
     <div
+      id={`suggestion-${suggestion.id}`}
       className={cn(
-        'mx-3 my-2 rounded-lg border bg-background p-3 space-y-2.5 transition-colors text-xs',
+        'mx-3 my-2 rounded-lg border bg-background p-3 space-y-2.5 transition-all duration-300 text-xs',
+        isHighlighted && 'ring-2 ring-amber-500/50 bg-amber-500/5 shadow-xs',
         isPending ? 'border-border shadow-xs' : 'border-border/40 opacity-70',
       )}
     >
@@ -468,10 +480,55 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
   const scrollToLineRef = usePageStore((s) => s.scrollToLineRef);
   const scrollToPdfLineRef = usePageStore((s) => s.scrollToPdfLineRef);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const [subTab, setSubTab] = useState<'comments' | 'changes'>('comments');
   const [filter, setFilter] = useState<Filter>('open');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  // Real-time invalidation from Socket.IO room events
+  useEffect(() => {
+    if (!pageId) return;
+    const unsub = EditorEventBus.on('flux:review-event', ({ pageId: evtPageId, event }) => {
+      if (evtPageId !== pageId) return;
+
+      if (event.startsWith('comment:') || event.startsWith('comments:')) {
+        queryClient.invalidateQueries({ queryKey: ['page-comments', pageId] });
+      }
+      if (event.startsWith('suggestion:') || event.startsWith('suggestions:')) {
+        queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
+        queryClient.invalidateQueries({ queryKey: ['pages', 'detail', pageId] });
+      }
+    });
+
+    return () => unsub();
+  }, [pageId, queryClient]);
+
+  // Deep-link from Monaco decorations / glyphs
+  useEffect(() => {
+    const unsub = EditorEventBus.on('flux:open-panel', (detail) => {
+      if (typeof detail === 'object' && detail !== null) {
+        if (detail.commentId) {
+          setSubTab('comments');
+          setHighlightId(detail.commentId);
+          setTimeout(() => {
+            const el = document.getElementById(`comment-${detail.commentId}`);
+            el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 150);
+        } else if (detail.suggestionId) {
+          setSubTab('changes');
+          setHighlightId(detail.suggestionId);
+          setTimeout(() => {
+            const el = document.getElementById(`suggestion-${detail.suggestionId}`);
+            el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 150);
+        }
+      }
+    });
+
+    return () => unsub();
+  }, []);
 
   const form = useForm<CreateCommentInput>({
     resolver: zodResolver(createCommentSchema),
@@ -707,6 +764,7 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
                     pageId={pageId!}
                     currentUserId={user?.id}
                     onNavigate={comment.line != null ? handleNavigateToLine : undefined}
+                    isHighlighted={highlightId === comment.id}
                   />
                 ))}
               </ul>
@@ -776,6 +834,7 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
                     }
                     isAccepting={acceptMutation.isPending}
                     isRejecting={rejectMutation.isPending}
+                    isHighlighted={highlightId === s.id}
                   />
                 ))}
               </div>

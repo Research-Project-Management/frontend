@@ -74,6 +74,32 @@ export function useVersionActions() {
     },
   });
 
+  const updateLabel = useMutation({
+    mutationFn: (payload: {
+      pageId: string;
+      versionId: string;
+      label: string;
+      title?: string;
+      rootPageId?: string;
+    }) =>
+      versionService.updateLabel(
+        payload.pageId,
+        payload.versionId,
+        payload.label,
+        payload.title,
+      ),
+    onSuccess: (_, { pageId, rootPageId }) => {
+      queryClient.invalidateQueries({ queryKey: versionKeys.byPage(pageId) });
+      if (rootPageId) {
+        queryClient.invalidateQueries({ queryKey: historyKeys.byProject(rootPageId) });
+      }
+      toast.success('Đã cập nhật nhãn phiên bản');
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Lỗi khi cập nhật nhãn phiên bản');
+    },
+  });
+
   const deleteVersion = useMutation({
     mutationFn: (payload: { pageId: string; versionId: string }) =>
       versionService.delete(payload.pageId, payload.versionId),
@@ -89,6 +115,7 @@ export function useVersionActions() {
   return {
     saveVersion,
     restoreVersion,
+    updateLabel,
     deleteVersion,
   };
 }

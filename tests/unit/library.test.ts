@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   sanitizeItemPayload,
   ItemService,
-} from '@/features/library/services/items.service';
-import { QualityService } from '@/features/library/services/curation.service';
+  QualityService,
+} from '@/features/library/data';
 import * as api from '@/shared/lib/api';
 
 vi.mock('@/shared/lib/api', () => ({

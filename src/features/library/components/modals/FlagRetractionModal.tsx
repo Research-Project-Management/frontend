@@ -29,7 +29,7 @@ import type { Item, FlagRetractionInput, RetractionNature } from '../../types/li
 import {
   flagRetractionSchema,
   type FlagRetractionFormValues,
-} from '../../schemas/library.schema';
+} from '../../types';
 
 interface FlagRetractionModalProps {
   open: boolean;

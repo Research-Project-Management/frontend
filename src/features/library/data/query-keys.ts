@@ -1,6 +1,6 @@
 /**
  * Centralized TanStack Query Keys for features/library
- * Following Supabase Studio pattern for strict key isolation.
+ * Following Supabase Studio pattern for strict key isolation and single source of truth.
  */
 export const libraryKeys = {
   all: ['library'] as const,
@@ -12,10 +12,14 @@ export const libraryKeys = {
     [...libraryKeys.all, 'item', scopeId || 'user', itemId || 'none'] as const,
   itemState: (scopeId?: string, itemId?: string) =>
     [...libraryKeys.all, 'item-state', scopeId || 'user', itemId || 'none'] as const,
+  itemTypes: (scopeId?: string) =>
+    [...libraryKeys.all, 'item-types', scopeId || 'user'] as const,
 
-  // Collections (Folder Tree)
+  // Collections (Folder Tree & Flat List)
   collections: (scopeId?: string) =>
     [...libraryKeys.all, 'collections', scopeId || 'user'] as const,
+  collectionsList: (scopeId?: string) =>
+    [...libraryKeys.all, 'collections-list', scopeId || 'user'] as const,
   collection: (scopeId?: string, collectionId?: string) =>
     [...libraryKeys.all, 'collection', scopeId || 'user', collectionId || 'none'] as const,
 
@@ -31,15 +35,37 @@ export const libraryKeys = {
   notes: (scopeId?: string, itemId?: string) =>
     [...libraryKeys.all, 'notes', scopeId || 'user', itemId || 'none'] as const,
 
+  // Relations
+  relations: (scopeId?: string, itemId?: string) =>
+    [...libraryKeys.all, 'relations', scopeId || 'user', itemId || 'none'] as const,
+
   // Saved Searches
   savedSearches: (scopeId?: string) =>
     [...libraryKeys.all, 'saved-searches', scopeId || 'user'] as const,
 
-  // Duplicates
+  // Curation: Duplicates & Retractions
   duplicates: (scopeId?: string) =>
     [...libraryKeys.all, 'duplicates', scopeId || 'user'] as const,
+  retractions: (scopeId?: string) =>
+    [...libraryKeys.all, 'retractions', scopeId || 'user'] as const,
 
   // Citations
   citation: (scopeId?: string, itemId?: string, style?: string, index?: number) =>
     [...libraryKeys.all, 'citation', scopeId || 'user', itemId || 'none', style || 'apa', index || 1] as const,
+};
+
+/**
+ * Backward-compatible itemKeys alias mapped directly to libraryKeys
+ * Prevents cache divergence across legacy hooks and modern workspace queries.
+ */
+export const itemKeys = {
+  all: (scopeId?: string) => ['library', 'items', scopeId || 'user'] as const,
+  byId: (scopeId?: string, itemId?: string) => libraryKeys.item(scopeId, itemId),
+  byCollection: (scopeId?: string, collectionId?: string) =>
+    libraryKeys.items(scopeId, { collectionId }),
+  byView: (scopeId?: string, view?: string, search?: string) =>
+    libraryKeys.items(scopeId, { view: view || 'all', search: search || '' }),
+  trash: (scopeId?: string) => libraryKeys.items(scopeId, { view: 'trash' }),
+  state: (scopeId?: string, itemId?: string) => libraryKeys.itemState(scopeId, itemId),
+  types: (scopeId?: string) => libraryKeys.itemTypes(scopeId),
 };

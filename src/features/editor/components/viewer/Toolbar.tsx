@@ -26,7 +26,7 @@ import {
 } from "@/shared/components/ui";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import type { CompileStatus, LaTeXEngine } from '@/features/editor/store';
+import { useCompileStore, type CompileStatus, type LaTeXEngine } from '@/features/editor/store';
 import type { PdfOutlineItem } from '@/features/editor/utils/pdf-outline.util';
 
 // ── Compile Button with Engine / Mode Dropdown ──────────────────────────────
@@ -299,7 +299,10 @@ const Toolbar = React.memo(function Toolbar({
     }
   };
 
-  const hasErrors = compileStatus === 'error' || (compileLog && compileLog.includes('! '));
+  const compileErrors = useCompileStore((s) => s.compileErrors);
+  const errorCount = compileErrors.filter((e) => e.severity !== 'warning').length;
+  const warningCount = compileErrors.filter((e) => e.severity === 'warning').length;
+  const hasErrors = compileStatus === 'error' || errorCount > 0 || (compileLog && compileLog.includes('! '));
 
   return (
     <div className="h-9 border-b border-border bg-background flex items-center justify-between px-2.5 shrink-0 z-10 gap-2 select-none text-foreground">
@@ -320,7 +323,7 @@ const Toolbar = React.memo(function Toolbar({
         {/* Utility Group: Logs, Download, Popout */}
         {showUtilityGroup && (
           <>
-            {/* Logs Button (📄) */}
+            {/* Logs Button (📄) with Overleaf-parity error badge */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -328,19 +331,29 @@ const Toolbar = React.memo(function Toolbar({
                   onClick={onToggleLog}
                   aria-label="Logs and output files"
                   className={cn(
-                    'flex size-7 items-center justify-center rounded transition-colors cursor-pointer relative',
+                    'flex h-7 px-2 items-center gap-1.5 rounded transition-colors cursor-pointer relative text-xs',
                     showLog
                       ? 'bg-muted text-foreground'
                       : 'text-foreground/80 hover:text-foreground hover:bg-muted',
                   )}
                 >
                   <FileText className="size-3.5 shrink-0" />
-                  {hasErrors && (
-                    <span className="absolute top-1 right-1 size-1.5 rounded-full bg-rose-500 ring-2 ring-background" />
-                  )}
+                  {errorCount > 0 ? (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white leading-none">
+                      {errorCount}
+                    </span>
+                  ) : warningCount > 0 ? (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white leading-none">
+                      {warningCount}
+                    </span>
+                  ) : hasErrors ? (
+                    <span className="size-1.5 rounded-full bg-rose-500 ring-2 ring-background" />
+                  ) : null}
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Logs and output files</TooltipContent>
+              <TooltipContent side="bottom">
+                Logs and output files {errorCount > 0 ? `(${errorCount} error${errorCount > 1 ? 's' : ''})` : warningCount > 0 ? `(${warningCount} warning${warningCount > 1 ? 's' : ''})` : ''}
+              </TooltipContent>
             </Tooltip>
 
             {/* Download PDF Button (⬇) */}

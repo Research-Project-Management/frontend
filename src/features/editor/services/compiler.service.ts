@@ -47,6 +47,7 @@ export type CompileLatexPayload = {
   use_cache: boolean;
   source?: string;
   files?: Record<string, string>;
+  signal?: AbortSignal;
 };
 
 export interface CompileLatexResponse {
@@ -60,8 +61,11 @@ export interface CompileLatexResponse {
 
 export const compileLatex = async (
   payload: CompileLatexPayload,
+  signal?: AbortSignal,
 ): Promise<CompileLatexResponse> => {
-  return await apiPost<CompileLatexResponse>('/api/latex/compile', payload);
+  const effectiveSignal = signal || payload.signal;
+  const { signal: _unused, ...body } = payload;
+  return await apiPost<CompileLatexResponse>('/api/latex/compile', body, { signal: effectiveSignal });
 };
 
 export interface WordCountResponse {

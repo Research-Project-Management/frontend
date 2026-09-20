@@ -28,13 +28,13 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import type { Item } from '../../types/items.types';
-import { ItemService } from '../../services/items.service';
+import { ItemService } from '../../data';
 import {
   inspectItemDifferences,
   aggregateItemAssets,
   type ItemFieldDiff,
   type FieldOptionValue,
-} from '../../utils/merge-diff.util';
+} from '../../domain';
 
 export interface MergeModalProps {
   open: boolean;

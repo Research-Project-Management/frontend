@@ -6,7 +6,6 @@
  */
 import { z } from 'zod';
 import { Item } from './items.types';
-import { asyncIngestionJobSchema } from '../schemas/library.schema';
 
 // ── Matt Pocock Branded Types ────────────────────────────────────────────────
 declare const __brand: unique symbol;
@@ -29,7 +28,6 @@ export * from './items.types';
 export * from './collections.types';
 export * from './tags.types';
 export * from './attachments.types';
-export * from './annotations.types';
 export * from './notes.types';
 export * from './state.types';
 export * from './citation.types';
@@ -38,13 +36,42 @@ export * from './search.types';
 export * from './saved-searches.types';
 export * from './retraction.types';
 export * from './ingestion.types';
-export * from './sync.types';
 export * from './exports.types';
 export * from './item-types.types';
-
 export * from './relations.types';
+export * from './forms.types';
 
-// ── Ingestion Job Type ───────────────────────────────────────────────────────
+// ── Ingestion Job Schema & Type ──────────────────────────────────────────────
+export const asyncIngestionJobSchema = z.object({
+  jobId: z.string(),
+  status: z.enum(['queued', 'processing', 'completed', 'failed']),
+  total: z.number().default(0),
+  processed: z.number().default(0),
+  successCount: z.number().default(0),
+  failedCount: z.number().default(0),
+  progressPercentage: z.number().default(0),
+  successful: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      citationKey: z.string().optional(),
+      sourceType: z.string().optional(),
+      doi: z.string().optional(),
+      year: z.number().nullable().optional(),
+      authors: z.array(z.string()).default([]),
+      ragStatus: z.string().optional(),
+    }),
+  ).default([]),
+  failed: z.array(
+    z.object({
+      item: z.record(z.string(), z.unknown()),
+      error: z.string(),
+    }),
+  ).default([]),
+  createdAt: z.string().optional(),
+  completedAt: z.string().optional(),
+});
+
 export type AsyncIngestionJob = z.infer<typeof asyncIngestionJobSchema>;
 
 // ── Utility Generic Result ──────────────────────────────────────────────────

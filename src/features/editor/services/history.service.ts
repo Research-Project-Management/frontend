@@ -7,8 +7,27 @@
  *  - Diff & Restore
  */
 
-import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
 import type { PageVersion, PageVersionWithContent, ProjectEvent } from '../types';
+
+export interface VersionDiffResponse {
+  fromVersionId: string;
+  toVersionId: string;
+  fromLabel?: string;
+  toLabel?: string;
+  fromContent: string;
+  toContent: string;
+  chunks: Array<{
+    type: 'added' | 'deleted' | 'unchanged';
+    value: string;
+    linesCount: number;
+  }>;
+  stats: {
+    addedLines: number;
+    deletedLines: number;
+    unchangedLines: number;
+  };
+}
 
 // ─── 1. Document Version Snapshots ───────────────────────────────────────────
 
@@ -21,6 +40,19 @@ export const versionService = {
   getById: async (pageId: string, versionId: string): Promise<PageVersionWithContent> => {
     const res = await apiGet<{ version: PageVersionWithContent }>(
       `/api/pages/${pageId}/versions/${versionId}`,
+    );
+    return res.version;
+  },
+
+  updateLabel: async (
+    pageId: string,
+    versionId: string,
+    label: string,
+    title?: string,
+  ): Promise<PageVersion> => {
+    const res = await apiPatch<{ version: PageVersion }>(
+      `/api/pages/${pageId}/versions/${versionId}`,
+      { label, title },
     );
     return res.version;
   },
@@ -63,8 +95,8 @@ export const versionService = {
     pageId: string,
     fromVersionId: string,
     toVersionId: string,
-  ): Promise<any> => {
-    return await apiGet<any>(
+  ): Promise<VersionDiffResponse> => {
+    return await apiGet<VersionDiffResponse>(
       `/api/pages/${pageId}/versions/diff?from=${fromVersionId}&to=${toVersionId}`,
     );
   },

@@ -15,9 +15,10 @@ export const extractStringContent = (c: any): string =>
 
 export interface UseEditorSaveOptions {
   page: Page | PageFile;
+  isRealtimeActive?: boolean;
 }
 
-export function useEditorSave({ page }: UseEditorSaveOptions) {
+export function useEditorSave({ page, isRealtimeActive }: UseEditorSaveOptions) {
   const compileRef = usePageStore((s) => s.compileRef);
   const markDirty = useCompileStore((s) => s.markDirty);
   const clearDirty = useCompileStore((s) => s.clearDirty);
@@ -47,6 +48,11 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
 
   // Auto-save when content changes (debounced)
   useEffect(() => {
+    // Overleaf single-source-of-truth guarantee:
+    // When realtime collaborative CRDT (Yjs) is active and synced, bypass HTTP PUT
+    // autosave to prevent race conditions and overwriting collaborative edits.
+    if (isRealtimeActive) return;
+
     const currentPage = pageRef.current;
     // Strictly verify debounced content matches the active page
     if (debouncedPayload.pageId !== activePageIdRef.current) return;
@@ -72,9 +78,9 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
       );
       if (autoCompile) pendingCompileRef.current = true;
     }
-  }, [debouncedPayload]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [debouncedPayload, isRealtimeActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-compile: trigger compile after save mutation succeeds.
+  // Auto-compile: trigger compile after save mutation succeeds (non-realtime mode).
   useEffect(() => {
     const { compileStatus } = useCompileStore.getState();
     if (!autoCompile || compileStatus !== 'idle') return;
@@ -91,45 +97,66 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
     }
   }, [updateMutation.isSuccess, updateMutation.isPending]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-compile in Realtime CRDT mode (Overleaf-style):
+  // Since HTTP PUT is bypassed when isRealtimeActive, trigger auto-compile after 1.5s idle typing
+  const debouncedRealtimeContent = useDebounce(contentPayload.text, 1500);
+  const lastCompiledContentRef = useRef<string>(contentPayload.text);
+
+  useEffect(() => {
+    if (!isRealtimeActive || !autoCompile) return;
+    const { compileStatus } = useCompileStore.getState();
+    if (compileStatus !== 'idle') return;
+
+    if (debouncedRealtimeContent !== lastCompiledContentRef.current) {
+      lastCompiledContentRef.current = debouncedRealtimeContent;
+      compileRef.current?.();
+    }
+  }, [debouncedRealtimeContent, isRealtimeActive, autoCompile]);
+
   // Switch document/page reset & flush unsaved changes for previous page
   useEffect(() => {
     const prevPage = prevPageRef.current;
     if (prevPage && prevPage.id !== page.id) {
-      const latest = latestPayloadRef.current;
-      if (latest && latest.pageId === prevPage.id) {
-        const prevSavedText = extractStringContent(prevPage.content);
-        if (latest.text !== prevSavedText) {
-          updateMutationRef.current.mutate(
-            {
-              pageId: prevPage.id,
-              content: latest.text,
-            },
-            {
-              onSuccess: () => {
-                const currentDirty = useCompileStore
-                  .getState()
-                  .dirtyContentMap.get(prevPage.id);
-                if (currentDirty === latest.text) {
-                  clearDirty(prevPage.id);
-                }
+      if (!isRealtimeActive) {
+        const latest = latestPayloadRef.current;
+        if (latest && latest.pageId === prevPage.id) {
+          const prevSavedText = extractStringContent(prevPage.content);
+          if (latest.text !== prevSavedText) {
+            updateMutationRef.current.mutate(
+              {
+                pageId: prevPage.id,
+                content: latest.text,
               },
-            },
-          );
+              {
+                onSuccess: () => {
+                  const currentDirty = useCompileStore
+                    .getState()
+                    .dirtyContentMap.get(prevPage.id);
+                  if (currentDirty === latest.text) {
+                    clearDirty(prevPage.id);
+                  }
+                },
+              },
+            );
+          }
         }
       }
     }
     prevPageRef.current = page;
     activePageIdRef.current = page.id;
     pendingCompileRef.current = false;
+    const pageText = extractStringContent(page.content);
+    lastCompiledContentRef.current = pageText;
     setContentPayload({
       pageId: page.id,
-      text: extractStringContent(page.content),
+      text: pageText,
     });
-  }, [page.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [page.id, isRealtimeActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Flush unsaved changes on unmount
+  // Flush unsaved changes on unmount (non-realtime only)
   useEffect(() => {
     return () => {
+      if (isRealtimeActive) return;
       const latest = latestPayloadRef.current;
       const currentPage = pageRef.current;
       if (latest && currentPage && latest.pageId === currentPage.id) {
@@ -142,7 +169,7 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
         }
       }
     };
-  }, []);
+  }, [isRealtimeActive]);
 
   const handleContentChange = useCallback((value: string | undefined) => {
     const text = value || '';

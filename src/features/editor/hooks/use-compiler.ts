@@ -22,7 +22,7 @@ import {
 
 export function useCompileLatex() {
   return useMutation<CompileLatexResponse, Error, CompileLatexPayload>({
-    mutationFn: compileLatex,
+    mutationFn: (payload) => compileLatex(payload),
   });
 }
 

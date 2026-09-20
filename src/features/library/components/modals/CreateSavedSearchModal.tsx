@@ -20,12 +20,11 @@ import {
   SelectItem,
 } from '@/shared/components/ui/select';
 import { cn } from '@/shared/lib/utils';
-import { useItemTypes } from '../../hooks/use-items';
+import { useItemTypes, SavedSearchService } from '../../data';
 import {
   mapRegistryItemTypes,
   ALL_ITEM_TYPES_FLAT,
-} from '../../schemas/item-type.schema';
-import { SavedSearchService } from '../../services/saved-searches.service';
+} from '../../types';
 import type {
   CreateSavedSearchInput,
   SavedSearchField,

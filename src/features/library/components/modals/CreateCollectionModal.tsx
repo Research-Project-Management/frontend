@@ -12,8 +12,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import {
   collectionFormSchema,
   type CollectionFormValues,
-} from '../../schemas/library.schema';
-import type { Collection } from '@/features/library/types/library.types';
+} from '../../types';
+import type { Collection } from '../../types/library.types';
 
 interface CreateCollectionModalProps {
   open: boolean;

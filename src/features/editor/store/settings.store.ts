@@ -32,6 +32,7 @@ export interface DocumentSettingsState {
   lineNumbers: boolean;
   editorMode: 'code' | 'visual';
   reviewMode: boolean;
+  activeSidebarPanel: 'Files' | 'Search' | 'Citations' | 'Review' | 'AI' | null;
   isHistoryOpen: boolean;
   isShareModalOpen: boolean;
   isTemplateModalOpen: boolean;
@@ -56,6 +57,19 @@ export interface DocumentSettingsState {
   setUseCache: (useCache: boolean) => void;
   setSettingsPanelOpen: (open: boolean) => void;
   toggleSettingsPanel: () => void;
+  setActiveSidebarPanel: (
+    panel:
+      | 'Files'
+      | 'Search'
+      | 'Citations'
+      | 'Review'
+      | 'AI'
+      | null
+      | ((
+          prev: 'Files' | 'Search' | 'Citations' | 'Review' | 'AI' | null,
+        ) => 'Files' | 'Search' | 'Citations' | 'Review' | 'AI' | null),
+  ) => void;
+  toggleSidebarPanel: (panel: 'Files' | 'Search' | 'Citations' | 'Review' | 'AI') => void;
   setIsHistoryOpen: (open: boolean) => void;
   toggleHistory: () => void;
   setIsShareModalOpen: (open: boolean) => void;
@@ -106,6 +120,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       lineNumbers: true,
       editorMode: 'code',
       reviewMode: false,
+      activeSidebarPanel: 'Files',
       isHistoryOpen: false,
       isShareModalOpen: false,
       isTemplateModalOpen: false,
@@ -131,6 +146,17 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       setSettingsPanelOpen: (settingsPanelOpen) => set({ settingsPanelOpen }),
       toggleSettingsPanel: () =>
         set((s) => ({ settingsPanelOpen: !s.settingsPanelOpen })),
+      setActiveSidebarPanel: (panelOrFn) =>
+        set((s) => ({
+          activeSidebarPanel:
+            typeof panelOrFn === 'function'
+              ? panelOrFn(s.activeSidebarPanel)
+              : panelOrFn,
+        })),
+      toggleSidebarPanel: (panel) =>
+        set((s) => ({
+          activeSidebarPanel: s.activeSidebarPanel === panel ? null : panel,
+        })),
       setIsHistoryOpen: (isHistoryOpen) => set({ isHistoryOpen }),
       toggleHistory: () => set((s) => ({ isHistoryOpen: !s.isHistoryOpen })),
       setIsShareModalOpen: (isShareModalOpen) => set({ isShareModalOpen }),
@@ -166,7 +192,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       name: 'flux-editor-settings',
       partialize: (state) => {
         // Don't persist transient UI state or auto-compile (always on by default)
-        const { settingsPanelOpen, autoCompile, isHistoryOpen, isShareModalOpen, isTemplateModalOpen, ...rest } = state;
+        const { settingsPanelOpen, autoCompile, isHistoryOpen, isShareModalOpen, isTemplateModalOpen, activeSidebarPanel, ...rest } = state;
         return rest;
       },
     },

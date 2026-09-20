@@ -10,9 +10,9 @@ import {
 } from '@/features/editor/utils/viewer.util';
 import { ViewerBroadcastBridge } from '@/features/editor/utils/popout-channel.util';
 import { filesQuery, usePageActions } from '@/features/editor/hooks/use-core';
-import { versionService } from '@/features/editor/services/history.service';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import type { Page as ProjectPage } from '@/features/editor/types';
+import type { CompileError } from '@/features/editor/types/compiler.types';
 import {
   extractPdfBookmarks,
   extractOutlineFromContent,
@@ -243,35 +243,55 @@ export default function Viewer() {
       setCompileLog(res.logs);
       setCompileStatus('done');
       setLastCompiledAt(res.compiledAt);
-      setCompileErrors([]);
+      // Map compiler diagnostics into structured compile errors (preserving file & severity)
+      const warningDiagnostics: CompileError[] = (res.diagnostics && res.diagnostics.length > 0)
+        ? res.diagnostics
+            .filter((d) => d.severity === 'warning')
+            .map((d) => ({
+              line: d.line,
+              message: d.message,
+              context: d.context || '',
+              file: d.file,
+              severity: 'warning' as const,
+              code: d.code,
+              suggestion: d.suggestion,
+            }))
+        : [];
+      setCompileErrors(warningDiagnostics);
 
-      // Granular dirty clearing: only clear files that were successfully saved
+      // Granular dirty clearing: clear files that were successfully assembled
       if (res.flushedFileIds && res.flushedFileIds.length > 0) {
         res.flushedFileIds.forEach((fid) => clearDirty(fid));
-
-        // Auto-checkpoint on successful compile (throttled to at most once per 60s)
-        const now = Date.now();
-        if (now - lastCheckpointTimeRef.current > 60000 && activeFilePage?.id) {
-          lastCheckpointTimeRef.current = now;
-          versionService
-            .save({
-              pageId: activeFilePage.id,
-              label: 'Compile checkpoint',
-              eventType: 'auto_save',
-              fileName: activeFilePage.title || 'main.tex',
-              rootPageId: rootId,
-            })
-            .catch(() => {});
-        }
       } else if (!res.flushErrors || res.flushErrors.length === 0) {
         clearAllDirty();
       }
     } else {
       setCompileStatus('error');
       setCompileLog(res.logs);
-      setCompileErrors(res.errors || []);
 
-      // If any files were successfully flushed, clear their dirty state; failed ones stay dirty
+      // Map structured diagnostics from compiler microservice, fallback to regex parsed errors
+      const formattedErrors: CompileError[] = (res.diagnostics && res.diagnostics.length > 0)
+        ? res.diagnostics.map((d) => ({
+            line: d.line,
+            message: d.message,
+            context: d.context || '',
+            file: d.file,
+            severity: d.severity,
+            code: d.code,
+            suggestion: d.suggestion,
+          }))
+        : (res.errors || []).map((err) => ({
+            line: err.line,
+            message: err.message,
+            context: err.context,
+            file: err.file,
+            severity: err.severity,
+            code: err.code,
+            suggestion: err.suggestion,
+          }));
+
+      setCompileErrors(formattedErrors);
+
       if (res.flushedFileIds && res.flushedFileIds.length > 0) {
         res.flushedFileIds.forEach((fid) => clearDirty(fid));
       }

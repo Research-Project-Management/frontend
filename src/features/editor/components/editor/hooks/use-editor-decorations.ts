@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import type { editor } from 'monaco-editor';
 import type { PageComment, PageSuggestion } from '@/features/editor/types';
-import { useCompileStore } from '@/features/editor/store';
+import { useCompileStore, usePageStore } from '@/features/editor/store';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import type { InlineSuggestionWidgetData } from '../subcomponents/InlineSuggestionWidget';
 
@@ -23,6 +23,8 @@ export function useEditorDecorations({
   editorMounted,
 }: UseEditorDecorationsOptions) {
   const { compileErrors } = useCompileStore();
+  const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const currentPage = usePageStore((s) => s.currentPage);
   const decorationCollRef = useRef<editor.IEditorDecorationsCollection | null>(null);
   const suggestionDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null);
   const lineCommentsRef = useRef<Map<number, PageComment[]>>(new Map());
@@ -84,21 +86,37 @@ export function useEditorDecorations({
       return;
     }
 
-    const markers: editor.IMarkerData[] = compileErrors.map((err) => {
+    const currentFileName = (activeFilePage?.title || currentPage?.title || 'main.tex').toLowerCase();
+    const currentBase = currentFileName.replace(/\.tex$/, '');
+
+    // Multi-file filter: only show errors belonging to the open file (or global errors)
+    const relevantErrors = compileErrors.filter((err) => {
+      if (!err.file) return true;
+      const errFile = err.file.toLowerCase().replace(/\\/g, '/');
+      const errBase = errFile.split('/').pop() || errFile;
+      return (
+        errBase === currentFileName ||
+        errBase.replace(/\.tex$/, '') === currentBase ||
+        currentFileName.endsWith(errBase)
+      );
+    });
+
+    const markers: editor.IMarkerData[] = relevantErrors.map((err) => {
       const line = Math.max(1, Math.min(err.line || 1, model.getLineCount()));
       const lineContent = model.getLineContent(line);
+      const isWarning = err.severity === 'warning';
       return {
-        severity: monaco.MarkerSeverity.Error,
+        severity: isWarning ? monaco.MarkerSeverity.Warning : monaco.MarkerSeverity.Error,
         startLineNumber: line,
         startColumn: 1,
         endLineNumber: line,
         endColumn: Math.max(1, lineContent.length + 1),
-        message: err.message || 'LaTeX compilation error',
+        message: err.message || (isWarning ? 'LaTeX warning' : 'LaTeX compilation error'),
       };
     });
 
     monaco.editor.setModelMarkers(model, 'latex-compiler', markers);
-  }, [compileErrors, editorMounted, editorRef, monacoRef]);
+  }, [compileErrors, activeFilePage?.title, currentPage?.title, editorMounted, editorRef, monacoRef]);
 
   // Synchronize Track Changes (Suggestions) with Monaco inline decorations
   useEffect(() => {

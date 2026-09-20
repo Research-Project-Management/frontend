@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Home, PanelLeft, History, Users, Check, Loader2 } from 'lucide-react';
+import { Home, PanelLeft, History, Users, Check, Loader2, MessageSquareQuote } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import {
   Menubar,
@@ -26,16 +27,62 @@ import TemplateGalleryModal from '@/features/editor/components/modals/TemplateGa
 import KeyboardShortcutsModal from '@/features/editor/components/modals/KeyboardShortcutsModal';
 import QuickOpenModal from '@/features/editor/components/modals/QuickOpenModal';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
-import { useSettingsStore, useCompileStore } from '@/features/editor/store';
+import { useSettingsStore, useCompileStore, usePageStore } from '@/features/editor/store';
 import { usePageActions } from '@/features/editor/hooks/use-core';
+import { usePageComments } from '@/features/editor/hooks/use-comment';
+import { usePageSuggestions } from '@/features/editor/hooks/use-suggestion';
 import { cn } from '@/shared/lib/utils';
 
 export default function Topbar() {
   const params = useParams<{ projectId?: string }>();
   const homeHref = params?.projectId ? `/projects/${params.projectId}` : '/projects';
-  const { toggleHistory, isHistoryOpen, setIsShareModalOpen } = useSettingsStore();
+  const {
+    toggleHistory,
+    isHistoryOpen,
+    setIsShareModalOpen,
+    activeSidebarPanel,
+    setActiveSidebarPanel,
+  } = useSettingsStore();
   const { dirtyContentMap } = useCompileStore();
   const { updateTitle: updateTitleMutation } = usePageActions();
+  const queryClient = useQueryClient();
+
+  const activePageId = usePageStore((s) => s.activePageId);
+  const currentPage = usePageStore((s) => s.currentPage);
+  const pageId = activePageId || currentPage?.id;
+
+  const { data: comments = [] } = usePageComments(pageId ?? null);
+  const { data: suggestions = [] } = usePageSuggestions(pageId ?? null, 'pending');
+
+  const openCommentsCount = comments.filter((c) => c.status === 'open').length;
+  const pendingSuggestionsCount = suggestions.filter((s) => s.status === 'pending').length;
+  const totalReviewItems = openCommentsCount + pendingSuggestionsCount;
+
+  const isReviewOpen = activeSidebarPanel === 'Review';
+
+  const handleToggleReview = () => {
+    if (isReviewOpen) {
+      setActiveSidebarPanel(null);
+    } else {
+      setActiveSidebarPanel('Review');
+      EditorEventBus.emit('flux:open-panel', 'Review');
+    }
+  };
+
+  // Realtime updates from Socket.IO room events
+  useEffect(() => {
+    if (!pageId) return;
+    const unsub = EditorEventBus.on('flux:review-event', ({ pageId: evtPageId, event }) => {
+      if (evtPageId !== pageId) return;
+      if (event.startsWith('comment:') || event.startsWith('comments:')) {
+        queryClient.invalidateQueries({ queryKey: ['page-comments', pageId] });
+      }
+      if (event.startsWith('suggestion:') || event.startsWith('suggestions:')) {
+        queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
+      }
+    });
+    return () => unsub();
+  }, [pageId, queryClient]);
 
   const isSaving = dirtyContentMap.size > 0 || updateTitleMutation.isPending;
 
@@ -155,6 +202,38 @@ export default function Topbar() {
         >
           <Users className="size-3.5 shrink-0" />
           <span className="hidden sm:inline">Share</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleToggleReview}
+          title={
+            totalReviewItems > 0
+              ? `Review (${openCommentsCount} open comments, ${pendingSuggestionsCount} pending suggestions)`
+              : "Review & Track Changes"
+          }
+          aria-label="Review & Track Changes"
+          className={cn(
+            "flex items-center gap-1.5 h-7 px-2.5 rounded-full text-xs font-medium transition-colors cursor-pointer outline-none select-none",
+            isReviewOpen
+              ? "bg-[#166534] text-white shadow-2xs font-semibold"
+              : "text-foreground/80 hover:text-foreground hover:bg-sidebar-hover"
+          )}
+        >
+          <MessageSquareQuote className="size-3.5 shrink-0" />
+          <span className="hidden sm:inline">Review</span>
+          {totalReviewItems > 0 && (
+            <span
+              className={cn(
+                "flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[10px] font-bold leading-none select-none",
+                isReviewOpen
+                  ? "bg-white text-[#166534]"
+                  : "bg-amber-500/20 text-amber-700 dark:text-amber-400"
+              )}
+            >
+              {totalReviewItems}
+            </span>
+          )}
         </button>
 
         <button

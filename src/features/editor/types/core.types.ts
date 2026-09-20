@@ -1,7 +1,7 @@
 /**
  * core.types.ts
  *
- * Core document & page domain models matching backend document/core module.
+ * Core document & page domain models matching backend document/page module.
  */
 
 declare const brand: unique symbol;

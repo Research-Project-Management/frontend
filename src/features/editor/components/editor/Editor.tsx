@@ -15,7 +15,8 @@ import {
 } from '@/features/editor/hooks/use-suggestion';
 import type { Page, PageFile, PageSuggestion } from '@/features/editor/types';
 import { useViewItems, type Item } from '@/features/library';
-import { usePageStore, useSettingsStore } from '@/features/editor/store';
+import { usePageStore, useSettingsStore, useActionsStore } from '@/features/editor/store';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { toast } from 'sonner';
 import { Lock } from 'lucide-react';
@@ -43,8 +44,10 @@ import { EditorFloatingBar, type SelFloating } from './subcomponents/EditorFloat
 import { RenameSymbolDialog, type RenameDialogState } from './subcomponents/RenameSymbolDialog';
 import { SuggestEditModal, type SuggestModalState } from './subcomponents/SuggestEditModal';
 import { InlineSuggestionWidget } from './subcomponents/InlineSuggestionWidget';
+import { EditorModeSwitcher } from './subcomponents/EditorModeSwitcher';
 import { GlyphTooltip } from './subcomponents/GlyphTooltip';
 import { CollaboratorPresenceBar } from './subcomponents/CollaboratorPresenceBar';
+import { SyncStatusBadge } from './subcomponents/SyncStatusBadge';
 
 interface EditorProps {
   page: Page | PageFile;
@@ -69,7 +72,25 @@ export default function Editor({ page }: EditorProps) {
   const setEditorMode = useSettingsStore((s) => s.setEditorMode);
   const keybinding = useSettingsStore((s) => s.keybinding);
   const reviewMode = useSettingsStore((s) => s.reviewMode);
+  const setReviewMode = useSettingsStore((s) => s.setReviewMode);
   const toggleReviewMode = useSettingsStore((s) => s.toggleReviewMode);
+
+  const { user } = useAuth();
+  const isReviewerOnly = user?.role?.toLowerCase() === 'reviewer';
+
+  useEffect(() => {
+    if (isReviewerOnly && !reviewMode) {
+      setReviewMode(true);
+    }
+  }, [isReviewerOnly, reviewMode, setReviewMode]);
+
+  const handleSelectMode = useCallback(
+    (mode: 'editing' | 'reviewing') => {
+      if (isReviewerOnly) return;
+      setReviewMode(mode === 'reviewing');
+    },
+    [isReviewerOnly, setReviewMode],
+  );
 
   const { pageId: pageIdParam, projectId: projectIdParam } = useParams<{
     pageId?: string;
@@ -97,13 +118,30 @@ export default function Editor({ page }: EditorProps) {
   const acceptSuggestionMutation = useAcceptSuggestion();
   const rejectSuggestionMutation = useRejectSuggestion();
 
+  // Realtime collaboration & remote cursor tracking (Overleaf-grade Yjs CRDT)
+  const {
+    activeCollaborators,
+    isDocumentLocked,
+    lockedBy,
+    bindMonacoCursorListeners,
+    isRealtimeActive,
+    connectionStatus,
+    isSynced,
+    triggerCheckpoint,
+  } = useEditorCollaborators({
+    projectId: activeProjectId,
+    pageId: page.id,
+    editorRef,
+    monacoRef,
+  });
+
   // Core editor state hooks
   const [editorMounted, setEditorMounted] = useState(false);
   const {
     currentContent,
     handleContentChange,
     updateMutation,
-  } = useEditorSave({ page });
+  } = useEditorSave({ page, isRealtimeActive });
 
   // Wire getEditorContent bridge ref to current active editor/content
   useEffect(() => {
@@ -121,14 +159,19 @@ export default function Editor({ page }: EditorProps) {
   const vimStatusRef = useRef<HTMLDivElement>(null);
 
   const handleSaveAndCompile = useCallback(() => {
-    if (page?.id && currentContent !== undefined) {
+    // Overleaf single-source-of-truth guarantee:
+    // If realtime collaborative CRDT is active, trigger an atomic collaborative checkpoint.
+    // Otherwise fallback to HTTP PUT for offline editing.
+    if (isRealtimeActive) {
+      triggerCheckpoint();
+    } else if (page?.id && currentContent !== undefined) {
       updateMutation.mutate({
         pageId: page.id,
         content: currentContent,
       });
     }
     compileRef.current?.();
-  }, [compileRef, currentContent, page?.id, updateMutation]);
+  }, [compileRef, currentContent, isRealtimeActive, page?.id, triggerCheckpoint, updateMutation]);
 
   const { isVimActive } = useEditorVim({
     editor: editorMounted ? editorRef.current : null,
@@ -184,18 +227,6 @@ export default function Editor({ page }: EditorProps) {
   } = useEditorCitation({
     editorRef,
     projectId: activeProjectId,
-  });
-
-  const {
-    activeCollaborators,
-    isDocumentLocked,
-    lockedBy,
-    bindMonacoCursorListeners,
-  } = useEditorCollaborators({
-    projectId: activeProjectId,
-    pageId: page.id,
-    editorRef,
-    monacoRef,
   });
 
   // Local popup states
@@ -466,6 +497,31 @@ export default function Editor({ page }: EditorProps) {
       openRenameDialogLatestRef.current();
     });
 
+    // Add Review Comment command (Ctrl+Alt+M / Cmd+Option+M or Ctrl+Alt+C)
+    const handleTriggerAddComment = () => {
+      const sel = editor.getSelection();
+      const hasSel = sel && !sel.isEmpty();
+      const startL = hasSel ? sel.startLineNumber : (editor.getPosition()?.lineNumber ?? 1);
+      const endL = hasSel ? sel.endLineNumber : startL;
+      const text = hasSel ? (editor.getModel()?.getValueInRange(sel) ?? '') : '';
+
+      useActionsStore.getState().setPendingComment({
+        startLine: startL,
+        endLine: endL,
+        selectedText: text,
+      });
+      EditorEventBus.emit('flux:open-panel', 'Review');
+    };
+
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyM,
+      handleTriggerAddComment,
+    );
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyC,
+      handleTriggerAddComment,
+    );
+
     // Track Changes (Review Mode) keyboard interceptor
     disposablesRef.current.push(
       editor.onKeyDown((e) => {
@@ -622,10 +678,21 @@ export default function Editor({ page }: EditorProps) {
         <div className="flex-1 min-w-0">
           <Format />
         </div>
-        <CollaboratorPresenceBar
-          collaborators={activeCollaborators}
-          className="ml-2 shrink-0"
-        />
+        <div className="flex items-center gap-2 ml-2 shrink-0">
+          <EditorModeSwitcher
+            reviewMode={reviewMode}
+            onSelectMode={handleSelectMode}
+            isReviewerOnly={isReviewerOnly}
+          />
+          <SyncStatusBadge
+            connectionStatus={connectionStatus}
+            isSynced={isSynced}
+            isReadOnly={isReadOnly}
+          />
+          <CollaboratorPresenceBar
+            collaborators={activeCollaborators}
+          />
+        </div>
       </div>
 
       {isReadOnly && (

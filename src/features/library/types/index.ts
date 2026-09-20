@@ -1,10 +1,10 @@
-export * from './annotations.types';
 export * from './attachments.types';
 export * from './citation.types';
 export * from './collections.types';
 export * from './core.types';
 export * from './curation.types';
 export * from './exports.types';
+export * from './forms.types';
 export * from './ingestion.types';
 export * from './item-types.types';
 export * from './items.types';
@@ -15,5 +15,4 @@ export * from './retraction.types';
 export * from './saved-searches.types';
 export * from './search.types';
 export * from './state.types';
-export * from './sync.types';
 export * from './tags.types';

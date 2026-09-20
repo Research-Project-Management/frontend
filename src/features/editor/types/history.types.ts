@@ -8,6 +8,8 @@
 export type VersionEventType =
   | 'manual_save'
   | 'auto_save'
+  | 'collaborative_checkpoint'
+  | 'restore'
   | 'file_created'
   | 'file_deleted'
   | 'asset_uploaded'

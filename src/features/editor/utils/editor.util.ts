@@ -132,9 +132,13 @@ export interface ParsedCompileError {
   line: number | null;
   message: string;
   context: string;
+  file?: string;
+  severity?: 'error' | 'warning' | 'info';
+  code?: string;
+  suggestion?: string;
 }
 
-/** Parse pdflatex/xelatex log to extract error entries */
+/** Parse pdflatex/xelatex/tectonic log to extract error and warning entries */
 export function parseCompileErrors(log: string): ParsedCompileError[] {
   const errors: ParsedCompileError[] = [];
   const lines = log.split("\n");
@@ -142,7 +146,25 @@ export function parseCompileErrors(log: string): ParsedCompileError[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // LaTeX error: ! Error message
+    // File:line error: ./main.tex:14: Undefined control sequence
+    const fileLineMatch = line.match(/^(\.{0,2}\/?[^\s:!]+\.(?:tex|bib|sty|cls)):(\d+):\s*(.+)$/i);
+    if (fileLineMatch) {
+      const file = fileLineMatch[1].replace(/^\.\//, '');
+      const lineNum = parseInt(fileLineMatch[2], 10);
+      const message = fileLineMatch[3].trim();
+      if (!errors.find((e) => e.message === message && e.line === lineNum && e.file === file)) {
+        errors.push({
+          file,
+          line: lineNum,
+          message,
+          context: line,
+          severity: 'error',
+        });
+      }
+      continue;
+    }
+
+    // LaTeX hard error: ! Error message
     if (line.startsWith("!")) {
       const message = line.slice(1).trim();
       let errorLine: number | null = null;
@@ -158,22 +180,23 @@ export function parseCompileErrors(log: string): ParsedCompileError[] {
       if (!context) context = lines.slice(i, i + 4).join("\n");
 
       if (!errors.find((e) => e.message === message && e.line === errorLine)) {
-        errors.push({ line: errorLine, message, context });
+        errors.push({ line: errorLine, message, context, severity: 'error' });
       }
+      continue;
     }
 
-    // Warning: Undefined reference
-    const warnMatch = line.match(/LaTeX Warning:.*?on input line (\d+)/);
+    // Warning: Undefined reference / citation / LaTeX Warning
+    const warnMatch = line.match(/(?:LaTeX|Package [^\s]+) Warning:.*?(?:on input line (\d+)|input line (\d+))/i);
     if (warnMatch) {
-      const warnLine = parseInt(warnMatch[1], 10);
-      const message = line.replace(/^LaTeX Warning:\s*/, "").trim();
-      if (!errors.find((e) => e.message === message)) {
-        errors.push({ line: warnLine, message, context: line });
+      const warnLine = parseInt(warnMatch[1] || warnMatch[2], 10);
+      const message = line.replace(/^(?:LaTeX|Package [^\s]+) Warning:\s*/i, "").trim();
+      if (!errors.find((e) => e.message === message && e.line === warnLine)) {
+        errors.push({ line: warnLine, message, context: line, severity: 'warning' });
       }
     }
   }
 
-  return errors.slice(0, 20);
+  return errors.slice(0, 50);
 }
 
 // ── Rich Editor Context ────────────────────────────────────────────────────────
@@ -340,6 +363,8 @@ export type SidebarTabName = 'Files' | 'Explorer' | 'Outline' | 'Search' | 'Revi
 
 export interface EditorEventMap {
   'flux:open-panel': SidebarTabName | { panel: SidebarTabName; commentId?: string; suggestionId?: string };
+  'flux:toggle-panel': SidebarTabName;
+  'flux:review-event': { pageId: string; event: string; payload?: any };
   'flux:open-ai-panel': { initialPrompt?: string; selectedText?: string } | undefined;
   'flux:toggle-ai-panel': undefined;
   'flux:trigger-compile': { forceSync?: boolean; draft?: boolean } | undefined;

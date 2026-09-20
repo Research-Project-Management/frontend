@@ -12,12 +12,12 @@ import {
 import { Button } from "@/shared/components/ui";
 import { Checkbox } from "@/shared/components/ui";
 import { Label } from "@/shared/components/ui";
-import type { Item } from '@/features/library/types/library.types';
-import { ALL_ITEM_TYPES_FLAT } from '@/features/library/schemas/item-type.schema';
+import type { Item } from '../../types/library.types';
+import { ALL_ITEM_TYPES_FLAT } from '../../types';
 import {
   useItemTypeConversion,
   type TypeConversionPreview,
-} from '../../hooks/use-conversion';
+} from '../../data';
 
 export interface ConvertModalProps {
   open: boolean;

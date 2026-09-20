@@ -1,7 +1,7 @@
 /**
  * core.service.ts
  *
- * Frontend service mirroring Backend `modules/document/core/`:
+ * Frontend service mirroring Backend `modules/document/page/`:
  *  - Page CRUD (`/api/pages/:pageId`)
  *  - Child Files (`/api/pages/:pageId/files`)
  *  - Main File Selection (`/api/pages/:pageId/main-file`)

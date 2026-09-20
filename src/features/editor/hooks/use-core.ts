@@ -3,7 +3,7 @@
 /**
  * use-core.ts
  *
- * Frontend hooks mirroring Backend `modules/document/core/`:
+ * Frontend hooks mirroring Backend `modules/document/page/`:
  *  - Page & File query keys and options
  *  - useActiveDocument() session hook
  *  - usePageActions() mutation hooks

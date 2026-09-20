@@ -2,7 +2,7 @@
  * node.types.ts
  *
  * Types for hierarchical document tree nodes, ordering, and structural nesting.
- * Matches backend document/node module.
+ * Matches backend document/tree module.
  */
 
 export interface NodeTreeItem {

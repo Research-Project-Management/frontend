@@ -18,7 +18,7 @@ import { Label } from "@/shared/components/ui";
 import {
   addLinkSchema,
   type AddLinkFormValues,
-} from '../../schemas/library.schema';
+} from '../../types';
 
 export interface AddLinkData {
   url: string;

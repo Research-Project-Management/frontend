@@ -7,6 +7,7 @@ import {
   syncIncremental,
   compileLatex,
   type CompileLatexPayload,
+  type CompilerDiagnostic,
 } from "../services/compiler.service";
 import { synctexService, type ForwardSyncResult } from "../services/synctex.service";
 import { parseCompileErrors, type ParsedCompileError } from "./editor.util";
@@ -177,6 +178,7 @@ export type CompileExecutionResult =
       synctexMap: SyncTeXMap | null;
       logs: string;
       compiledAt: Date;
+      diagnostics?: CompilerDiagnostic[];
       flushedFileIds?: string[];
       flushErrors?: Array<{ fileId: string; error: unknown }>;
     }
@@ -185,13 +187,27 @@ export type CompileExecutionResult =
       error: string;
       logs: string;
       errors: ParsedCompileError[];
+      diagnostics?: CompilerDiagnostic[];
       flushedFileIds?: string[];
       flushErrors?: Array<{ fileId: string; error: unknown }>;
     };
 
+// Active compile controller for in-flight cancellation (Overleaf debounce & anti-stacking)
+let activeCompileController: AbortController | null = null;
+
 // ── Deep Compiler Engine ──────────────────────────────────────────────────────
 
 export const LatexCompilerEngine = {
+  /**
+   * Cancels any ongoing compilation request to free server resources.
+   */
+  cancelInFlightCompile(): void {
+    if (activeCompileController) {
+      activeCompileController.abort();
+      activeCompileController = null;
+    }
+  },
+
   async compile(opts: CompileExecutionOptions): Promise<CompileExecutionResult> {
     const {
       projectId,
@@ -205,37 +221,34 @@ export const LatexCompilerEngine = {
       onThumbnailGenerated,
     } = opts;
 
-    // Phase 1: Flush dirty files with individual success tracking
-    const flushedFileIds: string[] = [];
+    // 1. In-flight cancellation: Abort any previous compilation still running
+    if (activeCompileController) {
+      activeCompileController.abort();
+    }
+    const controller = new AbortController();
+    activeCompileController = controller;
+    const currentSignal = controller.signal;
+
+    // 2. Draft content assembly: Pass dirty files directly in payload to avoid blocking HTTP PUTs
+    const flushedFileIds: string[] = dirtyFiles.map((f) => f.fileId);
     const flushErrors: Array<{ fileId: string; error: unknown }> = [];
 
+    // Optional background sync if dirty files exist (non-blocking)
     if (dirtyFiles.length > 0) {
       onPhaseChange?.("flushing");
-      await Promise.all(
+      // Background non-blocking flush to ensure database sync eventually
+      Promise.all(
         dirtyFiles.map(async ({ fileId, content }) => {
           try {
             await flushPageContent(fileId, content);
-            flushedFileIds.push(fileId);
           } catch (err: unknown) {
-            logger.warn(`[LatexCompilerEngine] Flush error on ${fileId}`, { error: err });
-            flushErrors.push({ fileId, error: err });
+            logger.debug(`[LatexCompilerEngine] Background flush notice on ${fileId}`, { error: err });
           }
         }),
-      );
+      ).catch(() => {});
     }
 
-    // Phase 2: Incremental sync
-    const dirtyFileIds = flushedFileIds.length > 0 ? flushedFileIds : dirtyFiles.map((f) => f.fileId);
-    if (dirtyFileIds.length > 0) {
-      onPhaseChange?.("syncing");
-      try {
-        await syncIncremental(projectId, dirtyFileIds, false);
-      } catch (syncErr) {
-        logger.warn('[LatexCompilerEngine] Incremental sync error, proceeding to compile', { error: syncErr });
-      }
-    }
-
-    // Phase 3: Compile
+    // 3. Compile
     onPhaseChange?.("compiling");
 
     const payload: CompileLatexPayload = {
@@ -249,7 +262,7 @@ export const LatexCompilerEngine = {
     };
 
     try {
-      const data = await compileLatex(payload);
+      const data = await compileLatex(payload, currentSignal);
 
       if (data?.pdf && typeof data.pdf === "string" && data.pdf.trim().length > 20) {
         const pdfBytes = Uint8Array.from(atob(data.pdf.trim()), (c) => c.charCodeAt(0));
@@ -271,6 +284,7 @@ export const LatexCompilerEngine = {
             synctexMap,
             logs: data.logs || "",
             compiledAt: new Date(),
+            diagnostics: data.diagnostics,
             flushedFileIds,
             flushErrors,
           };
@@ -285,10 +299,23 @@ export const LatexCompilerEngine = {
         error: (data as any)?.error || "LaTeX compilation failed to produce a PDF.",
         logs: log,
         errors: parsedErrors,
+        diagnostics: data.diagnostics,
         flushedFileIds,
         flushErrors,
       };
     } catch (err: any) {
+      if (err?.name === 'AbortError' || currentSignal.aborted) {
+        logger.debug('[LatexCompilerEngine] Previous compile request aborted in favor of newer request.');
+        return {
+          success: false,
+          error: 'Compilation superseded',
+          logs: '',
+          errors: [],
+          flushedFileIds: [],
+          flushErrors: [],
+        };
+      }
+
       const errStr = err instanceof Error ? err.message : String(err);
       const parsedErrors = parseCompileErrors(errStr);
 
@@ -300,6 +327,10 @@ export const LatexCompilerEngine = {
         flushedFileIds,
         flushErrors,
       };
+    } finally {
+      if (activeCompileController === controller) {
+        activeCompileController = null;
+      }
     }
   },
 

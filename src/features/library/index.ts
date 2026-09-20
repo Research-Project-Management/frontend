@@ -6,64 +6,66 @@
  */
 
 // Pages (for Next.js App Router)
-export { ModernLibraryPage as LibraryPage, ModernLibraryPage } from './ui';
-export { default as TrashPage } from './pages/TrashPage';
-export { default as DuplicatesPage } from './pages/DuplicatesPage';
-export { default as RecentlyReadPage } from './pages/RecentlyReadPage';
-export { default as UnfiledPage } from './pages/UnfiledPage';
-export { default as Sidebar } from './components/Sidebar';
+export {
+  ModernLibraryPage as LibraryPage,
+  ModernLibraryPage,
+  TrashPage,
+  DuplicatesPage,
+  RecentlyReadPage,
+  UnfiledPage,
+} from './pages';
+export { LibrarySidebar as Sidebar, LibrarySidebar } from './components';
+export { LibraryTopbar as Topbar, LibraryTopbar } from './components';
 
 // Types
 export * from './types';
 
-// New Architecture: Store, Data, Domain, UI
+// Architecture Layers: Store, Data, Domain, Components, Utils
 export * from './store';
 export * from './data';
 export * from './domain';
-export * from './ui';
+export * from './components';
+export * from './utils';
 
-// Store (Workspace & Layout State)
-export { useLibrarySidebarStore, type InspectorSectionId } from './store/sidebar.store';
+// Data Access Layer (Queries, Services, Centralized Query Keys)
+export {
+  // Queries
+  useItems,
+  useViewItems,
+  useCollections,
+  useAttachments,
+  useAttachmentRevisions,
+  useRenameAttachment,
+  useNotes,
+  useRelations,
+  useDuplicateGroups,
+  useRetraction,
+  useSavedSearches,
+  useConversion,
+  useItemTypeConversion,
+  // Services
+  ItemService,
+  ItemsService,
+  CollectionService,
+  ExportService,
+  downloadAnnotatedPdf,
+  uploadLibraryFile,
+  fetchPdfBlob,
+} from './data';
 
-// Hooks (Data & Domain)
-export { useItems, useViewItems } from './hooks/use-items';
-export { useCollections } from './hooks/use-collections';
-export { useAttachments, useAttachmentRevisions, useRenameAttachment } from './hooks/use-attachments';
-export { useNotes } from './hooks/use-notes';
-export { useRelations } from './hooks/use-relations';
-export { useDuplicateGroups } from './hooks/use-curation';
-export { useRetraction } from './hooks/use-retraction';
-export { useSavedSearches } from './hooks/use-saved-searches';
+// Schemas & Types
+export { ALL_ITEM_TYPES_FLAT } from './types';
 
-// Services
-export { ItemService, ItemsService, fetchPdfBlob } from './services/items.service';
-export { CollectionService } from './services/collections.service';
-export { ExportService, downloadAnnotatedPdf } from './services/exports.service';
-export { uploadLibraryFile } from './services/upload.service';
-
-// Schemas
-export { ALL_ITEM_TYPES_FLAT } from './schemas/item-type.schema';
-
-// Utilities
+// Utilities & Domain
 export {
   normalizeNotes,
   normalizeTags,
   getPaperFileUrl,
   getPaperCitationKey,
   cleanDoi,
-} from './utils/library.util';
+} from './domain';
 
-// Panel sections (exported for Reader integration)
-export { default as InfoSection } from './components/panel/InfoSection';
-export { default as AbstractSection } from './components/panel/AbstractSection';
-export { default as CollectionsSection } from './components/panel/CollectionsSection';
-export { default as NotesSection } from './components/panel/NotesSection';
-export { default as TagsSection } from './components/panel/TagsSection';
-export { default as CiteSection } from './components/panel/CiteSection';
-export { default as RelatedSection } from './components/panel/RelatedSection';
-export { default as AttachmentsSection } from './components/panel/AttachmentsSection';
-
-// Modals (exported for Reader integration)
+// Modals (exported for Reader integration and external features)
 export { default as CreateCollectionModal } from './components/modals/CreateCollectionModal';
 export { default as DeleteModal, type DeleteModalConfig } from './components/modals/DeleteModal';
 

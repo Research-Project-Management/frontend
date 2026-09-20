@@ -223,6 +223,8 @@ function EditorShell() {
     editorTheme,
     setEditorTheme,
     isHistoryOpen,
+    activeSidebarPanel,
+    setActiveSidebarPanel,
   } = useSettingsStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -231,7 +233,6 @@ function EditorShell() {
 
   const [localSidebarWidth, setLocalSidebarWidth] = useState(sidebarWidth);
   const [localEditorFlex, setLocalEditorFlex] = useState(editorFlex);
-  const [activeSidebarPanel, setActiveSidebarPanel] = useState<SidebarTab | null>("Files");
   const [isNarrowScreen, setIsNarrowScreen] = useState(false);
   const [isDraggingSidebar, setIsDraggingSidebar] = useState(false);
   const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
@@ -464,12 +465,16 @@ function EditorShell() {
         setActiveSidebarPanel(tabName as SidebarTab);
       }
     });
+    const unsubTogglePanel = EditorEventBus.on('flux:toggle-panel', (tab) => {
+      setActiveSidebarPanel((prev) => (prev === tab ? null : (tab as SidebarTab)));
+    });
 
     return () => {
       unsubToggle();
       unsubOpenAi();
       unsubToggleAi();
       unsubOpenPanel();
+      unsubTogglePanel();
     };
   }, []);
 

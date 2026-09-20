@@ -8,7 +8,7 @@ import { ModernLibraryPage } from './LibraryPage';
  * Replaces previous 1,039-line redundant God file.
  */
 export function TrashPage() {
-  return <ModernLibraryPage view="trash" title="Thùng rác" />;
+  return <ModernLibraryPage view="trash" title="Trash" />;
 }
 
 export default TrashPage;

@@ -285,7 +285,7 @@ export function CreateSavedSearchModal({
   ]);
   const [error, setError] = useState<string | null>(null);
 
-  // Live Matching Preview State ("Thông tin trực tiếp")
+  // Live Matching Preview State
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const [previewSamples, setPreviewSamples] = useState<Item[]>([]);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);

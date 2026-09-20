@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { LibrarySidebar } from '../components/sidebar';
 import { LibraryTopbar } from '../components/topbar';
 import { LibraryContent } from '../components/content';
 import { LibraryInspector } from '../components/inspector';
@@ -37,12 +36,9 @@ export function ModernLibraryPage({
     propCollectionId || params?.collectionId || undefined;
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background">
-      {/* Sidebar (Left navigation, scopes, folders, tags) */}
-      <LibrarySidebar />
-
+    <div className="flex h-full w-full overflow-hidden bg-background">
       {/* Main Workspace (Topbar + Data Content) */}
-      <main className="flex flex-1 flex-col overflow-hidden min-w-0">
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <LibraryTopbar title={title || activeScope.name || 'My Library'} />
         <div className="flex-1 overflow-hidden min-h-0 relative">
           <LibraryContent
@@ -51,7 +47,7 @@ export function ModernLibraryPage({
             view={view}
           />
         </div>
-      </main>
+      </div>
 
       {/* Inspector Panel (Right side details, metadata, attachments) */}
       <LibraryInspector scopeId={effectiveScopeId} />

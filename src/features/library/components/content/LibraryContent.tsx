@@ -38,7 +38,7 @@ export function LibraryContent({
   if (isError) {
     return (
       <div className="flex h-full w-full items-center justify-center p-6 text-xs text-destructive">
-        Không thể tải danh sách tài liệu. Vui lòng thử lại sau.
+        Failed to load items. Please try again.
       </div>
     );
   }
@@ -50,8 +50,8 @@ export function LibraryContent({
       return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-8 text-center text-muted-foreground">
           <Trash2 className="h-10 w-10 stroke-[1.25] text-muted-foreground/40" />
-          <p className="text-sm font-medium">Thùng rác trống</p>
-          <p className="text-xs text-muted-foreground/70">Các tài liệu bị xóa sẽ xuất hiện tại đây</p>
+          <p className="text-sm font-medium">Trash is empty</p>
+          <p className="text-xs text-muted-foreground/70">Deleted items will appear here</p>
         </div>
       );
     }

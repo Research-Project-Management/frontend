@@ -67,7 +67,7 @@ export function ItemContextMenu({
               className="gap-2 cursor-pointer"
             >
               <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
-              Mở trong Reader
+              Open in Reader
             </ContextMenuItem>
 
             <ContextMenuItem
@@ -75,7 +75,7 @@ export function ItemContextMenu({
               className="gap-2 cursor-pointer"
             >
               <PanelRight className="h-3.5 w-3.5 text-muted-foreground" />
-              Xem chi tiết (Inspector)
+              View Details (Inspector)
             </ContextMenuItem>
 
             <ContextMenuSeparator />
@@ -93,7 +93,7 @@ export function ItemContextMenu({
                       : 'text-muted-foreground',
                   )}
                 />
-                {isStarred ? 'Bỏ yêu thích' : 'Đánh dấu yêu thích'}
+                {isStarred ? 'Remove from Starred' : 'Add to Starred'}
               </ContextMenuItem>
             )}
 
@@ -101,15 +101,15 @@ export function ItemContextMenu({
               onClick={() => {
                 if (item.citationKey) {
                   copyToClipboard(item.citationKey);
-                  toast.success(`Đã sao chép: ${item.citationKey}`);
+                  toast.success(`Copied: ${item.citationKey}`);
                 } else {
-                  toast.info('Tài liệu chưa có citation key');
+                  toast.info('Item does not have a citation key');
                 }
               }}
               className="gap-2 cursor-pointer"
             >
               <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-              Sao chép Citation Key
+              Copy Citation Key
             </ContextMenuItem>
 
             <ContextMenuSeparator />
@@ -118,7 +118,7 @@ export function ItemContextMenu({
               <ContextMenuSub>
                 <ContextMenuSubTrigger className="gap-2 cursor-pointer">
                   <FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
-                  Thêm vào thư mục
+                  Add to Collection
                 </ContextMenuSubTrigger>
                 <ContextMenuSubContent className="w-48 text-xs max-h-56 overflow-y-auto">
                   {collections.map((col: any) => (
@@ -144,7 +144,7 @@ export function ItemContextMenu({
                 className="gap-2 cursor-pointer text-destructive focus:text-destructive"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                Chuyển vào thùng rác
+                Move to Trash
               </ContextMenuItem>
             )}
           </>
@@ -156,7 +156,7 @@ export function ItemContextMenu({
                 className="gap-2 cursor-pointer"
               >
                 <RotateCcw className="h-3.5 w-3.5 text-primary" />
-                Khôi phục tài liệu
+                Restore Item
               </ContextMenuItem>
             )}
 
@@ -168,7 +168,7 @@ export function ItemContextMenu({
                 className="gap-2 cursor-pointer text-destructive focus:text-destructive"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                Xóa vĩnh viễn
+                Delete Permanently
               </ContextMenuItem>
             )}
           </>

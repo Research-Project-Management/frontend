@@ -23,7 +23,7 @@ export function TopbarBulkBar() {
   return (
     <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-md text-xs animate-in fade-in slide-in-from-top-1 duration-150">
       <span className="font-medium text-foreground">
-        Đã chọn {count} tài liệu
+        {count} {count === 1 ? 'item' : 'items'} selected
       </span>
 
       <Button
@@ -33,7 +33,7 @@ export function TopbarBulkBar() {
         className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
       >
         <X className="h-3 w-3 mr-1" />
-        Bỏ chọn
+        Deselect
       </Button>
 
       <Button
@@ -43,7 +43,7 @@ export function TopbarBulkBar() {
         className="h-6 px-2 text-xs"
       >
         <Trash2 className="h-3 w-3 mr-1" />
-        Xóa
+        Delete
       </Button>
     </div>
   );

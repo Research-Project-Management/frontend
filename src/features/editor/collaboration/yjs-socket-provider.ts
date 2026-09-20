@@ -164,6 +164,7 @@ export class YjsSocketIOProvider {
       'comment:deleted',
       'comment:replied',
       'comment:reply-deleted',
+      'comment:mention',
       'suggestion:created',
       'suggestion:accepted',
       'suggestion:rejected',

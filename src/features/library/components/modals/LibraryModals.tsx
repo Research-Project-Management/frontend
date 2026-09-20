@@ -62,8 +62,8 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
         <DeleteModal
           open={isDeleteItemsOpen}
           onOpenChange={(open) => !open && closeModal()}
-          title="Xác nhận xóa tài liệu"
-          description={`Bạn có chắc muốn xóa ${itemIdsToDelete.length} tài liệu đã chọn không?`}
+          title="Delete Items"
+          description={`Are you sure you want to delete ${itemIdsToDelete.length} selected ${itemIdsToDelete.length === 1 ? 'item' : 'items'}?`}
           onConfirm={handleDeleteItems}
           isDeleting={deleteItemsMutation.isPending}
         />

@@ -40,7 +40,7 @@ export function ItemTableHeader({
             type="button"
             onClick={onSelectAll}
             className="hover:text-foreground inline-flex items-center justify-center cursor-pointer"
-            title={isAllSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+            title={isAllSelected ? 'Deselect all' : 'Select all'}
           >
             {isAllSelected ? (
               <CheckSquare className="h-3.5 w-3.5 text-primary" />
@@ -64,7 +64,7 @@ export function ItemTableHeader({
           className="px-3 font-medium cursor-pointer hover:text-foreground transition-colors group/col"
         >
           <div className="flex items-center gap-1">
-            <span>Tiêu đề</span>
+            <span>Title</span>
             {renderSortIndicator('title')}
           </div>
         </th>
@@ -76,7 +76,7 @@ export function ItemTableHeader({
             className="w-48 px-3 font-medium cursor-pointer hover:text-foreground transition-colors"
           >
             <div className="flex items-center gap-1">
-              <span>Tác giả</span>
+              <span>Authors</span>
               {renderSortIndicator('authors')}
             </div>
           </th>
@@ -89,7 +89,7 @@ export function ItemTableHeader({
             className="w-16 px-2 text-center font-medium cursor-pointer hover:text-foreground transition-colors"
           >
             <div className="flex items-center justify-center gap-1">
-              <span>Năm</span>
+              <span>Year</span>
               {renderSortIndicator('year')}
             </div>
           </th>
@@ -102,14 +102,14 @@ export function ItemTableHeader({
             className="w-44 px-3 font-medium cursor-pointer hover:text-foreground transition-colors"
           >
             <div className="flex items-center gap-1">
-              <span>Nơi xuất bản</span>
+              <span>Publication</span>
               {renderSortIndicator('publicationTitle')}
             </div>
           </th>
         )}
 
         {/* Item Type */}
-        {columns.itemType && <th className="w-28 px-3 font-medium">Loại</th>}
+        {columns.itemType && <th className="w-28 px-3 font-medium">Type</th>}
 
         {/* DOI */}
         {columns.doi && <th className="w-32 px-3 font-medium">DOI</th>}
@@ -121,11 +121,11 @@ export function ItemTableHeader({
 
         {/* Citations Count */}
         {columns.citations && (
-          <th className="w-20 px-2 text-center font-medium">Trích dẫn</th>
+          <th className="w-20 px-2 text-center font-medium">Citations</th>
         )}
 
         {/* Trash deletedAt column */}
-        {isTrash && <th className="w-32 px-3 font-medium">Ngày xóa</th>}
+        {isTrash && <th className="w-32 px-3 font-medium">Date Deleted</th>}
       </tr>
     </thead>
   );

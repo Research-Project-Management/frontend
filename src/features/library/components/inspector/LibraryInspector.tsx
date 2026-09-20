@@ -191,12 +191,12 @@ export function LibraryInspector({
         /* Empty State */
         <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-muted-foreground gap-2">
           {isLoading ? (
-            <p className="text-xs">Đang tải thông tin tài liệu...</p>
+            <p className="text-xs">Loading item details...</p>
           ) : (
             <>
-              <p className="text-xs font-medium">Chưa chọn tài liệu nào</p>
+              <p className="text-xs font-medium">No item selected</p>
               <p className="text-[11px] text-muted-foreground/80">
-                Nhấp vào một dòng trong danh sách để xem chi tiết, tệp đính kèm và trích dẫn.
+                Select an item from the list to view its details, attachments, and citation metadata.
               </p>
             </>
           )}

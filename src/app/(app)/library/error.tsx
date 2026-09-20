@@ -25,15 +25,15 @@ export default function LibraryRouteError({
 
         <div className="space-y-1.5">
           <h3 className="text-base font-semibold text-foreground">
-            Mô-đun Thư viện tạm thời không khả dụng
+            Library Module Temporarily Unavailable
           </h3>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Dịch vụ quản lý tài liệu tham khảo (Library) đang gặp sự cố kết nối hoặc lỗi backend.
+            The reference management service (Library) is experiencing connection issues or backend downtime.
             <br />
-            <strong className="text-foreground/90 font-medium">Lưu ý:</strong> Các phân hệ khác như{' '}
+            <strong className="text-foreground/90 font-medium">Note:</strong> Other modules such as{' '}
             <span className="text-primary font-medium">Document Editor</span>,{' '}
-            <span className="text-primary font-medium">Dự án</span> và{' '}
-            <span className="text-primary font-medium">AI Assistant</span> vẫn hoạt động bình thường.
+            <span className="text-primary font-medium">Projects</span>, and{' '}
+            <span className="text-primary font-medium">AI Assistant</span> remain fully functional.
           </p>
         </div>
 
@@ -50,21 +50,21 @@ export default function LibraryRouteError({
             className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 rounded-md transition-colors cursor-pointer"
           >
             <RefreshCw className="size-3.5 shrink-0" />
-            Thử kết nối lại
+            Retry Connection
           </button>
           <Link
             href="/projects"
             className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-medium text-foreground bg-background hover:bg-muted rounded-md border border-border transition-colors cursor-pointer"
           >
             <FileText className="size-3.5 shrink-0" />
-            Đến Dự án / Document
+            Go to Projects / Document
           </Link>
           <Link
             href="/home"
             className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="size-3.5 shrink-0" />
-            Về Trang chủ
+            Back to Home
           </Link>
         </div>
       </div>

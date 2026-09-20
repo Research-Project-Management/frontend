@@ -44,10 +44,15 @@ import {
 import type { PageComment, CommentReply, PageSuggestion } from "@/features/editor/types";
 import { usePageStore, useActionsStore, useSettingsStore } from "@/features/editor/store";
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { cn } from "@/shared/lib/utils";
 import { Form } from "@/shared/components/ui";
+import { toast } from 'sonner';
+import { ProjectService } from '@/features/projects/shell/services/project.service';
+import { MentionTextarea } from './subcomponents/MentionTextarea';
+import { MentionRenderer } from './subcomponents/MentionBadge';
+import { type MentionMember, extractMentions } from '@/features/editor/utils/mention.util';
 
 
 type Filter = "all" | "open" | "resolved";
@@ -102,12 +107,14 @@ const CommentCard = React.memo(function CommentCard({
   currentUserId,
   onNavigate,
   isHighlighted = false,
+  members = [],
 }: {
   comment: PageComment;
   pageId: string;
   currentUserId: string | undefined;
   onNavigate?: (line: number) => void;
   isHighlighted?: boolean;
+  members?: MentionMember[];
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -117,6 +124,8 @@ const CommentCard = React.memo(function CommentCard({
       content: "",
     },
   });
+
+  const replyContent = useWatch({ control: replyForm.control, name: "content" }) || "";
 
   const resolveMutation = useResolveComment();
   const deleteMutation = useDeleteComment();
@@ -141,9 +150,20 @@ const CommentCard = React.memo(function CommentCard({
   };
 
   const handleSendReply = (data: CreateReplyInput) => {
+    if (!data.content?.trim()) return;
     addReplyMutation.mutate(
       { pageId, commentId: comment.id, content: data.content },
-      { onSuccess: () => replyForm.reset() },
+      {
+        onSuccess: () => {
+          const mentions = extractMentions(data.content);
+          replyForm.reset();
+          if (mentions.length > 0) {
+            toast.info(
+              `Sent reply mentioning ${mentions.map((m) => `@${m.name}`).join(", ")}`,
+            );
+          }
+        },
+      },
     );
   };
 
@@ -199,10 +219,10 @@ const CommentCard = React.memo(function CommentCard({
           </span>
         </div>
 
-        {/* Row 3: content */}
-        <p className="text-xs text-foreground leading-relaxed wrap-break-word whitespace-pre-wrap ml-6">
-          {comment.content}
-        </p>
+        {/* Row 3: content with @mention badges */}
+        <div className="text-xs text-foreground leading-relaxed wrap-break-word whitespace-pre-wrap ml-6">
+          <MentionRenderer content={comment.content} />
+        </div>
 
         {/* Row 4: actions */}
         <div className="flex items-center gap-3 mt-2 ml-6 flex-wrap">
@@ -276,17 +296,19 @@ const CommentCard = React.memo(function CommentCard({
               onSubmit={replyForm.handleSubmit(handleSendReply)}
               className="flex items-center gap-1.5 mt-2"
             >
-              <input
-                {...replyForm.register("content")}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    replyForm.handleSubmit(handleSendReply)();
+              <div className="flex-1 min-w-0">
+                <MentionTextarea
+                  singleLine
+                  value={replyContent}
+                  onChange={(val) =>
+                    replyForm.setValue("content", val, { shouldValidate: true })
                   }
-                }}
-                placeholder="Reply…"
-                className="flex-1 min-w-0 text-xs bg-background border border-border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50"
-              />
+                  members={members}
+                  placeholder="Reply with @mention..."
+                  onSubmit={replyForm.handleSubmit(handleSendReply)}
+                  className="bg-background border border-border"
+                />
+              </div>
               <button
                 type="submit"
                 disabled={addReplyMutation.isPending || replyForm.formState.isSubmitting}
@@ -339,9 +361,9 @@ const ReplyRow = React.memo(function ReplyRow({
             </button>
           )}
         </div>
-        <p className="text-xs text-foreground leading-relaxed wrap-break-word whitespace-pre-wrap">
-          {reply.content}
-        </p>
+        <div className="text-xs text-foreground leading-relaxed wrap-break-word whitespace-pre-wrap">
+          <MentionRenderer content={reply.content} />
+        </div>
       </div>
     </div>
   );
@@ -473,9 +495,12 @@ const SuggestionCard = React.memo(function SuggestionCard({
 });
 
 const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => void }) {
-  const { pageId: rootPageId } = useParams<{ pageId: string }>();
+  const { pageId: rootPageId, projectId: routeProjectId } = useParams<{ pageId: string; projectId?: string }>();
   const storeActivePageId = usePageStore((s) => s.activePageId);
   const pageId = storeActivePageId || rootPageId;
+  const storeProjectId = usePageStore((s) => s.projectId);
+  const currentPage = usePageStore((s) => s.currentPage);
+  const projectId = currentPage?.projectId || routeProjectId || storeProjectId || '';
   const editorRef = usePageStore((s) => s.editorRef);
   const scrollToLineRef = usePageStore((s) => s.scrollToLineRef);
   const scrollToPdfLineRef = usePageStore((s) => s.scrollToPdfLineRef);
@@ -492,10 +517,61 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
   const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
   const setTrackChangesViewMode = useSettingsStore((s) => s.setTrackChangesViewMode);
 
-  // Real-time invalidation from Socket.IO room events
+  // Fetch project members for @mention autocomplete
+  const { data: projectMembersData } = useQuery({
+    queryKey: ['project-members', projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+      try {
+        const res = await ProjectService.getMembers(projectId);
+        return res?.members || (res as any)?.data?.members || [];
+      } catch {
+        return [];
+      }
+    },
+    enabled: Boolean(projectId),
+  });
+
+  const mentionMembers: MentionMember[] = React.useMemo(() => {
+    const list: MentionMember[] = [];
+    const seen = new Set<string>();
+
+    if (Array.isArray(projectMembersData)) {
+      for (const m of projectMembersData) {
+        const anyM = m as any;
+        const id = m.userId || anyM.id || m.user?.id;
+        const name = m.user?.name || anyM.name || m.user?.email?.split('@')[0] || 'Collaborator';
+        if (id && !seen.has(id)) {
+          seen.add(id);
+          list.push({
+            id,
+            name,
+            email: m.user?.email || anyM.email,
+            avatar: m.user?.avatar || anyM.avatar,
+            role: m.role,
+          });
+        }
+      }
+    }
+
+    if (user?.id && !seen.has(user.id)) {
+      seen.add(user.id);
+      list.push({
+        id: user.id,
+        name: user.name || user.email?.split('@')[0] || 'You',
+        email: user.email,
+        avatar: user.avatar,
+        role: 'you',
+      });
+    }
+
+    return list;
+  }, [projectMembersData, user]);
+
+  // Real-time invalidation & mention notification from Socket.IO room events
   useEffect(() => {
     if (!pageId) return;
-    const unsub = EditorEventBus.on('flux:review-event', ({ pageId: evtPageId, event }) => {
+    const unsub = EditorEventBus.on('flux:review-event', ({ pageId: evtPageId, event, payload }) => {
       if (evtPageId !== pageId) return;
 
       if (event.startsWith('comment:') || event.startsWith('comments:')) {
@@ -505,10 +581,18 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
         queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
         queryClient.invalidateQueries({ queryKey: ['pages', 'detail', pageId] });
       }
+      if (event === 'comment:mention') {
+        const mentionedIds = payload?.mentionedUserIds || [];
+        if (user?.id && mentionedIds.includes(user.id)) {
+          toast.info('You were mentioned in a review discussion!', {
+            description: payload?.content ? payload.content.slice(0, 120) : 'A collaborator tagged you in a comment.',
+          });
+        }
+      }
     });
 
     return () => unsub();
-  }, [pageId, queryClient]);
+  }, [pageId, queryClient, user?.id]);
 
   // Deep-link from Monaco decorations / glyphs
   useEffect(() => {
@@ -555,6 +639,7 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
 
   const lineStartVal = useWatch({ control, name: 'line' });
   const lineEndVal = useWatch({ control, name: 'lineEnd' });
+  const newCommentContent = useWatch({ control, name: 'content' }) || '';
 
   const { data: comments = [], isLoading } = usePageComments(pageId ?? null);
   const { data: suggestions = [], isLoading: isSuggestionsLoading } = usePageSuggestions(pageId ?? null);
@@ -616,8 +701,14 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
       },
       {
         onSuccess: () => {
+          const mentions = extractMentions(data.content);
           reset();
           setShowAddForm(false);
+          if (mentions.length > 0) {
+            toast.info(
+              `Comment posted mentioning ${mentions.map((m) => `@${m.name}`).join(', ')}`,
+            );
+          }
         },
       },
     );
@@ -711,10 +802,12 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
                       <X className="size-3.5 shrink-0" />
                     </button>
                   </div>
-                  <textarea
-                    {...register('content')}
-                    placeholder="Leave a comment on this line..."
-                    className="min-h-[60px] w-full resize-none rounded-md border border-input bg-background p-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                  <MentionTextarea
+                    value={newCommentContent}
+                    onChange={(val) => setValue('content', val, { shouldValidate: true })}
+                    members={mentionMembers}
+                    placeholder="Leave a comment... Type @ to mention a collaborator"
+                    rows={3}
                   />
                   <div className="flex items-center justify-between">
                     <span className="text-10 text-muted-foreground">
@@ -786,6 +879,7 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
                     currentUserId={user?.id}
                     onNavigate={comment.line != null ? handleNavigateToLine : undefined}
                     isHighlighted={highlightId === comment.id}
+                    members={mentionMembers}
                   />
                 ))}
               </ul>

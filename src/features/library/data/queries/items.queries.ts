@@ -776,11 +776,11 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
       if (targetId) {
         queryClient.invalidateQueries({ queryKey: itemKeys.byId(effectiveScope, targetId) });
       }
-      toast.success('Đã cập nhật tài liệu', { id: 'item-update' });
+      toast.success('Item updated', { id: 'item-update' });
     },
     onError: (err: any) => {
-      toast.error('Cập nhật thất bại', {
-        description: err?.message || 'Vui lòng thử lại.',
+      toast.error('Failed to update item', {
+        description: err?.message || 'Please try again.',
         id: 'item-update',
       });
     },
@@ -799,13 +799,13 @@ export function useToggleStarItemMutation(scopeId?: string) {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: libraryKeys.all });
       queryClient.invalidateQueries({ queryKey: itemKeys.byId(effectiveScope, variables.id) });
-      toast.success(variables.isStarred ? 'Đã thêm vào mục yêu thích' : 'Đã bỏ yêu thích', {
+      toast.success(variables.isStarred ? 'Added to Starred' : 'Removed from Starred', {
         id: 'item-star-toggle',
       });
     },
     onError: (err: any) => {
-      toast.error('Thao tác thất bại', {
-        description: err?.message || 'Vui lòng thử lại.',
+      toast.error('Action failed', {
+        description: err?.message || 'Please try again.',
         id: 'item-star-toggle',
       });
     },
@@ -826,11 +826,11 @@ export function useDeleteLibraryItemsMutation(scopeId?: string) {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: libraryKeys.all });
       queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
-      toast.success(`Đã chuyển ${ids.length} tài liệu vào thùng rác`, { id: 'item-delete' });
+      toast.success(`Moved ${ids.length} ${ids.length === 1 ? 'item' : 'items'} to trash`, { id: 'item-delete' });
     },
     onError: (err: any) => {
-      toast.error('Xóa tài liệu thất bại', {
-        description: err?.message || 'Vui lòng thử lại.',
+      toast.error('Failed to delete items', {
+        description: err?.message || 'Please try again.',
         id: 'item-delete',
       });
     },
@@ -851,11 +851,11 @@ export function useBatchRestoreItemsMutation(scopeId?: string) {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: libraryKeys.all });
       queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
-      toast.success(`Đã khôi phục ${ids.length} tài liệu`, { id: 'item-restore' });
+      toast.success(`Restored ${ids.length} ${ids.length === 1 ? 'item' : 'items'}`, { id: 'item-restore' });
     },
     onError: (err: any) => {
-      toast.error('Khôi phục thất bại', {
-        description: err?.message || 'Vui lòng thử lại.',
+      toast.error('Failed to restore items', {
+        description: err?.message || 'Please try again.',
         id: 'item-restore',
       });
     },
@@ -876,11 +876,11 @@ export function useBatchPurgeItemsMutation(scopeId?: string) {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: libraryKeys.all });
       queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
-      toast.success(`Đã xóa vĩnh viễn ${ids.length} tài liệu`, { id: 'item-purge' });
+      toast.success(`Permanently deleted ${ids.length} ${ids.length === 1 ? 'item' : 'items'}`, { id: 'item-purge' });
     },
     onError: (err: any) => {
-      toast.error('Xóa vĩnh viễn thất bại', {
-        description: err?.message || 'Vui lòng thử lại.',
+      toast.error('Failed to permanently delete items', {
+        description: err?.message || 'Please try again.',
         id: 'item-purge',
       });
     },

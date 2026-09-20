@@ -18,7 +18,6 @@ import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import { Button, Badge } from '@/shared/components/ui';
 import dynamic from 'next/dynamic';
-import { LibrarySidebar } from '../components/sidebar';
 import { LibraryTopbar } from '../components/topbar';
 import { LibraryInspector } from '../components/inspector';
 import { LibraryModals } from '../components/modals';
@@ -72,7 +71,7 @@ export function DuplicatesPage() {
   const handleOpenMerge = (group: DuplicateGroup) => {
     const items = (group.papers || group.items || []) as Item[];
     if (items.length < 2) {
-      toast.info('Nhóm này chỉ có một tài liệu');
+      toast.info('This group has only one item');
       return;
     }
     setMergeCluster(items);
@@ -95,17 +94,14 @@ export function DuplicatesPage() {
 
   const handleDismissGroup = (groupKey: string) => {
     setDismissedGroupKeys((prev) => new Set([...Array.from(prev), groupKey]));
-    toast.success('Đã bỏ qua nhóm trùng lặp');
+    toast.success('Dismissed duplicate group');
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background">
-      {/* Zone 1: Sidebar */}
-      <LibrarySidebar />
-
-      {/* Zone 2 & 3: Main Workspace Content */}
-      <main className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <LibraryTopbar title="Tài liệu trùng lặp" />
+    <div className="flex h-full w-full overflow-hidden bg-background">
+      {/* Main Workspace Content */}
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+        <LibraryTopbar title="Duplicate Items" />
 
         <div className="flex-1 overflow-y-auto min-h-0 bg-background/50">
           {isLoading ? (
@@ -115,14 +111,14 @@ export function DuplicatesPage() {
           ) : isError ? (
             <div className="flex h-full w-full flex-col items-center justify-center p-8 text-center text-destructive">
               <ShieldAlert className="h-10 w-10 mb-2 opacity-80" />
-              <p className="text-sm font-medium">Không thể tải thông tin tài liệu trùng lặp</p>
+              <p className="text-sm font-medium">Failed to load duplicate items</p>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => refetch()}
                 className="mt-4 text-xs"
               >
-                Thử lại
+                Try again
               </Button>
             </div>
           ) : activeGroups.length === 0 ? (
@@ -130,9 +126,9 @@ export function DuplicatesPage() {
               <div className="h-14 w-14 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3">
                 <Sparkles className="h-7 w-7 text-emerald-500" />
               </div>
-              <p className="text-base font-semibold text-foreground">Không có tài liệu trùng lặp</p>
+              <p className="text-base font-semibold text-foreground">No duplicate items</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                Thư viện của bạn đang ở trạng thái sạch sẽ và không phát hiện tài liệu nào bị trùng lặp.
+                Your library is clean. No duplicate items detected.
               </p>
             </div>
           ) : (
@@ -145,10 +141,10 @@ export function DuplicatesPage() {
                   </div>
                   <div>
                     <h2 className="text-sm font-semibold text-foreground">
-                      Phát hiện {activeGroups.length} nhóm trùng lặp
+                      Detected {activeGroups.length} duplicate {activeGroups.length === 1 ? 'group' : 'groups'}
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                      Tổng cộng {totalDuplicatePapers} bản ghi có dấu hiệu tương đồng về mã định danh hoặc tiêu đề.
+                      Found {totalDuplicatePapers} items with matching identifiers or titles.
                     </p>
                   </div>
                 </div>
@@ -170,19 +166,19 @@ export function DuplicatesPage() {
                       <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-muted/40 border-b border-border/60">
                         <div className="flex items-center gap-2.5">
                           <span className="text-xs font-bold text-foreground">
-                            Nhóm #{groupIdx + 1}
+                            Group #{groupIdx + 1}
                           </span>
                           <Badge
                             variant={isHighConfidence ? 'default' : 'secondary'}
                             className="text-[11px] font-normal h-5"
                           >
-                            {group.matchType === 'DOI' ? 'Trùng DOI' : 'Trùng Tên & Tác giả'}
+                            {group.matchType === 'DOI' ? 'Matching DOI' : 'Matching Title & Author'}
                           </Badge>
                           <Badge
                             variant="outline"
                             className="text-[10px] text-muted-foreground font-normal h-5"
                           >
-                            {items.length} tài liệu
+                            {items.length} {items.length === 1 ? 'item' : 'items'}
                           </Badge>
                         </div>
 
@@ -193,7 +189,7 @@ export function DuplicatesPage() {
                             onClick={() => handleDismissGroup(groupKey)}
                             className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground"
                           >
-                            Bỏ qua
+                            Dismiss
                           </Button>
                           <Button
                             size="sm"
@@ -201,7 +197,7 @@ export function DuplicatesPage() {
                             className="h-7 px-3 text-xs gap-1.5 font-medium"
                           >
                             <GitMerge className="h-3.5 w-3.5" />
-                            Hợp nhất nhóm này
+                            Merge this group
                           </Button>
                         </div>
                       </div>
@@ -235,7 +231,7 @@ export function DuplicatesPage() {
                                 <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                                 <div className="min-w-0 flex-1">
                                   <div className="font-medium text-foreground truncate">
-                                    {item.title || 'Tài liệu không tiêu đề'}
+                                    {item.title || 'Untitled item'}
                                   </div>
                                   <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5 truncate">
                                     {authorStr && <span>{authorStr}</span>}
@@ -263,7 +259,7 @@ export function DuplicatesPage() {
                                     router.push(`/reader?itemId=${item.id}`);
                                   }}
                                   className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                  title="Mở trong Reader"
+                                  title="Open in Reader"
                                 >
                                   <ExternalLink className="h-3.5 w-3.5" />
                                 </Button>
@@ -280,7 +276,7 @@ export function DuplicatesPage() {
             </div>
           )}
         </div>
-      </main>
+      </div>
 
       {/* Zone 4: Inspector Panel */}
       <LibraryInspector scopeId={effectiveScopeId} />

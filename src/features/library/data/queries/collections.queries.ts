@@ -194,11 +194,11 @@ export function useCreateCollectionMutation(scopeId?: string) {
     },
     onSuccess: () => {
       invalidateCollections(queryClient, effectiveScope);
-      toast.success('Thư mục mới đã được tạo', { id: 'collection-create' });
+      toast.success('Collection created', { id: 'collection-create' });
     },
     onError: (err: any) => {
-      toast.error('Tạo thư mục thất bại', {
-        description: err?.message || 'Vui lòng thử lại.',
+      toast.error('Failed to create collection', {
+        description: err?.message || 'Please try again.',
         id: 'collection-create',
       });
     },

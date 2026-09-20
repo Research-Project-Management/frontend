@@ -161,7 +161,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
           <button
             type="button"
             className="inline-flex items-center justify-center cursor-pointer p-0.5 rounded hover:bg-muted"
-            title={isStarred ? 'Bỏ yêu thích' : 'Yêu thích'}
+            title={isStarred ? 'Unstar' : 'Star'}
           >
             <Star
               className={cn(

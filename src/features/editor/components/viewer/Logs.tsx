@@ -6,10 +6,19 @@ import {
   AlertTriangle,
   CheckCircle2,
   Info,
+  RefreshCw,
   X,
+  Sparkles,
+  Loader2,
+  Check,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from "@/shared/lib/utils";
 import { usePageStore } from '@/features/editor/store';
+import {
+  suggestLatexFix,
+  type AiErrorFixResult,
+} from '@/features/editor/services/ai-error-assist.service';
 
 export interface LogEntry {
   message: string;
@@ -101,10 +110,20 @@ function EntryRow({
   type,
   entry,
   onClick,
+  onSuggestFix,
+  isFixLoading,
+  fixResult,
+  isFixApplied,
+  onApplyFix,
 }: {
   type: 'error' | 'warning' | 'badbox';
   entry: LogEntry;
   onClick?: () => void;
+  onSuggestFix?: (entry: LogEntry) => void;
+  isFixLoading?: boolean;
+  fixResult?: AiErrorFixResult | null;
+  isFixApplied?: boolean;
+  onApplyFix?: (entry: LogEntry, fix: AiErrorFixResult) => void;
   key?: React.Key;
 }) {
   const isClickable = Boolean(entry.line);
@@ -124,32 +143,134 @@ function EntryRow({
           : undefined
       }
       className={cn(
-        'flex gap-2.5 px-3 py-2.5 border-b border-border last:border-0 transition-colors',
+        'flex flex-col gap-1.5 px-3 py-2.5 border-b border-border last:border-0 transition-colors',
         isClickable && 'cursor-pointer hover:bg-muted/60 focus-visible:bg-muted/80 focus-visible:outline-none',
       )}
     >
-      {type === 'error' && <AlertCircle className="size-3.5 text-destructive shrink-0 mt-0.5" />}
-      {type === 'warning' && <AlertTriangle className="size-3.5 text-warning shrink-0 mt-0.5" />}
-      {type === 'badbox' && <Info className="size-3.5 text-primary shrink-0 mt-0.5" />}
-      <div className="flex-1 min-w-0">
-        <p className="text-foreground font-mono text-xs leading-snug break-words">
-          {entry.message}
-        </p>
-        {(entry.file || entry.line !== undefined) && (
-          <p className="text-xs mt-0.5 text-muted-foreground">
-            {entry.file && <span className="text-foreground/70">{entry.file}</span>}
-            {entry.file && entry.line !== undefined && <span> · </span>}
-            {entry.line !== undefined && (
-              <span className={cn(isClickable && 'underline underline-offset-2 decoration-muted-foreground/40 hover:text-foreground')}>
-                Line {entry.line}
+      <div className="flex items-start gap-2.5">
+        {type === 'error' && <AlertCircle className="size-3.5 text-destructive shrink-0 mt-0.5" />}
+        {type === 'warning' && <AlertTriangle className="size-3.5 text-warning shrink-0 mt-0.5" />}
+        {type === 'badbox' && <Info className="size-3.5 text-primary shrink-0 mt-0.5" />}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-foreground font-mono text-xs leading-snug break-words">
+              {entry.message}
+            </p>
+            {type === 'error' && onSuggestFix && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSuggestFix(entry);
+                }}
+                className={cn(
+                  'flex items-center gap-1 text-[11px] px-2 py-0.5 rounded font-medium shrink-0 transition-all border shadow-2xs cursor-pointer',
+                  fixResult || isFixLoading
+                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                    : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 hover:border-primary/40'
+                )}
+                title="Ask Overleaf AI Error Assist to explain and fix this LaTeX error"
+              >
+                {isFixLoading ? (
+                  <Loader2 className="size-3 animate-spin text-amber-500" />
+                ) : (
+                  <Sparkles className="size-3 text-amber-500" />
+                )}
+                <span>Suggest fix</span>
+              </button>
+            )}
+          </div>
+          {(entry.file || entry.line !== undefined) && (
+            <p className="text-xs mt-0.5 text-muted-foreground">
+              {entry.file && <span className="text-foreground/70">{entry.file}</span>}
+              {entry.file && entry.line !== undefined && <span> · </span>}
+              {entry.line !== undefined && (
+                <span className={cn(isClickable && 'underline underline-offset-2 decoration-muted-foreground/40 hover:text-foreground')}>
+                  Line {entry.line}
+                </span>
+              )}
+            </p>
+          )}
+          {entry.detail && (
+            <p className="text-muted-foreground/80 text-xs mt-0.5 truncate">{entry.detail}</p>
+          )}
+        </div>
+      </div>
+
+      {/* AI Error Assist Expansion Card */}
+      {(isFixLoading || fixResult) && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="ml-6 mt-1.5 p-3 rounded-lg bg-card border border-amber-500/30 shadow-sm text-xs space-y-2 select-text"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 font-semibold text-foreground">
+              <Sparkles className="size-3.5 text-amber-500 shrink-0" />
+              <span>Overleaf AI Error Assist</span>
+            </div>
+            {fixResult && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium capitalize">
+                {fixResult.confidence} confidence
               </span>
             )}
-          </p>
-        )}
-        {entry.detail && (
-          <p className="text-muted-foreground/80 text-xs mt-0.5 truncate">{entry.detail}</p>
-        )}
-      </div>
+          </div>
+
+          {isFixLoading ? (
+            <div className="flex items-center gap-2 py-2 text-muted-foreground">
+              <Loader2 className="size-3.5 animate-spin text-primary shrink-0" />
+              <span>Analyzing LaTeX error and generating fix...</span>
+            </div>
+          ) : fixResult ? (
+            <>
+              <p className="text-foreground/90 leading-relaxed">
+                {fixResult.explanation}
+              </p>
+
+              {/* Code Diff Preview */}
+              <div className="rounded-md border border-border/80 overflow-hidden font-mono text-[11px] my-1.5">
+                {fixResult.originalSnippet && (
+                  <div className="bg-rose-500/10 text-rose-600 dark:text-rose-400 px-2.5 py-1.5 border-b border-border/40 whitespace-pre-wrap">
+                    <span className="select-none font-bold mr-2 text-rose-500">-</span>
+                    {fixResult.originalSnippet}
+                  </div>
+                )}
+                {fixResult.fixedSnippet && (
+                  <div className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1.5 whitespace-pre-wrap">
+                    <span className="select-none font-bold mr-2 text-emerald-500">+</span>
+                    {fixResult.fixedSnippet}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  disabled={isFixApplied}
+                  onClick={() => onApplyFix?.(entry, fixResult)}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-colors cursor-pointer',
+                    isFixApplied
+                      ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                  )}
+                >
+                  {isFixApplied ? (
+                    <>
+                      <Check className="size-3.5" />
+                      <span>Applied & Recompiled</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="size-3.5" />
+                      <span>Apply suggestion</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
@@ -167,10 +288,16 @@ export interface LogsProps {
   log: string;
   onClose: () => void;
   onJumpToError?: (file: string | undefined, line: number) => void;
+  onClearCacheAndCompile?: () => void;
 }
 
-export default function Logs({ log, onClose, onJumpToError }: LogsProps) {
-  const { scrollToLineRef } = usePageStore();
+export default function Logs({
+  log,
+  onClose,
+  onJumpToError,
+  onClearCacheAndCompile,
+}: LogsProps) {
+  const { scrollToLineRef, editorRef, compileRef } = usePageStore();
   const parsed = useMemo(() => parseLatexLog(log), [log]);
   const defaultTab = useMemo<LogTab>(() => {
     if (parsed.errors.length > 0) return 'errors';
@@ -181,12 +308,125 @@ export default function Logs({ log, onClose, onJumpToError }: LogsProps) {
   const [selectedTab, setSelectedTab] = useState<LogTab | null>(null);
   const activeTab = selectedTab ?? defaultTab;
 
+  // AI Error Assist state
+  const [fixState, setFixState] = useState<
+    Record<string, { loading: boolean; result?: AiErrorFixResult; applied?: boolean }>
+  >({});
+
+  const getEntryKey = (entry: LogEntry, index: number) =>
+    `${entry.file || ''}-${entry.line || 0}-${entry.message}-${index}`;
+
+  const handleSuggestFix = async (entry: LogEntry, index: number) => {
+    const key = getEntryKey(entry, index);
+    if (fixState[key]?.result && !fixState[key].loading) {
+      setFixState((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      return;
+    }
+
+    setFixState((prev) => ({
+      ...prev,
+      [key]: { loading: true },
+    }));
+
+    let surroundingCode = '';
+    const editor = editorRef.current;
+    if (editor && entry.line) {
+      const model = editor.getModel();
+      if (model) {
+        const start = Math.max(1, entry.line - 3);
+        const end = Math.min(model.getLineCount(), entry.line + 3);
+        surroundingCode = model.getValueInRange({
+          startLineNumber: start,
+          startColumn: 1,
+          endLineNumber: end,
+          endColumn: model.getLineMaxColumn(end),
+        });
+      }
+    }
+
+    const result = await suggestLatexFix({
+      errorMessage: entry.message,
+      errorLine: entry.line,
+      errorFile: entry.file,
+      detail: entry.detail,
+      surroundingCode,
+    });
+
+    setFixState((prev) => ({
+      ...prev,
+      [key]: { loading: false, result },
+    }));
+  };
+
+  const handleApplyFix = (entry: LogEntry, fix: AiErrorFixResult, index: number) => {
+    const key = getEntryKey(entry, index);
+    const editor = editorRef.current;
+    if (!editor) {
+      toast.error('Editor not ready to apply fix');
+      return;
+    }
+
+    const model = editor.getModel();
+    if (!model) return;
+
+    const targetLine = entry.line || fix.startLine || 1;
+    const startLine = Math.max(1, Math.min(targetLine, model.getLineCount()));
+    const endLine = Math.max(startLine, Math.min(fix.endLine || startLine, model.getLineCount()));
+    const maxCol = model.getLineMaxColumn(endLine);
+
+    let rangeToReplace = {
+      startLineNumber: startLine,
+      startColumn: 1,
+      endLineNumber: endLine,
+      endColumn: maxCol,
+    };
+
+    if (fix.originalSnippet && fix.originalSnippet.trim()) {
+      const matches = model.findMatches(fix.originalSnippet.trim(), false, false, false, null, true);
+      if (matches.length > 0) {
+        const closest = matches.reduce((prev, curr) => {
+          return Math.abs(curr.range.startLineNumber - startLine) < Math.abs(prev.range.startLineNumber - startLine)
+            ? curr
+            : prev;
+        });
+        rangeToReplace = closest.range;
+      }
+    }
+
+    editor.executeEdits('ai-error-assist', [
+      {
+        range: rangeToReplace,
+        text: fix.fixedSnippet,
+        forceMoveMarkers: true,
+      },
+    ]);
+    editor.revealLineInCenter(startLine);
+    editor.focus();
+
+    setFixState((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], applied: true },
+    }));
+
+    toast.success('Fix applied! Recompiling...');
+
+    if (onClearCacheAndCompile) {
+      onClearCacheAndCompile();
+    } else if (compileRef.current) {
+      compileRef.current();
+    }
+  };
+
   const handleEntryClick = (entry: LogEntry) => {
     if (entry.line) {
       if (onJumpToError) {
         onJumpToError(entry.file, entry.line);
       } else if (scrollToLineRef.current) {
-        scrollToLineRef.current(entry.line);
+        scrollToLineRef.current(entry.line, 'error');
       }
     }
   };
@@ -257,14 +497,27 @@ export default function Logs({ log, onClose, onJumpToError }: LogsProps) {
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close log panel"
-          className="px-3 py-2 text-foreground hover:bg-muted transition-colors shrink-0"
-        >
-          <X className="size-3.5 shrink-0" />
-        </button>
+        <div className="flex items-center gap-1.5 pr-2">
+          {onClearCacheAndCompile && (
+            <button
+              type="button"
+              onClick={onClearCacheAndCompile}
+              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded transition-colors cursor-pointer"
+              title="Clear compilation cache and recompile from scratch"
+            >
+              <RefreshCw className="size-3 shrink-0" />
+              <span>Clear Cache & Recompile</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close log panel"
+            className="p-1.5 text-foreground hover:bg-muted rounded transition-colors shrink-0 cursor-pointer"
+          >
+            <X className="size-3.5 shrink-0" />
+          </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -278,14 +531,23 @@ export default function Logs({ log, onClose, onJumpToError }: LogsProps) {
           (parsed.errors.length === 0 ? (
             <LogEmpty text="No errors" />
           ) : (
-            parsed.errors.map((e, i) => (
-              <EntryRow
-                key={i}
-                type="error"
-                entry={e}
-                onClick={() => handleEntryClick(e)}
-              />
-            ))
+            parsed.errors.map((e, i) => {
+              const key = getEntryKey(e, i);
+              const state = fixState[key];
+              return (
+                <EntryRow
+                  key={i}
+                  type="error"
+                  entry={e}
+                  onClick={() => handleEntryClick(e)}
+                  onSuggestFix={() => handleSuggestFix(e, i)}
+                  isFixLoading={state?.loading}
+                  fixResult={state?.result}
+                  isFixApplied={state?.applied}
+                  onApplyFix={(_entry, fix) => handleApplyFix(e, fix, i)}
+                />
+              );
+            })
           ))}
         {activeTab === 'warnings' &&
           (parsed.warnings.length === 0 ? (

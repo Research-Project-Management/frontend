@@ -40,13 +40,14 @@ function getDisplayName(user: { name: string; email?: string }): string {
 function getRoleLabel(role: string): string {
   switch (role.toLowerCase()) {
     case 'owner':
-      return 'Owner (PI)';
+      return 'Owner (Trưởng nhóm)';
+    case 'coordinator':
+      return 'Coordinator (Điều phối viên)';
     case 'contributor':
-      return 'Contributor';
+      return 'Contributor (Thành viên)';
+    case 'reviewer':
     case 'commenter':
-      return 'Commenter';
-    case 'viewer':
-      return 'Viewer';
+      return 'Reviewer (Phản biện)';
     default:
       return role.charAt(0).toUpperCase() + role.slice(1);
   }
@@ -116,14 +117,14 @@ export function Item({
                 value={role.toLowerCase()}
                 onValueChange={onUpdateRole}
               >
+                <DropdownMenuRadioItem value="coordinator" className="text-xs cursor-pointer">
+                  Coordinator (Điều phối viên)
+                </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="contributor" className="text-xs cursor-pointer">
                   Contributor (Thành viên)
                 </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="commenter" className="text-xs cursor-pointer">
-                  Commenter (GVHD / Review)
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="viewer" className="text-xs cursor-pointer">
-                  Viewer (Phản biện)
+                <DropdownMenuRadioItem value="reviewer" className="text-xs cursor-pointer">
+                  Reviewer (GVHD / Phản biện)
                 </DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>

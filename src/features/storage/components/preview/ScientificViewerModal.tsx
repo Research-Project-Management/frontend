@@ -26,6 +26,7 @@ import { renderMarkdown } from '@/features/ai/utils/render-markdown';
 import type { StorageItem } from '@/features/storage/types/storage.types';
 import { resolveFileUrl, downloadFileUrl } from '@/shared/lib/file-client';
 import { copyToClipboard } from '@/shared/lib/utils';
+import { logger } from '@/shared/lib/logger';
 import { toast } from 'sonner';
 
 interface ScientificViewerModalProps {
@@ -56,6 +57,9 @@ export default function ScientificViewerModal({
 
   // Fetch full text content when modal opens
   useEffect(() => {
+    let isCancelled = false;
+    const controller = new AbortController();
+
     if (open && file?.url) {
       setLoading(true);
       const url = resolveFileUrl(file.url);
@@ -64,23 +68,30 @@ export default function ScientificViewerModal({
         return;
       }
 
-      fetch(url)
+      fetch(url, { signal: controller.signal })
         .then((res) => {
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           return res.text();
         })
         .then((text) => {
+          if (isCancelled) return;
           setContent(text);
           setLoading(false);
           setCurrentPage(1);
           setSearchQuery('');
         })
         .catch((err) => {
-          console.error('Failed to load scientific file content:', err);
-          setContent('// Không thể tải nội dung tệp tin: ' + err.message);
+          if (isCancelled || err?.name === 'AbortError') return;
+          logger.error('Failed to load scientific file content', err);
+          setContent('// Không thể tải nội dung tệp tin: ' + (err instanceof Error ? err.message : 'Unknown error'));
           setLoading(false);
         });
     }
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+    };
   }, [open, file?.id, file?.url]);
 
   // Copy handler

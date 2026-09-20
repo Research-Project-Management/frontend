@@ -13,8 +13,8 @@ import {
   Button,
   Input,
   Label,
+  ProjectAvatar,
 } from '@/shared/components/ui';
-import { ProjectAvatar } from '@/shared/components/icon-picker/ProjectAvatar';
 import {
   useMyProjectInvitations,
   useAcceptProjectInvitation,

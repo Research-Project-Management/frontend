@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import type { editor } from 'monaco-editor';
 import type { PageComment, PageSuggestion } from '@/features/editor/types';
-import { useCompileStore, usePageStore } from '@/features/editor/store';
+import { useCompileStore, usePageStore, useSettingsStore } from '@/features/editor/store';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import type { InlineSuggestionWidgetData } from '../subcomponents/InlineSuggestionWidget';
 
@@ -25,6 +25,7 @@ export function useEditorDecorations({
   const { compileErrors } = useCompileStore();
   const activeFilePage = usePageStore((s) => s.activeFilePage);
   const currentPage = usePageStore((s) => s.currentPage);
+  const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
   const decorationCollRef = useRef<editor.IEditorDecorationsCollection | null>(null);
   const suggestionDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null);
   const lineCommentsRef = useRef<Map<number, PageComment[]>>(new Map());
@@ -130,14 +131,17 @@ export function useEditorDecorations({
       suggestionDecorationsRef.current = ed.createDecorationsCollection([]);
     }
 
-    if (!suggestions || suggestions.length === 0) {
+    // View Mode: 'original' hides all suggestions, showing clean original text
+    if (!suggestions || suggestions.length === 0 || trackChangesViewMode === 'original') {
       suggestionDecorationsRef.current.set([]);
       return;
     }
 
     const maxLine = model.getLineCount();
 
-    const newDecs = suggestions.map((s) => {
+    const newDecs: editor.IModelDeltaDecoration[] = suggestions.flatMap((s): editor.IModelDeltaDecoration[] => {
+      if (s.status !== 'pending' && s.status) return [];
+
       const isDelete = s.type === 'delete';
       const isInsert = s.type === 'insert';
 
@@ -145,34 +149,107 @@ export function useEditorDecorations({
       const toLine = Math.max(fromLine, Math.min(s.toLine || fromLine, maxLine));
       const lineContent = model.getLineContent(toLine);
       const maxCol = Math.max(1, lineContent.length + 1);
-      const toCol = Math.min(s.toColumn || maxCol, maxCol);
+      const fromCol = Math.max(1, Math.min(s.fromColumn || 1, maxCol));
+      const toCol = Math.max(fromCol, Math.min(s.toColumn || maxCol, maxCol));
 
-      return {
-        range: new monaco.Range(
-          fromLine,
-          s.fromColumn || 1,
-          toLine,
-          toCol,
-        ),
+      const hoverMessage = {
+        value: `**Suggested ${s.type.toUpperCase()} by ${s.author?.name || 'Author'}**\n\n` +
+          (s.originalText ? `*Original:* \`${s.originalText}\`\n\n` : '') +
+          (s.suggestedText ? `*Proposed:* \`${s.suggestedText}\`\n\n` : '') +
+          (s.description ? `*Note:* *${s.description}*\n\n` : '') +
+          `*💡 Click this text to Accept or Reject inline*`,
+      };
+
+      // ── View Mode: Clean Preview (Preview text as if all pending changes are accepted) ──
+      if (trackChangesViewMode === 'clean') {
+        if (isDelete) {
+          // Hide deleted text completely
+          return [{
+            range: new monaco.Range(fromLine, fromCol, toLine, toCol),
+            options: {
+              isWholeLine: false,
+              inlineClassName: 'flux-track-hidden',
+              hoverMessage,
+            },
+          }];
+        }
+
+        if (isInsert) {
+          // Render inserted text as standard text without diff highlights
+          return [{
+            range: new monaco.Range(fromLine, fromCol, fromLine, fromCol),
+            options: {
+              isWholeLine: false,
+              after: {
+                content: s.suggestedText || '',
+                inlineClassName: 'flux-track-clean-insert',
+              },
+              hoverMessage,
+            },
+          }];
+        }
+
+        // isReplace
+        return [{
+          range: new monaco.Range(fromLine, fromCol, toLine, toCol),
+          options: {
+            isWholeLine: false,
+            inlineClassName: 'flux-track-hidden',
+            after: {
+              content: s.suggestedText || '',
+              inlineClassName: 'flux-track-clean-insert',
+            },
+            hoverMessage,
+          },
+        }];
+      }
+
+      // ── View Mode: Changes (Full Diff — Overleaf 1:1) ──
+      if (isDelete) {
+        return [{
+          range: new monaco.Range(fromLine, fromCol, toLine, toCol),
+          options: {
+            isWholeLine: false,
+            className: 'bg-rose-500/20 line-through text-rose-600 dark:text-rose-400 font-mono',
+            linesDecorationsClassName: 'border-l-2 border-rose-500',
+            hoverMessage,
+          },
+        }];
+      }
+
+      if (isInsert) {
+        return [{
+          range: new monaco.Range(fromLine, fromCol, fromLine, fromCol),
+          options: {
+            isWholeLine: false,
+            after: {
+              content: ' ' + (s.suggestedText || '') + ' ',
+              inlineClassName: 'flux-track-insert-inline font-mono',
+            },
+            linesDecorationsClassName: 'border-l-2 border-emerald-500',
+            hoverMessage,
+          },
+        }];
+      }
+
+      // isReplace: strike through original text AND inject proposed replacement text
+      return [{
+        range: new monaco.Range(fromLine, fromCol, toLine, toCol),
         options: {
           isWholeLine: false,
-          className: isDelete
-            ? 'bg-rose-500/20 line-through text-rose-600 dark:text-rose-400 font-mono'
-            : isInsert
-              ? 'bg-emerald-500/20 underline decoration-emerald-500 text-emerald-600 dark:text-emerald-400 font-medium'
-              : 'bg-amber-500/20 underline decoration-amber-500 text-amber-600 dark:text-amber-400',
-          hoverMessage: {
-            value: `**Suggested ${s.type.toUpperCase()} by ${s.author.name}**\n\n*Original:* \`${s.originalText || '(none)'}\`\n\n*Suggested:* \`${s.suggestedText || '(none)'}\`${s.description ? `\n\n*Note:* ${s.description}` : ''}`,
+          className: 'bg-rose-500/20 line-through text-rose-600 dark:text-rose-400 font-mono',
+          after: {
+            content: ' ' + (s.suggestedText || '') + ' ',
+            inlineClassName: 'flux-track-replace-inline font-mono',
           },
-          linesDecorationsClassName: isDelete
-            ? 'border-l-2 border-rose-500'
-            : 'border-l-2 border-emerald-500',
+          linesDecorationsClassName: 'border-l-2 border-amber-500',
+          hoverMessage,
         },
-      };
+      }];
     });
 
     suggestionDecorationsRef.current.set(newDecs);
-  }, [suggestions, editorMounted, editorRef, monacoRef]);
+  }, [suggestions, trackChangesViewMode, editorMounted, editorRef, monacoRef]);
 
   // Setup gutter and mouse event listeners for comments
   const bindDecorationListeners = (
@@ -246,8 +323,11 @@ export function useEditorDecorations({
         const matched = suggestionsRef.current.find((s) => {
           if (s.status !== 'pending' && s.status) return false;
           if (line < s.fromLine || line > s.toLine) return false;
-          if (line === s.fromLine && col < (s.fromColumn || 1)) return false;
-          if (line === s.toLine && col > (s.toColumn || 1000)) return false;
+          const minCol = Math.max(1, (s.fromColumn || 1) - 1);
+          const extraLen = (s.suggestedText?.length || 0) + 12;
+          const maxCol = (s.toColumn || s.fromColumn || 1) + extraLen;
+          if (line === s.fromLine && col < minCol) return false;
+          if (line === s.toLine && col > maxCol) return false;
           return true;
         });
 

@@ -28,6 +28,12 @@ export interface EditorFloatingBarProps {
     type: 'replace' | 'insert' | 'delete';
     description: string;
   }) => void;
+  onOpenAiAssist?: (opts: {
+    selectedText: string;
+    startLine: number;
+    endLine: number;
+    position: { x: number; y: number };
+  }) => void;
 }
 
 export const EditorFloatingBar = React.memo(function EditorFloatingBar({
@@ -36,6 +42,7 @@ export const EditorFloatingBar = React.memo(function EditorFloatingBar({
   reviewMode = false,
   onClose,
   onOpenSuggest,
+  onOpenAiAssist,
 }: EditorFloatingBarProps) {
   const setPendingComment = useActionsStore((s) => s.setPendingComment);
 
@@ -90,14 +97,23 @@ export const EditorFloatingBar = React.memo(function EditorFloatingBar({
       <div className="w-px h-4 bg-border mx-0.5" />
       <button
         onClick={() => {
-          EditorEventBus.emit('flux:open-ai-panel', { selectedText: selFloating.text });
+          if (onOpenAiAssist) {
+            onOpenAiAssist({
+              selectedText: selFloating.text,
+              startLine: selFloating.startLine,
+              endLine: selFloating.endLine,
+              position: { x: selFloating.x, y: selFloating.y },
+            });
+          } else {
+            EditorEventBus.emit('flux:open-ai-panel', { selectedText: selFloating.text });
+          }
           onClose();
         }}
-        className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-primary hover:bg-primary/10 transition-colors cursor-pointer"
-        title="Ask Academic AI Assistant"
+        className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 font-semibold transition-colors cursor-pointer"
+        title="Overleaf AI Assist (Academic Rephrase / Concise / Grammar)"
       >
         <Sparkles className="size-3.5 shrink-0" />
-        <span>Ask AI</span>
+        <span>AI Assist</span>
       </button>
     </div>,
     document.body,

@@ -9,3 +9,6 @@ export const useViewStore = create<ViewState>((set) => ({
   view: 'list',
   setView: (view) => set({ view }),
 }));
+
+export const useStorageViewStore = useViewStore;
+

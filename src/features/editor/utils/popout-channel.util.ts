@@ -21,7 +21,15 @@ export type PopoutMessage =
   | { type: 'SYNC_STATE'; state: PopoutViewerState }
   | { type: 'REQUEST_COMPILE' }
   | { type: 'REQUEST_FORCE_SYNC' }
-  | { type: 'FORWARD_SYNC'; page: number; line?: number }
+  | {
+      type: 'FORWARD_SYNC';
+      page: number;
+      line?: number;
+      x?: number;
+      y?: number;
+      w?: number;
+      h?: number;
+    }
   | {
       type: 'REVERSE_SYNC';
       sourcePath: string | null;

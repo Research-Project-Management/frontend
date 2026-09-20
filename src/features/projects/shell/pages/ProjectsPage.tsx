@@ -19,11 +19,11 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
+import { Button, Skeleton } from "@/shared/components/ui";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/components/ui";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
-import { Skeleton } from "@/shared/components/ui";
 import { CreateProjectModal } from '../components/project/CreateProjectModal';
+import { UploadProjectZipModal } from '../components/project/UploadProjectZipModal';
 import { ProjectAvatar } from "@/shared/components/ui";
 import { Topbar } from '../components/project/Topbar';
 import { Card } from '../components/project/Card';
@@ -74,6 +74,7 @@ export function ProjectsPage() {
   const { user } = useAuth();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isUploadZipOpen, setIsUploadZipOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<ProjectVisibilityFilter>('all');
   const [popoverFilter, setPopoverFilter] = useState<ProjectFilterCriteria>({
@@ -155,6 +156,7 @@ export function ProjectsPage() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onAddProjectClick={() => setIsCreateOpen(true)}
+        onUploadProjectZipClick={() => setIsUploadZipOpen(true)}
         totalProjectsCount={activeProjects.length}
         archivedCount={archivedCount}
         projects={activeProjects}
@@ -537,6 +539,13 @@ export function ProjectsPage() {
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
         onSuccess={() => setIsCreateOpen(false)}
+      />
+
+      {/* Upload Project ZIP Modal (Overleaf Parity) */}
+      <UploadProjectZipModal
+        open={isUploadZipOpen}
+        onOpenChange={setIsUploadZipOpen}
+        onSuccess={() => setIsUploadZipOpen(false)}
       />
     </div>
   );

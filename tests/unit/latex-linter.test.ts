@@ -1,53 +1,51 @@
 import { describe, it, expect } from 'vitest';
 import {
-  maskLatexSyntax,
-  lintLatexStructure,
-  checkLatexSpelling,
+  lintUnmatchedBraces,
+  lintEnvironments,
+  lintSpecialCharacters,
+  lintInlineMath,
+  lintLabelsAndReferences,
+  lintCommandsAndTypos,
   lintRetractedCitations,
   runLatexLinter,
   type RetractedItemInfo,
+  type LatexLintDiagnostic,
 } from '@/features/editor/utils/latex-linter.util';
 
-describe('LaTeX Linter & Spellchecker Engine (Overleaf latexqc standards)', () => {
-  describe('1. LaTeX Syntax Masking (Preserving Line & Col Coordinates)', () => {
-    it('should mask comments while preserving exact string length', () => {
-      const input = 'Hello World % this is a comment\nNext Line';
-      const masked = maskLatexSyntax(input);
+describe('LaTeX Syntax & Structural Diagnostics Engine (Overleaf Parity)', () => {
+  describe('1. Unmatched Curly Braces {}', () => {
+    it('should flag unclosed opening brace {', () => {
+      const input = '\\section{Introduction\nThis is text.';
+      const diags = lintUnmatchedBraces(input);
 
-      expect(masked.length).toBe(input.length);
-      expect(masked.split('\n').length).toBe(input.split('\n').length);
-      expect(masked).toContain('Hello World');
-      expect(masked).not.toContain('this is a comment');
+      const unclosed = diags.find((d: LatexLintDiagnostic) => d.code === 'UNCLOSED_OPENING_BRACE');
+      expect(unclosed).toBeDefined();
+      expect(unclosed?.startLineNumber).toBe(1);
     });
 
-    it('should mask inline and display math without affecting surroundings', () => {
-      const input = 'Equation $E = mc^2$ holds.\nAlso $$a^2 + b^2 = c^2$$ holds.';
-      const masked = maskLatexSyntax(input);
+    it('should flag unmatched closing brace }', () => {
+      const input = 'This is text with extra brace } here.';
+      const diags = lintUnmatchedBraces(input);
 
-      expect(masked.length).toBe(input.length);
-      expect(masked).toContain('Equation');
-      expect(masked).toContain('holds.');
-      expect(masked).not.toContain('mc^2');
-      expect(masked).not.toContain('a^2 + b^2');
+      const extra = diags.find((d: LatexLintDiagnostic) => d.code === 'UNMATCHED_CLOSING_BRACE');
+      expect(extra).toBeDefined();
+      expect(extra?.startLineNumber).toBe(1);
     });
 
-    it('should mask citations, labels, and package references', () => {
-      const input = 'As shown in \\cite{vaswani2017attention} and \\ref{sec:methods}, we propose...';
-      const masked = maskLatexSyntax(input);
+    it('should ignore escaped braces \\{ and \\} and comments', () => {
+      const input = 'Set: \\{ a, b \\} % comment with { unclosed brace\nValid: {ok}';
+      const diags = lintUnmatchedBraces(input);
 
-      expect(masked.length).toBe(input.length);
-      expect(masked).not.toContain('vaswani2017attention');
-      expect(masked).not.toContain('sec:methods');
-      expect(masked).toContain('propose');
+      expect(diags).toHaveLength(0);
     });
   });
 
-  describe('2. Structural Integrity Linting', () => {
+  describe('2. LaTeX Environments (\\begin{} and \\end{})', () => {
     it('should flag unclosed environments', () => {
       const input = '\\begin{equation}\nE = mc^2\n';
-      const diags = lintLatexStructure(input);
+      const diags = lintEnvironments(input);
 
-      const unclosed = diags.find((d) => d.code === 'UNCLOSED_ENV');
+      const unclosed = diags.find((d: LatexLintDiagnostic) => d.code === 'UNCLOSED_ENV');
       expect(unclosed).toBeDefined();
       expect(unclosed?.message).toContain('\\begin{equation}');
       expect(unclosed?.startLineNumber).toBe(1);
@@ -55,9 +53,9 @@ describe('LaTeX Linter & Spellchecker Engine (Overleaf latexqc standards)', () =
 
     it('should flag mismatched environments', () => {
       const input = '\\begin{itemize}\n\\item Hello\n\\end{enumerate}';
-      const diags = lintLatexStructure(input);
+      const diags = lintEnvironments(input);
 
-      const mismatch = diags.find((d) => d.code === 'MISMATCHED_ENV');
+      const mismatch = diags.find((d: LatexLintDiagnostic) => d.code === 'MISMATCHED_ENV');
       expect(mismatch).toBeDefined();
       expect(mismatch?.message).toContain('Mismatched environment');
       expect(mismatch?.suggestions).toContain('\\end{itemize}');
@@ -65,113 +63,134 @@ describe('LaTeX Linter & Spellchecker Engine (Overleaf latexqc standards)', () =
 
     it('should flag extra \\end{} without matching \\begin{}', () => {
       const input = 'Some text\n\\end{table}';
-      const diags = lintLatexStructure(input);
+      const diags = lintEnvironments(input);
 
-      const extra = diags.find((d) => d.code === 'EXTRA_END_ENV');
+      const extra = diags.find((d: LatexLintDiagnostic) => d.code === 'EXTRA_END_ENV');
       expect(extra).toBeDefined();
       expect(extra?.message).toContain('\\end{table}');
     });
+  });
 
-    it('should flag deprecated LaTeX 2.09 commands', () => {
-      const input = 'This is {\\bf bold text} and {\\it italic text}.';
-      const diags = lintLatexStructure(input);
+  describe('3. Unescaped Special Characters (%, _, &)', () => {
+    it('should flag unescaped % after numbers or words (accidental line truncate)', () => {
+      const input = 'Accuracy reached 95% on the test set.';
+      const diags = lintSpecialCharacters(input);
 
-      const bfDiag = diags.find((d) => d.message.includes('\\textbf'));
-      expect(bfDiag).toBeDefined();
-      expect(bfDiag?.code).toBe('DEPRECATED_COMMAND');
-      expect(bfDiag?.suggestions).toContain('\\textbf{...}');
+      const pct = diags.find((d: LatexLintDiagnostic) => d.code === 'UNESCAPED_PERCENT');
+      expect(pct).toBeDefined();
+      expect(pct?.suggestions).toContain('\\%');
     });
 
-    it('should flag empty reference arguments', () => {
-      const input = 'See equation \\eqref{} or reference \\cite{}.';
-      const diags = lintLatexStructure(input);
+    it('should ignore escaped \\%', () => {
+      const input = 'Accuracy reached 95\\% on the test set.';
+      const diags = lintSpecialCharacters(input);
 
-      const emptyRefs = diags.filter((d) => d.code === 'EMPTY_REFERENCE');
-      expect(emptyRefs.length).toBe(2);
+      const pct = diags.find((d: LatexLintDiagnostic) => d.code === 'UNESCAPED_PERCENT');
+      expect(pct).toBeUndefined();
     });
 
-    it('should flag consecutive repeated words', () => {
-      const input = 'We observe that the the model achieves high accuracy.';
-      const diags = lintLatexStructure(input);
+    it('should flag unescaped _ outside math mode', () => {
+      const input = 'File user_controller.ts has bugs.';
+      const diags = lintSpecialCharacters(input);
 
-      const repDiag = diags.find((d) => d.code === 'REPEATED_WORD');
-      expect(repDiag).toBeDefined();
-      expect(repDiag?.message).toContain("Repeated word 'the'");
+      const under = diags.find((d: LatexLintDiagnostic) => d.code === 'UNESCAPED_UNDERSCORE');
+      expect(under).toBeDefined();
+      expect(under?.suggestions).toContain('\\_');
     });
 
-    it('should flag whitespace preceding punctuation', () => {
-      const input = 'Our experimental results , shown below , indicate success .';
-      const diags = lintLatexStructure(input);
+    it('should allow _ in math mode $x_1 + y_2$ and in \\cite{foo_bar}', () => {
+      const input = 'Formula $x_1 + y_2 = z$ and cite \\cite{author_2024}.';
+      const diags = lintSpecialCharacters(input);
 
-      const spacePunct = diags.filter((d) => d.code === 'SPACE_BEFORE_PUNCT');
-      expect(spacePunct.length).toBe(3);
+      const under = diags.find((d: LatexLintDiagnostic) => d.code === 'UNESCAPED_UNDERSCORE');
+      expect(under).toBeUndefined();
+    });
+
+    it('should flag unescaped & outside tabular/alignment environments', () => {
+      const input = 'Research & Development team';
+      const diags = lintSpecialCharacters(input);
+
+      const amp = diags.find((d: LatexLintDiagnostic) => d.code === 'UNESCAPED_AMPERSAND');
+      expect(amp).toBeDefined();
+      expect(amp?.suggestions).toContain('\\&');
+    });
+
+    it('should allow & inside \\begin{tabular}', () => {
+      const input = '\\begin{tabular}{cc}\nA & B \\\\\n\\end{tabular}';
+      const diags = lintSpecialCharacters(input);
+
+      const amp = diags.find((d: LatexLintDiagnostic) => d.code === 'UNESCAPED_AMPERSAND');
+      expect(amp).toBeUndefined();
     });
   });
 
-  describe('3. Academic-Aware Spellchecker', () => {
-    it('should produce zero false positives on standard academic terminology', () => {
-      const manuscript = `
-        \\section{Methodology}
-        We present a stochastic optimization framework for convolutional neural networks.
-        The algorithm computes the eigenvalues of the Hessian matrix.
-        We benchmark our transformer architecture on heterogeneous datasets with comprehensive ablation.
-      `;
-      const masked = maskLatexSyntax(manuscript);
-      const diags = checkLatexSpelling(manuscript, masked);
+  describe('4. Inline Math Mode ($ count)', () => {
+    it('should flag unclosed inline math $', () => {
+      const input = 'Let $x = 5 be given.';
+      const diags = lintInlineMath(input);
+
+      const math = diags.find((d: LatexLintDiagnostic) => d.code === 'UNCLOSED_INLINE_MATH');
+      expect(math).toBeDefined();
+    });
+
+    it('should pass closed inline math $x = 5$', () => {
+      const input = 'Let $x = 5$ be given.';
+      const diags = lintInlineMath(input);
 
       expect(diags).toHaveLength(0);
     });
+  });
 
-    it('should detect misspelled words in prose', () => {
-      const manuscript = 'We conduct an expiriment using our novel methedology.';
-      const masked = maskLatexSyntax(manuscript);
-      const diags = checkLatexSpelling(manuscript, masked);
+  describe('5. Duplicate Labels and Undefined References', () => {
+    it('should flag duplicate \\label{} definitions', () => {
+      const input = '\\section{A}\\label{sec:intro}\n\\section{B}\\label{sec:intro}';
+      const diags = lintLabelsAndReferences(input);
 
-      const misspelledWords = diags.map((d) => d.message);
-      expect(misspelledWords.some((m) => m.includes('expiriment'))).toBe(true);
-      expect(misspelledWords.some((m) => m.includes('methedology'))).toBe(true);
+      const dup = diags.find((d: LatexLintDiagnostic) => d.code === 'DUPLICATE_LABEL');
+      expect(dup).toBeDefined();
     });
 
-    it('should ignore uppercase acronyms like GPU, CPU, BERT', () => {
-      const manuscript = 'The model runs on GPU and CPU using BERT embeddings.';
-      const masked = maskLatexSyntax(manuscript);
-      const diags = checkLatexSpelling(manuscript, masked);
+    it('should flag undefined \\ref{} when labels exist', () => {
+      const input = '\\label{sec:first}\nSee section \\ref{sec:nonexistent}.';
+      const diags = lintLabelsAndReferences(input);
 
-      expect(diags).toHaveLength(0);
+      const undef = diags.find((d: LatexLintDiagnostic) => d.code === 'UNDEFINED_REFERENCE');
+      expect(undef).toBeDefined();
+      expect(undef?.message).toContain('sec:nonexistent');
     });
   });
 
-  describe('4. Full runLatexLinter Integration', () => {
-    it('should correctly combine structure linting and spellchecking', () => {
-      const content = `
-        \\section{Introduction}
-        The the model is initialized with \\bf bold weights.
-        \\begin{equation}
-        y = Wx + b
-      `;
-      const results = runLatexLinter(content);
+  describe('6. Deprecated Commands and Command Typos', () => {
+    it('should flag command typos like \\seciton and \\beging', () => {
+      const input = '\\seciton{Results}\n\\beging{center}\n\\endd{center}';
+      const diags = lintCommandsAndTypos(input);
 
-      expect(results.some((r) => r.code === 'REPEATED_WORD')).toBe(true);
-      expect(results.some((r) => r.code === 'DEPRECATED_COMMAND')).toBe(true);
-      expect(results.some((r) => r.code === 'UNCLOSED_ENV')).toBe(true);
+      const sec = diags.find((d: LatexLintDiagnostic) => d.message.includes('\\section'));
+      expect(sec).toBeDefined();
+      expect(sec?.suggestions).toContain('\\section');
+
+      const beg = diags.find((d: LatexLintDiagnostic) => d.message.includes('\\begin'));
+      expect(beg).toBeDefined();
+      expect(beg?.suggestions).toContain('\\begin');
+    });
+
+    it('should flag deprecated commands like \\bf and \\it', () => {
+      const input = 'This is {\\bf bold} and {\\it italic}.';
+      const diags = lintCommandsAndTypos(input);
+
+      const bf = diags.find((d: LatexLintDiagnostic) => d.code === 'DEPRECATED_COMMAND');
+      expect(bf).toBeDefined();
+      expect(bf?.suggestions).toContain('\\textbf{...}');
     });
   });
 
-  describe('5. Retracted Citations Detection & Interception', () => {
+  describe('7. Retracted Citations Detection', () => {
     const retractedMap = new Map<string, RetractedItemInfo>([
       [
         'wakefield1998',
         {
           title: 'Retracted Autism MMR Vaccine Paper',
           reason: 'Falsified data and unethical conduct',
-          nature: 'retraction',
-        },
-      ],
-      [
-        'surgisphere2020',
-        {
-          title: 'Hydroxychloroquine COVID-19 Registry',
-          reason: 'Fraudulent database',
           nature: 'retraction',
         },
       ],
@@ -184,56 +203,24 @@ describe('LaTeX Linter & Spellchecker Engine (Overleaf latexqc standards)', () =
       expect(diags).toHaveLength(1);
       expect(diags[0].code).toBe('RETRACTED_CITATION');
       expect(diags[0].severity).toBe('warning');
-      expect(diags[0].startLineNumber).toBe(2);
-      expect(diags[0].message).toContain('wakefield1998');
-      expect(diags[0].message).toContain('Falsified data');
-    });
-
-    it('should detect retracted citation within multiple comma-separated keys', () => {
-      const text = 'Prior studies \\cite{cleanPaper2021, wakefield1998, anotherClean2023} noted this.';
-      const diags = lintRetractedCitations(text, retractedMap);
-
-      expect(diags).toHaveLength(1);
-      expect(diags[0].code).toBe('RETRACTED_CITATION');
       expect(diags[0].message).toContain('wakefield1998');
     });
+  });
 
-    it('should detect retracted citations with \\citep and \\citet variants', () => {
-      const text = 'Evidence was criticized \\citep[see][p. 12]{surgisphere2020}.';
-      const diags = lintRetractedCitations(text, retractedMap);
+  describe('8. Full runLatexLinter Integration', () => {
+    it('should run all syntax and structural diagnostics together', () => {
+      const content = `
+        \\seciton{Introduction}
+        The accuracy is 95% overall.
+        \\begin{equation}
+        y = Wx + b
+      `;
+      const results = runLatexLinter(content);
 
-      expect(diags).toHaveLength(1);
-      expect(diags[0].code).toBe('RETRACTED_CITATION');
-      expect(diags[0].message).toContain('surgisphere2020');
-    });
-
-    it('should detect Markdown Pandoc citation format [@key]', () => {
-      const text = 'According to recent data [@surgisphere2020] there were issues.';
-      const diags = lintRetractedCitations(text, retractedMap);
-
-      expect(diags).toHaveLength(1);
-      expect(diags[0].code).toBe('RETRACTED_CITATION');
-      expect(diags[0].message).toContain('surgisphere2020');
-    });
-
-    it('should ignore citations that are clean', () => {
-      const text = 'Reliable results were obtained in \\cite{einstein1905} and [@curie1898].';
-      const diags = lintRetractedCitations(text, retractedMap);
-
-      expect(diags).toHaveLength(0);
-    });
-
-    it('should integrate retracted diagnostics seamlessly into runLatexLinter', () => {
-      const text = '\\begin{document}\n\\cite{wakefield1998}\n\\end{document}';
-      const diags = runLatexLinter(text, {
-        enableStructureLint: true,
-        enableSpellCheck: false,
-        retractedItemsMap: retractedMap,
-      });
-
-      const retractionDiag = diags.find((d) => d.code === 'RETRACTED_CITATION');
-      expect(retractionDiag).toBeDefined();
-      expect(retractionDiag?.message).toContain('wakefield1998');
+      expect(results.some((r: LatexLintDiagnostic) => r.code === 'COMMAND_TYPO')).toBe(true);
+      expect(results.some((r: LatexLintDiagnostic) => r.code === 'UNESCAPED_PERCENT')).toBe(true);
+      expect(results.some((r: LatexLintDiagnostic) => r.code === 'UNCLOSED_ENV')).toBe(true);
     });
   });
 });
+

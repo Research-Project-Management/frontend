@@ -38,7 +38,12 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
     if (!data) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        onAccept(data.suggestion);
+      }
     };
 
     const handleClickOutside = (e: MouseEvent) => {

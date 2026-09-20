@@ -52,6 +52,7 @@ export interface CompileLatexInput {
   engine?: CompilerEngine;
   draft?: boolean;
   useCache?: boolean;
+  stopOnFirstError?: boolean;
   files?: Record<string, string>;
 }
 

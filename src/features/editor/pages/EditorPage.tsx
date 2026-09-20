@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react';
 import { TooltipProvider } from "@/shared/components/ui";
 import { Skeleton } from "@/shared/components/ui";
-import { FileImage, AlertCircle, FileCode2, LayoutGrid, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileImage, AlertCircle, FileCode2, LayoutGrid, X, ChevronLeft, ChevronRight, ArrowRight, ArrowLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { editor } from 'monaco-editor';
 
@@ -647,21 +647,50 @@ function EditorShell() {
               label="Resize editor and PDF preview panes (Double-click to reset 50/50)"
             />
 
-            {/* Overleaf Panel Toggle Arrow: Collapse PDF viewer */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setLayout('editor-only');
-              }}
+            {/* Overleaf Splitter Navigation & Panel Toggle Widget */}
+            <div
+              className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center bg-card/95 backdrop-blur-xs border border-border shadow-md rounded-md p-0.5 gap-0.5 select-none"
               onMouseDown={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
-              title="Close PDF preview"
-              aria-label="Close PDF preview"
-              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-full h-9 rounded-none bg-[#475569] hover:bg-[#334155] dark:bg-[#64748b] dark:hover:bg-[#475569] text-white shadow-none transition-colors cursor-pointer select-none"
             >
-              <ChevronRight className="size-2.5 shrink-0 text-white" strokeWidth={2.5} />
-            </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  EditorEventBus.emit('flux:synctex-forward');
+                }}
+                title="Go to line in PDF (Ctrl+Alt+J)"
+                aria-label="Go to line in PDF"
+                className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              >
+                <ArrowRight className="size-3.5" strokeWidth={2.2} />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  EditorEventBus.emit('flux:synctex-backward');
+                }}
+                title="Go to code in editor"
+                aria-label="Go to code in editor"
+                className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="size-3.5" strokeWidth={2.2} />
+              </button>
+              <div className="w-3.5 h-px bg-border my-0.5" />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLayout('editor-only');
+                }}
+                title="Close PDF preview"
+                aria-label="Close PDF preview"
+                className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              >
+                <ChevronRight className="size-3.5" strokeWidth={2.2} />
+              </button>
+            </div>
           </div>
         )}
 

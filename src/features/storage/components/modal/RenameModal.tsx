@@ -1,17 +1,18 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useRenameItem } from "@/features/storage/hooks/use-storage";
 import { renameItemSchema, type RenameItemInput } from "@/features/storage/schemas/storage.schema";
-import type { StorageItem } from '@/features/storage/types/storage.types';
+import { useStorageUIStore } from "@/features/storage/store/storage-ui.store";
 import { SingleInputModal } from "./SingleInputModal";
 
 export default function RenameModal() {
-  const [open, setOpen] = useState(false);
-  const [fileId, setFileId] = useState<string | null>(null);
+  const renamingItem = useStorageUIStore((s) => s.renamingItem);
+  const close = useStorageUIStore((s) => s.closeRenameModal);
+  const isOpen = Boolean(renamingItem);
   const { mutateAsync: renameFile, isPending } = useRenameItem();
 
   const {
@@ -30,22 +31,18 @@ export default function RenameModal() {
   const newName = watch("name");
 
   useEffect(() => {
-    const handleOpen = (e: CustomEvent<StorageItem>) => {
-      setFileId(e.detail.id);
-      reset({ name: e.detail.filename });
-      setOpen(true);
-    };
-    window.addEventListener('open-rename-modal', handleOpen as EventListener);
-    return () => window.removeEventListener('open-rename-modal', handleOpen as EventListener);
-  }, [reset]);
+    if (renamingItem) {
+      reset({ name: renamingItem.filename || renamingItem.name || "" });
+    }
+  }, [renamingItem, reset]);
 
   const onFormSubmit = async (data: RenameItemInput) => {
-    if (!fileId) return;
+    if (!renamingItem) return;
 
     try {
-      await renameFile({ itemId: fileId, name: data.name });
+      await renameFile({ itemId: renamingItem.id, name: data.name });
       toast.success("Renamed successfully");
-      setOpen(false);
+      close();
     } catch (error) {
       toast.error("Failed to rename");
       console.error(error);
@@ -54,8 +51,10 @@ export default function RenameModal() {
 
   return (
     <SingleInputModal
-      open={open}
-      onOpenChange={setOpen}
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) close();
+      }}
       title="Rename"
       placeholder="New name"
       submitLabel="Save"

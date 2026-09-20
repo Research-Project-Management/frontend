@@ -27,4 +27,5 @@ export const useDocumentCollaborationStore = create<DocumentCollaborationState>(
 // Aliases for seamless backward compatibility
 export const useActionsStore = useDocumentCollaborationStore;
 export const useEditorActionsStore = useDocumentCollaborationStore;
+export const useCollaborationStore = useDocumentCollaborationStore;
 export type ActionsState = DocumentCollaborationState;

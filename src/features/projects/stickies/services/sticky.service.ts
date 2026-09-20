@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
+import { apiGet, apiPost, apiPatch, apiPut, apiDelete } from "@/shared/lib/api";
 import type { Sticky } from "@/features/projects/stickies/types/sticky.types";
 
 export const normalizeSticky = (s: Partial<Sticky> | null | undefined): Sticky => {
@@ -20,48 +20,36 @@ export const normalizeSticky = (s: Partial<Sticky> | null | undefined): Sticky =
   } as Sticky;
 };
 
-export const getStickies = async (
-  _workspaceId?: string,
-  search?: string,
-  projectId?: string,
-): Promise<Sticky[]> => {
-  const params = new URLSearchParams();
-  if (search) params.append("search", search);
-  const queryStr = params.toString() ? `?${params.toString()}` : "";
-
-  const url = projectId
-    ? `/api/projects/${projectId}/stickies${queryStr}`
-    : `/api/me/stickies${queryStr}`;
-
-  const data = await apiGet<{ stickies: Partial<Sticky>[] }>(url);
+export const getStickies = async (): Promise<Sticky[]> => {
+  const data = await apiGet<{ stickies: Partial<Sticky>[] }>('/api/v1/stickies');
   return (data?.stickies || []).map(normalizeSticky);
 };
 
+export const getStickyById = async (stickyId: string): Promise<Sticky> => {
+  const res = await apiGet<{ sticky: Partial<Sticky> } | Partial<Sticky>>(`/api/v1/stickies/${stickyId}`);
+  const stickyData = res && 'sticky' in res ? res.sticky : res;
+  return normalizeSticky(stickyData);
+};
+
 export const createSticky = async (variables?: {
-  workspaceId?: string;
+  id?: string;
   title?: string;
   content?: string;
   color?: string;
   position?: { x: number; y: number };
-  projectId?: string;
 }): Promise<Sticky> => {
-  const { workspaceId: _w, ...payload } = variables || {};
-  const url = variables?.projectId
-    ? `/api/projects/${variables.projectId}/stickies`
-    : `/api/me/stickies`;
-
   const res = await apiPost<{ sticky: Partial<Sticky> } | Partial<Sticky>>(
-    url,
-    payload,
+    '/api/v1/stickies',
+    variables || {},
   );
   const stickyData = res && 'sticky' in res ? res.sticky : res;
   return normalizeSticky(stickyData);
 };
 
 export const updateSticky = async (stickyId: string, updates: Partial<Sticky>): Promise<Sticky> => {
-  const { id: _ignoredId, workspaceId: _ignoredWorkspaceId, createdAt: _ignoredCreatedAt, updatedAt: _ignoredUpdatedAt, ...payload } = updates as any;
-  const res = await apiPut<{ sticky: Partial<Sticky> } | Partial<Sticky>>(
-    `/api/stickies/${stickyId}`,
+  const { id: _ignoredId, createdAt: _ignoredCreatedAt, updatedAt: _ignoredUpdatedAt, ...payload } = updates as any;
+  const res = await apiPatch<{ sticky: Partial<Sticky> } | Partial<Sticky>>(
+    `/api/v1/stickies/${stickyId}`,
     payload,
   );
   const stickyData = res && 'sticky' in res ? res.sticky : res;
@@ -69,17 +57,26 @@ export const updateSticky = async (stickyId: string, updates: Partial<Sticky>): 
 };
 
 export const deleteSticky = async (stickyId: string) => {
-  return apiDelete(`/api/stickies/${stickyId}`);
+  return apiDelete(`/api/v1/stickies/${stickyId}`);
 };
 
+export interface ReorderStickiesResponse {
+  success: boolean;
+  count: number;
+  stickies?: Sticky[];
+}
+
 export const reorderStickies = async (
-  _workspaceId?: string,
   stickyIds: string[] = [],
-  projectId?: string,
-) => {
-  const url = projectId
-    ? `/api/projects/${projectId}/stickies/reorder`
-    : '/api/me/stickies/reorder';
-  return apiPut(url, { stickyIds });
+): Promise<ReorderStickiesResponse> => {
+  const res = await apiPut<{ success?: boolean; count?: number; stickies?: Partial<Sticky>[] }>(
+    '/api/v1/stickies/reorder',
+    { stickyIds }
+  );
+  return {
+    success: Boolean(res?.success),
+    count: res?.count ?? 0,
+    stickies: res?.stickies ? res.stickies.map(normalizeSticky) : undefined,
+  };
 };
 

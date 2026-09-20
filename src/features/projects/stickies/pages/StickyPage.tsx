@@ -26,18 +26,12 @@ const copy = {
   title: "Stickies",
   Icon: StickiesIcon,
   loading: "Loading stickies...",
-  emptyFiltered: "No stickies match your filters",
   empty: "No stickies yet",
   cta: 'Click "Add Sticky" to get started',
   addLabel: "Add Sticky",
 };
 
-interface StickyPageProps {
-  projectId?: string;
-  workspaceId?: string;
-}
-
-export default function StickyPage({ projectId, workspaceId }: StickyPageProps = {}) {
+export default function StickyPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isMounted, setIsMounted] = useState(false);
 
@@ -47,8 +41,6 @@ export default function StickyPage({ projectId, workspaceId }: StickyPageProps =
 
   const { state, actions } = useCard({
     search: searchQuery,
-    projectId,
-    workspaceId,
   });
 
   if (state.status.isLoading) {

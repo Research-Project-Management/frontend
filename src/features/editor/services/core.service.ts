@@ -32,9 +32,33 @@ export const pageService = {
 
   deletePage: (pageId: string): Promise<void> => apiDelete<void>(`/api/pages/${pageId}`),
 
+  restorePage: async (pageId: string): Promise<Page> => {
+    const res = await apiPost<{ page: Page }>(`/api/pages/${pageId}/restore`, {});
+    return res.page;
+  },
+
   updateTitle: async (pageId: string, title: string, _oldTitle?: string): Promise<Page> => {
     const res = await apiPut<{ page: Page }>(`/api/pages/${pageId}`, {
       title,
+    });
+    return res.page;
+  },
+
+  create: async ({
+    projectId,
+    title,
+    content,
+    status = 'draft',
+  }: {
+    projectId: string;
+    title: string;
+    content?: string;
+    status?: string;
+  }): Promise<Page> => {
+    const res = await apiPost<{ page: Page }>(`/api/projects/${projectId}/pages`, {
+      title,
+      content,
+      status,
     });
     return res.page;
   },
@@ -49,6 +73,11 @@ export const fileService = {
   getByPageId: async (pageId: string): Promise<PageFile[]> => {
     const res = await apiGet<{ files: PageFile[] }>(`/api/pages/${pageId}/files`);
     return res.files;
+  },
+
+  getDeletedByPageId: async (pageId: string): Promise<PageFile[]> => {
+    const res = await apiGet<{ files: PageFile[] }>(`/api/pages/${pageId}/deleted-files`);
+    return res.files || [];
   },
 
   create: async ({

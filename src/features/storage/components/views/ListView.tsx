@@ -22,6 +22,7 @@ import { DeleteModal } from '../modal/DeleteModal';
 import { resolveFileUrl } from "@/shared/lib/file-client";
 import { useInfiniteSentinel } from '../../hooks/use-infinite-sentinel';
 import type { StorageItem } from '@/features/storage/types/storage.types';
+import { useStorageUIStore } from '@/features/storage/store/storage-ui.store';
 import StorageEmptyState from '../layout/StorageEmptyState';
 import {
   getFileType,
@@ -111,13 +112,11 @@ export function ItemActions({
   const [isRestoring, setIsRestoring] = useState(false);
 
   const handleRenameClick = () => {
-    const event = new CustomEvent('open-rename-modal', { detail: item });
-    window.dispatchEvent(event);
+    useStorageUIStore.getState().openRenameModal(item);
   };
 
   const handleMoveClick = () => {
-    const event = new CustomEvent('open-move-modal', { detail: { item } });
-    window.dispatchEvent(event);
+    useStorageUIStore.getState().openMoveModal(item);
   };
 
   const handleConfirmDelete = async () => {

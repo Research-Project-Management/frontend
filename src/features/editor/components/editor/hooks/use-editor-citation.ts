@@ -1,25 +1,52 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import type { editor } from 'monaco-editor';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
-import { ItemService, generateCitationKey, type Item } from '@/features/library';
 import { logger } from '@/shared/lib/utils';
+import { parseBibContent, type BibEntry } from '@/features/editor/utils/bib-parser.util';
 
 export interface UseEditorCitationOptions {
   editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
-  projectId: string;
+  /** All page files in the project (from useQuery filesQuery) */
+  pageFiles: Array<{ name: string; content?: string; url?: string }>;
 }
 
 export function useEditorCitation({
   editorRef,
-  projectId,
+  pageFiles,
 }: UseEditorCitationOptions) {
   const [citationModalOpen, setCitationModalOpen] = useState(false);
-  const projectIdRef = useRef(projectId);
-  projectIdRef.current = projectId;
 
-  // Listen to external citation events
+  // Parse BibTeX entries from all .bib files in the project
+  const bibEntries = useMemo<BibEntry[]>(() => {
+    const bibFiles = pageFiles.filter(
+      (f) => f.name?.toLowerCase().endsWith('.bib') && f.content,
+    );
+    if (bibFiles.length === 0) return [];
+
+    const allEntries: BibEntry[] = [];
+    const seenKeys = new Set<string>();
+    for (const f of bibFiles) {
+      try {
+        const entries = parseBibContent(f.content!);
+        for (const entry of entries) {
+          if (!seenKeys.has(entry.key)) {
+            seenKeys.add(entry.key);
+            allEntries.push(entry);
+          }
+        }
+      } catch (err) {
+        logger.warn(`[BibParser] Failed to parse ${f.name}`, { error: err });
+      }
+    }
+    return allEntries;
+  }, [pageFiles]);
+
+  const bibEntriesRef = useRef<BibEntry[]>(bibEntries);
+  bibEntriesRef.current = bibEntries;
+
+  // Listen to external citation events (from Citation sidebar panel)
   useEffect(() => {
     const unsubOpen = EditorEventBus.on('flux:open-citation-picker', () => {
       setCitationModalOpen(true);
@@ -49,7 +76,7 @@ export function useEditorCitation({
     };
   }, [editorRef]);
 
-  const handleInsertCitationSnippet = (snippet: string) => {
+  const handleInsertCitationSnippet = (snippet: string, _citeKey?: string) => {
     const ed = editorRef.current;
     if (!ed) return;
     const sel = ed.getSelection();
@@ -65,10 +92,14 @@ export function useEditorCitation({
     ed.focus();
   };
 
+  /**
+   * Register Monaco completion provider for \cite{...}
+   * Reads entries from local .bib files in the project — no Library API calls.
+   */
   const registerCitationProvider = (monaco: any): { dispose: () => void } => {
     return monaco.languages.registerCompletionItemProvider('latex', {
       triggerCharacters: ['{', ','],
-      provideCompletionItems: async (model: any, position: any) => {
+      provideCompletionItems: (model: any, position: any) => {
         const textUntilPosition = model.getValueInRange({
           startLineNumber: position.lineNumber,
           startColumn: 1,
@@ -80,93 +111,61 @@ export function useEditorCitation({
         const citeMatch = textUntilPosition.match(
           /\\(cite|citep|citet|parencite|textcite|nocite)(?:\[[^\]]*\])*\{([^}]*)$/,
         );
-        if (!citeMatch) {
-          return { suggestions: [] };
-        }
+        if (!citeMatch) return { suggestions: [] };
 
-        const currentProjectId = projectIdRef.current;
+        const entries = bibEntriesRef.current;
+        if (entries.length === 0) return { suggestions: [] };
 
-        try {
-          const res = await ItemService.getAll(currentProjectId, { limit: 100 });
-          const papers: any[] = Array.isArray(res)
-            ? res
-            : (res as any)?.papers || [];
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        };
 
-          const word = model.getWordUntilPosition(position);
-          const range = {
-            startLineNumber: position.lineNumber,
-            endLineNumber: position.lineNumber,
-            startColumn: word.startColumn,
-            endColumn: word.endColumn,
+        const suggestions = entries.map((entry) => {
+          const authors = entry.authors?.join(', ') || '';
+          const yearStr = entry.year ? ` (${entry.year})` : '';
+          const venue = entry.journal || entry.booktitle || '';
+
+          return {
+            label: {
+              label: entry.key,
+              description: `${entry.type}`,
+              detail: entry.title ? ` — ${entry.title.slice(0, 60)}` : '',
+            },
+            kind: monaco.languages.CompletionItemKind.Reference,
+            detail: `${authors}${yearStr}${venue ? ` — ${venue}` : ''}`,
+            documentation: {
+              value: [
+                `### ${entry.title || entry.key}`,
+                authors ? `**Authors:** ${authors}` : null,
+                entry.year ? `**Year:** ${entry.year}` : null,
+                venue ? `**Venue:** *${venue}*` : null,
+                entry.doi ? `**DOI:** [${entry.doi}](https://doi.org/${entry.doi})` : null,
+                entry.abstract ? `\n---\n*Abstract:*\n${entry.abstract}...` : null,
+              ]
+                .filter(Boolean)
+                .join('\n\n'),
+            },
+            insertText: entry.key,
+            range,
+            sortText: entry.key,
           };
+        });
 
-          const suggestions = papers.map((p: any) => {
-            const citeKey = p.citationKey || generateCitationKey(p);
-            const authors = p.authors?.join(', ') || 'Unknown Author';
-            const yearStr = p.year ? ` (${p.year})` : '';
-            const venue = p.journal || p.publicationTitle || p.publisher || '';
-            const title = p.title || 'Untitled Paper';
-            const isRetracted = Boolean(p.isRetracted);
-
-            const retractionWarningDoc = isRetracted
-              ? [
-                  `> ⚠️ **WARNING: RETRACTED PUBLICATION**`,
-                  `>`,
-                  `> This publication has been officially flagged as **${(p.retractionNature || 'retracted').toUpperCase()}**.`,
-                  p.retractionDetails?.reason ? `> **Reason:** ${p.retractionDetails.reason}` : null,
-                  p.retractionDetails?.noticeUrl ? `> **Official Notice:** [Publisher Statement](${p.retractionDetails.noticeUrl})` : null,
-                  `>`,
-                  `> *Citing discredited or retracted research without contextualizing its errors may undermine academic rigor.*`,
-                  `\n---`,
-                ]
-                  .filter(Boolean)
-                  .join('\n')
-              : '';
-
-            return {
-              label: isRetracted
-                ? {
-                    label: citeKey,
-                    description: '⚠️ RETRACTED',
-                    detail: ` [RETRACTED] - ${title}`,
-                  }
-                : citeKey,
-              kind: monaco.languages.CompletionItemKind.Reference,
-              detail: isRetracted
-                ? `⚠️ [RETRACTED] ${authors}${yearStr} — ${title}`
-                : `${authors}${yearStr} — ${title}`,
-              documentation: {
-                value: [
-                  retractionWarningDoc,
-                  `### ${isRetracted ? '⚠️ [RETRACTED] ' : ''}${title}`,
-                  `**Authors:** ${authors}`,
-                  `**Year:** ${p.year || 'N/A'}`,
-                  venue ? `**Venue:** *${venue}*` : null,
-                  p.doi ? `**DOI:** [${p.doi}](https://doi.org/${p.doi})` : null,
-                  p.abstract ? `\n---\n*Abstract:*\n${p.abstract.slice(0, 300)}...` : null,
-                ]
-                  .filter(Boolean)
-                  .join('\n\n'),
-              },
-              insertText: citeKey,
-              range,
-              sortText: isRetracted ? `zz_${citeKey}` : citeKey,
-            };
-          });
-
-          return { suggestions };
-        } catch (err) {
-          logger.warn('[Editor] Citation autocomplete error', { error: err });
-          return { suggestions: [] };
-        }
+        return { suggestions };
       },
     });
   };
 
   return {
+    bibEntries,
     citationModalOpen,
     setCitationModalOpen,
     handleInsertCitationSnippet,
     registerCitationProvider,
   };
 }
+

@@ -9,8 +9,16 @@ import {
   BarChart3,
   UserStar,
   Star,
+  Upload,
+  ChevronDown,
 } from 'lucide-react';
-import { Button } from "@/shared/components/ui";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui";
 import { DraftsIcon } from "@/shared/components/icons";
 import { ProjectFilterPopover } from './ProjectFilterPopover';
 import { CollapsibleSearchInput } from './CollapsibleSearchInput';
@@ -21,6 +29,7 @@ export type TopbarProps = {
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
   onAddProjectClick: () => void;
+  onUploadProjectZipClick?: () => void;
   totalProjectsCount?: number;
   archivedCount?: number;
   projects?: Project[];
@@ -34,6 +43,7 @@ export function Topbar({
   searchQuery = '',
   onSearchChange,
   onAddProjectClick,
+  onUploadProjectZipClick,
   totalProjectsCount,
   archivedCount = 0,
   projects = [],
@@ -156,15 +166,45 @@ export function Topbar({
           </Link>
         </Button>
 
-        {/* New Project CTA Button */}
-        <Button
-          size="sm"
-          onClick={onAddProjectClick}
-          className="h-8 gap-1.5 px-3 text-xs font-semibold shadow-none cursor-pointer"
-        >
-          <Plus className="size-3.5 shrink-0" />
-          <span>New Project</span>
-        </Button>
+        {/* Upload Project Quick Button (Overleaf Parity) */}
+        {onUploadProjectZipClick && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onUploadProjectZipClick}
+            className="h-8 gap-1.5 px-2.5 text-xs text-foreground hover:bg-muted font-normal cursor-pointer"
+            title="Upload zipped project (.zip)"
+          >
+            <Upload className="size-3.5 shrink-0 text-foreground" />
+            <span>Upload Project</span>
+          </Button>
+        )}
+
+        {/* New Project Dropdown / CTA Button (Overleaf Parity) */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              className="h-8 gap-1 px-2.5 text-xs font-semibold shadow-none cursor-pointer"
+            >
+              <Plus className="size-3.5 shrink-0" />
+              <span>New Project</span>
+              <ChevronDown className="size-3 shrink-0 ml-0.5 opacity-70" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48 p-1 text-xs">
+            <DropdownMenuItem onClick={onAddProjectClick} className="gap-2 cursor-pointer">
+              <Plus className="size-3.5 text-muted-foreground" />
+              <span>Blank Project</span>
+            </DropdownMenuItem>
+            {onUploadProjectZipClick && (
+              <DropdownMenuItem onClick={onUploadProjectZipClick} className="gap-2 cursor-pointer">
+                <Upload className="size-3.5 text-muted-foreground" />
+                <span>Upload Project (.zip)</span>
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

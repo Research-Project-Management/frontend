@@ -20,6 +20,8 @@ export interface SyncTeXNode {
   tag: number;
   x: number;
   y: number;
+  w?: number;
+  h?: number;
 }
 
 export interface SyncTeXMap {
@@ -80,14 +82,24 @@ export function parseSyncTeX(text: string): SyncTeXMap {
 
     if (first === 125 /* } */ || currentPage === 0) continue;
 
-    const m = s.match(/^([\[\(\)hvgxk$])(\d+)[:,\.](\d+)(?:[:,\.](\d+))?:(-?\d+),(-?\d+)/);
+    const m = s.match(/^([\[\(\)hvgxk$])(\d+)[:,\.](\d+)(?:[:,\.](\d+))?:(-?\d+),(-?\d+)(?::(-?\d+),(-?\d+))?/);
     if (m) {
       const tag = parseInt(m[2], 10);
       const line = parseInt(m[3], 10);
       const x = parseInt(m[5], 10);
       const y = parseInt(m[6], 10);
+      const w = m[7] !== undefined ? parseInt(m[7], 10) : undefined;
+      const h = m[8] !== undefined ? parseInt(m[8], 10) : undefined;
 
-      const node: SyncTeXNode & { page: number } = { line, tag, x, y, page: currentPage };
+      const node: SyncTeXNode & { page: number } = {
+        line,
+        tag,
+        x,
+        y,
+        ...(w !== undefined ? { w } : {}),
+        ...(h !== undefined ? { h } : {}),
+        page: currentPage,
+      };
 
       if (tag === 1 && !lineToPage.has(line)) {
         lineToPage.set(line, currentPage);
@@ -165,6 +177,7 @@ export interface CompileExecutionOptions {
   texLiveVersion?: string;
   draft: boolean;
   useCache: boolean;
+  stopOnFirstError?: boolean;
   dirtyFiles: DirtyFileItem[];
   onPhaseChange?: (phase: "flushing" | "syncing" | "compiling") => void;
   onThumbnailGenerated?: (base64: string) => void;
@@ -259,6 +272,7 @@ export const LatexCompilerEngine = {
       texLiveVersion: opts.texLiveVersion,
       draft,
       use_cache: useCache,
+      stop_on_first_error: opts.stopOnFirstError,
     };
 
     try {
@@ -395,7 +409,7 @@ export const LatexCompilerEngine = {
     synctexMap: SyncTeXMap | null,
     activeTitle?: string,
     maxPages?: number,
-  ): { page: number; x?: number; y?: number } | null {
+  ): { page: number; x?: number; y?: number; w?: number; h?: number } | null {
     if (!synctexMap) return null;
 
     let targetPage: number | null = null;
@@ -430,6 +444,8 @@ export const LatexCompilerEngine = {
         page: targetPage,
         x: targetNode?.x,
         y: targetNode?.y,
+        w: targetNode?.w,
+        h: targetNode?.h,
       };
     }
 

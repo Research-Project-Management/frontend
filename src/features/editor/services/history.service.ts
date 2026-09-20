@@ -29,6 +29,26 @@ export interface VersionDiffResponse {
   };
 }
 
+export interface OpLogTimeline {
+  pageId: string;
+  entries: Array<{
+    timestamp: number;
+    userId?: string;
+    opCount: number;
+  }>;
+  totalOps: number;
+  oldestMs: number | null;
+  newestMs: number | null;
+}
+
+export interface ReconstructedContent {
+  pageId: string;
+  content: string;
+  targetMs: number;
+  reconstructedAt: string;
+  source?: string;
+}
+
 // ─── 1. Document Version Snapshots ───────────────────────────────────────────
 
 export const versionService = {
@@ -119,6 +139,28 @@ export const historyService = {
 
   restoreToEvent: ({ rootPageId, eventId }: { rootPageId: string; eventId: string }) =>
     apiPost<ProjectEvent[]>(`/api/pages/${rootPageId}/history/${eventId}/restore`, {}),
+
+  getTimeline: async (
+    pageId: string,
+    from?: string | number,
+    to?: string | number,
+  ): Promise<OpLogTimeline> => {
+    const params = new URLSearchParams();
+    if (from) params.set('from', typeof from === 'number' ? new Date(from).toISOString() : from);
+    if (to) params.set('to', typeof to === 'number' ? new Date(to).toISOString() : to);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return await apiGet<OpLogTimeline>(`/api/pages/${pageId}/timeline${qs}`);
+  },
+
+  getContentAt: async (
+    pageId: string,
+    t: string | number,
+  ): Promise<ReconstructedContent> => {
+    const timeParam = typeof t === 'number' ? new Date(t).toISOString() : t;
+    return await apiGet<ReconstructedContent>(
+      `/api/pages/${pageId}/at?t=${encodeURIComponent(timeParam)}`,
+    );
+  },
 };
 
 export const ProjectHistoryService = historyService;

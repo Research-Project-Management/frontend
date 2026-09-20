@@ -19,6 +19,7 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
+import { useSettingsStore } from '@/features/editor/store';
 
 export interface EditorModeSwitcherProps {
   reviewMode: boolean;
@@ -33,6 +34,9 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
   isReviewerOnly = false,
   className,
 }: EditorModeSwitcherProps) {
+  const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
+  const setTrackChangesViewMode = useSettingsStore((s) => s.setTrackChangesViewMode);
+
   const triggerButton = (
     <button
       type="button"
@@ -125,6 +129,45 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
             </p>
           </div>
         </DropdownMenuItem>
+
+        {reviewMode && (
+          <>
+            <DropdownMenuSeparator className="my-1" />
+            <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Display Mode
+            </div>
+            <DropdownMenuItem
+              onClick={() => setTrackChangesViewMode('changes')}
+              className={cn(
+                'flex items-center justify-between py-1 px-2 cursor-pointer rounded-sm',
+                trackChangesViewMode === 'changes' && 'bg-accent font-medium text-accent-foreground',
+              )}
+            >
+              <span>View Changes (Diff)</span>
+              {trackChangesViewMode === 'changes' && <Check className="size-3 shrink-0 text-primary" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setTrackChangesViewMode('clean')}
+              className={cn(
+                'flex items-center justify-between py-1 px-2 cursor-pointer rounded-sm',
+                trackChangesViewMode === 'clean' && 'bg-accent font-medium text-accent-foreground',
+              )}
+            >
+              <span>View Clean (Preview)</span>
+              {trackChangesViewMode === 'clean' && <Check className="size-3 shrink-0 text-primary" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setTrackChangesViewMode('original')}
+              className={cn(
+                'flex items-center justify-between py-1 px-2 cursor-pointer rounded-sm',
+                trackChangesViewMode === 'original' && 'bg-accent font-medium text-accent-foreground',
+              )}
+            >
+              <span>View Original</span>
+              {trackChangesViewMode === 'original' && <Check className="size-3 shrink-0 text-primary" />}
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useCreateFolder } from "@/features/storage/hooks/use-storage";
 import { createFolderSchema, type CreateFolderInput } from "@/features/storage/schemas/storage.schema";
+import { useStorageUIStore } from "@/features/storage/store/storage-ui.store";
 import { SingleInputModal } from "./SingleInputModal";
 
 type CreateFolderModalProps = {
@@ -14,7 +15,8 @@ type CreateFolderModalProps = {
 };
 
 export default function CreateFolderModal({ projectId, parentId }: CreateFolderModalProps) {
-  const [open, setOpen] = useState(false);
+  const isOpen = useStorageUIStore((s) => s.isCreateFolderOpen);
+  const close = useStorageUIStore((s) => s.closeCreateFolderModal);
   const createFolderMutation = useCreateFolder();
 
   const {
@@ -35,23 +37,20 @@ export default function CreateFolderModal({ projectId, parentId }: CreateFolderM
   const folderName = watch("name");
 
   useEffect(() => {
-    const handleOpen = () => {
+    if (isOpen) {
       reset({
         name: "",
         projectId,
         parentId: parentId || null,
       });
-      setOpen(true);
-    };
-    window.addEventListener('open-create-folder', handleOpen);
-    return () => window.removeEventListener('open-create-folder', handleOpen);
-  }, [projectId, parentId, reset]);
+    }
+  }, [isOpen, projectId, parentId, reset]);
 
   const onFormSubmit = async (data: CreateFolderInput) => {
     try {
       await createFolderMutation.mutateAsync(data);
       toast.success(`Created folder "${data.name}"`);
-      setOpen(false);
+      close();
       reset();
     } catch (error) {
       toast.error("Failed to create folder");
@@ -61,8 +60,10 @@ export default function CreateFolderModal({ projectId, parentId }: CreateFolderM
 
   return (
     <SingleInputModal
-      open={open}
-      onOpenChange={setOpen}
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) close();
+      }}
       title="Create New Folder"
       placeholder="Folder name"
       submitLabel="Create"

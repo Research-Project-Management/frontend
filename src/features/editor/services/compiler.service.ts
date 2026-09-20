@@ -45,6 +45,7 @@ export type CompileLatexPayload = {
   texLiveVersion?: string;
   draft: boolean;
   use_cache: boolean;
+  stop_on_first_error?: boolean;
   source?: string;
   files?: Record<string, string>;
   signal?: AbortSignal;

@@ -24,6 +24,7 @@ export const pageKeys = {
   all: ['pages'] as const,
   detail: (pageId: string) => ['pages', 'detail', pageId] as const,
   files: (pageId: string) => ['pages', 'detail', pageId, 'files'] as const,
+  deletedFiles: (pageId: string) => ['pages', 'detail', pageId, 'deleted-files'] as const,
 };
 
 export const editorPageKeys = pageKeys;
@@ -42,8 +43,15 @@ export const filesQuery = (pageId: string) =>
     queryFn: () => fileService.getByPageId(pageId),
   });
 
+export const deletedFilesQuery = (pageId: string) =>
+  queryOptions({
+    queryKey: pageKeys.deletedFiles(pageId),
+    queryFn: () => fileService.getDeletedByPageId(pageId),
+  });
+
 export const pageDetailQueryOptions = pageQuery;
 export const pageFilesQueryOptions = filesQuery;
+export const pageDeletedFilesQueryOptions = deletedFilesQuery;
 
 // ── 3. Active Document Session Hook ──────────────────────────────────────────
 
@@ -255,11 +263,32 @@ export function usePageActions() {
     },
   });
 
+  const restorePage = useMutation({
+    mutationFn: (pageId: string) => {
+      if (isLocked) {
+        throw new Error('Tài liệu đang bị khóa');
+      }
+      return pageService.restorePage(pageId);
+    },
+    onSuccess: (restoredPage) => {
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      const parentId = (restoredPage as any).parentPageId || restoredPage.id;
+      queryClient.invalidateQueries({ queryKey: pageKeys.files(parentId) });
+      queryClient.invalidateQueries({ queryKey: pageKeys.deletedFiles(parentId) });
+      queryClient.invalidateQueries({ queryKey: pageKeys.detail(restoredPage.id) });
+      toast.success(`Đã khôi phục "${restoredPage.title}"`);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Lỗi khi khôi phục tệp');
+    },
+  });
+
   return {
     updateContent,
     updateThumbnail,
     updateTitle,
     deletePage,
+    restorePage,
   };
 }
 

@@ -1,4 +1,4 @@
-export type ProjectMemberRole = 'owner' | 'contributor' | 'commenter' | 'viewer';
+export type ProjectMemberRole = 'owner' | 'coordinator' | 'contributor' | 'reviewer';
 
 export type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired';
 

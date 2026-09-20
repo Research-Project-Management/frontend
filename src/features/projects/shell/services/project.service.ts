@@ -1,6 +1,7 @@
 import { apiDelete, apiGet, apiPost, apiPut, apiPatch } from "@/shared/lib/api";
 import type {
   Project,
+  ProjectState,
   CreateProjectInput,
   UpdateProjectInput,
   ProjectDetailResponse,
@@ -30,6 +31,9 @@ export const projectKeys = {
   header: (projectId: string) => ['project-header', projectId] as const,
   projectsHeader: (_scopeId?: string) => ['projects-header', 'me'] as const,
   members: (projectId: string) => ['project-members', projectId] as const,
+  states: (projectId: string) => ['project-states', projectId] as const,
+  currentState: (projectId: string) => ['project-current-state', projectId] as const,
+  stateTemplate: () => ['project-states-template'] as const,
 };
 
 // ── Pure HTTP API Layer ───────────────────────────────────────────────────────
@@ -83,12 +87,9 @@ export const restoreProjectApi = (projectId: string) =>
 
 export const toggleProjectFavoriteApi = (
   projectId: string,
-  isFavorite: boolean,
+  _isFavorite?: boolean,
 ) =>
-  apiPut<ProjectDetailResponse>(
-    `/api/projects/${projectId}`,
-    { isFavorite },
-  );
+  apiPost<{ isFavorite: boolean }>(`/api/projects/${projectId}/favorite/toggle`);
 
 export const fetchProjectMembers = (projectId: string) =>
   apiGet<{ members: ProjectMember[] }>(`/api/projects/${projectId}/members`);
@@ -110,6 +111,69 @@ export const updateProjectMemberRoleApi = (
 export const removeProjectMemberApi = (projectId: string, userId: string) =>
   apiDelete(`/api/projects/${projectId}/members/${userId}`);
 
+// ── Project State API ─────────────────────────────────────────────────────────
+
+export interface ProjectCurrentStateResponse {
+  stateId: string | null;
+  state: ProjectState | null;
+  stateLabel: string;
+}
+
+export interface CreateProjectStateInput {
+  name: string;
+  color?: string;
+  description?: string;
+  sequence?: number;
+}
+
+export interface UpdateProjectStateItemInput {
+  name?: string;
+  color?: string;
+  description?: string;
+  sequence?: number;
+}
+
+export const fetchProjectStates = (projectId: string) =>
+  apiGet<ProjectState[]>(`/api/v1/projects/${projectId}/settings/states`);
+
+export const fetchProjectCurrentState = (projectId: string) =>
+  apiGet<ProjectCurrentStateResponse>(`/api/v1/projects/${projectId}/settings/state`);
+
+export const transitionProjectStateApi = (projectId: string, stateId: string | null) =>
+  apiPatch<ProjectCurrentStateResponse>(`/api/v1/projects/${projectId}/settings/state`, { stateId });
+
+export const createProjectStateApi = (projectId: string, data: CreateProjectStateInput) =>
+  apiPost<ProjectState>(`/api/v1/projects/${projectId}/settings/states`, data);
+
+export const updateProjectStateItemApi = (
+  projectId: string,
+  stateId: string,
+  data: UpdateProjectStateItemInput,
+) =>
+  apiPatch<ProjectState>(`/api/v1/projects/${projectId}/settings/states/${stateId}`, data);
+
+export const reorderProjectStatesApi = (
+  projectId: string,
+  states: Array<{ id: string; sequence: number }>,
+) =>
+  apiPut<ProjectState[]>(`/api/v1/projects/${projectId}/settings/states/reorder`, { states });
+
+export const deleteProjectStateApi = (
+  projectId: string,
+  stateId: string,
+  fallbackStateId?: string,
+) =>
+  apiDelete<{ success: boolean; deletedId: string }>(
+    `/api/v1/projects/${projectId}/settings/states/${stateId}${
+      fallbackStateId ? `?fallbackStateId=${fallbackStateId}` : ''
+    }`,
+  );
+
+export const fetchDefaultStatesTemplate = () =>
+  apiGet<Array<{ name: string; description: string; color: string; sequence: number; isDefault: boolean }>>(
+    `/api/v1/projects/settings/states/default-template`,
+  );
+
 // ── Structured Project Service Object ─────────────────────────────────────────
 
 export const ProjectService = {
@@ -125,6 +189,15 @@ export const ProjectService = {
   addMember: addProjectMemberApi,
   updateMemberRole: updateProjectMemberRoleApi,
   removeMember: removeProjectMemberApi,
+  // Project Dynamic States
+  getStates: fetchProjectStates,
+  getCurrentState: fetchProjectCurrentState,
+  transitionState: transitionProjectStateApi,
+  createState: createProjectStateApi,
+  updateStateItem: updateProjectStateItemApi,
+  reorderStates: reorderProjectStatesApi,
+  deleteState: deleteProjectStateApi,
+  getDefaultStatesTemplate: fetchDefaultStatesTemplate,
 };
 
 // Backwards compatibility aliases

@@ -8,13 +8,13 @@ import {
   Layers,
   Settings,
 } from 'lucide-react';
-import { LibraryIcon, StorageIcon } from '@/shared/components/icons';
+import { LibraryIcon, StorageIcon, AIIcon } from '@/shared/components/icons';
 import { cn } from "@/shared/lib/utils";
 import StickyDock from './StickyDock';
 
 const NAV_ITEMS = [
   { label: 'Projects', icon: Layers, to: '/home' },
-  { label: 'AI', imageSrc: '/Chat.svg', to: '/ai' },
+  { label: 'AI', icon: AIIcon, to: '/ai' },
   { label: 'Library', icon: LibraryIcon, to: '/library' },
   { label: 'Storage', icon: StorageIcon, to: '/storage' },
   { label: 'Settings', icon: Settings, to: '/settings' },
@@ -33,8 +33,7 @@ export default function Sidebar() {
         {/* Top: Nav Items */}
         <div className='flex items-center gap-1 md:flex-col md:justify-start md:gap-3 md:w-full'>
           {NAV_ITEMS.map((item) => {
-            const Icon = 'icon' in item ? item.icon : null;
-            const imageSrc = 'imageSrc' in item ? item.imageSrc : null;
+            const Icon = item.icon;
             const fullPath = item.to;
 
             const isActive =
@@ -73,17 +72,9 @@ export default function Sidebar() {
                     />
                   )}
 
-                  {imageSrc ? (
-                    <img
-                      src={imageSrc}
-                      alt={item.label}
-                      className='relative z-10 size-5 transition-transform duration-200'
-                    />
-                  ) : Icon ? (
-                    <Icon
-                      className="relative z-10 size-5 text-foreground transition-transform duration-200"
-                    />
-                  ) : null}
+                  <Icon
+                    className="relative z-10 size-5 text-foreground transition-transform duration-200"
+                  />
                 </div>
 
                 <span

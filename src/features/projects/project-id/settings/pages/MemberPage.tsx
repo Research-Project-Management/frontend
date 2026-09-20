@@ -261,8 +261,8 @@ export default function MemberPage() {
                           sortField={sortField}
                           sortAsc={sortAsc}
                           onSort={handleSort}
-                          ascLabel="Viewer → Owner"
-                          descLabel="Owner → Viewer"
+                          ascLabel="Reviewer → Owner"
+                          descLabel="Owner → Reviewer"
                         />
                       </th>
                       <th className="py-2.5 px-4 font-medium" aria-sort={sortField === 'date' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>

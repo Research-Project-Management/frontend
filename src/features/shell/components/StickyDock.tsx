@@ -88,6 +88,61 @@ function EmptyStickiesIllustration({ className = 'size-24' }: { className?: stri
   );
 }
 
+// ── 3. Interactive Modal Sticky Card (Matching Plane.so Screenshot) ──────────
+interface ModalStickyCardProps {
+  sticky: Sticky;
+  onUpdate: (id: string, updates: Partial<Sticky>) => void;
+  onDelete: (id: string) => void;
+}
+
+const ModalStickyCard = React.memo(function ModalStickyCard({
+  sticky,
+  onUpdate,
+  onDelete,
+}: ModalStickyCardProps) {
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+  const currentColor = (sticky.color as StickyColor) || 'yellow-1';
+  const colorConfig = STICKY_COLOR_MAP[currentColor] || STICKY_COLOR_MAP['yellow-1'];
+
+  return (
+    <div
+      style={{ backgroundColor: colorConfig.bg, color: colorConfig.text }}
+      className="group relative h-[285px] rounded-md border border-border/40 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+    >
+      {/* Top Header with Date */}
+      <div className="h-6 px-3.5 pt-1.5 flex items-center justify-between select-none shrink-0">
+        <span className="text-10 opacity-40 font-mono">
+          {sticky.updatedAt ? new Date(sticky.updatedAt).toLocaleDateString() : ''}
+        </span>
+      </div>
+
+      {/* Editor Content Area */}
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        <Content
+          sticky={sticky}
+          onUpdate={onUpdate}
+          onReady={setEditor}
+          placeholder="Click to type here"
+          editorClassName="min-h-[175px] max-h-[210px]"
+        />
+      </div>
+
+      {/* Bottom Toolbar matching Plane.so (no divider line) */}
+      <div className="shrink-0 border-0">
+        <Toolbar
+          sticky={sticky}
+          onUpdate={onUpdate}
+          onDelete={onDelete}
+          editor={editor}
+          activeModal={activeModal}
+          onActiveModalChange={setActiveModal}
+        />
+      </div>
+    </div>
+  );
+});
+
 // ── Main StickyDock Component ────────────────────────────────────────────────
 export default function StickyDock() {
   const [isPillOpen, setIsPillOpen] = useState(false);
@@ -102,15 +157,17 @@ export default function StickyDock() {
 
   const dockRef = useRef<HTMLDivElement>(null);
 
-  // Close pill when clicking outside
+  // Close dock popup menu when clicking outside
   useEffect(() => {
-    if (!isPillOpen) return;
-    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+    function handleClickOutside(event: MouseEvent | PointerEvent) {
       if (dockRef.current && !dockRef.current.contains(event.target as Node)) {
         setIsPillOpen(false);
       }
-    };
-    document.addEventListener('pointerdown', handleClickOutside);
+    }
+
+    if (isPillOpen) {
+      document.addEventListener('pointerdown', handleClickOutside);
+    }
     return () => {
       document.removeEventListener('pointerdown', handleClickOutside);
     };
@@ -137,15 +194,12 @@ export default function StickyDock() {
   // Quick create new sticky note
   const handleCreateSticky = async () => {
     try {
-      const created = await mutations.create.mutateAsync({
-        color: 'pink-1',
-        content: '<p></p>',
-      });
-      if (created?.id) {
+      const created = await mutations.create.mutateAsync({});
+      if (created?.id && !isModalOpen) {
         setActiveStickyId(created.id);
       }
     } catch (e) {
-      console.error('Failed to create sticky', e);
+      // Toast error is handled automatically by useSticky onError
     }
   };
 
@@ -245,7 +299,7 @@ export default function StickyDock() {
                   <button
                     type="button"
                     onClick={() => setIsPillOpen(false)}
-                    className="size-8 rounded-full bg-muted flex items-center justify-center text-foreground transition-colors hover:bg-muted/80 cursor-pointer outline-none"
+                    className="size-8 flex items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted cursor-pointer outline-none"
                     aria-label="Close"
                   >
                     <X className="size-4" strokeWidth={2} />
@@ -264,10 +318,10 @@ export default function StickyDock() {
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent
           showCloseButton={false}
-          className="sm:max-w-[760px] md:max-w-[800px] w-full p-6 rounded-2xl border border-border/80 bg-background shadow-2xl font-sans gap-0 overflow-hidden"
+          className="sm:max-w-[860px] md:max-w-[940px] lg:max-w-[1000px] w-full h-[520px] max-h-[80vh] p-6 rounded-md border border-border/80 bg-background shadow-2xl font-sans gap-0 flex flex-col overflow-hidden"
         >
           {/* Header */}
-          <div className="flex items-center justify-between pb-5 select-none">
+          <div className="flex items-center justify-between pb-5 shrink-0 select-none">
             <div className="flex items-center gap-2.5">
               <StickiesIcon className="size-4.5 text-foreground shrink-0" />
               <DialogTitle className="text-15 font-medium text-foreground tracking-tight">
@@ -279,7 +333,7 @@ export default function StickyDock() {
             </div>
 
             <div className="flex items-center gap-4">
-              {/* Search Toggle */}
+              {/* Search Toggle (Search icon only, no filter icon) */}
               {isSearchOpen ? (
                 <div className="relative flex items-center animate-in fade-in duration-150">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
@@ -351,15 +405,15 @@ export default function StickyDock() {
           </div>
 
           {/* Modal Body */}
-          <div className="flex flex-col justify-center">
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             {query.isLoading ? (
-              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-2">
+              <div className="flex flex-col items-center justify-center flex-1 py-20 text-muted-foreground gap-2">
                 <Loader2 className="size-5 animate-spin text-primary" />
                 <span className="text-12">Loading stickies...</span>
               </div>
             ) : filteredStickies.length === 0 ? (
               /* Empty State matching Plane.so screenshot */
-              <div className="w-full rounded-xl bg-muted/40 dark:bg-muted/20 border border-border/40 py-16 px-6 flex flex-col items-center justify-center text-center select-none min-h-[340px]">
+              <div className="w-full h-full flex-1 rounded-md bg-muted/40 dark:bg-muted/20 border border-border/40 py-16 px-6 flex flex-col items-center justify-center text-center select-none">
                 <EmptyStickiesIllustration className="size-28 mb-4" />
                 <p className="text-13 text-muted-foreground leading-relaxed max-w-sm">
                   {searchQuery
@@ -369,32 +423,18 @@ export default function StickyDock() {
               </div>
             ) : (
               /* Grid of existing stickies */
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 max-h-[460px] overflow-y-auto pr-1">
-                {filteredStickies.map((note) => {
-                  const color = STICKY_COLOR_MAP[note.color as StickyColor] || STICKY_COLOR_MAP['pink-1'];
-                  const snippet = stripHtml(note.content || '') || 'Empty sticky note';
-                  return (
-                    <div
-                      key={note.id}
-                      onClick={() => {
-                        setActiveStickyId(note.id);
-                        setIsModalOpen(false);
-                      }}
-                      style={{ backgroundColor: color.bg, color: color.text }}
-                      className="group relative h-40 rounded-xl p-4 border border-border/30 cursor-pointer shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden"
-                    >
-                      <p className="text-13 line-clamp-5 leading-relaxed font-normal">
-                        {snippet}
-                      </p>
-                      <div className="flex items-center justify-between text-11 opacity-60 font-mono pt-2">
-                        <span>{note.updatedAt ? new Date(note.updatedAt).toLocaleDateString() : ''}</span>
-                        <span className="opacity-0 group-hover:opacity-100 font-sans text-primary underline text-12 transition-opacity">
-                          Open
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 h-full overflow-y-auto pr-1 content-start">
+                {filteredStickies.map((note) => (
+                  <ModalStickyCard
+                    key={note.id}
+                    sticky={note}
+                    onUpdate={(id, updates) => mutations.update.mutate({ stickyId: id, updates })}
+                    onDelete={(id) => {
+                      mutations.remove.mutate(id);
+                      if (activeStickyId === id) setActiveStickyId(null);
+                    }}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -404,7 +444,7 @@ export default function StickyDock() {
       {/* ── D. Floating Sticky Note (Image 4) ─────────────────────────────── */}
       {activeSticky && (
         <div
-          className="fixed left-4 bottom-14 md:left-[54px] md:bottom-12 z-50 w-72 rounded-lg shadow-raised-200 border border-border/40 overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-200"
+          className="fixed left-4 bottom-14 md:left-[54px] md:bottom-12 z-50 w-72 rounded-md shadow-raised-200 border border-border/40 overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-200"
           style={{
             backgroundColor: colorConfig.bg,
             color: colorConfig.text,
@@ -432,8 +472,8 @@ export default function StickyDock() {
             onReady={setEditor}
           />
 
-          {/* Toolbar */}
-          <div className="border-t border-black/5 dark:border-white/5">
+          {/* Toolbar (no divider line) */}
+          <div className="shrink-0">
             <Toolbar
               sticky={activeSticky}
               onUpdate={(id, updates) => mutations.update.mutate({ stickyId: id, updates })}

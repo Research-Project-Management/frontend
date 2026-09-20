@@ -2,9 +2,8 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { useProjectOverview, useCreateProjectLink, useUpdateProjectLink, useDeleteProjectLink } from '../hooks/use-project-overview';
+import { useProjectOverview } from '../hooks/use-project-overview';
 import { ProjectHeaderCard } from '../components/ProjectHeaderCard';
-import { PinnedLinksCard } from '../components/PinnedLinksCard';
 import { WorkItemProgressCard } from '../components/WorkItemProgressCard';
 import { ActiveCycleCard } from '../components/ActiveCycleCard';
 import { RecentActivityList } from '../components/RecentActivityList';
@@ -26,10 +25,6 @@ export function ProjectOverviewPage() {
     error,
     refetch,
   } = useProjectOverview(projectId);
-
-  const createLinkMutation = useCreateProjectLink(projectId);
-  const updateLinkMutation = useUpdateProjectLink(projectId);
-  const deleteLinkMutation = useDeleteProjectLink(projectId);
 
   if (isLoading) {
     return (
@@ -80,7 +75,7 @@ export function ProjectOverviewPage() {
     );
   }
 
-  const { project, links, metrics, activeCycle, recentActivities, currentUpdate } = data;
+  const { project, metrics, activeCycle, recentActivities, currentUpdate } = data;
 
   return (
     <div className="flex-1 flex min-h-0 flex-col h-full bg-background overflow-hidden">
@@ -107,19 +102,6 @@ export function ProjectOverviewPage() {
             <ProjectStatusCard
               projectId={project.id}
               currentUpdate={currentUpdate}
-            />
-
-            <PinnedLinksCard
-              links={links}
-              onCreateLink={async (input) => {
-                await createLinkMutation.mutateAsync(input);
-              }}
-              onUpdateLink={async (linkId, input) => {
-                await updateLinkMutation.mutateAsync({ linkId, input });
-              }}
-              onDeleteLink={async (linkId) => {
-                await deleteLinkMutation.mutateAsync(linkId);
-              }}
             />
 
             <WorkItemProgressCard projectId={project.id} metrics={metrics} />

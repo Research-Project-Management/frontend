@@ -26,6 +26,8 @@ interface ClickIndicator {
   page: number;
   x: number;
   y: number;
+  w?: number;
+  h?: number;
   id: number;
 }
 
@@ -79,14 +81,23 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
     onDoubleClickPage(pageNum, clickFraction, ptX, ptY, clickX, clickY);
   };
 
+  const handleClickCapture = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleDoubleClick(e);
+    }
+  };
+
   return (
     <div
       ref={(el) => {
         containerRef.current = el;
         pageElemRefs.current[pageNum] = el;
       }}
+      onClickCapture={handleClickCapture}
       onDoubleClickCapture={handleDoubleClick}
-      title="Double-click anywhere to jump to LaTeX source"
+      title="Double-click or Ctrl+Click anywhere to jump to LaTeX source"
       className="bg-card rounded-sm border border-border relative overflow-hidden flex items-center justify-center cursor-text"
       style={{
         width: 595 * scale,
@@ -116,17 +127,34 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
         <div
           key={clickIndicator.id}
           className="pointer-events-none absolute z-30 transition-all duration-300"
-          style={{
-            left: `${clickIndicator.x}px`,
-            top: `${clickIndicator.y}px`,
-            transform: 'translate(-50%, -50%)',
-          }}
+          style={
+            clickIndicator.w && clickIndicator.h
+              ? {
+                  left: `${clickIndicator.x}px`,
+                  top: `${clickIndicator.y}px`,
+                  width: `${Math.max(clickIndicator.w, 48)}px`,
+                  height: `${Math.max(clickIndicator.h, 16)}px`,
+                  transform: 'translate(0, -50%)',
+                }
+              : {
+                  left: `${clickIndicator.x}px`,
+                  top: `${clickIndicator.y}px`,
+                  transform: 'translate(-50%, -50%)',
+                }
+          }
         >
-          <span className="relative flex size-9 items-center justify-center">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500/60 opacity-80" />
-            <span className="absolute inline-flex size-6 rounded-full border-2 border-emerald-500 bg-emerald-500/20 shadow-lg" />
-            <span className="relative inline-flex size-2 rounded-full bg-emerald-600 shadow" />
-          </span>
+          {clickIndicator.w && clickIndicator.h ? (
+            <div className="relative w-full h-full">
+              <div className="absolute inset-0 rounded-sm bg-primary/20 border-y-2 border-primary shadow-sm shadow-primary/30 animate-pulse" />
+              <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-2 rounded-full bg-primary ring-2 ring-background shadow" />
+            </div>
+          ) : (
+            <span className="relative flex size-9 items-center justify-center">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500/60 opacity-80" />
+              <span className="absolute inline-flex size-6 rounded-full border-2 border-emerald-500 bg-emerald-500/20 shadow-lg" />
+              <span className="relative inline-flex size-2 rounded-full bg-emerald-600 shadow" />
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -137,7 +165,7 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
 
 export interface SurfaceHandle {
   scrollToPage: (pageNum: number) => void;
-  highlightTarget?: (page: number, x: number, y: number) => void;
+  highlightTarget?: (page: number, x: number, y: number, w?: number, h?: number) => void;
   getContainer: () => HTMLDivElement | null;
 }
 
@@ -199,13 +227,16 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
     };
   }, []);
 
-  const triggerClickIndicator = useCallback((page: number, x: number, y: number) => {
-    if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
-    setClickIndicator({ page, x, y, id: Date.now() });
-    clickTimerRef.current = setTimeout(() => {
-      setClickIndicator(null);
-    }, 1500);
-  }, []);
+  const triggerClickIndicator = useCallback(
+    (page: number, x: number, y: number, w?: number, h?: number) => {
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+      setClickIndicator({ page, x, y, w, h, id: Date.now() });
+      clickTimerRef.current = setTimeout(() => {
+        setClickIndicator(null);
+      }, 2000);
+    },
+    [],
+  );
 
   // Expose container, scrollToPage, and target highlighting via ref
   useImperativeHandle(ref, () => ({
@@ -215,8 +246,8 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     },
-    highlightTarget(page: number, x: number, y: number) {
-      triggerClickIndicator(page, x, y);
+    highlightTarget(page: number, x: number, y: number, w?: number, h?: number) {
+      triggerClickIndicator(page, x, y, w, h);
       const el = pageElemRefs.current[page];
       if (el) {
         const container = scrollContainerRef.current;

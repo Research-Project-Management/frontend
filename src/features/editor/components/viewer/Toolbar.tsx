@@ -14,8 +14,11 @@ import {
   Zap,
   Image as ImageIcon,
   Check,
+  Archive,
+  Sparkles,
   ExternalLink,
   Minimize2,
+  Presentation,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -26,7 +29,18 @@ import {
 } from "@/shared/components/ui";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { useCompileStore, type CompileStatus, type LaTeXEngine } from '@/features/editor/store';
+import {
+  useCompileStore,
+  usePageStore,
+  type CompileStatus,
+  type LaTeXEngine,
+} from '@/features/editor/store';
+import {
+  exportProjectAsZip,
+  exportArxivSubmissionZip,
+  getExportFilename,
+} from '@/features/editor/utils';
+import { toast } from 'sonner';
 import type { PdfOutlineItem } from '@/features/editor/utils/pdf-outline.util';
 
 // ── Compile Button with Engine / Mode Dropdown ──────────────────────────────
@@ -249,6 +263,7 @@ export interface ToolbarProps {
   onPopout?: () => void;
   isPoppedOut?: boolean;
   outline?: PdfOutlineItem[];
+  onOpenPresentationMode?: () => void;
 }
 
 const Toolbar = React.memo(function Toolbar({
@@ -283,6 +298,7 @@ const Toolbar = React.memo(function Toolbar({
   onDownload,
   onPopout,
   isPoppedOut = false,
+  onOpenPresentationMode,
 }: ToolbarProps) {
   const [inputPage, setInputPage] = useState(String(pageNumber));
 
@@ -303,6 +319,75 @@ const Toolbar = React.memo(function Toolbar({
   const errorCount = compileErrors.filter((e) => e.severity !== 'warning').length;
   const warningCount = compileErrors.filter((e) => e.severity === 'warning').length;
   const hasErrors = compileStatus === 'error' || errorCount > 0 || (compileLog && compileLog.includes('! '));
+
+  const currentPage = usePageStore((s) => s.currentPage);
+  const parentPageId = usePageStore((s) => s.parentPageId);
+  const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const getEditorContent = usePageStore((s) => s.getEditorContent);
+  const [isExportingZip, setIsExportingZip] = useState(false);
+
+  const rootId =
+    parentPageId ||
+    currentPage?.id ||
+    (typeof currentPage?.projectId === 'string'
+      ? currentPage.projectId
+      : (currentPage?.projectId as any)?.id) ||
+    '';
+
+  const handleDownloadSourceZip = async () => {
+    if (!rootId) {
+      toast.error('Document root ID not found');
+      return;
+    }
+    setIsExportingZip(true);
+    try {
+      await exportProjectAsZip({
+        parentPageId: rootId,
+        projectTitle: currentPage?.title,
+        currentContent: getEditorContent.current?.(),
+        activeFileId: activeFilePage?.id,
+        activeFileTitle: activeFilePage?.title,
+      });
+    } finally {
+      setIsExportingZip(false);
+    }
+  };
+
+  const handleDownloadArxivZip = async () => {
+    if (!rootId) {
+      toast.error('Document root ID not found');
+      return;
+    }
+    setIsExportingZip(true);
+    try {
+      await exportArxivSubmissionZip({
+        parentPageId: rootId,
+        projectTitle: currentPage?.title,
+        currentContent: getEditorContent.current?.(),
+        activeFileId: activeFilePage?.id,
+        activeFileTitle: activeFilePage?.title,
+      });
+    } finally {
+      setIsExportingZip(false);
+    }
+  };
+
+  const handleDownloadLog = () => {
+    if (!compileLog) {
+      toast.error('No compilation logs available to download.');
+      return;
+    }
+    const blob = new Blob([compileLog], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${getExportFilename(currentPage?.title, 'txt').replace(/\.txt$/, '')}.log`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Downloaded compilation log (.log)');
+  };
 
   return (
     <div className="h-9 border-b border-border bg-background flex items-center justify-between px-2.5 shrink-0 z-10 gap-2 select-none text-foreground">
@@ -356,21 +441,88 @@ const Toolbar = React.memo(function Toolbar({
               </TooltipContent>
             </Tooltip>
 
-            {/* Download PDF Button (⬇) */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
+            {/* Download Dropdown (Overleaf Parity: PDF, Source ZIP, arXiv ZIP, Logs) */}
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={isExportingZip}
+                      aria-label="Download or export options"
+                      className="flex size-7 items-center justify-center rounded text-foreground/80 hover:text-foreground hover:bg-muted disabled:opacity-40 transition-colors cursor-pointer outline-none"
+                    >
+                      {isExportingZip ? (
+                        <Loader2 className="size-3.5 animate-spin text-primary shrink-0" />
+                      ) : (
+                        <Download className="size-3.5 shrink-0" />
+                      )}
+                    </button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Download & Export</TooltipContent>
+              </Tooltip>
+
+              <DropdownMenuContent align="start" className="w-56 text-xs z-[9999] p-1">
+                {/* 1. PDF */}
+                <DropdownMenuItem
                   onClick={onDownload}
                   disabled={!pdfUrl}
-                  aria-label="Download PDF"
-                  className="flex size-7 items-center justify-center rounded text-foreground/80 hover:text-foreground hover:bg-muted disabled:opacity-40 transition-colors cursor-pointer"
+                  className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-muted focus:bg-muted"
                 >
-                  <Download className="size-3.5 shrink-0" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Download PDF</TooltipContent>
-            </Tooltip>
+                  <FileText className="size-4 text-rose-500 shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-foreground">PDF Document (.pdf)</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {pdfUrl ? 'Latest compiled output' : 'Compile first to generate'}
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="my-1" />
+
+                {/* 2. Source ZIP */}
+                <DropdownMenuItem
+                  onClick={handleDownloadSourceZip}
+                  disabled={isExportingZip}
+                  className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-muted focus:bg-muted"
+                >
+                  <Archive className="size-4 text-primary shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-foreground">Source Bundle (.zip)</span>
+                    <span className="text-[10px] text-muted-foreground">All LaTeX files & image assets</span>
+                  </div>
+                </DropdownMenuItem>
+
+                {/* 3. arXiv Package */}
+                <DropdownMenuItem
+                  onClick={handleDownloadArxivZip}
+                  disabled={isExportingZip}
+                  className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-muted focus:bg-muted"
+                >
+                  <Sparkles className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-foreground">arXiv Package (.zip)</span>
+                    <span className="text-[10px] text-muted-foreground">Ready for arXiv submission</span>
+                  </div>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="my-1" />
+
+                {/* 4. Compile Log */}
+                <DropdownMenuItem
+                  onClick={handleDownloadLog}
+                  disabled={!compileLog}
+                  className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-muted focus:bg-muted"
+                >
+                  <FileText className="size-4 text-muted-foreground shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-foreground">Compilation Log (.log)</span>
+                    <span className="text-[10px] text-muted-foreground">Raw build log for debugging</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Popout / Reattach Button */}
             {onPopout && (
@@ -392,6 +544,23 @@ const Toolbar = React.memo(function Toolbar({
                 <TooltipContent side="bottom">
                   {isPoppedOut ? "Reattach PDF viewer" : "Open PDF in new window"}
                 </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Presentation Mode Button (Overleaf Parity) */}
+            {onOpenPresentationMode && pdfUrl && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onOpenPresentationMode}
+                    aria-label="Presentation mode (Beamer slides) (F5)"
+                    className="flex size-7 items-center justify-center rounded text-foreground/80 hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                  >
+                    <Presentation className="size-3.5 shrink-0" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Presentation mode (Beamer slides) (F5)</TooltipContent>
               </Tooltip>
             )}
           </>

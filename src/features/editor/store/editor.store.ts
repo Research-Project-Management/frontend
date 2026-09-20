@@ -27,7 +27,9 @@ export interface DocumentEditorState {
   editorRef: RefHolder<editor.IStandaloneCodeEditor | null>;
   getEditorContent: RefHolder<(() => string) | null>;
   compileRef: RefHolder<(() => void) | null>;
-  scrollToLineRef: RefHolder<((line: number) => void) | null>;
+  scrollToLineRef: RefHolder<
+    ((line: number, highlightType?: 'error' | 'synctex') => void) | null
+  >;
   scrollToPdfLineRef: RefHolder<((line: number, fileTag?: number) => void) | null>;
   gotoPageRef: RefHolder<((page: number) => void) | null>;
   pdfDocRef: RefHolder<any | null>;
@@ -99,5 +101,6 @@ export const useDocumentEditorStore = create<DocumentEditorState>((set) => ({
 // Aliases for seamless backward compatibility
 export const usePageStore = useDocumentEditorStore;
 export const useEditorPageStore = useDocumentEditorStore;
+export const useEditorStore = useDocumentEditorStore;
 export const usePageContext = useDocumentEditorStore;
 export type { AssetInfo };

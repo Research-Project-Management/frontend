@@ -19,18 +19,13 @@ const getStickyId = (sticky: Sticky): string => String(sticky.id || '');
 
 export interface UseCardOptions {
   search?: string;
-  projectId?: string;
-  workspaceId?: string;
 }
 
 export const useCard = (options?: UseCardOptions) => {
   const search = options?.search;
-  const projectId = options?.projectId;
-  const workspaceId = options?.workspaceId;
-
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const api = useSticky(workspaceId, search, projectId);
+  const api = useSticky();
   const rawStickies = useMemo(() => (api.query.data || []) as Sticky[], [api.query.data]);
 
   const stickies = useMemo(() => {
@@ -72,8 +67,8 @@ export const useCard = (options?: UseCardOptions) => {
     actions: {
       add: useCallback(() => {
         if (isCreatePending) return;
-        createStickyMutate({ projectId });
-      }, [createStickyMutate, isCreatePending, projectId]),
+        createStickyMutate({});
+      }, [createStickyMutate, isCreatePending]),
 
       update: useCallback(
         (id: string, updates: Partial<Sticky>) =>

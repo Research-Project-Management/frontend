@@ -9,7 +9,11 @@ export type DocumentExportFormat =
   | 'pdf'
   | 'markdown'
   | 'latex-source'
-  | 'latex-bundle';
+  | 'latex-bundle'
+  | 'zip'
+  | 'arxiv-zip'
+  | 'log'
+  | 'bbl';
 
 export interface ExportDocumentInput {
   format: DocumentExportFormat;

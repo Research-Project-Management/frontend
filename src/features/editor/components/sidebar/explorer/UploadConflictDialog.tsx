@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   FileCode2,
   Folder,
+  FolderArchive,
   Image,
   Paperclip,
   X,
@@ -35,6 +36,7 @@ export type PendingUploadItem = {
   name: string;
   conflict: 'none' | 'duplicate';
   resolution?: 'suffix' | 'overwrite';
+  unpackZip?: boolean;
 };
 
 interface UploadConflictDialogProps {
@@ -43,6 +45,7 @@ interface UploadConflictDialogProps {
   pendingUploads: PendingUploadItem[];
   onRemoveItem: (index: number) => void;
   onSetResolution: (index: number, resolution: 'suffix' | 'overwrite') => void;
+  onToggleUnpackZip?: (index: number, unpack: boolean) => void;
   onCancel: () => void;
   onConfirm: () => void;
 }
@@ -53,6 +56,7 @@ export function UploadConflictDialog({
   pendingUploads,
   onRemoveItem,
   onSetResolution,
+  onToggleUnpackZip,
   onCancel,
   onConfirm,
 }: UploadConflictDialogProps) {
@@ -65,13 +69,14 @@ export function UploadConflictDialog({
         <div className="flex flex-col gap-1 max-h-72 overflow-y-auto overflow-x-hidden py-1">
           {pendingUploads.map((item, i) => {
             const ext = '.' + (item.file.name.split('.').pop() ?? '').toLowerCase();
+            const isZip = ext === '.zip';
             const isTex = TEX_EXTS.has(ext);
             const isImg = item.file.type?.startsWith('image/') ?? false;
             const hasPath = item.name.includes('/');
             const folderPath = hasPath
               ? item.name.substring(0, item.name.lastIndexOf('/'))
               : null;
-            const Icon = isTex ? FileCode2 : isImg ? Image : Paperclip;
+            const Icon = isZip ? FolderArchive : isTex ? FileCode2 : isImg ? Image : Paperclip;
             const isDuplicate = item.conflict === 'duplicate';
             return (
               <div key={i} className="flex flex-col gap-1 px-1 py-1.5 rounded">
@@ -79,7 +84,7 @@ export function UploadConflictDialog({
                   <Icon
                     className={cn(
                       'size-3.5 shrink-0',
-                      isDuplicate ? 'text-warning' : 'text-muted-foreground',
+                      isDuplicate ? 'text-warning' : isZip ? 'text-primary' : 'text-muted-foreground',
                     )}
                   />
                   <div className="flex-1 min-w-0">
@@ -102,6 +107,36 @@ export function UploadConflictDialog({
                     <X className="size-3.5 shrink-0" />
                   </button>
                 </div>
+                {/* ZIP archive options */}
+                {isZip && (
+                  <div className="ml-5 mt-0.5 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] text-muted-foreground">Archive:</span>
+                    <button
+                      type="button"
+                      onClick={() => onToggleUnpackZip?.(i, true)}
+                      className={cn(
+                        'h-5 px-2 rounded text-[11px] font-medium border transition-colors cursor-pointer',
+                        item.unpackZip !== false
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'border-border text-foreground hover:bg-muted',
+                      )}
+                    >
+                      Unpack into project
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onToggleUnpackZip?.(i, false)}
+                      className={cn(
+                        'h-5 px-2 rounded text-[11px] font-medium border transition-colors cursor-pointer',
+                        item.unpackZip === false
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'border-border text-foreground hover:bg-muted',
+                      )}
+                    >
+                      Keep as .zip
+                    </button>
+                  </div>
+                )}
                 {/* Conflict resolution — only shown for duplicates */}
                 {isDuplicate && (
                   <div className="ml-5 flex items-center gap-1.5">

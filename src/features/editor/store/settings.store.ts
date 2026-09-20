@@ -14,6 +14,7 @@ export type { CompilerEngine, CompileMode };
 export type LayoutMode = 'split' | 'editor-only' | 'viewer-only';
 export type EditorTheme = 'light' | 'dark';
 export type KeybindingMode = 'standard' | 'vim';
+export type TrackChangesViewMode = 'changes' | 'clean' | 'original';
 
 export interface DocumentSettingsState {
   engine: CompilerEngine;
@@ -25,6 +26,7 @@ export interface DocumentSettingsState {
   sidebarWidth: number;
   editorFlex: number;
   useCache: boolean;
+  stopOnFirstError: boolean;
   settingsPanelOpen: boolean;
   mainFile: string;
   fontSize: number;
@@ -32,6 +34,7 @@ export interface DocumentSettingsState {
   lineNumbers: boolean;
   editorMode: 'code' | 'visual';
   reviewMode: boolean;
+  trackChangesViewMode: TrackChangesViewMode;
   activeSidebarPanel: 'Files' | 'Search' | 'Citations' | 'Review' | 'AI' | null;
   isHistoryOpen: boolean;
   isShareModalOpen: boolean;
@@ -55,6 +58,8 @@ export interface DocumentSettingsState {
   setSidebarWidth: (sidebarWidth: number) => void;
   setEditorFlex: (editorFlex: number) => void;
   setUseCache: (useCache: boolean) => void;
+  setStopOnFirstError: (stop: boolean) => void;
+  toggleStopOnFirstError: () => void;
   setSettingsPanelOpen: (open: boolean) => void;
   toggleSettingsPanel: () => void;
   setActiveSidebarPanel: (
@@ -85,6 +90,7 @@ export interface DocumentSettingsState {
   toggleEditorMode: () => void;
   setReviewMode: (reviewMode: boolean) => void;
   toggleReviewMode: () => void;
+  setTrackChangesViewMode: (mode: TrackChangesViewMode) => void;
   setSpellCheck: (spellCheck: boolean) => void;
   toggleSpellCheck: () => void;
   setSpellCheckLanguage: (lang: string) => void;
@@ -120,6 +126,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       lineNumbers: true,
       editorMode: 'code',
       reviewMode: false,
+      trackChangesViewMode: 'changes',
       activeSidebarPanel: 'Files',
       isHistoryOpen: false,
       isShareModalOpen: false,
@@ -133,6 +140,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       showBreadcrumbs: true,
       showEditorTabs: true,
       showEquationPreview: true,
+      stopOnFirstError: false,
 
       setEngine: (engine) => set({ engine }),
       setCompileMode: (compileMode) => set({ compileMode }),
@@ -143,6 +151,9 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       setSidebarWidth: (sidebarWidth) => set({ sidebarWidth }),
       setEditorFlex: (editorFlex) => set({ editorFlex }),
       setUseCache: (useCache) => set({ useCache }),
+      setStopOnFirstError: (stopOnFirstError) => set({ stopOnFirstError }),
+      toggleStopOnFirstError: () =>
+        set((s) => ({ stopOnFirstError: !s.stopOnFirstError })),
       setSettingsPanelOpen: (settingsPanelOpen) => set({ settingsPanelOpen }),
       toggleSettingsPanel: () =>
         set((s) => ({ settingsPanelOpen: !s.settingsPanelOpen })),
@@ -173,6 +184,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
         set((s) => ({ editorMode: s.editorMode === 'code' ? 'visual' : 'code' })),
       setReviewMode: (reviewMode) => set({ reviewMode }),
       toggleReviewMode: () => set((s) => ({ reviewMode: !s.reviewMode })),
+      setTrackChangesViewMode: (trackChangesViewMode) => set({ trackChangesViewMode }),
       setSpellCheck: (spellCheck) => set({ spellCheck }),
       toggleSpellCheck: () => set((s) => ({ spellCheck: !s.spellCheck })),
       setSpellCheckLanguage: (spellCheckLanguage) => set({ spellCheckLanguage }),

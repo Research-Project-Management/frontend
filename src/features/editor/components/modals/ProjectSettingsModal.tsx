@@ -18,6 +18,7 @@ import {
   Languages,
   HardDrive,
   Check,
+  AlertOctagon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -60,6 +61,8 @@ export default function ProjectSettingsModal() {
     setCompileMode,
     useCache,
     setUseCache,
+    stopOnFirstError,
+    setStopOnFirstError,
     fontSize,
     setFontSize,
     fontFamily,
@@ -248,7 +251,7 @@ export default function ProjectSettingsModal() {
                 </Select>
               </div>
 
-              {/* 5. Auto Compile & Cache */}
+              {/* 5. Auto Compile, Cache & Stop on First Error */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div className="flex items-center justify-between p-3 rounded-lg border border-border/70 bg-muted/20">
                   <div className="space-y-0.5 pr-2">
@@ -270,6 +273,19 @@ export default function ProjectSettingsModal() {
                     <p className="text-10 text-muted-foreground">Reuse unchanged files</p>
                   </div>
                   <Switch checked={useCache} onCheckedChange={setUseCache} />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg border border-border/70 bg-muted/20 sm:col-span-2">
+                  <div className="space-y-0.5 pr-2">
+                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <AlertOctagon className="size-3.5 text-rose-500" />
+                      Stop on First Error (-halt-on-error)
+                    </span>
+                    <p className="text-10 text-muted-foreground">
+                      Halt LaTeX compilation immediately upon the first error (Overleaf standard).
+                    </p>
+                  </div>
+                  <Switch checked={stopOnFirstError} onCheckedChange={setStopOnFirstError} />
                 </div>
               </div>
             </div>

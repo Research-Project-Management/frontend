@@ -92,6 +92,7 @@ import {
 } from "./UploadConflictDialog";
 import AddFilesModal, { type AddFilesTab } from "@/features/editor/components/modals/AddFilesModal";
 import { parseDocumentOutline, OUTLINE_INDENT } from "@/features/editor/utils/pdf-outline.util";
+import { parseZipArchive, extractAndImportZipToProject } from "@/features/editor/utils/import-zip.util";
 
 const OUTLINE_COLORS: Record<number, string> = {
   0: "font-medium text-foreground",
@@ -345,7 +346,12 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         const lower = item.name.toLowerCase();
         const isDup = existingNames.has(lower) || seen.has(lower);
         seen.add(lower);
-        return { ...item, conflict: isDup ? "duplicate" : "none" };
+        const isZip = lower.endsWith('.zip');
+        return {
+          ...item,
+          conflict: isDup ? "duplicate" : "none",
+          unpackZip: isZip ? true : undefined,
+        };
       });
     },
     [existingNames],
@@ -499,8 +505,53 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     const uploads = resolved;
     setPendingUploads([]);
 
-    const folderItems = uploads.filter((p) => p.name.includes("/"));
-    const flatItems = uploads.filter((p) => !p.name.includes("/"));
+    const zipUnpackItems = uploads.filter(
+      (p: PendingItem) => p.name.toLowerCase().endsWith(".zip") && p.unpackZip !== false,
+    );
+    const nonZipUploads = uploads.filter(
+      (p: PendingItem) => !p.name.toLowerCase().endsWith(".zip") || p.unpackZip === false,
+    );
+
+    if (zipUnpackItems.length > 0 && parentPageId) {
+      void (async () => {
+        const tabProjectId =
+          (typeof parentPage?.projectId === "string"
+            ? parentPage.projectId
+            : (parentPage?.projectId as any)?.id) ||
+          projectId ||
+          "";
+
+        for (const zipItem of zipUnpackItems) {
+          try {
+            toast.loading(`Unpacking ${zipItem.file.name}...`, { id: `zip-${zipItem.name}` });
+            const parsed = await parseZipArchive(zipItem.file);
+            await extractAndImportZipToProject({
+              extracted: parsed,
+              projectId: tabProjectId,
+              parentPageId,
+            });
+            toast.success(`Unpacked ${parsed.totalFiles} files from ${zipItem.file.name}`, {
+              id: `zip-${zipItem.name}`,
+            });
+          } catch (err: any) {
+            console.error("Failed to unpack zip:", err);
+            toast.error(`Failed to unpack ${zipItem.file.name}: ${err?.message || "Unknown error"}`, {
+              id: `zip-${zipItem.name}`,
+            });
+          }
+        }
+        queryClient.invalidateQueries({
+          queryKey: ["project-files-editor", parentPageId],
+          exact: false,
+        });
+        queryClient.invalidateQueries({
+          queryKey: filesQuery(parentPageId).queryKey,
+        });
+      })();
+    }
+
+    const folderItems = nonZipUploads.filter((p) => p.name.includes("/"));
+    const flatItems = nonZipUploads.filter((p) => !p.name.includes("/"));
     const texFlat = flatItems.filter(({ name }) =>
       TEX_EXTS.has("." + (name.split(".").pop() ?? "").toLowerCase()),
     );
@@ -1324,6 +1375,11 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         onSetResolution={(i, resolution) =>
           setPendingUploads((prev) =>
             prev.map((p, j) => (j === i ? { ...p, resolution } : p)),
+          )
+        }
+        onToggleUnpackZip={(i, unpack) =>
+          setPendingUploads((prev) =>
+            prev.map((p, j) => (j === i ? { ...p, unpackZip: unpack } : p)),
           )
         }
         onCancel={() => {

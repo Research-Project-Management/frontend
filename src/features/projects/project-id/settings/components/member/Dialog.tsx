@@ -150,14 +150,14 @@ export function AddMemberDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="coordinator" className="text-xs">
+                  Coordinator
+                </SelectItem>
                 <SelectItem value="contributor" className="text-xs">
                   Contributor
                 </SelectItem>
-                <SelectItem value="commenter" className="text-xs">
-                  Commenter
-                </SelectItem>
-                <SelectItem value="viewer" className="text-xs">
-                  Viewer
+                <SelectItem value="reviewer" className="text-xs">
+                  Reviewer
                 </SelectItem>
               </SelectContent>
             </Select>

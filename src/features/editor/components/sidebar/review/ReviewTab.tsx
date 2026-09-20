@@ -42,7 +42,7 @@ import {
   useRejectAllSuggestions,
 } from "@/features/editor/hooks/use-suggestion";
 import type { PageComment, CommentReply, PageSuggestion } from "@/features/editor/types";
-import { usePageStore, useActionsStore } from "@/features/editor/store";
+import { usePageStore, useActionsStore, useSettingsStore } from "@/features/editor/store";
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
@@ -484,8 +484,13 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
 
   const [subTab, setSubTab] = useState<'comments' | 'changes'>('comments');
   const [filter, setFilter] = useState<Filter>('open');
+  const [changesFilter, setChangesFilter] = useState<'pending' | 'resolved' | 'all'>('pending');
+  const [selectedAuthorId, setSelectedAuthorId] = useState<string | 'all'>('all');
   const [showAddForm, setShowAddForm] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
+  const setTrackChangesViewMode = useSettingsStore((s) => s.setTrackChangesViewMode);
 
   // Real-time invalidation from Socket.IO room events
   useEffect(() => {
@@ -583,6 +588,22 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
   const openCount = comments.filter((c) => c.status === 'open').length;
   const resolvedCount = comments.filter((c) => c.status === 'resolved').length;
   const pendingSuggestions = suggestions.filter((s) => s.status === 'pending');
+  const resolvedSuggestions = suggestions.filter((s) => s.status === 'accepted' || s.status === 'rejected');
+
+  const filteredSuggestions = suggestions.filter((s) => {
+    if (changesFilter === 'pending' && s.status !== 'pending') return false;
+    if (changesFilter === 'resolved' && s.status === 'pending') return false;
+    if (selectedAuthorId !== 'all' && s.author?.id !== selectedAuthorId) return false;
+    return true;
+  });
+
+  const uniqueAuthors = Array.from(
+    new Map(
+      suggestions
+        .filter((s) => s.author?.id)
+        .map((s) => [s.author.id, s.author])
+    ).values()
+  );
 
   const onSubmit = (data: CreateCommentInput) => {
     if (!pageId) return;
@@ -776,10 +797,84 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
       {/* ── VIEW 2: TRACK CHANGES (SUGGESTIONS) ── */}
       {subTab === 'changes' && (
         <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Top Actions: Accept All / Reject All */}
-          {pendingSuggestions.length > 0 && (
-            <div className="flex items-center justify-between border-b border-border bg-muted/20 px-3 py-2 text-xs shrink-0">
-              <span className="text-muted-foreground font-medium">
+          {/* Row 1: Overleaf View Mode Switcher */}
+          <div className="flex items-center justify-between border-b border-border bg-muted/20 px-3 py-1.5 text-xs shrink-0">
+            <span className="text-[10px] font-semibold uppercase text-muted-foreground tracking-wider">
+              Display Mode
+            </span>
+            <div className="inline-flex rounded bg-muted p-0.5 text-xs font-medium">
+              {(['changes', 'clean', 'original'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setTrackChangesViewMode(m)}
+                  className={cn(
+                    'px-2 py-0.5 rounded capitalize transition-colors cursor-pointer text-11',
+                    trackChangesViewMode === m
+                      ? 'bg-background text-foreground shadow-2xs font-semibold'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                  title={
+                    m === 'changes'
+                      ? 'Show all diffs with additions and deletions'
+                      : m === 'clean'
+                        ? 'Preview document with all suggestions accepted'
+                        : 'View original document without suggestions'
+                  }
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Row 2: Status Filter & Author Filter */}
+          <div className="flex items-center justify-between border-b border-border px-3 py-1.5 text-xs shrink-0 gap-2">
+            <div className="flex items-center gap-1">
+              {(
+                [
+                  { id: 'pending', label: 'Pending', count: pendingSuggestions.length },
+                  { id: 'resolved', label: 'Resolved', count: resolvedSuggestions.length },
+                  { id: 'all', label: 'All', count: suggestions.length },
+                ] as const
+              ).map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setChangesFilter(item.id)}
+                  className={cn(
+                    'px-2 py-0.5 rounded text-xs transition-colors cursor-pointer',
+                    changesFilter === item.id
+                      ? 'bg-primary/15 text-primary font-medium'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {item.label} ({item.count})
+                </button>
+              ))}
+            </div>
+
+            {/* Author filter dropdown if multiple authors */}
+            {uniqueAuthors.length > 1 && (
+              <select
+                value={selectedAuthorId}
+                onChange={(e) => setSelectedAuthorId(e.target.value)}
+                className="text-[11px] bg-background border border-border rounded px-1.5 py-0.5 text-muted-foreground focus:outline-none"
+              >
+                <option value="all">All authors</option>
+                {uniqueAuthors.map((a: any) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name || 'User'}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Row 3: Top Actions: Accept All / Reject All */}
+          {changesFilter !== 'resolved' && pendingSuggestions.length > 0 && (
+            <div className="flex items-center justify-between border-b border-border bg-muted/10 px-3 py-1.5 text-xs shrink-0">
+              <span className="text-muted-foreground text-11 font-medium">
                 {pendingSuggestions.length} pending edit{pendingSuggestions.length > 1 ? 's' : ''}
               </span>
               <div className="flex items-center gap-1.5">
@@ -787,7 +882,7 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
                   type="button"
                   onClick={() => pageId && rejectAllMutation.mutate({ pageId })}
                   disabled={rejectAllMutation.isPending}
-                  className="px-2 py-1 rounded text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                  className="px-2 py-0.5 rounded text-11 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
                 >
                   Reject All
                 </button>
@@ -795,7 +890,7 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
                   type="button"
                   onClick={() => pageId && acceptAllMutation.mutate({ pageId })}
                   disabled={acceptAllMutation.isPending}
-                  className="px-2.5 py-1 rounded text-xs bg-emerald-600 text-white hover:bg-emerald-700 font-medium transition-colors cursor-pointer"
+                  className="px-2.5 py-0.5 rounded text-11 bg-emerald-600 text-white hover:bg-emerald-700 font-medium transition-colors cursor-pointer"
                 >
                   Accept All
                 </button>
@@ -810,17 +905,21 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
                 <Loader2 className="size-4 animate-spin shrink-0" />
                 <span className="text-xs">Loading suggestions…</span>
               </div>
-            ) : suggestions.length === 0 ? (
+            ) : filteredSuggestions.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-2 px-5 py-10 text-center text-muted-foreground">
                 <GitPullRequest className="size-8 opacity-25 shrink-0" />
-                <p className="text-xs font-medium text-foreground/70">No suggestions</p>
+                <p className="text-xs font-medium text-foreground/70">
+                  {changesFilter === 'all'
+                    ? 'No suggestions'
+                    : `No ${changesFilter} suggestions`}
+                </p>
                 <p className="text-xs leading-relaxed text-muted-foreground">
                   Turn on "Review" mode in the top bar to propose edits, or select text and click "Suggest Edit".
                 </p>
               </div>
             ) : (
               <div className="flex flex-col py-1">
-                {suggestions.map((s) => (
+                {filteredSuggestions.map((s) => (
                   <SuggestionCard
                     key={s.id}
                     suggestion={s}

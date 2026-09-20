@@ -4,6 +4,7 @@ import { useCreateFileRecord } from "./use-storage";
 import { toast } from "sonner";
 import { checkDuplicateFile, deleteItem } from '../services/file.service';
 import type { UploadMode } from '../components/modal/DuplicateModal';
+import { useStorageUIStore } from '../store/storage-ui.store';
 
 export function useTopbar({
   projectId,
@@ -60,18 +61,19 @@ export function useTopbar({
     folderInputRef.current?.click();
   };
 
+  const uploadTriggerCount = useStorageUIStore((s) => s.uploadTriggerCount);
+  const prevTriggerRef = useRef(uploadTriggerCount);
+
   const handleCreateFolder = () => {
-    const event = new CustomEvent('open-create-folder');
-    window.dispatchEvent(event);
+    useStorageUIStore.getState().openCreateFolderModal();
   };
 
   useEffect(() => {
-    const onTriggerUpload = () => {
+    if (uploadTriggerCount > prevTriggerRef.current) {
+      prevTriggerRef.current = uploadTriggerCount;
       fileInputRef.current?.click();
-    };
-    window.addEventListener('trigger-upload-file', onTriggerUpload);
-    return () => window.removeEventListener('trigger-upload-file', onTriggerUpload);
-  }, []);
+    }
+  }, [uploadTriggerCount]);
 
   const performSingleFileUpload = useCallback(async (file: File, targetFolder: string | null) => {
     const doUpload = async () => {

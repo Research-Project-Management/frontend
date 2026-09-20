@@ -130,4 +130,5 @@ export const useDocumentCompilerStore = create<DocumentCompilerState>()((set, ge
 
 // Aliases for seamless backward compatibility
 export const useCompileStore = useDocumentCompilerStore;
+export const useCompilerStore = useDocumentCompilerStore;
 export type { CompileStatus, CompileError };

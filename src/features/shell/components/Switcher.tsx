@@ -11,31 +11,17 @@ import {
   Settings,
   UserPlus,
   Mail,
-  Copy,
-  CheckCheck,
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-  Avatar,
-  AvatarImage,
-  AvatarFallback,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  Button,
-  Input,
-  Label,
+  ProjectAvatar,
 } from '@/shared/components/ui';
 import { resolveFileUrl } from '@/shared/lib/file-client';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { CreateProjectModal } from '@/features/projects/shell/components/project/CreateProjectModal';
-import { ProjectAvatar } from '@/shared/components/icon-picker/ProjectAvatar';
 import { ProjectInvitesModal } from '@/features/projects/invitation/components/ProjectInvitesModal';
 import { useMyProjectInvitations } from '@/features/projects/invitation/hooks/use-project-invitations';
 
@@ -44,7 +30,7 @@ export interface DisplayProjectItem {
   name: string;
   identifier?: string;
   avatar?: string | null;
-  role: 'Owner' | 'Contributor' | 'Reviewer' | 'Viewer' | 'Member';
+  role: 'Owner' | 'Coordinator' | 'Contributor' | 'Reviewer' | 'Viewer' | 'Member';
   membersCount: number;
 }
 
@@ -65,8 +51,11 @@ function formatProjectRole(
   switch (String(role).toLowerCase()) {
     case 'owner':
       return 'Owner';
+    case 'coordinator':
+      return 'Coordinator';
     case 'contributor':
       return 'Contributor';
+    case 'reviewer':
     case 'commenter':
       return 'Reviewer';
     case 'viewer':
@@ -79,7 +68,7 @@ function formatProjectRole(
 function resolveMemberRole(
   project: any,
   userId?: string,
-): 'Owner' | 'Contributor' | 'Reviewer' | 'Viewer' | 'Member' {
+): DisplayProjectItem['role'] {
   if (!userId) return 'Member';
   if (project.createdById === userId) return 'Owner';
 
@@ -89,8 +78,11 @@ function resolveMemberRole(
   switch (String(member.role).toLowerCase()) {
     case 'owner':
       return 'Owner';
+    case 'coordinator':
+      return 'Coordinator';
     case 'contributor':
       return 'Contributor';
+    case 'reviewer':
     case 'commenter':
       return 'Reviewer';
     case 'viewer':
@@ -111,12 +103,7 @@ export function Switcher({
 
   const [isOpen, setIsOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
-  const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isProjectInvitesOpen, setIsProjectInvitesOpen] = useState(false);
-
-  // Invite states
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [isCopied, setIsCopied] = useState(false);
 
   // Active Project ID state from localStorage
   const [storedActiveId, setStoredActiveId] = useState<string>('');
@@ -175,14 +162,6 @@ export function Switcher({
     } catch {}
     setIsOpen(false);
     router.push(`/projects/${proj.id}`);
-  };
-
-  const handleCopyInviteLink = () => {
-    if (!activeProject) return;
-    const link = typeof window !== 'undefined' ? `${window.location.origin}/invite/${activeProject.identifier || activeProject.id}` : '';
-    navigator.clipboard.writeText(link);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
   };
 
   return (
@@ -379,79 +358,6 @@ export function Switcher({
           }
         }}
       />
-
-      {/* ── Invite Members Modal (Fallback / Direct Share) ─────────── */}
-      <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
-        <DialogContent className='sm:max-w-[500px] p-6 rounded-lg bg-background border border-border shadow-raised-200'>
-          <DialogHeader>
-            <DialogTitle>Invite members to {activeProject ? activeProject.name : 'Project'}</DialogTitle>
-            <DialogDescription>
-              Invite collaborators to join your project.
-            </DialogDescription>
-          </DialogHeader>
-          <div className='space-y-4 pt-2'>
-            <div className='space-y-2'>
-              <Label htmlFor='invite-email'>Email address</Label>
-              <div className='flex gap-2'>
-                <Input
-                  id='invite-email'
-                  type='email'
-                  placeholder='colleague@example.com'
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  autoFocus
-                />
-                <Button
-                  type='button'
-                  disabled={!inviteEmail.trim() || !inviteEmail.includes('@')}
-                  onClick={() => {
-                    setInviteEmail('');
-                    setIsInviteOpen(false);
-                  }}
-                >
-                  Send invite
-                </Button>
-              </div>
-            </div>
-
-            <div className='relative my-2'>
-              <div className='absolute inset-0 flex items-center'>
-                <span className='w-full border-t border-border' />
-              </div>
-              <div className='relative flex justify-center text-xs'>
-                <span className='bg-background px-2 text-muted-foreground'>Or share link</span>
-              </div>
-            </div>
-
-            <div className='flex items-center gap-2'>
-              <Input
-                readOnly
-                value={activeProject && typeof window !== 'undefined' ? `${window.location.origin}/invite/${activeProject.identifier || activeProject.id}` : ''}
-                className='text-xs font-mono bg-muted/50'
-              />
-              <Button
-                type='button'
-                variant='outline'
-                size='icon'
-                onClick={handleCopyInviteLink}
-                className='shrink-0'
-                title='Copy link'
-              >
-                {isCopied ? <CheckCheck className='size-4 text-green-600' /> : <Copy className='size-4' />}
-              </Button>
-            </div>
-          </div>
-          <DialogFooter className='pt-2'>
-            <Button
-              type='button'
-              variant='outline'
-              onClick={() => setIsInviteOpen(false)}
-            >
-              Done
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* ── Project Invites Modal ─────────────────────────────────── */}
       <ProjectInvitesModal

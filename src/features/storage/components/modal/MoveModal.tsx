@@ -30,6 +30,7 @@ import type { StorageItem } from '@/features/storage/types/storage.types';
 import { getAllFiles as getWorkspaceFiles, createFolder as createWorkspaceFolder } from '@/features/storage/services/file.service';
 import { useMoveItem } from '@/features/storage/hooks/use-storage';
 import { useStorageSelectionStore } from '@/features/storage/store/use-selection-store';
+import { useStorageUIStore } from '@/features/storage/store/storage-ui.store';
 
 export type OpenMoveModalDetail = {
   item?: StorageItem;
@@ -74,15 +75,14 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
 
   const targetScopeId = scopeProjectId || propProjectId || params.projectId;
 
-  // Listen for open event
-  useEffect(() => {
-    const handleOpen = (e: CustomEvent<OpenMoveModalDetail>) => {
-      const detail = e.detail || {};
-      const targetItems = detail.items || (detail.item ? [detail.item] : []);
-      if (targetItems.length === 0) return;
+  const storeMovingItems = useStorageUIStore((s) => s.movingItems);
+  const closeMoveModal = useStorageUIStore((s) => s.closeMoveModal);
 
-      setItemsToMove(targetItems);
-      setScopeProjectId(detail.projectId || propProjectId || params.projectId || params.id);
+  // Sync with store
+  useEffect(() => {
+    if (storeMovingItems.length > 0) {
+      setItemsToMove(storeMovingItems);
+      setScopeProjectId(propProjectId || params.projectId || params.id);
 
       // Start at root
       setCurrentFolderId(null);
@@ -92,11 +92,8 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
       setIsCreatingFolder(false);
       setNewFolderName('');
       setOpen(true);
-    };
-
-    window.addEventListener('open-move-modal', handleOpen as EventListener);
-    return () => window.removeEventListener('open-move-modal', handleOpen as EventListener);
-  }, [propProjectId, params.projectId, params.id]);
+    }
+  }, [storeMovingItems, propProjectId, params.projectId, params.id]);
 
   // Fetch subfolders in the current folder being browsed
   const { data, isLoading, isFetching, refetch } = useQuery({
@@ -194,6 +191,7 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
 
       clearSelection();
       setOpen(false);
+      closeMoveModal();
     } catch (error) {
       toast.error('Failed to move items');
       console.error(error);
@@ -206,7 +204,13 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
       : `Move ${itemsToMove.length} items`;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(val) => {
+        setOpen(val);
+        if (!val) closeMoveModal();
+      }}
+    >
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
         className="sm:max-w-lg p-0 gap-0 overflow-hidden bg-popover text-popover-foreground border border-border rounded-lg "

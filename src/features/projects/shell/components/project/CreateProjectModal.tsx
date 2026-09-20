@@ -44,25 +44,13 @@ import { useCreateProject, useUpdateProject } from '../../hooks/use-project';
 import { CoverModal } from '@/features/projects/project-id/settings/components/general/CoverModal';
 import { uploadGenericFile } from '@/features/storage/services/file.service';
 import { createProjectFormSchema, type CreateProjectFormValues } from '../../schemas/project.schema';
-import type { Project, ProjectState, ProjectPriority } from '../../types/project.types';
+import type { Project, ProjectPriority } from '../../types/project.types';
 
 // ── Default Cover Photo ──────────────────────────────────────────────────────
 const DEFAULT_COVER =
   'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1200&auto=format&fit=crop&q=80';
 
-// ── Project Lifecycle States & Priority Catalogs ─────────────────────────────
-export const PROJECT_STATE_OPTIONS: Array<{
-  value: ProjectState;
-  label: string;
-  dotColor: string;
-}> = [
-  { value: 'planning', label: 'Planning', dotColor: 'bg-blue-500' },
-  { value: 'draft', label: 'Draft', dotColor: 'bg-slate-400' },
-  { value: 'execution', label: 'In Execution', dotColor: 'bg-amber-500' },
-  { value: 'monitoring', label: 'Monitoring', dotColor: 'bg-purple-500' },
-  { value: 'completed', label: 'Completed', dotColor: 'bg-emerald-500' },
-  { value: 'cancelled', label: 'Cancelled', dotColor: 'bg-rose-500' },
-];
+// ── Project Priority Catalog ──────────────────────────────────────────────────
 
 export const PROJECT_PRIORITY_OPTIONS: Array<{
   value: ProjectPriority;
@@ -178,7 +166,6 @@ export function CreateProjectModal({
       description: '',
       avatar: getRandomProjectEmoji(),
       cover: DEFAULT_COVER,
-      state: 'planning',
       priority: 'none',
       startDate: null,
       targetDate: null,
@@ -199,7 +186,6 @@ export function CreateProjectModal({
   const avatar = useWatch({ control, name: 'avatar' });
   const cover = useWatch({ control, name: 'cover' });
   const description = useWatch({ control, name: 'description' });
-  const state = useWatch({ control, name: 'state' }) || 'planning';
   const priority = useWatch({ control, name: 'priority' }) || 'none';
   const startDate = useWatch({ control, name: 'startDate' });
   const targetDate = useWatch({ control, name: 'targetDate' });
@@ -207,20 +193,13 @@ export function CreateProjectModal({
   const setCover = (val: string) => setValue('cover', val, { shouldDirty: true });
   const setAvatar = (val: string) => setValue('avatar', val, { shouldDirty: true });
   const setDescription = (val: string) => setValue('description', val, { shouldDirty: true });
-  const setState = (val: ProjectState) => setValue('state', val, { shouldDirty: true });
   const setPriority = (val: ProjectPriority) => setValue('priority', val, { shouldDirty: true });
   const setStartDate = (val: string | null) => setValue('startDate', val, { shouldDirty: true });
   const setTargetDate = (val: string | null) => setValue('targetDate', val, { shouldDirty: true });
 
-  const [openStatePopover, setOpenStatePopover] = useState(false);
   const [openPriorityPopover, setOpenPriorityPopover] = useState(false);
   const [openStartDatePopover, setOpenStartDatePopover] = useState(false);
   const [openTargetDatePopover, setOpenTargetDatePopover] = useState(false);
-
-  const activeStateOption = useMemo(
-    () => PROJECT_STATE_OPTIONS.find((s) => s.value === state) || PROJECT_STATE_OPTIONS[0],
-    [state]
-  );
   const activePriorityOption = useMemo(
     () => PROJECT_PRIORITY_OPTIONS.find((p) => p.value === priority) || PROJECT_PRIORITY_OPTIONS[0],
     [priority]
@@ -292,7 +271,6 @@ export function CreateProjectModal({
         description: '',
         avatar: getRandomProjectEmoji(),
         cover: DEFAULT_COVER,
-        state: 'planning',
         priority: 'none',
         startDate: null,
         targetDate: null,
@@ -323,7 +301,6 @@ export function CreateProjectModal({
         avatar: values.avatar,
         cover: values.cover,
         description: values.description.trim() || undefined,
-        state: values.state,
         priority: values.priority,
         startDate: values.startDate ? new Date(values.startDate).toISOString() : undefined,
         targetDate: values.targetDate ? new Date(values.targetDate).toISOString() : undefined,
@@ -522,48 +499,14 @@ export function CreateProjectModal({
 
                 {/* Row 3: Domain Pills (State, Priority, Start Date, Target Date) */}
                 <div className="flex items-center flex-wrap gap-2 pt-1">
-                  {/* 1. Project State Popover */}
-                  <Popover open={openStatePopover} onOpenChange={setOpenStatePopover}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 font-medium text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                      >
-                        <span className={cn('size-2 rounded-full shrink-0', activeStateOption.dotColor)} />
-                        <span>{activeStateOption.label}</span>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      align="start"
-                      className="w-52 p-1 rounded-md border border-border bg-popover z-100 space-y-0.5 shadow-md"
-                    >
-                      {PROJECT_STATE_OPTIONS.map((opt) => {
-                        const isSelected = state === opt.value;
-                        return (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => {
-                              setState(opt.value);
-                              setOpenStatePopover(false);
-                            }}
-                            className={cn(
-                              'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-12 transition-colors cursor-pointer text-left',
-                              isSelected
-                                ? 'bg-muted font-medium text-foreground'
-                                : 'hover:bg-muted text-foreground'
-                            )}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className={cn('size-2 rounded-full shrink-0', opt.dotColor)} />
-                              <span>{opt.label}</span>
-                            </div>
-                            {isSelected && <Check className="size-3.5 shrink-0 text-primary" />}
-                          </button>
-                        );
-                      })}
-                    </PopoverContent>
-                  </Popover>
+                  {/* 1. Initial State Indicator */}
+                  <div
+                    title="Giai đoạn khởi tạo mặc định cho đề tài mới"
+                    className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-muted/40 text-12 font-medium text-foreground select-none cursor-default"
+                  >
+                    <span className="size-2 rounded-full shrink-0 bg-sky-500" />
+                    <span>Thuyết minh đề cương</span>
+                  </div>
 
                   {/* 2. Priority Popover */}
                   <Popover open={openPriorityPopover} onOpenChange={setOpenPriorityPopover}>

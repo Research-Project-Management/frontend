@@ -3,15 +3,15 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { projectPagesQueryOptions, usePageActions } from '../hooks/use-page';
-import { Topbar } from '../components/layout/Topbar';
-import { EmptyState } from '../components/layout/EmptyState';
-import { CreateModal } from '../components/modals/CreateModal';
-import { GridView } from '../components/views/GridView';
-import { ListView } from '../components/views/ListView';
-import type { PagesViewMode } from '../types/page.types';
+import { projectPagesQueryOptions, usePageActions } from './hooks/use-page';
+import { Topbar } from './components/layout/Topbar';
+import { EmptyState } from './components/layout/EmptyState';
+import { CreateModal } from './components/modals/CreateModal';
+import { GridView } from './components/views/GridView';
+import { ListView } from './components/views/ListView';
+import type { PagesViewMode } from './types/page.types';
 
-export default function PagesPage({ projectId: propProjectId }: { projectId?: string } = {}) {
+export function ProjectPagesView({ projectId: propProjectId }: { projectId?: string } = {}) {
   const params = useParams() as { projectId?: string };
   const projectId = propProjectId || params.projectId || '';
   const router = useRouter();
@@ -75,3 +75,5 @@ export default function PagesPage({ projectId: propProjectId }: { projectId?: st
     </div>
   );
 }
+
+export default ProjectPagesView;

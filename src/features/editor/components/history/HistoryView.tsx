@@ -17,6 +17,14 @@ import {
   GitBranch,
   Cloud,
   FileCode2,
+  Loader2,
+  Pause,
+  Play,
+  SkipBack,
+  SkipForward,
+  Download,
+  Trash2,
+  FileX,
 } from 'lucide-react';
 import MonacoEditor, { DiffEditor } from '@monaco-editor/react';
 import {
@@ -36,13 +44,22 @@ import {
 } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 import { usePageStore, useSettingsStore } from '@/features/editor/store';
-import { filesQuery } from '@/features/editor/hooks/use-core';
+import {
+  filesQuery,
+  deletedFilesQuery,
+  usePageActions,
+} from '@/features/editor/hooks/use-core';
 import {
   useProjectHistory,
   useVersionActions,
   useHistoryActions,
 } from '@/features/editor/hooks/use-history';
-import { versionService, type VersionDiffResponse } from '@/features/editor/services/history.service';
+import {
+  versionService,
+  historyService,
+  type VersionDiffResponse,
+} from '@/features/editor/services/history.service';
+import { exportVersionAsZip } from '@/features/editor/utils/export-zip.util';
 import type { PageVersion, PageEvent } from '@/features/editor/types';
 import { toast } from 'sonner';
 
@@ -102,6 +119,10 @@ export default function HistoryView() {
     ...filesQuery(rootPageId),
     enabled: !!rootPageId,
   });
+  const { data: deletedFiles = [] } = useQuery({
+    ...deletedFilesQuery(rootPageId),
+    enabled: !!rootPageId,
+  });
 
   const { restoreToEvent } = useHistoryActions();
   const { restoreVersion, updateLabel } = useVersionActions();
@@ -114,12 +135,119 @@ export default function HistoryView() {
   // Content of the active file at the selected revision
   const [previewContent, setPreviewContent] = useState<string>('');
   const [isLoadingContent, setIsLoadingContent] = useState(false);
-  const [diffMode, setDiffMode] = useState(true);
+  // View mode: 'diff' | 'snapshot' | 'timeline'
+  const [viewMode, setViewMode] = useState<'diff' | 'snapshot' | 'timeline'>('diff');
+  const diffMode = viewMode === 'diff';
   const [compareTargetId, setCompareTargetId] = useState<string>('current');
 
   // Server-computed visual diff data
   const [diffData, setDiffData] = useState<VersionDiffResponse | null>(null);
   const [isDiffLoading, setIsDiffLoading] = useState(false);
+
+  // ─── Time Machine / Keystroke Scrubbing State ─────────────────────────────
+  const targetPageId = activeFileId || rootPageId;
+  const { data: timelineData, isLoading: isTimelineLoading } = useQuery({
+    queryKey: ['pages', targetPageId, 'timeline'],
+    queryFn: () => historyService.getTimeline(targetPageId),
+    enabled: viewMode === 'timeline' && !!targetPageId,
+  });
+
+  const timelineOps = useMemo(() => timelineData?.entries || [], [timelineData]);
+  const minTime =
+    timelineData?.oldestMs ||
+    (events[events.length - 1]
+      ? new Date(events[events.length - 1].createdAt).getTime()
+      : Date.now() - 3600000);
+  const maxTime = timelineData?.newestMs || Date.now();
+
+  const [scrubTimestamp, setScrubTimestamp] = useState<number>(maxTime);
+  const [scrubContent, setScrubContent] = useState<string>('');
+  const [isScrubLoading, setIsScrubLoading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    if (timelineData?.newestMs) {
+      setScrubTimestamp(timelineData.newestMs);
+    }
+  }, [timelineData?.newestMs]);
+
+  useEffect(() => {
+    if (viewMode !== 'timeline' || !targetPageId) return;
+    let cancelled = false;
+    setIsScrubLoading(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await historyService.getContentAt(targetPageId, scrubTimestamp);
+        if (!cancelled) {
+          setScrubContent(res.content ?? '');
+        }
+      } catch (err) {
+        console.error('Failed to reconstruct content at scrub point', err);
+      } finally {
+        if (!cancelled) {
+          setIsScrubLoading(false);
+        }
+      }
+    }, 150);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [viewMode, targetPageId, scrubTimestamp]);
+
+  const handleStepPrev = () => {
+    if (!timelineOps.length) return;
+    const prior = [...timelineOps].reverse().find((op) => op.timestamp < scrubTimestamp);
+    if (prior) setScrubTimestamp(prior.timestamp);
+    else setScrubTimestamp(minTime);
+  };
+
+  const handleStepNext = () => {
+    if (!timelineOps.length) return;
+    const next = timelineOps.find((op) => op.timestamp > scrubTimestamp);
+    if (next) setScrubTimestamp(next.timestamp);
+    else setScrubTimestamp(maxTime);
+  };
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    const interval = setInterval(() => {
+      setScrubTimestamp((curr) => {
+        const next = timelineOps.find((op) => op.timestamp > curr);
+        if (!next) {
+          setIsPlaying(false);
+          return curr;
+        }
+        return next.timestamp;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isPlaying, timelineOps]);
+
+  const {
+    updateContent: updateContentMutation,
+    restorePage: restorePageMutation,
+  } = usePageActions();
+  const handleRestoreScrubPoint = async () => {
+    if (scrubContent === undefined) return;
+    try {
+      if (targetPageId) {
+        await updateContentMutation.mutateAsync({
+          pageId: targetPageId,
+          content: scrubContent,
+        });
+      }
+      editorRef.current?.setValue(scrubContent);
+      toast.success(
+        `Document restored to ${new Date(scrubTimestamp).toLocaleTimeString()} successfully!`,
+      );
+      setIsHistoryOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to restore document at this point');
+    }
+  };
 
   // Label modal state
   const [labelModalOpen, setLabelModalOpen] = useState(false);
@@ -127,16 +255,22 @@ export default function HistoryView() {
   const [labelText, setLabelText] = useState('');
 
   const currentFileContent = useMemo(() => {
-    const f = pageFiles.find((p: any) => p.id === activeFileId);
+    const f =
+      pageFiles.find((p: any) => p.id === activeFileId) ||
+      deletedFiles.find((p: any) => p.id === activeFileId);
     return f?.content || editorRef.current?.getValue() || '';
-  }, [pageFiles, activeFileId, editorRef]);
+  }, [pageFiles, deletedFiles, activeFileId, editorRef]);
 
   // Default active file
   useEffect(() => {
-    if (!activeFileId && pageFiles.length > 0) {
-      setActiveFileId(pageFiles[0].id);
+    if (!activeFileId) {
+      if (pageFiles.length > 0) {
+        setActiveFileId(pageFiles[0].id);
+      } else if (deletedFiles.length > 0) {
+        setActiveFileId(deletedFiles[0].id);
+      }
     }
-  }, [activeFileId, pageFiles]);
+  }, [activeFileId, pageFiles, deletedFiles]);
 
   // Combined timeline items
   const timelineItems = useMemo(() => {
@@ -209,14 +343,18 @@ export default function HistoryView() {
           }
         }
 
-        const activeFile = pageFiles.find((f: any) => f.id === activeFileId);
+        const activeFile =
+          pageFiles.find((f: any) => f.id === activeFileId) ||
+          deletedFiles.find((f: any) => f.id === activeFileId);
         if (!isCancelled) {
           setPreviewContent(activeFile?.content || editorRef.current?.getValue() || '');
           setIsLoadingContent(false);
         }
       } catch {
         if (!isCancelled) {
-          const activeFile = pageFiles.find((f: any) => f.id === activeFileId);
+          const activeFile =
+            pageFiles.find((f: any) => f.id === activeFileId) ||
+            deletedFiles.find((f: any) => f.id === activeFileId);
           setPreviewContent(activeFile?.content || '');
           setIsLoadingContent(false);
         }
@@ -227,7 +365,7 @@ export default function HistoryView() {
     return () => {
       isCancelled = true;
     };
-  }, [activeFileId, selectedVersionId, selectedEventId, pageFiles, editorRef]);
+  }, [activeFileId, selectedVersionId, selectedEventId, pageFiles, deletedFiles, editorRef]);
 
   // Fetch server-computed diff when diffMode is active
   useEffect(() => {
@@ -272,7 +410,82 @@ export default function HistoryView() {
     };
   }, [diffMode, activeFileId, selectedEventId, compareTargetId, currentFileContent, previewContent]);
 
-  // Handle Restore
+  const activeFileName = useMemo(() => {
+    const f =
+      pageFiles.find((p) => p.id === activeFileId) ||
+      deletedFiles.find((p: any) => p.id === activeFileId);
+    return f?.title || activeRevision?.fileName || 'main.tex';
+  }, [pageFiles, deletedFiles, activeFileId, activeRevision]);
+
+  const isSelectedFileDeleted = useMemo(() => {
+    return deletedFiles.some((df: any) => df.id === activeFileId);
+  }, [deletedFiles, activeFileId]);
+
+  // Handle Restore Single File (Overleaf Parity)
+  const handleRestoreFile = async (targetId?: string) => {
+    const fileId = targetId || activeFileId;
+    if (!fileId) return;
+
+    const fileObj =
+      pageFiles.find((f) => f.id === fileId) ||
+      deletedFiles.find((f: any) => f.id === fileId);
+    const fileName = fileObj?.title || activeFileName;
+
+    try {
+      if (previewContent !== undefined) {
+        await updateContentMutation.mutateAsync({
+          pageId: fileId,
+          content: previewContent,
+        });
+
+        if (fileId === activeFilePage?.id) {
+          editorRef.current?.setValue(previewContent);
+        }
+
+        toast.success(`Restored "${fileName}" to this revision successfully!`);
+        setIsHistoryOpen(false);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || `Failed to restore ${fileName}`);
+    }
+  };
+
+  // Handle Restore Deleted File back to Project (Overleaf Parity)
+  const handleRestoreDeletedFile = async (targetId?: string) => {
+    const fileId = targetId || activeFileId;
+    if (!fileId) return;
+
+    const fileObj = deletedFiles.find((f: any) => f.id === fileId);
+    const fileName = fileObj?.title || activeFileName;
+
+    try {
+      await restorePageMutation.mutateAsync(fileId);
+      if (previewContent !== undefined && previewContent !== fileObj?.content) {
+        await updateContentMutation.mutateAsync({
+          pageId: fileId,
+          content: previewContent,
+        });
+      }
+      toast.success(`Restored "${fileName}" back to project!`);
+    } catch (err: any) {
+      toast.error(err?.message || `Failed to restore ${fileName}`);
+    }
+  };
+
+  // Handle Download Version as ZIP (Overleaf Parity)
+  const handleDownloadVersionZip = async (item?: any) => {
+    const rev = item || activeRevision;
+    if (!rev) return;
+    await exportVersionAsZip({
+      parentPageId: rootPageId,
+      versionId: rev.id,
+      revisionDate: rev.date,
+      revisionLabel: rev.label,
+      projectTitle: currentPage?.title,
+    });
+  };
+
+  // Handle Restore Entire Project
   const handleRestore = async () => {
     if (!activeRevision) return;
     try {
@@ -380,19 +593,86 @@ export default function HistoryView() {
                       <FileText className="size-3.5 shrink-0" />
                       <span className="truncate">{file.title || 'untitled.tex'}</span>
                     </div>
-                    <span
-                      className={cn(
-                        'text-[10px] font-mono px-1.5 py-0.5 rounded leading-none shrink-0',
-                        isActive
-                          ? 'bg-white/20 text-white'
-                          : 'bg-muted text-muted-foreground',
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span
+                        className={cn(
+                          'text-[10px] font-mono px-1.5 py-0.5 rounded leading-none shrink-0',
+                          isActive
+                            ? 'bg-white/20 text-white'
+                            : 'bg-muted text-muted-foreground',
+                        )}
+                      >
+                        Edited
+                      </span>
+                      {isActive && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRestoreFile(file.id);
+                          }}
+                          title={`Restore only "${file.title || 'this file'}"`}
+                          className="size-5 rounded hover:bg-white/30 flex items-center justify-center text-white/90 hover:text-white transition-colors cursor-pointer"
+                        >
+                          <RotateCcw className="size-2.5" />
+                        </button>
                       )}
-                    >
-                      Edited
-                    </span>
+                    </div>
                   </div>
                 );
               })
+            )}
+
+            {deletedFiles.length > 0 && (
+              <div className="pt-2 mt-2 border-t border-border">
+                <div className="px-2 py-1 flex items-center justify-between text-[11px] font-semibold text-rose-500/90 dark:text-rose-400 uppercase tracking-wider select-none">
+                  <div className="flex items-center gap-1.5">
+                    <Trash2 className="size-3 shrink-0" />
+                    <span>Deleted Files</span>
+                  </div>
+                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 font-mono text-[10px]">
+                    {deletedFiles.length}
+                  </span>
+                </div>
+                <div className="space-y-1 mt-1">
+                  {deletedFiles.map((file: any) => {
+                    const isActive = file.id === activeFileId;
+                    return (
+                      <div
+                        key={file.id}
+                        onClick={() => setActiveFileId(file.id)}
+                        className={cn(
+                          'flex items-center justify-between h-8 px-2.5 rounded-md text-xs font-medium cursor-pointer transition-colors select-none',
+                          isActive
+                            ? 'bg-rose-950/60 dark:bg-rose-900/60 text-white border border-rose-500/40 shadow-2xs'
+                            : 'text-muted-foreground/80 hover:bg-muted hover:text-foreground line-through decoration-rose-500/50',
+                        )}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <FileX className="size-3.5 shrink-0 text-rose-500" />
+                          <span className="truncate">{file.title || 'deleted_file.tex'}</span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded leading-none bg-rose-500/20 text-rose-300">
+                            Deleted
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRestoreDeletedFile(file.id);
+                            }}
+                            title={`Restore "${file.title}" back to project`}
+                            className="size-5 rounded hover:bg-rose-500/30 flex items-center justify-center text-rose-300 hover:text-white transition-colors cursor-pointer"
+                          >
+                            <RotateCcw className="size-2.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -403,17 +683,19 @@ export default function HistoryView() {
           <div className="h-10 px-4 border-b border-border bg-secondary/30 flex items-center justify-between text-xs shrink-0 select-none">
             <div className="flex items-center gap-3">
               <span className="font-semibold text-foreground/90">
-                Viewing {formattedDate.full}
+                {viewMode === 'timeline'
+                  ? `Time Machine: ${new Date(scrubTimestamp).toLocaleTimeString()} (${new Date(scrubTimestamp).toLocaleDateString()})`
+                  : `Viewing ${formattedDate.full}`}
               </span>
 
-              {/* View mode toggle: Snapshot vs Compare Diff */}
+              {/* View mode toggle: Compare Diff vs Snapshot vs Time Machine */}
               <div className="flex items-center rounded-md bg-muted p-0.5 border border-border text-11">
                 <button
                   type="button"
-                  onClick={() => setDiffMode(true)}
+                  onClick={() => setViewMode('diff')}
                   className={cn(
                     'px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer',
-                    diffMode
+                    viewMode === 'diff'
                       ? 'bg-background text-foreground shadow-2xs font-semibold'
                       : 'text-muted-foreground hover:text-foreground',
                   )}
@@ -422,15 +704,28 @@ export default function HistoryView() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDiffMode(false)}
+                  onClick={() => setViewMode('snapshot')}
                   className={cn(
                     'px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer',
-                    !diffMode
+                    viewMode === 'snapshot'
                       ? 'bg-background text-foreground shadow-2xs font-semibold'
                       : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
                   Snapshot
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('timeline')}
+                  className={cn(
+                    'px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1',
+                    viewMode === 'timeline'
+                      ? 'bg-emerald-600 text-white shadow-2xs font-semibold'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  <Clock className="size-3 shrink-0" />
+                  <span>Time Machine</span>
                 </button>
               </div>
 
@@ -470,27 +765,148 @@ export default function HistoryView() {
               )}
             </div>
 
-            {/* Right actions on Subheader: Restore Button & File Name */}
-            <div className="flex items-center gap-3">
-              <span className="text-muted-foreground font-mono text-11 hidden md:inline">
-                {activeRevision?.fileName || 'main.tex'}
+            {/* Right actions on Subheader: Restore Buttons & File Name */}
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground font-mono text-11 hidden md:inline mr-1">
+                {activeFileName}
               </span>
 
-              {/* Prominent Restore Button (Overleaf Standard) */}
-              <button
-                type="button"
-                onClick={handleRestore}
-                className="flex items-center gap-1.5 h-6 px-2.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[11px] transition-colors cursor-pointer shadow-2xs"
-              >
-                <RotateCcw className="size-3 shrink-0" />
-                <span>Restore this version</span>
-              </button>
+              {/* Prominent Restore Buttons (Overleaf Standard) */}
+              {viewMode === 'timeline' ? (
+                <button
+                  type="button"
+                  onClick={handleRestoreScrubPoint}
+                  disabled={isScrubLoading}
+                  className="flex items-center gap-1.5 h-6 px-2.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold text-[11px] transition-colors cursor-pointer shadow-2xs"
+                >
+                  <RotateCcw className="size-3 shrink-0" />
+                  <span>Restore this point</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  {/* Single File Restore or Deleted File Restore */}
+                  {isSelectedFileDeleted ? (
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreDeletedFile()}
+                      className="flex items-center gap-1.5 h-6 px-2.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-semibold text-[11px] transition-colors cursor-pointer shadow-2xs"
+                      title={`Restore deleted file "${activeFileName}" back to project`}
+                    >
+                      <RotateCcw className="size-3 shrink-0" />
+                      <span>Restore to project</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreFile()}
+                      disabled={isLoadingContent || previewContent === undefined}
+                      className="flex items-center gap-1.5 h-6 px-2.5 rounded border border-emerald-500/60 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-semibold text-[11px] transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                      title={`Restore only "${activeFileName}" to this revision`}
+                    >
+                      <FileText className="size-3 shrink-0" />
+                      <span>Restore this file</span>
+                    </button>
+                  )}
+
+                  {/* Entire Project Restore */}
+                  <button
+                    type="button"
+                    onClick={handleRestore}
+                    className="flex items-center gap-1.5 h-6 px-2.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[11px] transition-colors cursor-pointer shadow-2xs"
+                    title="Restore all project files to this revision"
+                  >
+                    <RotateCcw className="size-3 shrink-0" />
+                    <span>Restore entire project</span>
+                  </button>
+
+                  {/* Download Version ZIP */}
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadVersionZip()}
+                    className="flex items-center gap-1.5 h-6 px-2.5 rounded border border-border bg-background hover:bg-muted text-foreground font-medium text-[11px] transition-colors cursor-pointer shadow-2xs"
+                    title="Download project files at this revision as a ZIP archive"
+                  >
+                    <Download className="size-3 shrink-0 text-sky-500" />
+                    <span className="hidden lg:inline">Download ZIP</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
+          {/* Time Machine Scrubber Toolbar */}
+          {viewMode === 'timeline' && (
+            <div className="px-4 py-2 bg-muted/40 border-b border-border flex items-center gap-4 text-xs select-none">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  onClick={handleStepPrev}
+                  title="Previous keystroke / edit"
+                  disabled={isScrubLoading}
+                >
+                  <SkipBack className="size-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 text-emerald-600 dark:text-emerald-400"
+                  onClick={() => setIsPlaying(!isPlaying)}
+                  title={isPlaying ? 'Pause replay' : 'Play replay'}
+                >
+                  {isPlaying ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  onClick={handleStepNext}
+                  title="Next keystroke / edit"
+                  disabled={isScrubLoading}
+                >
+                  <SkipForward className="size-3.5" />
+                </Button>
+              </div>
+
+              {/* Slider Track */}
+              <div className="flex-1 flex items-center gap-3">
+                <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                  {new Date(minTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <div className="relative flex-1 flex items-center">
+                  <input
+                    type="range"
+                    min={minTime}
+                    max={maxTime || minTime + 1}
+                    value={scrubTimestamp}
+                    onChange={(e) => setScrubTimestamp(Number(e.target.value))}
+                    className="w-full h-1.5 bg-secondary rounded-lg appearance-none cursor-pointer accent-emerald-600 focus:outline-none"
+                  />
+                </div>
+                <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                  {new Date(maxTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+
+              {/* Status and Ops Count */}
+              <div className="flex items-center gap-2 shrink-0">
+                {isScrubLoading && (
+                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <Loader2 className="size-3 animate-spin text-emerald-600" />
+                    <span>Reconstructing…</span>
+                  </div>
+                )}
+                <span className="px-2 py-0.5 rounded bg-background border border-border text-[11px] font-mono text-muted-foreground">
+                  {timelineOps.length} ops recorded
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Monaco Code / Snapshot or Diff Viewer */}
           <div className="flex-1 relative overflow-hidden bg-[var(--editor-bg,hsl(var(--background)))]">
-            {diffMode ? (
+            {viewMode === 'diff' ? (
               <DiffEditor
                 height="100%"
                 language="latex"
@@ -511,7 +927,7 @@ export default function HistoryView() {
               <MonacoEditor
                 height="100%"
                 language="latex"
-                value={previewContent}
+                value={viewMode === 'timeline' ? scrubContent : previewContent}
                 theme={editorTheme === 'dark' ? 'vs-dark' : 'light'}
                 options={{
                   readOnly: true,
@@ -634,6 +1050,16 @@ export default function HistoryView() {
                                 <span className="text-xs">
                                   {item.label ? 'Edit label' : 'Label this version'}
                                 </span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownloadVersionZip(item);
+                                }}
+                                className="cursor-pointer text-sky-400 focus:text-sky-300"
+                              >
+                                <Download className="size-3.5 mr-2" />
+                                <span className="text-xs">Download ZIP of this version</span>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem

@@ -1,4 +1,5 @@
 import katex from 'katex';
+import { escapeLatex } from './smart-paste.util';
 
 /**
  * Metadata container for preamble elements when parsing LaTeX documents.
@@ -44,7 +45,7 @@ export function extractLatexBodyAndPreamble(latex: string): {
 
   if (beginDocIdx !== -1 && endDocIdx !== -1 && endDocIdx > beginDocIdx) {
     const rawPreamble = latex.substring(0, beginDocIdx);
-    
+
     // Extract packages
     const pkgRegex = /\\usepackage(?:\[[^\]]*\])?\{([^}]+)\}/g;
     let pkgMatch: RegExpExecArray | null;
@@ -85,13 +86,105 @@ export function renderMathHtml(mathCode: string, displayMode: boolean): string {
 }
 
 /**
+ * Unescapes LaTeX characters in table cell content for TipTap display.
+ */
+function unescapeLatexCell(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/\\textbackslash\{\}/g, '\\')
+    .replace(/\\&/g, '&')
+    .replace(/\\%/g, '%')
+    .replace(/\\\$/g, '$')
+    .replace(/\\#/g, '#')
+    .replace(/\\_/g, '_')
+    .replace(/\\textasciitilde\{\}/g, '~')
+    .replace(/\\textasciicircum\{\}/g, '^')
+    .trim();
+}
+
+/**
+ * Converts LaTeX text formatting inside table cells into HTML.
+ */
+function convertLatexCellContentToHtml(raw: string): string {
+  let cell = unescapeLatexCell(raw);
+  cell = cell
+    .replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
+    .replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>')
+    .replace(/\\underline\{([^}]+)\}/g, '<u>$1</u>')
+    .replace(/\\texttt\{([^}]+)\}/g, '<code>$1</code>');
+  return cell;
+}
+
+/**
+ * Parses LaTeX table or tabular environment into an HTML table.
+ */
+export function convertLatexTableToHtml(tableBlock: string): string {
+  const captionMatch = tableBlock.match(/\\caption(?:\[[^\]]*\])?\{([^}]+)\}/);
+  const caption = captionMatch ? captionMatch[1] : '';
+
+  const labelMatch = tableBlock.match(/\\label\{([^}]+)\}/);
+  const label = labelMatch ? labelMatch[1] : '';
+
+  const tabularMatch = tableBlock.match(/\\begin\{tabular\*?\}(?:\[[^\]]*\])?\{([^}]*)\}([\s\S]*?)\\end\{tabular\*?\}/);
+  if (!tabularMatch) {
+    return '';
+  }
+
+  const alignSpec = tabularMatch[1].trim();
+  const rawBody = tabularMatch[2];
+
+  // Split rows by \\ (and optional spacing like \\[...])
+  const rawRows = rawBody.split(/\\\\(?:\s*\[[^\]]*\])?/);
+
+  const headerRowsHtml: string[] = [];
+  const bodyRowsHtml: string[] = [];
+  let isHeader = true;
+
+  for (let i = 0; i < rawRows.length; i++) {
+    const rawRow = rawRows[i].trim();
+    if (!rawRow) continue;
+
+    // Clean rule commands
+    const cleanRow = rawRow
+      .replace(/\\toprule/g, '')
+      .replace(/\\midrule/g, '')
+      .replace(/\\bottomrule/g, '')
+      .replace(/\\hline/g, '')
+      .replace(/\\cline\{[^}]*\}/g, '')
+      .replace(/\\centering/g, '')
+      .trim();
+
+    if (!cleanRow) continue;
+
+    // Split cells by unescaped &
+    const rawCells = cleanRow.split(/(?<!\\)&/);
+    const cells = rawCells.map((c) => convertLatexCellContentToHtml(c));
+
+    if (isHeader) {
+      const ths = cells.map((c) => `<th><p>${c}</p></th>`).join('');
+      headerRowsHtml.push(`<tr>${ths}</tr>`);
+      isHeader = false;
+    } else {
+      const tds = cells.map((c) => `<td><p>${c}</p></td>`).join('');
+      bodyRowsHtml.push(`<tr>${tds}</tr>`);
+    }
+  }
+
+  const captionAttr = caption ? ` data-caption="${encodeURIComponent(caption)}"` : '';
+  const labelAttr = label ? ` data-label="${encodeURIComponent(label)}"` : '';
+  const alignAttr = alignSpec ? ` data-align="${encodeURIComponent(alignSpec)}"` : '';
+
+  const thead = headerRowsHtml.length > 0 ? `<thead>${headerRowsHtml.join('')}</thead>` : '';
+  const tbody = `<tbody>${bodyRowsHtml.join('')}</tbody>`;
+
+  return `\n<table${captionAttr}${labelAttr}${alignAttr}>${thead}${tbody}</table>\n`;
+}
+
+/**
  * Environments that cannot be safely converted to rich-text and must be
  * preserved as immutable protected blocks in Visual Mode.
  */
 const PROTECTED_ENVIRONMENTS = [
-  'table',
-  'table\\*',
-  'tabular',
   'figure',
   'figure\\*',
   'tikzpicture',
@@ -116,8 +209,17 @@ export function latexToHtml(latex: string): string {
 
   const { body } = extractLatexBodyAndPreamble(latex);
   let text = body;
+  // 1a. Convert LaTeX tables & tabular environments into rich editable HTML <table>
+  text = text.replace(/(\\begin\{table\*?\}(?:\[[^\]]*\])?[\s\S]*?\\end\{table\*?\})/g, (match) => {
+    const htmlTable = convertLatexTableToHtml(match);
+    return htmlTable || match;
+  });
+  text = text.replace(/(\\begin\{tabular\}\{([^}]*)\}[\s\S]*?\\end\{tabular\})/g, (match) => {
+    const htmlTable = convertLatexTableToHtml(match);
+    return htmlTable || match;
+  });
 
-  // 1. Protect complex LaTeX environments (table, figure, tikz, algorithms, etc.)
+  // 1b. Protect complex LaTeX environments (figure, tikz, algorithms, etc.)
   for (const env of PROTECTED_ENVIRONMENTS) {
     const regex = new RegExp(`(\\\\begin\\{${env}\\}[\\s\\S]*?\\\\end\\{${env}\\})`, 'g');
     text = text.replace(regex, (_, block) => {
@@ -287,6 +389,89 @@ export function htmlToLatex(html: string, originalLatex?: string): string {
   text = text.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_, inner) => {
     const items = inner.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, '  \\item $1\n');
     return `\n\\begin{enumerate}\n${items}\\end{enumerate}\n`;
+  });
+
+  // 8a. Tables: <table>...</table> -> \begin{table}[htbp] \centering \begin{tabular}{...} ... \end{tabular} \end{table}
+  text = text.replace(/<table([^>]*)>([\s\S]*?)<\/table>/gi, (_, attrs, inner) => {
+    const captionMatch = attrs.match(/data-caption="([^"]+)"/);
+    const caption = captionMatch ? decodeURIComponent(captionMatch[1]) : '';
+
+    const labelMatch = attrs.match(/data-label="([^"]+)"/);
+    const label = labelMatch ? decodeURIComponent(labelMatch[1]) : '';
+
+    const alignMatch = attrs.match(/data-align="([^"]+)"/);
+    let alignSpec = alignMatch ? decodeURIComponent(alignMatch[1]) : '';
+
+    const rows: Array<{ isHeader: boolean; cells: string[] }> = [];
+    let maxCols = 0;
+
+    const trMatches = inner.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
+    for (const tr of trMatches) {
+      const isHeader = /<th/i.test(tr);
+      const cellMatches = tr.match(/<(?:th|td)[^>]*>([\s\S]*?)<\/(?:th|td)>/gi) || [];
+      const cells = cellMatches.map((cell: string) => {
+        let textContent = cell
+          .replace(/<(?:th|td)[^>]*>/i, '')
+          .replace(/<\/(?:th|td)>/i, '')
+          .replace(/<p[^>]*>/gi, '')
+          .replace(/<\/p>/gi, '')
+          .replace(/<br\s*\/?>/gi, ' ')
+          .replace(/<[^>]+>/g, '')
+          .trim();
+        // Escape literal & and % that are not part of LaTeX escape sequences
+        return textContent
+          .replace(/(?<!\\)&/g, '\\&')
+          .replace(/(?<!\\)%/g, '\\%');
+      });
+
+      if (cells.length > 0) {
+        rows.push({ isHeader, cells });
+        if (cells.length > maxCols) maxCols = cells.length;
+      }
+    }
+
+    if (rows.length === 0) return '';
+
+    if (!alignSpec || alignSpec.replace(/\s+/g, '').length !== maxCols) {
+      alignSpec = Array(maxCols).fill('c').join(' ');
+    }
+
+    const lines: string[] = [];
+    const hasFloatingWrapper = Boolean(caption || label);
+
+    if (hasFloatingWrapper) {
+      lines.push('\\begin{table}[htbp]');
+      lines.push('  \\centering');
+      if (caption) lines.push(`  \\caption{${escapeLatex(caption)}}`);
+      if (label) lines.push(`  \\label{${label}}`);
+      lines.push(`  \\begin{tabular}{${alignSpec}}`);
+    } else {
+      lines.push('\\begin{table}[htbp]');
+      lines.push('  \\centering');
+      lines.push(`  \\begin{tabular}{${alignSpec}}`);
+    }
+
+    lines.push('    \\toprule');
+
+    let hasMidrule = false;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const padded = [...row.cells];
+      while (padded.length < maxCols) padded.push('');
+
+      lines.push(`    ${padded.join(' & ')} \\\\`);
+
+      if (row.isHeader && !hasMidrule) {
+        lines.push('    \\midrule');
+        hasMidrule = true;
+      }
+    }
+
+    lines.push('    \\bottomrule');
+    lines.push('  \\end{tabular}');
+    lines.push('\\end{table}');
+
+    return `\n\n${lines.join('\n')}\n\n`;
   });
 
   // 9. Paragraphs and breaks

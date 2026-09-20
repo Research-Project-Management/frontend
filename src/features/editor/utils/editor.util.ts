@@ -368,6 +368,8 @@ export interface EditorEventMap {
   'flux:open-ai-panel': { initialPrompt?: string; selectedText?: string } | undefined;
   'flux:toggle-ai-panel': undefined;
   'flux:trigger-compile': { forceSync?: boolean; draft?: boolean } | undefined;
+  'flux:compile-started': undefined;
+  'flux:compile-finished': { success: boolean };
   'flux:insert-citation': { bibKey: string };
   'flux:open-citation-picker': undefined;
   'flux:focus-editor': undefined;
@@ -381,6 +383,39 @@ export interface EditorEventMap {
   'flux:zoom-out': undefined;
   'flux:zoom-fit-width': undefined;
   'flux:zoom-fit-height': undefined;
+  'flux:diagnostics-updated': {
+    diagnostics: any[];
+    errorCount: number;
+    warningCount: number;
+  };
+  'flux:visual-command': {
+    command:
+      | 'undo'
+      | 'redo'
+      | 'bold'
+      | 'italic'
+      | 'strike'
+      | 'code'
+      | 'heading'
+      | 'bulletList'
+      | 'orderedList'
+      | 'blockquote'
+      | 'insertMath'
+      | 'insertTable'
+      | 'addColumnBefore'
+      | 'addColumnAfter'
+      | 'deleteColumn'
+      | 'addRowBefore'
+      | 'addRowAfter'
+      | 'deleteRow'
+      | 'deleteTable'
+      | 'toggleHeaderRow';
+    level?: 1 | 2 | 3;
+    rows?: number;
+    cols?: number;
+    withHeaderRow?: boolean;
+    contentHtml?: string;
+  };
 }
 
 export const EditorEventBus = {

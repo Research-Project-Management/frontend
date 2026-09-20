@@ -48,7 +48,5 @@ export * from "./toggle";
 export * from "./tooltip";
 
 // Re-exports from shared components
-export * from "../modals/ConfirmDeleteModal";
 export * from "../icons";
-export * from "../icon-picker";
 export { cn } from "@/shared/lib/utils";

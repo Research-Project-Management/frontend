@@ -76,6 +76,9 @@ export default function StandaloneViewerPage() {
     }
   }, [autoFit, fittedScale]);
 
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
+
   // Set up BroadcastChannel communication with main editor window
   useEffect(() => {
     if (!pageId) return;
@@ -95,7 +98,18 @@ export default function StandaloneViewerPage() {
       } else if (msg.type === 'FORWARD_SYNC') {
         if (msg.page) {
           setPageNumber(msg.page);
-          surfaceRef.current?.scrollToPage(msg.page);
+          const currentScale = scaleRef.current;
+          if (msg.x !== undefined && msg.y !== undefined) {
+            surfaceRef.current?.highlightTarget?.(
+              msg.page,
+              msg.x * currentScale,
+              msg.y * currentScale,
+              msg.w !== undefined ? msg.w * currentScale : undefined,
+              msg.h !== undefined ? msg.h * currentScale : undefined,
+            );
+          } else {
+            surfaceRef.current?.scrollToPage(msg.page);
+          }
         }
       } else if (msg.type === 'REATTACH_REQUEST') {
         window.close();

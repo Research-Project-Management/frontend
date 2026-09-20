@@ -38,7 +38,7 @@ interface ProjectLibrariesSectionProps extends CollectionActionHandlers {
 export function resolveProjectRole(
   project: any,
   currentUserId?: string,
-): 'owner' | 'contributor' | 'commenter' | 'viewer' {
+): 'owner' | 'coordinator' | 'contributor' | 'reviewer' | 'commenter' | 'viewer' {
   if (!currentUserId || !project) return 'viewer';
 
   // 1. Owner = userId check
@@ -57,7 +57,9 @@ export function resolveProjectRole(
   if (rawYourRole) {
     const norm = String(rawYourRole).toLowerCase();
     if (norm === 'owner' || norm === 'admin') return 'owner';
+    if (norm === 'coordinator') return 'coordinator';
     if (norm === 'contributor' || norm === 'member') return 'contributor';
+    if (norm === 'reviewer') return 'reviewer';
     if (norm === 'commenter') return 'commenter';
     if (norm === 'viewer') return 'viewer';
   }
@@ -73,7 +75,9 @@ export function resolveProjectRole(
   if (member?.role) {
     const norm = String(member.role).toLowerCase();
     if (norm === 'owner' || norm === 'admin') return 'owner';
+    if (norm === 'coordinator') return 'coordinator';
     if (norm === 'contributor' || norm === 'member') return 'contributor';
+    if (norm === 'reviewer') return 'reviewer';
     if (norm === 'commenter') return 'commenter';
     if (norm === 'viewer') return 'viewer';
   }
@@ -180,7 +184,7 @@ export function ProjectLibrariesSection({
                 propCanManageCollections !== undefined
                   ? propCanManageCollections
                   : isProjectActive &&
-                    (activeScope.role === 'owner' || activeScope.role === 'contributor');
+                    (activeScope.role === 'owner' || activeScope.role === 'coordinator' || activeScope.role === 'contributor');
 
               return (
                 <div key={project.id} className="flex flex-col gap-0.5 w-full">

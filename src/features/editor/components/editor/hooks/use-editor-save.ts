@@ -5,6 +5,7 @@ import type { Page, PageFile } from '@/features/editor/types';
 import { useCompileStore, usePageStore, useSettingsStore } from '@/features/editor/store';
 import { useDebounce } from '@/shared/hooks';
 import { usePageActions } from '@/features/editor/hooks/use-core';
+import { EditorEventBus } from '@/features/editor/utils/editor.util';
 
 export const extractStringContent = (c: any): string =>
   typeof c === 'string'
@@ -29,7 +30,6 @@ export function useEditorSave({ page, isRealtimeActive }: UseEditorSaveOptions) 
   pageRef.current = page;
   const prevPageRef = useRef(page);
   const activePageIdRef = useRef(page.id);
-  const pendingCompileRef = useRef(false);
   const updateMutationRef = useRef(updateMutation);
   updateMutationRef.current = updateMutation;
 
@@ -76,42 +76,50 @@ export function useEditorSave({ page, isRealtimeActive }: UseEditorSaveOptions) 
           },
         },
       );
-      if (autoCompile) pendingCompileRef.current = true;
     }
   }, [debouncedPayload, isRealtimeActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-compile: trigger compile after save mutation succeeds (non-realtime mode).
-  useEffect(() => {
-    const { compileStatus } = useCompileStore.getState();
-    if (!autoCompile || compileStatus !== 'idle') return;
-    if (
-      updateMutation.isSuccess &&
-      !updateMutation.isPending &&
-      pendingCompileRef.current
-    ) {
-      pendingCompileRef.current = false;
-      const timer = setTimeout(() => {
-        compileRef.current?.();
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [updateMutation.isSuccess, updateMutation.isPending]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-compile in Realtime CRDT mode (Overleaf-style):
-  // Since HTTP PUT is bypassed when isRealtimeActive, trigger auto-compile after 1.5s idle typing
-  const debouncedRealtimeContent = useDebounce(contentPayload.text, 1500);
+  // ── Auto-Compile on Typing with 2.5s Idle Debounce (Overleaf Parity) ───────
+  // Overleaf standard: 2.5s idle typing debounce before triggering compilation.
+  // Unified across both standard and collaborative realtime editing modes.
+  const AUTO_COMPILE_IDLE_DELAY = 2500;
+  const debouncedAutoCompileText = useDebounce(contentPayload.text, AUTO_COMPILE_IDLE_DELAY);
   const lastCompiledContentRef = useRef<string>(contentPayload.text);
 
+  // Sync lastCompiledContentRef on active page change
   useEffect(() => {
-    if (!isRealtimeActive || !autoCompile) return;
-    const { compileStatus } = useCompileStore.getState();
-    if (compileStatus !== 'idle') return;
+    lastCompiledContentRef.current = extractStringContent(page.content);
+  }, [page.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (debouncedRealtimeContent !== lastCompiledContentRef.current) {
-      lastCompiledContentRef.current = debouncedRealtimeContent;
-      compileRef.current?.();
+  // Sync lastCompiledContentRef whenever a compilation begins anywhere
+  useEffect(() => {
+    return EditorEventBus.on('flux:compile-started', () => {
+      lastCompiledContentRef.current = latestPayloadRef.current.text;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!autoCompile) return;
+
+    // Avoid redundant compilation if content has not changed since last compile
+    if (debouncedAutoCompileText === lastCompiledContentRef.current) return;
+
+    const { compileStatus, setPendingCompile } = useCompileStore.getState();
+    const isBusy =
+      compileStatus === 'compiling' ||
+      compileStatus === 'flushing' ||
+      compileStatus === 'syncing';
+
+    if (isBusy) {
+      // Compiler is busy; queue compilation to execute once active run completes
+      setPendingCompile(true);
+      return;
     }
-  }, [debouncedRealtimeContent, isRealtimeActive, autoCompile]);
+
+    // Trigger compilation
+    lastCompiledContentRef.current = debouncedAutoCompileText;
+    compileRef.current?.();
+  }, [debouncedAutoCompileText, autoCompile, compileRef]);
 
   // Switch document/page reset & flush unsaved changes for previous page
   useEffect(() => {
@@ -144,7 +152,7 @@ export function useEditorSave({ page, isRealtimeActive }: UseEditorSaveOptions) 
     }
     prevPageRef.current = page;
     activePageIdRef.current = page.id;
-    pendingCompileRef.current = false;
+    useCompileStore.getState().setPendingCompile(false);
     const pageText = extractStringContent(page.content);
     lastCompiledContentRef.current = pageText;
     setContentPayload({

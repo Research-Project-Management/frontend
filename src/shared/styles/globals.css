@@ -704,6 +704,62 @@
   border-radius: 4px;
 }
 
+/* ── Track Changes (Review Mode) Overleaf-grade Inline Injected Diffs ── */
+.flux-track-insert-inline {
+  background-color: rgba(16, 185, 129, 0.18) !important;
+  color: #059669 !important;
+  text-decoration: underline !important;
+  text-decoration-color: #10b981 !important;
+  font-weight: 500 !important;
+  padding: 1px 3px !important;
+  border-radius: 3px !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  cursor: pointer !important;
+}
+
+.dark .flux-track-insert-inline {
+  background-color: rgba(16, 185, 129, 0.22) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+}
+
+.flux-track-replace-inline {
+  background-color: rgba(16, 185, 129, 0.18) !important;
+  color: #059669 !important;
+  text-decoration: underline !important;
+  text-decoration-color: #10b981 !important;
+  font-weight: 500 !important;
+  padding: 1px 3px !important;
+  border-radius: 3px !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  margin-left: 3px !important;
+  cursor: pointer !important;
+}
+
+.dark .flux-track-replace-inline {
+  background-color: rgba(16, 185, 129, 0.22) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+}
+
+.flux-track-clean-insert {
+  color: inherit !important;
+  font-weight: inherit !important;
+  background: transparent !important;
+  border: none !important;
+  text-decoration: none !important;
+}
+
+.flux-track-hidden {
+  opacity: 0 !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  letter-spacing: -9999px !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+
 .monaco-editor,
 .monaco-editor .margin,
 .monaco-editor-background {

@@ -14,8 +14,12 @@ import {
   useRejectSuggestion,
 } from '@/features/editor/hooks/use-suggestion';
 import type { Page, PageFile, PageSuggestion } from '@/features/editor/types';
-import { useViewItems, type Item } from '@/features/library';
-import { usePageStore, useSettingsStore, useActionsStore } from '@/features/editor/store';
+import {
+  usePageStore,
+  useSettingsStore,
+  useActionsStore,
+  useCompileStore,
+} from '@/features/editor/store';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { toast } from 'sonner';
@@ -37,6 +41,8 @@ import { useEditorShortcuts } from './hooks/use-editor-shortcuts';
 import { useEditorCitation } from './hooks/use-editor-citation';
 import { useEditorCollaborators } from './hooks/use-editor-collaborators';
 import { useEditorVim } from './hooks/use-editor-vim';
+import { useSpellChecker } from './hooks/use-spell-checker';
+import { useSmartPaste } from './hooks/use-smart-paste';
 import { cn } from '@/shared/lib/utils';
 
 import { EditorContextMenu } from './subcomponents/EditorContextMenu';
@@ -48,6 +54,8 @@ import { EditorModeSwitcher } from './subcomponents/EditorModeSwitcher';
 import { GlyphTooltip } from './subcomponents/GlyphTooltip';
 import { CollaboratorPresenceBar } from './subcomponents/CollaboratorPresenceBar';
 import { SyncStatusBadge } from './subcomponents/SyncStatusBadge';
+import { LatexDiagnosticsBadge } from './subcomponents/LatexDiagnosticsBadge';
+import { FloatingAiAssistant } from './subcomponents/FloatingAiAssistant';
 
 interface EditorProps {
   page: Page | PageFile;
@@ -74,22 +82,26 @@ export default function Editor({ page }: EditorProps) {
   const reviewMode = useSettingsStore((s) => s.reviewMode);
   const setReviewMode = useSettingsStore((s) => s.setReviewMode);
   const toggleReviewMode = useSettingsStore((s) => s.toggleReviewMode);
+  const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
+  const setTrackChangesViewMode = useSettingsStore((s) => s.setTrackChangesViewMode);
 
   const { user } = useAuth();
   const isReviewerOnly = user?.role?.toLowerCase() === 'reviewer';
 
+  // Auto-enable review mode for reviewers on mount, but allow manual toggle
+  const hasAutoSwitchedRef = useRef(false);
   useEffect(() => {
-    if (isReviewerOnly && !reviewMode) {
+    if (isReviewerOnly && !reviewMode && !hasAutoSwitchedRef.current) {
+      hasAutoSwitchedRef.current = true;
       setReviewMode(true);
     }
   }, [isReviewerOnly, reviewMode, setReviewMode]);
 
   const handleSelectMode = useCallback(
     (mode: 'editing' | 'reviewing') => {
-      if (isReviewerOnly) return;
       setReviewMode(mode === 'reviewing');
     },
-    [isReviewerOnly, setReviewMode],
+    [setReviewMode],
   );
 
   const { pageId: pageIdParam, projectId: projectIdParam } = useParams<{
@@ -102,10 +114,6 @@ export default function Editor({ page }: EditorProps) {
   // Remote data queries
   const { data: comments = [] } = usePageComments(pageIdParam ?? null);
   const { data: suggestions = [] } = usePageSuggestions(page.id, 'pending');
-  const { data: libraryData } = useViewItems(activeProjectId, 'all');
-  const libraryItems = libraryData?.items ?? [];
-  const libraryItemsRef = useRef<Item[]>(libraryItems);
-  libraryItemsRef.current = libraryItems;
 
   const { data: pageFiles = [] } = useQuery({
     ...filesQuery(pageIdParam ?? ''),
@@ -180,6 +188,24 @@ export default function Editor({ page }: EditorProps) {
     onSave: handleSaveAndCompile,
   });
 
+  // Spell checker — runs in WebWorker, architecture mirrors Overleaf's HunspellManager
+  const spellCheckLanguage = useSettingsStore((s) => s.spellCheckLanguage ?? 'en_US');
+  const spellCheckEnabled = useSettingsStore((s) => s.spellCheck ?? true);
+  useSpellChecker({
+    editorRef,
+    monacoRef,
+    language: spellCheckLanguage,
+    enabled: spellCheckEnabled && editorMounted,
+  });
+
+  // Smart Paste — Overleaf-grade table and image paste handling
+  useSmartPaste({
+    editorRef,
+    monacoRef,
+    pageId: page?.id,
+    enabled: editorMounted,
+  });
+
   const {
     glyphTooltip,
     activeSuggestionWidgetData,
@@ -192,6 +218,86 @@ export default function Editor({ page }: EditorProps) {
     suggestions,
     editorMounted,
   });
+
+
+  // Monaco compiler diagnostics markers (Overleaf parity)
+  const compileErrors = useCompileStore((s) => s.compileErrors);
+  const compileStatus = useCompileStore((s) => s.compileStatus);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco || !editorMounted) return;
+
+    const model = editor.getModel();
+    if (!model) return;
+
+    const currentFileName = (page?.title || 'main.tex').trim().toLowerCase();
+    const hasProjectId = 'projectId' in page && Boolean(page.projectId);
+    const isMainDoc =
+      currentFileName === 'main.tex' ||
+      currentFileName.endsWith('/main.tex') ||
+      !hasProjectId;
+
+    const markers: any[] = [];
+
+    if (compileErrors && compileErrors.length > 0) {
+      for (const err of compileErrors) {
+        if (err.file) {
+          const errClean = err.file.replace(/^\.\//, '').trim().toLowerCase();
+          const matches =
+            errClean === currentFileName ||
+            currentFileName.endsWith(`/${errClean}`) ||
+            errClean.endsWith(`/${currentFileName}`) ||
+            (isMainDoc &&
+              (errClean === 'main.tex' || errClean.endsWith('/main.tex')));
+          if (!matches) continue;
+        } else if (!isMainDoc) {
+          continue;
+        }
+
+        const maxLine = model.getLineCount();
+        const line =
+          err.line && err.line > 0 ? Math.min(err.line, maxLine) : 1;
+        const maxCol = model.getLineMaxColumn(line);
+
+        let severity = monaco.MarkerSeverity.Error;
+        if (err.severity === 'warning') severity = monaco.MarkerSeverity.Warning;
+        else if (err.severity === 'info') severity = monaco.MarkerSeverity.Info;
+
+        const suggestionText = err.suggestion
+          ? `\n\n💡 Gợi ý sửa lỗi: ${err.suggestion}`
+          : '';
+
+        markers.push({
+          startLineNumber: line,
+          startColumn: 1,
+          endLineNumber: line,
+          endColumn: maxCol,
+          message: `${err.message}${suggestionText}`,
+          severity,
+          source: 'LaTeX Compiler',
+          code: err.code,
+        });
+      }
+    }
+
+    monaco.editor.setModelMarkers(model, 'latex-compiler', markers);
+
+    return () => {
+      if (model && !model.isDisposed()) {
+        monaco.editor.setModelMarkers(model, 'latex-compiler', []);
+      }
+    };
+  }, [
+    compileErrors,
+    compileStatus,
+    editorMounted,
+    editorRef,
+    monacoRef,
+    page?.id,
+    page?.title,
+  ]);
 
   const handleAcceptSuggestion = useCallback(async (s: PageSuggestion) => {
     try {
@@ -220,13 +326,14 @@ export default function Editor({ page }: EditorProps) {
   }, [page.id, rejectSuggestionMutation, setActiveSuggestionWidgetData]);
 
   const {
+    bibEntries,
     citationModalOpen,
     setCitationModalOpen,
     handleInsertCitationSnippet,
     registerCitationProvider,
   } = useEditorCitation({
     editorRef,
-    projectId: activeProjectId,
+    pageFiles: pageFiles.map((f) => ({ name: f.title, content: f.content })),
   });
 
   // Local popup states
@@ -239,6 +346,53 @@ export default function Editor({ page }: EditorProps) {
 
   const [selFloating, setSelFloating] = useState<SelFloating | null>(null);
   const selFloatingRef = useRef<HTMLDivElement>(null);
+
+  const [aiAssistState, setAiAssistState] = useState<{
+    isOpen: boolean;
+    selectedText: string;
+    startLine: number;
+    endLine: number;
+    position: { x: number; y: number };
+  } | null>(null);
+
+  const handleApplyAiEdit = useCallback(
+    (newText: string, mode: 'replace' | 'insert-below') => {
+      const editor = editorRef.current;
+      if (!editor) return;
+
+      const sel = editor.getSelection();
+      if (!sel) return;
+
+      if (mode === 'replace') {
+        editor.executeEdits('overleaf-ai-assist', [
+          {
+            range: sel,
+            text: newText,
+            forceMoveMarkers: true,
+          },
+        ]);
+      } else {
+        const endLine = sel.endLineNumber;
+        const model = editor.getModel();
+        const maxCol = model ? model.getLineMaxColumn(endLine) : 1;
+        const insertRange = {
+          startLineNumber: endLine,
+          startColumn: maxCol,
+          endLineNumber: endLine,
+          endColumn: maxCol,
+        };
+        editor.executeEdits('overleaf-ai-assist', [
+          {
+            range: insertRange as any,
+            text: '\n\n' + newText,
+            forceMoveMarkers: true,
+          },
+        ]);
+      }
+      editor.focus();
+    },
+    [editorRef],
+  );
 
   const [renameDialog, setRenameDialog] = useState<RenameDialogState | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -304,6 +458,29 @@ export default function Editor({ page }: EditorProps) {
       document.removeEventListener('keydown', keyHandler);
     };
   }, [ctxMenu]);
+
+  // Global keyboard shortcuts: Project-Wide Search (Ctrl+Shift+F) & Mode Toggle (Ctrl+Shift+V)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
+        e.preventDefault();
+        EditorEventBus.emit('flux:open-panel', 'Search');
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
+        e.preventDefault();
+        const current = useSettingsStore.getState().editorMode;
+        const next = current === 'code' ? 'visual' : 'code';
+        useSettingsStore.getState().setEditorMode(next);
+        toast.info(
+          next === 'visual'
+            ? 'Switched to Visual (Rich Text) mode'
+            : 'Switched to Source (Code) mode',
+          { duration: 1500 },
+        );
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Adjust context menu position to viewport
   useLayoutEffect(() => {
@@ -419,18 +596,9 @@ export default function Editor({ page }: EditorProps) {
     disposablesRef.current.push(registerLatexLinkedEditing(monaco));
 
     const getRetractedItemsMap = () => {
-      const map = new Map<string, any>();
-      for (const it of libraryItemsRef.current) {
-        if (it.isRetracted && it.citationKey) {
-          map.set(it.citationKey, {
-            title: it.title,
-            reason: (it as any).retractionDetails?.reason,
-            nature: it.retractionNature,
-            noticeUrl: (it as any).retractionDetails?.noticeUrl,
-          });
-        }
-      }
-      return map;
+      // Library items are no longer fetched in Editor. Retraction linting
+      // is now responsibility of the Library module.
+      return new Map<string, any>();
     };
     disposablesRef.current.push(
       registerLatexLinter(editor, monaco, getRetractedItemsMap),
@@ -463,8 +631,11 @@ export default function Editor({ page }: EditorProps) {
       }),
     );
 
-    // SyncTeX Forward jump highlight
-    scrollToLineRef.current = (line: number) => {
+    // SyncTeX Forward jump & Error jump highlight
+    scrollToLineRef.current = (
+      line: number,
+      highlightType: 'error' | 'synctex' = 'synctex',
+    ) => {
       const model = editor.getModel();
       const maxLine = model ? model.getLineCount() : 1;
       const targetLine = Math.max(1, Math.min(line, maxLine));
@@ -473,19 +644,23 @@ export default function Editor({ page }: EditorProps) {
       editor.setPosition({ lineNumber: targetLine, column: 1 });
       editor.focus();
 
+      const isErr = highlightType === 'error';
+      const flashClass = isErr
+        ? 'bg-rose-500/25 border-l-4 border-rose-500 transition-colors duration-1000'
+        : 'bg-primary/20 border-l-2 border-primary transition-colors duration-700';
+
       const flashColl = editor.createDecorationsCollection([
         {
           range: new monaco.Range(targetLine, 1, targetLine, 1),
           options: {
             isWholeLine: true,
-            className:
-              'bg-primary/20 border-l-2 border-primary transition-colors duration-700',
+            className: flashClass,
           },
         },
       ]);
       setTimeout(() => {
         flashColl.clear();
-      }, 1500);
+      }, isErr ? 2500 : 1500);
     };
 
     // Keyboard commands
@@ -496,6 +671,30 @@ export default function Editor({ page }: EditorProps) {
     editor.addCommand(monaco.KeyCode.F2, () => {
       openRenameDialogLatestRef.current();
     });
+
+    // Project-Wide Search (Ctrl+Shift+F / Cmd+Shift+F)
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF,
+      () => {
+        EditorEventBus.emit('flux:open-panel', 'Search');
+      },
+    );
+
+    // Toggle Source / Visual Editor (Ctrl+Shift+V / Cmd+Shift+V)
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyV,
+      () => {
+        const current = useSettingsStore.getState().editorMode;
+        const next = current === 'code' ? 'visual' : 'code';
+        useSettingsStore.getState().setEditorMode(next);
+        toast.info(
+          next === 'visual'
+            ? 'Switched to Visual (Rich Text) mode'
+            : 'Switched to Source (Code) mode',
+          { duration: 1500 },
+        );
+      },
+    );
 
     // Add Review Comment command (Ctrl+Alt+M / Cmd+Option+M or Ctrl+Alt+C)
     const handleTriggerAddComment = () => {
@@ -522,6 +721,56 @@ export default function Editor({ page }: EditorProps) {
       handleTriggerAddComment,
     );
 
+    // Overleaf AI Assist shortcut (Ctrl+K / Cmd+K)
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, () => {
+      const sel = editor.getSelection();
+      if (!sel || sel.isEmpty()) {
+        toast.info('Select some text first to ask AI Assist');
+        return;
+      }
+      const text = editor.getModel()?.getValueInRange(sel) ?? '';
+      const visiblePos = editor.getScrolledVisiblePosition(sel.getEndPosition());
+      const domNode = editor.getDomNode();
+      const rect = domNode ? domNode.getBoundingClientRect() : { left: 100, top: 100 };
+      const x = visiblePos ? rect.left + visiblePos.left : rect.left + 50;
+      const y = visiblePos ? rect.top + visiblePos.top + 20 : rect.top + 50;
+
+      setAiAssistState({
+        isOpen: true,
+        selectedText: text,
+        startLine: sel.startLineNumber,
+        endLine: sel.endLineNumber,
+        position: { x, y },
+      });
+    });
+
+    // SyncTeX Forward jump to PDF (Ctrl+Alt+J / Cmd+Option+J — official Overleaf shortcut)
+    const handleTriggerSyncTeXForward = () => {
+      const pos = editor.getPosition();
+      const line = pos?.lineNumber ?? editor.getVisibleRanges()?.[0]?.startLineNumber ?? 1;
+      scrollToPdfLineRef.current?.(line);
+    };
+
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyJ,
+      handleTriggerSyncTeXForward,
+    );
+
+    editor.addAction({
+      id: 'flux.synctex.forward',
+      label: 'Go to line in PDF (SyncTeX)',
+      keybindings: [
+        monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyJ,
+      ],
+      contextMenuGroupId: 'navigation',
+      contextMenuOrder: 1.5,
+      run: (ed) => {
+        const pos = ed.getPosition();
+        const line = pos?.lineNumber ?? ed.getVisibleRanges()?.[0]?.startLineNumber ?? 1;
+        scrollToPdfLineRef.current?.(line);
+      },
+    });
+
     // Track Changes (Review Mode) keyboard interceptor
     disposablesRef.current.push(
       editor.onKeyDown((e) => {
@@ -537,15 +786,41 @@ export default function Editor({ page }: EditorProps) {
 
           const model = editor.getModel();
           const originalText = model ? model.getValueInRange(sel) : '';
+          if (!originalText) return;
 
-          setSuggestModal({
-            originalText,
-            suggestedText: '',
-            fromLine: sel.startLineNumber,
-            toLine: sel.endLineNumber,
-            type: 'delete',
-            description: 'Proposed deletion',
-          });
+          createSuggestionMutation.mutate(
+            {
+              pageId: page.id,
+              type: 'delete',
+              originalText,
+              suggestedText: '',
+              fromLine: sel.startLineNumber,
+              fromColumn: sel.startColumn,
+              toLine: sel.endLineNumber,
+              toColumn: sel.endColumn,
+              description: 'Proposed deletion',
+            },
+            {
+              onSuccess: (created: any) => {
+                toast.success('Proposed deletion for review', {
+                  action: {
+                    label: 'Undo',
+                    onClick: () => {
+                      if (created?.id) {
+                        rejectSuggestionMutation.mutate({
+                          pageId: page.id,
+                          suggestionId: created.id,
+                        });
+                      }
+                    },
+                  },
+                });
+              },
+              onError: () => {
+                toast.error('Failed to propose deletion');
+              },
+            },
+          );
           return;
         }
 
@@ -679,6 +954,7 @@ export default function Editor({ page }: EditorProps) {
           <Format />
         </div>
         <div className="flex items-center gap-2 ml-2 shrink-0">
+          <LatexDiagnosticsBadge />
           <EditorModeSwitcher
             reviewMode={reviewMode}
             onSelectMode={handleSelectMode}
@@ -723,6 +999,50 @@ export default function Editor({ page }: EditorProps) {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {/* View Mode Switcher: Changes | Clean | Original */}
+            <div className="inline-flex items-center rounded bg-amber-500/15 p-0.5 text-[11px] font-medium border border-amber-500/30">
+              <span className="text-[10px] text-amber-800/80 dark:text-amber-300/80 px-1.5 uppercase font-semibold">View:</span>
+              <button
+                type="button"
+                onClick={() => setTrackChangesViewMode('changes')}
+                className={cn(
+                  'px-1.5 py-0.5 rounded transition-colors cursor-pointer',
+                  trackChangesViewMode === 'changes'
+                    ? 'bg-amber-600 text-white font-semibold shadow-2xs'
+                    : 'text-amber-900/80 dark:text-amber-300/80 hover:text-amber-900 hover:bg-amber-500/20',
+                )}
+                title="View all tracked changes with diff highlights"
+              >
+                Changes
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrackChangesViewMode('clean')}
+                className={cn(
+                  'px-1.5 py-0.5 rounded transition-colors cursor-pointer',
+                  trackChangesViewMode === 'clean'
+                    ? 'bg-amber-600 text-white font-semibold shadow-2xs'
+                    : 'text-amber-900/80 dark:text-amber-300/80 hover:text-amber-900 hover:bg-amber-500/20',
+                )}
+                title="Preview clean document with all suggestions accepted"
+              >
+                Clean
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrackChangesViewMode('original')}
+                className={cn(
+                  'px-1.5 py-0.5 rounded transition-colors cursor-pointer',
+                  trackChangesViewMode === 'original'
+                    ? 'bg-amber-600 text-white font-semibold shadow-2xs'
+                    : 'text-amber-900/80 dark:text-amber-300/80 hover:text-amber-900 hover:bg-amber-500/20',
+                )}
+                title="View original document without any suggestions"
+              >
+                Original
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={() => {
@@ -932,7 +1252,29 @@ export default function Editor({ page }: EditorProps) {
         reviewMode={reviewMode}
         onClose={handleCloseFloating}
         onOpenSuggest={setSuggestModal}
+        onOpenAiAssist={(opts) => {
+          setAiAssistState({
+            isOpen: true,
+            selectedText: opts.selectedText,
+            startLine: opts.startLine,
+            endLine: opts.endLine,
+            position: opts.position,
+          });
+        }}
       />
+
+      {/* Overleaf 2024-2026 Floating AI Assistant */}
+      {aiAssistState?.isOpen && (
+        <FloatingAiAssistant
+          isOpen={aiAssistState.isOpen}
+          onClose={() => setAiAssistState(null)}
+          selectedText={aiAssistState.selectedText}
+          startLine={aiAssistState.startLine}
+          endLine={aiAssistState.endLine}
+          position={aiAssistState.position}
+          onApplyEdit={handleApplyAiEdit}
+        />
+      )}
 
       {/* Custom context menu portal */}
       <EditorContextMenu
@@ -964,7 +1306,7 @@ export default function Editor({ page }: EditorProps) {
       <CitationPickerModal
         open={citationModalOpen}
         onOpenChange={setCitationModalOpen}
-        items={libraryItems}
+        items={bibEntries}
         onSelectCitation={handleInsertCitationSnippet}
       />
     </div>

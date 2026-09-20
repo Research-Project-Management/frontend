@@ -39,21 +39,6 @@ export interface ProjectMetadata {
   members: ProjectMemberSummary[];
 }
 
-export interface ProjectLink {
-  id: string;
-  projectId: string;
-  title: string;
-  url: string;
-  createdById: string;
-  createdBy: {
-    id: string;
-    name: string;
-    avatar: string | null;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface WorkItemMetrics {
   totalWorkItems: number;
   completed: number;
@@ -92,7 +77,6 @@ export interface RecentActivity {
 
 export interface ProjectOverviewData {
   project: ProjectMetadata;
-  links: ProjectLink[];
   metrics: WorkItemMetrics;
   activeCycle: ActiveCycleSummary | null;
   recentActivities: RecentActivity[];
@@ -124,14 +108,4 @@ export interface CreateProjectStatusUpdateInput {
 export interface UpdateProjectStatusUpdateInput {
   status?: ProjectStatusIndicator;
   message?: string;
-}
-
-export interface CreateLinkInput {
-  title: string;
-  url: string;
-}
-
-export interface UpdateLinkInput {
-  title?: string;
-  url?: string;
 }

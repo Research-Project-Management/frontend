@@ -22,5 +22,5 @@ export const StickyListResponseSchema = z.object({
   stickies: z.array(StickySchema),
 });
 
-export const CreateStickyPayloadSchema = StickySchema.omit({ id: true, createdAt: true, updatedAt: true }).partial({ color: true, content: true });
+export const CreateStickyPayloadSchema = StickySchema.omit({ createdAt: true, updatedAt: true }).partial({ id: true, color: true, content: true });
 export const UpdateStickyPayloadSchema = StickySchema.partial();

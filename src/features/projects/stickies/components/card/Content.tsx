@@ -8,6 +8,7 @@ import TaskItem from "@tiptap/extension-task-item";
 import { useEffect, useRef, memo } from "react";
 import type { Sticky } from "@/features/projects/stickies/types/sticky.types";
 import type { Editor } from "@tiptap/react";
+import { cn } from "@/shared/lib/utils";
 import "../ui/tiptap.css";
 
 interface ContentProps {
@@ -15,6 +16,8 @@ interface ContentProps {
   onUpdate: (id: string, updates: Partial<Sticky>) => void;
   onReady?: (editor: Editor | null) => void;
   isOverlay?: boolean;
+  placeholder?: string;
+  editorClassName?: string;
 }
 
 export default memo(function Content({
@@ -22,6 +25,8 @@ export default memo(function Content({
   onUpdate,
   onReady,
   isOverlay,
+  placeholder = "Write something...",
+  editorClassName,
 }: ContentProps) {
   const contentRef = useRef(sticky.content);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -32,7 +37,7 @@ export default memo(function Content({
         heading: false,
       }),
       Placeholder.configure({
-        placeholder: "Write something...",
+        placeholder,
       }),
       TaskList,
       TaskItem.configure({
@@ -43,8 +48,10 @@ export default memo(function Content({
     content: sticky.content || "<p></p>",
     editorProps: {
       attributes: {
-        class:
-          "prose prose-sm dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-li:my-0 max-w-none focus:outline-none min-h-[220px] max-h-[380px] overflow-y-auto overflow-x-hidden px-4 pt-2 pb-3",
+        class: cn(
+          "prose prose-sm dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-li:my-0 max-w-none focus:outline-none overflow-y-auto overflow-x-hidden px-4 pt-2 pb-3",
+          editorClassName || "min-h-[220px] max-h-[380px]"
+        ),
         "aria-label": "Sticky content",
       },
     },
@@ -78,9 +85,14 @@ export default memo(function Content({
     }
   }, [editor, onReady]);
 
-  // Handle external updates
+  // Handle external updates safely without disrupting active user typing
   useEffect(() => {
-    if (editor && sticky.content !== contentRef.current && sticky.content !== editor.getHTML()) {
+    if (
+      editor &&
+      !editor.isFocused &&
+      sticky.content !== contentRef.current &&
+      sticky.content !== editor.getHTML()
+    ) {
       editor.commands.setContent(sticky.content);
       contentRef.current = sticky.content;
     }

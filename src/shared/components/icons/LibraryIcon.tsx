@@ -7,39 +7,46 @@ export interface LibraryIconProps extends React.SVGProps<SVGSVGElement> {
 }
 
 /**
- * LibraryIcon
- * Spatial Multi-Volume Research Library (Hàng sách nghiên cứu không gian Zotero).
- * Conforms 100% to the visual DNA of WorkItemsIcon & StickiesIcon:
- * - 16x16 canvas with crisp ~1.25px stroke geometry.
- * - 2 layered scholarly monographs in space: 1 standing upright + 1 leaning in 3D perspective.
- * - Distinct vertical silhouette contrasting 100% with Storage.
- * - Zero pareidolia (no face/worm illusion).
+ * LibraryIcon - 3D Kinetic Research Monograph (Chuyên Khảo Nghiên Cứu Lập Thể 3D)
+ * 
+ * Hội tụ 6 giá trị cốt lõi theo định hướng thiết kế của nền tảng Flux:
+ * 1. Học thuật (Academic): Biểu tượng cuốn chuyên khảo nghiên cứu mở 3 tầng trang giấy tri thức.
+ * 2. Chuyên nghiệp (Professional): Chuẩn tỷ lệ Lucide 24x24, nét 2px dứt khoát, khoảng thở cân bằng ~75%.
+ * 3. Sáng tạo (Creative): Trang giấy thứ 3 lật góc 45° lơ lửng trong không gian 3 chiều, thể hiện sự đột phá tri thức.
+ * 4. Phụng sự (Service): Dáng mở rộng thênh thang của cuốn sách tượng trưng cho tinh thần cống hiến tri thức mở (Open Science).
+ * 5. Hiện đại (Modern): Ngôn ngữ hình học tối giản (Minimalist Geometry) đồng bộ hoàn mỹ với BrainCircuit (AI) & Database (Storage).
+ * 6. Kỷ luật (Disciplined): Hệ trục tọa độ số nguyên 100% (x ∈ {2, 12, 17, 22}, y ∈ {4, 6, 9, 16, 18, 21}), phân chia đối xứng vàng 5px/5px.
  */
 export function LibraryIcon({
   className,
-  size = 16,
+  size = 24,
   ...props
 }: LibraryIconProps) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 16 16"
+      viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={cn('size-3.5 shrink-0 text-current', className)}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn('size-4 shrink-0 text-current', className)}
       {...props}
     >
-      {/* Book 1 (Left Standing Monograph Volume) */}
-      <path
-        d="M2.0 3.0C2.0 2.3 2.5 1.8 3.2 1.8H5.2C5.9 1.8 6.4 2.3 6.4 3.0V13.8C6.4 14.1 6.2 14.4 5.9 14.4H2.5C2.2 14.4 2.0 14.1 2.0 13.8V3.0ZM3.2 3.0V13.2H5.2V3.0H3.2Z"
-        fill="currentColor"
-      />
-      {/* Book 2 (Right Leaning Monograph Volume in 3D Perspective) */}
-      <path
-        d="M7.4 3.5C7.2 2.8 7.6 2.1 8.3 1.9L10.2 1.3C10.9 1.1 11.6 1.5 11.8 2.2L14.2 13.0C14.3 13.3 14.1 13.6 13.8 13.7L10.5 14.5C10.2 14.6 9.9 14.4 9.8 14.1L7.4 3.5ZM9.3 2.6L7.7 13.2L10.2 12.6L11.8 2.0L9.3 2.6Z"
-        fill="currentColor"
-      />
+      {/* Tầng 1: Cuốn sách nghiên cứu mở trên cùng (Layer 1 - Top Open Research Spread) */}
+      <path d="M2 4l10 3 10-3v5l-10 3-10-3V4z" />
+
+      {/* Sống gáy sách trung tâm xuyên suốt các tầng (Central Scholarly Spine) */}
+      <line x1="12" y1="7" x2="12" y2="21" />
+
+      {/* Tầng 2: Lớp trang sách thứ 2 xếp tầng trong không gian (Layer 2 - Middle Stepped Page) */}
+      <path d="M2 13.5l10 3 10-3" />
+
+      {/* Tầng 3: Lớp trang sách thứ 3 nền tảng (Layer 3 - Bottom Base Page) */}
+      <path d="M2 18l10 3 10-3" />
     </svg>
   );
 }
@@ -47,3 +54,5 @@ export function LibraryIcon({
 export const LibrarySpaceIcon = LibraryIcon;
 export const CosmicLibraryIcon = LibraryIcon;
 export default LibraryIcon;
+
+

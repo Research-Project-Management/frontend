@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Button } from '@/shared/components/ui';
+import { useStorageUIStore } from '../../store/storage-ui.store';
 
 const ILLUSTRATION_COLOR_TOKEN_MAP = {
   fill: {
@@ -348,11 +349,11 @@ export function StorageEmptyState({
   const isSearchActive = Boolean(searchQuery.trim());
 
   const handleTriggerUpload = () => {
-    window.dispatchEvent(new CustomEvent('trigger-upload-file'));
+    useStorageUIStore.getState().triggerUpload();
   };
 
   const handleTriggerCreateFolder = () => {
-    window.dispatchEvent(new CustomEvent('open-create-folder'));
+    useStorageUIStore.getState().openCreateFolderModal();
   };
 
   const getTitle = () => {

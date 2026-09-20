@@ -4,23 +4,57 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import { Table } from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableHeader from '@tiptap/extension-table-header';
+import TableCell from '@tiptap/extension-table-cell';
 import {
-  Bold,
-  Italic,
-  Strikethrough,
-  Code,
-  Heading1,
-  Heading2,
-  Heading3,
-  List,
-  ListOrdered,
-  Quote,
   Sigma,
-  Undo,
-  Redo,
+  Table as TableIcon,
+  Trash2,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { latexToHtml, htmlToLatex, renderMathHtml } from '@/features/editor/utils/latex-converter.util';
+import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { cn } from '@/shared/lib/utils';
+
+/**
+ * Custom TipTap Table extension preserving LaTeX caption, label, and column alignment attributes.
+ */
+const CustomTable = Table.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      caption: {
+        default: null,
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-caption'),
+        renderHTML: (attributes: Record<string, any>) => {
+          if (!attributes.caption) return {};
+          return { 'data-caption': attributes.caption };
+        },
+      },
+      label: {
+        default: null,
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-label'),
+        renderHTML: (attributes: Record<string, any>) => {
+          if (!attributes.label) return {};
+          return { 'data-label': attributes.label };
+        },
+      },
+      align: {
+        default: null,
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-align'),
+        renderHTML: (attributes: Record<string, any>) => {
+          if (!attributes.align) return {};
+          return { 'data-align': attributes.align };
+        },
+      },
+    };
+  },
+});
 
 export interface VisualEditorProps {
   value: string;
@@ -42,6 +76,7 @@ export default function VisualEditor({
   const [mathModalOpen, setMathModalOpen] = useState(false);
   const [mathFormula, setMathFormula] = useState('');
   const [isDisplayMath, setIsDisplayMath] = useState(true);
+  const [isTableActive, setIsTableActive] = useState(false);
 
   const initialHtml = React.useMemo(() => {
     return latexToHtml(value);
@@ -56,6 +91,27 @@ export default function VisualEditor({
       }),
       Placeholder.configure({
         placeholder: 'Start writing your research manuscript visually...',
+      }),
+      CustomTable.configure({
+        resizable: true,
+        HTMLAttributes: {
+          class: 'flux-table',
+        },
+      }),
+      TableRow.configure({
+        HTMLAttributes: {
+          class: 'flux-table-row',
+        },
+      }),
+      TableHeader.configure({
+        HTMLAttributes: {
+          class: 'flux-table-header',
+        },
+      }),
+      TableCell.configure({
+        HTMLAttributes: {
+          class: 'flux-table-cell',
+        },
       }),
     ],
     content: initialHtml,
@@ -74,7 +130,11 @@ export default function VisualEditor({
         ),
       },
     },
+    onSelectionUpdate: ({ editor: ed }) => {
+      setIsTableActive(ed.isActive('table'));
+    },
     onUpdate: ({ editor: ed }) => {
+      setIsTableActive(ed.isActive('table'));
       isInternalUpdateRef.current = true;
       const html = ed.getHTML();
       const updatedLatex = htmlToLatex(html, originalLatexRef.current);
@@ -101,6 +161,100 @@ export default function VisualEditor({
     if (editor && !editor.isDestroyed) {
       editor.setEditable(!readOnly);
     }
+  }, [editor, readOnly]);
+
+  // Listen for toolbar commands dispatched from the unified Format.tsx toolbar
+  useEffect(() => {
+    if (!editor) return;
+
+    const unsubCommand = EditorEventBus.on('flux:visual-command', (event) => {
+      if (editor.isDestroyed || readOnly) return;
+      const { command, level } = event;
+      switch (command) {
+        case 'undo':
+          editor.chain().focus().undo().run();
+          break;
+        case 'redo':
+          editor.chain().focus().redo().run();
+          break;
+        case 'bold':
+          editor.chain().focus().toggleBold().run();
+          break;
+        case 'italic':
+          editor.chain().focus().toggleItalic().run();
+          break;
+        case 'strike':
+          editor.chain().focus().toggleStrike().run();
+          break;
+        case 'code':
+          editor.chain().focus().toggleCode().run();
+          break;
+        case 'heading':
+          editor.chain().focus().toggleHeading({ level: level ?? 1 }).run();
+          break;
+        case 'bulletList':
+          editor.chain().focus().toggleBulletList().run();
+          break;
+        case 'orderedList':
+          editor.chain().focus().toggleOrderedList().run();
+          break;
+        case 'blockquote':
+          editor.chain().focus().toggleBlockquote().run();
+          break;
+        case 'insertMath':
+          setMathModalOpen(true);
+          break;
+        case 'insertTable':
+          if (event.contentHtml) {
+            editor.chain().focus().insertContent(event.contentHtml).run();
+          } else {
+            editor
+              .chain()
+              .focus()
+              .insertTable({
+                rows: event.rows || 3,
+                cols: event.cols || 3,
+                withHeaderRow: event.withHeaderRow !== false,
+              })
+              .run();
+          }
+          break;
+        case 'addColumnBefore':
+          editor.chain().focus().addColumnBefore().run();
+          break;
+        case 'addColumnAfter':
+          editor.chain().focus().addColumnAfter().run();
+          break;
+        case 'deleteColumn':
+          editor.chain().focus().deleteColumn().run();
+          break;
+        case 'addRowBefore':
+          editor.chain().focus().addRowBefore().run();
+          break;
+        case 'addRowAfter':
+          editor.chain().focus().addRowAfter().run();
+          break;
+        case 'deleteRow':
+          editor.chain().focus().deleteRow().run();
+          break;
+        case 'deleteTable':
+          editor.chain().focus().deleteTable().run();
+          break;
+        case 'toggleHeaderRow':
+          editor.chain().focus().toggleHeaderRow().run();
+          break;
+      }
+    });
+
+    const unsubCitation = EditorEventBus.on('flux:insert-citation', ({ bibKey }) => {
+      if (editor.isDestroyed || readOnly) return;
+      editor.chain().focus().insertContent(`\\cite{${bibKey}} `).run();
+    });
+
+    return () => {
+      unsubCommand();
+      unsubCitation();
+    };
   }, [editor, readOnly]);
 
   const insertMathFormula = () => {
@@ -141,14 +295,14 @@ export default function VisualEditor({
 
   return (
     <div className={cn('h-full w-full flex flex-col bg-background', theme === 'dark' ? 'dark' : '')}>
-      {/* ── LaTeX Source Fidelity Warning Banner ── */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-amber-500/10 border-b border-amber-500/20 text-amber-800 dark:text-amber-200 text-xs shrink-0 select-none">
+      {/* ── LaTeX Source Fidelity Banner (Overleaf Parity) ── */}
+      <div className="flex items-center justify-between px-3 py-1 bg-amber-500/10 border-b border-amber-500/20 text-amber-800 dark:text-amber-200 text-xs shrink-0 select-none">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-900 dark:text-amber-100 uppercase tracking-wide">
             Visual Mode (Beta)
           </span>
           <span className="text-[11px] text-amber-900/90 dark:text-amber-200/90">
-            Rich-text mode simplifies custom macros and comments. Switch to <strong>Code</strong> mode for 100% LaTeX source fidelity (Overleaf standard).
+            Rich-text mode simplifies formatting. Switch to <strong>Source</strong> mode for 100% LaTeX source code control (Ctrl+Shift+V).
           </span>
         </div>
         {onSwitchToCode && (
@@ -157,178 +311,159 @@ export default function VisualEditor({
             onClick={onSwitchToCode}
             className="ml-3 px-2 py-0.5 text-11 font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-100 rounded transition-colors cursor-pointer shrink-0"
           >
-            Switch to Code
+            Switch to Source
           </button>
         )}
-      </div>
-
-      {/* ── Visual Editor Toolbar ── */}
-      <div
-        className={cn(
-          'flex flex-wrap items-center gap-1 px-3 py-1.5 border-b border-border bg-muted/30 shrink-0 select-none',
-          readOnly && 'pointer-events-none opacity-50',
-        )}
-      >
-        {/* Headings */}
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-          className={cn(
-            'p-1.5 rounded hover:bg-muted text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer',
-            editor.isActive('heading', { level: 1 }) ? 'bg-primary/20 text-primary' : 'text-muted-foreground',
-          )}
-          title="Section (H1)"
-        >
-          <Heading1 className="size-4 shrink-0" />
-        </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          className={cn(
-            'p-1.5 rounded hover:bg-muted text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer',
-            editor.isActive('heading', { level: 2 }) ? 'bg-primary/20 text-primary' : 'text-muted-foreground',
-          )}
-          title="Subsection (H2)"
-        >
-          <Heading2 className="size-4 shrink-0" />
-        </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-          className={cn(
-            'p-1.5 rounded hover:bg-muted text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer',
-            editor.isActive('heading', { level: 3 }) ? 'bg-primary/20 text-primary' : 'text-muted-foreground',
-          )}
-          title="Subsubsection (H3)"
-        >
-          <Heading3 className="size-4 shrink-0" />
-        </button>
-
-        <div className="w-px h-4 bg-border mx-1" />
-
-        {/* Text styling */}
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          className={cn(
-            'p-1.5 rounded hover:bg-muted transition-colors cursor-pointer',
-            editor.isActive('bold') ? 'bg-primary/20 text-primary' : 'text-muted-foreground',
-          )}
-          title="Bold (\textbf)"
-        >
-          <Bold className="size-4 shrink-0" />
-        </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          className={cn(
-            'p-1.5 rounded hover:bg-muted transition-colors cursor-pointer',
-            editor.isActive('italic') ? 'bg-primary/20 text-primary' : 'text-muted-foreground',
-          )}
-          title="Italic (\textit)"
-        >
-          <Italic className="size-4 shrink-0" />
-        </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          className={cn(
-            'p-1.5 rounded hover:bg-muted transition-colors cursor-pointer',
-            editor.isActive('strike') ? 'bg-primary/20 text-primary' : 'text-muted-foreground',
-          )}
-          title="Strikethrough"
-        >
-          <Strikethrough className="size-4 shrink-0" />
-        </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleCode().run()}
-          className={cn(
-            'p-1.5 rounded hover:bg-muted transition-colors cursor-pointer',
-            editor.isActive('code') ? 'bg-primary/20 text-primary' : 'text-muted-foreground',
-          )}
-          title="Code (\texttt)"
-        >
-          <Code className="size-4 shrink-0" />
-        </button>
-
-        <div className="w-px h-4 bg-border mx-1" />
-
-        {/* Lists */}
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className={cn(
-            'p-1.5 rounded hover:bg-muted transition-colors cursor-pointer',
-            editor.isActive('bulletList') ? 'bg-primary/20 text-primary' : 'text-muted-foreground',
-          )}
-          title="Bullet List (\begin{itemize})"
-        >
-          <List className="size-4 shrink-0" />
-        </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          className={cn(
-            'p-1.5 rounded hover:bg-muted transition-colors cursor-pointer',
-            editor.isActive('orderedList') ? 'bg-primary/20 text-primary' : 'text-muted-foreground',
-          )}
-          title="Numbered List (\begin{enumerate})"
-        >
-          <ListOrdered className="size-4 shrink-0" />
-        </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          className={cn(
-            'p-1.5 rounded hover:bg-muted transition-colors cursor-pointer',
-            editor.isActive('blockquote') ? 'bg-primary/20 text-primary' : 'text-muted-foreground',
-          )}
-          title="Blockquote"
-        >
-          <Quote className="size-4 shrink-0" />
-        </button>
-
-        <div className="w-px h-4 bg-border mx-1" />
-
-        {/* KaTeX Math insertion button */}
-        <button
-          type="button"
-          onClick={() => setMathModalOpen(true)}
-          className="flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-medium cursor-pointer"
-          title="Insert KaTeX Math Equation"
-        >
-          <Sigma className="size-3.5 shrink-0" />
-          <span>Insert Math</span>
-        </button>
-
-        <div className="ml-auto flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().undo().run()}
-            disabled={!editor.can().undo()}
-            className="p-1.5 rounded hover:bg-muted text-muted-foreground disabled:opacity-40 transition-colors cursor-pointer"
-            title="Undo"
-          >
-            <Undo className="size-4 shrink-0" />
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().redo().run()}
-            disabled={!editor.can().redo()}
-            className="p-1.5 rounded hover:bg-muted text-muted-foreground disabled:opacity-40 transition-colors cursor-pointer"
-            title="Redo"
-          >
-            <Redo className="size-4 shrink-0" />
-          </button>
-        </div>
       </div>
 
       {/* ── Scrollable Document Surface ── */}
-      <div className="flex-1 w-full overflow-y-auto">
+      <div className="flex-1 w-full overflow-y-auto relative">
+        {/* ── Contextual Table Floating Toolbar (Overleaf WYSIWYG) ── */}
+        {isTableActive && !readOnly && (
+          <div className="sticky top-3 z-30 mx-auto w-fit flex items-center gap-1 px-3 py-1.5 bg-background/95 dark:bg-[#1b222c]/95 backdrop-blur-md border border-primary/40 rounded-lg shadow-raised-200 text-xs animate-in fade-in slide-in-from-top-2 duration-150 select-none">
+            <div className="flex items-center gap-1.5 text-primary font-semibold pr-2.5 border-r border-border">
+              <TableIcon className="size-3.5" />
+              <span className="text-[11px] tracking-wide uppercase">Table</span>
+            </div>
+
+            {/* Column operations */}
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                title="Insert Column to the Left"
+                onClick={() => editor.chain().focus().addColumnBefore().run()}
+                className="px-1.5 py-1 rounded hover:bg-muted active:scale-95 text-muted-foreground hover:text-foreground transition-all cursor-pointer flex items-center gap-0.5 text-[11px]"
+              >
+                <ArrowLeft className="size-3" />
+                <span>Col</span>
+              </button>
+              <button
+                type="button"
+                title="Insert Column to the Right"
+                onClick={() => editor.chain().focus().addColumnAfter().run()}
+                className="px-1.5 py-1 rounded hover:bg-muted active:scale-95 text-muted-foreground hover:text-foreground transition-all cursor-pointer flex items-center gap-0.5 text-[11px]"
+              >
+                <span>Col</span>
+                <ArrowRight className="size-3" />
+              </button>
+              <button
+                type="button"
+                title="Delete Current Column"
+                onClick={() => editor.chain().focus().deleteColumn().run()}
+                className="px-1.5 py-1 rounded hover:bg-destructive/10 active:scale-95 text-muted-foreground hover:text-destructive transition-all cursor-pointer flex items-center gap-0.5 text-[11px]"
+              >
+                <Trash2 className="size-3" />
+                <span>Col</span>
+              </button>
+            </div>
+
+            <div className="h-4 w-px bg-border mx-1" />
+
+            {/* Row operations */}
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                title="Insert Row Above"
+                onClick={() => editor.chain().focus().addRowBefore().run()}
+                className="px-1.5 py-1 rounded hover:bg-muted active:scale-95 text-muted-foreground hover:text-foreground transition-all cursor-pointer flex items-center gap-0.5 text-[11px]"
+              >
+                <ArrowUp className="size-3" />
+                <span>Row</span>
+              </button>
+              <button
+                type="button"
+                title="Insert Row Below"
+                onClick={() => editor.chain().focus().addRowAfter().run()}
+                className="px-1.5 py-1 rounded hover:bg-muted active:scale-95 text-muted-foreground hover:text-foreground transition-all cursor-pointer flex items-center gap-0.5 text-[11px]"
+              >
+                <ArrowDown className="size-3" />
+                <span>Row</span>
+              </button>
+              <button
+                type="button"
+                title="Delete Current Row"
+                onClick={() => editor.chain().focus().deleteRow().run()}
+                className="px-1.5 py-1 rounded hover:bg-destructive/10 active:scale-95 text-muted-foreground hover:text-destructive transition-all cursor-pointer flex items-center gap-0.5 text-[11px]"
+              >
+                <Trash2 className="size-3" />
+                <span>Row</span>
+              </button>
+            </div>
+
+            <div className="h-4 w-px bg-border mx-1" />
+
+            {/* Header & Delete operations */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                title="Toggle Header Row"
+                onClick={() => editor.chain().focus().toggleHeaderRow().run()}
+                className="px-2 py-1 rounded hover:bg-muted active:scale-95 text-foreground/80 hover:text-foreground font-medium text-[11px] transition-all cursor-pointer"
+              >
+                Toggle Header
+              </button>
+              <button
+                type="button"
+                title="Delete Table"
+                onClick={() => editor.chain().focus().deleteTable().run()}
+                className="px-2 py-1 rounded bg-destructive/10 hover:bg-destructive/20 active:scale-95 text-destructive font-medium text-[11px] transition-all cursor-pointer flex items-center gap-1"
+              >
+                <Trash2 className="size-3" />
+                <span>Delete</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="max-w-4xl mx-auto my-6 bg-card rounded-lg border border-border shadow-subtle-100 min-h-[700px]">
           <EditorContent editor={editor} />
         </div>
+
+        {/* ── Table Styling Stylesheet ── */}
+        <style>{`
+          .tiptap table {
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            overflow: hidden;
+            table-layout: fixed;
+            width: 100%;
+          }
+          .tiptap table td,
+          .tiptap table th {
+            border: 1px solid var(--border, rgba(148, 163, 184, 0.3));
+            box-sizing: border-box;
+            min-width: 80px;
+            padding: 8px 12px;
+            position: relative;
+            vertical-align: top;
+          }
+          .tiptap table th {
+            background-color: rgba(148, 163, 184, 0.15);
+            font-weight: 600;
+            text-align: left;
+          }
+          .tiptap table .selectedCell:after {
+            background: rgba(59, 130, 246, 0.15);
+            content: "";
+            left: 0; right: 0; top: 0; bottom: 0;
+            pointer-events: none;
+            position: absolute;
+            z-index: 2;
+          }
+          .tiptap table .column-resize-handle {
+            background-color: #3b82f6;
+            bottom: -2px;
+            pointer-events: none;
+            position: absolute;
+            right: -2px;
+            top: 0;
+            width: 4px;
+          }
+          .tiptap .tableWrapper {
+            overflow-x: auto;
+            margin: 1.5rem 0;
+          }
+        `}</style>
       </div>
 
       {/* ── Insert Math Modal ── */}

@@ -24,6 +24,7 @@ import Surface, { type SurfaceHandle } from './Surface';
 import Logs, { parseLatexLog } from './Logs';
 import Status from './Status';
 import DetachedViewerPlaceholder from './DetachedViewerPlaceholder';
+import PresentationModeModal from './subcomponents/PresentationModeModal';
 
 export default function Viewer() {
   const lastCheckpointTimeRef = useRef<number>(0);
@@ -47,6 +48,7 @@ export default function Viewer() {
   const autoCompile = useSettingsStore((s) => s.autoCompile);
   const setAutoCompile = useSettingsStore((s) => s.setAutoCompile);
   const texLiveVersion = useSettingsStore((s) => s.texLiveVersion);
+  const stopOnFirstError = useSettingsStore((s) => s.stopOnFirstError);
 
   const compileStatus = useCompileStore((s) => s.compileStatus);
   const setCompileStatus = useCompileStore((s) => s.setCompileStatus);
@@ -84,6 +86,19 @@ export default function Viewer() {
   const [scrollMode] = useState(true);
   const [pdfOutline, setPdfOutline] = useState<PdfOutlineItem[]>([]);
   const [invertColors, setInvertColors] = useState(false);
+  const [isPresentationOpen, setIsPresentationOpen] = useState(false);
+
+  // F5 shortcut to launch Presentation mode when PDF is ready
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F5' && pdfUrl && !isPresentationOpen) {
+        e.preventDefault();
+        setIsPresentationOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pdfUrl, isPresentationOpen]);
 
   const [autoFit, setAutoFit] = useState(true);
   const [containerWidth, setContainerWidth] = useState(600);
@@ -200,6 +215,8 @@ export default function Viewer() {
     const rootId = parentPageIdRef.current;
     if (!rootId) return;
 
+    EditorEventBus.emit('flux:compile-started');
+
     // Collect dirty file buffers
     const dirtyFiles = getDirtyFiles();
     const currentVal = getEditorContent.current?.();
@@ -218,6 +235,7 @@ export default function Viewer() {
       texLiveVersion,
       draft: compileMode === 'draft',
       useCache: options?.forceClean ? false : useCache,
+      stopOnFirstError,
       dirtyFiles,
       onPhaseChange: setCompileStatus,
       onThumbnailGenerated: (base64) => {
@@ -265,6 +283,16 @@ export default function Viewer() {
       } else if (!res.flushErrors || res.flushErrors.length === 0) {
         clearAllDirty();
       }
+
+      EditorEventBus.emit('flux:compile-finished', { success: true });
+
+      // Drain pending compile queued while compiler was busy
+      if (useCompileStore.getState().pendingCompile) {
+        useCompileStore.getState().setPendingCompile(false);
+        setTimeout(() => {
+          compileRef.current?.();
+        }, 400);
+      }
     } else {
       setCompileStatus('error');
       setCompileLog(res.logs);
@@ -294,6 +322,16 @@ export default function Viewer() {
 
       if (res.flushedFileIds && res.flushedFileIds.length > 0) {
         res.flushedFileIds.forEach((fid) => clearDirty(fid));
+      }
+
+      EditorEventBus.emit('flux:compile-finished', { success: false });
+
+      // Drain pending compile queued while compiler was busy
+      if (useCompileStore.getState().pendingCompile) {
+        useCompileStore.getState().setPendingCompile(false);
+        setTimeout(() => {
+          compileRef.current?.();
+        }, 400);
       }
     }
   }, [
@@ -390,6 +428,8 @@ export default function Viewer() {
       let targetPage = remoteRes?.page ?? null;
       let targetX = remoteRes ? remoteRes.x * scale : undefined;
       let targetY = remoteRes ? remoteRes.y * scale : undefined;
+      let targetW = remoteRes && remoteRes.w !== undefined ? remoteRes.w * scale : undefined;
+      let targetH = remoteRes && remoteRes.h !== undefined ? remoteRes.h * scale : undefined;
 
       if (!targetPage) {
         const localDetail = LatexCompilerEngine.resolveForwardDetail(
@@ -403,6 +443,12 @@ export default function Viewer() {
           if (localDetail.x !== undefined && localDetail.y !== undefined) {
             targetX = (localDetail.x / 65536) * scale;
             targetY = (localDetail.y / 65536) * scale;
+            if (localDetail.w !== undefined) {
+              targetW = (localDetail.w / 65536) * scale;
+            }
+            if (localDetail.h !== undefined) {
+              targetH = (localDetail.h / 65536) * scale;
+            }
           }
         }
       }
@@ -410,7 +456,13 @@ export default function Viewer() {
       if (targetPage !== null) {
         setPageNumber(targetPage);
         if (targetX !== undefined && targetY !== undefined) {
-          pdfSurfaceRef.current?.highlightTarget?.(targetPage, targetX, targetY);
+          pdfSurfaceRef.current?.highlightTarget?.(
+            targetPage,
+            targetX,
+            targetY,
+            targetW,
+            targetH,
+          );
         } else {
           pdfSurfaceRef.current?.scrollToPage(targetPage);
         }
@@ -420,6 +472,10 @@ export default function Viewer() {
             type: 'FORWARD_SYNC',
             page: targetPage,
             line,
+            x: targetX !== undefined && scale > 0 ? targetX / scale : undefined,
+            y: targetY !== undefined && scale > 0 ? targetY / scale : undefined,
+            w: targetW !== undefined && scale > 0 ? targetW / scale : undefined,
+            h: targetH !== undefined && scale > 0 ? targetH / scale : undefined,
           });
         }
       }
@@ -436,6 +492,7 @@ export default function Viewer() {
     pageNum?: number,
     x?: number,
     y?: number,
+    highlightType: 'error' | 'synctex' = 'synctex',
   ) => {
     const rootId = parentPageIdRef.current || projectId || 'default';
 
@@ -481,12 +538,12 @@ export default function Viewer() {
 
         setActiveFilePage(matchedPage as unknown as ProjectPage);
         router.push(redirectUrl);
-        setTimeout(() => scrollToLineRef.current?.(line), 250);
+        setTimeout(() => scrollToLineRef.current?.(line, highlightType), 250);
         return;
       }
     }
 
-    scrollToLineRef.current?.(line);
+    scrollToLineRef.current?.(line, highlightType);
   }, [projectId, findPageByBasename, activeFilePage?.id, setActiveFilePage, router, scrollToLineRef]);
 
   // SyncTeX reverse search event listener (Floating widget backward arrow)
@@ -512,7 +569,7 @@ export default function Viewer() {
   const handleJumpToFirstError = useCallback(() => {
     const firstErr = parsedLog?.errors.find((e) => e.line !== undefined);
     if (firstErr && firstErr.line) {
-      handleJumpToSource(firstErr.file || null, firstErr.line);
+      handleJumpToSource(firstErr.file || null, firstErr.line, undefined, undefined, undefined, 'error');
     } else {
       setShowLog(true);
     }
@@ -706,6 +763,7 @@ export default function Viewer() {
           invertColors={invertColors}
           onToggleInvertColors={handleToggleInvertColors}
           onSetScale={handleSetScale}
+          onOpenPresentationMode={() => setIsPresentationOpen(true)}
         />
 
         <div className="flex-1 overflow-hidden relative flex flex-col">
@@ -767,6 +825,7 @@ export default function Viewer() {
         onJumpToPage={handleJumpToPage}
         invertColors={invertColors}
         onToggleInvertColors={handleToggleInvertColors}
+        onOpenPresentationMode={() => setIsPresentationOpen(true)}
       />
 
       <a ref={downloadRef} className="hidden" aria-hidden="true" />
@@ -794,7 +853,10 @@ export default function Viewer() {
           <Logs
             log={compileLog}
             onClose={() => setShowLog(false)}
-            onJumpToError={(file, line) => handleJumpToSource(file || null, line)}
+            onJumpToError={(file, line) =>
+              handleJumpToSource(file || null, line, undefined, undefined, undefined, 'error')
+            }
+            onClearCacheAndCompile={handleClearCacheAndCompile}
           />
         )}
       </div>
@@ -807,6 +869,16 @@ export default function Viewer() {
         parsedLog={parsedLog}
         onToggleLog={handleToggleLog}
         onJumpToFirstError={handleJumpToFirstError}
+      />
+
+      {/* Presentation Mode Fullscreen Modal (Overleaf Parity) */}
+      <PresentationModeModal
+        isOpen={isPresentationOpen}
+        onClose={() => setIsPresentationOpen(false)}
+        pdfUrl={pdfUrl}
+        initialPage={pageNumber}
+        numPages={numPages}
+        onPageChange={setPageNumber}
       />
     </div>
   );

@@ -12,10 +12,10 @@ interface FilterProps {
 
 const ROLES = [
   { id: null, label: 'All roles' },
-  { id: 'owner', label: 'Owner (PI)' },
-  { id: 'contributor', label: 'Contributor' },
-  { id: 'commenter', label: 'Commenter' },
-  { id: 'viewer', label: 'Viewer' },
+  { id: 'owner', label: 'Owner (Trưởng nhóm)' },
+  { id: 'coordinator', label: 'Coordinator (Điều phối viên)' },
+  { id: 'contributor', label: 'Contributor (Thành viên)' },
+  { id: 'reviewer', label: 'Reviewer (Phản biện)' },
 ];
 
 export function Filter({ currentRole, onSelectRole }: FilterProps) {

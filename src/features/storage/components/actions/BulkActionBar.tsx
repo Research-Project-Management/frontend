@@ -24,8 +24,8 @@ import {
   useBatchStarItems,
 } from '../../hooks/use-storage';
 import { downloadFileUrl } from "@/shared/lib/file-client";
-import { resolveFileUrl } from "@/shared/lib/file-client";
 import type { StorageItem } from '../../types/storage.types';
+import { useStorageUIStore } from '../../store/storage-ui.store';
 
 export interface BulkActionBarProps {
   items: StorageItem[];
@@ -198,11 +198,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
                 size="sm"
                 className="h-8 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer shrink-0 rounded-md"
                 onClick={() => {
-                  window.dispatchEvent(
-                    new CustomEvent('open-move-modal', {
-                      detail: { items: selectedItems },
-                    })
-                  );
+                  useStorageUIStore.getState().openMoveModal(selectedItems);
                 }}
                 title="Move selected items"
               >

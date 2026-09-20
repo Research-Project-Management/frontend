@@ -2,21 +2,27 @@ import { z } from 'zod';
 
 /**
  * Valid Project Roles in Flux:
- * - owner: Principal Investigator / Team Lead (Full admin permissions)
- * - contributor: Researcher (Create/edit/delete work items, pages, files)
- * - commenter: Reviewer (Can view and comment)
- * - viewer: Read-only guest/visitor
+ * - owner: Principal Investigator / Team Lead (Toàn quyền quản trị dự án & nhân sự)
+ * - coordinator: Coordinator / Project Manager (Điều phối viên - quản lý cycles, work items)
+ * - contributor: Researcher (Thành viên nghiên cứu - tạo/sửa work items, tài liệu, upload paper)
+ * - reviewer: Advisor / Reviewer (GVHD / Hội đồng phản biện - xem, comment & suggestion)
  */
-export const ProjectRoleEnum = z.enum(['owner', 'contributor', 'commenter', 'viewer']);
+export const ProjectRoleEnum = z.enum(['owner', 'coordinator', 'contributor', 'reviewer']);
 
-export const ProjectStateEnum = z.enum([
-  'draft',
-  'planning',
-  'execution',
-  'monitoring',
-  'completed',
-  'cancelled',
-]);
+export const ProjectStateItemSchema = z.object({
+  id: z.string(),
+  projectId: z.string().optional(),
+  name: z.string(),
+  description: z.string().nullable().optional(),
+  color: z.string(),
+  sequence: z.number().default(0),
+  isDefault: z.boolean().default(false),
+  createdAt: z.string().or(z.date()).optional(),
+  updatedAt: z.string().or(z.date()).optional(),
+});
+export type ProjectStateItem = z.infer<typeof ProjectStateItemSchema>;
+
+export const ProjectStateEnum = z.string();
 
 export const ProjectPriorityEnum = z.enum([
   'urgent',
@@ -81,7 +87,8 @@ export const ProjectSchema = z.object({
   avatar: z.string().nullish().transform((v) => v ?? undefined),
   coverImage: z.string().nullish().transform((v) => v ?? undefined),
   cover: z.string().nullish().transform((v) => v ?? undefined),
-  state: ProjectStateEnum.default('planning').optional(),
+  stateId: z.string().nullish().transform((v) => v ?? undefined),
+  state: ProjectStateItemSchema.nullish().transform((v) => v ?? undefined),
   priority: ProjectPriorityEnum.default('none').optional(),
   startDate: z.string().nullish().transform((v) => v ?? undefined),
   targetDate: z.string().nullish().transform((v) => v ?? undefined),
@@ -117,7 +124,7 @@ export const CreateProjectInputSchema = z.object({
   avatar: z.string().nullable().optional(),
   coverImage: z.string().nullable().optional(),
   cover: z.string().nullable().optional(),
-  state: ProjectStateEnum.optional(),
+  stateId: z.string().nullable().optional(),
   priority: ProjectPriorityEnum.optional(),
   startDate: z.string().nullable().optional(),
   targetDate: z.string().nullable().optional(),
@@ -135,7 +142,7 @@ export const createProjectFormSchema = z.object({
   description: z.string(),
   avatar: z.string(),
   cover: z.string(),
-  state: ProjectStateEnum.default('planning'),
+  stateId: z.string().nullable().optional(),
   priority: ProjectPriorityEnum.default('none'),
   startDate: z.string().nullable().optional(),
   targetDate: z.string().nullable().optional(),
@@ -155,7 +162,7 @@ export const UpdateProjectInputSchema = z.object({
   avatar: z.string().nullable().optional(),
   coverImage: z.string().nullable().optional(),
   cover: z.string().nullable().optional(),
-  state: ProjectStateEnum.optional(),
+  stateId: z.string().nullable().optional(),
   priority: ProjectPriorityEnum.optional(),
   startDate: z.string().nullable().optional(),
   targetDate: z.string().nullable().optional(),

@@ -57,5 +57,5 @@ export interface LibraryScope {
   type: LibraryScopeType;
   id: string; // 'user' (nếu là personal) hoặc projectId (UUID)
   name: string; // "My Library" hoặc tên Đề tài / Dự án
-  role?: 'owner' | 'contributor' | 'commenter' | 'viewer';
+  role?: 'owner' | 'coordinator' | 'contributor' | 'reviewer' | 'commenter' | 'viewer';
 }

@@ -6,20 +6,14 @@ import type {
   SourceItem,
   AgentAction,
 } from '../types/chat.types';
-import { API_BASE_URL as API_URL } from '@/config/env';
-import { getAuthToken } from "@/shared/lib/api";
-import { logger } from "@/shared/lib/utils";
-
-function getHeaders(extra?: Record<string, string>): Record<string, string> {
-  const token = getAuthToken();
-  const headers: Record<string, string> = {
-    ...extra,
-  };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return headers;
-}
+import {
+  apiGet,
+  apiPost,
+  apiPatch,
+  apiDelete,
+  apiRawFetch,
+} from '@/shared/lib/api';
+import { logger } from '@/shared/lib/logger';
 
 // ── Streaming Chat ────────────────────────────────────────────────────────────
 
@@ -44,32 +38,90 @@ export interface StreamChatOptions {
   [key: string]: unknown;
 }
 
+interface SseCallbacks {
+  onMeta?: (meta: any) => void;
+  onAction?: (action: any) => void;
+}
+
+function parseSseDataChunk(
+  data: string,
+  callbacks?: SseCallbacks,
+): { done?: boolean; content?: string } {
+  if (data === '[DONE]') {
+    return { done: true };
+  }
+  if (data.startsWith('[META]')) {
+    try {
+      const meta = JSON.parse(data.slice(6));
+      callbacks?.onMeta?.(meta);
+    } catch (err) {
+      logger.debug('[chatService] Failed to parse stream meta', { err });
+    }
+    return {};
+  }
+  if (data.startsWith('[ACTION]')) {
+    try {
+      const action = JSON.parse(data.slice(8));
+      callbacks?.onAction?.(action);
+    } catch (err) {
+      logger.debug('[chatService] Failed to parse stream action', { err });
+    }
+    return {};
+  }
+
+  if (data.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed && typeof parsed === 'object') {
+        const p = parsed as Record<string, any>;
+        if (p.type === 'meta' && callbacks?.onMeta) {
+          callbacks.onMeta(p.data || p);
+          return {};
+        }
+        if (p.type === 'action' && callbacks?.onAction) {
+          callbacks.onAction(p.data || p);
+          return {};
+        }
+        if (typeof p.content === 'string') {
+          return { content: p.content };
+        }
+        if (typeof p.text === 'string') {
+          return { content: p.text };
+        }
+        if (typeof p.delta === 'string') {
+          return { content: p.delta };
+        }
+      }
+    } catch {
+      // Non-JSON or malformed payload, fallback to raw
+    }
+  }
+
+  return { content: data };
+}
+
 /**
- * Stream chat responses from the AI backend.
+ * Stream chat responses from the AI backend with authenticated proxy and token support.
  */
 export async function* streamChatResponse(
   messages: ChatMessage[],
   options?: StreamChatOptions,
 ): AsyncGenerator<string, void, unknown> {
   const aiMessages = messages.map(({ role, content }) => ({ role, content }));
-  const response = await fetch(`${API_URL}/api/ai/chat`, {
-    method: 'POST',
-    headers: getHeaders({
-      'Content-Type': 'application/json',
+  const response = await apiRawFetch('/api/ai/chat', 'POST', {
+    messages: aiMessages,
+    project_id: options?.projectId ?? null,
+    document_ids: options?.documentIds ?? null,
+    intent_hint: options?.intentHint ?? null,
+    web_search_sites: options?.webSearchSites ?? null,
+    selection: options?.selection ?? null,
+    cursor_context: options?.cursorContext ?? null,
+    chat_id: options?.chatId ?? null,
+    ...options,
+  }, {
+    headers: {
       Accept: 'text/event-stream',
-    }),
-    credentials: 'include',
-    body: JSON.stringify({
-      messages: aiMessages,
-      project_id: options?.projectId ?? null,
-      document_ids: options?.documentIds ?? null,
-      intent_hint: options?.intentHint ?? null,
-      web_search_sites: options?.webSearchSites ?? null,
-      selection: options?.selection ?? null,
-      cursor_context: options?.cursorContext ?? null,
-      chat_id: options?.chatId ?? null,
-      ...options,
-    }),
+    },
     signal: options?.signal,
   });
 
@@ -97,26 +149,11 @@ export async function* streamChatResponse(
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
-          if (data === '[DONE]') return;
-          if (data.startsWith('[META]')) {
-            try {
-              const meta = JSON.parse(data.slice(6)) as any;
-              options?.onMeta?.(meta);
-            } catch (err) {
-              logger.debug('[chatService] Failed to parse stream meta', { err });
-            }
-            continue;
+          const chunk = parseSseDataChunk(data, options);
+          if (chunk.done) return;
+          if (chunk.content !== undefined) {
+            yield chunk.content;
           }
-          if (data.startsWith('[ACTION]')) {
-            try {
-              const action = JSON.parse(data.slice(8)) as any;
-              options?.onAction?.(action);
-            } catch (err) {
-              logger.debug('[chatService] Failed to parse stream action', { err });
-            }
-            continue;
-          }
-          yield data;
         }
       }
     }
@@ -159,53 +196,43 @@ export async function* streamEditorChat(
   options?: StreamEditorChatOptions,
 ): AsyncGenerator<string, void, unknown> {
   const aiMessages = messages.map(({ role, content }) => ({ role, content }));
-  const response = await fetch(`${API_URL}/api/ai/editor-chat`, {
-    method: 'POST',
-    headers: getHeaders({
-      'Content-Type': 'application/json',
+  const response = await apiRawFetch('/api/ai/editor-chat', 'POST', {
+    messages: aiMessages,
+    chat_id: options?.chatId ?? null,
+    project_id: options?.projectId ?? null,
+    document_ids: options?.documentIds ?? null,
+    filename: options?.filename ?? null,
+    file_content: options?.fileContent ?? null,
+    selection: options?.selection ?? null,
+    cursor_context: options?.cursorContext ?? null,
+    selection_start_line: options?.selectionStartLine ?? null,
+    selection_end_line: options?.selectionEndLine ?? null,
+    selection_start_column: options?.selectionStartColumn ?? null,
+    selection_end_column: options?.selectionEndColumn ?? null,
+    context_before: options?.contextBefore ?? null,
+    context_after: options?.contextAfter ?? null,
+    current_section: options?.currentSection ?? null,
+    current_environment: options?.currentEnvironment ?? null,
+    document_structure_summary: options?.documentStructureSummary ?? null,
+    compile_errors: options?.compileErrors ?? null,
+    user_selection: options?.userSelection ?? null,
+    ...options,
+  }, {
+    headers: {
       Accept: 'text/event-stream',
-    }),
-    credentials: 'include',
-    body: JSON.stringify({
-      messages: aiMessages,
-      chat_id: options?.chatId ?? null,
-      project_id: options?.projectId ?? null,
-      document_ids: options?.documentIds ?? null,
-      filename: options?.filename ?? null,
-      file_content: options?.fileContent ?? null,
-      selection: options?.selection ?? null,
-      cursor_context: options?.cursorContext ?? null,
-      selection_start_line: options?.selectionStartLine ?? null,
-      selection_end_line: options?.selectionEndLine ?? null,
-      selection_start_column: options?.selectionStartColumn ?? null,
-      selection_end_column: options?.selectionEndColumn ?? null,
-      context_before: options?.contextBefore ?? null,
-      context_after: options?.contextAfter ?? null,
-      current_section: options?.currentSection ?? null,
-      current_environment: options?.currentEnvironment ?? null,
-      document_structure_summary: options?.documentStructureSummary ?? null,
-      compile_errors: options?.compileErrors ?? null,
-      user_selection: options?.userSelection ?? null,
-      ...options,
-    }),
+    },
     signal: options?.signal,
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    let message = 'Failed to stream response';
-    try {
-      const parsed: any = JSON.parse(errorText);
-      message = parsed?.message || parsed?.error || message;
-    } catch {
-      message = errorText || message;
-    }
-    throw new Error(message);
+    throw new Error(`Editor AI request failed: ${response.status}`);
   }
 
-  if (!response.body) throw new Error('Response body is null');
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('No response body');
+  }
 
-  const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
 
@@ -219,23 +246,13 @@ export async function* streamEditorChat(
       buffer = lines.pop() || '';
 
       for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const rawData = line.slice(6).trim();
-        if (!rawData || rawData === '[DONE]') continue;
-
-        try {
-          const parsed: any = JSON.parse(rawData);
-          if (parsed?.type === 'meta' && options?.onMeta) {
-            options.onMeta(parsed);
-          } else if (parsed?.type === 'action' && options?.onAction) {
-            options.onAction(parsed);
-          } else if (parsed?.type === 'content' && parsed?.content) {
-            yield parsed.content;
-          } else if (parsed?.content) {
-            yield parsed.content;
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          const chunk = parseSseDataChunk(data, options);
+          if (chunk.done) return;
+          if (chunk.content !== undefined) {
+            yield chunk.content;
           }
-        } catch {
-          yield rawData;
         }
       }
     }
@@ -244,33 +261,46 @@ export async function* streamEditorChat(
   }
 }
 
-// ── Chat Session Management ───────────────────────────────────────────────────
+// ── REST Chat Sessions ────────────────────────────────────────────────────────
 
-export async function listChatSessions(
+export async function fetchChatSessions(
   projectId?: string | null,
   scopeId?: string | null,
 ): Promise<ChatSession[]> {
-  const params = new URLSearchParams();
+  const params: Record<string, string> = {};
   const pid = projectId || scopeId;
-  if (pid && pid !== 'all' && pid !== 'me' && pid !== 'flux') params.set('projectId', pid);
+  if (pid && pid !== 'all' && pid !== 'me' && pid !== 'flux') {
+    params.projectId = pid;
+  }
 
-  const res = await fetch(`${API_URL}/api/ai/chats?${params.toString()}`, {
-    headers: getHeaders(),
-    credentials: 'include',
-  });
-  if (!res.ok) return [];
-  const data = (await res.json()) as any;
-  return data.chats || data.data?.chats || (Array.isArray(data.data) ? data.data : []);
+  try {
+    const data = await apiGet<{ chats?: ChatSession[]; data?: { chats?: ChatSession[] } | ChatSession[] }>(
+      '/api/ai/chats',
+      { params },
+    );
+    return (
+      data.chats ||
+      (data.data as { chats?: ChatSession[] })?.chats ||
+      (Array.isArray(data.data) ? data.data : [])
+    );
+  } catch (err) {
+    logger.error('[chatService] Failed to fetch chat sessions', err);
+    return [];
+  }
 }
 
+export const listChatSessions = fetchChatSessions;
+
 export async function getChatSession(chatId: string): Promise<ChatSessionDetail> {
-  const res = await fetch(`${API_URL}/api/ai/chats/${chatId}`, {
-    headers: getHeaders(),
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error('Failed to get chat session');
-  const data = (await res.json()) as any;
-  return (data.chat || data.data?.chat || data.data || data) as ChatSessionDetail;
+  const data = await apiGet<{ chat?: ChatSessionDetail; data?: { chat?: ChatSessionDetail } | ChatSessionDetail }>(
+    `/api/ai/chats/${chatId}`,
+  );
+  return (
+    data.chat ||
+    (data.data as { chat?: ChatSessionDetail })?.chat ||
+    (data.data as ChatSessionDetail) ||
+    (data as unknown as ChatSessionDetail)
+  );
 }
 
 export async function createChatSession(
@@ -281,20 +311,21 @@ export async function createChatSession(
     documentIds?: string[];
   },
 ): Promise<ChatSessionDetail> {
-  const res = await fetch(`${API_URL}/api/ai/chats`, {
-    method: 'POST',
-    headers: getHeaders({ 'Content-Type': 'application/json' }),
-    credentials: 'include',
-    body: JSON.stringify({
+  const data = await apiPost<{ chat?: ChatSessionDetail; data?: { chat?: ChatSessionDetail } | ChatSessionDetail }>(
+    '/api/ai/chats',
+    {
       title: input.title,
       projectId: input.projectId,
       messages: input.messages || [],
       documentIds: input.documentIds,
-    }),
-  });
-  if (!res.ok) throw new Error('Failed to create chat session');
-  const data = (await res.json()) as any;
-  return (data.chat || data.data?.chat || data.data || data) as ChatSessionDetail;
+    },
+  );
+  return (
+    data.chat ||
+    (data.data as { chat?: ChatSessionDetail })?.chat ||
+    (data.data as ChatSessionDetail) ||
+    (data as unknown as ChatSessionDetail)
+  );
 }
 
 export async function appendChatMessages(
@@ -302,71 +333,64 @@ export async function appendChatMessages(
   messages: ChatMessage[],
   documentIds?: string[],
 ): Promise<ChatSessionDetail> {
-  const res = await fetch(`${API_URL}/api/ai/chats/${chatId}/messages`, {
-    method: 'POST',
-    headers: getHeaders({ 'Content-Type': 'application/json' }),
-    credentials: 'include',
-    body: JSON.stringify({ messages, documentIds }),
-  });
-  if (!res.ok) throw new Error('Failed to append messages');
-  const data = (await res.json()) as any;
-  return (data.chat || data.data?.chat || data.data || data) as ChatSessionDetail;
+  const data = await apiPost<{ chat?: ChatSessionDetail; data?: { chat?: ChatSessionDetail } | ChatSessionDetail }>(
+    `/api/ai/chats/${chatId}/messages`,
+    { messages, documentIds },
+  );
+  return (
+    data.chat ||
+    (data.data as { chat?: ChatSessionDetail })?.chat ||
+    (data.data as ChatSessionDetail) ||
+    (data as unknown as ChatSessionDetail)
+  );
 }
 
 export async function renameChatSession(
   chatId: string,
   title: string,
 ): Promise<ChatSession> {
-  const res = await fetch(`${API_URL}/api/ai/chats/${chatId}`, {
-    method: 'PATCH',
-    headers: getHeaders({ 'Content-Type': 'application/json' }),
-    credentials: 'include',
-    body: JSON.stringify({ title }),
-  });
-  if (!res.ok) throw new Error('Failed to rename chat session');
-  const data = (await res.json()) as any;
-  return (data.chat || data.data?.chat || data.data || data) as ChatSession;
+  const data = await apiPatch<{ chat?: ChatSession; data?: { chat?: ChatSession } | ChatSession }>(
+    `/api/ai/chats/${chatId}`,
+    { title },
+  );
+  return (
+    data.chat ||
+    (data.data as { chat?: ChatSession })?.chat ||
+    (data.data as ChatSession) ||
+    (data as unknown as ChatSession)
+  );
 }
 
 export async function deleteChatSession(chatId: string): Promise<void> {
-  const res = await fetch(`${API_URL}/api/ai/chats/${chatId}`, {
-    method: 'DELETE',
-    headers: getHeaders(),
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error('Failed to delete chat session');
+  await apiDelete(`/api/ai/chats/${chatId}`);
 }
 
 export async function clearAiMemory(scopeId?: string): Promise<void> {
-  const url = scopeId ? `${API_URL}/api/ai/memory/${encodeURIComponent(scopeId)}` : `${API_URL}/api/ai/memory`;
-  const res = await fetch(url, {
-    method: 'DELETE',
-    headers: getHeaders(),
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error('Failed to clear AI memory');
+  const path = scopeId ? `/api/ai/memory/${encodeURIComponent(scopeId)}` : '/api/ai/memory';
+  await apiDelete(path);
 }
 
 // ── Page Chat (LaTeX & Collaborative Docs) ────────────────────────────────────
 
 export async function getPageChat(pageId: string, _options?: unknown): Promise<ChatMessage[]> {
-  const res = await fetch(`${API_URL}/api/ai/page-chats/${pageId}`, {
-    headers: getHeaders(),
-    credentials: 'include',
-  });
-  if (!res.ok) return [];
-  const data = (await res.json()) as any;
-  return data.messages || data.data?.messages || (Array.isArray(data.data) ? data.data : []);
+  try {
+    const data = await apiGet<{ messages?: ChatMessage[]; data?: { messages?: ChatMessage[] } | ChatMessage[] }>(
+      `/api/ai/page-chats/${pageId}`,
+    );
+    return (
+      data.messages ||
+      (data.data as { messages?: ChatMessage[] })?.messages ||
+      (Array.isArray(data.data) ? data.data : [])
+    );
+  } catch (err) {
+    logger.error('[chatService] Failed to get page chat', err);
+    return [];
+  }
 }
 
 export async function clearPageChat(pageId: string): Promise<void> {
-  await fetch(`${API_URL}/api/ai/page-chats/${pageId}`, {
-    method: 'DELETE',
-    headers: getHeaders(),
-    credentials: 'include',
-  });
+  await apiDelete(`/api/ai/page-chats/${pageId}`);
 }
-
 
 // ── Document RAG & Sources ────────────────────────────────────────────────────
 
@@ -380,40 +404,39 @@ export async function uploadDocument(
     formData.append('projectId', scopeId);
   }
 
-  const res = await fetch(`${API_URL}/api/ai/documents/upload`, {
-    method: 'POST',
-    headers: getHeaders(),
-    credentials: 'include',
-    body: formData,
-  });
-  if (!res.ok) throw new Error('Failed to upload document');
-  const data = (await res.json()) as any;
+  const response = await apiRawFetch('/api/ai/documents/upload', 'POST', formData);
+  if (!response.ok) {
+    throw new Error(`Failed to upload document: ${response.status}`);
+  }
+  const data = (await response.json()) as any;
   return (data.data || data) as { id: string; name: string; size: number };
 }
 
 export async function fetchDocumentsBulk(
   ids: string[],
 ): Promise<Array<{ id: string; name: string; size: number }>> {
-  const res = await fetch(`${API_URL}/api/ai/documents/bulk`, {
-    method: 'POST',
-    headers: getHeaders({ 'Content-Type': 'application/json' }),
-    credentials: 'include',
-    body: JSON.stringify({ ids }),
-  });
-  if (!res.ok) throw new Error('Failed to fetch documents');
-  const data = (await res.json()) as any;
-  return data.documents || data.data?.documents || (Array.isArray(data.data) ? data.data : []);
+  const data = await apiPost<{ documents?: Array<{ id: string; name: string; size: number }>; data?: { documents?: Array<{ id: string; name: string; size: number }> } | Array<{ id: string; name: string; size: number }> }>(
+    '/api/ai/documents/bulk',
+    { ids },
+  );
+  return (
+    data.documents ||
+    (data.data as { documents?: Array<{ id: string; name: string; size: number }> })?.documents ||
+    (Array.isArray(data.data) ? data.data : [])
+  );
 }
 
 export async function fetchDocumentContent(
   docId: string,
 ): Promise<{ text: string }> {
-  const res = await fetch(`${API_URL}/api/ai/documents/${docId}/content`, {
-    headers: getHeaders(),
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error('Failed to fetch document content');
-  const data = (await res.json()) as any;
-  return { text: data.text || data.data?.text || (typeof data.data === 'string' ? data.data : '') || '' };
+  const data = await apiGet<{ text?: string; data?: { text?: string } | string }>(
+    `/api/ai/documents/${docId}/content`,
+  );
+  return {
+    text:
+      data.text ||
+      (data.data as { text?: string })?.text ||
+      (typeof data.data === 'string' ? data.data : '') ||
+      '',
+  };
 }
-

@@ -8,8 +8,9 @@ import {
   FileText,
   Loader2,
   Terminal,
+  Zap,
 } from 'lucide-react';
-import { useCompileStore, usePageStore, type CompileStatus } from '@/features/editor/store';
+import { useCompileStore, usePageStore, useSettingsStore, type CompileStatus } from '@/features/editor/store';
 import type { ParsedLog } from './Logs';
 import { fetchWordCount } from '@/features/editor/services/compiler.service';
 import RawLogModal from './RawLogModal';
@@ -34,6 +35,7 @@ export default React.memo(function Status({
 }: StatusProps) {
   const getEditorContent = usePageStore((s) => s.getEditorContent);
   const compileLog = useCompileStore((s) => s.compileLog);
+  const autoCompile = useSettingsStore((s) => s.autoCompile);
   const [wordCount, setWordCount] = useState<number | null>(null);
   const [rawLogOpen, setRawLogOpen] = useState(false);
   const [wordCountOpen, setWordCountOpen] = useState(false);
@@ -61,6 +63,15 @@ export default React.memo(function Status({
         aria-atomic="true"
         className="flex items-center gap-2"
       >
+        {autoCompile && (
+          <span
+            title="Auto-compile is active (2.5s typing idle)"
+            className="inline-flex items-center gap-1 text-10 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-medium select-none"
+          >
+            <Zap className="size-2.5" />
+            Auto
+          </span>
+        )}
         {compileStatus === 'flushing' && (
           <span className="flex items-center gap-1">
             <Loader2 className="size-3 animate-spin shrink-0" />

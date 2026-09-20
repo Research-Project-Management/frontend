@@ -1,9 +1,20 @@
 /**
  * latex-linter.util.ts
  *
- * Real-time LaTeX structural linter & spellchecker engine.
- * Matches Overleaf latexqc and linter standards.
- * Fast, pure TypeScript, non-blocking and zero external dependencies.
+ * Real-time LaTeX structural & syntax diagnostics engine (Overleaf Parity).
+ * Detects classic LaTeX pitfalls before compilation:
+ *  - Unmatched / unclosed environments (\begin{} without \end{})
+ *  - Unmatched curly braces (missing { or })
+ *  - Unescaped % causing accidental line comment-out (e.g. "95%")
+ *  - Unescaped _ outside math mode (causing "Missing $ inserted")
+ *  - Unescaped & outside tabular/alignment environments (causing "Misplaced alignment tab")
+ *  - Unclosed inline math mode ($ ... $)
+ *  - Duplicate \label{} definitions
+ *  - Undefined \ref{} references
+ *  - Deprecated LaTeX 2.09 commands (\bf, \it, etc.)
+ *  - Common LaTeX command typos (\seciton, \beging, etc.)
+ *
+ * Fast, pure TypeScript, non-blocking, zero external dependencies.
  */
 
 export interface LatexLintDiagnostic {
@@ -26,8 +37,7 @@ export interface RetractedItemInfo {
 
 export interface LatexLinterOptions {
   enableStructureLint?: boolean;
-  enableSpellCheck?: boolean;
-  userDictionary?: string[];
+  enableSyntaxDiagnostics?: boolean;
   retractedItemsMap?: Map<string, RetractedItemInfo>;
 }
 
@@ -42,182 +52,130 @@ const DEPRECATED_COMMANDS: Record<string, { replacement: string; desc: string }>
   '\\sl': { replacement: '\\textsl{...}', desc: 'Use modern \\textsl{...} instead of obsolete \\sl' },
 };
 
-// ── Academic & Scientific Terms Dictionary ───────────────────────────────────
-const ACADEMIC_DICTIONARY = new Set([
-  'latex', 'bibtex', 'overleaf', 'tex', 'pdflatex', 'xelatex', 'lualatex', 'synctex',
-  'algorithm', 'algorithms', 'algorithmic', 'methodology', 'methodologies',
-  'dataset', 'datasets', 'hyperparameter', 'hyperparameters', 'hyperparameterized',
-  'eigenvalue', 'eigenvalues', 'eigenvector', 'eigenvectors',
-  'stochastic', 'heterogeneous', 'homogeneous', 'asynchronous', 'synchronous',
-  'convolutional', 'convolution', 'convolutions', 'recurrent',
-  'transformer', 'transformers', 'attention', 'encoder', 'decoder',
-  'embedding', 'embeddings', 'latent', 'manifold', 'manifolds',
-  'quantization', 'regularization', 'generalization', 'optimization', 'optimizer',
-  'backpropagation', 'gradient', 'gradients', 'hessian', 'jacobian',
-  'ablation', 'ablations', 'benchmark', 'benchmarks', 'benchmarked',
-  'scalability', 'throughput', 'latency', 'bandwidth',
-  'corpus', 'corpora', 'lexical', 'semantic', 'semantics', 'syntactic',
-  'multimodal', 'unimodal', 'probabilistic', 'deterministic',
-  'heuristic', 'heuristics', 'heuristic', 'heuristically',
-  'supervised', 'unsupervised', 'semisupervised', 'reinforcement',
-  'arxiv', 'ieee', 'acm', 'springer', 'neurips', 'icml', 'iclr', 'cvpr', 'iccv', 'acl', 'emnlp',
-  'doi', 'isbn', 'issn', 'url', 'uri', 'api', 'apis', 'sdk', 'sdks',
-  'metadata', 'repository', 'repositories', 'framework', 'frameworks',
-  'architecture', 'architectures', 'paradigm', 'paradigms',
-  'theorem', 'theorems', 'corollary', 'corollaries', 'proposition', 'propositions',
-  'lemma', 'lemmas', 'lemmata', 'axiom', 'axioms', 'postulate', 'postulates',
-  'matrix', 'matrices', 'vector', 'vectors', 'tensor', 'tensors',
-  'linear', 'nonlinear', 'affine', 'orthogonal', 'orthonormal',
-  'boolean', 'integer', 'integers', 'float', 'floats', 'tuple', 'tuples',
-  'monotonic', 'monotonically', 'asymptotic', 'asymptotically',
-  'converge', 'converges', 'converged', 'convergence', 'divergence',
-  'variance', 'covariance', 'standard', 'deviation', 'deviations',
-  'distribution', 'distributions', 'gaussian', 'poisson', 'bernoulli',
-  'parameter', 'parameters', 'parametric', 'nonparametric',
-  'empirical', 'empirically', 'theoretical', 'theoretically',
-  'neural', 'network', 'networks', 'layer', 'layers', 'node', 'nodes',
-  'weight', 'weights', 'bias', 'biases', 'loss', 'losses',
-  'train', 'training', 'trained', 'test', 'testing', 'tested', 'validate', 'validation',
-  'compute', 'computes', 'computed', 'computing', 'computation', 'computations', 'computational',
-  'accuracy', 'metric', 'metrics', 'input', 'inputs', 'output', 'outputs',
-  'feature', 'features', 'class', 'classes', 'classification', 'regression',
-  'predict', 'predicts', 'predicted', 'predicting', 'prediction', 'predictions',
-  'represent', 'represents', 'represented', 'representing', 'representation', 'representations',
-  'graph', 'graphs', 'tree', 'trees', 'edge', 'edges', 'vertex', 'vertices',
-  'author', 'authors', 'coauthor', 'coauthors', 'acknowledgment', 'acknowledgments',
-  'abstract', 'introduction', 'conclusion', 'conclusions', 'appendix', 'appendices',
-  'fig', 'figure', 'figures', 'tab', 'table', 'tables', 'sec', 'section', 'sections',
-  'eq', 'equation', 'equations', 'ref', 'reference', 'references',
+// ── Common LaTeX Command Typos ────────────────────────────────────────────────
+const COMMAND_TYPOS: Record<string, string> = {
+  '\\beging': '\\begin',
+  '\\endd': '\\end',
+  '\\seciton': '\\section',
+  '\\subection': '\\subsection',
+  '\\subsubection': '\\subsubsection',
+  '\\textb': '\\textbf',
+  '\\texti': '\\textit',
+  '\\emphs': '\\emph',
+  '\\centeringg': '\\centering',
+  '\\includegraphic': '\\includegraphics',
+  '\\documentclas': '\\documentclass',
+  '\\usepackag': '\\usepackage',
+  '\\bibliograph': '\\bibliography',
+};
+
+// Alignment environments where unescaped & is valid
+const ALIGNMENT_ENVIRONMENTS = new Set([
+  'tabular', 'tabular*', 'array', 'align', 'align*', 'aligned',
+  'gather', 'gather*', 'gathered', 'matrix', 'pmatrix', 'bmatrix',
+  'Bmatrix', 'vmatrix', 'Vmatrix', 'cases', 'dcases', 'rcases',
+  'alignat', 'alignat*', 'flalign', 'flalign*', 'split', 'multline', 'multline*',
 ]);
 
-// Common English Core Vocabulary
-const COMMON_ENGLISH_WORDS = new Set([
-  'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'i', 'it', 'for', 'not', 'on', 'with',
-  'he', 'as', 'you', 'do', 'at', 'this', 'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she',
-  'or', 'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their', 'what', 'so', 'up', 'out', 'if',
-  'about', 'who', 'get', 'which', 'go', 'me', 'when', 'make', 'can', 'like', 'time', 'no', 'just', 'him',
-  'know', 'take', 'people', 'into', 'year', 'your', 'good', 'some', 'could', 'them', 'see', 'other', 'than',
-  'then', 'now', 'look', 'only', 'come', 'its', 'over', 'think', 'also', 'back', 'after', 'use', 'uses', 'used', 'using', 'two',
-  'run', 'runs', 'running', 'ran', 'hold', 'holds', 'held',
-  'how', 'our', 'work', 'first', 'well', 'way', 'even', 'new', 'want', 'because', 'any', 'these', 'give',
-  'day', 'most', 'us', 'is', 'are', 'was', 'were', 'been', 'has', 'had', 'does', 'did', 'having',
-  'show', 'shows', 'shown', 'showing', 'present', 'presents', 'presented', 'presenting',
-  'propose', 'proposes', 'proposed', 'proposing', 'demonstrate', 'demonstrates', 'demonstrated',
-  'evaluate', 'evaluates', 'evaluated', 'evaluating', 'evaluation', 'evaluations',
-  'compare', 'compares', 'compared', 'comparing', 'comparison', 'comparisons',
-  'achieve', 'achieves', 'achieved', 'achieving', 'achievement',
-  'improve', 'improves', 'improved', 'improving', 'improvement', 'improvements',
-  'perform', 'performs', 'performed', 'performing', 'performance',
-  'result', 'results', 'resulting', 'resulted', 'find', 'finds', 'found', 'finding', 'findings',
-  'discuss', 'discusses', 'discussed', 'discussing', 'discussion',
-  'analyze', 'analyzes', 'analyzed', 'analyzing', 'analysis', 'analyses',
-  'observe', 'observes', 'observed', 'observing', 'observation', 'observations',
-  'suggest', 'suggests', 'suggested', 'suggesting', 'suggestion', 'suggestions',
-  'indicate', 'indicates', 'indicated', 'indicating', 'indicator', 'indicators',
-  'illustrate', 'illustrates', 'illustrated', 'illustrating', 'illustration',
-  'denote', 'denotes', 'denoted', 'denoting', 'assume', 'assumes', 'assumed', 'assuming', 'assumption',
-  'consider', 'considers', 'considered', 'considering', 'state', 'states', 'stated',
-  'define', 'defines', 'defined', 'defining', 'definition', 'definitions',
-  'obtain', 'obtains', 'obtained', 'obtaining', 'provide', 'provides', 'provided', 'providing',
-  'high', 'higher', 'highest', 'low', 'lower', 'lowest', 'large', 'larger', 'largest', 'small', 'smaller', 'smallest',
-  'significant', 'significantly', 'novel', 'effective', 'effectively', 'efficient', 'efficiently',
-  'robust', 'accurate', 'accurately', 'comprehensive', 'preliminary', 'substantial',
-  'furthermore', 'moreover', 'however', 'nevertheless', 'consequently', 'therefore', 'specifically',
-  'respectively', 'similarly', 'conversely', 'notably', 'insofar', 'whereby', 'wherein',
-  'such', 'both', 'between', 'among', 'through', 'during', 'before', 'after', 'above', 'below',
-  'each', 'every', 'either', 'neither', 'many', 'much', 'several', 'few', 'less', 'more',
-  'here', 'thus', 'hence', 'whereas', 'overall', 'together', 'well', 'rather', 'quite',
-  'case', 'cases', 'step', 'steps', 'stage', 'stages', 'level', 'levels', 'point', 'points',
-  'part', 'parts', 'type', 'types', 'form', 'forms', 'task', 'tasks', 'domain', 'domains',
-  'problem', 'problems', 'solution', 'solutions', 'approach', 'approaches', 'system', 'systems',
-  'model', 'models', 'method', 'methods', 'technique', 'techniques', 'strategy', 'strategies',
-  'experiment', 'experiments', 'experimental', 'theorist', 'study', 'studies', 'research',
+// Math environments where unescaped _ and ^ are valid
+const MATH_ENVIRONMENTS = new Set([
+  'equation', 'equation*', 'align', 'align*', 'aligned', 'gather',
+  'gather*', 'gathered', 'multline', 'multline*', 'split', 'math',
+  'displaymath', 'matrix', 'pmatrix', 'bmatrix', 'cases', 'dcases',
 ]);
 
 /**
- * Replace matched ranges with spaces to preserve line & column offsets 1:1.
+ * Strips comments from a single line while respecting escaped \%
  */
-function replaceWithSpaces(input: string, start: number, end: number): string {
-  const segment = input.slice(start, end);
-  const spaced = segment.replace(/[^\n]/g, ' ');
-  return input.slice(0, start) + spaced + input.slice(end);
+export function stripLineComment(line: string): string {
+  let inEscape = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '\\') {
+      inEscape = !inEscape;
+    } else {
+      if (ch === '%' && !inEscape) {
+        return line.slice(0, i);
+      }
+      inEscape = false;
+    }
+  }
+  return line;
 }
 
 /**
- * Mask LaTeX syntax elements: comments, inline/display math, macros, and citations.
- * Output string has identical length and newline positions as original text.
+ * 1. Lint Unmatched Curly Braces {}
  */
-export function maskLatexSyntax(text: string): string {
-  let masked = text;
-
-  // 1. Mask comments (% to end of line, avoiding escaped \%)
-  masked = masked.replace(/(^|[^\\])%.*$/gm, (match, prefix, offset) => {
-    const commentStart = offset + prefix.length;
-    const commentLen = match.length - prefix.length;
-    return prefix + ' '.repeat(commentLen);
-  });
-
-  // 2. Mask display math: $$ ... $$ and \[ ... \]
-  masked = masked.replace(/\$\$[\s\S]*?\$\$/g, (m) => m.replace(/[^\n]/g, ' '));
-  masked = masked.replace(/\\\[[\s\S]*?\\\]/g, (m) => m.replace(/[^\n]/g, ' '));
-
-  // 3. Mask inline math: $ ... $ (ignoring escaped \$)
-  masked = masked.replace(/(^|[^\\])\$([^\$\n]+?)\$/g, (match, prefix) => {
-    const mathContent = match.slice(prefix.length);
-    return prefix + ' '.repeat(mathContent.length);
-  });
-
-  // 4. Mask environment bodies for math / code / verbatim
-  const MASK_ENVS = [
-    'equation', 'equation*', 'align', 'align*', 'gather', 'gather*',
-    'multline', 'multline*', 'split', 'bmatrix', 'pmatrix', 'vmatrix',
-    'verbatim', 'verbatim*', 'lstlisting', 'minted',
-  ];
-  for (const env of MASK_ENVS) {
-    const envEscaped = env.replace('*', '\\*');
-    const regex = new RegExp(`\\\\begin\\{${envEscaped}\\}[\\s\\S]*?\\\\end\\{${envEscaped}\\}`, 'g');
-    masked = masked.replace(regex, (m) => m.replace(/[^\n]/g, ' '));
-  }
-
-  // 5. Mask command names and non-prose parameters (\cite{...}, \ref{...}, \label{...}, etc.)
-  const MASK_MACROS = [
-    'cite', 'citep', 'citet', 'citeauthor', 'citeyear',
-    'ref', 'pageref', 'autoref', 'eqref', 'nameref',
-    'label', 'input', 'include', 'bibliography', 'bibliographystyle',
-    'usepackage', 'documentclass', 'includegraphics', 'url', 'href',
-  ];
-  for (const macro of MASK_MACROS) {
-    const regex = new RegExp(`\\\\${macro}(?:\\[[^\\]]*\\])?\\{[^\\}]*\\}`, 'g');
-    masked = masked.replace(regex, (m) => m.replace(/[^\n]/g, ' '));
-  }
-
-  // 6. Mask other standalone LaTeX control words (\section, \textbf, \noindent, etc.)
-  masked = masked.replace(/\\[a-zA-Z@]+(?:\*|\b)?/g, (m) => ' '.repeat(m.length));
-
-  return masked;
-}
-
-/**
- * Check structural integrity of LaTeX document:
- * - Unclosed \begin{env} without \end{env}
- * - Deprecated LaTeX 2.09 commands (\bf, \it, \rm)
- * - Empty \cite{} or \ref{}
- * - Repeated words (e.g. "the the")
- * - Whitespace before punctuation (e.g. "word ,")
- */
-export function lintLatexStructure(text: string): LatexLintDiagnostic[] {
+export function lintUnmatchedBraces(text: string): LatexLintDiagnostic[] {
   const diagnostics: LatexLintDiagnostic[] = [];
   const lines = text.split(/\r?\n/);
+  const stack: Array<{ line: number; col: number }> = [];
 
-  // ── 1. Unclosed / Mismatched Environments ─────────────────────────────────
+  lines.forEach((lineText, lineIdx) => {
+    const lineNum = lineIdx + 1;
+    const cleanLine = stripLineComment(lineText);
+
+    let inEscape = false;
+    for (let colIdx = 0; colIdx < cleanLine.length; colIdx++) {
+      const ch = cleanLine[colIdx];
+      if (ch === '\\') {
+        inEscape = !inEscape;
+        continue;
+      }
+
+      if (!inEscape) {
+        if (ch === '{') {
+          stack.push({ line: lineNum, col: colIdx + 1 });
+        } else if (ch === '}') {
+          if (stack.length === 0) {
+            diagnostics.push({
+              startLineNumber: lineNum,
+              startColumn: colIdx + 1,
+              endLineNumber: lineNum,
+              endColumn: colIdx + 2,
+              message: "Unmatched closing brace '}'. Found '}' without matching '{'",
+              severity: 'error',
+              code: 'UNMATCHED_CLOSING_BRACE',
+            });
+          } else {
+            stack.pop();
+          }
+        }
+      }
+
+      inEscape = false;
+    }
+  });
+
+  // Any remaining unclosed {
+  for (const unclosed of stack) {
+    diagnostics.push({
+      startLineNumber: unclosed.line,
+      startColumn: unclosed.col,
+      endLineNumber: unclosed.line,
+      endColumn: unclosed.col + 1,
+      message: "Unclosed opening brace '{'. Missing matching '}'",
+      severity: 'error',
+      code: 'UNCLOSED_OPENING_BRACE',
+      suggestions: ['}'],
+    });
+  }
+
+  return diagnostics;
+}
+
+/**
+ * 2. Lint LaTeX Environments (\begin{} and \end{})
+ */
+export function lintEnvironments(text: string): LatexLintDiagnostic[] {
+  const diagnostics: LatexLintDiagnostic[] = [];
+  const lines = text.split(/\r?\n/);
   const envStack: Array<{ name: string; line: number; col: number }> = [];
   const beginEndRegex = /\\(begin|end)\{([a-zA-Z0-9*_-]+)\}/g;
 
   lines.forEach((lineText, lineIdx) => {
     const lineNum = lineIdx + 1;
-    // Skip line comments
-    const commentIdx = lineText.indexOf('%');
-    const activeText = commentIdx !== -1 ? lineText.slice(0, commentIdx) : lineText;
+    const activeText = stripLineComment(lineText);
 
     let match: RegExpExecArray | null;
     beginEndRegex.lastIndex = 0;
@@ -261,32 +219,285 @@ export function lintLatexStructure(text: string): LatexLintDiagnostic[] {
     }
   });
 
-  // Flag any unclosed environments at EOF
   for (const unclosed of envStack) {
     diagnostics.push({
       startLineNumber: unclosed.line,
       startColumn: unclosed.col,
       endLineNumber: unclosed.line,
       endColumn: unclosed.col + `\\begin{${unclosed.name}}`.length,
-      message: `Unclosed environment: \\begin{${unclosed.name}} is missing a closing \\end{${unclosed.name}}`,
-      severity: 'warning',
+      message: `Unclosed environment: \\begin{${unclosed.name}} is missing closing \\end{${unclosed.name}}`,
+      severity: 'error',
       code: 'UNCLOSED_ENV',
       suggestions: [`\\end{${unclosed.name}}`],
     });
   }
 
-  // ── 2. Line-by-Line Linting ───────────────────────────────────────────────
+  return diagnostics;
+}
+
+/**
+ * 3. Lint Unescaped Special Characters: %, _, & outside expected contexts
+ */
+export function lintSpecialCharacters(text: string): LatexLintDiagnostic[] {
+  const diagnostics: LatexLintDiagnostic[] = [];
+  const lines = text.split(/\r?\n/);
+
+  // Track active environments
+  const activeEnvs: string[] = [];
+  let inDisplayMath = false;
+
   lines.forEach((lineText, lineIdx) => {
     const lineNum = lineIdx + 1;
-    const commentIdx = lineText.indexOf('%');
-    const textWithoutComment = commentIdx !== -1 ? lineText.slice(0, commentIdx) : lineText;
 
-    // Check deprecated commands (\bf, \it, \rm, etc.)
+    // Check display math delimiters
+    if (lineText.includes('\\[') && !lineText.includes('\\]')) inDisplayMath = true;
+    if (lineText.includes('\\]')) inDisplayMath = false;
+
+    // Track \begin and \end on this line to update activeEnvs
+    const envMatches = lineText.matchAll(/\\(begin|end)\{([a-zA-Z0-9*_-]+)\}/g);
+    for (const m of envMatches) {
+      if (m[1] === 'begin') activeEnvs.push(m[2]);
+      else if (m[1] === 'end') {
+        const idx = activeEnvs.lastIndexOf(m[2]);
+        if (idx !== -1) activeEnvs.splice(idx, 1);
+      }
+    }
+
+    const currentEnv = activeEnvs[activeEnvs.length - 1] || '';
+    const isInsideMathEnv = inDisplayMath || MATH_ENVIRONMENTS.has(currentEnv);
+    const isInsideAlignEnv = ALIGNMENT_ENVIRONMENTS.has(currentEnv);
+
+    // ── Check A: Unescaped % after alphanumeric characters ──────────────────
+    // e.g. "95% of data", "accuracy: 100%"
+    const unescapedPercentRegex = /([a-zA-Z0-9)\]])(\s*)%/g;
+    let pctMatch: RegExpExecArray | null;
+    while ((pctMatch = unescapedPercentRegex.exec(lineText)) !== null) {
+      const matchIndex = pctMatch.index + pctMatch[1].length + pctMatch[2].length;
+      if (lineText[matchIndex - 1] !== '\\') {
+        diagnostics.push({
+          startLineNumber: lineNum,
+          startColumn: matchIndex + 1,
+          endLineNumber: lineNum,
+          endColumn: matchIndex + 2,
+          message: "Unescaped '%' comments out the rest of this line. Did you mean '\\%'?",
+          severity: 'warning',
+          code: 'UNESCAPED_PERCENT',
+          suggestions: ['\\%'],
+        });
+      }
+    }
+
+    // Now work with clean line (without comments) for _ and & checks
+    const cleanLine = stripLineComment(lineText);
+
+    // ── Check B: Unescaped & outside alignment environments ─────────────────
+    if (!isInsideAlignEnv) {
+      let inEscape = false;
+      let inInlineMath = false;
+
+      for (let colIdx = 0; colIdx < cleanLine.length; colIdx++) {
+        const ch = cleanLine[colIdx];
+        if (ch === '\\') {
+          inEscape = !inEscape;
+          continue;
+        }
+
+        if (ch === '$' && !inEscape) {
+          inInlineMath = !inInlineMath;
+        } else if (ch === '&' && !inEscape && !inInlineMath) {
+          diagnostics.push({
+            startLineNumber: lineNum,
+            startColumn: colIdx + 1,
+            endLineNumber: lineNum,
+            endColumn: colIdx + 2,
+            message: "Unescaped '&' outside tabular/alignment environment. Use '\\&' for ampersand.",
+            severity: 'error',
+            code: 'UNESCAPED_AMPERSAND',
+            suggestions: ['\\&'],
+          });
+        }
+
+        inEscape = false;
+      }
+    }
+
+    // ── Check C: Unescaped _ outside math mode and outside URL/cite/label ────
+    if (!isInsideMathEnv) {
+      // Mask allowed commands like \cite{...}, \label{...}, \ref{...}, \url{...}, \href{...}, \includegraphics{...}
+      let maskedLine = cleanLine.replace(/\\(cite|citep|citet|ref|pageref|eqref|label|url|href|includegraphics|input|include)(?:\[[^\]]*\])?\{[^}]*\}/g, (m) => ' '.repeat(m.length));
+
+      let inEscape = false;
+      let inInlineMath = false;
+
+      for (let colIdx = 0; colIdx < maskedLine.length; colIdx++) {
+        const ch = maskedLine[colIdx];
+        if (ch === '\\') {
+          inEscape = !inEscape;
+          continue;
+        }
+
+        if (ch === '$' && !inEscape) {
+          inInlineMath = !inInlineMath;
+        } else if (ch === '_' && !inEscape && !inInlineMath) {
+          diagnostics.push({
+            startLineNumber: lineNum,
+            startColumn: colIdx + 1,
+            endLineNumber: lineNum,
+            endColumn: colIdx + 2,
+            message: "Unescaped '_' outside math mode causes 'Missing $ inserted'. Use '\\_' or wrap in math '$...$'.",
+            severity: 'error',
+            code: 'UNESCAPED_UNDERSCORE',
+            suggestions: ['\\_'],
+          });
+        }
+
+        inEscape = false;
+      }
+    }
+  });
+
+  return diagnostics;
+}
+
+/**
+ * 4. Lint Inline Math Mode ($ count per line / block)
+ */
+export function lintInlineMath(text: string): LatexLintDiagnostic[] {
+  const diagnostics: LatexLintDiagnostic[] = [];
+  const lines = text.split(/\r?\n/);
+
+  lines.forEach((lineText, lineIdx) => {
+    const lineNum = lineIdx + 1;
+    const cleanLine = stripLineComment(lineText);
+
+    // Count unescaped single $ (ignore $$ and \$)
+    let dollarCount = 0;
+    let lastDollarCol = -1;
+    let inEscape = false;
+
+    for (let i = 0; i < cleanLine.length; i++) {
+      const ch = cleanLine[i];
+      if (ch === '\\') {
+        inEscape = !inEscape;
+        continue;
+      }
+
+      if (ch === '$' && !inEscape) {
+        // Skip if double $$
+        if (i + 1 < cleanLine.length && cleanLine[i + 1] === '$') {
+          i++; // skip next $
+        } else {
+          dollarCount++;
+          lastDollarCol = i + 1;
+        }
+      }
+
+      inEscape = false;
+    }
+
+    if (dollarCount % 2 !== 0 && lastDollarCol !== -1) {
+      diagnostics.push({
+        startLineNumber: lineNum,
+        startColumn: lastDollarCol,
+        endLineNumber: lineNum,
+        endColumn: lastDollarCol + 1,
+        message: "Unclosed inline math mode '$'. Missing closing '$' on this line.",
+        severity: 'error',
+        code: 'UNCLOSED_INLINE_MATH',
+        suggestions: ['$'],
+      });
+    }
+  });
+
+  return diagnostics;
+}
+
+/**
+ * 5. Lint Duplicate Labels & Undefined References
+ */
+export function lintLabelsAndReferences(text: string): LatexLintDiagnostic[] {
+  const diagnostics: LatexLintDiagnostic[] = [];
+  const lines = text.split(/\r?\n/);
+
+  const definedLabels = new Map<string, { line: number; col: number }>();
+  const references: Array<{ key: string; cmd: string; line: number; col: number; len: number }> = [];
+
+  const labelRegex = /\\label\{([^}]+)\}/g;
+  const refRegex = /\\(ref|pageref|eqref|autoref|nameref)\{([^}]+)\}/g;
+
+  lines.forEach((lineText, lineIdx) => {
+    const lineNum = lineIdx + 1;
+    const cleanLine = stripLineComment(lineText);
+
+    // Find \label{...}
+    let lMatch: RegExpExecArray | null;
+    labelRegex.lastIndex = 0;
+    while ((lMatch = labelRegex.exec(cleanLine)) !== null) {
+      const key = lMatch[1].trim();
+      const col = lMatch.index + 1;
+      if (definedLabels.has(key)) {
+        const first = definedLabels.get(key)!;
+        diagnostics.push({
+          startLineNumber: lineNum,
+          startColumn: col,
+          endLineNumber: lineNum,
+          endColumn: col + lMatch[0].length,
+          message: `Duplicate label '\\label{${key}}'. Previously defined at line ${first.line}.`,
+          severity: 'warning',
+          code: 'DUPLICATE_LABEL',
+        });
+      } else {
+        definedLabels.set(key, { line: lineNum, col });
+      }
+    }
+
+    // Find \ref{...}
+    let rMatch: RegExpExecArray | null;
+    refRegex.lastIndex = 0;
+    while ((rMatch = refRegex.exec(cleanLine)) !== null) {
+      const cmd = rMatch[1];
+      const key = rMatch[2].trim();
+      const col = rMatch.index + 1;
+      references.push({ key, cmd, line: lineNum, col, len: rMatch[0].length });
+    }
+  });
+
+  // Check undefined references (if document defines any labels at all)
+  if (definedLabels.size > 0) {
+    for (const ref of references) {
+      if (!definedLabels.has(ref.key)) {
+        diagnostics.push({
+          startLineNumber: ref.line,
+          startColumn: ref.col,
+          endLineNumber: ref.line,
+          endColumn: ref.col + ref.len,
+          message: `Reference '\\${ref.cmd}{${ref.key}}' references an undefined label '${ref.key}'.`,
+          severity: 'warning',
+          code: 'UNDEFINED_REFERENCE',
+        });
+      }
+    }
+  }
+
+  return diagnostics;
+}
+
+/**
+ * 6. Lint Deprecated Commands & Command Typos
+ */
+export function lintCommandsAndTypos(text: string): LatexLintDiagnostic[] {
+  const diagnostics: LatexLintDiagnostic[] = [];
+  const lines = text.split(/\r?\n/);
+
+  lines.forEach((lineText, lineIdx) => {
+    const lineNum = lineIdx + 1;
+    const cleanLine = stripLineComment(lineText);
+
+    // A. Check Deprecated LaTeX 2.09 commands (\bf, \it, etc.)
     for (const [cmd, info] of Object.entries(DEPRECATED_COMMANDS)) {
-      const idx = textWithoutComment.indexOf(cmd);
+      const idx = cleanLine.indexOf(cmd);
       if (idx !== -1) {
-        // Ensure not part of longer command like \bfseries or \item
-        const afterChar = textWithoutComment[idx + cmd.length];
+        const afterChar = cleanLine[idx + cmd.length];
         if (!afterChar || /[^a-zA-Z]/.test(afterChar)) {
           diagnostics.push({
             startLineNumber: lineNum,
@@ -302,10 +513,30 @@ export function lintLatexStructure(text: string): LatexLintDiagnostic[] {
       }
     }
 
-    // Check empty \ref{}, \cite{}, \label{}
+    // B. Check Command Typos
+    for (const [typo, correct] of Object.entries(COMMAND_TYPOS)) {
+      const idx = cleanLine.indexOf(typo);
+      if (idx !== -1) {
+        const afterChar = cleanLine[idx + typo.length];
+        if (!afterChar || /[^a-zA-Z]/.test(afterChar) || afterChar === '{') {
+          diagnostics.push({
+            startLineNumber: lineNum,
+            startColumn: idx + 1,
+            endLineNumber: lineNum,
+            endColumn: idx + 1 + typo.length,
+            message: `Unknown or mistyped LaTeX command '${typo}'. Did you mean '${correct}'?`,
+            severity: 'error',
+            code: 'COMMAND_TYPO',
+            suggestions: [correct],
+          });
+        }
+      }
+    }
+
+    // C. Check Empty \ref{}, \cite{}, \label{}
     const emptyRefRegex = /\\(cite|ref|label|pageref|eqref)\{\s*\}/g;
     let emptyMatch: RegExpExecArray | null;
-    while ((emptyMatch = emptyRefRegex.exec(textWithoutComment)) !== null) {
+    while ((emptyMatch = emptyRefRegex.exec(cleanLine)) !== null) {
       diagnostics.push({
         startLineNumber: lineNum,
         startColumn: emptyMatch.index + 1,
@@ -316,129 +547,13 @@ export function lintLatexStructure(text: string): LatexLintDiagnostic[] {
         code: 'EMPTY_REFERENCE',
       });
     }
-
-    // Check repeated words (e.g. "the the", "in in")
-    const repeatedWordRegex = /\b([a-zA-Z]{2,})\s+\1\b/gi;
-    let repMatch: RegExpExecArray | null;
-    while ((repMatch = repeatedWordRegex.exec(textWithoutComment)) !== null) {
-      diagnostics.push({
-        startLineNumber: lineNum,
-        startColumn: repMatch.index + 1,
-        endLineNumber: lineNum,
-        endColumn: repMatch.index + 1 + repMatch[0].length,
-        message: `Repeated word '${repMatch[1]}'`,
-        severity: 'warning',
-        code: 'REPEATED_WORD',
-        suggestions: [repMatch[1]],
-      });
-    }
-
-    // Check unexpected whitespace before punctuation
-    const spacePunctRegex = /([a-zA-Z0-9])\s+([,;:?.!])/g;
-    let punctMatch: RegExpExecArray | null;
-    while ((punctMatch = spacePunctRegex.exec(textWithoutComment)) !== null) {
-      diagnostics.push({
-        startLineNumber: lineNum,
-        startColumn: punctMatch.index + 1,
-        endLineNumber: lineNum,
-        endColumn: punctMatch.index + 1 + punctMatch[0].length,
-        message: `Unexpected whitespace before punctuation '${punctMatch[2]}'`,
-        severity: 'info',
-        code: 'SPACE_BEFORE_PUNCT',
-        suggestions: [`${punctMatch[1]}${punctMatch[2]}`],
-      });
-    }
   });
 
   return diagnostics;
 }
 
 /**
- * Spellchecker for natural prose in LaTeX manuscripts.
- * Evaluates words against English core vocabulary + Academic dictionary.
- */
-export function checkLatexSpelling(
-  rawText: string,
-  maskedText: string,
-  customWords: string[] = [],
-): LatexLintDiagnostic[] {
-  const diagnostics: LatexLintDiagnostic[] = [];
-  const userDictSet = new Set(customWords.map((w) => w.toLowerCase()));
-
-  const lines = maskedText.split(/\r?\n/);
-  const wordRegex = /\b([a-zA-Z]{3,})\b/g;
-
-  lines.forEach((lineText, lineIdx) => {
-    const lineNum = lineIdx + 1;
-    let match: RegExpExecArray | null;
-    wordRegex.lastIndex = 0;
-
-    while ((match = wordRegex.exec(lineText)) !== null) {
-      const rawWord = match[1];
-      const lower = rawWord.toLowerCase();
-
-      // Ignore if uppercase acronym (e.g. GPU, CPU, REST, LSTM, BERT)
-      if (rawWord.length <= 5 && rawWord === rawWord.toUpperCase()) {
-        continue;
-      }
-
-      // Check dictionaries
-      const isKnown =
-        COMMON_ENGLISH_WORDS.has(lower) ||
-        ACADEMIC_DICTIONARY.has(lower) ||
-        userDictSet.has(lower);
-
-      if (!isKnown) {
-        // Only flag if not a common suffix like -ing, -ed, -s, -ly of a known word
-        const isPluralOfKnown = (lower.endsWith('s') && (
-          COMMON_ENGLISH_WORDS.has(lower.slice(0, -1)) ||
-          ACADEMIC_DICTIONARY.has(lower.slice(0, -1))
-        )) || (lower.endsWith('es') && (
-          COMMON_ENGLISH_WORDS.has(lower.slice(0, -2)) ||
-          ACADEMIC_DICTIONARY.has(lower.slice(0, -2))
-        ));
-
-        const isEdOfKnown = lower.endsWith('ed') && (
-          COMMON_ENGLISH_WORDS.has(lower.slice(0, -2)) ||
-          COMMON_ENGLISH_WORDS.has(lower.slice(0, -1)) ||
-          ACADEMIC_DICTIONARY.has(lower.slice(0, -2)) ||
-          ACADEMIC_DICTIONARY.has(lower.slice(0, -1))
-        );
-
-        const isIngOfKnown = lower.endsWith('ing') && (
-          COMMON_ENGLISH_WORDS.has(lower.slice(0, -3)) ||
-          COMMON_ENGLISH_WORDS.has(lower.slice(0, -3) + 'e') ||
-          ACADEMIC_DICTIONARY.has(lower.slice(0, -3)) ||
-          ACADEMIC_DICTIONARY.has(lower.slice(0, -3) + 'e')
-        );
-
-        const isLyOfKnown = lower.endsWith('ly') && (
-          COMMON_ENGLISH_WORDS.has(lower.slice(0, -2)) ||
-          ACADEMIC_DICTIONARY.has(lower.slice(0, -2))
-        );
-
-        if (!isPluralOfKnown && !isEdOfKnown && !isIngOfKnown && !isLyOfKnown) {
-          diagnostics.push({
-            startLineNumber: lineNum,
-            startColumn: match.index + 1,
-            endLineNumber: lineNum,
-            endColumn: match.index + 1 + rawWord.length,
-            message: `Possible spelling issue: '${rawWord}'`,
-            severity: 'info',
-            code: 'SPELL_CHECK',
-            suggestions: [],
-          });
-        }
-      }
-    }
-  });
-
-  return diagnostics;
-}
-
-/**
- * Scans document for citations referencing known retracted publications.
- * Detects \cite{...}, \citep{...}, etc. and Markdown [@key] citations.
+ * 7. Scans document for citations referencing known retracted publications.
  */
 export function lintRetractedCitations(
   text: string,
@@ -449,17 +564,14 @@ export function lintRetractedCitations(
   const lines = text.split(/\r?\n/);
 
   const latexCiteRegex = /\\(cite|citep|citet|parencite|textcite|nocite)(?:\[[^\]]*\])*\{([^}]+)\}/g;
-  const markdownCiteRegex = /@([a-zA-Z0-9_:.#$%&\-+?<>~/]+)/g;
 
   lines.forEach((lineText, lineIdx) => {
     const lineNum = lineIdx + 1;
-    const commentIdx = lineText.indexOf('%');
-    const activeText = commentIdx !== -1 ? lineText.slice(0, commentIdx) : lineText;
+    const cleanLine = stripLineComment(lineText);
 
-    // 1. Check LaTeX \cite{...}
     let match: RegExpExecArray | null;
     latexCiteRegex.lastIndex = 0;
-    while ((match = latexCiteRegex.exec(activeText)) !== null) {
+    while ((match = latexCiteRegex.exec(cleanLine)) !== null) {
       const fullCmd = match[0];
       const keysRaw = match[2];
       const keysStartOffset = match.index + fullCmd.indexOf(keysRaw);
@@ -490,41 +602,13 @@ export function lintRetractedCitations(
         }
       }
     }
-
-    // 2. Check Markdown citations [@key]
-    markdownCiteRegex.lastIndex = 0;
-    while ((match = markdownCiteRegex.exec(activeText)) !== null) {
-      const citeKey = match[1];
-      if (retractedMap.has(citeKey)) {
-        const info = retractedMap.get(citeKey);
-        const startCol = match.index + 1;
-        const endCol = startCol + match[0].length;
-
-        const alreadyReported = diagnostics.some(
-          (d) => d.startLineNumber === lineNum && d.startColumn === startCol,
-        );
-        if (!alreadyReported) {
-          diagnostics.push({
-            startLineNumber: lineNum,
-            startColumn: startCol,
-            endLineNumber: lineNum,
-            endColumn: endCol,
-            message: `⚠️ Retracted Paper Warning: Citation '${citeKey}' (${info?.title ? `"${info.title}"` : 'Untitled'}) has been officially retracted${info?.reason ? `: ${info.reason}` : '.'}`,
-            severity: 'warning',
-            code: 'RETRACTED_CITATION',
-            suggestions: [],
-          });
-        }
-      }
-    }
   });
 
   return diagnostics;
 }
 
 /**
- * Main linter entry point: orchestrates syntax masking, structure linting,
- * academic spellchecking, and retracted citation detection.
+ * Main linter entry point: orchestrates all real-time LaTeX diagnostics.
  */
 export function runLatexLinter(
   content: string,
@@ -534,28 +618,34 @@ export function runLatexLinter(
 
   const {
     enableStructureLint = true,
-    enableSpellCheck = true,
-    userDictionary = [],
+    enableSyntaxDiagnostics = true,
     retractedItemsMap,
   } = options;
 
   const results: LatexLintDiagnostic[] = [];
 
   if (enableStructureLint) {
-    const structDiagnostics = lintLatexStructure(content);
-    results.push(...structDiagnostics);
+    results.push(...lintEnvironments(content));
+    results.push(...lintUnmatchedBraces(content));
   }
 
-  if (enableSpellCheck) {
-    const masked = maskLatexSyntax(content);
-    const spellDiagnostics = checkLatexSpelling(content, masked, userDictionary);
-    results.push(...spellDiagnostics);
+  if (enableSyntaxDiagnostics) {
+    results.push(...lintSpecialCharacters(content));
+    results.push(...lintInlineMath(content));
+    results.push(...lintLabelsAndReferences(content));
+    results.push(...lintCommandsAndTypos(content));
   }
 
   if (retractedItemsMap && retractedItemsMap.size > 0) {
-    const retractionDiagnostics = lintRetractedCitations(content, retractedItemsMap);
-    results.push(...retractionDiagnostics);
+    results.push(...lintRetractedCitations(content, retractedItemsMap));
   }
 
-  return results;
+  // Sort by line number, then column
+  return results.sort((a, b) => {
+    if (a.startLineNumber !== b.startLineNumber) {
+      return a.startLineNumber - b.startLineNumber;
+    }
+    return a.startColumn - b.startColumn;
+  });
 }
+

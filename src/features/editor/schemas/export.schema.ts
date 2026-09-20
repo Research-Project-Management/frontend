@@ -12,6 +12,10 @@ export const documentExportFormatSchema = z.enum([
   'markdown',
   'latex-source',
   'latex-bundle',
+  'zip',
+  'arxiv-zip',
+  'log',
+  'bbl',
 ]);
 
 export const exportDocumentSchema = z.object({

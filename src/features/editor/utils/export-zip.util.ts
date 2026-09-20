@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import { toast } from 'sonner';
 import { fileService, documentService } from '../services/core.service';
+import { versionService } from '../services/history.service';
 import { StorageService } from '../services/storage.service';
 import { resolveFileUrl } from './editor.util';
 
@@ -224,3 +225,182 @@ export async function exportProjectAsZip(options: ExportZipOptions): Promise<voi
 export async function exportArxivSubmissionZip(options: ExportZipOptions): Promise<void> {
   return bundleAndDownloadZip({ ...options, isArxiv: true });
 }
+
+export interface ExportVersionZipOptions {
+  parentPageId: string;
+  versionId: string;
+  revisionDate?: string | Date;
+  revisionLabel?: string;
+  projectTitle?: string;
+}
+
+/**
+ * Packages all files and assets belonging to a specific revision snapshot
+ * into a single compressed .zip file and initiates a client-side download.
+ */
+export async function exportVersionAsZip({
+  parentPageId,
+  versionId,
+  revisionDate,
+  revisionLabel,
+  projectTitle,
+}: ExportVersionZipOptions): Promise<void> {
+  const toastId = toast.loading('Packaging historical snapshot into ZIP...');
+
+  try {
+    const zip = new JSZip();
+
+    // 1. Fetch root page, active child files, deleted files, and storage files concurrently
+    const [rootPage, childFiles, storageFiles] = await Promise.all([
+      documentService.getById(parentPageId).catch(() => null),
+      fileService.getByPageId(parentPageId).catch(() => []),
+      StorageService.getPageFiles(parentPageId).catch(() => []),
+    ]);
+
+    const deletedFiles = await fileService.getDeletedByPageId(parentPageId).catch(() => []);
+    const allFiles = [...childFiles, ...deletedFiles];
+
+    const targetDate = revisionDate ? new Date(revisionDate).getTime() : Date.now();
+    const filesMap = new Map<string, string>();
+
+    // 2. Resolve content for each file at the revision
+    await Promise.all(
+      allFiles.map(async (f) => {
+        const title = f.title?.trim();
+        if (!title) return;
+
+        // Fetch versions of this file
+        try {
+          const versions = await versionService.getByPageId(f.id).catch(() => []);
+          if (versions && versions.length > 0) {
+            let matchingVer = versions.find((v) => v.id === versionId);
+            if (!matchingVer && revisionDate) {
+              const beforeVers = versions.filter(
+                (v) => new Date(v.createdAt).getTime() <= targetDate + 1000,
+              );
+              matchingVer = beforeVers[0] || versions[versions.length - 1];
+            }
+            if (!matchingVer) matchingVer = versions[0];
+
+            if (matchingVer) {
+              const fullVer = await versionService.getById(f.id, matchingVer.id).catch(() => null);
+              if (fullVer && typeof fullVer.content === 'string') {
+                filesMap.set(title, fullVer.content);
+                return;
+              }
+            }
+          }
+        } catch {
+          // fallback to file's default content
+        }
+
+        const strContent =
+          typeof f.content === 'string'
+            ? f.content
+            : f.content && typeof f.content === 'object'
+              ? ((f.content as any).source ||
+                  (f.content as any).text ||
+                  (f.content as any).content ||
+                  '')
+              : '';
+        filesMap.set(title, strContent);
+      }),
+    );
+
+    // 3. Ensure the main LaTeX document is included
+    const hasMain = Array.from(filesMap.keys()).some(
+      (k) => k.toLowerCase() === 'main.tex',
+    );
+
+    if (!hasMain) {
+      const rootTitle =
+        rootPage?.title && rootPage.title.endsWith('.tex')
+          ? rootPage.title
+          : 'main.tex';
+
+      let rootStr = typeof rootPage?.content === 'string' ? rootPage.content : '';
+      try {
+        const rootVersions = await versionService.getByPageId(parentPageId).catch(() => []);
+        const matchingRoot =
+          rootVersions.find((v) => v.id === versionId) ||
+          rootVersions.find((v) => new Date(v.createdAt).getTime() <= targetDate + 1000) ||
+          rootVersions[0];
+        if (matchingRoot) {
+          const fullRoot = await versionService.getById(parentPageId, matchingRoot.id).catch(() => null);
+          if (fullRoot && typeof fullRoot.content === 'string') {
+            rootStr = fullRoot.content;
+          }
+        }
+      } catch {
+        // fallback to default rootStr
+      }
+
+      filesMap.set(rootTitle, rootStr);
+    }
+
+    // Add all source files to the ZIP
+    for (const [path, content] of filesMap.entries()) {
+      zip.file(path, content);
+    }
+
+    // 4. Download and embed media/storage assets (images, figures)
+    if (storageFiles && storageFiles.length > 0) {
+      await Promise.all(
+        storageFiles.map(async (item: any) => {
+          if (item.isFolder || !item.url || !item.filename) return;
+          try {
+            const resolvedUrl = resolveFileUrl(item.url);
+            if (!resolvedUrl) return;
+
+            const res = await fetch(resolvedUrl, { credentials: 'include' });
+            if (res.ok) {
+              const blob = await res.blob();
+              if (!filesMap.has(item.filename)) {
+                zip.file(item.filename, blob);
+              }
+            }
+          } catch (fetchErr) {
+            console.warn(`[export-zip] Failed to fetch asset ${item.filename}:`, fetchErr);
+          }
+        }),
+      );
+    }
+
+    // 5. Generate ZIP Blob and trigger download
+    const blob = await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 },
+    });
+
+    const baseTitle = projectTitle || rootPage?.title || 'flux-project';
+    const cleanTitle =
+      baseTitle
+        .replace(/[^\w\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '_') || 'flux-project';
+
+    const cleanLabel = revisionLabel
+      ? `-${revisionLabel.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_')}`
+      : revisionDate
+        ? `-${new Date(revisionDate).toISOString().slice(0, 10)}`
+        : '-snapshot';
+
+    const filename = `${cleanTitle}${cleanLabel}.zip`;
+
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(downloadUrl);
+
+    toast.success(`Exported ${filename} successfully!`, { id: toastId });
+  } catch (error) {
+    console.error('[export-zip] Error generating version ZIP:', error);
+    toast.error('Failed to create version ZIP archive.', { id: toastId });
+  }
+}
+

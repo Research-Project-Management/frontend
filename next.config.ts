@@ -24,28 +24,15 @@ const nextConfig: NextConfig = {
       'pdfjs-dist': 'pdfjs-dist/build/pdf.min.mjs',
       'monaco-editor/esm/vs/editor/editor.api': 'monaco-editor',
       'monaco-editor/esm/vs/editor/editor.api.js': 'monaco-editor',
-      'monaco-editor/esm/vs': 'monaco-editor',
-    },
-    rules: {
-      '*.svg': {
-        loaders: ['@svgr/webpack'],
-        as: '*.js',
-      },
     },
   },
 
   webpack: (config, { isServer, dev }) => {
-    config.module.rules.push({
-      test: /\.svg$/,
-      use: ['@svgr/webpack'],
-    });
-
     config.resolve.alias = {
       ...config.resolve.alias,
       'pdfjs-dist$': 'pdfjs-dist/build/pdf.min.mjs',
       'monaco-editor/esm/vs/editor/editor.api$': 'monaco-editor',
       'monaco-editor/esm/vs/editor/editor.api.js$': 'monaco-editor',
-      'monaco-editor/esm/vs': 'monaco-editor',
     };
 
     if (!isServer) {

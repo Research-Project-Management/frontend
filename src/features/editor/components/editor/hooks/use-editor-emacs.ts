@@ -44,7 +44,7 @@ export function useEditorEmacs({
     async function setupEmacs() {
       try {
         const { EmacsExtension, registerGlobalCommand } = await import(
-          'monaco-emacs'
+          /* webpackIgnore: true */ 'monaco-emacs'
         );
 
         if (isCancelled || !editor) return;

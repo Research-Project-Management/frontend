@@ -11,14 +11,15 @@ import {
   Play,
   Plus,
   RefreshCw,
-  Zap,
-  Image as ImageIcon,
   Check,
   Archive,
   Sparkles,
   ExternalLink,
   Minimize2,
   Presentation,
+  FileCode,
+  FileType,
+  BookOpen,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -32,52 +33,47 @@ import { cn } from "@/shared/lib/utils";
 import {
   useCompileStore,
   usePageStore,
+  useDocumentSettingsStore,
   type CompileStatus,
   type LaTeXEngine,
 } from '@/features/editor/store';
 import {
   exportProjectAsZip,
   exportArxivSubmissionZip,
+  exportDocumentAsWord,
+  exportDocumentAsMarkdown,
   getExportFilename,
+  LatexCompilerEngine,
 } from '@/features/editor/utils';
 import { toast } from 'sonner';
 import type { PdfOutlineItem } from '@/features/editor/utils/pdf-outline.util';
 
-// ── Compile Button with Engine / Mode Dropdown ──────────────────────────────
-
-const COMPILE_MODES = [
-  { value: 'full', label: 'Full', icon: ImageIcon, description: 'Complete compile' },
-  { value: 'draft', label: 'Draft', icon: Zap, description: 'Skip images' },
-] as const;
-
-const LATEX_ENGINES = [
-  { value: 'pdflatex', label: 'pdfLaTeX', description: 'Standard & fast' },
-  { value: 'xelatex', label: 'XeLaTeX', description: 'Unicode & fontspec' },
-  { value: 'lualatex', label: 'LuaLaTeX', description: 'Modern Lua engine' },
-] as const;
+// ── Compile Button with Overleaf-Parity Dropdown Menu ────────────────────────
 
 export interface CompileButtonProps {
   compileStatus: CompileStatus;
   onCompile: () => void;
-  engine: LaTeXEngine;
+  engine?: LaTeXEngine;
   setEngine?: (e: LaTeXEngine) => void;
-  compileMode: 'full' | 'draft';
-  setCompileMode: (m: 'full' | 'draft') => void;
+  compileMode?: 'full' | 'draft';
+  setCompileMode?: (m: 'full' | 'draft') => void;
   autoCompile?: boolean;
   onToggleAutoCompile?: () => void;
   onClearCacheAndCompile?: () => void;
+  onStopCompilation?: () => void;
 }
 
 export const CompileButton = React.memo(function CompileButton({
   compileStatus,
   onCompile,
-  engine,
-  setEngine,
-  compileMode,
-  setCompileMode,
-  autoCompile = true,
+  engine: _engine,
+  setEngine: _setEngine,
+  compileMode: propCompileMode,
+  setCompileMode: propSetCompileMode,
+  autoCompile: propAutoCompile,
   onToggleAutoCompile,
   onClearCacheAndCompile,
+  onStopCompilation,
 }: CompileButtonProps) {
   const isRunning =
     compileStatus !== 'idle' && compileStatus !== 'done' && compileStatus !== 'error';
@@ -85,6 +81,39 @@ export const CompileButton = React.memo(function CompileButton({
     flushing: 'Saving…',
     syncing: 'Syncing…',
     compiling: 'Compiling…',
+  };
+
+  const storeAutoCompile = useDocumentSettingsStore((s) => s.autoCompile);
+  const storeSetAutoCompile = useDocumentSettingsStore((s) => s.setAutoCompile);
+  const storeCompileMode = useDocumentSettingsStore((s) => s.compileMode);
+  const storeSetCompileMode = useDocumentSettingsStore((s) => s.setCompileMode);
+  const linterEnabled = useDocumentSettingsStore((s) => s.linterEnabled);
+  const setLinterEnabled = useDocumentSettingsStore((s) => s.setLinterEnabled);
+  const stopOnFirstError = useDocumentSettingsStore((s) => s.stopOnFirstError);
+  const setStopOnFirstError = useDocumentSettingsStore((s) => s.setStopOnFirstError);
+
+  const autoCompile = propAutoCompile !== undefined ? propAutoCompile : storeAutoCompile;
+  const handleSetAutoCompile = (val: boolean) => {
+    storeSetAutoCompile(val);
+    if (onToggleAutoCompile && ((val && !autoCompile) || (!val && autoCompile))) {
+      onToggleAutoCompile();
+    }
+  };
+
+  const compileMode = propCompileMode !== undefined ? propCompileMode : storeCompileMode;
+  const handleSetCompileMode = (mode: 'full' | 'draft') => {
+    storeSetCompileMode(mode);
+    propSetCompileMode?.(mode);
+  };
+
+  const handleStopCompilation = () => {
+    if (onStopCompilation) {
+      onStopCompilation();
+    } else {
+      LatexCompilerEngine.cancelInFlightCompile();
+      useCompileStore.getState().setCompileStatus('idle');
+      toast.info('Compilation stopped');
+    }
   };
 
   return (
@@ -108,114 +137,119 @@ export const CompileButton = React.memo(function CompileButton({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            disabled={isRunning}
-            aria-label="Compile engine and options"
-            className="flex items-center justify-center h-7 w-5 rounded-r-md bg-[#16a34a] hover:bg-[#15803d] text-white border-l border-white/20 transition-colors disabled:opacity-60 outline-none focus-visible:ring-1 focus-visible:ring-emerald-500 cursor-pointer"
+            aria-label="Compile options"
+            className="flex items-center justify-center h-7 w-5 rounded-r-md bg-[#16a34a] hover:bg-[#15803d] text-white border-l border-white/20 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-emerald-500 cursor-pointer"
           >
             <ChevronDown className="size-3 shrink-0" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56 z-[9999]">
-          {/* Overleaf Parity: Auto-compile Toggle */}
-          <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground select-none">
-            Auto-compile
+        <DropdownMenuContent align="start" className="w-64 z-[9999] p-1.5 text-xs">
+          {/* Section 1: Auto compile */}
+          <div className="px-2.5 pt-1.5 pb-1 text-[11px] font-medium text-muted-foreground select-none">
+            Auto compile
           </div>
           <DropdownMenuItem
-            onClick={onToggleAutoCompile}
-            className="text-xs flex items-center justify-between cursor-pointer"
+            onClick={() => handleSetAutoCompile(true)}
+            className="px-2.5 py-1.5 text-xs flex items-center justify-between cursor-pointer rounded"
           >
-            <div className="flex items-center gap-1.5">
-              <Check
-                className={cn(
-                  'size-3.5 text-primary shrink-0',
-                  !autoCompile && 'opacity-0',
-                )}
-              />
-              <span>Auto-compile</span>
-            </div>
-            <span
-              className={cn(
-                'text-11 px-1.5 py-0.5 rounded font-medium font-mono',
-                autoCompile
-                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-muted text-muted-foreground',
-              )}
-            >
-              {autoCompile ? 'On' : 'Off'}
-            </span>
+            <span>On</span>
+            {autoCompile && <Check className="size-3.5 text-foreground shrink-0 ml-auto" />}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => handleSetAutoCompile(false)}
+            className="px-2.5 py-1.5 text-xs flex items-center justify-between cursor-pointer rounded"
+          >
+            <span>Off</span>
+            {!autoCompile && <Check className="size-3.5 text-foreground shrink-0 ml-auto" />}
           </DropdownMenuItem>
 
-          <DropdownMenuSeparator />
+          <DropdownMenuSeparator className="my-1.5" />
 
-          <div className="px-2 py-1 text-11 font-medium font-mono uppercase tracking-wider text-muted-foreground select-none">
-            Compiler Engine
+          {/* Section 2: Compile mode */}
+          <div className="px-2.5 pt-1 pb-1 text-[11px] font-medium text-muted-foreground select-none">
+            Compile mode
           </div>
-          {LATEX_ENGINES.map(({ value, label, description }) => (
-            <DropdownMenuItem
-              key={value}
-              onClick={() => setEngine?.(value as LaTeXEngine)}
-              className={cn(
-                'text-xs flex items-center justify-between cursor-pointer',
-                engine === value && 'font-semibold text-primary bg-muted/60',
-              )}
-            >
-              <div className="flex items-center gap-1.5">
-                <Check
-                  className={cn(
-                    'size-3.5 text-primary shrink-0',
-                    engine !== value && 'opacity-0',
-                  )}
-                />
-                <span>{label}</span>
-              </div>
-              <span className="text-11 font-mono text-muted-foreground">{description}</span>
-            </DropdownMenuItem>
-          ))}
+          <DropdownMenuItem
+            onClick={() => handleSetCompileMode('full')}
+            className="px-2.5 py-1.5 text-xs flex items-center justify-between cursor-pointer rounded"
+          >
+            <span>Normal</span>
+            {compileMode === 'full' && <Check className="size-3.5 text-foreground shrink-0 ml-auto" />}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => handleSetCompileMode('draft')}
+            className="px-2.5 py-1.5 text-xs flex items-center justify-between cursor-pointer rounded"
+          >
+            <span>
+              Fast <span className="text-muted-foreground text-[11px] font-normal">[draft]</span>
+            </span>
+            {compileMode === 'draft' && <Check className="size-3.5 text-foreground shrink-0 ml-auto" />}
+          </DropdownMenuItem>
 
-          <DropdownMenuSeparator />
+          <DropdownMenuSeparator className="my-1.5" />
 
-          <div className="px-2 py-1 text-11 font-medium font-mono uppercase tracking-wider text-muted-foreground select-none">
-            Compile Mode
+          {/* Section 3: Syntax checks */}
+          <div className="px-2.5 pt-1 pb-1 text-[11px] font-medium text-muted-foreground select-none">
+            Syntax checks
           </div>
-          {COMPILE_MODES.map(({ value, label, description, icon: ModeIcon }) => (
-            <DropdownMenuItem
-              key={value}
-              onClick={() => setCompileMode(value)}
-              className={cn(
-                'text-xs flex items-center justify-between cursor-pointer',
-                compileMode === value && 'font-semibold text-primary bg-muted/60',
-              )}
-            >
-              <div className="flex items-center gap-1.5">
-                <Check
-                  className={cn(
-                    'size-3.5 text-primary shrink-0',
-                    compileMode !== value && 'opacity-0',
-                  )}
-                />
-                <ModeIcon className="size-3.5 text-muted-foreground shrink-0" />
-                <span>{label}</span>
-              </div>
-              <span className="text-11 font-mono text-muted-foreground">{description}</span>
-            </DropdownMenuItem>
-          ))}
+          <DropdownMenuItem
+            onClick={() => setLinterEnabled(true)}
+            className="px-2.5 py-1.5 text-xs flex items-center justify-between cursor-pointer rounded"
+          >
+            <span>Check syntax before compile</span>
+            {linterEnabled && <Check className="size-3.5 text-foreground shrink-0 ml-auto" />}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => setLinterEnabled(false)}
+            className="px-2.5 py-1.5 text-xs flex items-center justify-between cursor-pointer rounded"
+          >
+            <span>Don’t check syntax</span>
+            {!linterEnabled && <Check className="size-3.5 text-foreground shrink-0 ml-auto" />}
+          </DropdownMenuItem>
 
-          {/* Overleaf Parity: Clear Cache and Recompile */}
-          {onClearCacheAndCompile && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={onClearCacheAndCompile}
-                className="text-xs flex items-center gap-2 text-rose-600 dark:text-rose-400 focus:text-rose-600 dark:focus:text-rose-400 cursor-pointer"
-              >
-                <RefreshCw className="size-3.5 shrink-0" />
-                <div className="flex flex-col">
-                  <span className="font-medium">Clear cache & recompile</span>
-                  <span className="text-[10px] text-muted-foreground">Recompile from scratch</span>
-                </div>
-              </DropdownMenuItem>
-            </>
-          )}
+          <DropdownMenuSeparator className="my-1.5" />
+
+          {/* Section 4: Compile error handling */}
+          <div className="px-2.5 pt-1 pb-1 text-[11px] font-medium text-muted-foreground select-none">
+            Compile error handling
+          </div>
+          <DropdownMenuItem
+            onClick={() => setStopOnFirstError(true)}
+            className="px-2.5 py-1.5 text-xs flex items-center justify-between cursor-pointer rounded"
+          >
+            <span>Stop on first error</span>
+            {stopOnFirstError && <Check className="size-3.5 text-foreground shrink-0 ml-auto" />}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => setStopOnFirstError(false)}
+            className="px-2.5 py-1.5 text-xs flex items-center justify-between cursor-pointer rounded"
+          >
+            <span>Try to compile despite errors</span>
+            {!stopOnFirstError && <Check className="size-3.5 text-foreground shrink-0 ml-auto" />}
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator className="my-1.5" />
+
+          {/* Section 5: Actions */}
+          <DropdownMenuItem
+            disabled={!isRunning}
+            onClick={handleStopCompilation}
+            className={cn(
+              "px-2.5 py-1.5 text-xs flex items-center cursor-pointer rounded",
+              !isRunning
+                ? "text-muted-foreground opacity-40 cursor-not-allowed hover:bg-transparent"
+                : "text-foreground hover:bg-accent"
+            )}
+          >
+            <span>Stop compilation</span>
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onClick={onClearCacheAndCompile}
+            className="px-2.5 py-1.5 text-xs flex items-center cursor-pointer rounded hover:bg-accent"
+          >
+            <span>Recompile from scratch</span>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -233,6 +267,7 @@ export interface ToolbarProps {
   autoCompile?: boolean;
   onToggleAutoCompile?: () => void;
   onClearCacheAndCompile?: () => void;
+  onStopCompilation?: () => void;
   onCompile: () => void;
   onForceSync?: () => void;
   // Zoom
@@ -264,6 +299,8 @@ export interface ToolbarProps {
   isPoppedOut?: boolean;
   outline?: PdfOutlineItem[];
   onOpenPresentationMode?: () => void;
+  isSpreadView?: boolean;
+  onToggleSpreadView?: () => void;
 }
 
 const Toolbar = React.memo(function Toolbar({
@@ -275,6 +312,7 @@ const Toolbar = React.memo(function Toolbar({
   autoCompile,
   onToggleAutoCompile,
   onClearCacheAndCompile,
+  onStopCompilation,
   onCompile,
   scale,
   autoFit,
@@ -290,6 +328,8 @@ const Toolbar = React.memo(function Toolbar({
   onJumpToPage,
   invertColors = false,
   onToggleInvertColors,
+  isSpreadView = false,
+  onToggleSpreadView,
   pdfUrl,
   compileLog,
   showLog,
@@ -325,6 +365,7 @@ const Toolbar = React.memo(function Toolbar({
   const activeFilePage = usePageStore((s) => s.activeFilePage);
   const getEditorContent = usePageStore((s) => s.getEditorContent);
   const [isExportingZip, setIsExportingZip] = useState(false);
+  const [isExportingDoc, setIsExportingDoc] = useState(false);
 
   const rootId =
     parentPageId ||
@@ -333,6 +374,38 @@ const Toolbar = React.memo(function Toolbar({
       ? currentPage.projectId
       : (currentPage?.projectId as any)?.id) ||
     '';
+
+  const handleDownloadWord = async () => {
+    if (!rootId) {
+      toast.error('Document root ID not found');
+      return;
+    }
+    setIsExportingDoc(true);
+    try {
+      await exportDocumentAsWord({
+        pageId: rootId,
+        projectTitle: currentPage?.title,
+      });
+    } finally {
+      setIsExportingDoc(false);
+    }
+  };
+
+  const handleDownloadMarkdown = async () => {
+    if (!rootId) {
+      toast.error('Document root ID not found');
+      return;
+    }
+    setIsExportingDoc(true);
+    try {
+      await exportDocumentAsMarkdown({
+        pageId: rootId,
+        projectTitle: currentPage?.title,
+      });
+    } finally {
+      setIsExportingDoc(false);
+    }
+  };
 
   const handleDownloadSourceZip = async () => {
     if (!rootId) {
@@ -403,6 +476,7 @@ const Toolbar = React.memo(function Toolbar({
           autoCompile={autoCompile}
           onToggleAutoCompile={onToggleAutoCompile}
           onClearCacheAndCompile={onClearCacheAndCompile}
+          onStopCompilation={onStopCompilation}
         />
 
         {/* Utility Group: Logs, Download, Popout */}
@@ -441,18 +515,18 @@ const Toolbar = React.memo(function Toolbar({
               </TooltipContent>
             </Tooltip>
 
-            {/* Download Dropdown (Overleaf Parity: PDF, Source ZIP, arXiv ZIP, Logs) */}
+            {/* Download Dropdown (Overleaf Parity: PDF, Word .docx, Markdown .md, Source ZIP, arXiv ZIP, Logs) */}
             <DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      disabled={isExportingZip}
+                      disabled={isExportingZip || isExportingDoc}
                       aria-label="Download or export options"
                       className="flex size-7 items-center justify-center rounded text-foreground/80 hover:text-foreground hover:bg-muted disabled:opacity-40 transition-colors cursor-pointer outline-none"
                     >
-                      {isExportingZip ? (
+                      {isExportingZip || isExportingDoc ? (
                         <Loader2 className="size-3.5 animate-spin text-primary shrink-0" />
                       ) : (
                         <Download className="size-3.5 shrink-0" />
@@ -479,9 +553,35 @@ const Toolbar = React.memo(function Toolbar({
                   </div>
                 </DropdownMenuItem>
 
+                {/* 2. Word (.docx) */}
+                <DropdownMenuItem
+                  onClick={handleDownloadWord}
+                  disabled={isExportingDoc}
+                  className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-muted focus:bg-muted"
+                >
+                  <FileType className="size-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-foreground">Word Document (.docx)</span>
+                    <span className="text-[10px] text-muted-foreground">OpenXML / Office compatible</span>
+                  </div>
+                </DropdownMenuItem>
+
+                {/* 3. Markdown (.md) */}
+                <DropdownMenuItem
+                  onClick={handleDownloadMarkdown}
+                  disabled={isExportingDoc}
+                  className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-muted focus:bg-muted"
+                >
+                  <FileCode className="size-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-foreground">Markdown Document (.md)</span>
+                    <span className="text-[10px] text-muted-foreground">Clean GitHub Flavored Markdown</span>
+                  </div>
+                </DropdownMenuItem>
+
                 <DropdownMenuSeparator className="my-1" />
 
-                {/* 2. Source ZIP */}
+                {/* 4. Source ZIP */}
                 <DropdownMenuItem
                   onClick={handleDownloadSourceZip}
                   disabled={isExportingZip}
@@ -494,7 +594,7 @@ const Toolbar = React.memo(function Toolbar({
                   </div>
                 </DropdownMenuItem>
 
-                {/* 3. arXiv Package */}
+                {/* 5. arXiv Package */}
                 <DropdownMenuItem
                   onClick={handleDownloadArxivZip}
                   disabled={isExportingZip}
@@ -509,7 +609,7 @@ const Toolbar = React.memo(function Toolbar({
 
                 <DropdownMenuSeparator className="my-1" />
 
-                {/* 4. Compile Log */}
+                {/* 6. Compile Log */}
                 <DropdownMenuItem
                   onClick={handleDownloadLog}
                   disabled={!compileLog}
@@ -591,6 +691,30 @@ const Toolbar = React.memo(function Toolbar({
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Invert PDF colors (Dark mode)</TooltipContent>
+          </Tooltip>
+        )}
+
+        {/* Two-page spread view toggle (📖) */}
+        {onToggleSpreadView && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onToggleSpreadView}
+                aria-label={isSpreadView ? "Switch to single page view" : "Two-page spread view"}
+                className={cn(
+                  'flex size-7 items-center justify-center rounded transition-colors cursor-pointer',
+                  isSpreadView
+                    ? 'bg-primary/15 text-primary shadow-2xs font-semibold'
+                    : 'text-foreground/80 hover:text-foreground hover:bg-muted',
+                )}
+              >
+                <BookOpen className="size-3.5 shrink-0" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {isSpreadView ? "Switch to single page view" : "Two-page spread view"}
+            </TooltipContent>
           </Tooltip>
         )}
 

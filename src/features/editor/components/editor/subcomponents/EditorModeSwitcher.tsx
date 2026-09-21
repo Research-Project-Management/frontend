@@ -63,7 +63,7 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
       ) : (
         <>
           <PenLine className="size-3 shrink-0 text-foreground/70" />
-          <span>Editing</span>
+          <span className="hidden md:inline">Editing</span>
           <ChevronDown className="size-3 shrink-0 opacity-60 ml-0.5" />
         </>
       )}

@@ -1,15 +1,6 @@
 /**
- * outline.schema.ts
- *
- * Zod validation schemas for Document Section Outline extraction.
- * Matches backend document/outline module DTOs.
+ * @deprecated
+ * Outline extraction is handled client-side via `pdf-outline.util.ts` and Monaco symbols.
+ * Backend outline module has been pruned.
  */
-
-import { z } from 'zod';
-
-export const extractOutlineSchema = z.object({
-  source: z.string().optional(),
-  includeChildren: z.boolean().default(true).optional(),
-});
-
-export type ExtractOutlineInput = z.infer<typeof extractOutlineSchema>;
+export {};

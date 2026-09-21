@@ -7,7 +7,7 @@
  *  - Heartbeat & Cursor Position
  */
 
-import { apiGet, apiPost, getAuthToken } from '@/shared/lib/api';
+import { apiGet, apiPost, getAuthToken, getEffectiveBaseUrl } from '@/shared/lib/api';
 
 export interface CollaborationPresence {
   id?: string;
@@ -87,7 +87,8 @@ export const collaborationService = {
     const path = projectId
       ? `/api/projects/${projectId}/pages/${pageId}/collaboration/stream`
       : `/api/pages/${pageId}/collaboration/stream`;
-    const url = `${path}${tokenQuery}`;
+    const baseUrl = getEffectiveBaseUrl().replace(/\/+$/, '');
+    const url = `${baseUrl}${path}${tokenQuery}`;
     const eventSource = new EventSource(url, { withCredentials: true });
 
     eventSource.onmessage = (e) => {

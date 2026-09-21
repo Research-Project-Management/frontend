@@ -18,6 +18,7 @@ export function ListView({ pages, workspaceId }: ListViewProps) {
             <tr>
               <th className="px-4 py-3 font-medium">Title</th>
               <th className="px-4 py-3 font-medium">Updated</th>
+              <th className="px-4 py-3 font-medium">Labels</th>
               <th className="px-4 py-3 font-medium">Author</th>
               <th className="px-4 py-3 font-medium text-right">Action</th>
             </tr>
@@ -48,6 +49,24 @@ export function ListView({ pages, workspaceId }: ListViewProps) {
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                     {page.updatedAt ? formatDate(page.updatedAt) : '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {(page.labels as any[])?.slice(0, 2).map((label: any) => (
+                        <span
+                          key={label.id ?? label}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border shrink-0"
+                          style={{
+                            backgroundColor: `${label.color ?? '#3b82f6'}15`,
+                            borderColor: `${label.color ?? '#3b82f6'}35`,
+                            color: label.color ?? '#3b82f6',
+                          }}
+                        >
+                          <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: label.color ?? '#3b82f6' }} />
+                          <span className="truncate max-w-[60px]">{label.name ?? label}</span>
+                        </span>
+                      ))}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                     {page.author?.name || '—'}

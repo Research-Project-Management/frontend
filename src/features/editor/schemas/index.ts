@@ -11,7 +11,6 @@ export * from './synctex.schema';
 export * from './comment.schema';
 export * from './suggestion.schema';
 export * from './history.schema';
-export * from './outline.schema';
 export * from './collaboration.schema';
 export * from './export.schema';
 export * from './asset.schema';

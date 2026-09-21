@@ -285,11 +285,16 @@ export default function HistoryView() {
         author: ev.savedBy?.name || 'Collaborator',
         authorAvatar: ev.savedBy?.avatar,
         eventType: ev.eventType,
-        pageId: ev.page,
+        pageId: (ev as any).pageId || ev.page || rootPageId,
       }));
     }
     return [];
-  }, [events, activeFilePage]);
+  }, [events, activeFilePage, rootPageId]);
+
+  // Count of labeled milestone versions
+  const labeledCount = useMemo(() => {
+    return timelineItems.filter((i) => Boolean(i.label && i.label.trim())).length;
+  }, [timelineItems]);
 
   // Set initial selected revision
   useEffect(() => {
@@ -301,7 +306,7 @@ export default function HistoryView() {
   // Filtered timeline (All history vs Labels)
   const filteredItems = useMemo(() => {
     if (timelineTab === 'labels') {
-      return timelineItems.filter((i) => Boolean(i.label));
+      return timelineItems.filter((i) => Boolean(i.label && i.label.trim()));
     }
     return timelineItems;
   }, [timelineItems, timelineTab]);
@@ -507,7 +512,7 @@ export default function HistoryView() {
     if (!labelingItem) return;
     try {
       await updateLabel.mutateAsync({
-        pageId: activeFileId || rootPageId,
+        pageId: (labelingItem as any).pageId || activeFileId || rootPageId,
         versionId: labelingItem.id,
         label: labelText.trim(),
         rootPageId,
@@ -829,6 +834,23 @@ export default function HistoryView() {
                     <Download className="size-3 shrink-0 text-sky-500" />
                     <span className="hidden lg:inline">Download ZIP</span>
                   </button>
+
+                  {/* Label Version (Milestone) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (activeRevision) {
+                        setLabelingItem(activeRevision);
+                        setLabelText(activeRevision.label || '');
+                        setLabelModalOpen(true);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 h-6 px-2.5 rounded border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 font-semibold text-[11px] transition-colors cursor-pointer shadow-2xs"
+                    title="Add or edit a milestone label for this revision"
+                  >
+                    <Tag className="size-3 shrink-0" />
+                    <span>{activeRevision?.label ? 'Edit label' : 'Label version'}</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -972,13 +994,18 @@ export default function HistoryView() {
                 type="button"
                 onClick={() => setTimelineTab('labels')}
                 className={cn(
-                  'flex-1 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer text-center',
+                  'flex-1 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5',
                   timelineTab === 'labels'
                     ? 'bg-[#16a34a] text-white shadow-2xs'
                     : 'text-zinc-400 hover:text-white',
                 )}
               >
-                Labels
+                <span>Labels</span>
+                {labeledCount > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 text-white font-mono leading-none">
+                    {labeledCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -992,10 +1019,18 @@ export default function HistoryView() {
               </div>
             ) : groupedTimeline.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-48 text-zinc-400 text-xs text-center p-4">
-                <Clock className="size-8 opacity-25 mb-2" />
-                <p className="font-semibold text-zinc-200">No revisions found</p>
+                {timelineTab === 'labels' ? (
+                  <Tag className="size-8 opacity-25 mb-2 text-purple-400" />
+                ) : (
+                  <Clock className="size-8 opacity-25 mb-2" />
+                )}
+                <p className="font-semibold text-zinc-200">
+                  {timelineTab === 'labels' ? 'No labeled versions' : 'No revisions found'}
+                </p>
                 <p className="text-[11px] text-zinc-400 mt-1">
-                  Changes will automatically be checkpointed as you compile and edit.
+                  {timelineTab === 'labels'
+                    ? 'Label milestone revisions (e.g. "Draft v1", "Submitted to arXiv") to bookmark key checkpoints.'
+                    : 'Changes will automatically be checkpointed as you compile and edit.'}
                 </p>
               </div>
             ) : (

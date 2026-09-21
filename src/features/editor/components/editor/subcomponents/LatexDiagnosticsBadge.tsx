@@ -59,11 +59,11 @@ export function LatexDiagnosticsBadge() {
     <div className="relative inline-flex items-center select-none" ref={popoverRef}>
       {totalIssues === 0 ? (
         <div
-          className="flex items-center gap-1 h-6 px-2 rounded-md text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
-          title="No LaTeX syntax issues detected in current file"
+          className="flex items-center gap-1 h-6 px-1.5 rounded-md text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shrink-0"
+          title="LaTeX Syntax OK: No issues detected in current file"
         >
-          <CheckCircle2 className="size-3 shrink-0 text-emerald-500" />
-          <span className="hidden sm:inline">Syntax OK</span>
+          <CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" />
+          <span className="hidden xl:inline">Syntax OK</span>
         </div>
       ) : (
         <button

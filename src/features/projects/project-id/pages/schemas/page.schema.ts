@@ -8,7 +8,13 @@ export const pageSchema = z.object({
   content: z.any().optional(),
   status: z.enum(['draft', 'published', 'archived']).optional(),
   pdfThumbnail: z.string().optional(),
-  labels: z.array(z.string()).default([]),
+  labels: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      color: z.string().default('#3b82f6'),
+    })
+  ).default([]),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
   workspaceId: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),

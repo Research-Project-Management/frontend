@@ -17,6 +17,7 @@ import {
   UserSquare2,
   AlertCircle,
   RefreshCw,
+  Tag,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import { Button, Skeleton } from "@/shared/components/ui";
@@ -24,6 +25,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/compo
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
 import { CreateProjectModal } from '../components/project/CreateProjectModal';
 import { UploadProjectZipModal } from '../components/project/UploadProjectZipModal';
+import { ProjectTagsBar } from '../components/project/ProjectTagsBar';
+import { ManageProjectTagsModal } from '../components/project/ManageProjectTagsModal';
 import { ProjectAvatar } from "@/shared/components/ui";
 import { Topbar } from '../components/project/Topbar';
 import { Card } from '../components/project/Card';
@@ -44,6 +47,7 @@ import {
   useProjects,
   useArchiveProject,
 } from '../hooks/use-project';
+import { useUserProjectLabels } from '../hooks/use-project-labels';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { cn } from "@/shared/lib/utils";
 import type { Project } from '../types/project.types';
@@ -86,6 +90,9 @@ export function ProjectsPage() {
   });
   const [sortBy, setSortBy] = useState<ProjectSortOption>('updated');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
+  const [tagModalProject, setTagModalProject] = useState<Project | null>(null);
+  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -99,6 +106,7 @@ export function ProjectsPage() {
   }, []);
 
   const { projects: rawProjects = [], isLoading, isError } = useProjects();
+  const { labels: userLabels = [] } = useUserProjectLabels();
   const archiveProjectMutation = useArchiveProject();
 
   const handleSetViewMode = (mode: ViewMode) => {
@@ -132,9 +140,15 @@ export function ProjectsPage() {
       popoverFilter,
       user?.id
     );
-    const searched = searchProjects(byCriteria, searchQuery);
+    let filtered = byCriteria;
+    if (selectedTagId) {
+      filtered = filtered.filter((p) =>
+        p.projectLabelsList?.some((l) => l.id === selectedTagId)
+      );
+    }
+    const searched = searchProjects(filtered, searchQuery);
     return sortProjects(searched, sortBy);
-  }, [activeProjects, activeFilter, popoverFilter, searchQuery, sortBy, user]);
+  }, [activeProjects, activeFilter, popoverFilter, selectedTagId, searchQuery, sortBy, user]);
 
   const handleArchiveProject = (projectId: string) => {
     archiveProjectMutation.mutate({ projectId });
@@ -300,6 +314,20 @@ export function ProjectsPage() {
         </div>
       )}
 
+      {/* Tags & Folders Bar (Overleaf Parity) */}
+      {activeProjects.length > 0 && (
+        <ProjectTagsBar
+          labels={userLabels}
+          selectedTagId={selectedTagId}
+          onSelectTag={setSelectedTagId}
+          projects={activeProjects}
+          onNewTagClick={() => {
+            setTagModalProject(null);
+            setIsTagModalOpen(true);
+          }}
+        />
+      )}
+
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-6 min-w-0">
         {/* Loading state */}
@@ -343,6 +371,10 @@ export function ProjectsPage() {
                 key={project.id}
                 project={project}
                 onArchive={handleArchiveProject}
+                onManageTags={(p) => {
+                  setTagModalProject(p);
+                  setIsTagModalOpen(true);
+                }}
               />
             ))}
           </div>
@@ -390,6 +422,34 @@ export function ProjectsPage() {
                         <p className="text-xs text-muted-foreground truncate max-w-xl">
                           {project.description}
                         </p>
+                      )}
+
+                      {/* Tag Badges in List View */}
+                      {project.projectLabelsList && project.projectLabelsList.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1 mt-1">
+                          {project.projectLabelsList.slice(0, 3).map((l) => (
+                            <span
+                              key={l.id}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-medium border"
+                              style={{
+                                backgroundColor: `${l.color}15`,
+                                borderColor: `${l.color}35`,
+                                color: l.color,
+                              }}
+                            >
+                              <span
+                                className="size-1.5 rounded-full shrink-0"
+                                style={{ backgroundColor: l.color }}
+                              />
+                              <span>{l.name}</span>
+                            </span>
+                          ))}
+                          {project.projectLabelsList.length > 3 && (
+                            <span className="text-[10px] text-muted-foreground font-mono px-1 py-0.2 rounded bg-muted border border-border">
+                              +{project.projectLabelsList.length - 3}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -453,6 +513,18 @@ export function ProjectsPage() {
                         >
                           <Link2 className="size-3.5 shrink-0" />
                           <span>Copy link</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setTagModalProject(project);
+                            setIsTagModalOpen(true);
+                          }}
+                          className="cursor-pointer font-medium flex items-center gap-2"
+                        >
+                          <Tag className="size-3.5 shrink-0 text-muted-foreground" />
+                          <span>Manage Tags & Folders</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild className="cursor-pointer font-medium">
                           <Link
@@ -546,6 +618,16 @@ export function ProjectsPage() {
         open={isUploadZipOpen}
         onOpenChange={setIsUploadZipOpen}
         onSuccess={() => setIsUploadZipOpen(false)}
+      />
+
+      {/* Manage Project Tags & Folders Modal (Overleaf Parity) */}
+      <ManageProjectTagsModal
+        project={tagModalProject}
+        isOpen={isTagModalOpen}
+        onClose={() => {
+          setIsTagModalOpen(false);
+          setTagModalProject(null);
+        }}
       />
     </div>
   );

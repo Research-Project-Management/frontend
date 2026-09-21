@@ -8,6 +8,9 @@ import {
   ProjectService,
   projectKeys,
   fetchUserProjects,
+  duplicateProjectApi,
+  fetchTrashedProjects,
+  permanentDeleteProjectApi,
   type Project,
   type ProjectPermissions,
   type CreateProjectInput,
@@ -729,3 +732,59 @@ export function useProjectMembers(projectId: string): UseProjectMembersReturn {
     [state, actions, members, query.isLoading, query.isError, query.refetch]
   );
 }
+
+// ── Duplicate Project ─────────────────────────────────────────────────────────
+
+export const useDuplicateProject = () => {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, Error, ProjectIdVariables>({
+    mutationFn: ({ projectId }: ProjectIdVariables) => duplicateProjectApi(projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.projectsHeader() });
+      toast.success('Project duplicated successfully', { id: 'project-duplicate-success' });
+    },
+    onError: (error: Error) => {
+      toast.error(error?.message || 'Failed to duplicate project', { id: 'project-duplicate-error' });
+    },
+  });
+};
+
+// ── Trash (Soft-deleted projects) ─────────────────────────────────────────────
+
+export const trashProjectKeys = {
+  all: () => ['projects', 'trash'] as const,
+};
+
+export const useTrashedProjects = () => {
+  const query = useQuery({
+    queryKey: trashProjectKeys.all(),
+    queryFn: ({ signal }) => fetchTrashedProjects(signal),
+    staleTime: 30_000,
+  });
+
+  const projects = (query.data as any)?.projects ?? [];
+  return {
+    projects,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    refetch: query.refetch,
+  };
+};
+
+export const usePermanentDeleteProject = () => {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, Error, ProjectIdVariables>({
+    mutationFn: ({ projectId }: ProjectIdVariables) => permanentDeleteProjectApi(projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: trashProjectKeys.all() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.all() });
+      toast.success('Project permanently deleted', { id: 'project-permanent-delete-success' });
+    },
+    onError: (error: Error) => {
+      toast.error(error?.message || 'Failed to permanently delete project', {
+        id: 'project-permanent-delete-error',
+      });
+    },
+  });
+};

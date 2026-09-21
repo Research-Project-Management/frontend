@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { editor } from 'monaco-editor';
+import type { KeybindingMode } from '@/features/editor/store/settings.store';
 
 export interface UseEditorVimOptions {
   editor: editor.IStandaloneCodeEditor | null;
-  keybinding: 'standard' | 'vim';
+  keybinding: KeybindingMode;
   statusNodeRef: React.RefObject<HTMLDivElement | null>;
   onSave?: () => void;
 }

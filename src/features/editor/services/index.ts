@@ -20,3 +20,4 @@ export * from './history.service';
 export * from './collaboration.service';
 export * from './citation.service';
 export * from './storage.service';
+export * from './export.service';

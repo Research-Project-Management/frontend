@@ -89,4 +89,46 @@ describe('Advanced IDE Features (Overleaf Parity)', () => {
       expect(LatexCompilerEngine.resolveForwardDetail(999, null)).toBeNull();
     });
   });
+
+  describe('Overleaf 1:1 Parity: Recompile Menu Options & State', () => {
+    it('should support toggling Auto compile (On / Off)', async () => {
+      const { useDocumentSettingsStore } = await import('@/features/editor/store');
+      useDocumentSettingsStore.getState().setAutoCompile(true);
+      expect(useDocumentSettingsStore.getState().autoCompile).toBe(true);
+
+      useDocumentSettingsStore.getState().setAutoCompile(false);
+      expect(useDocumentSettingsStore.getState().autoCompile).toBe(false);
+    });
+
+    it('should support switching Compile mode (Normal / Fast [draft])', async () => {
+      const { useDocumentSettingsStore } = await import('@/features/editor/store');
+      useDocumentSettingsStore.getState().setCompileMode('full');
+      expect(useDocumentSettingsStore.getState().compileMode).toBe('full');
+
+      useDocumentSettingsStore.getState().setCompileMode('draft');
+      expect(useDocumentSettingsStore.getState().compileMode).toBe('draft');
+    });
+
+    it('should support toggling Syntax checks (Check syntax before compile / Don’t check syntax)', async () => {
+      const { useDocumentSettingsStore } = await import('@/features/editor/store');
+      useDocumentSettingsStore.getState().setLinterEnabled(true);
+      expect(useDocumentSettingsStore.getState().linterEnabled).toBe(true);
+
+      useDocumentSettingsStore.getState().setLinterEnabled(false);
+      expect(useDocumentSettingsStore.getState().linterEnabled).toBe(false);
+    });
+
+    it('should support toggling Compile error handling (Stop on first error / Try to compile despite errors)', async () => {
+      const { useDocumentSettingsStore } = await import('@/features/editor/store');
+      useDocumentSettingsStore.getState().setStopOnFirstError(true);
+      expect(useDocumentSettingsStore.getState().stopOnFirstError).toBe(true);
+
+      useDocumentSettingsStore.getState().setStopOnFirstError(false);
+      expect(useDocumentSettingsStore.getState().stopOnFirstError).toBe(false);
+    });
+
+    it('should allow stopping in-flight compilation via LatexCompilerEngine.cancelInFlightCompile', () => {
+      expect(() => LatexCompilerEngine.cancelInFlightCompile()).not.toThrow();
+    });
+  });
 });

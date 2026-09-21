@@ -1,7 +1,15 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AcademicAiService } from '@/features/editor/services/ai-academic-assistant.service';
 
 describe('AI Inline Floating Assistant & Academic Rephrase (Overleaf AI Parity)', () => {
+  beforeEach(() => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Test network offline'));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('enhances academic tone while preserving citations and math formulas verbatim', async () => {
     const rawText = 'We look at a lot of samples to show that $E = mc^2$ holds as cited in \\cite{einstein1905}.';
 

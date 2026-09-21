@@ -12,13 +12,15 @@ import {
   Settings,
   Archive,
   Share2,
+  Tag,
+  Copy,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import { ProjectAvatar } from "@/shared/components/ui";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { useFavorites } from '../../hooks/use-favorites';
-import { useArchiveProject } from '../../hooks/use-project';
+import { useArchiveProject, useDuplicateProject } from '../../hooks/use-project';
 import {
   getProjectKey,
   getBannerGradient,
@@ -29,9 +31,10 @@ import type { Project } from '../../types/project.types';
 export type CardProps = {
   project: Project;
   onArchive?: (projectId: string) => void;
+  onManageTags?: (project: Project) => void;
 };
 
-export function Card({ project, onArchive }: CardProps) {
+export function Card({ project, onArchive, onManageTags }: CardProps) {
   const projectId = project.id || '';
   const projectKey = (project as any).key || project.identifier || getProjectKey(project.name);
   const isPrivate = isProjectPrivate(project);
@@ -40,6 +43,7 @@ export function Card({ project, onArchive }: CardProps) {
   const favorited = isFavorite(projectId);
 
   const archiveProjectMutation = useArchiveProject();
+  const duplicateProjectMutation = useDuplicateProject();
   const canArchive = project.permissions?.canArchive ?? (project.yourRole === 'owner');
 
   // Find lead from members or creator
@@ -121,6 +125,17 @@ export function Card({ project, onArchive }: CardProps) {
                 <Link2 className="size-3.5 shrink-0" />
                 <span>Copy link</span>
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onManageTags?.(project);
+                }}
+                className="cursor-pointer font-medium flex items-center gap-2"
+              >
+                <Tag className="size-3.5 shrink-0 text-muted-foreground" />
+                <span>Manage Tags & Folders</span>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer font-medium">
                 <Link
                   href={`/projects/${projectId}/settings`}
@@ -129,6 +144,18 @@ export function Card({ project, onArchive }: CardProps) {
                   <Settings className="size-3.5 shrink-0" />
                   <span>Settings</span>
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  duplicateProjectMutation.mutate({ projectId });
+                }}
+                disabled={duplicateProjectMutation.isPending}
+                className="cursor-pointer font-medium flex items-center gap-2"
+              >
+                <Copy className="size-3.5 shrink-0 text-muted-foreground" />
+                <span>{duplicateProjectMutation.isPending ? 'Duplicating…' : 'Duplicate project'}</span>
               </DropdownMenuItem>
               {canArchive && (
                 <DropdownMenuItem
@@ -170,6 +197,34 @@ export function Card({ project, onArchive }: CardProps) {
             </p>
           ) : (
             <p className="text-xs text-muted-foreground/50 italic">No description provided</p>
+          )}
+
+          {/* Project Tags */}
+          {project.projectLabelsList && project.projectLabelsList.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1 pt-1.5 min-w-0">
+              {project.projectLabelsList.slice(0, 3).map((label) => (
+                <span
+                  key={label.id}
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border shrink-0"
+                  style={{
+                    backgroundColor: `${label.color}15`,
+                    borderColor: `${label.color}35`,
+                    color: label.color,
+                  }}
+                >
+                  <span
+                    className="size-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: label.color }}
+                  />
+                  <span className="truncate max-w-[90px]">{label.name}</span>
+                </span>
+              ))}
+              {project.projectLabelsList.length > 3 && (
+                <span className="text-[10px] text-muted-foreground font-mono px-1 py-0.5 rounded bg-muted border border-border">
+                  +{project.projectLabelsList.length - 3}
+                </span>
+              )}
+            </div>
           )}
         </div>
 

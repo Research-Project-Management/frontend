@@ -19,6 +19,8 @@ import {
   type PdfOutlineItem,
 } from '@/features/editor/utils/pdf-outline.util';
 
+import { toast } from 'sonner';
+
 import Toolbar from './Toolbar';
 import Surface, { type SurfaceHandle } from './Surface';
 import Logs, { parseLatexLog } from './Logs';
@@ -49,6 +51,8 @@ export default function Viewer() {
   const setAutoCompile = useSettingsStore((s) => s.setAutoCompile);
   const texLiveVersion = useSettingsStore((s) => s.texLiveVersion);
   const stopOnFirstError = useSettingsStore((s) => s.stopOnFirstError);
+  const pdfSpreadView = useSettingsStore((s) => s.pdfSpreadView);
+  const togglePdfSpreadView = useSettingsStore((s) => s.togglePdfSpreadView);
 
   const compileStatus = useCompileStore((s) => s.compileStatus);
   const setCompileStatus = useCompileStore((s) => s.setCompileStatus);
@@ -132,9 +136,10 @@ export default function Viewer() {
 
   const fittedScale = useMemo(() => {
     const available = containerWidth - 48;
-    const s = available / 595;
-    return Math.max(0.5, Math.min(s, 2.5));
-  }, [containerWidth]);
+    const targetWidth = pdfSpreadView ? 595 * 2 + 16 : 595;
+    const s = available / targetWidth;
+    return Math.max(0.3, Math.min(s, 2.5));
+  }, [containerWidth, pdfSpreadView]);
 
   useEffect(() => {
     if (autoFit) {
@@ -723,6 +728,11 @@ export default function Viewer() {
     setScale(s);
   }, []);
   const handleSetCompileMode = useCallback((m: 'full' | 'draft') => setCompileMode(m), [setCompileMode]);
+  const handleStopCompilation = useCallback(() => {
+    LatexCompilerEngine.cancelInFlightCompile();
+    setCompileStatus('idle');
+    toast.info('Compilation stopped');
+  }, [setCompileStatus]);
 
   // If detached, show placeholder with toolbar controls
   if (isViewerPoppedOut) {
@@ -737,6 +747,7 @@ export default function Viewer() {
           autoCompile={autoCompile}
           onToggleAutoCompile={handleToggleAutoCompile}
           onClearCacheAndCompile={handleClearCacheAndCompile}
+          onStopCompilation={handleStopCompilation}
           onCompile={handleCompile}
           onForceSync={handleForceSync}
           scale={scale}
@@ -799,6 +810,7 @@ export default function Viewer() {
         autoCompile={autoCompile}
         onToggleAutoCompile={handleToggleAutoCompile}
         onClearCacheAndCompile={handleClearCacheAndCompile}
+        onStopCompilation={handleStopCompilation}
         onCompile={handleCompile}
         onForceSync={handleForceSync}
         scale={scale}
@@ -825,6 +837,8 @@ export default function Viewer() {
         onJumpToPage={handleJumpToPage}
         invertColors={invertColors}
         onToggleInvertColors={handleToggleInvertColors}
+        isSpreadView={pdfSpreadView}
+        onToggleSpreadView={togglePdfSpreadView}
         onOpenPresentationMode={() => setIsPresentationOpen(true)}
       />
 
@@ -847,6 +861,7 @@ export default function Viewer() {
           onJumpToSource={handleJumpToSource}
           onCompile={handleCompile}
           invertColors={invertColors}
+          isSpreadView={pdfSpreadView}
         />
 
         {showLog && compileLog && (

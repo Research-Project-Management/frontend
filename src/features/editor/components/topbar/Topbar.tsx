@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Home, PanelLeft, History, Users, Check, Loader2, MessageSquareQuote } from 'lucide-react';
+import { Home, PanelLeft, History, Check, Loader2, MessageSquareQuote } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import {
@@ -22,7 +22,6 @@ import FormatMenu from './format/FormatMenu';
 import DocumentBreadcrumb from './breadcrumb/DocumentBreadcrumb';
 import LayoutSwitcher from './view/LayoutSwitcher';
 import Trigger from './settings/Trigger';
-import ShareProjectModal from '@/features/editor/components/modals/ShareProjectModal';
 import TemplateGalleryModal from '@/features/editor/components/modals/TemplateGalleryModal';
 import KeyboardShortcutsModal from '@/features/editor/components/modals/KeyboardShortcutsModal';
 import QuickOpenModal from '@/features/editor/components/modals/QuickOpenModal';
@@ -39,7 +38,6 @@ export default function Topbar() {
   const {
     toggleHistory,
     isHistoryOpen,
-    setIsShareModalOpen,
     activeSidebarPanel,
     setActiveSidebarPanel,
   } = useSettingsStore();
@@ -195,17 +193,6 @@ export default function Topbar() {
 
         <button
           type="button"
-          onClick={() => setIsShareModalOpen(true)}
-          title="Share Project & Manage Collaborators"
-          aria-label="Share Project"
-          className="flex items-center gap-1.5 h-7 px-2.5 rounded-full text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer outline-none select-none"
-        >
-          <Users className="size-3.5 shrink-0" />
-          <span className="hidden sm:inline">Share</span>
-        </button>
-
-        <button
-          type="button"
           onClick={handleToggleReview}
           title={
             totalReviewItems > 0
@@ -255,7 +242,6 @@ export default function Topbar() {
         <LayoutSwitcher />
         <Trigger />
 
-        <ShareProjectModal />
         <TemplateGalleryModal />
         <KeyboardShortcutsModal
           open={isShortcutsOpen}

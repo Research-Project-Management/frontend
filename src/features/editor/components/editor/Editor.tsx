@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useLayoutEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 import type { OnMount } from '@monaco-editor/react';
 import { useParams } from 'next/navigation';
@@ -24,6 +24,7 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { toast } from 'sonner';
 import { Lock } from 'lucide-react';
+import { useTheme } from '@/shared/providers';
 
 // Subcomponents & internal seams
 import './monaco-themes';
@@ -31,16 +32,18 @@ import Format from './Format';
 import VisualEditor from './VisualEditor';
 import CitationPickerModal from './CitationPickerModal';
 import { registerLabelCompletion } from './label-completion.provider';
+import { registerFilePathCompletion } from './file-completion.provider';
 import { registerLatexSnippets, registerLatexLinkedEditing } from './latex-snippets.provider';
 import { registerLatexLinter } from './latex-linter.provider';
 import { registerMathHoverPreview } from './math-hover.provider';
 
-import { useEditorSave } from './hooks/use-editor-save';
+import { useEditorSave, extractStringContent } from './hooks/use-editor-save';
 import { useEditorDecorations } from './hooks/use-editor-decorations';
 import { useEditorShortcuts } from './hooks/use-editor-shortcuts';
 import { useEditorCitation } from './hooks/use-editor-citation';
 import { useEditorCollaborators } from './hooks/use-editor-collaborators';
 import { useEditorVim } from './hooks/use-editor-vim';
+import { useEditorEmacs } from './hooks/use-editor-emacs';
 import { useSpellChecker } from './hooks/use-spell-checker';
 import { useSmartPaste } from './hooks/use-smart-paste';
 import { cn } from '@/shared/lib/utils';
@@ -84,6 +87,28 @@ export default function Editor({ page }: EditorProps) {
   const toggleReviewMode = useSettingsStore((s) => s.toggleReviewMode);
   const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
   const setTrackChangesViewMode = useSettingsStore((s) => s.setTrackChangesViewMode);
+
+  const { resolvedTheme } = useTheme();
+
+  const activeMonacoTheme = useMemo(() => {
+    if (!editorTheme || editorTheme === 'auto') {
+      return resolvedTheme === 'dark' ? 'latex-dark' : 'latex-light';
+    }
+    if (editorTheme === 'light') return 'latex-light';
+    if (editorTheme === 'dark') return 'latex-dark';
+    return editorTheme;
+  }, [editorTheme, resolvedTheme]);
+
+  const isDarkTheme = useMemo(() => {
+    return (
+      activeMonacoTheme === 'latex-dark' ||
+      activeMonacoTheme === 'dracula' ||
+      activeMonacoTheme === 'monokai' ||
+      activeMonacoTheme === 'solarized-dark' ||
+      activeMonacoTheme === 'github-dark' ||
+      activeMonacoTheme === 'cobalt'
+    );
+  }, [activeMonacoTheme]);
 
   const { user } = useAuth();
   const isReviewerOnly = user?.role?.toLowerCase() === 'reviewer';
@@ -185,6 +210,14 @@ export default function Editor({ page }: EditorProps) {
     editor: editorMounted ? editorRef.current : null,
     keybinding,
     statusNodeRef: vimStatusRef,
+    onSave: handleSaveAndCompile,
+  });
+
+  const emacsStatusRef = useRef<HTMLDivElement>(null);
+  const { isEmacsActive, emacsStatus } = useEditorEmacs({
+    editor: editorMounted ? editorRef.current : null,
+    keybinding,
+    statusNodeRef: emacsStatusRef,
     onSave: handleSaveAndCompile,
   });
 
@@ -301,16 +334,22 @@ export default function Editor({ page }: EditorProps) {
 
   const handleAcceptSuggestion = useCallback(async (s: PageSuggestion) => {
     try {
-      await acceptSuggestionMutation.mutateAsync({
+      const res = await acceptSuggestionMutation.mutateAsync({
         pageId: page.id,
         suggestionId: s.id,
       });
+      if (res?.page?.content && !isRealtimeActive) {
+        const text = extractStringContent(res.page.content);
+        if (editorRef.current && editorRef.current.getValue() !== text) {
+          editorRef.current.setValue(text);
+        }
+      }
       toast.success(`Accepted suggestion by ${s.author?.name || 'author'}`);
       setActiveSuggestionWidgetData(null);
     } catch {
       toast.error('Failed to accept suggestion');
     }
-  }, [acceptSuggestionMutation, page.id, setActiveSuggestionWidgetData]);
+  }, [acceptSuggestionMutation, isRealtimeActive, page.id, setActiveSuggestionWidgetData]);
 
   const handleRejectSuggestion = useCallback(async (s: PageSuggestion) => {
     try {
@@ -324,6 +363,23 @@ export default function Editor({ page }: EditorProps) {
       toast.error('Failed to reject suggestion');
     }
   }, [page.id, rejectSuggestionMutation, setActiveSuggestionWidgetData]);
+
+  // Synchronize editor buffer when a suggestion is accepted elsewhere in single-user mode
+  useEffect(() => {
+    if (!page?.id) return;
+    const unsub = EditorEventBus.on('flux:review-event', ({ pageId: evtPageId, event, payload }) => {
+      if (evtPageId !== page.id) return;
+      if (event === 'suggestion:accepted' || event === 'suggestions:accepted-all') {
+        if (!isRealtimeActive && payload?.page?.content) {
+          const text = extractStringContent(payload.page.content);
+          if (editorRef.current && editorRef.current.getValue() !== text) {
+            editorRef.current.setValue(text);
+          }
+        }
+      }
+    });
+    return () => unsub();
+  }, [isRealtimeActive, page?.id]);
 
   const {
     bibEntries,
@@ -591,6 +647,9 @@ export default function Editor({ page }: EditorProps) {
     disposablesRef.current.push(registerCitationProvider(monaco));
     disposablesRef.current.push(
       registerLabelCompletion(monaco, () => pageFilesRef.current),
+    );
+    disposablesRef.current.push(
+      registerFilePathCompletion(monaco, () => pageFilesRef.current),
     );
     disposablesRef.current.push(registerLatexSnippets(monaco));
     disposablesRef.current.push(registerLatexLinkedEditing(monaco));
@@ -949,11 +1008,11 @@ export default function Editor({ page }: EditorProps) {
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
-      <div className="h-9 flex items-center justify-between border-b border-border bg-background pr-2 shrink-0">
-        <div className="flex-1 min-w-0">
+      <div className="h-9 flex items-center justify-between border-b border-border bg-background pl-1 pr-2 shrink-0 overflow-hidden gap-1.5">
+        <div className="flex-1 min-w-0 overflow-hidden">
           <Format />
         </div>
-        <div className="flex items-center gap-2 ml-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0 select-none">
           <LatexDiagnosticsBadge />
           <EditorModeSwitcher
             reviewMode={reviewMode}
@@ -1083,7 +1142,7 @@ export default function Editor({ page }: EditorProps) {
             <VisualEditor
               value={currentContent}
               onChange={handleContentChange}
-              theme={editorTheme === 'dark' ? 'dark' : 'light'}
+              theme={isDarkTheme ? 'dark' : 'light'}
               readOnly={isReadOnly}
               onSwitchToCode={() => setEditorMode('code')}
             />
@@ -1093,7 +1152,7 @@ export default function Editor({ page }: EditorProps) {
               defaultLanguage="latex"
               value={currentContent}
               onChange={handleContentChange}
-              theme={editorTheme === 'dark' ? 'latex-dark' : 'latex-light'}
+              theme={activeMonacoTheme}
               className=""
               onMount={handleEditorMount}
               options={{
@@ -1228,6 +1287,30 @@ export default function Editor({ page }: EditorProps) {
             )}
             aria-label="Vim mode status bar"
           />
+        )}
+
+        {/* Monaco Emacs status bar */}
+        {keybinding === 'emacs' && (
+          <div
+            ref={emacsStatusRef}
+            className={cn(
+              "emacs-status-bar h-6 px-3 bg-muted/70 border-t border-border flex items-center justify-between font-mono text-xs text-muted-foreground select-none shrink-0 transition-colors",
+              !isEmacsActive && "hidden"
+            )}
+            aria-label="Emacs mode status bar"
+          >
+            <div className="flex items-center gap-2">
+              <span className="px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-[10px] font-semibold uppercase tracking-wider">
+                Emacs
+              </span>
+              <span className="text-foreground font-medium text-xs">
+                {emacsStatus || 'Ready'}
+              </span>
+            </div>
+            <span className="text-[11px] text-muted-foreground">
+              C-x C-s to save · C-g to quit
+            </span>
+          </div>
         )}
       </div>
 

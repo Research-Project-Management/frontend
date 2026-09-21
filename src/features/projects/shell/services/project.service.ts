@@ -210,3 +210,13 @@ export const addProjectMember = addProjectMemberApi;
 export const updateProjectMemberRole = updateProjectMemberRoleApi;
 export const removeProjectMember = removeProjectMemberApi;
 
+// ── Duplicate, Trash & Permanent Delete ────────────────────────────────────────
+
+export const duplicateProjectApi = (projectId: string) =>
+  apiPost<ProjectDetailResponse>(`/api/projects/${projectId}/duplicate`, {});
+
+export const fetchTrashedProjects = (signal?: AbortSignal) =>
+  apiGet<ProjectListResponse>(`/api/projects/trash`, { signal });
+
+export const permanentDeleteProjectApi = (projectId: string) =>
+  apiDelete<{ message: string }>(`/api/projects/${projectId}/permanent`);

@@ -64,8 +64,8 @@ export const pageService = {
   },
 };
 
+// Backwards-compatible alias for export and legacy utilities
 export const documentService = pageService;
-export const PageDocumentService = pageService;
 
 // ─── 2. Child Files ──────────────────────────────────────────────────────────
 
@@ -107,4 +107,3 @@ export const fileService = {
   },
 };
 
-export const PageFileService = fileService;

@@ -1,6 +1,14 @@
 'use client';
 
-import React, { useRef, useImperativeHandle, forwardRef, useState, useEffect, useCallback } from 'react';
+import React, {
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { AlertCircle, FileText, Loader2, Play } from 'lucide-react';
 import { LatexCompilerEngine, type SyncTeXMap } from '@/features/editor/utils/viewer.util';
@@ -193,6 +201,7 @@ export interface SurfaceProps {
   ) => void;
   onCompile?: () => void;
   invertColors?: boolean;
+  isSpreadView?: boolean;
 }
 
 export type PdfSurfaceProps = SurfaceProps;
@@ -212,6 +221,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
     onJumpToSource,
     onCompile,
     invertColors = false,
+    isSpreadView = false,
   },
   ref,
 ) {
@@ -237,6 +247,19 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
     },
     [],
   );
+
+  const pagePairs = useMemo(() => {
+    if (!isSpreadView) return [];
+    const pairs: number[][] = [];
+    for (let i = 0; i < numPages; i += 2) {
+      if (i + 1 < numPages) {
+        pairs.push([i, i + 1]);
+      } else {
+        pairs.push([i]);
+      }
+    }
+    return pairs;
+  }, [numPages, isSpreadView]);
 
   // Expose container, scrollToPage, and target highlighting via ref
   useImperativeHandle(ref, () => ({
@@ -379,22 +402,48 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
           }
         >
           {scrollMode ? (
-            <div
-              className="flex flex-col gap-1 transition-[filter] duration-200"
-              style={invertColors ? { filter: 'invert(0.9) hue-rotate(180deg) contrast(1.25)' } : undefined}
-            >
-              {Array.from({ length: numPages }, (_, i) => (
-                <OptimizedPDFPage
-                  key={`page_${i + 1}`}
-                  pageIndex={i}
-                  scale={scale}
-                  pageElemRefs={pageElemRefs}
-                  approxHeightRef={approxHeightRef}
-                  onDoubleClickPage={handleDoubleClickPage}
-                  clickIndicator={clickIndicator}
-                />
-              ))}
-            </div>
+            isSpreadView ? (
+              <div
+                className="flex flex-col gap-3 transition-[filter] duration-200 items-center w-full"
+                style={invertColors ? { filter: 'invert(0.9) hue-rotate(180deg) contrast(1.25)' } : undefined}
+              >
+                {pagePairs.map((pair: number[], rowIdx: number) => (
+                  <div
+                    key={`spread_row_${rowIdx}`}
+                    className="flex flex-row justify-center gap-3 w-full"
+                  >
+                    {pair.map((pageIdx: number) => (
+                      <OptimizedPDFPage
+                        key={`page_${pageIdx + 1}`}
+                        pageIndex={pageIdx}
+                        scale={scale}
+                        pageElemRefs={pageElemRefs}
+                        approxHeightRef={approxHeightRef}
+                        onDoubleClickPage={handleDoubleClickPage}
+                        clickIndicator={clickIndicator}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                className="flex flex-col gap-1 transition-[filter] duration-200"
+                style={invertColors ? { filter: 'invert(0.9) hue-rotate(180deg) contrast(1.25)' } : undefined}
+              >
+                {Array.from({ length: numPages }, (_, i) => (
+                  <OptimizedPDFPage
+                    key={`page_${i + 1}`}
+                    pageIndex={i}
+                    scale={scale}
+                    pageElemRefs={pageElemRefs}
+                    approxHeightRef={approxHeightRef}
+                    onDoubleClickPage={handleDoubleClickPage}
+                    clickIndicator={clickIndicator}
+                  />
+                ))}
+              </div>
+            )
           ) : (
             <div
               ref={(el) => {

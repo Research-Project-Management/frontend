@@ -52,6 +52,7 @@ import { toast } from 'sonner';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
 import { MentionTextarea } from './subcomponents/MentionTextarea';
 import { MentionRenderer } from './subcomponents/MentionBadge';
+import { NotificationDigestBadge } from './subcomponents/NotificationDigestBadge';
 import { type MentionMember, extractMentions } from '@/features/editor/utils/mention.util';
 
 
@@ -581,6 +582,15 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
         queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
         queryClient.invalidateQueries({ queryKey: ['pages', 'detail', pageId] });
       }
+      if (event === 'notification:digest') {
+        queryClient.invalidateQueries({ queryKey: ['notification-bundler'] });
+        const digest = payload?.digest;
+        if (digest && user?.id === payload?.recipientId) {
+          toast.info('Review digest received', {
+            description: digest.summary,
+          });
+        }
+      }
       if (event === 'comment:mention') {
         const mentionedIds = payload?.mentionedUserIds || [];
         if (user?.id && mentionedIds.includes(user.id)) {
@@ -782,6 +792,11 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
           <GitPullRequest className="size-3.5 shrink-0" />
           <span>Track Changes ({pendingSuggestions.length})</span>
         </button>
+      </div>
+
+      {/* ── Overleaf 10-Minute Notification Digest Banner ── */}
+      <div className="px-3 pt-2 shrink-0">
+        <NotificationDigestBadge projectId={projectId} pageId={pageId} />
       </div>
 
       {/* ── VIEW 1: COMMENTS ── */}

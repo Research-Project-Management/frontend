@@ -37,3 +37,25 @@ export const PageService = {
     return res.page;
   },
 };
+
+export const getPageLabels = (projectId: string, pageId: string) =>
+  apiGet<{ labels: Array<{ id: string; name: string; color: string }> }>(
+    `/api/projects/${projectId}/pages/${pageId}/labels`
+  );
+
+export const assignPageLabels = (projectId: string, pageId: string, labelIds: string[]) =>
+  apiPost<{ labels: Array<{ id: string; name: string; color: string }> }>(
+    `/api/projects/${projectId}/pages/${pageId}/labels`,
+    { labelIds }
+  );
+
+export const replacePageLabels = (projectId: string, pageId: string, labelIds: string[]) =>
+  apiPut<{ labels: Array<{ id: string; name: string; color: string }> }>(
+    `/api/projects/${projectId}/pages/${pageId}/labels`,
+    { labelIds }
+  );
+
+export const removePageLabel = (projectId: string, pageId: string, labelId: string) =>
+  apiDelete<{ labels: Array<{ id: string; name: string; color: string }> }>(
+    `/api/projects/${projectId}/pages/${pageId}/labels/${labelId}`
+  );

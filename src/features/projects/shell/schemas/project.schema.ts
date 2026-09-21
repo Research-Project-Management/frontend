@@ -62,7 +62,20 @@ export const ProjectSettingsSchema = z.object({
   subscriberIds: z.array(z.string()).optional(),
   parallelCycles: z.boolean().optional(),
   isPrivate: z.boolean().optional(),
+  folder: z.string().nullish().transform((v) => v ?? undefined),
+  tags: z.array(z.string()).optional(),
 }).passthrough();
+
+/**
+ * Project Label / Tag Schema
+ */
+export const ProjectLabelItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.string(),
+  description: z.string().nullish().transform((v) => v ?? undefined),
+});
+export type ProjectLabelItem = z.infer<typeof ProjectLabelItemSchema>;
 
 /**
  * Server-authoritative Granular Project Capabilities
@@ -106,6 +119,7 @@ export const ProjectSchema = z.object({
   yourRole: ProjectRoleEnum.or(z.string()).nullish().transform((v) => v ?? undefined),
   permissions: ProjectPermissionsSchema.optional(),
   settings: ProjectSettingsSchema.nullish().transform((v) => v ?? undefined),
+  projectLabelsList: z.array(ProjectLabelItemSchema).default([]).optional(),
   createdAt: z.string().or(z.date()).transform((v) => (typeof v === 'string' ? v : v.toISOString())),
   updatedAt: z.string().or(z.date()).transform((v) => (typeof v === 'string' ? v : v.toISOString())),
 }).passthrough();

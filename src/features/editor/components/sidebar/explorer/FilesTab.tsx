@@ -45,9 +45,11 @@ import { usePageStore, useTabsStore, useSettingsStore, type AssetInfo } from "@/
 import {
   pageQuery,
   filesQuery,
+  deletedFilesQuery,
   usePageActions,
   useFileActions,
 } from '@/features/editor/hooks/use-core';
+import DeletedFilesModal from "@/features/editor/components/modals/DeletedFilesModal";
 import { useQuery } from '@tanstack/react-query';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 
@@ -127,8 +129,14 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
   const [isFileTreeOpen, setIsFileTreeOpen] = useState(true);
   const [isOutlineOpen, setIsOutlineOpen] = useState(false);
+  const [isDeletedFilesModalOpen, setIsDeletedFilesModalOpen] = useState(false);
   const [outlineHeight, setOutlineHeight] = useState(200);
   const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
+
+  const { data: deletedFilesList = [] } = useQuery({
+    ...deletedFilesQuery(pageId),
+    enabled: Boolean(pageId),
+  });
 
   const startResizeOutline = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -989,15 +997,26 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
                   action: handleStartCreateFolder,
                 },
                 { icon: Upload, label: "Upload Files", action: handleOpenUploadModal },
-              ].map(({ icon: Icon, label, action }) => (
+                {
+                  icon: Trash2,
+                  label: `Deleted Files (${deletedFilesList.length})`,
+                  action: () => setIsDeletedFilesModalOpen(true),
+                  badge: deletedFilesList.length > 0 ? deletedFilesList.length : undefined,
+                },
+              ].map(({ icon: Icon, label, action, badge }: any) => (
                 <Tooltip key={label}>
                   <TooltipTrigger asChild>
                     <button
                       onClick={action}
                       aria-label={label}
-                      className="flex size-7 items-center justify-center rounded text-foreground/80 transition-colors hover:bg-muted hover:text-foreground cursor-pointer"
+                      className="relative flex size-7 items-center justify-center rounded text-foreground/80 transition-colors hover:bg-muted hover:text-foreground cursor-pointer"
                     >
                       <Icon className="size-3.5 shrink-0" />
+                      {badge !== undefined && (
+                        <span className="absolute -top-0.5 -right-0.5 flex size-3.5 items-center justify-center rounded-full bg-rose-500 text-[9px] font-bold text-white shadow-xs">
+                          {badge > 9 ? '9+' : badge}
+                        </span>
+                      )}
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">{label}</TooltipContent>
@@ -1396,6 +1415,12 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         parentPageId={parentPageId}
         projectId={projectId}
         onPickItems={handleAddFilesPick}
+      />
+
+      <DeletedFilesModal
+        open={isDeletedFilesModalOpen}
+        onOpenChange={setIsDeletedFilesModalOpen}
+        pageId={pageId}
       />
 
 

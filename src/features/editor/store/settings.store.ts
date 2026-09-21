@@ -12,8 +12,21 @@ import type { CompilerEngine, CompileMode } from '../types/compiler.types';
 export type LaTeXEngine = CompilerEngine;
 export type { CompilerEngine, CompileMode };
 export type LayoutMode = 'split' | 'editor-only' | 'viewer-only';
-export type EditorTheme = 'light' | 'dark';
-export type KeybindingMode = 'standard' | 'vim';
+export type EditorTheme =
+  | 'auto'
+  | 'latex-light'
+  | 'latex-dark'
+  | 'dracula'
+  | 'monokai'
+  | 'solarized-light'
+  | 'solarized-dark'
+  | 'github-light'
+  | 'github-dark'
+  | 'cobalt'
+  | 'eclipse'
+  | 'light'
+  | 'dark';
+export type KeybindingMode = 'standard' | 'vim' | 'emacs';
 export type TrackChangesViewMode = 'changes' | 'clean' | 'original';
 
 export interface DocumentSettingsState {
@@ -48,6 +61,7 @@ export interface DocumentSettingsState {
   showBreadcrumbs: boolean;
   showEditorTabs: boolean;
   showEquationPreview: boolean;
+  pdfSpreadView: boolean;
 
   setEngine: (engine: CompilerEngine) => void;
   setCompileMode: (compileMode: CompileMode) => void;
@@ -105,6 +119,8 @@ export interface DocumentSettingsState {
   toggleShowEditorTabs: () => void;
   setShowEquationPreview: (show: boolean) => void;
   toggleShowEquationPreview: () => void;
+  setPdfSpreadView: (spread: boolean) => void;
+  togglePdfSpreadView: () => void;
 }
 
 export const useDocumentSettingsStore = create<DocumentSettingsState>()(
@@ -114,7 +130,8 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       compileMode: 'full',
       autoCompile: true,
       layout: 'split',
-      editorTheme: 'light',
+      editorTheme: 'auto',
+      pdfSpreadView: false,
       keybinding: 'standard',
       sidebarWidth: 320,
       editorFlex: 0.5,
@@ -199,6 +216,8 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       toggleShowEditorTabs: () => set((s) => ({ showEditorTabs: !s.showEditorTabs })),
       setShowEquationPreview: (showEquationPreview) => set({ showEquationPreview }),
       toggleShowEquationPreview: () => set((s) => ({ showEquationPreview: !s.showEquationPreview })),
+      setPdfSpreadView: (pdfSpreadView) => set({ pdfSpreadView }),
+      togglePdfSpreadView: () => set((s) => ({ pdfSpreadView: !s.pdfSpreadView })),
     }),
     {
       name: 'flux-editor-settings',

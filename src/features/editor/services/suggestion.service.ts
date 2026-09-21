@@ -64,8 +64,8 @@ export const suggestionService = {
 
   acceptAllSuggestions: async (
     pageId: string,
-  ): Promise<{ ok: boolean; acceptedCount: number }> => {
-    return await apiPost<{ ok: boolean; acceptedCount: number }>(
+  ): Promise<{ ok: boolean; acceptedCount: number; page?: any }> => {
+    return await apiPost<{ ok: boolean; acceptedCount: number; page?: any }>(
       `/api/pages/${pageId}/suggestions/accept-all`,
       {},
     );

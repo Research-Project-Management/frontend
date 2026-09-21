@@ -138,12 +138,40 @@ export async function compilePreview(
   }
 }
 
+export interface AuxFileItem {
+  name: string;
+  size: number;
+  ext: string;
+}
+
+export async function listAuxFiles(projectId: string): Promise<AuxFileItem[]> {
+  if (!projectId) return [];
+  try {
+    const res = await fetch(`/api/${projectId}/compiler/artifacts`, {
+      headers: {
+        Authorization: typeof window !== 'undefined' ? `Bearer ${localStorage.getItem('token') || ''}` : '',
+      },
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { files?: AuxFileItem[] };
+    return data.files || [];
+  } catch {
+    return [];
+  }
+}
+
+export function downloadAuxFileUrl(projectId: string, filename: string): string {
+  return `/api/${projectId}/compiler/artifacts/${encodeURIComponent(filename)}`;
+}
+
 export const compileService = {
   flushPageContent,
   syncIncremental,
   compileLatex,
   compilePreview,
   fetchWordCount,
+  listAuxFiles,
+  downloadAuxFileUrl,
 };
 
 export const DocumentCompileService = compileService;

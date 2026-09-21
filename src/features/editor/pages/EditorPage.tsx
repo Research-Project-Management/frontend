@@ -37,6 +37,7 @@ interface ResizeHandleProps {
   valueMin?: number;
   valueMax?: number;
   hideGrip?: boolean;
+  className?: string;
 }
 
 function ResizeHandle({
@@ -50,6 +51,7 @@ function ResizeHandle({
   valueMin,
   valueMax,
   hideGrip = false,
+  className,
 }: ResizeHandleProps) {
   return (
     <div
@@ -65,8 +67,9 @@ function ResizeHandle({
       onDoubleClick={onDoubleClick}
       onKeyDown={onKeyDown}
       className={cn(
-        "group relative w-2 bg-muted hover:bg-muted/80 active:bg-primary/20 cursor-col-resize shrink-0 transition-colors duration-150 outline-none select-none",
-        isDragging && "bg-primary/30"
+        "group relative w-2 hover:opacity-90 active:opacity-100 cursor-col-resize shrink-0 transition-colors duration-150 outline-none select-none",
+        className || "bg-muted hover:bg-muted/80 active:bg-primary/20",
+        isDragging && "bg-sky-500/40"
       )}
     >
       {/* Expanded invisible hit area */}
@@ -262,8 +265,10 @@ function EditorShell() {
   }, []);
 
   useEffect(() => {
-    if (resolvedTheme && editorTheme !== resolvedTheme) {
-      setEditorTheme(resolvedTheme);
+    if (resolvedTheme && (editorTheme === 'light' || editorTheme === 'dark')) {
+      if (editorTheme !== resolvedTheme) {
+        setEditorTheme(resolvedTheme);
+      }
     }
   }, [resolvedTheme, editorTheme, setEditorTheme]);
 
@@ -568,9 +573,9 @@ function EditorShell() {
           </div>
         )}
 
-        {/* Sidebar <-> Editor Splitter */}
+        {/* Sidebar <-> Editor Splitter (Water blue / Xanh nước biển) */}
         {!isNarrowScreen && !isSidebarCollapsed && (
-          <div className="relative shrink-0 flex items-stretch w-2 bg-muted">
+          <div className="relative shrink-0 flex items-stretch w-2 bg-sky-500/30 dark:bg-sky-600/25 hover:bg-sky-500/45 border-r border-sky-400/60 dark:border-sky-500/50 transition-colors">
             <ResizeHandle
               onMouseDown={handleSidebarResize}
               onTouchStart={handleSidebarTouchResize}
@@ -581,6 +586,7 @@ function EditorShell() {
               valueMin={MIN_SIDEBAR}
               valueMax={MAX_SIDEBAR}
               label="Resize sidebar pane (Double-click to reset)"
+              className="bg-transparent hover:bg-sky-400/30 active:bg-sky-500/50"
             />
 
             {/* Overleaf Panel Toggle Arrow: Collapse sidebar */}
@@ -595,7 +601,7 @@ function EditorShell() {
               onTouchStart={(e) => e.stopPropagation()}
               title="Close sidebar"
               aria-label="Close sidebar"
-              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-full h-9 rounded-none bg-[#475569] hover:bg-[#334155] dark:bg-[#64748b] dark:hover:bg-[#475569] text-white shadow-none transition-colors cursor-pointer select-none"
+              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-full h-9 rounded-none bg-[#0284c7] hover:bg-[#0369a1] dark:bg-[#0ea5e9] dark:hover:bg-[#0284c7] text-white shadow-xs transition-colors cursor-pointer select-none"
             >
               <ChevronLeft className="size-2.5 shrink-0 text-white" strokeWidth={2.5} />
             </button>
@@ -604,7 +610,7 @@ function EditorShell() {
 
         {/* Expand Sidebar Button when collapsed */}
         {!isNarrowScreen && isSidebarCollapsed && (
-          <div className="relative shrink-0 flex items-stretch w-2 bg-muted">
+          <div className="relative shrink-0 flex items-stretch w-2 bg-sky-500/30 dark:bg-sky-600/25 hover:bg-sky-500/45 border-r border-sky-400/60 dark:border-sky-500/50 transition-colors">
             <button
               type="button"
               onClick={() => {
@@ -612,7 +618,7 @@ function EditorShell() {
               }}
               title="Open sidebar"
               aria-label="Open sidebar"
-              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-full h-9 rounded-none bg-[#475569] hover:bg-[#334155] dark:bg-[#64748b] dark:hover:bg-[#475569] text-white shadow-none transition-colors cursor-pointer select-none"
+              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-full h-9 rounded-none bg-[#0284c7] hover:bg-[#0369a1] dark:bg-[#0ea5e9] dark:hover:bg-[#0284c7] text-white shadow-xs transition-colors cursor-pointer select-none"
             >
               <ChevronRight className="size-2.5 shrink-0 text-white" strokeWidth={2.5} />
             </button>

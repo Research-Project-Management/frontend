@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { projectPagesQueryOptions, usePageActions } from './hooks/use-page';
@@ -10,6 +10,7 @@ import { CreateModal } from './components/modals/CreateModal';
 import { GridView } from './components/views/GridView';
 import { ListView } from './components/views/ListView';
 import type { PagesViewMode } from './types/page.types';
+import { useProjectLabels } from '../settings/hooks/use-label';
 
 export function ProjectPagesView({ projectId: propProjectId }: { projectId?: string } = {}) {
   const params = useParams() as { projectId?: string };
@@ -19,10 +20,22 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [title, setTitle] = useState('');
+  const [selectedLabelId, setSelectedLabelId] = useState<string | null>(null);
 
   const { data: pages = [], isLoading } = useQuery(
     projectPagesQueryOptions(projectId),
   );
+
+  const { data: projectLabels = [] } = useProjectLabels(projectId);
+
+  const filteredPages = useMemo(() => {
+    if (!selectedLabelId) return pages;
+    return pages.filter(page => 
+      (page.labels as any[])?.some(label => 
+        (label.id || label) === selectedLabelId
+      )
+    );
+  }, [pages, selectedLabelId]);
 
   const { createPage } = usePageActions();
 
@@ -54,13 +67,36 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
         onCreateClick={() => setIsCreateModalOpen(true)}
       />
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto flex flex-col">
+        {projectLabels.length > 0 && (
+          <div className="px-6 pt-4 pb-2 flex flex-wrap gap-2 items-center">
+            {projectLabels.map((label: any) => {
+              const isSelected = selectedLabelId === label.id;
+              return (
+                <button
+                  key={label.id}
+                  onClick={() => setSelectedLabelId(isSelected ? null : label.id)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors hover:opacity-80"
+                  style={{
+                    backgroundColor: isSelected ? `${label.color ?? '#3b82f6'}25` : 'transparent',
+                    borderColor: `${label.color ?? '#3b82f6'}40`,
+                    color: label.color ?? '#3b82f6',
+                  }}
+                >
+                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: label.color ?? '#3b82f6' }} />
+                  {label.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {!isLoading && pages.length === 0 ? (
           <EmptyState onCreateClick={() => setIsCreateModalOpen(true)} />
         ) : viewMode === 'grid' ? (
-          <GridView pages={pages} workspaceId="" />
+          <GridView pages={filteredPages} workspaceId="" />
         ) : (
-          <ListView pages={pages} workspaceId="" />
+          <ListView pages={filteredPages} workspaceId="" />
         )}
       </div>
 

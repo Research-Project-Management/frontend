@@ -19,6 +19,7 @@ import {
   HardDrive,
   Check,
   AlertOctagon,
+  Palette,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -35,7 +36,8 @@ import {
   Switch,
 } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
-import { useSettingsStore, usePageStore, type CompilerEngine, type CompileMode, type KeybindingMode } from '@/features/editor/store';
+import { useSettingsStore, usePageStore, type CompilerEngine, type CompileMode, type KeybindingMode, type EditorTheme } from '@/features/editor/store';
+import { MONACO_THEMES } from '../editor/monaco-themes';
 import { useTheme } from '@/shared/providers';
 import { filesQuery } from '@/features/editor/hooks/use-core';
 import { useQuery } from '@tanstack/react-query';
@@ -73,6 +75,8 @@ export default function ProjectSettingsModal() {
     setLineNumbers,
     keybinding,
     setKeybinding,
+    editorTheme,
+    setEditorTheme,
     spellCheck,
     setSpellCheck,
     spellCheckLanguage,
@@ -305,13 +309,38 @@ export default function ProjectSettingsModal() {
                   </p>
                 </div>
                 <Select value={theme} onValueChange={(val: any) => setTheme(val)}>
-                  <SelectTrigger className="w-36 h-8 text-xs cursor-pointer shrink-0">
+                  <SelectTrigger className="w-40 h-8 text-xs cursor-pointer shrink-0">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="text-xs z-[10000]">
                     <SelectItem value="light">Overleaf Light</SelectItem>
                     <SelectItem value="dark">Overleaf Dark</SelectItem>
                     <SelectItem value="system">System Default</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* 2. Monaco Editor Syntax Theme */}
+              <div className="flex items-center justify-between gap-4 p-3 rounded-lg border border-border/70 bg-muted/20">
+                <div className="space-y-0.5 min-w-0">
+                  <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <Palette className="size-3.5 text-muted-foreground" />
+                    Editor Syntax Theme
+                  </div>
+                  <p className="text-11 text-muted-foreground">
+                    Color palette for LaTeX syntax (Dracula, Monokai, Solarized...).
+                  </p>
+                </div>
+                <Select value={editorTheme || 'auto'} onValueChange={(val: EditorTheme) => setEditorTheme(val)}>
+                  <SelectTrigger className="w-44 h-8 text-xs cursor-pointer shrink-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="text-xs z-[10000]">
+                    {MONACO_THEMES.map((th) => (
+                      <SelectItem key={th.id} value={th.id}>
+                        {th.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -334,6 +363,7 @@ export default function ProjectSettingsModal() {
                   <SelectContent className="text-xs z-[10000]">
                     <SelectItem value="standard">Standard</SelectItem>
                     <SelectItem value="vim">Vim Mode</SelectItem>
+                    <SelectItem value="emacs">Emacs Mode</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

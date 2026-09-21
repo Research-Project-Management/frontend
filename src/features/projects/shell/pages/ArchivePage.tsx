@@ -30,7 +30,7 @@ import {
 } from "@/shared/components/ui";
 import { toast } from 'sonner';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { useProjects, useRestoreProject, useDeleteProject } from '../hooks/use-project';
+import { useProjects, useRestoreProject, useDeleteProject, useTrashedProjects, usePermanentDeleteProject } from '../hooks/use-project';
 import {
   filterArchivedProjects,
   searchArchivedProjects,
@@ -53,7 +53,7 @@ import type { WorkItemViewItem } from '@/features/projects/project-id/views/type
 import type { Page } from '@/features/projects/project-id/pages/types/page.types';
 import { cn } from '@/shared/lib/utils';
 
-export type ArchiveTab = 'work-items' | 'projects' | 'cycles' | 'views' | 'pages';
+export type ArchiveTab = 'work-items' | 'projects' | 'cycles' | 'views' | 'pages' | 'trash';
 
 export function ArchivePage() {
   const { user } = useAuth();
@@ -75,6 +75,18 @@ export function ArchivePage() {
   // 2. Archived Projects logic
   const restoreProjectMutation = useRestoreProject();
   const deleteProjectMutation = useDeleteProject();
+
+  // 2b. Trash logic (soft-deleted projects)
+  const { projects: trashedProjects = [], isLoading: isTrashedLoading } = useTrashedProjects();
+  const permanentDeleteMutation = usePermanentDeleteProject();
+  const [trashDeleteConfirm, setTrashDeleteConfirm] = useState<Project | null>(null);
+
+  const filteredTrashedProjects = useMemo(() => {
+    if (!searchQuery.trim()) return trashedProjects as Project[];
+    return (trashedProjects as Project[]).filter((p) =>
+      p.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [trashedProjects, searchQuery]);
 
   const archivedProjects = useMemo(() => {
     return filterArchivedProjects(rawProjects);
@@ -422,6 +434,25 @@ export function ArchivePage() {
               </span>
             )}
           </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('trash'); setSelectedItemIds(new Set()); }}
+            className={cn(
+              'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors',
+              activeTab === 'trash'
+                ? 'bg-background text-foreground shadow-xs font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Trash2 className="size-3.5 shrink-0" />
+            <span>Trash</span>
+            {trashedProjects.length > 0 && (
+              <span className="text-10 font-mono px-1.5 py-0.2 rounded-full bg-destructive/15 text-destructive border border-destructive/25">
+                {trashedProjects.length}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Bulk action toolbar (for work items) */}
@@ -747,15 +778,93 @@ export function ArchivePage() {
             )}
           </div>
         )}
+
+        {/* 6. TRASH TAB — Soft-deleted projects */}
+        {activeTab === 'trash' && (
+          <div className="space-y-4">
+            {isTrashedLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 w-full rounded-md" />
+                ))}
+              </div>
+            ) : filteredTrashedProjects.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 text-center select-none">
+                <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                  <Trash2 className="size-6 text-muted-foreground/60" />
+                </div>
+                <h3 className="text-sm font-semibold text-foreground">Trash is empty</h3>
+                <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                  Deleted projects will appear here. You can restore or permanently delete them.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border border border-border rounded-lg bg-card overflow-hidden">
+                {filteredTrashedProjects.map((project) => (
+                  <div
+                    key={project.id}
+                    className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors gap-3"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <ProjectAvatar avatar={project.avatar} name={project.name} id={project.id} size="sm" />
+                      <div className="min-w-0">
+                        <span className="text-xs font-semibold text-foreground truncate block">{project.name}</span>
+                        <p className="text-10 text-muted-foreground font-mono mt-0.5">
+                          Deleted {project.deletedAt ? new Date(project.deletedAt as any).toLocaleDateString() : '—'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => restoreProjectMutation.mutate({ projectId: project.id })}
+                        disabled={restoreProjectMutation.isPending}
+                        className="gap-1.5 text-xs"
+                      >
+                        <RotateCcw className="size-3 shrink-0" />
+                        Restore
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => setTrashDeleteConfirm(project)}
+                        className="gap-1.5 text-xs text-destructive hover:text-destructive border-destructive/30 hover:border-destructive/60"
+                      >
+                        <Trash2 className="size-3 shrink-0" />
+                        Delete forever
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
-      {/* Permanent Delete Modal for Projects */}
+      {/* Permanent Delete Modal for Archived Projects */}
       <DeletePermanentModal
         project={deleteConfirmProject}
         onClose={() => setDeleteConfirmProject(null)}
         onConfirm={handleDeletePermanent}
         isDeleting={deleteProjectMutation.isPending}
       />
+
+      {/* Permanent Delete Confirmation for Trash */}
+      {trashDeleteConfirm && (
+        <DeletePermanentModal
+          project={trashDeleteConfirm}
+          onClose={() => setTrashDeleteConfirm(null)}
+          onConfirm={() => {
+            permanentDeleteMutation.mutate(
+              { projectId: trashDeleteConfirm.id },
+              { onSuccess: () => setTrashDeleteConfirm(null) }
+            );
+          }}
+          isDeleting={permanentDeleteMutation.isPending}
+        />
+      )}
     </div>
   );
 }

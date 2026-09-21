@@ -11,7 +11,6 @@ export * from './synctex.types';
 export * from './comment.types';
 export * from './suggestion.types';
 export * from './history.types';
-export * from './outline.types';
 export * from './collaboration.types';
 export * from './export.types';
 export * from './asset.types';

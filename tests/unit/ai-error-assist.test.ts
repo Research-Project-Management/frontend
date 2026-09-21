@@ -1,7 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { suggestLatexFix } from '@/features/editor/services/ai-error-assist.service';
 
 describe('AI Error Assist Service', () => {
+  beforeEach(() => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Test network offline'));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('correctly provides heuristic fix for undefined control sequence of booktabs', async () => {
     const result = await suggestLatexFix({
       errorMessage: 'Undefined control sequence. \\toprule',

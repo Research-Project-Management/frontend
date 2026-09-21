@@ -11,6 +11,8 @@ import {
   Sparkles,
   Loader2,
   Check,
+  Download,
+  FileCode,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from "@/shared/lib/utils";
@@ -19,6 +21,11 @@ import {
   suggestLatexFix,
   type AiErrorFixResult,
 } from '@/features/editor/services/ai-error-assist.service';
+import {
+  listAuxFiles,
+  downloadAuxFileUrl,
+  type AuxFileItem,
+} from '@/features/editor/services/compiler.service';
 
 export interface LogEntry {
   message: string;
@@ -104,7 +111,7 @@ export function parseLatexLog(raw: string): ParsedLog {
   return { errors, warnings, badBoxes };
 }
 
-type LogTab = 'errors' | 'warnings' | 'badboxes' | 'raw';
+type LogTab = 'errors' | 'warnings' | 'badboxes' | 'raw' | 'artifacts';
 
 function EntryRow({
   type,
@@ -297,7 +304,7 @@ export default function Logs({
   onJumpToError,
   onClearCacheAndCompile,
 }: LogsProps) {
-  const { scrollToLineRef, editorRef, compileRef } = usePageStore();
+  const { scrollToLineRef, editorRef, compileRef, projectId } = usePageStore();
   const parsed = useMemo(() => parseLatexLog(log), [log]);
   const defaultTab = useMemo<LogTab>(() => {
     if (parsed.errors.length > 0) return 'errors';
@@ -307,6 +314,19 @@ export default function Logs({
   }, [parsed]);
   const [selectedTab, setSelectedTab] = useState<LogTab | null>(null);
   const activeTab = selectedTab ?? defaultTab;
+
+  // Auxiliary files state
+  const [auxFiles, setAuxFiles] = useState<AuxFileItem[]>([]);
+  const [isLoadingAux, setIsLoadingAux] = useState(false);
+
+  React.useEffect(() => {
+    if (activeTab === 'artifacts' && projectId) {
+      setIsLoadingAux(true);
+      listAuxFiles(projectId)
+        .then((files) => setAuxFiles(files))
+        .finally(() => setIsLoadingAux(false));
+    }
+  }, [activeTab, projectId]);
 
   // AI Error Assist state
   const [fixState, setFixState] = useState<
@@ -435,6 +455,7 @@ export default function Logs({
     if (key === 'errors') return parsed.errors.length;
     if (key === 'warnings') return parsed.warnings.length;
     if (key === 'badboxes') return parsed.badBoxes.length;
+    if (key === 'artifacts') return auxFiles.length > 0 ? auxFiles.length : null;
     return null;
   };
 
@@ -454,6 +475,9 @@ export default function Logs({
       if (n > 0) return 'bg-primary text-primary-foreground';
       return inactive;
     }
+    if (key === 'artifacts') {
+      return 'bg-muted-foreground/20 text-foreground';
+    }
     return '';
   };
 
@@ -462,6 +486,7 @@ export default function Logs({
     { key: 'warnings', label: 'Warnings' },
     { key: 'badboxes', label: 'Bad Boxes' },
     { key: 'raw', label: 'Raw Log' },
+    { key: 'artifacts', label: 'Output Files' },
   ];
 
   return (
@@ -575,6 +600,52 @@ export default function Logs({
               />
             ))
           ))}
+        {activeTab === 'artifacts' && (
+          <div className="p-3">
+            {isLoadingAux ? (
+              <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground text-xs">
+                <Loader2 className="size-4 animate-spin shrink-0" />
+                <span>Loading output files...</span>
+              </div>
+            ) : auxFiles.length === 0 ? (
+              <LogEmpty text="No output files available yet. Compile your document to generate auxiliary files (.aux, .bbl, .log, etc.)." />
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between pb-1 border-b border-border text-xs text-muted-foreground">
+                  <span>Generated Auxiliary & Intermediates ({auxFiles.length} files)</span>
+                  <span className="text-[11px]">Click download icon to save files locally</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {auxFiles.map((file) => {
+                    const sizeKb = (file.size / 1024).toFixed(1);
+                    return (
+                      <div
+                        key={file.name}
+                        className="flex items-center justify-between p-2 rounded-md border border-border bg-card/60 hover:bg-muted/50 transition-colors text-xs"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileCode className="size-4 text-primary shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-mono font-medium text-foreground truncate">{file.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{sizeKb} KB</p>
+                          </div>
+                        </div>
+                        <a
+                          href={downloadAuxFileUrl(projectId, file.name)}
+                          download={file.name}
+                          className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+                          title={`Download ${file.name}`}
+                        >
+                          <Download className="size-3.5" />
+                        </a>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

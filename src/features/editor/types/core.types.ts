@@ -59,6 +59,7 @@ export interface PageFile {
   pageId: string;
   createdAt?: string;
   updatedAt?: string;
+  deletedAt?: string | null;
 }
 
 export interface SetMainFileInput {

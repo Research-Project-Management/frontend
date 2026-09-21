@@ -7,7 +7,9 @@
 
 export type DocumentExportFormat =
   | 'pdf'
+  | 'docx'
   | 'markdown'
+  | 'md'
   | 'latex-source'
   | 'latex-bundle'
   | 'zip'

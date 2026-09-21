@@ -18,6 +18,7 @@ import {
   suggestionService,
   type CreateSuggestionPayload,
 } from '../services/suggestion.service';
+import { EditorEventBus } from '../utils/editor.util';
 
 export const suggestionKeys = {
   all: ['page-suggestions'] as const,
@@ -37,8 +38,13 @@ export const useCreateSuggestion = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreateSuggestionPayload) => suggestionService.createSuggestion(payload),
-    onSuccess: (_, { pageId }) => {
+    onSuccess: (data, { pageId }) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
+      EditorEventBus.emit('flux:review-event', {
+        pageId,
+        event: 'suggestion:created',
+        payload: { suggestion: data },
+      });
     },
   });
 };
@@ -48,9 +54,17 @@ export const useAcceptSuggestion = () => {
   return useMutation({
     mutationFn: ({ pageId, suggestionId }: { pageId: string; suggestionId: string }) =>
       suggestionService.acceptSuggestion(pageId, suggestionId),
-    onSuccess: (_, { pageId }) => {
+    onSuccess: (data, { pageId }) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
       queryClient.invalidateQueries({ queryKey: ['pages', 'detail', pageId] });
+      if (data?.page) {
+        queryClient.setQueryData(['pages', 'detail', pageId], data.page);
+      }
+      EditorEventBus.emit('flux:review-event', {
+        pageId,
+        event: 'suggestion:accepted',
+        payload: data,
+      });
     },
   });
 };
@@ -60,8 +74,13 @@ export const useRejectSuggestion = () => {
   return useMutation({
     mutationFn: ({ pageId, suggestionId }: { pageId: string; suggestionId: string }) =>
       suggestionService.rejectSuggestion(pageId, suggestionId),
-    onSuccess: (_, { pageId }) => {
+    onSuccess: (data, { pageId, suggestionId }) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
+      EditorEventBus.emit('flux:review-event', {
+        pageId,
+        event: 'suggestion:rejected',
+        payload: { ...data, suggestionId },
+      });
     },
   });
 };
@@ -71,9 +90,17 @@ export const useAcceptAllSuggestions = () => {
   return useMutation({
     mutationFn: ({ pageId }: { pageId: string }) =>
       suggestionService.acceptAllSuggestions(pageId),
-    onSuccess: (_, { pageId }) => {
+    onSuccess: (data, { pageId }) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
       queryClient.invalidateQueries({ queryKey: ['pages', 'detail', pageId] });
+      if (data?.page) {
+        queryClient.setQueryData(['pages', 'detail', pageId], data.page);
+      }
+      EditorEventBus.emit('flux:review-event', {
+        pageId,
+        event: 'suggestions:accepted-all',
+        payload: data,
+      });
     },
   });
 };
@@ -83,8 +110,13 @@ export const useRejectAllSuggestions = () => {
   return useMutation({
     mutationFn: ({ pageId }: { pageId: string }) =>
       suggestionService.rejectAllSuggestions(pageId),
-    onSuccess: (_, { pageId }) => {
+    onSuccess: (data, { pageId }) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
+      EditorEventBus.emit('flux:review-event', {
+        pageId,
+        event: 'suggestions:rejected-all',
+        payload: data,
+      });
     },
   });
 };

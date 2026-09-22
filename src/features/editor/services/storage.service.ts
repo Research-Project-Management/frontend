@@ -9,6 +9,7 @@
 
 import { apiGet, apiPost, apiPut, apiDelete, getAuthToken } from "@/shared/lib/api";
 import { API_BASE_URL } from '@/config/env';
+import { presignUpload, completePresigned } from '@/features/storage/services/upload.service';
 
 export interface EditorStorageItem {
   id: string;
@@ -36,7 +37,68 @@ export const StorageService = {
     pageId: string,
     file: File,
     parentId?: string | null,
+    onProgress?: (progress: number) => void,
   ): Promise<EditorStorageItem> => {
+    // ── 1. Attempt Direct-to-R2 Presigned Upload (Bypasses backend network/memory) ──
+    try {
+      const presignRes = await presignUpload({
+        filename: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        size: file.size,
+        projectId: pageId,
+      });
+
+      const uploadUrl = presignRes?.uploadUrl || presignRes?.signedUrl;
+      if (uploadUrl && presignRes?.storageKey) {
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          if (onProgress) {
+            xhr.upload.onprogress = (event) => {
+              if (event.lengthComputable) {
+                onProgress(Math.round((event.loaded / event.total) * 100));
+              }
+            };
+          }
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve();
+            } else {
+              reject(new Error(`Direct R2 upload failed with status ${xhr.status}`));
+            }
+          };
+          xhr.onerror = () => reject(new Error('Direct R2 upload network error'));
+          xhr.open('PUT', uploadUrl, true);
+          xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+          xhr.send(file);
+        });
+
+        const completed = await completePresigned({
+          storageKey: presignRes.storageKey,
+          filename: file.name,
+          size: file.size,
+          mimeType: file.type || 'application/octet-stream',
+          projectId: pageId,
+          parentId: parentId || null,
+        });
+
+        return {
+          id: completed.fileId || completed.id,
+          filename: completed.filename || file.name,
+          size: typeof completed.size === 'number' ? completed.size : file.size,
+          mimeType: completed.mimeType || file.type,
+          isFolder: false,
+          parentId: parentId || null,
+          url: completed.url || `/api/files/${completed.fileId || completed.id}/content`,
+        };
+      }
+    } catch (directErr) {
+      console.warn(
+        '[StorageService] Direct R2 presigned upload failed or unsupported, falling back to backend upload proxy:',
+        directErr,
+      );
+    }
+
+    // ── 2. Fallback to backend upload proxy (legacy) ──
     const formData = new FormData();
     formData.append('file', file);
     if (parentId) {

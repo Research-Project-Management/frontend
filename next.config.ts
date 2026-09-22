@@ -22,8 +22,6 @@ const nextConfig: NextConfig = {
   turbopack: {
     resolveAlias: {
       'pdfjs-dist': 'pdfjs-dist/build/pdf.min.mjs',
-      'monaco-editor/esm/vs/editor/editor.api': 'monaco-editor',
-      'monaco-editor/esm/vs/editor/editor.api.js': 'monaco-editor',
     },
   },
 
@@ -31,8 +29,6 @@ const nextConfig: NextConfig = {
     config.resolve.alias = {
       ...config.resolve.alias,
       'pdfjs-dist$': 'pdfjs-dist/build/pdf.min.mjs',
-      'monaco-editor/esm/vs/editor/editor.api$': 'monaco-editor',
-      'monaco-editor/esm/vs/editor/editor.api.js$': 'monaco-editor',
     };
 
     if (!isServer) {

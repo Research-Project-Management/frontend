@@ -3,6 +3,7 @@ export * from './citation.types';
 export * from './collections.types';
 export * from './core.types';
 export * from './curation.types';
+export * from './display.types';
 export * from './exports.types';
 export * from './forms.types';
 export * from './ingestion.types';

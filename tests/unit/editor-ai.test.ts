@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useDocumentEditorStore } from '@/features/editor/store/editor.store';
+import { MonacoEngineAdapter } from '@/features/editor/adapters/monaco/monaco.adapter';
 import { getPageChat, clearPageChat, streamEditorChat } from '@/features/ai/services/chat.service';
 
 describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {
@@ -40,7 +41,7 @@ describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {
   });
 
   describe('2. Monaco Editor Insertion & Replacement Bridge', () => {
-    it('should execute edits to insert generated LaTeX code at current cursor', () => {
+    it('should execute edits to insert generated LaTeX code at current cursor via MonacoEngineAdapter', () => {
       const mockExecuteEdits = vi.fn();
       const mockFocus = vi.fn();
       const mockSelection = {
@@ -54,28 +55,15 @@ describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {
         getSelection: vi.fn().mockReturnValue(mockSelection),
         executeEdits: mockExecuteEdits,
         focus: mockFocus,
+        onDidChangeModelContent: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+        onDidChangeCursorPosition: vi.fn().mockReturnValue({ dispose: vi.fn() }),
       };
 
-      useDocumentEditorStore.setState({
-        editorRef: { current: mockEditor as any },
-      });
-
-      const currentEditor = useDocumentEditorStore.getState().editorRef.current;
-      expect(currentEditor).toBeTruthy();
-
+      const adapter = new MonacoEngineAdapter(mockEditor as any, null as any);
       const generatedLatex = '\\section{Methodology}\nProposed novel approach...';
-      const selection = currentEditor!.getSelection();
+      adapter.insertText(generatedLatex);
 
-      currentEditor!.executeEdits('ai-assistant', [
-        {
-          range: selection!,
-          text: generatedLatex,
-          forceMoveMarkers: true,
-        },
-      ]);
-      currentEditor!.focus();
-
-      expect(mockExecuteEdits).toHaveBeenCalledWith('ai-assistant', [
+      expect(mockExecuteEdits).toHaveBeenCalledWith('toolbar-command', [
         {
           range: mockSelection,
           text: generatedLatex,
@@ -85,7 +73,7 @@ describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {
       expect(mockFocus).toHaveBeenCalled();
     });
 
-    it('should replace highlighted selection with updated LaTeX code', () => {
+    it('should replace highlighted selection with updated LaTeX code via MonacoEngineAdapter', () => {
       const mockExecuteEdits = vi.fn();
       const mockRange = {
         startLineNumber: 5,
@@ -98,24 +86,15 @@ describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {
         getSelection: vi.fn().mockReturnValue(mockRange),
         executeEdits: mockExecuteEdits,
         focus: vi.fn(),
+        onDidChangeModelContent: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+        onDidChangeCursorPosition: vi.fn().mockReturnValue({ dispose: vi.fn() }),
       };
 
-      useDocumentEditorStore.setState({
-        editorRef: { current: mockEditor as any },
-      });
-
-      const editor = useDocumentEditorStore.getState().editorRef.current;
+      const adapter = new MonacoEngineAdapter(mockEditor as any, null as any);
       const polishedLatex = '\\textbf{Revised formal academic content.}';
+      adapter.insertText(polishedLatex);
 
-      editor!.executeEdits('ai-assistant', [
-        {
-          range: editor!.getSelection() as any,
-          text: polishedLatex,
-          forceMoveMarkers: true,
-        },
-      ]);
-
-      expect(mockExecuteEdits).toHaveBeenCalledWith('ai-assistant', [
+      expect(mockExecuteEdits).toHaveBeenCalledWith('toolbar-command', [
         {
           range: mockRange,
           text: polishedLatex,

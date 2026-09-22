@@ -93,10 +93,10 @@ export default function ViewerOutlinePopover({
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="w-80 p-0 shadow-lg border border-border bg-popover select-none z-[9999]"
+        className="w-80 p-0 shadow-raised-200 border border-border bg-popover rounded-md select-none z-[9999]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-3 py-2.5 border-b border-border bg-muted/40">
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-border bg-background">
           <div className="flex items-center gap-2">
             <ListTree className="size-4 text-primary shrink-0" />
             <span className="text-xs font-semibold text-foreground">Document Outline</span>
@@ -107,14 +107,14 @@ export default function ViewerOutlinePopover({
         </div>
 
         {/* Search */}
-        <div className="p-2 border-b border-border bg-background/50">
+        <div className="p-2 border-b border-border bg-background">
           <div className="relative flex items-center">
             <Search className="size-3.5 absolute left-2.5 text-muted-foreground/60 pointer-events-none" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search sections or page..."
-              className="h-7.5 pl-8 pr-7 text-xs bg-muted/50 border-border/80 focus-visible:ring-1"
+              className="h-7.5 pl-8 pr-7 text-xs bg-background border-border rounded-md focus-visible:ring-1"
             />
             {searchQuery && (
               <button
@@ -154,7 +154,7 @@ export default function ViewerOutlinePopover({
                   onClick={() => handleItemClick(item.pageNumber)}
                   style={{ paddingLeft: `${8 + indentPadding}px` }}
                   className={cn(
-                    'group flex w-full items-center gap-1.5 py-1.5 pr-2 rounded-md text-left transition-colors cursor-pointer text-xs',
+                    'group flex w-full items-center gap-1.5 py-1.5 pr-2 rounded-sm text-left transition-colors cursor-pointer text-xs',
                     isCurrentPage
                       ? 'bg-primary/10 text-primary font-medium'
                       : 'hover:bg-muted text-foreground/90 hover:text-foreground',
@@ -171,7 +171,7 @@ export default function ViewerOutlinePopover({
 
                   <span
                     className={cn(
-                      'shrink-0 px-1.5 py-0.5 rounded font-mono text-11 transition-colors',
+                      'shrink-0 px-1.5 py-0.5 rounded-sm font-mono text-11 transition-colors',
                       isCurrentPage
                         ? 'bg-primary text-primary-foreground font-semibold'
                         : 'bg-muted text-foreground font-medium group-hover:bg-background',

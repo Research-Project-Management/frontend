@@ -13,7 +13,6 @@ import { commentKeys } from '@/features/editor/hooks/use-comment';
 import { suggestionKeys } from '@/features/editor/hooks/use-suggestion';
 import { RemoteCursorManager, type RemoteUserCursor } from '../monaco-remote-cursor';
 import * as Y from 'yjs';
-import { MonacoBinding } from 'y-monaco';
 import {
   YjsSocketIOProvider,
   type ConnectionStatus,
@@ -22,8 +21,8 @@ import {
 export interface UseEditorCollaboratorsOptions {
   projectId: string;
   pageId: string;
-  editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
-  monacoRef: React.MutableRefObject<any>;
+  editorRef?: React.MutableRefObject<any>;
+  monacoRef?: React.MutableRefObject<any>;
   currentUserId?: string;
 }
 
@@ -48,26 +47,26 @@ export function useEditorCollaborators({
 
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const [isSynced, setIsSynced] = useState(false);
+  const [yText, setYText] = useState<Y.Text | null>(null);
+  const [awareness, setAwareness] = useState<any | null>(null);
   const providerRef = useRef<YjsSocketIOProvider | null>(null);
-  const bindingRef = useRef<MonacoBinding | null>(null);
   const yDocRef = useRef<Y.Doc | null>(null);
 
-  // Initialize RemoteCursorManager with Monaco editor instance
+  // Initialize RemoteCursorManager with editor instance if available
   useEffect(() => {
-    cursorManagerRef.current.setEditor(editorRef.current, monacoRef.current);
-  }, [editorRef, monacoRef, editorRef.current, monacoRef.current]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (editorRef?.current) {
+      cursorManagerRef.current.setEditor(editorRef.current, monacoRef?.current);
+    }
+  }, [editorRef, monacoRef]);
 
-  // Initialize Yjs CRDT & Monaco Binding for concurrent conflict-free collaboration
+  // Initialize Yjs CRDT & Provider for concurrent conflict-free collaboration
   useEffect(() => {
-    const editor = editorRef.current;
-    if (!pageId || !editor) return;
-
-    const model = editor.getModel();
-    if (!model) return;
+    if (!pageId) return;
 
     const doc = new Y.Doc();
     yDocRef.current = doc;
-    const yText = doc.getText('monaco');
+    const text = doc.getText('monaco');
+    setYText(text);
 
     const provider = new YjsSocketIOProvider(pageId, doc, {
       user: currentUserId
@@ -81,14 +80,7 @@ export function useEditorCollaborators({
       },
     });
     providerRef.current = provider;
-
-    const binding = new MonacoBinding(
-      yText,
-      model,
-      new Set([editor]),
-      provider.awareness,
-    );
-    bindingRef.current = binding;
+    setAwareness(provider.awareness);
 
     const handleAwarenessChange = () => {
       const states = provider.awareness.getStates();
@@ -120,14 +112,14 @@ export function useEditorCollaborators({
 
     return () => {
       provider.awareness.off('change', handleAwarenessChange);
-      binding.destroy();
-      bindingRef.current = null;
       provider.destroy();
       providerRef.current = null;
       doc.destroy();
       yDocRef.current = null;
+      setYText(null);
+      setAwareness(null);
     };
-  }, [pageId, editorRef.current, currentUserId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pageId, currentUserId]);
 
   // Initial presence fetch
   useEffect(() => {
@@ -258,7 +250,7 @@ export function useEditorCollaborators({
     if (!pageId) return;
 
     const interval = setInterval(() => {
-      const ed = editorRef.current;
+      const ed = editorRef?.current;
       const pos = ed?.getPosition();
       const sel = ed?.getSelection();
 
@@ -341,5 +333,7 @@ export function useEditorCollaborators({
     isSynced,
     isRealtimeActive,
     triggerCheckpoint: () => providerRef.current?.triggerCheckpoint(),
+    yText,
+    awareness,
   };
 }

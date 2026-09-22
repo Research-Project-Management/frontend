@@ -59,13 +59,13 @@ export default function RawLogModal({
       aria-labelledby="raw-log-title"
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/60 backdrop-blur-xs p-4"
     >
-      <div className="w-full max-w-4xl max-h-[85vh] flex flex-col rounded-xl border border-border bg-card shadow-raised-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="w-full max-w-4xl max-h-[85vh] flex flex-col rounded-lg border border-border bg-card shadow-raised-300 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/40">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background">
           <div className="flex items-center gap-2">
             <div
               className={cn(
-                'size-7 rounded-md flex items-center justify-center',
+                'size-7 rounded-sm flex items-center justify-center',
                 hasErrors
                   ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
                   : 'bg-primary/15 text-primary',
@@ -97,7 +97,7 @@ export default function RawLogModal({
 
             <button
               onClick={handleCopy}
-              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium border border-border bg-background hover:bg-muted transition-colors cursor-pointer text-foreground"
+              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium border border-border bg-background hover:bg-muted transition-colors cursor-pointer text-foreground shadow-2xs"
               title="Copy to Clipboard"
             >
               {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
@@ -106,7 +106,7 @@ export default function RawLogModal({
 
             <button
               onClick={handleDownload}
-              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium border border-border bg-background hover:bg-muted transition-colors cursor-pointer text-foreground"
+              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium border border-border bg-background hover:bg-muted transition-colors cursor-pointer text-foreground shadow-2xs"
               title="Download Log File"
             >
               <Download className="size-3.5" />
@@ -115,7 +115,7 @@ export default function RawLogModal({
 
             <button
               onClick={() => onOpenChange(false)}
-              className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+              className="h-7 w-7 inline-flex items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
             >
               <X className="size-4" />
             </button>

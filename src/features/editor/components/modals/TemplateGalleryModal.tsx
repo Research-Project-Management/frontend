@@ -24,6 +24,7 @@ import {
 } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 import { useSettingsStore, usePageStore } from '@/features/editor/store';
+import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 
 export interface AcademicTemplate {
   id: string;
@@ -363,15 +364,15 @@ University of Technology
 
 export default function TemplateGalleryModal() {
   const { isTemplateModalOpen, setIsTemplateModalOpen } = useSettingsStore();
-  const { editorRef, activeFilePage } = usePageStore();
+  const { activeFilePage } = usePageStore();
+  const { engine } = useEditorInstance();
   const [selectedTemplate, setSelectedTemplate] = useState<AcademicTemplate>(ACADEMIC_TEMPLATES[0]);
   const [previewTab, setPreviewTab] = useState<'main' | 'bib'>('main');
 
   const handleApplyTemplate = () => {
     if (!selectedTemplate) return;
-    const editor = editorRef.current;
-    if (editor) {
-      editor.setValue(selectedTemplate.mainTex);
+    if (engine) {
+      engine.setContent(selectedTemplate.mainTex);
       toast.success(`Applied "${selectedTemplate.name}" to ${activeFilePage?.title || 'current document'}`);
       setIsTemplateModalOpen(false);
     } else {
@@ -391,12 +392,12 @@ export default function TemplateGalleryModal() {
 
   return (
     <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
-      <DialogContent className="max-w-4xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-xl text-foreground select-none">
+      <DialogContent className="max-w-4xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-300 rounded-lg text-foreground select-none">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/80 bg-muted/30">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background">
           <div>
             <DialogTitle className="text-base font-semibold flex items-center gap-2">
-              <Sparkles className="size-4 text-emerald-600 dark:text-emerald-500" />
+              <Sparkles className="size-4 text-primary" />
               Academic Templates & Starters
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground mt-0.5">
@@ -406,7 +407,7 @@ export default function TemplateGalleryModal() {
           <button
             type="button"
             onClick={() => setIsTemplateModalOpen(false)}
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            className="size-7 rounded-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
           >
             <X className="size-4" />
           </button>
@@ -427,17 +428,17 @@ export default function TemplateGalleryModal() {
                     setPreviewTab('main');
                   }}
                   className={cn(
-                    'p-3 rounded-lg border transition-all cursor-pointer text-left',
+                    'p-3 rounded-md border transition-all cursor-pointer text-left',
                     isSelected
-                      ? 'bg-[#1b5e3a]/10 dark:bg-[#1b5e3a]/20 border-[#16a34a] shadow-2xs'
+                      ? 'bg-primary/10 border-primary shadow-2xs'
                       : 'border-border/60 hover:border-border hover:bg-muted/40'
                   )}
                 >
                   <div className="flex items-center justify-between gap-1.5 mb-1">
                     <div className="flex items-center gap-2 min-w-0">
                       <div className={cn(
-                        'size-6 rounded flex items-center justify-center shrink-0',
-                        isSelected ? 'bg-[#16a34a] text-white' : 'bg-muted text-muted-foreground'
+                        'size-6 rounded-sm flex items-center justify-center shrink-0',
+                        isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
                       )}>
                         <IconComp className="size-3.5" />
                       </div>
@@ -445,7 +446,7 @@ export default function TemplateGalleryModal() {
                         {tpl.name}
                       </span>
                     </div>
-                    <Badge variant="outline" className="text-[10px] px-1 py-0 font-mono shrink-0">
+                    <Badge variant="outline" className="text-10 px-1 py-0 font-mono shrink-0 rounded-sm">
                       {tpl.badge}
                     </Badge>
                   </div>
@@ -460,9 +461,9 @@ export default function TemplateGalleryModal() {
           {/* Right Column: Preview & Apply Area */}
           <div className="flex-1 flex flex-col min-w-0 bg-background overflow-hidden">
             {/* Template Header & Switcher */}
-            <div className="px-5 py-3 border-b border-border/80 flex items-center justify-between bg-muted/20">
+            <div className="px-5 py-3 border-b border-border flex items-center justify-between bg-muted/20">
               <div className="flex items-center gap-2 min-w-0">
-                <Badge className="bg-[#16a34a] text-white text-[10px] font-semibold">
+                <Badge className="bg-primary text-primary-foreground text-10 font-semibold rounded-sm">
                   {selectedTemplate.publisher}
                 </Badge>
                 <span className="text-xs font-semibold text-foreground truncate">
@@ -476,7 +477,7 @@ export default function TemplateGalleryModal() {
                     type="button"
                     onClick={() => setPreviewTab('main')}
                     className={cn(
-                      'px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer',
+                      'px-2 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer',
                       previewTab === 'main'
                         ? 'bg-background text-foreground shadow-2xs font-semibold'
                         : 'text-muted-foreground hover:text-foreground'
@@ -489,7 +490,7 @@ export default function TemplateGalleryModal() {
                       type="button"
                       onClick={() => setPreviewTab('bib')}
                       className={cn(
-                        'px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer',
+                        'px-2 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer',
                         previewTab === 'bib'
                           ? 'bg-background text-foreground shadow-2xs font-semibold'
                           : 'text-muted-foreground hover:text-foreground'
@@ -504,7 +505,7 @@ export default function TemplateGalleryModal() {
                   type="button"
                   onClick={handleCopyCode}
                   title="Copy code"
-                  className="size-7 rounded flex items-center justify-center border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  className="size-7 rounded-sm flex items-center justify-center border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground shadow-2xs transition-colors cursor-pointer"
                 >
                   <Copy className="size-3.5" />
                 </button>
@@ -519,7 +520,7 @@ export default function TemplateGalleryModal() {
             </div>
 
             {/* Bottom Action Footer */}
-            <div className="px-5 py-3 border-t border-border/80 bg-muted/30 flex items-center justify-between">
+            <div className="px-5 py-3 border-t border-border bg-background flex items-center justify-between">
               <span className="text-11 text-muted-foreground">
                 Will insert template code into your active document.
               </span>
@@ -528,14 +529,14 @@ export default function TemplateGalleryModal() {
                 <button
                   type="button"
                   onClick={() => setIsTemplateModalOpen(false)}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md hover:bg-muted transition-colors cursor-pointer text-muted-foreground"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted text-foreground shadow-2xs transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleApplyTemplate}
-                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-semibold bg-[#16a34a] hover:bg-[#15803d] text-white shadow-xs transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-medium bg-primary hover:bg-primary-hover text-primary-foreground shadow-2xs transition-colors cursor-pointer"
                 >
                   <FileCheck className="size-3.5" />
                   Use this template

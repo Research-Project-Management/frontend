@@ -31,6 +31,9 @@ export default function ViewMenu() {
         View
       </MenubarTrigger>
       <MenubarContent className="min-w-44 text-xs z-[9999]">
+        <MenubarItem onClick={() => EditorEventBus.emit('flux:open-panel', 'Outline')}>
+          Document Outline
+        </MenubarItem>
         <MenubarItem onClick={handlePresentationMode}>
           Presentation mode
         </MenubarItem>

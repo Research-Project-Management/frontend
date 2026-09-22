@@ -65,7 +65,7 @@ export default function LayoutSwitcher() {
         <button
           type="button"
           aria-label="Layout options"
-          className="flex items-center gap-1.5 h-7 px-2.5 rounded-full text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent data-[state=open]:text-foreground transition-colors outline-none cursor-pointer select-none"
+          className="flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent data-[state=open]:text-foreground transition-colors outline-none cursor-pointer select-none"
         >
           <Columns2 className="size-3.5 shrink-0" />
           <span>Layout</span>
@@ -75,10 +75,10 @@ export default function LayoutSwitcher() {
       <DropdownMenuContent
         align="end"
         sideOffset={6}
-        className="w-64 p-1.5 bg-[#1b222d] dark:bg-[#161a22] border border-border/80 shadow-2xl rounded-lg text-xs z-[9999]"
+        className="w-64 p-1 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md text-xs z-[9999]"
       >
         {/* Header */}
-        <div className="text-[11px] font-semibold text-muted-foreground/80 px-2.5 py-1.5 select-none">
+        <div className="text-11 font-semibold text-muted-foreground px-2.5 py-1.5 select-none">
           Layout options
         </div>
 
@@ -86,15 +86,15 @@ export default function LayoutSwitcher() {
         <DropdownMenuItem
           onClick={() => setLayout('split')}
           className={cn(
-            'flex items-center gap-2.5 px-2.5 py-2 rounded-md cursor-pointer transition-colors',
+            'flex items-center gap-2.5 px-2.5 py-2 rounded-sm cursor-pointer transition-colors',
             layout === 'split'
-              ? 'bg-[#1b5e3a] dark:bg-[#165a32] text-white font-medium focus:bg-[#1b5e3a] focus:text-white'
-              : 'text-zinc-300 hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white',
+              ? 'bg-primary text-primary-foreground font-medium focus:bg-primary focus:text-primary-foreground'
+              : 'text-foreground hover:bg-muted focus:bg-muted focus:text-foreground',
           )}
         >
           <div className="size-4 flex items-center justify-center shrink-0">
             {layout === 'split' ? (
-              <Check className="size-4 text-white stroke-[2.5]" />
+              <Check className="size-4 text-primary-foreground stroke-[2.5]" />
             ) : (
               <Columns2 className="size-4 opacity-70" />
             )}
@@ -106,15 +106,15 @@ export default function LayoutSwitcher() {
         <DropdownMenuItem
           onClick={() => setLayout('editor-only')}
           className={cn(
-            'flex items-center gap-2.5 px-2.5 py-2 rounded-md cursor-pointer transition-colors',
+            'flex items-center gap-2.5 px-2.5 py-2 rounded-sm cursor-pointer transition-colors',
             layout === 'editor-only'
-              ? 'bg-[#1b5e3a] dark:bg-[#165a32] text-white font-medium focus:bg-[#1b5e3a] focus:text-white'
-              : 'text-zinc-300 hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white',
+              ? 'bg-primary text-primary-foreground font-medium focus:bg-primary focus:text-primary-foreground'
+              : 'text-foreground hover:bg-muted focus:bg-muted focus:text-foreground',
           )}
         >
           <div className="size-4 flex items-center justify-center shrink-0">
             {layout === 'editor-only' ? (
-              <Check className="size-4 text-white stroke-[2.5]" />
+              <Check className="size-4 text-primary-foreground stroke-[2.5]" />
             ) : (
               <PenLine className="size-4 opacity-70" />
             )}
@@ -126,15 +126,15 @@ export default function LayoutSwitcher() {
         <DropdownMenuItem
           onClick={() => setLayout('viewer-only')}
           className={cn(
-            'flex items-center gap-2.5 px-2.5 py-2 rounded-md cursor-pointer transition-colors',
+            'flex items-center gap-2.5 px-2.5 py-2 rounded-sm cursor-pointer transition-colors',
             layout === 'viewer-only'
-              ? 'bg-[#1b5e3a] dark:bg-[#165a32] text-white font-medium focus:bg-[#1b5e3a] focus:text-white'
-              : 'text-zinc-300 hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white',
+              ? 'bg-primary text-primary-foreground font-medium focus:bg-primary focus:text-primary-foreground'
+              : 'text-foreground hover:bg-muted focus:bg-muted focus:text-foreground',
           )}
         >
           <div className="size-4 flex items-center justify-center shrink-0">
             {layout === 'viewer-only' ? (
-              <Check className="size-4 text-white stroke-[2.5]" />
+              <Check className="size-4 text-primary-foreground stroke-[2.5]" />
             ) : (
               <FileText className="size-4 opacity-70" />
             )}
@@ -145,22 +145,22 @@ export default function LayoutSwitcher() {
         {/* 4. Open PDF in separate tab */}
         <DropdownMenuItem
           onClick={handleOpenPdfSeparateTab}
-          className="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-zinc-300 hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white cursor-pointer transition-colors"
+          className="flex items-center gap-2.5 px-2.5 py-2 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors"
         >
           <ExternalLink className="size-4 shrink-0 opacity-70" />
           <span className="flex-1 text-xs">Open PDF in separate tab</span>
         </DropdownMenuItem>
 
-        <DropdownMenuSeparator className="my-1 border-border/60" />
+        <DropdownMenuSeparator className="my-1 border-border" />
 
         {/* 5. Focus mode */}
         <DropdownMenuItem
           onClick={handleToggleFocusMode}
-          className="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-zinc-300 hover:text-white hover:bg-white/10 focus:bg-white/10 focus:text-white cursor-pointer transition-colors"
+          className="flex items-center gap-2.5 px-2.5 py-2 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors"
         >
           <Maximize2 className="size-4 shrink-0 opacity-70" />
           <span className="flex-1 text-xs">Focus mode</span>
-          <span className="text-[11px] font-mono text-muted-foreground/80">Ctrl Shift M</span>
+          <span className="text-10 font-mono px-1 py-0.5 rounded-sm bg-muted border border-border text-muted-foreground">Ctrl Shift M</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

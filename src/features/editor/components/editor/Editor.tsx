@@ -1,8 +1,16 @@
 'use client';
 
+/**
+ * Editor.tsx
+ *
+ * Deconstructed Source/Visual Editor cockpit:
+ * - Composes useMonacoMount for keybindings, SyncTeX forward, decorations & review interceptors
+ * - Composes useMonacoDiagnostics for real-time LaTeX error markers
+ * - Isolated EditorFloatingOverlay (Glyphs, Overleaf AI, Selection bar, Context menu)
+ * - Isolated EditorModals (Table, Figure, Symbol palette, Citation picker, Track Changes)
+ */
+
 import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from 'react';
-import MonacoEditor from '@monaco-editor/react';
-import type { OnMount } from '@monaco-editor/react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { filesQuery } from '@/features/editor/hooks/use-core';
@@ -17,25 +25,26 @@ import type { Page, PageFile, PageSuggestion } from '@/features/editor/types';
 import {
   usePageStore,
   useSettingsStore,
-  useActionsStore,
-  useCompileStore,
 } from '@/features/editor/store';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { toast } from 'sonner';
-import { Lock } from 'lucide-react';
+import { Lock, Loader2 } from 'lucide-react';
 import { useTheme } from '@/shared/providers';
+import { cn } from '@/shared/lib/utils';
+import dynamic from 'next/dynamic';
 
 // Subcomponents & internal seams
 import './monaco-themes';
 import Format from './Format';
-import VisualEditor from './VisualEditor';
-import CitationPickerModal from './CitationPickerModal';
-import { registerLabelCompletion } from './label-completion.provider';
-import { registerFilePathCompletion } from './file-completion.provider';
-import { registerLatexSnippets, registerLatexLinkedEditing } from './latex-snippets.provider';
-import { registerLatexLinter } from './latex-linter.provider';
-import { registerMathHoverPreview } from './math-hover.provider';
+import UnifiedCodeMirrorEditor from './UnifiedCodeMirrorEditor';
+import { EditorModeSwitcher } from './subcomponents/EditorModeSwitcher';
+import { CollaboratorPresenceBar } from './subcomponents/CollaboratorPresenceBar';
+import { SyncStatusBadge } from './subcomponents/SyncStatusBadge';
+import { LatexDiagnosticsBadge } from './subcomponents/LatexDiagnosticsBadge';
+import type { SelFloating } from './subcomponents/EditorFloatingBar';
+import type { RenameDialogState } from './subcomponents/RenameSymbolDialog';
+import type { SuggestModalState } from './subcomponents/SuggestEditModal';
 
 import { useEditorSave, extractStringContent } from './hooks/use-editor-save';
 import { useEditorDecorations } from './hooks/use-editor-decorations';
@@ -46,19 +55,12 @@ import { useEditorVim } from './hooks/use-editor-vim';
 import { useEditorEmacs } from './hooks/use-editor-emacs';
 import { useSpellChecker } from './hooks/use-spell-checker';
 import { useSmartPaste } from './hooks/use-smart-paste';
-import { cn } from '@/shared/lib/utils';
 
-import { EditorContextMenu } from './subcomponents/EditorContextMenu';
-import { EditorFloatingBar, type SelFloating } from './subcomponents/EditorFloatingBar';
-import { RenameSymbolDialog, type RenameDialogState } from './subcomponents/RenameSymbolDialog';
-import { SuggestEditModal, type SuggestModalState } from './subcomponents/SuggestEditModal';
-import { InlineSuggestionWidget } from './subcomponents/InlineSuggestionWidget';
-import { EditorModeSwitcher } from './subcomponents/EditorModeSwitcher';
-import { GlyphTooltip } from './subcomponents/GlyphTooltip';
-import { CollaboratorPresenceBar } from './subcomponents/CollaboratorPresenceBar';
-import { SyncStatusBadge } from './subcomponents/SyncStatusBadge';
-import { LatexDiagnosticsBadge } from './subcomponents/LatexDiagnosticsBadge';
-import { FloatingAiAssistant } from './subcomponents/FloatingAiAssistant';
+import { useMonacoDiagnostics } from '../../sub-features/code-editor/hooks/use-monaco-diagnostics';
+import { EditorFloatingOverlay } from '../../sub-features/code-editor/ui/EditorFloatingOverlay';
+import { EditorModals } from '../../sub-features/code-editor/ui/EditorModals';
+import { useEditorInstance } from '../../core/context/editor-instance.context';
+import { editorCommandBus } from '../../core/command-bus/editor-command-bus';
 
 interface EditorProps {
   page: Page | PageFile;
@@ -67,12 +69,8 @@ interface EditorProps {
 type CtxPos = { x: number; y: number };
 
 export default function Editor({ page }: EditorProps) {
-  const editorRef = usePageStore((s) => s.editorRef);
-  const compileRef = usePageStore((s) => s.compileRef);
-  const scrollToLineRef = usePageStore((s) => s.scrollToLineRef);
-  const scrollToPdfLineRef = usePageStore((s) => s.scrollToPdfLineRef);
-  const isAiPreviewingRef = usePageStore((s) => s.isAiPreviewingRef);
-  const getEditorContent = usePageStore((s) => s.getEditorContent);
+  const { setEngine } = useEditorInstance();
+  const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
 
   const editorTheme = useSettingsStore((s) => s.editorTheme);
@@ -113,7 +111,7 @@ export default function Editor({ page }: EditorProps) {
   const { user } = useAuth();
   const isReviewerOnly = user?.role?.toLowerCase() === 'reviewer';
 
-  // Auto-enable review mode for reviewers on mount, but allow manual toggle
+  // Auto-enable review mode for reviewers on mount
   const hasAutoSwitchedRef = useRef(false);
   useEffect(() => {
     if (isReviewerOnly && !reviewMode && !hasAutoSwitchedRef.current) {
@@ -151,7 +149,7 @@ export default function Editor({ page }: EditorProps) {
   const acceptSuggestionMutation = useAcceptSuggestion();
   const rejectSuggestionMutation = useRejectSuggestion();
 
-  // Realtime collaboration & remote cursor tracking (Overleaf-grade Yjs CRDT)
+  // Realtime collaboration & remote cursor tracking
   const {
     activeCollaborators,
     isDocumentLocked,
@@ -161,6 +159,8 @@ export default function Editor({ page }: EditorProps) {
     connectionStatus,
     isSynced,
     triggerCheckpoint,
+    yText,
+    awareness,
   } = useEditorCollaborators({
     projectId: activeProjectId,
     pageId: page.id,
@@ -176,25 +176,49 @@ export default function Editor({ page }: EditorProps) {
     updateMutation,
   } = useEditorSave({ page, isRealtimeActive });
 
-  // Wire getEditorContent bridge ref to current active editor/content
+  // Table, Figure, Symbol Wizard Modals
+  const [tableWizardOpen, setTableWizardOpen] = useState(false);
+  const [figureWizardOpen, setFigureWizardOpen] = useState(false);
+  const [symbolPaletteOpen, setSymbolPaletteOpen] = useState(false);
+
+  const rootPageId = (page as any)?.parentPageId || page?.id || null;
+
+  const handleInsertWizardSnippet = useCallback((snippet: string) => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    const sel = ed.getSelection();
+    if (!sel) return;
+    ed.executeEdits('wizard-insert', [
+      {
+        range: sel,
+        text: snippet,
+        forceMoveMarkers: true,
+      },
+    ]);
+    ed.focus();
+  }, [editorRef]);
+
   useEffect(() => {
-    getEditorContent.current = () => {
-      if (editorRef.current) {
-        return editorRef.current.getValue();
-      }
-      return currentContent ?? '';
-    };
+    const unsubTable = EditorEventBus.on('flux:open-table-wizard', () => {
+      setTableWizardOpen(true);
+    });
+    const unsubFigure = EditorEventBus.on('flux:open-figure-wizard', () => {
+      setFigureWizardOpen(true);
+    });
+    const unsubSymbol = EditorEventBus.on('flux:open-symbol-palette', () => {
+      setSymbolPaletteOpen(true);
+    });
     return () => {
-      getEditorContent.current = null;
+      unsubTable();
+      unsubFigure();
+      unsubSymbol();
     };
-  }, [currentContent, editorRef, getEditorContent]);
+  }, []);
+
 
   const vimStatusRef = useRef<HTMLDivElement>(null);
 
   const handleSaveAndCompile = useCallback(() => {
-    // Overleaf single-source-of-truth guarantee:
-    // If realtime collaborative CRDT is active, trigger an atomic collaborative checkpoint.
-    // Otherwise fallback to HTTP PUT for offline editing.
     if (isRealtimeActive) {
       triggerCheckpoint();
     } else if (page?.id && currentContent !== undefined) {
@@ -203,8 +227,8 @@ export default function Editor({ page }: EditorProps) {
         content: currentContent,
       });
     }
-    compileRef.current?.();
-  }, [compileRef, currentContent, isRealtimeActive, page?.id, triggerCheckpoint, updateMutation]);
+    editorCommandBus.dispatch({ type: 'compiler:trigger' });
+  }, [currentContent, isRealtimeActive, page?.id, triggerCheckpoint, updateMutation]);
 
   const { isVimActive } = useEditorVim({
     editor: editorMounted ? editorRef.current : null,
@@ -221,7 +245,7 @@ export default function Editor({ page }: EditorProps) {
     onSave: handleSaveAndCompile,
   });
 
-  // Spell checker — runs in WebWorker, architecture mirrors Overleaf's HunspellManager
+  // Spell checker — WebWorker
   const spellCheckLanguage = useSettingsStore((s) => s.spellCheckLanguage ?? 'en_US');
   const spellCheckEnabled = useSettingsStore((s) => s.spellCheck ?? true);
   useSpellChecker({
@@ -231,7 +255,7 @@ export default function Editor({ page }: EditorProps) {
     enabled: spellCheckEnabled && editorMounted,
   });
 
-  // Smart Paste — Overleaf-grade table and image paste handling
+  // Smart Paste
   useSmartPaste({
     editorRef,
     monacoRef,
@@ -252,85 +276,13 @@ export default function Editor({ page }: EditorProps) {
     editorMounted,
   });
 
-
-  // Monaco compiler diagnostics markers (Overleaf parity)
-  const compileErrors = useCompileStore((s) => s.compileErrors);
-  const compileStatus = useCompileStore((s) => s.compileStatus);
-
-  useEffect(() => {
-    const editor = editorRef.current;
-    const monaco = monacoRef.current;
-    if (!editor || !monaco || !editorMounted) return;
-
-    const model = editor.getModel();
-    if (!model) return;
-
-    const currentFileName = (page?.title || 'main.tex').trim().toLowerCase();
-    const hasProjectId = 'projectId' in page && Boolean(page.projectId);
-    const isMainDoc =
-      currentFileName === 'main.tex' ||
-      currentFileName.endsWith('/main.tex') ||
-      !hasProjectId;
-
-    const markers: any[] = [];
-
-    if (compileErrors && compileErrors.length > 0) {
-      for (const err of compileErrors) {
-        if (err.file) {
-          const errClean = err.file.replace(/^\.\//, '').trim().toLowerCase();
-          const matches =
-            errClean === currentFileName ||
-            currentFileName.endsWith(`/${errClean}`) ||
-            errClean.endsWith(`/${currentFileName}`) ||
-            (isMainDoc &&
-              (errClean === 'main.tex' || errClean.endsWith('/main.tex')));
-          if (!matches) continue;
-        } else if (!isMainDoc) {
-          continue;
-        }
-
-        const maxLine = model.getLineCount();
-        const line =
-          err.line && err.line > 0 ? Math.min(err.line, maxLine) : 1;
-        const maxCol = model.getLineMaxColumn(line);
-
-        let severity = monaco.MarkerSeverity.Error;
-        if (err.severity === 'warning') severity = monaco.MarkerSeverity.Warning;
-        else if (err.severity === 'info') severity = monaco.MarkerSeverity.Info;
-
-        const suggestionText = err.suggestion
-          ? `\n\n💡 Gợi ý sửa lỗi: ${err.suggestion}`
-          : '';
-
-        markers.push({
-          startLineNumber: line,
-          startColumn: 1,
-          endLineNumber: line,
-          endColumn: maxCol,
-          message: `${err.message}${suggestionText}`,
-          severity,
-          source: 'LaTeX Compiler',
-          code: err.code,
-        });
-      }
-    }
-
-    monaco.editor.setModelMarkers(model, 'latex-compiler', markers);
-
-    return () => {
-      if (model && !model.isDisposed()) {
-        monaco.editor.setModelMarkers(model, 'latex-compiler', []);
-      }
-    };
-  }, [
-    compileErrors,
-    compileStatus,
-    editorMounted,
+  // Compiler Diagnostics Markers
+  useMonacoDiagnostics({
     editorRef,
     monacoRef,
-    page?.id,
-    page?.title,
-  ]);
+    editorMounted,
+    page,
+  });
 
   const handleAcceptSuggestion = useCallback(async (s: PageSuggestion) => {
     try {
@@ -349,7 +301,7 @@ export default function Editor({ page }: EditorProps) {
     } catch {
       toast.error('Failed to accept suggestion');
     }
-  }, [acceptSuggestionMutation, isRealtimeActive, page.id, setActiveSuggestionWidgetData]);
+  }, [acceptSuggestionMutation, isRealtimeActive, page.id, setActiveSuggestionWidgetData, editorRef]);
 
   const handleRejectSuggestion = useCallback(async (s: PageSuggestion) => {
     try {
@@ -364,7 +316,7 @@ export default function Editor({ page }: EditorProps) {
     }
   }, [page.id, rejectSuggestionMutation, setActiveSuggestionWidgetData]);
 
-  // Synchronize editor buffer when a suggestion is accepted elsewhere in single-user mode
+  // Synchronize editor buffer when a suggestion is accepted elsewhere
   useEffect(() => {
     if (!page?.id) return;
     const unsub = EditorEventBus.on('flux:review-event', ({ pageId: evtPageId, event, payload }) => {
@@ -379,7 +331,7 @@ export default function Editor({ page }: EditorProps) {
       }
     });
     return () => unsub();
-  }, [isRealtimeActive, page?.id]);
+  }, [editorRef, isRealtimeActive, page?.id]);
 
   const {
     bibEntries,
@@ -455,9 +407,6 @@ export default function Editor({ page }: EditorProps) {
 
   const [suggestModal, setSuggestModal] = useState<SuggestModalState | null>(null);
 
-  const disposablesRef = useRef<Array<{ dispose: () => void }>>([]);
-  const domCleanupRef = useRef<(() => void) | null>(null);
-
   const closeMenu = useCallback(() => setCtxMenu(null), []);
 
   const openRenameDialog = useCallback(() => {
@@ -473,7 +422,7 @@ export default function Editor({ page }: EditorProps) {
   const openRenameDialogLatestRef = useRef(openRenameDialog);
   openRenameDialogLatestRef.current = openRenameDialog;
 
-  const handleOpenCitationModal = useCallback(() => setCitationModalOpen(true), []);
+  const handleOpenCitationModal = useCallback(() => setCitationModalOpen(true), [setCitationModalOpen]);
 
   const {
     menuGroups,
@@ -489,38 +438,29 @@ export default function Editor({ page }: EditorProps) {
     ctxSelText,
   });
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      domCleanupRef.current?.();
-      disposablesRef.current.forEach((d) => d.dispose());
-      disposablesRef.current = [];
-    };
-  }, []);
-
-  // Close context menu when clicking outside or pressing Escape
-  useEffect(() => {
-    if (!ctxMenu) return;
-    const handler = (e: MouseEvent) => {
-      if (!ctxMenuRef.current?.contains(e.target as Node)) setCtxMenu(null);
-    };
-    const keyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setCtxMenu(null);
-    };
-    document.addEventListener('mousedown', handler);
-    document.addEventListener('keydown', keyHandler);
-    return () => {
-      document.removeEventListener('mousedown', handler);
-      document.removeEventListener('keydown', keyHandler);
-    };
-  }, [ctxMenu]);
-
-  // Global keyboard shortcuts: Project-Wide Search (Ctrl+Shift+F) & Mode Toggle (Ctrl+Shift+V)
+  // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
         e.preventDefault();
-        EditorEventBus.emit('flux:open-panel', 'Search');
+        const ed = editorRef.current;
+        let query: string | undefined;
+        if (ed) {
+          const sel = ed.getSelection();
+          if (sel && !sel.isEmpty()) {
+            query = ed.getModel()?.getValueInRange(sel) || undefined;
+          } else {
+            const pos = ed.getPosition();
+            if (pos) {
+              const word = ed.getModel()?.getWordAtPosition(pos);
+              if (word) query = word.word;
+            }
+          }
+        }
+        EditorEventBus.emit('flux:open-panel', { panel: 'Search', query });
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'K' || e.key === 'k')) {
+        e.preventDefault();
+        EditorEventBus.emit('flux:open-citation-picker');
       } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
         e.preventDefault();
         const current = useSettingsStore.getState().editorMode;
@@ -536,7 +476,7 @@ export default function Editor({ page }: EditorProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [editorRef]);
 
   // Adjust context menu position to viewport
   useLayoutEffect(() => {
@@ -611,336 +551,13 @@ export default function Editor({ page }: EditorProps) {
     });
   }, [fontSize, wordWrap, lineNumbers, hasComments, editorRef]);
 
-  const handleEditorMount: OnMount = (editor, monaco) => {
-    editorRef.current = editor;
-    monacoRef.current = monaco;
-    getEditorContent.current = () => editor.getValue();
-    setEditorMounted(true);
 
-    // Show scrollbar on interaction/scroll then hide after idle
-    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
-    const scrollDisposable = editor.onDidScrollChange(() => {
-      const domNode = editor.getDomNode();
-      if (domNode) {
-        domNode.classList.add('editor-scrolling');
-        if (scrollTimer) clearTimeout(scrollTimer);
-        scrollTimer = setTimeout(() => {
-          domNode.classList.remove('editor-scrolling');
-        }, 1000);
-      }
-    });
-    disposablesRef.current.push(scrollDisposable);
 
-    // Double-click jumps to PDF (SyncTeX)
-    const domNode = editor.getDomNode();
-    if (domNode) {
-      const dblClickHandler = () => {
-        const pos = editor.getPosition();
-        if (pos) scrollToPdfLineRef.current?.(pos.lineNumber);
-      };
-      domNode.addEventListener('dblclick', dblClickHandler);
-      domCleanupRef.current = () =>
-        domNode.removeEventListener('dblclick', dblClickHandler);
-    }
-
-    // Register completions & snippets
-    disposablesRef.current.push(registerCitationProvider(monaco));
-    disposablesRef.current.push(
-      registerLabelCompletion(monaco, () => pageFilesRef.current),
-    );
-    disposablesRef.current.push(
-      registerFilePathCompletion(monaco, () => pageFilesRef.current),
-    );
-    disposablesRef.current.push(registerLatexSnippets(monaco));
-    disposablesRef.current.push(registerLatexLinkedEditing(monaco));
-
-    const getRetractedItemsMap = () => {
-      // Library items are no longer fetched in Editor. Retraction linting
-      // is now responsibility of the Library module.
-      return new Map<string, any>();
+  useEffect(() => {
+    return () => {
+      setEngine(null);
     };
-    disposablesRef.current.push(
-      registerLatexLinter(editor, monaco, getRetractedItemsMap),
-    );
-    disposablesRef.current.push(registerMathHoverPreview(monaco));
-
-    // Register decoration listeners
-    disposablesRef.current.push(bindDecorationListeners(editor, monaco));
-    disposablesRef.current.push(bindMonacoCursorListeners(editor));
-
-    // Right-click context menu
-    disposablesRef.current.push(
-      editor.onContextMenu((e) => {
-        e.event.preventDefault();
-        e.event.stopPropagation();
-        const pos = e.target.position;
-        const sel = editor.getSelection();
-        const hasSel = sel && !sel.isEmpty();
-        const sLine = hasSel ? sel.startLineNumber : (pos?.lineNumber ?? null);
-        const eLine = hasSel ? sel.endLineNumber : (pos?.lineNumber ?? null);
-        const selTxt = hasSel
-          ? editor.getModel()?.getValueInRange(sel) ?? ''
-          : '';
-
-        setCtxStartLine(sLine);
-        setCtxEndLine(eLine);
-        setCtxSelText(selTxt);
-        setCtxPos(null);
-        setCtxMenu({ x: e.event.posx, y: e.event.posy });
-      }),
-    );
-
-    // SyncTeX Forward jump & Error jump highlight
-    scrollToLineRef.current = (
-      line: number,
-      highlightType: 'error' | 'synctex' = 'synctex',
-    ) => {
-      const model = editor.getModel();
-      const maxLine = model ? model.getLineCount() : 1;
-      const targetLine = Math.max(1, Math.min(line, maxLine));
-
-      editor.revealLineInCenter(targetLine);
-      editor.setPosition({ lineNumber: targetLine, column: 1 });
-      editor.focus();
-
-      const isErr = highlightType === 'error';
-      const flashClass = isErr
-        ? 'bg-rose-500/25 border-l-4 border-rose-500 transition-colors duration-1000'
-        : 'bg-primary/20 border-l-2 border-primary transition-colors duration-700';
-
-      const flashColl = editor.createDecorationsCollection([
-        {
-          range: new monaco.Range(targetLine, 1, targetLine, 1),
-          options: {
-            isWholeLine: true,
-            className: flashClass,
-          },
-        },
-      ]);
-      setTimeout(() => {
-        flashColl.clear();
-      }, isErr ? 2500 : 1500);
-    };
-
-    // Keyboard commands
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-      compileRef.current?.();
-    });
-
-    editor.addCommand(monaco.KeyCode.F2, () => {
-      openRenameDialogLatestRef.current();
-    });
-
-    // Project-Wide Search (Ctrl+Shift+F / Cmd+Shift+F)
-    editor.addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF,
-      () => {
-        EditorEventBus.emit('flux:open-panel', 'Search');
-      },
-    );
-
-    // Toggle Source / Visual Editor (Ctrl+Shift+V / Cmd+Shift+V)
-    editor.addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyV,
-      () => {
-        const current = useSettingsStore.getState().editorMode;
-        const next = current === 'code' ? 'visual' : 'code';
-        useSettingsStore.getState().setEditorMode(next);
-        toast.info(
-          next === 'visual'
-            ? 'Switched to Visual (Rich Text) mode'
-            : 'Switched to Source (Code) mode',
-          { duration: 1500 },
-        );
-      },
-    );
-
-    // Add Review Comment command (Ctrl+Alt+M / Cmd+Option+M or Ctrl+Alt+C)
-    const handleTriggerAddComment = () => {
-      const sel = editor.getSelection();
-      const hasSel = sel && !sel.isEmpty();
-      const startL = hasSel ? sel.startLineNumber : (editor.getPosition()?.lineNumber ?? 1);
-      const endL = hasSel ? sel.endLineNumber : startL;
-      const text = hasSel ? (editor.getModel()?.getValueInRange(sel) ?? '') : '';
-
-      useActionsStore.getState().setPendingComment({
-        startLine: startL,
-        endLine: endL,
-        selectedText: text,
-      });
-      EditorEventBus.emit('flux:open-panel', 'Review');
-    };
-
-    editor.addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyM,
-      handleTriggerAddComment,
-    );
-    editor.addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyC,
-      handleTriggerAddComment,
-    );
-
-    // Overleaf AI Assist shortcut (Ctrl+K / Cmd+K)
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, () => {
-      const sel = editor.getSelection();
-      if (!sel || sel.isEmpty()) {
-        toast.info('Select some text first to ask AI Assist');
-        return;
-      }
-      const text = editor.getModel()?.getValueInRange(sel) ?? '';
-      const visiblePos = editor.getScrolledVisiblePosition(sel.getEndPosition());
-      const domNode = editor.getDomNode();
-      const rect = domNode ? domNode.getBoundingClientRect() : { left: 100, top: 100 };
-      const x = visiblePos ? rect.left + visiblePos.left : rect.left + 50;
-      const y = visiblePos ? rect.top + visiblePos.top + 20 : rect.top + 50;
-
-      setAiAssistState({
-        isOpen: true,
-        selectedText: text,
-        startLine: sel.startLineNumber,
-        endLine: sel.endLineNumber,
-        position: { x, y },
-      });
-    });
-
-    // SyncTeX Forward jump to PDF (Ctrl+Alt+J / Cmd+Option+J — official Overleaf shortcut)
-    const handleTriggerSyncTeXForward = () => {
-      const pos = editor.getPosition();
-      const line = pos?.lineNumber ?? editor.getVisibleRanges()?.[0]?.startLineNumber ?? 1;
-      scrollToPdfLineRef.current?.(line);
-    };
-
-    editor.addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyJ,
-      handleTriggerSyncTeXForward,
-    );
-
-    editor.addAction({
-      id: 'flux.synctex.forward',
-      label: 'Go to line in PDF (SyncTeX)',
-      keybindings: [
-        monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyJ,
-      ],
-      contextMenuGroupId: 'navigation',
-      contextMenuOrder: 1.5,
-      run: (ed) => {
-        const pos = ed.getPosition();
-        const line = pos?.lineNumber ?? ed.getVisibleRanges()?.[0]?.startLineNumber ?? 1;
-        scrollToPdfLineRef.current?.(line);
-      },
-    });
-
-    // Track Changes (Review Mode) keyboard interceptor
-    disposablesRef.current.push(
-      editor.onKeyDown((e) => {
-        if (!useSettingsStore.getState().reviewMode) return;
-
-        const sel = editor.getSelection();
-        if (!sel || sel.isEmpty()) return;
-
-        // When Backspace or Delete is pressed on an active selection:
-        if (e.keyCode === monaco.KeyCode.Backspace || e.keyCode === monaco.KeyCode.Delete) {
-          e.preventDefault();
-          e.stopPropagation();
-
-          const model = editor.getModel();
-          const originalText = model ? model.getValueInRange(sel) : '';
-          if (!originalText) return;
-
-          createSuggestionMutation.mutate(
-            {
-              pageId: page.id,
-              type: 'delete',
-              originalText,
-              suggestedText: '',
-              fromLine: sel.startLineNumber,
-              fromColumn: sel.startColumn,
-              toLine: sel.endLineNumber,
-              toColumn: sel.endColumn,
-              description: 'Proposed deletion',
-            },
-            {
-              onSuccess: (created: any) => {
-                toast.success('Proposed deletion for review', {
-                  action: {
-                    label: 'Undo',
-                    onClick: () => {
-                      if (created?.id) {
-                        rejectSuggestionMutation.mutate({
-                          pageId: page.id,
-                          suggestionId: created.id,
-                        });
-                      }
-                    },
-                  },
-                });
-              },
-              onError: () => {
-                toast.error('Failed to propose deletion');
-              },
-            },
-          );
-          return;
-        }
-
-        // When typing regular characters over selected text:
-        const isModifier = e.ctrlKey || e.metaKey || e.altKey;
-        if (!isModifier && e.browserEvent.key && e.browserEvent.key.length === 1) {
-          e.preventDefault();
-          e.stopPropagation();
-
-          const model = editor.getModel();
-          const originalText = model ? model.getValueInRange(sel) : '';
-
-          setSuggestModal({
-            originalText,
-            suggestedText: e.browserEvent.key,
-            fromLine: sel.startLineNumber,
-            toLine: sel.endLineNumber,
-            type: 'replace',
-            description: 'Proposed replacement',
-          });
-        }
-      }),
-    );
-
-    // Floating selection toolbar
-    disposablesRef.current.push(
-      editor.onDidChangeCursorSelection((e) => {
-        if (isAiPreviewingRef?.current) {
-          setSelFloating(null);
-          return;
-        }
-        const sel = e.selection;
-        if (sel.isEmpty()) {
-          setSelFloating(null);
-        } else {
-          const model = editor.getModel();
-          const text = model ? model.getValueInRange(sel) : '';
-          if (text.trim().length > 0) {
-            const endPos = {
-              lineNumber: sel.endLineNumber,
-              column: sel.endColumn,
-            };
-            const coords = editor.getScrolledVisiblePosition(endPos);
-            const editorDom = editor.getDomNode();
-            if (coords && editorDom) {
-              const rect = editorDom.getBoundingClientRect();
-              setSelFloating({
-                x: Math.min(rect.left + coords.left + 8, window.innerWidth - 180),
-                y: Math.max(rect.top + coords.top + coords.height + 4, 8),
-                startLine: sel.startLineNumber,
-                endLine: sel.endLineNumber,
-                text,
-              });
-            }
-          } else {
-            setSelFloating(null);
-          }
-        }
-      }),
-    );
-  };
+  }, [setEngine]);
 
   // SyncTeX forward jump event listener (Floating widget forward arrow)
   useEffect(() => {
@@ -952,9 +569,9 @@ export default function Editor({ page }: EditorProps) {
         pos?.lineNumber ??
         inst.getVisibleRanges()?.[0]?.startLineNumber ??
         1;
-      scrollToPdfLineRef.current?.(line);
+      editorCommandBus.dispatch({ type: 'viewer:jump-to-line', line });
     });
-  }, [editorRef, scrollToPdfLineRef]);
+  }, [editorRef]);
 
   const handleSuggestionSubmit = useCallback(async () => {
     if (!suggestModal) return;
@@ -1008,6 +625,7 @@ export default function Editor({ page }: EditorProps) {
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
+      {/* Header format bar & mode switches */}
       <div className="h-9 flex items-center justify-between border-b border-border bg-background pl-1 pr-2 shrink-0 overflow-hidden gap-1.5">
         <div className="flex-1 min-w-0 overflow-hidden">
           <Format />
@@ -1039,7 +657,7 @@ export default function Editor({ page }: EditorProps) {
               disabled.
             </span>
           </div>
-          <span className="text-11 font-mono font-medium bg-amber-500/20 px-1.5 py-0.5 rounded text-amber-800 dark:text-amber-200 uppercase tracking-wide">
+          <span className="text-11 font-mono font-medium bg-amber-500/20 px-1.5 py-0.5 rounded-sm text-amber-800 dark:text-amber-200 uppercase tracking-wide">
             Read Only
           </span>
         </div>
@@ -1058,14 +676,13 @@ export default function Editor({ page }: EditorProps) {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {/* View Mode Switcher: Changes | Clean | Original */}
-            <div className="inline-flex items-center rounded bg-amber-500/15 p-0.5 text-[11px] font-medium border border-amber-500/30">
-              <span className="text-[10px] text-amber-800/80 dark:text-amber-300/80 px-1.5 uppercase font-semibold">View:</span>
+            <div className="inline-flex items-center rounded-md bg-amber-500/15 p-0.5 text-11 font-medium border border-amber-500/30">
+              <span className="text-10 text-amber-800/80 dark:text-amber-300/80 px-1.5 uppercase font-semibold">View:</span>
               <button
                 type="button"
                 onClick={() => setTrackChangesViewMode('changes')}
                 className={cn(
-                  'px-1.5 py-0.5 rounded transition-colors cursor-pointer',
+                  'px-1.5 py-0.5 rounded-sm text-11 transition-colors cursor-pointer',
                   trackChangesViewMode === 'changes'
                     ? 'bg-amber-600 text-white font-semibold shadow-2xs'
                     : 'text-amber-900/80 dark:text-amber-300/80 hover:text-amber-900 hover:bg-amber-500/20',
@@ -1078,7 +695,7 @@ export default function Editor({ page }: EditorProps) {
                 type="button"
                 onClick={() => setTrackChangesViewMode('clean')}
                 className={cn(
-                  'px-1.5 py-0.5 rounded transition-colors cursor-pointer',
+                  'px-1.5 py-0.5 rounded-sm text-11 transition-colors cursor-pointer',
                   trackChangesViewMode === 'clean'
                     ? 'bg-amber-600 text-white font-semibold shadow-2xs'
                     : 'text-amber-900/80 dark:text-amber-300/80 hover:text-amber-900 hover:bg-amber-500/20',
@@ -1091,7 +708,7 @@ export default function Editor({ page }: EditorProps) {
                 type="button"
                 onClick={() => setTrackChangesViewMode('original')}
                 className={cn(
-                  'px-1.5 py-0.5 rounded transition-colors cursor-pointer',
+                  'px-1.5 py-0.5 rounded-sm text-11 transition-colors cursor-pointer',
                   trackChangesViewMode === 'original'
                     ? 'bg-amber-600 text-white font-semibold shadow-2xs'
                     : 'text-amber-900/80 dark:text-amber-300/80 hover:text-amber-900 hover:bg-amber-500/20',
@@ -1120,14 +737,14 @@ export default function Editor({ page }: EditorProps) {
                   description: '',
                 });
               }}
-              className="px-2 py-0.5 rounded text-11 font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 transition-colors cursor-pointer"
+              className="px-2 py-0.5 rounded-sm text-11 font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 transition-colors cursor-pointer shadow-2xs"
             >
               Propose Suggestion
             </button>
             <button
               type="button"
               onClick={() => toggleReviewMode()}
-              className="px-2 py-0.5 rounded text-11 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="px-2 py-0.5 rounded-sm text-11 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
               title="Turn off Review Mode"
             >
               Turn Off
@@ -1136,114 +753,35 @@ export default function Editor({ page }: EditorProps) {
         </div>
       )}
 
+      {/* Editor surface area */}
       <div className="flex-1 w-full relative min-h-0 flex flex-col overflow-hidden">
         <div className="flex-1 w-full relative min-h-0 overflow-hidden">
-          {editorMode === 'visual' ? (
-            <VisualEditor
-              value={currentContent}
-              onChange={handleContentChange}
-              theme={isDarkTheme ? 'dark' : 'light'}
-              readOnly={isReadOnly}
-              onSwitchToCode={() => setEditorMode('code')}
-            />
-          ) : (
-            <MonacoEditor
-              height="100%"
-              defaultLanguage="latex"
-              value={currentContent}
-              onChange={handleContentChange}
-              theme={activeMonacoTheme}
-              className=""
-              onMount={handleEditorMount}
-              options={{
-                automaticLayout: true,
-                readOnly: isReadOnly,
-                fontSize,
-                lineHeight: Math.round(fontSize * 1.65),
-                wordWrap: wordWrap ? 'on' : 'off',
-                lineNumbers: lineNumbers ? 'on' : 'off',
-                lineNumbersMinChars: 3,
-                lineDecorationsWidth: 0,
-                glyphMargin: (comments?.length ?? 0) > 0,
-                folding: false,
-                renderLineHighlight: 'all',
-                renderLineHighlightOnlyWhenFocus: false,
-                scrollBeyondLastLine: false,
-                smoothScrolling: true,
-                minimap: { enabled: false },
-                overviewRulerBorder: false,
-                overviewRulerLanes: 0,
-                hideCursorInOverviewRuler: true,
-                scrollbar: {
-                  vertical: 'auto',
-                  horizontal: 'auto',
-                  verticalScrollbarSize: 8,
-                  horizontalScrollbarSize: 8,
-                  verticalSliderSize: 6,
-                  horizontalSliderSize: 6,
-                  useShadows: false,
-                  verticalHasArrows: false,
-                  horizontalHasArrows: false,
-                  alwaysConsumeMouseWheel: false,
-                },
-              }}
-            />
-          )}
+          <UnifiedCodeMirrorEditor
+            value={currentContent}
+            onChange={handleContentChange}
+            isDarkTheme={isDarkTheme}
+            readOnly={isReadOnly}
+            bibEntries={bibEntries}
+            keybinding={keybinding}
+            yText={yText}
+            awareness={awareness}
+          />
         </div>
 
         <style>{`
-          /* Reset any rounded corners or borders on active line highlight */
-          .monaco-editor .current-line {
-            border-radius: 0 !important;
-            border: none !important;
-          }
-
-          /* Margin/gutter strip background */
-          .monaco-editor .margin {
-            background-color: #f0f0f0 !important;
-          }
-          .dark .monaco-editor .margin {
-            background-color: #0f172a !important;
-          }
-
-          /* Gutter active line: darker gray than content */
+          .monaco-editor .current-line { border-radius: 0 !important; border: none !important; }
+          .monaco-editor .margin { background-color: #f0f0f0 !important; }
+          .dark .monaco-editor .margin { background-color: #0f172a !important; }
           .monaco-editor .margin-view-overlays .current-line,
-          .monaco-editor .margin-view-overlays .current-line-margin {
-            background-color: #dcdcdc !important;
-            border: none !important;
-          }
+          .monaco-editor .margin-view-overlays .current-line-margin { background-color: #dcdcdc !important; border: none !important; }
           .dark .monaco-editor .margin-view-overlays .current-line,
-          .dark .monaco-editor .margin-view-overlays .current-line-margin {
-            background-color: #334155 !important;
-            border: none !important;
-          }
-
-          /* Content active line: lighter gray */
-          .monaco-editor .view-overlays .current-line {
-            background-color: #ededed !important;
-            border: none !important;
-          }
-          .dark .monaco-editor .view-overlays .current-line {
-            background-color: #1e293b !important;
-            border: none !important;
-          }
-
-          /* Active line number text styling */
-          .monaco-editor .line-numbers.active-line-number {
-            color: #1e293b !important;
-            font-weight: 600 !important;
-          }
-          .dark .monaco-editor .line-numbers.active-line-number {
-            color: #93c5fd !important;
-          }
-
-          /* Monaco scrollbar: hidden by default, visible on interaction (scrolling, hovering, dragging) */
+          .dark .monaco-editor .margin-view-overlays .current-line-margin { background-color: #334155 !important; border: none !important; }
+          .monaco-editor .view-overlays .current-line { background-color: #ededed !important; border: none !important; }
+          .dark .monaco-editor .view-overlays .current-line { background-color: #1e293b !important; border: none !important; }
+          .monaco-editor .line-numbers.active-line-number { color: #1e293b !important; font-weight: 600 !important; }
+          .dark .monaco-editor .line-numbers.active-line-number { color: #93c5fd !important; }
           .monaco-editor .scrollbar.vertical,
-          .monaco-editor .scrollbar.horizontal {
-            opacity: 0 !important;
-            transition: opacity 0.25s ease-in-out !important;
-          }
-
+          .monaco-editor .scrollbar.horizontal { opacity: 0 !important; transition: opacity 0.25s ease-in-out !important; }
           .monaco-editor.editor-scrolling .scrollbar.vertical,
           .monaco-editor.editor-scrolling .scrollbar.horizontal,
           .monaco-editor .scrollbar.vertical:hover,
@@ -1251,28 +789,14 @@ export default function Editor({ page }: EditorProps) {
           .monaco-editor .scrollbar.vertical.active,
           .monaco-editor .scrollbar.horizontal.active,
           .monaco-editor .scrollbar.vertical.visible,
-          .monaco-editor .scrollbar.horizontal.visible {
-            opacity: 1 !important;
-          }
-
-          .monaco-editor .scrollbar .slider {
-            border-radius: 4px !important;
-            background: rgba(100, 116, 139, 0.4) !important;
-          }
-          .monaco-editor .scrollbar .slider:hover {
-            background: rgba(100, 116, 139, 0.6) !important;
-          }
-          .monaco-editor .scrollbar .slider.active {
-            background: rgba(100, 116, 139, 0.8) !important;
-          }
-
-          /* Eliminate arrow buttons */
+          .monaco-editor .scrollbar.horizontal.visible { opacity: 1 !important; }
+          .monaco-editor .scrollbar .slider { border-radius: 4px !important; background: rgba(100, 116, 139, 0.4) !important; }
+          .monaco-editor .scrollbar .slider:hover { background: rgba(100, 116, 139, 0.6) !important; }
+          .monaco-editor .scrollbar .slider.active { background: rgba(100, 116, 139, 0.8) !important; }
           .monaco-editor .scrollbar .arrow-top,
           .monaco-editor .scrollbar .arrow-bottom,
           .monaco-editor .scrollbar .arrow-left,
-          .monaco-editor .scrollbar .arrow-right {
-            display: none !important;
-          }
+          .monaco-editor .scrollbar .arrow-right { display: none !important; }
         `}</style>
 
         {/* Monaco Vim status bar */}
@@ -1300,7 +824,7 @@ export default function Editor({ page }: EditorProps) {
             aria-label="Emacs mode status bar"
           >
             <div className="flex items-center gap-2">
-              <span className="px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-[10px] font-semibold uppercase tracking-wider">
+              <span className="px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-10 font-semibold uppercase tracking-wider">
                 Emacs
               </span>
               <span className="text-foreground font-medium text-xs">
@@ -1314,27 +838,24 @@ export default function Editor({ page }: EditorProps) {
         )}
       </div>
 
-      {/* Glyph comment tooltip */}
-      <GlyphTooltip tooltip={glyphTooltip} />
-
-      {/* Inline Suggestion Action Widget (Overleaf 1:1) */}
-      <InlineSuggestionWidget
-        data={activeSuggestionWidgetData}
-        isAccepting={acceptSuggestionMutation.isPending}
-        isRejecting={rejectSuggestionMutation.isPending}
-        onAccept={handleAcceptSuggestion}
-        onReject={handleRejectSuggestion}
-        onClose={handleCloseSuggestionWidget}
+      {/* Overlays (Glyph tooltip, Inline suggestion, Selection bar, AI Assistant, Context menu) */}
+      <EditorFloatingOverlay
+        glyphTooltip={glyphTooltip}
+        activeSuggestionWidgetData={activeSuggestionWidgetData}
+        isAcceptingSuggestion={acceptSuggestionMutation.isPending}
+        isRejectingSuggestion={rejectSuggestionMutation.isPending}
+        onAcceptSuggestion={handleAcceptSuggestion}
+        onRejectSuggestion={handleRejectSuggestion}
+        onCloseSuggestionWidget={handleCloseSuggestionWidget}
         onOpenReviewTab={handleOpenReviewTab}
-      />
-
-      {/* Selection floating action bar */}
-      <EditorFloatingBar
         selFloating={selFloating}
         selFloatingRef={selFloatingRef}
         reviewMode={reviewMode}
-        onClose={handleCloseFloating}
-        onOpenSuggest={setSuggestModal}
+        onCloseFloating={handleCloseFloating}
+        onOpenSuggestModal={setSuggestModal}
+        aiAssistState={aiAssistState}
+        onCloseAiAssist={() => setAiAssistState(null)}
+        onApplyAiEdit={handleApplyAiEdit}
         onOpenAiAssist={(opts) => {
           setAiAssistState({
             isOpen: true,
@@ -1344,53 +865,36 @@ export default function Editor({ page }: EditorProps) {
             position: opts.position,
           });
         }}
-      />
-
-      {/* Overleaf 2024-2026 Floating AI Assistant */}
-      {aiAssistState?.isOpen && (
-        <FloatingAiAssistant
-          isOpen={aiAssistState.isOpen}
-          onClose={() => setAiAssistState(null)}
-          selectedText={aiAssistState.selectedText}
-          startLine={aiAssistState.startLine}
-          endLine={aiAssistState.endLine}
-          position={aiAssistState.position}
-          onApplyEdit={handleApplyAiEdit}
-        />
-      )}
-
-      {/* Custom context menu portal */}
-      <EditorContextMenu
         ctxMenu={ctxMenu}
         ctxPos={ctxPos}
         ctxMenuRef={ctxMenuRef}
         menuGroups={menuGroups}
       />
 
-      {/* Rename occurrences confirmation dialog */}
-      <RenameSymbolDialog
+      {/* Modals (Citations, Tables, Figures, Symbols, Suggestion, Rename) */}
+      <EditorModals
+        citationModalOpen={citationModalOpen}
+        setCitationModalOpen={setCitationModalOpen}
+        bibEntries={bibEntries}
+        onInsertCitation={handleInsertCitationSnippet}
+        tableWizardOpen={tableWizardOpen}
+        setTableWizardOpen={setTableWizardOpen}
+        figureWizardOpen={figureWizardOpen}
+        setFigureWizardOpen={setFigureWizardOpen}
+        rootPageId={rootPageId}
+        symbolPaletteOpen={symbolPaletteOpen}
+        setSymbolPaletteOpen={setSymbolPaletteOpen}
+        onInsertSnippet={handleInsertWizardSnippet}
+        suggestModal={suggestModal}
+        setSuggestModal={setSuggestModal}
+        isCreatingSuggestion={createSuggestionMutation.isPending}
+        onCloseSuggestModal={handleCloseSuggestModal}
+        onSuggestionSubmit={handleSuggestionSubmit}
         renameDialog={renameDialog}
         renameInputRef={renameInputRef}
-        onChangeNewName={handleChangeRenameName}
-        onApply={handleApplyRename}
-        onCancel={handleCancelRename}
-      />
-
-      {/* Suggestion (Track Changes) modal dialog */}
-      <SuggestEditModal
-        suggestModal={suggestModal}
-        isPending={createSuggestionMutation.isPending}
-        onClose={handleCloseSuggestModal}
-        onSubmit={handleSuggestionSubmit}
-        onChangeState={setSuggestModal}
-      />
-
-      {/* In-Editor Citation Picker Modal */}
-      <CitationPickerModal
-        open={citationModalOpen}
-        onOpenChange={setCitationModalOpen}
-        items={bibEntries}
-        onSelectCitation={handleInsertCitationSnippet}
+        onChangeRenameName={handleChangeRenameName}
+        onApplyRename={handleApplyRename}
+        onCancelRename={handleCancelRename}
       />
     </div>
   );

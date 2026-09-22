@@ -10,6 +10,7 @@ import {
   extractPdfBookmarks,
   type PdfOutlineItem,
 } from '@/features/editor/utils/pdf-outline.util';
+import { parseSyncTeX, type SyncTeXMap } from '@/features/editor/utils/viewer.util';
 import Toolbar from '../components/viewer/Toolbar';
 import Surface, { type SurfaceHandle } from '../components/viewer/Surface';
 import Logs, { parseLatexLog } from '../components/viewer/Logs';
@@ -20,6 +21,7 @@ export default function StandaloneViewerPage() {
   const { pageId } = useParams<{ pageId: string }>();
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [synctexMap, setSynctexMap] = useState<SyncTeXMap | null>(null);
   const [compileStatus, setCompileStatus] = useState<CompileStatus>('idle');
   const [compileLog, setCompileLog] = useState<string>('');
   const [lastCompiledAt, setLastCompiledAt] = useState<Date | null>(null);
@@ -95,6 +97,9 @@ export default function StandaloneViewerPage() {
         if (s.lastCompiledAt) setLastCompiledAt(new Date(s.lastCompiledAt));
         if (s.engine) setEngine(s.engine as LaTeXEngine);
         if (s.compileMode) setCompileMode(s.compileMode);
+        if (s.rawSynctex !== undefined) {
+          setSynctexMap(s.rawSynctex ? parseSyncTeX(s.rawSynctex) : null);
+        }
       } else if (msg.type === 'FORWARD_SYNC') {
         if (msg.page) {
           setPageNumber(msg.page);
@@ -261,7 +266,7 @@ export default function StandaloneViewerPage() {
         <Surface
           ref={surfaceRef}
           pdfUrl={pdfUrl}
-          synctexMap={null}
+          synctexMap={synctexMap}
           scale={scale}
           scrollMode={true}
           pageNumber={pageNumber}

@@ -24,6 +24,7 @@ export interface ItemTableRowProps {
   item: Item;
   index: number;
   columns: Record<string, boolean>;
+  density?: 'comfortable' | 'compact';
   isTrash?: boolean;
   collections?: any[];
   onRowClick: (e: React.MouseEvent, item: Item, index: number) => void;
@@ -70,6 +71,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
   item,
   index,
   columns,
+  density = 'comfortable',
   isTrash = false,
   collections = [],
   onRowClick,
@@ -122,7 +124,10 @@ export const ItemTableRow = React.memo(function ItemTableRow({
           }
         }}
         className={cn(
-          'h-9 cursor-pointer transition-colors group select-none [content-visibility:auto] [contain-intrinsic-size:0_36px]',
+          'cursor-pointer transition-colors group select-none [content-visibility:auto]',
+          density === 'compact'
+            ? 'h-8 [contain-intrinsic-size:0_32px]'
+            : 'h-9 [contain-intrinsic-size:0_36px]',
           isSelected
             ? 'bg-primary/5 hover:bg-primary/10'
             : isActive

@@ -79,7 +79,7 @@ export function UploadConflictDialog({
             const Icon = isZip ? FolderArchive : isTex ? FileCode2 : isImg ? Image : Paperclip;
             const isDuplicate = item.conflict === 'duplicate';
             return (
-              <div key={i} className="flex flex-col gap-1 px-1 py-1.5 rounded">
+              <div key={i} className="flex flex-col gap-1 px-1 py-1.5 rounded-sm">
                 <div className="flex items-center gap-2">
                   <Icon
                     className={cn(
@@ -102,7 +102,7 @@ export function UploadConflictDialog({
                   </div>
                   <button
                     onClick={() => onRemoveItem(i)}
-                    className="text-muted-foreground hover:bg-muted transition-colors shrink-0"
+                    className="text-muted-foreground hover:bg-muted rounded-sm p-0.5 transition-colors shrink-0"
                   >
                     <X className="size-3.5 shrink-0" />
                   </button>
@@ -115,7 +115,7 @@ export function UploadConflictDialog({
                       type="button"
                       onClick={() => onToggleUnpackZip?.(i, true)}
                       className={cn(
-                        'h-5 px-2 rounded text-[11px] font-medium border transition-colors cursor-pointer',
+                        'h-5 px-2 rounded-sm text-[11px] font-medium border transition-colors cursor-pointer',
                         item.unpackZip !== false
                           ? 'bg-primary text-primary-foreground border-primary'
                           : 'border-border text-foreground hover:bg-muted',
@@ -127,7 +127,7 @@ export function UploadConflictDialog({
                       type="button"
                       onClick={() => onToggleUnpackZip?.(i, false)}
                       className={cn(
-                        'h-5 px-2 rounded text-[11px] font-medium border transition-colors cursor-pointer',
+                        'h-5 px-2 rounded-sm text-[11px] font-medium border transition-colors cursor-pointer',
                         item.unpackZip === false
                           ? 'bg-primary text-primary-foreground border-primary'
                           : 'border-border text-foreground hover:bg-muted',
@@ -147,7 +147,7 @@ export function UploadConflictDialog({
                     <button
                       onClick={() => onSetResolution(i, 'overwrite')}
                       className={cn(
-                        'h-5 px-2 rounded text-xs border transition-colors',
+                        'h-5 px-2 rounded-sm text-xs border transition-colors',
                         item.resolution === 'overwrite'
                           ? 'bg-primary text-primary-foreground border-primary'
                           : 'border-border text-foreground hover:border-primary hover:bg-muted',
@@ -158,7 +158,7 @@ export function UploadConflictDialog({
                     <button
                       onClick={() => onSetResolution(i, 'suffix')}
                       className={cn(
-                        'h-5 px-2 rounded text-xs border transition-colors',
+                        'h-5 px-2 rounded-sm text-xs border transition-colors',
                         item.resolution === 'suffix'
                           ? 'bg-primary text-primary-foreground border-primary'
                           : 'border-border text-foreground hover:border-primary hover:bg-muted',

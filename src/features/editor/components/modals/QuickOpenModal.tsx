@@ -123,14 +123,14 @@ export default function QuickOpenModal({ open, onOpenChange }: QuickOpenModalPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-xl text-foreground select-none">
+      <DialogContent className="max-w-lg w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-lg text-foreground select-none">
         <DialogTitle className="sr-only">Quick Open File</DialogTitle>
         <DialogDescription className="sr-only">
           Quickly switch between project files by searching
         </DialogDescription>
 
         {/* Search Bar Input */}
-        <div className="flex items-center px-4 py-3 border-b border-border bg-muted/20 gap-2.5">
+        <div className="flex items-center px-4 py-3 border-b border-border bg-background gap-2.5">
           <Search className="size-4 text-muted-foreground shrink-0" />
           <input
             ref={inputRef}
@@ -141,7 +141,7 @@ export default function QuickOpenModal({ open, onOpenChange }: QuickOpenModalPro
             onKeyDown={handleKeyDown}
             className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none border-none"
           />
-          <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border text-[10px] font-mono text-muted-foreground shrink-0">
+          <kbd className="px-1.5 py-0.5 rounded-sm bg-muted border border-border text-10 font-mono text-muted-foreground shrink-0">
             Esc to close
           </kbd>
         </div>
@@ -172,13 +172,13 @@ export default function QuickOpenModal({ open, onOpenChange }: QuickOpenModalPro
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <IconComp className={cn('size-4 shrink-0', color)} />
-                    <span className={cn('font-medium truncate', isActive && 'text-emerald-600 dark:text-emerald-400 font-semibold')}>
+                    <span className={cn('font-medium truncate', isActive && 'text-primary font-medium')}>
                       {file.title || 'untitled.tex'}
                     </span>
                   </div>
 
                   {isActive && (
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <span className="text-10 font-mono px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary">
                       Active
                     </span>
                   )}

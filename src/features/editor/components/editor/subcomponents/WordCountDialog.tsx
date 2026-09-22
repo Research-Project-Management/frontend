@@ -101,7 +101,7 @@ export function WordCountDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md w-full p-5 gap-4 border border-border bg-background shadow-xl">
+      <DialogContent className="max-w-md w-full p-5 gap-4 rounded-lg border border-border bg-background shadow-raised-300">
         <DialogHeader className="flex flex-row items-center justify-between pb-3 border-b border-border">
           <div className="flex items-center gap-2.5">
             <div className="size-8 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -134,7 +134,7 @@ export function WordCountDialog({
         </DialogHeader>
 
         {/* Highlight Banner: Total Manuscript Words */}
-        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3.5 flex items-center justify-between">
+        <div className="bg-primary/5 border border-primary/20 rounded-md p-3.5 flex items-center justify-between">
           <div>
             <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
               Total Manuscript Words

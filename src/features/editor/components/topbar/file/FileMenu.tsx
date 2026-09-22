@@ -13,11 +13,13 @@ import {
 import { usePageStore, useCompileStore, useSettingsStore } from '@/features/editor/store';
 import { getExportFilename, exportProjectAsZip } from '@/features/editor/utils';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 
 export default function FileMenu() {
   const router = useRouter();
   const params = useParams<{ pageId?: string }>();
-  const { getEditorContent, currentPage, activeFilePage } = usePageStore();
+  const { currentPage, activeFilePage } = usePageStore();
+  const { getContent } = useEditorInstance();
   const { pdfUrl } = useCompileStore();
   const { setSettingsPanelOpen, toggleHistory, setIsTemplateModalOpen } = useSettingsStore();
   const [isZipping, setIsZipping] = useState(false);
@@ -35,7 +37,7 @@ export default function FileMenu() {
   };
 
   const handleMakeCopy = () => {
-    const src = getEditorContent.current?.() ?? '';
+    const src = getContent();
     const title = (activeFilePage?.title || currentPage?.title || 'document').replace(/\.tex$/, '');
     const filename = `${title}_copy.tex`;
     const blob = new Blob([src], { type: 'text/plain;charset=utf-8' });
@@ -49,7 +51,7 @@ export default function FileMenu() {
   };
 
   const handleWordCount = () => {
-    const src = getEditorContent.current?.() ?? '';
+    const src = getContent();
     const withoutComments = src.replace(/%.*$/gm, '');
     const textOnly = withoutComments
       .replace(/\\(section|subsection|subsubsection|paragraph|caption|textbf|textit|emph)\*?\{([^}]*)\}/g, '$2')
@@ -83,7 +85,7 @@ export default function FileMenu() {
       await exportProjectAsZip({
         parentPageId: rootId,
         projectTitle: currentPage?.title,
-        currentContent: getEditorContent.current?.(),
+        currentContent: getContent(),
         activeFileId: activeFilePage?.id,
         activeFileTitle: activeFilePage?.title,
       });
@@ -93,7 +95,7 @@ export default function FileMenu() {
   };
 
   const handleExportDocx = () => {
-    const src = getEditorContent.current?.() ?? '';
+    const src = getContent();
     const plainText = src
       .replace(/%.*$/gm, '')
       .replace(/\\section\*?\{([^}]*)\}/g, '\n\n=== $1 ===\n\n')
@@ -111,7 +113,7 @@ export default function FileMenu() {
   };
 
   const handleExportMarkdown = () => {
-    const src = getEditorContent.current?.() ?? '';
+    const src = getContent();
     const mdContent = src
       .replace(/%.*$/gm, '')
       .replace(/\\section\*?\{([^}]*)\}/g, '# $1\n')
@@ -131,7 +133,7 @@ export default function FileMenu() {
   };
 
   const handleExportHtml = () => {
-    const src = getEditorContent.current?.() ?? '';
+    const src = getContent();
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>

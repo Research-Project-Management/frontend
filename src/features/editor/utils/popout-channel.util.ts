@@ -14,6 +14,8 @@ export interface PopoutViewerState {
   lastCompiledAt: string | null;
   engine?: string;
   compileMode?: 'full' | 'draft';
+  rawSynctex?: string | null;
+  projectId?: string;
 }
 
 export type PopoutMessage =

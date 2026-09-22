@@ -91,7 +91,7 @@ export const CollaboratorPresenceBar = React.memo(function CollaboratorPresenceB
                   />
                   <span className="text-foreground">{user.name}</span>
                   {user.role && (
-                    <span className="text-11 font-mono font-medium px-1.5 py-0.5 rounded bg-muted text-foreground uppercase tracking-tight">
+                    <span className="text-11 font-mono font-medium px-1.5 py-0.5 rounded-sm bg-muted text-foreground uppercase tracking-tight">
                       {user.role}
                     </span>
                   )}

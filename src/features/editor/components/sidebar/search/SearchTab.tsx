@@ -2,7 +2,8 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useParams, useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   Search as SearchIcon,
   X,
@@ -17,6 +18,10 @@ import { cn } from "@/shared/lib/utils";
 import { usePageStore, useTabsStore } from "@/features/editor/store";
 import { filesQuery } from "@/features/editor/hooks/use-core";
 import { useDebounce } from "@/shared/hooks";
+import { EditorEventBus } from "@/features/editor/utils/editor.util";
+import { documentSearchService } from "@/features/editor/services/search.service";
+import { useEditorInstance } from "@/features/editor/core/context/editor-instance.context";
+import { editorCommandBus } from "@/features/editor/core/command-bus/editor-command-bus";
 
 interface MatchEntry {
   line: number;
@@ -38,7 +43,8 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   const searchParams = useSearchParams();
   const params = useParams<{ projectId?: string; pageId?: string }>();
 
-  const { editorRef, getEditorContent, currentPage, activeFilePage, scrollToLineRef } = usePageStore();
+  const { currentPage, activeFilePage } = usePageStore();
+  const { engine, getContent } = useEditorInstance();
   const openTab = useTabsStore((s) => s.openTab);
 
   const rootPageId = params?.pageId || params?.projectId || currentPage?.id || "";
@@ -51,6 +57,8 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   const [wholeWord, setWholeWord] = useState(false);
   const [useRegex, setUseRegex] = useState(false);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
+  const [isReplacingAll, setIsReplacingAll] = useState(false);
+  const queryClient = useQueryClient();
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(query, 250);
@@ -58,6 +66,20 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   // Auto-focus input on mount
   useEffect(() => {
     searchInputRef.current?.focus();
+  }, []);
+
+  // Listen for flux:open-panel events with prefilled query (bridge from In-File Search / Editor)
+  useEffect(() => {
+    const unsub = EditorEventBus.on("flux:open-panel", (detail) => {
+      if (typeof detail === "object" && detail.panel === "Search" && detail.query !== undefined) {
+        setQuery(detail.query);
+        setTimeout(() => {
+          searchInputRef.current?.focus();
+          searchInputRef.current?.select();
+        }, 50);
+      }
+    });
+    return unsub;
   }, []);
 
   // Fetch all text files in project
@@ -68,7 +90,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
 
   // Assemble full searchable files list
   const searchableFiles = useMemo(() => {
-    const activeContent = getEditorContent.current?.() ?? activeFilePage?.content ?? currentPage?.content ?? "";
+    const activeContent = getContent() || activeFilePage?.content || currentPage?.content || "";
 
     if (!projectFiles || projectFiles.length === 0) {
       return [
@@ -90,7 +112,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
         isCurrent,
       };
     });
-  }, [projectFiles, activeFileId, getEditorContent, activeFilePage?.content, currentPage?.id, currentPage?.title, currentPage?.content]);
+  }, [projectFiles, activeFileId, getContent, activeFilePage?.content, currentPage?.id, currentPage?.title, currentPage?.content]);
 
   // Execute project-wide search
   const fileResults = useMemo<FileSearchResult[]>(() => {
@@ -158,21 +180,13 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   }, []);
 
   const handleNavigate = useCallback(
-    (fileId: string, fileName: string, line: number, matchStart: number, matchEnd: number) => {
+    (fileId: string, fileName: string, line: number, _matchStart: number, _matchEnd: number) => {
       const isCurrent = fileId === activeFileId;
 
       if (isCurrent) {
-        const editor = editorRef.current;
-        if (!editor) return;
-        editor.revealLineInCenter(line);
-        editor.setPosition({ lineNumber: line, column: matchStart + 1 });
-        editor.setSelection({
-          startLineNumber: line,
-          startColumn: matchStart + 1,
-          endLineNumber: line,
-          endColumn: matchEnd + 1,
-        });
-        editor.focus();
+        if (!engine) return;
+        engine.jumpToLine(line);
+        engine.focus();
       } else {
         // Switch active file tab
         if (rootPageId) {
@@ -183,21 +197,17 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
         router.push(`${pathname}?${current.toString()}`);
 
         setTimeout(() => {
-          scrollToLineRef.current?.(line);
+          editorCommandBus.dispatch({ type: 'editor:jump-to-line', line });
         }, 250);
       }
     },
-    [activeFileId, editorRef, rootPageId, openTab, searchParams, router, pathname, scrollToLineRef],
+    [activeFileId, engine, rootPageId, openTab, searchParams, router, pathname],
   );
 
   // Replace in active file
   const handleReplaceAllCurrentFile = () => {
-    const editor = editorRef.current;
-    if (!editor || !debouncedQuery) return;
-    const model = editor.getModel();
-    if (!model) return;
-
-    const content = model.getValue();
+    if (!engine || !debouncedQuery) return;
+    const content = engine.getContent();
     let pattern = debouncedQuery;
     if (!useRegex) pattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     if (wholeWord) pattern = `\\b${pattern}\\b`;
@@ -210,17 +220,44 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
       return;
     }
 
-    const fullRange = model.getFullModelRange();
     const replaced = content.replace(re, replaceText);
-    editor.executeEdits("search-replace", [
-      {
-        range: fullRange,
-        text: replaced,
-        forceMoveMarkers: true,
-      },
-    ]);
-    editor.pushUndoStop();
-    editor.focus();
+    if (replaced !== content) {
+      engine.setContent(replaced);
+      engine.focus();
+    }
+    toast.success("Replaced matches in active file");
+  };
+
+  // Replace across all files in project via backend atomic API
+  const handleReplaceAllEverywhere = async () => {
+    if (!debouncedQuery || !rootPageId) return;
+    setIsReplacingAll(true);
+    try {
+      const res = await documentSearchService.batchReplace(
+        rootPageId,
+        debouncedQuery,
+        replaceText,
+        {
+          caseSensitive,
+          wholeWord,
+          useRegex,
+        },
+      );
+      toast.success(
+        `Replaced ${res.totalOccurrencesReplaced} occurrence(s) across ${res.totalFilesAffected} file(s)`,
+      );
+      await queryClient.invalidateQueries({
+        queryKey: filesQuery(rootPageId).queryKey,
+      });
+      // If active editor file was affected, update local buffer
+      if (res.affectedFileIds.includes(activeFileId || "")) {
+        handleReplaceAllCurrentFile();
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to replace across project");
+    } finally {
+      setIsReplacingAll(false);
+    }
   };
 
   return (
@@ -286,26 +323,38 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
 
         {/* Replace Input */}
         {showReplace && (
-          <div className="flex gap-1.5 animate-in fade-in duration-150">
-            <div className="relative flex-1">
+          <div className="space-y-1.5 animate-in fade-in duration-150">
+            <div className="relative">
               <Replace className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0 pointer-events-none" />
               <Input
                 value={replaceText}
                 onChange={(e) => setReplaceText(e.target.value)}
-                placeholder="Replace in current file…"
+                placeholder="Replace with…"
                 className="pl-8 h-8 text-xs bg-background"
               />
             </div>
-            <button
-              type="button"
-              onClick={handleReplaceAllCurrentFile}
-              disabled={!debouncedQuery}
-              aria-label="Replace in active file"
-              className="h-8 rounded-md bg-primary px-2.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer shadow-2xs shrink-0"
-              title="Replace all in active file"
-            >
-              Replace
-            </button>
+            <div className="flex items-center justify-end gap-1.5">
+              <button
+                type="button"
+                onClick={handleReplaceAllCurrentFile}
+                disabled={!debouncedQuery}
+                aria-label="Replace in active file"
+                className="h-7 rounded-md bg-muted px-2 text-[11px] font-medium text-foreground transition-colors hover:bg-muted/80 disabled:opacity-50 cursor-pointer"
+                title="Replace all matches in current active file"
+              >
+                In Current File
+              </button>
+              <button
+                type="button"
+                onClick={handleReplaceAllEverywhere}
+                disabled={!debouncedQuery || isReplacingAll}
+                aria-label="Replace all in project"
+                className="h-7 rounded-md bg-primary px-2.5 text-[11px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer shadow-2xs"
+                title="Replace all matches across all project files"
+              >
+                {isReplacingAll ? "Replacing..." : "All Files"}
+              </button>
+            </div>
           </div>
         )}
 
@@ -343,7 +392,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                 aria-label={opt.title}
                 aria-pressed={opt.state}
                 className={cn(
-                  "h-6 min-w-6 px-1.5 rounded text-[11px] font-mono transition-colors outline-none cursor-pointer flex items-center justify-center border",
+                  "h-6 min-w-6 px-1.5 rounded-sm text-11 font-mono transition-colors outline-none cursor-pointer flex items-center justify-center border",
                   opt.state
                     ? "bg-primary text-primary-foreground border-primary font-semibold shadow-2xs"
                     : "bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted",
@@ -354,7 +403,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             ))}
           </div>
 
-          <span className="text-[10px] text-muted-foreground font-mono">
+          <span className="text-10 text-muted-foreground font-mono">
             {projectFiles.length > 0 ? `${projectFiles.length} files` : "1 file"}
           </span>
         </div>
@@ -367,7 +416,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             <div
               role="status"
               aria-live="polite"
-              className="border-b border-border px-3 py-1.5 text-[11px] font-medium text-muted-foreground bg-muted/10 flex items-center justify-between"
+              className="border-b border-border px-3 py-1.5 text-11 font-medium text-muted-foreground bg-muted/10 flex items-center justify-between"
             >
               <span>
                 {totalMatches} result{totalMatches !== 1 ? "s" : ""} in {fileResults.length} file{fileResults.length !== 1 ? "s" : ""}
@@ -397,11 +446,11 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                           {file.fileName}
                         </span>
                         {file.isCurrent && (
-                          <span className="text-[10px] px-1 py-0 rounded bg-primary/10 text-primary font-sans leading-tight">
+                          <span className="text-10 px-1 py-0 rounded-sm bg-primary/10 text-primary font-sans leading-tight">
                             active
                           </span>
                         )}
-                        <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded leading-none">
+                        <span className="text-10 font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded-sm leading-none">
                           {file.matches.length}
                         </span>
                       </button>
@@ -458,7 +507,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             <SearchIcon className="size-8 opacity-25 shrink-0" />
             <p className="text-xs font-medium text-foreground/75">Project-wide Search</p>
             <p className="text-[11px] text-muted-foreground/80 max-w-[200px]">
-              Search text across all LaTeX, BibTeX, and project files. Press <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">Ctrl+Shift+F</kbd> anytime.
+              Search text across all LaTeX, BibTeX, and project files. Press <kbd className="px-1 py-0.5 rounded-sm bg-muted border border-border font-mono text-10">Ctrl+Shift+F</kbd> anytime.
             </p>
           </div>
         )}

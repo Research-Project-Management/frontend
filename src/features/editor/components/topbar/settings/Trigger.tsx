@@ -18,7 +18,7 @@ export default function Trigger() {
           title="Editor settings"
           aria-label="Toggle editor settings"
           className={cn(
-            'size-7 flex items-center justify-center rounded-full transition-colors outline-none cursor-pointer select-none',
+            'size-7 flex items-center justify-center rounded-md transition-colors outline-none cursor-pointer select-none',
             settingsPanelOpen
               ? 'text-foreground bg-sidebar-accent shadow-2xs'
               : 'text-foreground/80 hover:text-foreground hover:bg-sidebar-hover',

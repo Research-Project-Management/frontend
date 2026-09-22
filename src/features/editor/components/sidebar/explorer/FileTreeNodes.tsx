@@ -101,7 +101,7 @@ export function InlineInput({
         onClick={onCommit}
         disabled={isPending}
         aria-label="Confirm"
-        className="size-6 min-w-[24px] min-h-[24px] flex items-center justify-center rounded text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 shrink-0"
+        className="size-6 min-w-[24px] min-h-[24px] flex items-center justify-center rounded-sm text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 shrink-0 cursor-pointer"
       >
         {isPending ? (
           <Loader2 className="size-3.5 animate-spin shrink-0" />
@@ -113,7 +113,7 @@ export function InlineInput({
         type="button"
         onClick={onCancel}
         aria-label="Cancel"
-        className="size-6 min-w-[24px] min-h-[24px] flex items-center justify-center text-foreground hover:bg-muted rounded transition-colors shrink-0"
+        className="size-6 min-w-[24px] min-h-[24px] flex items-center justify-center text-foreground hover:bg-muted rounded-sm transition-colors shrink-0 cursor-pointer"
       >
         <X className="size-3.5 shrink-0" />
       </button>
@@ -157,7 +157,7 @@ export function RenameInput({
         }}
         disabled={isPending}
         aria-label="Confirm rename"
-        className="size-6 min-w-[24px] min-h-[24px] flex items-center justify-center rounded text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 shrink-0"
+        className="size-6 min-w-[24px] min-h-[24px] flex items-center justify-center rounded-sm text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 shrink-0 cursor-pointer"
       >
         {isPending ? (
           <Loader2 className="size-3.5 animate-spin shrink-0" />
@@ -172,7 +172,7 @@ export function RenameInput({
           onCancel();
         }}
         aria-label="Cancel rename"
-        className="size-6 min-w-[24px] min-h-[24px] flex items-center justify-center text-foreground hover:bg-muted rounded transition-colors shrink-0"
+        className="size-6 min-w-[24px] min-h-[24px] flex items-center justify-center text-foreground hover:bg-muted rounded-sm transition-colors shrink-0 cursor-pointer"
       >
         <X className="size-3.5 shrink-0" />
       </button>
@@ -195,14 +195,14 @@ export function RowActions({
           aria-label="File options"
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            "rounded-md p-1 text-foreground opacity-0 transition-opacity hover:bg-muted focus:opacity-100 group-hover/row:opacity-100",
+            "rounded-sm p-1 text-foreground opacity-0 transition-opacity hover:bg-muted focus:opacity-100 group-hover/row:opacity-100 cursor-pointer",
             className,
           )}
         >
           <MoreVertical className="size-3.5 shrink-0" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44 text-xs z-[9999]">
+      <DropdownMenuContent align="end" className="w-44 text-xs z-[9999] rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200">
         {children}
       </DropdownMenuContent>
     </DropdownMenu>

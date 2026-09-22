@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useState, type ComponentType, type SVGProps } from 'react';
+import { memo, useState } from 'react';
 import {
   Copy,
   Check,
@@ -9,11 +9,7 @@ import {
   ExternalLink,
   FileText,
   Quote,
-  Search,
-  BookOpen,
-  BarChart3,
-  WandSparkles,
-  ArrowRight,
+  CornerDownRight,
   ArrowDown,
   Loader2,
 } from 'lucide-react';
@@ -76,10 +72,13 @@ function ThinkingBlock({ content, isOpen }: { content: string; isOpen: boolean }
   return (
     <div className="mb-3 rounded-md border border-border bg-muted/40 overflow-hidden">
       <button
+        type="button"
         onClick={() => setCollapsed((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted transition-colors cursor-pointer"
+        aria-expanded={!collapsed}
+        aria-label={isOpen ? 'AI is thinking' : 'Toggle thought process'}
+        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
       >
-        <Brain className={`size-3.5 shrink-0 text-primary ${isOpen ? 'animate-pulse' : ''}`} />
+        <Brain className={`size-3.5 shrink-0 text-primary ${isOpen ? 'animate-pulse motion-reduce:animate-none' : ''}`} />
         <span className="text-xs font-medium text-muted-foreground flex-1">
           {isOpen ? 'Thinking…' : 'Thought process'}
         </span>
@@ -237,49 +236,18 @@ const MessageBubble = memo(function MessageBubble({
   );
 });
 
-type WelcomeStarter = {
-  id: string;
-  title: string;
-  description: string;
-  draft: string;
-  agent: AgentId;
-  webSearch?: boolean;
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
-};
-
-const WELCOME_STARTERS: WelcomeStarter[] = [
+const SUGGESTIONS = [
   {
-    id: 'paper-scout',
-    title: 'Find papers',
-    description: 'Prepare an academic web search with source filters enabled.',
-    draft: 'Find recent papers about [topic], compare the strongest methods, and return links with short notes.',
-    agent: 'web_search',
-    webSearch: true,
-    icon: Search,
+    id: '1',
+    text: 'Create a Sticky with details of all Urgent work items across this project',
   },
   {
-    id: 'library-qa',
-    title: 'Ask my library',
-    description: 'Use indexed Library sources already attached to this chat.',
-    draft: 'Using my selected Library sources, explain the key findings and cite the relevant papers.',
-    agent: 'rag',
-    icon: BookOpen,
+    id: '2',
+    text: 'Synthesize recent papers from the Project Library and summarize key evidence',
   },
   {
-    id: 'compare',
-    title: 'Analyze evidence',
-    description: 'Structure tradeoffs, gaps, metrics, and next experiments.',
-    draft: 'Analyze these papers as evidence: what agrees, what conflicts, and what should I test next?',
-    agent: 'analyze',
-    icon: BarChart3,
-  },
-  {
-    id: 'workspace',
-    title: 'Plan work',
-    description: 'Turn research intent into concrete workspace actions.',
-    draft: 'Help me turn this research goal into project work items, milestones, and a first-week plan.',
-    agent: 'action',
-    icon: WandSparkles,
+    id: '3',
+    text: 'Draft research work items and milestone targets for the current Cycle',
   },
 ];
 
@@ -294,75 +262,51 @@ function WelcomeScreen({
   initialMessage?: string;
   initialProject?: string;
 }) {
-  const [starter, setStarter] = useState<WelcomeStarter | null>(null);
-  const composerMessage = starter?.draft ?? initialMessage;
-
   return (
     <div className="h-full flex flex-col items-center justify-center overflow-y-auto px-4 py-8">
-      <div className="flex group flex-col items-center mb-8">
-        <img src="/Chat.svg" alt="AI" className="size-14 mb-5" />
-        <h3 className="font-sans font-semibold text-2xl tracking-tight mb-2 text-foreground">Ask AI</h3>
-        <p className="text-sm text-muted-foreground text-center max-w-sm leading-relaxed">
-          Pick a workflow, refine the draft, then send when it feels right.
-        </p>
-      </div>
+      {/* Centered Heading */}
+      <h1 className="text-24 sm:text-28 font-semibold tracking-tight text-foreground text-center mb-8">
+        What can I do for you?
+      </h1>
 
-      <div className="w-full max-w-2xl mb-8">
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {WELCOME_STARTERS.map((item) => {
-            const Icon = item.icon;
-            const active = starter?.id === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setStarter(item)}
-                className={cn(
-                  'group flex min-h-28 items-start gap-3.5 rounded-lg border bg-card p-4 text-left transition-all cursor-pointer',
-                  active
-                    ? 'border-primary/40 bg-primary/5 shadow-none'
-                    : 'border-border hover:border-primary/30 hover:bg-muted shadow-none',
-                )}
-              >
-                <span
-                  className={cn(
-                    'mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors',
-                    active
-                      ? 'bg-primary/10 text-primary'
-                      : 'bg-muted text-muted-foreground',
-                  )}
-                >
-                  <Icon className="size-4 shrink-0" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-semibold text-foreground">{item.title}</p>
-                    <ArrowRight
-                      className={cn(
-                        'size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1',
-                        active && 'text-primary',
-                      )}
-                    />
-                  </div>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.description}</p>
-                  <p className="mt-2.5 line-clamp-1 font-mono text-xs text-muted-foreground/60">{item.draft}</p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="w-full">
+      {/* Main Input Box */}
+      <div className="w-full max-w-2xl">
         <ChatInput
           onSend={onSend}
           disabled={disabled}
           initialProject={initialProject}
-          initialMessage={composerMessage}
-          initialAgent={starter?.agent}
-          initialWebSearch={starter?.webSearch}
+          initialMessage={initialMessage}
+          className="max-w-2xl"
         />
       </div>
+
+      {/* Suggestions Section */}
+      <div className="w-full max-w-2xl mt-6">
+        <p className="text-11 font-medium text-muted-foreground mb-3 select-none">
+          Suggestions
+        </p>
+        <div className="space-y-0.5">
+          {SUGGESTIONS.map((item, idx) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSend(item.text, initialProject)}
+              className={cn(
+                "w-full flex items-start gap-2.5 py-2.5 px-2 -mx-2 rounded-md text-left text-13 leading-5 text-foreground hover:bg-muted transition-colors cursor-pointer",
+                idx !== SUGGESTIONS.length - 1 && "border-b border-border/40"
+              )}
+            >
+              <CornerDownRight className="size-4 text-muted-foreground shrink-0 mt-0.5" />
+              <span className="leading-snug">{item.text}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer Disclaimer */}
+      <p className="text-11 text-muted-foreground text-center select-none mt-12">
+        Flux AI can make mistakes, please double-check responses.
+      </p>
     </div>
   );
 }
@@ -370,8 +314,12 @@ function WelcomeScreen({
 function EmptyConversation() {
   return (
     <div className="h-full flex flex-col items-center justify-center text-center px-4">
-      <div className="size-14 rounded-lg flex items-center justify-center mb-4 bg-muted border border-border">
-        <img src="/Chat.svg" alt="ai" className="size-7" />
+      <div className="mb-4 flex items-center justify-center select-none">
+        <img
+          src="/Chat.svg"
+          alt="Flux AI conversation icon"
+          className="size-14 object-contain"
+        />
       </div>
       <h2 className="text-lg font-semibold tracking-tight text-foreground mb-1.5">Start a conversation</h2>
       <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
@@ -416,13 +364,6 @@ export function ChatPage() {
 
   return (
     <div className="h-full flex flex-col relative">
-      <style>{`
-        @keyframes typing-dot {
-          0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-          40% { opacity: 1; transform: scale(1.1); }
-        }
-      `}</style>
-
       {/* Message list */}
       <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto">
         {isLoadingHistory ? (
@@ -431,9 +372,8 @@ export function ChatPage() {
               {[0, 1, 2].map((i) => (
                 <span
                   key={i}
-                  className="size-2 rounded-full bg-primary/40"
+                  className="size-2 rounded-full bg-primary/40 animate-typing-dot motion-reduce:animate-none"
                   style={{
-                    animation: 'typing-dot 1.4s infinite ease-in-out',
                     animationDelay: `${i * 0.2}s`,
                   }}
                 />
@@ -499,7 +439,7 @@ export function ChatPage() {
       )}
 
       {/* Input bar */}
-      <div className="shrink-0 bg-background/80 backdrop-blur-sm p-4 relative">
+      <div className="shrink-0 bg-background/80 backdrop-blur-sm p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] relative">
         {showScrollButton && (
           <button
             type="button"

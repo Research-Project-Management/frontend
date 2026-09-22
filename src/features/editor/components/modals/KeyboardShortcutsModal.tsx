@@ -202,12 +202,12 @@ export default function KeyboardShortcutsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-xl text-foreground select-none">
+      <DialogContent className="max-w-2xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-lg text-foreground select-none">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/80 bg-muted/30">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background">
           <div>
             <DialogTitle className="text-base font-semibold flex items-center gap-2">
-              <Keyboard className="size-4 text-emerald-600 dark:text-emerald-500" />
+              <Keyboard className="size-4 text-foreground" />
               Keyboard Shortcuts Cheat Sheet
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground mt-0.5">
@@ -224,7 +224,7 @@ export default function KeyboardShortcutsModal({
         </div>
 
         {/* Search & Category Filter */}
-        <div className="p-4 border-b border-border/80 bg-muted/10 flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="p-4 border-b border-border bg-background flex flex-col sm:flex-row gap-3 items-center justify-between">
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
             <Input
@@ -243,7 +243,7 @@ export default function KeyboardShortcutsModal({
                 type="button"
                 onClick={() => setActiveCategory(cat)}
                 className={cn(
-                  'px-2.5 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer whitespace-nowrap',
+                  'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer whitespace-nowrap',
                   activeCategory === cat
                     ? 'bg-background text-foreground shadow-2xs font-semibold'
                     : 'text-muted-foreground hover:text-foreground'
@@ -265,14 +265,14 @@ export default function KeyboardShortcutsModal({
             filtered.map((s) => (
               <div
                 key={s.id}
-                className="flex items-center justify-between p-2.5 rounded-lg border border-border/60 hover:border-border hover:bg-muted/30 transition-colors"
+                className="flex items-center justify-between p-2.5 rounded-md border border-border/60 hover:border-border hover:bg-muted/30 transition-colors"
               >
                 <div className="min-w-0 pr-4">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-foreground">
                       {s.label}
                     </span>
-                    <Badge variant="outline" className="text-[10px] px-1 py-0 font-mono text-muted-foreground">
+                    <Badge variant="outline" className="text-10 px-1 py-0 font-mono text-muted-foreground">
                       {s.category}
                     </Badge>
                   </div>
@@ -286,11 +286,11 @@ export default function KeyboardShortcutsModal({
                 <div className="flex items-center gap-1 shrink-0 font-mono text-xs">
                   {s.keys.map((k, i) => (
                     <React.Fragment key={k}>
-                      <kbd className="px-2 py-0.5 rounded bg-muted border border-border/80 shadow-2xs text-[11px] font-semibold text-foreground">
+                      <kbd className="px-2 py-0.5 rounded-sm bg-muted border border-border shadow-2xs text-11 font-semibold text-foreground">
                         {k}
                       </kbd>
                       {i < s.keys.length - 1 && (
-                        <span className="text-muted-foreground text-[10px]">+</span>
+                        <span className="text-muted-foreground text-10">+</span>
                       )}
                     </React.Fragment>
                   ))}
@@ -301,7 +301,7 @@ export default function KeyboardShortcutsModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 bg-muted/30 border-t border-border/80 flex items-center justify-between text-11 text-muted-foreground">
+        <div className="px-6 py-3 bg-background border-t border-border flex items-center justify-between text-11 text-muted-foreground">
           <span>Tip: On macOS, use ⌘ Command instead of Ctrl.</span>
           <button
             type="button"

@@ -1,16 +1,12 @@
 /**
  * editor.store.ts
  *
- * Store for current active document, active file, project context, and imperative Monaco/PDF viewer bridge refs.
+ * Store for current active document, active file, project context, and file hierarchy.
+ * Zero mutable refs. Pure reactive state.
  */
 
 import { create } from 'zustand';
-import type { editor } from 'monaco-editor';
 import type { AssetInfo } from '../types/asset.types';
-
-export interface RefHolder<T> {
-  current: T;
-}
 
 export interface DocumentEditorState {
   // ── Document & Project State ─────────────────────────────────────────────
@@ -22,18 +18,6 @@ export interface DocumentEditorState {
   activeFilePage: any | null;
   selectedAsset: AssetInfo | null;
   texFiles: string[];
-
-  // ── Imperative Bridge Refs (Monaco & Compiler) ───────────────────────────
-  editorRef: RefHolder<editor.IStandaloneCodeEditor | null>;
-  getEditorContent: RefHolder<(() => string) | null>;
-  compileRef: RefHolder<(() => void) | null>;
-  scrollToLineRef: RefHolder<
-    ((line: number, highlightType?: 'error' | 'synctex') => void) | null
-  >;
-  scrollToPdfLineRef: RefHolder<((line: number, fileTag?: number) => void) | null>;
-  gotoPageRef: RefHolder<((page: number) => void) | null>;
-  pdfDocRef: RefHolder<any | null>;
-  isAiPreviewingRef: RefHolder<boolean>;
 
   // ── Setters & Actions ───────────────────────────────────────────────────
   setCurrentPage: (page: any) => void;
@@ -57,15 +41,6 @@ export const useDocumentEditorStore = create<DocumentEditorState>((set) => ({
   selectedAsset: null,
   texFiles: [],
 
-  editorRef: { current: null },
-  getEditorContent: { current: null },
-  compileRef: { current: null },
-  scrollToLineRef: { current: null },
-  scrollToPdfLineRef: { current: null },
-  gotoPageRef: { current: null },
-  pdfDocRef: { current: null },
-  isAiPreviewingRef: { current: false },
-
   setCurrentPage: (page) => set({ currentPage: page }),
   setProjectId: (projectId) => set({ projectId }),
   setParentPageId: (parentPageId) => set({ parentPageId }),
@@ -75,26 +50,15 @@ export const useDocumentEditorStore = create<DocumentEditorState>((set) => ({
   setSelectedAsset: (selectedAsset) => set({ selectedAsset }),
   setTexFiles: (texFiles) => set({ texFiles }),
   resetPageState: () =>
-    set((state) => {
-      state.editorRef.current = null;
-      state.getEditorContent.current = null;
-      state.compileRef.current = null;
-      state.scrollToLineRef.current = null;
-      state.scrollToPdfLineRef.current = null;
-      state.gotoPageRef.current = null;
-      state.pdfDocRef.current = null;
-      state.isAiPreviewingRef.current = false;
-
-      return {
-        currentPage: null,
-        projectId: '',
-        parentPageId: null,
-        activePageId: null,
-        fileHierarchy: null,
-        activeFilePage: null,
-        selectedAsset: null,
-        texFiles: [],
-      };
+    set({
+      currentPage: null,
+      projectId: '',
+      parentPageId: null,
+      activePageId: null,
+      fileHierarchy: null,
+      activeFilePage: null,
+      selectedAsset: null,
+      texFiles: [],
     }),
 }));
 

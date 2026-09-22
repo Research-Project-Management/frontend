@@ -9,91 +9,34 @@ import {
   MenubarSeparator,
   MenubarShortcut,
 } from "@/shared/components/ui";
-import { usePageStore } from '@/features/editor/store';
+import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 
 export default function FormatMenu() {
-  const { editorRef } = usePageStore();
-  const editor = () => editorRef.current;
+  const { engine } = useEditorInstance();
 
   const wrapSelection = (before: string, after: string) => {
-    const ed = editor();
-    if (!ed) return;
-    const sel = ed.getSelection();
-    if (!sel) return;
-    const model = ed.getModel();
-    if (!model) return;
-    const selectedText = model.getValueInRange(sel);
-    ed.executeEdits('menu', [
-      {
-        range: sel,
-        text: `${before}${selectedText}${after}`,
-        forceMoveMarkers: true,
-      },
-    ]);
-    ed.focus();
+    engine?.wrapSelection(before, after);
   };
 
   const insertHeading = (cmd: string, defaultTitle: string) => {
-    const ed = editor();
-    if (!ed) return;
-    const sel = ed.getSelection();
-    const model = ed.getModel();
-    const selectedText = (sel && model ? model.getValueInRange(sel) : '') || defaultTitle;
-    if (sel && !sel.isEmpty()) {
-      ed.executeEdits('menu', [
-        {
-          range: sel,
-          text: `${cmd}{${selectedText}}\n`,
-          forceMoveMarkers: true,
-        },
-      ]);
-    } else if (sel) {
-      ed.executeEdits('menu', [
-        {
-          range: sel,
-          text: `${cmd}{${defaultTitle}}\n`,
-          forceMoveMarkers: true,
-        },
-      ]);
-    }
-    ed.focus();
+    if (!engine) return;
+    const selectedText = engine.getSelectedText() || defaultTitle;
+    engine.insertText(`${cmd}{${selectedText}}\n`);
   };
 
   const formatNormal = () => {
-    const ed = editor();
-    if (!ed) return;
-    const sel = ed.getSelection();
-    if (!sel) return;
-    const model = ed.getModel();
-    if (!model) return;
-    const text = model.getValueInRange(sel);
+    if (!engine) return;
+    const text = engine.getSelectedText();
     if (!text) return;
     const unformatted = text
       .replace(/\\(?:sub){0,2}section\*?\{([^}]*)\}/g, '$1')
       .replace(/\\(?:sub)?paragraph\*?\{([^}]*)\}/g, '$1');
-    ed.executeEdits('menu', [
-      {
-        range: sel,
-        text: unformatted,
-        forceMoveMarkers: true,
-      },
-    ]);
-    ed.focus();
+    engine.insertText(unformatted);
   };
 
   const insertList = (env: 'itemize' | 'enumerate') => {
-    const ed = editor();
-    if (!ed) return;
-    const sel = ed.getSelection();
-    if (!sel) return;
-    ed.executeEdits('menu', [
-      {
-        range: sel,
-        text: `\\begin{${env}}\n  \\item \n\\end{${env}}\n`,
-        forceMoveMarkers: true,
-      },
-    ]);
-    ed.focus();
+    if (!engine) return;
+    engine.insertText(`\\begin{${env}}\n  \\item \n\\end{${env}}\n`);
   };
 
   return (
@@ -119,10 +62,10 @@ export default function FormatMenu() {
         <MenubarItem onClick={() => insertList('enumerate')}>
           Numbered list
         </MenubarItem>
-        <MenubarItem onClick={() => editor()?.getAction('editor.action.indentLines')?.run()}>
+        <MenubarItem onClick={() => engine?.indent()}>
           Increase indentation
         </MenubarItem>
-        <MenubarItem onClick={() => editor()?.getAction('editor.action.outdentLines')?.run()}>
+        <MenubarItem onClick={() => engine?.outdent()}>
           Decrease indentation
         </MenubarItem>
 

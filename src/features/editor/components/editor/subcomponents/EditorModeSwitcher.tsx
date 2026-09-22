@@ -41,7 +41,7 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
     <button
       type="button"
       className={cn(
-        'inline-flex items-center gap-1.5 h-6 px-2 rounded text-xs font-medium transition-colors cursor-pointer outline-none select-none border',
+        'inline-flex items-center gap-1.5 h-6 px-2 rounded-sm text-xs font-medium transition-colors cursor-pointer outline-none select-none border',
         reviewMode
           ? 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/15'
           : 'bg-muted/60 text-foreground/80 border-border hover:bg-muted hover:text-foreground',
@@ -85,7 +85,7 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{triggerButton}</DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 text-xs p-1 z-[9999]">
+      <DropdownMenuContent align="end" className="w-56 text-xs p-1 z-[9999] rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200">
         <DropdownMenuItem
           onClick={() => onSelectMode('editing')}
           className={cn(

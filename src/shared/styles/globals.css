@@ -87,6 +87,7 @@
 
   --animate-smooth-pulse: smooth-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-shimmer: shimmer 2s linear infinite;
+  --animate-typing-dot: typing-dot 1.4s infinite ease-in-out;
 }
 
 /* --------------------------------------------------------------------------
@@ -121,6 +122,20 @@
 
   to {
     transform: translateX(100%);
+  }
+}
+
+@keyframes typing-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+
+  40% {
+    opacity: 1;
+    transform: scale(1.1);
   }
 }
 

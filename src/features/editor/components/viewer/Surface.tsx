@@ -326,15 +326,15 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
       {!pdfUrl ? (
         /* Empty State */
         <div className="flex flex-col items-center justify-center h-full w-full select-none">
-          <div className="flex flex-col items-center justify-center text-center max-w-sm rounded-xl border border-border bg-background p-8 shadow-xs gap-4">
-            <div className="size-10 rounded-lg bg-muted flex items-center justify-center text-foreground">
+          <div className="flex flex-col items-center justify-center text-center max-w-sm rounded-lg border border-border bg-card p-6 shadow-2xs gap-4">
+            <div className="size-10 rounded-md bg-muted flex items-center justify-center text-foreground">
               <FileText className="size-5" />
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">No PDF yet</p>
               <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
                 Click <strong className="font-semibold text-foreground">Compile</strong> or press{' '}
-                <kbd className="px-1.5 py-0.5 text-11 font-mono font-medium bg-muted border border-border rounded text-foreground">
+                <kbd className="px-1.5 py-0.5 text-11 font-mono font-medium bg-muted border border-border rounded-sm text-foreground">
                   Ctrl+Enter
                 </kbd>{' '}
                 to generate the PDF
@@ -349,7 +349,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
                   compileStatus !== 'done' &&
                   compileStatus !== 'error'
                 }
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-medium rounded-md text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover text-primary-foreground font-medium rounded-md text-xs shadow-2xs transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {compileStatus === 'compiling' ||
                 compileStatus === 'flushing' ||
@@ -380,19 +380,19 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
           }}
           loading={
             <div className="flex items-center justify-center h-full">
-              <Loader2 className="size-8 animate-spin text-muted-foreground shrink-0" />
+              <Loader2 className="size-8 animate-spin text-primary shrink-0" />
             </div>
           }
           error={
             <div className="flex flex-col items-center justify-center h-full select-none">
-              <div className="flex flex-col items-center justify-center gap-3 p-8 text-center bg-background rounded-xl border border-border shadow-xs max-w-sm">
+              <div className="flex flex-col items-center justify-center gap-3 p-6 text-center bg-card rounded-lg border border-border shadow-2xs max-w-sm">
                 <AlertCircle className="size-6 text-destructive shrink-0" />
                 <p className="text-sm font-medium text-foreground">Failed to load PDF file.</p>
                 {onCompile && (
                   <button
                     type="button"
                     onClick={onCompile}
-                    className="px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 mt-1 font-medium transition-colors"
+                    className="px-3 py-1.5 text-xs rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-2xs mt-1 font-medium transition-colors cursor-pointer"
                   >
                     Compile again
                   </button>

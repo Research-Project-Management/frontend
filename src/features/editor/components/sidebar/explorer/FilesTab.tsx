@@ -11,6 +11,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { logger } from "@/shared/lib/utils";
 import { useEditorStorage } from '@/features/editor/hooks/use-storage';
+import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import {
   AlertTriangle,
   Check,
@@ -32,6 +34,8 @@ import {
   FileType,
   BookText,
   Braces,
+  Search,
+  X,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/components/ui";
@@ -123,8 +127,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   const activeFilePage = usePageStore((s) => s.activeFilePage);
   const setTexFiles = usePageStore((s) => s.setTexFiles);
   const setSelectedAsset = usePageStore((s) => s.setSelectedAsset);
-  const editorRef = usePageStore((s) => s.editorRef);
-  const scrollToLineRef = usePageStore((s) => s.scrollToLineRef);
+  const { engine } = useEditorInstance();
   const openTab = useTabsStore((s) => s.openTab);
 
   const [isFileTreeOpen, setIsFileTreeOpen] = useState(true);
@@ -172,6 +175,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [fileFilter, setFileFilter] = useState("");
   const [isCreatingFile, setIsCreatingFile] = useState(false);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFileName, setNewFileName] = useState("");
@@ -753,62 +757,29 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   };
 
   const handleInsertAsset = (name: string) => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    const pos = editor.getPosition();
-    if (!pos) return;
+    if (!engine) return;
     const ext = name.split(".").pop()?.toLowerCase() ?? "";
     const snippet =
       ext === "svg"
         ? `\\includesvg[width=\\linewidth]{${name}}`
         : `\\includegraphics[width=\\linewidth]{${name}}`;
 
-    const edits: {
-      range: {
-        startLineNumber: number;
-        startColumn: number;
-        endLineNumber: number;
-        endColumn: number;
-      };
-      text: string;
-    }[] = [];
-
     if (ext !== "svg") {
-      const model = editor.getModel();
-      if (model) {
-        const src = model.getValue();
-        if (!/\\usepackage(?:\[.*?\])?\{graphicx\}/.test(src)) {
-          const lines = src.split("\n");
-          const beginDocIdx = lines.findIndex((l: string) =>
-            /\\begin\{document\}/.test(l),
-          );
-          if (beginDocIdx >= 0) {
-            edits.push({
-              range: {
-                startLineNumber: beginDocIdx + 1,
-                startColumn: 1,
-                endLineNumber: beginDocIdx + 1,
-                endColumn: 1,
-              },
-              text: "\\usepackage{graphicx}\n",
-            });
-          }
+      const src = engine.getContent();
+      if (!/\\usepackage(?:\[.*?\])?\{graphicx\}/.test(src)) {
+        const lines = src.split("\n");
+        const beginDocIdx = lines.findIndex((l: string) =>
+          /\\begin\{document\}/.test(l),
+        );
+        if (beginDocIdx >= 0) {
+          lines.splice(beginDocIdx, 0, "\\usepackage{graphicx}");
+          engine.setContent(lines.join("\n"));
         }
       }
     }
 
-    edits.push({
-      range: {
-        startLineNumber: pos.lineNumber,
-        startColumn: pos.column,
-        endLineNumber: pos.lineNumber,
-        endColumn: pos.column,
-      },
-      text: snippet,
-    });
-
-    editor.executeEdits("insert-asset", edits);
-    editor.focus();
+    engine.insertText(snippet);
+    engine.focus();
   };
 
   const readEntriesRecursively = useCallback(
@@ -945,9 +916,9 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
   const handleOutlineClick = useCallback(
     (line: number, _title?: string) => {
-      scrollToLineRef.current?.(line);
+      editorCommandBus.dispatch({ type: 'editor:jump-to-line', line });
     },
-    [scrollToLineRef],
+    [],
   );
 
   return (
@@ -1009,7 +980,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
                     <button
                       onClick={action}
                       aria-label={label}
-                      className="relative flex size-7 items-center justify-center rounded text-foreground/80 transition-colors hover:bg-muted hover:text-foreground cursor-pointer"
+                      className="relative flex size-7 items-center justify-center rounded-sm text-foreground/80 transition-colors hover:bg-muted hover:text-foreground cursor-pointer"
                     >
                       <Icon className="size-3.5 shrink-0" />
                       {badge !== undefined && (
@@ -1026,6 +997,40 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           )}
         </div>
 
+        {/* ── File filter search bar (Overleaf Parity) ─────────────────── */}
+        {isFileTreeOpen && (
+          <div className="px-2.5 py-1.5 border-b border-border bg-background/60">
+            <div className="relative flex items-center h-7 rounded-md border border-border/80 bg-muted/30 px-2 text-xs focus-within:border-primary/50 focus-within:bg-background transition-colors">
+              <Search className="size-3.5 shrink-0 text-muted-foreground mr-1.5" />
+              <input
+                type="text"
+                value={fileFilter}
+                onChange={(e) => setFileFilter(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setFileFilter('');
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                placeholder="Filter files..."
+                aria-label="Filter files"
+                className="w-full bg-transparent border-none outline-none text-xs text-foreground placeholder:text-muted-foreground/60"
+              />
+              {fileFilter && (
+                <button
+                  type="button"
+                  onClick={() => setFileFilter('')}
+                  className="size-4 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+                  title="Clear filter (Esc)"
+                  aria-label="Clear filter"
+                >
+                  <X className="size-3" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── File tree ──────────────────────────────────────────────────────── */}
         {isFileTreeOpen && (
           <div
@@ -1037,7 +1042,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         >
           {/* Drag-over overlay */}
           {isDragging && (
-            <div className="absolute inset-1 z-10 flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 pointer-events-none backdrop-blur-[1px]">
+            <div className="absolute inset-1 z-10 flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-primary/50 bg-primary/5 pointer-events-none backdrop-blur-[1px]">
               <div className="p-2.5 rounded-full bg-primary/10">
                 <Upload className="size-5 text-primary shrink-0" />
               </div>
@@ -1080,7 +1085,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
                 <div key={i} className="flex h-8 items-center gap-2 px-5">
                   <div className="size-3 rounded-sm bg-muted animate-pulse shrink-0" />
                   <div
-                    className="h-2.5 rounded bg-muted animate-pulse"
+                    className="h-2.5 rounded-sm bg-muted animate-pulse"
                     style={{ width: `${w}%` }}
                   />
                 </div>
@@ -1131,6 +1136,35 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
               items.push(...fileItems);
 
+              const trimmedFilter = fileFilter.trim().toLowerCase();
+              const displayItems = trimmedFilter
+                ? items.filter((item) => {
+                    if (item.kind === "folder") {
+                      return item.data.filename.toLowerCase().includes(trimmedFilter);
+                    }
+                    if (item.kind === "asset") {
+                      return item.data.filename.toLowerCase().includes(trimmedFilter);
+                    }
+                    return item.data.title.toLowerCase().includes(trimmedFilter);
+                  })
+                : items;
+
+              if (items.length > 0 && displayItems.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center gap-1.5 px-4 py-8 text-muted-foreground text-center">
+                    <Search className="size-5 opacity-30 shrink-0" />
+                    <p className="text-xs font-medium text-foreground/80">No files match &quot;{fileFilter}&quot;</p>
+                    <button
+                      type="button"
+                      onClick={() => setFileFilter('')}
+                      className="text-[11px] text-primary hover:underline cursor-pointer"
+                    >
+                      Clear filter
+                    </button>
+                  </div>
+                );
+              }
+
               if (items.length === 0 && !isCreatingFile && !isCreatingFolder) {
                 return (
                   <div className="flex flex-col items-center gap-2 px-5 py-8 text-muted-foreground">
@@ -1155,7 +1189,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
                 );
               }
 
-              return items.map((item) => {
+              return displayItems.map((item) => {
                 if (item.kind === "folder") {
                   return (
                     <StorageFolderNode
@@ -1197,7 +1231,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
                     className={cn(
                       "group/row flex h-7.5 cursor-pointer items-center rounded-md mx-1 px-2 my-0.5 transition-colors select-none",
                       isActive
-                        ? "bg-[#1b5e3a] dark:bg-[#1a5632] text-white shadow-2xs font-medium"
+                        ? "bg-primary text-primary-foreground shadow-2xs font-medium"
                         : "hover:bg-muted/70 text-foreground/90",
                     )}
                   >

@@ -32,7 +32,7 @@ export const RenameSymbolDialog = React.memo(function RenameSymbolDialog({
       aria-labelledby="rename-dialog-title"
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/50 backdrop-blur-xs"
     >
-      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-4 space-y-3 shadow-raised-200">
+      <div className="w-full max-w-sm rounded-lg border border-border bg-background p-4 space-y-3 shadow-raised-300">
         <h2
           id="rename-dialog-title"
           className="text-sm font-semibold text-foreground"
@@ -45,7 +45,7 @@ export const RenameSymbolDialog = React.memo(function RenameSymbolDialog({
             className="text-xs text-muted-foreground"
           >
             Rename{' '}
-            <code className="bg-muted px-1 py-0.5 rounded font-mono text-foreground">
+            <code className="bg-muted px-1 py-0.5 rounded-sm font-mono text-foreground">
               {renameDialog.word}
             </code>{' '}
             to:
@@ -60,7 +60,7 @@ export const RenameSymbolDialog = React.memo(function RenameSymbolDialog({
                 onApply(renameDialog.word, renameDialog.newName);
               if (e.key === 'Escape') onCancel();
             }}
-            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm font-mono outline-none focus:ring-2 focus:ring-ring"
+            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
             spellCheck={false}
           />
         </div>

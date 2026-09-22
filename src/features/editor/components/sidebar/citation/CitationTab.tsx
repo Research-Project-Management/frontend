@@ -17,6 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Input } from "@/shared/components/ui";
 import { Badge } from "@/shared/components/ui";
 import { usePageStore } from '@/features/editor/store';
+import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 import { useFileActions, filesQuery } from '@/features/editor/hooks/use-core';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useEditorCitations } from '@/features/editor/hooks/use-citation';
@@ -29,7 +30,8 @@ interface CitationTabProps {
 
 export default function CitationTab({ onClose }: CitationTabProps) {
   const params = useParams<{ projectId?: string }>();
-  const { getEditorContent, editorRef, currentPage } = usePageStore();
+  const { currentPage } = usePageStore();
+  const { engine, getContent } = useEditorInstance();
   const rootPageId = currentPage?.id || params?.projectId;
   const { data: pageFiles = [] } = useQuery({
     ...filesQuery(rootPageId ?? ''),
@@ -45,27 +47,18 @@ export default function CitationTab({ onClose }: CitationTabProps) {
 
   // Sync content from editor
   const refreshContent = useCallback(() => {
-    const current = getEditorContent.current?.() ?? '';
+    const current = getContent();
     setContent(current);
-  }, [getEditorContent]);
+  }, [getContent]);
 
   useEffect(() => {
     refreshContent();
-    const ed = editorRef.current;
-    if (!ed) {
-      const fallbackTimer = setTimeout(refreshContent, 1000);
-      return () => clearTimeout(fallbackTimer);
-    }
-    let timeoutId: ReturnType<typeof setTimeout>;
-    const disposable = ed.onDidChangeModelContent(() => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(refreshContent, 600);
+    if (!engine) return;
+    const unsub = engine.onContentChange((val) => {
+      setContent(val);
     });
-    return () => {
-      clearTimeout(timeoutId);
-      disposable.dispose();
-    };
-  }, [refreshContent, editorRef, editorRef.current]);
+    return unsub;
+  }, [engine, refreshContent]);
 
   const {
     citedItems,
@@ -99,22 +92,12 @@ export default function CitationTab({ onClose }: CitationTabProps) {
   };
 
   const handleInsertKey = (key: string) => {
-    const ed = editorRef.current;
-    if (ed) {
-      const sel = ed.getSelection();
-      if (sel) {
-        ed.executeEdits('citation-tab', [
-          {
-            range: sel,
-            text: `\\cite{${key}}`,
-            forceMoveMarkers: true,
-          },
-        ]);
-        ed.focus();
-        toast.success(`Inserted \\cite{${key}}`);
-        refreshContent();
-        return;
-      }
+    if (engine) {
+      engine.insertText(`\\cite{${key}}`);
+      engine.focus();
+      toast.success(`Inserted \\cite{${key}}`);
+      refreshContent();
+      return;
     }
     // Fallback: emit event
     EditorEventBus.emit('flux:insert-citation', { bibKey: key });
@@ -170,7 +153,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
             type="button"
             onClick={handleSyncToBibtex}
             disabled={isSyncingBib}
-            className="h-7 px-2 flex items-center gap-1 rounded-md text-[11px] font-medium text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
+            className="h-7 px-2 flex items-center gap-1 rounded-sm text-[11px] font-medium text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
             title="Sync all citations to references.bib"
           >
             <Download className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
@@ -179,7 +162,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
           <button
             type="button"
             onClick={openPickerModal}
-            className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
+            className="size-7 flex items-center justify-center rounded-sm text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
             title="Insert citation from library"
           >
             <Plus className="size-3.5 shrink-0" />
@@ -188,7 +171,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
             <button
               type="button"
               onClick={onClose}
-              className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
+              className="size-7 flex items-center justify-center rounded-sm text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
               title="Close panel"
             >
               <X className="size-3.5 shrink-0" />
@@ -246,7 +229,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                       <button
                         type="button"
                         onClick={() => handleCopyKey(key)}
-                        className="h-6 px-1.5 flex items-center gap-1 rounded-md text-11 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        className="h-6 px-1.5 flex items-center gap-1 rounded-sm text-11 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         title="Copy cite command"
                       >
                         {isCopied ? <Check className="size-3 text-emerald-500 shrink-0" /> : <Copy className="size-3 shrink-0" />}
@@ -255,7 +238,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                       <button
                         type="button"
                         onClick={() => handleInsertKey(key)}
-                        className="h-6 px-1.5 flex items-center gap-1 rounded-md text-11 bg-muted hover:bg-muted text-foreground transition-colors"
+                        className="h-6 px-1.5 flex items-center gap-1 rounded-sm text-11 bg-muted hover:bg-muted text-foreground transition-colors"
                         title="Insert \cite{key} at cursor"
                       >
                         <Plus className="size-3 shrink-0" />
@@ -344,7 +327,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                     <button
                       type="button"
                       onClick={() => handleInsertKey(key)}
-                      className="shrink-0 size-7 flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      className="shrink-0 size-7 flex items-center justify-center rounded-sm border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                       title={`Insert \\cite{${key}}`}
                     >
                       <Plus className="size-3.5 shrink-0" />

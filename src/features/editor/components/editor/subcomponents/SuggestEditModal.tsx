@@ -38,7 +38,7 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
       aria-labelledby="suggest-dialog-title"
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/50 backdrop-blur-xs"
     >
-      <div className="w-full max-w-lg rounded-xl border border-border bg-card p-5 space-y-4 shadow-raised-200">
+      <div className="w-full max-w-lg rounded-lg border border-border bg-background p-5 space-y-4 shadow-raised-300">
         <div className="flex items-center justify-between pb-2 border-b border-border">
           <div className="flex items-center gap-2">
             <div className="size-7 rounded-md bg-amber-500/15 flex items-center justify-center text-amber-600 dark:text-amber-400">
@@ -59,7 +59,7 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+            className="rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
           >
             <X className="size-4" />
           </button>
@@ -68,7 +68,7 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
         {/* Type selection */}
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground">Action:</span>
-          <div className="inline-flex rounded-md p-0.5 bg-muted text-xs">
+          <div className="inline-flex rounded-md p-0.5 bg-muted text-xs border border-border">
             {(['replace', 'insert', 'delete'] as const).map((t) => (
               <button
                 key={t}
@@ -77,9 +77,9 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
                   onChangeState((prev) => (prev ? { ...prev, type: t } : null))
                 }
                 className={cn(
-                  'px-2.5 py-1 rounded capitalize font-medium transition-colors cursor-pointer',
+                  'px-2.5 py-1 rounded-sm capitalize font-medium transition-colors cursor-pointer',
                   suggestModal.type === t
-                    ? 'bg-background text-foreground shadow-xs'
+                    ? 'bg-background text-foreground shadow-2xs'
                     : 'text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -120,7 +120,7 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
               }
               rows={3}
               placeholder="Type proposed LaTeX or text change..."
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
               spellCheck={false}
             />
           </div>
@@ -143,7 +143,7 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
               )
             }
             placeholder="e.g., Fix equation index, improve clarity..."
-            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
+            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
           />
         </div>
 
@@ -151,7 +151,7 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
+            className="px-3 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -159,7 +159,7 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
             type="button"
             onClick={onSubmit}
             disabled={isPending}
-            className="px-4 py-1.5 rounded-md text-xs font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 transition-colors shadow-xs cursor-pointer"
+            className="px-4 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-2xs cursor-pointer"
           >
             {isPending ? 'Submitting...' : 'Submit Suggestion'}
           </button>

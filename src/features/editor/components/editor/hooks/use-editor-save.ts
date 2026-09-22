@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Page, PageFile } from '@/features/editor/types';
-import { useCompileStore, usePageStore, useSettingsStore } from '@/features/editor/store';
+import { useCompileStore, useSettingsStore } from '@/features/editor/store';
 import { useDebounce } from '@/shared/hooks';
 import { usePageActions } from '@/features/editor/hooks/use-core';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 
 export const extractStringContent = (c: any): string =>
   typeof c === 'string'
@@ -20,7 +21,6 @@ export interface UseEditorSaveOptions {
 }
 
 export function useEditorSave({ page, isRealtimeActive }: UseEditorSaveOptions) {
-  const compileRef = usePageStore((s) => s.compileRef);
   const markDirty = useCompileStore((s) => s.markDirty);
   const clearDirty = useCompileStore((s) => s.clearDirty);
   const autoCompile = useSettingsStore((s) => s.autoCompile);
@@ -118,8 +118,8 @@ export function useEditorSave({ page, isRealtimeActive }: UseEditorSaveOptions) 
 
     // Trigger compilation
     lastCompiledContentRef.current = debouncedAutoCompileText;
-    compileRef.current?.();
-  }, [debouncedAutoCompileText, autoCompile, compileRef]);
+    editorCommandBus.dispatch({ type: 'compiler:trigger' });
+  }, [debouncedAutoCompileText, autoCompile]);
 
   // Switch document/page reset & flush unsaved changes for previous page
   useEffect(() => {

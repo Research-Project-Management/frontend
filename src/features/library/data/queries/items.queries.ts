@@ -793,7 +793,7 @@ export function useToggleStarItemMutation(scopeId?: string) {
 
   return useMutation({
     mutationFn: async ({ id, isStarred }: { id: string; isStarred: boolean }) => {
-      return ItemService.update(effectiveScope, id, { isStarred } as Partial<Item>);
+      return ItemStateService.updateState(effectiveScope, id, { isStarred });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });

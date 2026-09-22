@@ -51,7 +51,7 @@ export const EditorFloatingBar = React.memo(function EditorFloatingBar({
   return createPortal(
     <div
       ref={selFloatingRef}
-      className="fixed z-[9998] flex items-center gap-px rounded-lg border border-border bg-popover px-1 py-1 shadow-raised-200"
+      className="fixed z-[9998] flex items-center gap-px rounded-md border border-border bg-popover text-popover-foreground px-1 py-1 shadow-raised-200"
       style={{ left: selFloating.x, top: selFloating.y }}
     >
       <button
@@ -64,7 +64,7 @@ export const EditorFloatingBar = React.memo(function EditorFloatingBar({
           EditorEventBus.emit('flux:open-panel', 'Review');
           onClose();
         }}
-        className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
+        className="flex items-center gap-1.5 px-2 py-1 rounded-sm text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
         title="Add Comment"
       >
         <MessageSquarePlus className="size-3.5 shrink-0" />
@@ -84,7 +84,7 @@ export const EditorFloatingBar = React.memo(function EditorFloatingBar({
           onClose();
         }}
         className={cn(
-          "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors cursor-pointer",
+          "flex items-center gap-1.5 px-2 py-1 rounded-sm text-xs transition-colors cursor-pointer",
           reviewMode
             ? "bg-amber-500/20 text-amber-800 dark:text-amber-200 font-semibold ring-1 ring-amber-500/40"
             : "text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
@@ -109,7 +109,7 @@ export const EditorFloatingBar = React.memo(function EditorFloatingBar({
           }
           onClose();
         }}
-        className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 font-semibold transition-colors cursor-pointer"
+        className="flex items-center gap-1.5 px-2 py-1 rounded-sm text-xs text-primary hover:bg-primary/10 font-medium transition-colors cursor-pointer"
         title="Overleaf AI Assist (Academic Rephrase / Concise / Grammar)"
       >
         <Sparkles className="size-3.5 shrink-0" />

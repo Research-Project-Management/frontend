@@ -415,7 +415,7 @@ export default function AddFilesModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-xl text-foreground select-none">
+      <DialogContent className="max-w-3xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-lg text-foreground select-none">
         {/* Hidden inputs for upload */}
         <input
           ref={fileInputRef}
@@ -434,7 +434,7 @@ export default function AddFilesModal({
         />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3.5 border-b border-border/80 bg-muted/30">
+        <div className="flex items-center justify-between px-6 py-3.5 border-b border-border bg-background">
           <DialogTitle className="text-base font-semibold text-foreground">
             Add files
           </DialogTitle>
@@ -463,16 +463,16 @@ export default function AddFilesModal({
                   type="button"
                   onClick={() => setActiveTab(id)}
                   className={cn(
-                    'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-left transition-colors cursor-pointer',
+                    'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium text-left transition-colors cursor-pointer',
                     isActive
-                      ? 'bg-background text-foreground shadow-sm font-semibold border border-border/60'
+                      ? 'bg-background text-foreground shadow-2xs font-semibold border border-border/60'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',
                   )}
                 >
                   <Icon
                     className={cn(
                       'size-4 shrink-0',
-                      isActive ? 'text-[#16a34a]' : 'text-muted-foreground',
+                      isActive ? 'text-primary' : 'text-muted-foreground',
                     )}
                   />
                   <span>{label}</span>
@@ -511,7 +511,7 @@ export default function AddFilesModal({
                       className="h-9 text-xs"
                       autoFocus
                     />
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-11 text-muted-foreground">
                       Files ending in .tex, .bib, .cls, .sty, or .md will be
                       opened in the editor.
                     </p>
@@ -522,14 +522,14 @@ export default function AddFilesModal({
                   <button
                     type="button"
                     onClick={() => onOpenChange(false)}
-                    className="rounded-full border border-border px-5 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
+                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={!newFileName.trim() || isCreatingNewFile}
-                    className="rounded-full bg-[#16a34a] hover:bg-[#15803d] text-white px-5 py-1.5 text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                    className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     {isCreatingNewFile && (
                       <Loader2 className="size-3.5 animate-spin" />
@@ -565,9 +565,9 @@ export default function AddFilesModal({
                     }}
                     onDrop={handleModalDrop}
                     className={cn(
-                      'border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 transition-colors text-center cursor-pointer',
+                      'border-2 border-dashed rounded-md p-8 flex flex-col items-center justify-center gap-3 transition-colors text-center cursor-pointer',
                       isDraggingOver
-                        ? 'border-[#16a34a] bg-emerald-500/10'
+                        ? 'border-primary bg-primary/5'
                         : 'border-border/80 hover:border-foreground/30 bg-muted/10',
                     )}
                   >
@@ -578,7 +578,7 @@ export default function AddFilesModal({
                       <p className="text-xs font-medium text-foreground">
                         Drag and drop files here, or
                       </p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-11 text-muted-foreground">
                         Maximum file size: 50MB. LaTeX files, images, PDFs, and
                         folders are supported.
                       </p>
@@ -588,14 +588,14 @@ export default function AddFilesModal({
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="rounded-full bg-[#16a34a] hover:bg-[#15803d] text-white px-4 py-1.5 text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+                        className="h-8 px-3.5 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium transition-colors cursor-pointer"
                       >
                         Select files
                       </button>
                       <button
                         type="button"
                         onClick={() => folderInputRef.current?.click()}
-                        className="rounded-full border border-border px-4 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
+                        className="h-8 px-3.5 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs"
                       >
                         Select a folder
                       </button>
@@ -607,7 +607,7 @@ export default function AddFilesModal({
                   <button
                     type="button"
                     onClick={() => onOpenChange(false)}
-                    className="rounded-full border border-border px-5 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
+                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs"
                   >
                     Cancel
                   </button>
@@ -737,7 +737,7 @@ export default function AddFilesModal({
                   <button
                     type="button"
                     onClick={() => onOpenChange(false)}
-                    className="rounded-full border border-border px-5 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
+                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs"
                   >
                     Cancel
                   </button>
@@ -749,7 +749,7 @@ export default function AddFilesModal({
                       isCopyingFromProject
                     }
                     onClick={handleCopyFromProject}
-                    className="rounded-full bg-[#16a34a] hover:bg-[#15803d] text-white px-5 py-1.5 text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                    className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     {isCopyingFromProject && (
                       <Loader2 className="size-3.5 animate-spin" />
@@ -798,7 +798,7 @@ export default function AddFilesModal({
                       />
                     </div>
 
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-11 text-muted-foreground">
                       Note: The URL must allow direct public access. For files on
                       GitHub, use the raw content URL (e.g. raw.githubusercontent.com).
                     </p>
@@ -809,7 +809,7 @@ export default function AddFilesModal({
                   <button
                     type="button"
                     onClick={() => onOpenChange(false)}
-                    className="rounded-full border border-border px-5 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
+                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs"
                   >
                     Cancel
                   </button>
@@ -817,7 +817,7 @@ export default function AddFilesModal({
                     type="button"
                     disabled={!fetchUrl.trim() || isFetchingUrl}
                     onClick={handleFetchFromUrl}
-                    className="rounded-full bg-[#16a34a] hover:bg-[#15803d] text-white px-5 py-1.5 text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                    className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     {isFetchingUrl && (
                       <Loader2 className="size-3.5 animate-spin" />
@@ -871,7 +871,7 @@ export default function AddFilesModal({
                     </div>
 
                     {/* Library items select list */}
-                    <div className="border border-border rounded-lg p-2 bg-muted/10 space-y-2">
+                    <div className="border border-border rounded-md p-2 bg-muted/10 space-y-2">
                       <div className="flex items-center justify-between text-xs pb-1 border-b border-border/60">
                         <div className="flex items-center gap-2">
                           <Checkbox
@@ -889,7 +889,7 @@ export default function AddFilesModal({
                             Select all
                           </label>
                         </div>
-                        <span className="text-muted-foreground text-[11px]">
+                        <span className="text-muted-foreground text-11">
                           {selectedItemIds.size} of {libraryItems.length} selected
                         </span>
                       </div>
@@ -925,11 +925,11 @@ export default function AddFilesModal({
                                   <div className="font-medium text-foreground truncate">
                                     {item.title || 'Untitled Reference'}
                                   </div>
-                                  <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+                                  <div className="text-11 text-muted-foreground flex items-center gap-2">
                                     {item.citationKey && (
                                       <Badge
                                         variant="outline"
-                                        className="text-[10px] px-1 py-0 h-4 font-mono font-normal"
+                                        className="text-10 px-1 py-0 h-4 font-mono font-normal"
                                       >
                                         {item.citationKey}
                                       </Badge>
@@ -956,7 +956,7 @@ export default function AddFilesModal({
                   <button
                     type="button"
                     onClick={() => onOpenChange(false)}
-                    className="rounded-full border border-border px-5 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
+                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs"
                   >
                     Cancel
                   </button>
@@ -964,7 +964,7 @@ export default function AddFilesModal({
                     type="button"
                     disabled={selectedItemIds.size === 0 || isExportingBib}
                     onClick={handleExportFromLibrary}
-                    className="rounded-full bg-[#16a34a] hover:bg-[#15803d] text-white px-5 py-1.5 text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                    className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     {isExportingBib && (
                       <Loader2 className="size-3.5 animate-spin" />

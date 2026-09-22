@@ -102,7 +102,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
         : '');
 
     return (
-      <div className="mb-3 rounded-lg border border-amber-200/60 dark:border-amber-900/40 bg-gradient-to-r from-amber-50/70 to-orange-50/40 dark:from-amber-950/20 dark:to-orange-950/10 p-2.5 text-xs shadow-xs transition-all">
+      <div className="mb-3 rounded-md border border-amber-200/60 dark:border-amber-900/40 bg-gradient-to-r from-amber-50/70 to-orange-50/40 dark:from-amber-950/20 dark:to-orange-950/10 p-2.5 text-xs shadow-xs transition-all">
         <div className="flex items-center justify-between gap-2">
           <div
             className="flex items-center gap-2 cursor-pointer select-none flex-1 min-w-0"
@@ -119,11 +119,11 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
                   {activeBundleInfo.itemCount} review update
                   {activeBundleInfo.itemCount > 1 ? 's' : ''} buffered
                 </span>
-                <span className="text-[10px] text-amber-600/80 dark:text-amber-400/80 font-normal">
+                <span className="text-10 text-amber-600/80 dark:text-amber-400/80 font-normal">
                   ({formatRemainingTime(remainingSecs)})
                 </span>
               </div>
-              <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 truncate">
+              <p className="text-11 text-amber-700/80 dark:text-amber-400/80 truncate">
                 From {authorsText} · 10m Overleaf digest window
               </p>
             </div>
@@ -134,7 +134,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
               type="button"
               disabled={flushBundle.isPending}
               onClick={handleFlushNow}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium bg-amber-200/70 hover:bg-amber-200 dark:bg-amber-900/50 dark:hover:bg-amber-900/80 text-amber-900 dark:text-amber-100 transition-colors disabled:opacity-50 cursor-pointer"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-11 font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-100 transition-colors disabled:opacity-50 cursor-pointer"
               title="Flush digest immediately to collaborators"
             >
               {flushBundle.isPending ? (
@@ -148,7 +148,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="p-1 rounded text-amber-700 dark:text-amber-300 hover:bg-amber-200/50 dark:hover:bg-amber-900/40 transition-colors cursor-pointer"
+              className="p-1 rounded-sm text-amber-700 dark:text-amber-300 hover:bg-amber-200/50 dark:hover:bg-amber-900/40 transition-colors cursor-pointer"
               title={isExpanded ? 'Collapse' : 'Expand details'}
             >
               {isExpanded ? (
@@ -166,7 +166,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
             {items.map((item: BundledNotificationItem) => (
               <div
                 key={item.id}
-                className="flex items-start gap-2 p-1.5 rounded bg-background/60 dark:bg-background/40 border border-border/40 text-[11px]"
+                className="flex items-start gap-2 p-1.5 rounded-sm bg-background/60 dark:bg-background/40 border border-border/40 text-11"
               >
                 {getEventIcon(item.type)}
                 <div className="flex-1 min-w-0">
@@ -199,7 +199,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
     if (!isRecent) return null;
 
     return (
-      <div className="mb-3 rounded-lg border border-border/60 bg-muted/30 p-2 text-xs flex items-center justify-between gap-2">
+      <div className="mb-3 rounded-md border border-border/60 bg-muted/30 p-2 text-xs flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
           <div className="truncate">

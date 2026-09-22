@@ -8,13 +8,12 @@ import {
   Layers,
   Settings,
 } from 'lucide-react';
-import { LibraryIcon, StorageIcon, AIIcon } from '@/shared/components/icons';
+import { LibraryIcon, StorageIcon } from '@/shared/components/icons';
 import { cn } from "@/shared/lib/utils";
 import StickyDock from './StickyDock';
 
 const NAV_ITEMS = [
   { label: 'Projects', icon: Layers, to: '/home' },
-  { label: 'AI', icon: AIIcon, to: '/ai' },
   { label: 'Library', icon: LibraryIcon, to: '/library' },
   { label: 'Storage', icon: StorageIcon, to: '/storage' },
   { label: 'Settings', icon: Settings, to: '/settings' },

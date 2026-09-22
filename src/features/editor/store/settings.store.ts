@@ -48,7 +48,7 @@ export interface DocumentSettingsState {
   editorMode: 'code' | 'visual';
   reviewMode: boolean;
   trackChangesViewMode: TrackChangesViewMode;
-  activeSidebarPanel: 'Files' | 'Search' | 'Citations' | 'Review' | 'AI' | null;
+  activeSidebarPanel: 'Files' | 'Outline' | 'Search' | 'Citations' | 'Review' | 'AI' | null;
   isHistoryOpen: boolean;
   isShareModalOpen: boolean;
   isTemplateModalOpen: boolean;
@@ -58,11 +58,23 @@ export interface DocumentSettingsState {
   fontFamily: string;
   autoCloseBrackets: boolean;
   linterEnabled: boolean;
+  autoComplete: boolean;
+  nonBlinkingCursor: boolean;
+  previewEditorTabs: boolean;
+  pdfViewer: 'overleaf' | 'browser';
+  notifyComments: boolean;
+  notifyUpdates: boolean;
   showBreadcrumbs: boolean;
   showEditorTabs: boolean;
   showEquationPreview: boolean;
   pdfSpreadView: boolean;
 
+  setAutoComplete: (autoComplete: boolean) => void;
+  setNonBlinkingCursor: (nonBlinkingCursor: boolean) => void;
+  setPreviewEditorTabs: (previewEditorTabs: boolean) => void;
+  setPdfViewer: (pdfViewer: 'overleaf' | 'browser') => void;
+  setNotifyComments: (notifyComments: boolean) => void;
+  setNotifyUpdates: (notifyUpdates: boolean) => void;
   setEngine: (engine: CompilerEngine) => void;
   setCompileMode: (compileMode: CompileMode) => void;
   setAutoCompile: (autoCompile: boolean) => void;
@@ -79,16 +91,17 @@ export interface DocumentSettingsState {
   setActiveSidebarPanel: (
     panel:
       | 'Files'
+      | 'Outline'
       | 'Search'
       | 'Citations'
       | 'Review'
       | 'AI'
       | null
       | ((
-          prev: 'Files' | 'Search' | 'Citations' | 'Review' | 'AI' | null,
-        ) => 'Files' | 'Search' | 'Citations' | 'Review' | 'AI' | null),
+          prev: 'Files' | 'Outline' | 'Search' | 'Citations' | 'Review' | 'AI' | null,
+        ) => 'Files' | 'Outline' | 'Search' | 'Citations' | 'Review' | 'AI' | null),
   ) => void;
-  toggleSidebarPanel: (panel: 'Files' | 'Search' | 'Citations' | 'Review' | 'AI') => void;
+  toggleSidebarPanel: (panel: 'Files' | 'Outline' | 'Search' | 'Citations' | 'Review' | 'AI') => void;
   setIsHistoryOpen: (open: boolean) => void;
   toggleHistory: () => void;
   setIsShareModalOpen: (open: boolean) => void;
@@ -154,6 +167,12 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       fontFamily: 'default',
       autoCloseBrackets: true,
       linterEnabled: true,
+      autoComplete: true,
+      nonBlinkingCursor: false,
+      previewEditorTabs: false,
+      pdfViewer: 'overleaf',
+      notifyComments: true,
+      notifyUpdates: false,
       showBreadcrumbs: true,
       showEditorTabs: true,
       showEquationPreview: true,
@@ -218,6 +237,12 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       toggleShowEquationPreview: () => set((s) => ({ showEquationPreview: !s.showEquationPreview })),
       setPdfSpreadView: (pdfSpreadView) => set({ pdfSpreadView }),
       togglePdfSpreadView: () => set((s) => ({ pdfSpreadView: !s.pdfSpreadView })),
+      setAutoComplete: (autoComplete) => set({ autoComplete }),
+      setNonBlinkingCursor: (nonBlinkingCursor) => set({ nonBlinkingCursor }),
+      setPreviewEditorTabs: (previewEditorTabs) => set({ previewEditorTabs }),
+      setPdfViewer: (pdfViewer) => set({ pdfViewer }),
+      setNotifyComments: (notifyComments) => set({ notifyComments }),
+      setNotifyUpdates: (notifyUpdates) => set({ notifyUpdates }),
     }),
     {
       name: 'flux-editor-settings',

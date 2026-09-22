@@ -234,7 +234,7 @@ export function PresentationModeModal({
         if (isWhiteout) setIsWhiteout(false);
       }}
       className={cn(
-        'fixed inset-0 z-[100000] bg-[#0c0d0e] flex flex-col items-center justify-center select-none overflow-hidden',
+        'fixed inset-0 z-[100000] bg-black flex flex-col items-center justify-center select-none overflow-hidden',
         isLaserPointer ? 'cursor-none' : showControls ? 'cursor-default' : 'cursor-none',
       )}
     >
@@ -313,14 +313,14 @@ export function PresentationModeModal({
             : 'opacity-0 translate-y-4 pointer-events-none',
         )}
       >
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-900/85 backdrop-blur-md border border-white/15 text-white shadow-2xl">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-neutral-900/90 backdrop-blur-md border border-white/15 text-white shadow-raised-200">
           {/* Previous Slide */}
           <button
             type="button"
             onClick={goToPrevPage}
             disabled={currentPage <= 1}
             title="Previous slide (Left / Space)"
-            className="size-7 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/15 disabled:opacity-30 transition-colors cursor-pointer"
+            className="size-7 rounded-sm flex items-center justify-center text-white/80 hover:text-white hover:bg-white/15 disabled:opacity-30 transition-colors cursor-pointer"
           >
             <ChevronLeft className="size-4 shrink-0" />
           </button>
@@ -334,7 +334,7 @@ export function PresentationModeModal({
                 const val = parseInt(e.target.value, 10);
                 if (!isNaN(val)) jumpToPage(val);
               }}
-              className="w-8 h-5 bg-white/10 text-center rounded border border-white/20 text-white font-mono text-xs outline-none focus:border-emerald-400"
+              className="w-8 h-5 bg-white/10 text-center rounded-sm border border-white/20 text-white font-mono text-xs outline-none focus:border-primary"
             />
             <span className="text-white/50">/ {numPages || 1}</span>
           </div>
@@ -345,7 +345,7 @@ export function PresentationModeModal({
             onClick={goToNextPage}
             disabled={currentPage >= numPages}
             title="Next slide (Right / Enter)"
-            className="size-7 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/15 disabled:opacity-30 transition-colors cursor-pointer"
+            className="size-7 rounded-sm flex items-center justify-center text-white/80 hover:text-white hover:bg-white/15 disabled:opacity-30 transition-colors cursor-pointer"
           >
             <ChevronRight className="size-4 shrink-0" />
           </button>
@@ -358,7 +358,7 @@ export function PresentationModeModal({
             onClick={() => setIsLaserPointer((prev) => !prev)}
             title={isLaserPointer ? 'Disable laser pointer (L)' : 'Enable laser pointer (L)'}
             className={cn(
-              'size-7 rounded-full flex items-center justify-center transition-colors cursor-pointer text-xs font-semibold',
+              'size-7 rounded-sm flex items-center justify-center transition-colors cursor-pointer text-xs font-semibold',
               isLaserPointer
                 ? 'bg-red-600 text-white shadow-[0_0_8px_rgba(255,0,0,0.8)]'
                 : 'text-white/80 hover:text-white hover:bg-white/15',
@@ -372,7 +372,7 @@ export function PresentationModeModal({
             type="button"
             onClick={() => setIsBlackout(true)}
             title="Black screen (B)"
-            className="size-7 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/15 transition-colors cursor-pointer text-xs font-semibold"
+            className="size-7 rounded-sm flex items-center justify-center text-white/80 hover:text-white hover:bg-white/15 transition-colors cursor-pointer text-xs font-semibold"
           >
             B
           </button>
@@ -382,7 +382,7 @@ export function PresentationModeModal({
             type="button"
             onClick={() => setIsWhiteout(true)}
             title="White screen (W)"
-            className="size-7 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/15 transition-colors cursor-pointer text-xs font-semibold"
+            className="size-7 rounded-sm flex items-center justify-center text-white/80 hover:text-white hover:bg-white/15 transition-colors cursor-pointer text-xs font-semibold"
           >
             W
           </button>
@@ -394,7 +394,7 @@ export function PresentationModeModal({
             type="button"
             onClick={onClose}
             title="Exit presentation (Esc)"
-            className="size-7 rounded-full flex items-center justify-center text-white/80 hover:text-rose-400 hover:bg-white/15 transition-colors cursor-pointer"
+            className="size-7 rounded-sm flex items-center justify-center text-white/80 hover:text-rose-400 hover:bg-white/15 transition-colors cursor-pointer"
           >
             <Minimize2 className="size-3.5 shrink-0" />
           </button>

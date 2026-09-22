@@ -60,6 +60,7 @@ import {
   useLibrarySidebarStore,
   useLibraryViewStore,
   useLibraryModalStore,
+  useLibraryUIStore,
 } from '../../store';
 import type { Item } from '../../types/library.types';
 
@@ -115,9 +116,9 @@ export function LibraryTopbar({
   onSearchChange,
   searchPlaceholder = 'Search references...',
   showFilter = true,
-  showDisplay = false,
-  displayOptions,
-  onDisplayOptionsChange,
+  showDisplay = true,
+  displayOptions: propDisplayOptions,
+  onDisplayOptionsChange: propOnDisplayOptionsChange,
   scopeId: propScopeId,
   projectId: propProjectId,
   workspaceId: propWorkspaceId,
@@ -138,7 +139,15 @@ export function LibraryTopbar({
 }: TopbarProps) {
   const { isInspectorOpen, toggleInspector, activeScope } = useLibrarySidebarStore();
   const selectedCount = useLibraryViewStore((s) => s.selectedIds.size);
+  const activeItemId = useLibraryViewStore((s) => s.activeItemId);
   const openModal = useLibraryModalStore((s) => s.openModal);
+  const storeDisplayOptions = useLibraryUIStore((s) => s.displayOptions);
+  const setStoreDisplayOptions = useLibraryUIStore((s) => s.setDisplayOptions);
+
+  const effectiveDisplayOptions = propDisplayOptions ?? storeDisplayOptions;
+  const effectiveOnDisplayOptionsChange =
+    propOnDisplayOptionsChange ?? setStoreDisplayOptions;
+
   const params = useParams() as { collectionId?: string };
 
   const effectiveScopeId =
@@ -367,10 +376,10 @@ export function LibraryTopbar({
         )}
 
         {/* Academic Library Display Options */}
-        {showDisplay && displayOptions && onDisplayOptionsChange && (
+        {showDisplay && effectiveDisplayOptions && effectiveOnDisplayOptionsChange && (
           <LibraryDisplayPopover
-            options={displayOptions}
-            onOptionsChange={onDisplayOptionsChange}
+            options={effectiveDisplayOptions}
+            onOptionsChange={effectiveOnDisplayOptionsChange}
           />
         )}
 
@@ -379,9 +388,8 @@ export function LibraryTopbar({
           <DropdownMenuTrigger asChild>
             <Button
               size="sm"
-              className="h-8 px-3 rounded-md cursor-pointer font-medium text-13 shadow-none inline-flex items-center justify-center gap-1.5"
+              className="h-8 px-3 rounded-md cursor-pointer font-medium text-13 shadow-none inline-flex items-center justify-center"
             >
-              <Plus className="size-3.5" />
               <span>New</span>
             </Button>
           </DropdownMenuTrigger>
@@ -549,9 +557,10 @@ export function LibraryTopbar({
                   type="button"
                   variant="ghost"
                   size="icon"
+                  disabled={!activeItemId && !isInspectorOpen}
                   onClick={onToggleInspector || toggleInspector}
                   className={cn(
-                    'size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0',
+                    'size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0 disabled:opacity-40 disabled:cursor-not-allowed',
                     isInspectorOpen && 'bg-accent text-accent-foreground'
                   )}
                   aria-label="Toggle inspector"
@@ -566,7 +575,11 @@ export function LibraryTopbar({
                 alignOffset={2}
                 className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
               >
-                {isInspectorOpen ? 'Collapse inspector' : 'Expand inspector'}
+                {!activeItemId && !isInspectorOpen
+                  ? 'Select a paper to open panel'
+                  : isInspectorOpen
+                  ? 'Collapse panel'
+                  : 'Expand panel'}
               </TooltipContent>
             </Tooltip>
           </div>

@@ -11,11 +11,11 @@ import {
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
-import { useDocumentEditorStore, useSettingsStore } from '@/features/editor/store';
+import { useSettingsStore } from '@/features/editor/store';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import type { LatexLintDiagnostic } from '@/features/editor/utils/latex-linter.util';
 
 export function LatexDiagnosticsBadge() {
-  const { scrollToLineRef } = useDocumentEditorStore();
   const { linterEnabled, toggleLinterEnabled } = useSettingsStore();
 
   const [diagnostics, setDiagnostics] = useState<LatexLintDiagnostic[]>([]);
@@ -51,7 +51,11 @@ export function LatexDiagnosticsBadge() {
   const totalIssues = errorCount + warningCount;
 
   const handleJumpToIssue = (diag: LatexLintDiagnostic) => {
-    scrollToLineRef.current?.(diag.startLineNumber, 'error');
+    editorCommandBus.dispatch({
+      type: 'editor:jump-to-line',
+      line: diag.startLineNumber,
+      highlight: 'error',
+    });
     setIsOpen(false);
   };
 
@@ -92,8 +96,8 @@ export function LatexDiagnosticsBadge() {
 
       {/* Diagnostics Problems Popover */}
       {isOpen && totalIssues > 0 && (
-        <div className="absolute right-0 top-full mt-1.5 w-80 sm:w-96 rounded-lg border border-border bg-popover text-popover-foreground shadow-xl z-[9999] overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
-          <div className="px-3 py-2 border-b border-border bg-muted/40 flex items-center justify-between">
+        <div className="absolute right-0 top-full mt-1.5 w-80 sm:w-96 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 z-[9999] overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
+          <div className="px-3 py-2 border-b border-border bg-background flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-xs font-semibold">
               <AlertCircle className="size-3.5 text-rose-500" />
               <span>LaTeX Syntax Diagnostics ({totalIssues})</span>
@@ -101,7 +105,7 @@ export function LatexDiagnosticsBadge() {
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+              className="p-1 rounded-sm hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
             >
               <X className="size-3.5" />
             </button>
@@ -127,7 +131,7 @@ export function LatexDiagnosticsBadge() {
                         <span className="font-semibold text-foreground">
                           Line {diag.startLineNumber}:{diag.startColumn}
                         </span>
-                        <span className="text-[10px] px-1 rounded bg-muted">
+                        <span className="text-10 px-1 rounded-sm bg-muted font-mono">
                           {diag.code}
                         </span>
                       </div>

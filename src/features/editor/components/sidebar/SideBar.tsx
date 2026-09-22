@@ -4,21 +4,53 @@ import {
   MessageSquareQuote,
   Search,
   BookMarked,
+  Settings,
+  ListTree,
+  Loader2,
 } from "lucide-react";
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import dynamic from "next/dynamic";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 
-import SearchTab from "./search/SearchTab";
 import FilesTab from "./explorer/FilesTab";
-import ReviewTab from "./review/ReviewTab";
-import CitationTab from "./citation/CitationTab";
-import AiTab from "./ai/AiTab";
+
+const PanelLoadingFallback = () => (
+  <div className="flex h-full w-full items-center justify-center p-6 text-muted-foreground">
+    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+    <span className="text-xs">Loading panel...</span>
+  </div>
+);
+
+const OutlineTab = dynamic(() => import("./outline/OutlineTab"), {
+  ssr: false,
+  loading: PanelLoadingFallback,
+});
+const SearchTab = dynamic(() => import("./search/SearchTab"), {
+  ssr: false,
+  loading: PanelLoadingFallback,
+});
+const CitationTab = dynamic(() => import("./citation/CitationTab"), {
+  ssr: false,
+  loading: PanelLoadingFallback,
+});
+const ReviewTab = dynamic(() => import("./review/ReviewTab"), {
+  ssr: false,
+  loading: PanelLoadingFallback,
+});
+const AiTab = dynamic(() => import("./ai/AiTab"), {
+  ssr: false,
+  loading: PanelLoadingFallback,
+});
+
+import StickyDock from "@/features/shell/components/StickyDock";
 import { EditorEventBus } from "@/features/editor/utils/editor.util";
+import { useSettingsStore } from "@/features/editor/store";
 import { logger } from "@/shared/lib/utils";
 
 const sideBarItems = [
   { name: "Files", icon: FileText },
+  { name: "Outline", icon: ListTree },
   { name: "Search", icon: Search },
   { name: "Citations", icon: BookMarked },
   { name: "Review", icon: MessageSquareQuote },
@@ -29,6 +61,7 @@ export type SidebarTab = (typeof sideBarItems)[number]["name"];
 
 function PanelContent({ tab, onClose }: { tab: SidebarTab; onClose: () => void }) {
   if (tab === "Files") return <FilesTab onClose={onClose} />;
+  if (tab === "Outline") return <OutlineTab onClose={onClose} />;
   if (tab === "Search") return <SearchTab onClose={onClose} />;
   if (tab === "Citations") return <CitationTab onClose={onClose} />;
   if (tab === "Review") return <ReviewTab onClose={onClose} />;
@@ -71,6 +104,8 @@ const SideBar = React.memo(function SideBar({
 }: SideBarProps = {}) {
   const [internalActivePanel, setInternalActivePanel] = useState<SidebarTab | null>("Files");
   const [mounted, setMounted] = useState(false);
+  const settingsPanelOpen = useSettingsStore((s) => s.settingsPanelOpen);
+  const toggleSettingsPanel = useSettingsStore((s) => s.toggleSettingsPanel);
 
   const isControlled = controlledActivePanel !== undefined;
   const activePanel = isControlled ? controlledActivePanel : internalActivePanel;
@@ -177,6 +212,33 @@ const SideBar = React.memo(function SideBar({
             </li>
           );
         })}
+
+        {/* Sticky Trigger like workspace sidebar */}
+        <li role="none" className="mt-auto">
+          <StickyDock />
+        </li>
+
+        {/* Overleaf Settings Icon at Bottom of Sidebar */}
+        <li role="none">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={toggleSettingsPanel}
+                aria-label="Settings"
+                className={cn(
+                  "flex size-8 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer",
+                  settingsPanelOpen
+                    ? "bg-sidebar-accent text-foreground shadow-2xs font-medium"
+                    : "text-foreground/75 hover:text-foreground hover:bg-sidebar-hover",
+                )}
+              >
+                <Settings className="size-4 shrink-0" strokeWidth={1.75} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Settings</TooltipContent>
+          </Tooltip>
+        </li>
       </ul>
 
       {/* Stacked panels */}

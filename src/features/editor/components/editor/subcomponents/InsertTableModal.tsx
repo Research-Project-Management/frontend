@@ -88,7 +88,7 @@ ${hasHeader ? `    ${headerCols} \\\\\n    \\hline\n` : ''}${bodyRows}    \\hlin
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="max-w-md p-6 bg-background border-border shadow-xl">
+      <DialogContent className="max-w-md p-6 bg-background rounded-lg border border-border shadow-raised-300">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
             <div className="size-7 rounded-md bg-primary/10 text-primary flex items-center justify-center">
@@ -105,13 +105,13 @@ ${hasHeader ? `    ${headerCols} \\\\\n    \\hline\n` : ''}${bodyRows}    \\hlin
               <Label className="text-xs font-medium text-muted-foreground">
                 Table Dimensions
               </Label>
-              <span className="text-xs font-mono font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
+              <span className="text-xs font-mono font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-sm">
                 {activeRows} × {activeCols}
               </span>
             </div>
 
             <div
-              className="grid gap-1 p-2.5 bg-muted/40 rounded-lg border border-border w-fit mx-auto select-none"
+              className="grid gap-1 p-2.5 bg-muted/40 rounded-md border border-border w-fit mx-auto select-none"
               style={{
                 gridTemplateColumns: `repeat(${MAX_GRID_COLS}, minmax(0, 1fr))`,
               }}
@@ -187,7 +187,7 @@ ${hasHeader ? `    ${headerCols} \\\\\n    \\hline\n` : ''}${bodyRows}    \\hlin
                     type="button"
                     onClick={() => setAlignment(mode)}
                     className={cn(
-                      'px-2.5 py-0.5 rounded text-xs font-mono font-medium transition-colors',
+                      'px-2.5 py-0.5 rounded-sm text-xs font-mono font-medium transition-colors cursor-pointer',
                       alignment === mode
                         ? 'bg-background text-foreground shadow-2xs'
                         : 'text-muted-foreground hover:text-foreground',
@@ -205,7 +205,7 @@ ${hasHeader ? `    ${headerCols} \\\\\n    \\hline\n` : ''}${bodyRows}    \\hlin
                   type="checkbox"
                   checked={useBooktabs}
                   onChange={(e) => setUseBooktabs(e.target.checked)}
-                  className="rounded border-border text-primary focus:ring-primary size-3.5"
+                  className="rounded-xs border-border text-primary focus:ring-primary size-3.5"
                 />
                 <span>Use <code>booktabs</code> (\toprule, \midrule)</span>
               </label>
@@ -215,7 +215,7 @@ ${hasHeader ? `    ${headerCols} \\\\\n    \\hline\n` : ''}${bodyRows}    \\hlin
                   type="checkbox"
                   checked={hasHeader}
                   onChange={(e) => setHasHeader(e.target.checked)}
-                  className="rounded border-border text-primary focus:ring-primary size-3.5"
+                  className="rounded-xs border-border text-primary focus:ring-primary size-3.5"
                 />
                 <span>Header Row</span>
               </label>

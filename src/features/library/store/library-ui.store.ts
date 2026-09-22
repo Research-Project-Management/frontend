@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { LibraryScope } from '../types/core.types';
+import {
+  DEFAULT_LIBRARY_DISPLAY_OPTIONS,
+  type LibraryDisplayOptions,
+} from '../types/display.types';
 
 export type InspectorSectionId =
   | 'info'
@@ -42,6 +46,7 @@ export interface LibraryUIState {
   selectedIds: Set<string>;
   activeItemId: string | null;
   viewMode: ViewMode;
+  displayOptions: LibraryDisplayOptions;
 
   // ── Centralized Modal Dialog Bus ─────────────────────────────────────────────
   activeModal: LibraryModalType | null;
@@ -62,6 +67,13 @@ export interface LibraryUIState {
   toggleInspector: () => void;
   setActiveInspectorTab: (tab: InspectorSectionId) => void;
   toggleInspectorTab: (tab: InspectorSectionId) => void;
+
+  // ── Actions: Display Options ─────────────────────────────────────────────────
+  setDisplayOptions: (
+    options:
+      | LibraryDisplayOptions
+      | ((prev: LibraryDisplayOptions) => LibraryDisplayOptions),
+  ) => void;
 
   // ── Actions: Selection ───────────────────────────────────────────────────────
   toggleSelect: (id: string) => void;
@@ -97,10 +109,20 @@ export const useLibraryUIStore = create<LibraryUIState>()(
       selectedIds: new Set<string>(),
       activeItemId: null,
       viewMode: 'table',
+      displayOptions: DEFAULT_LIBRARY_DISPLAY_OPTIONS,
 
       activeModal: null,
       payload: null,
       modalProps: {},
+
+      // Display options handler
+      setDisplayOptions: (options) =>
+        set((state) => ({
+          displayOptions:
+            typeof options === 'function'
+              ? options(state.displayOptions)
+              : options,
+        })),
 
       // Layout handlers
       setActiveScope: (activeScope) => set({ activeScope }),
@@ -155,7 +177,6 @@ export const useLibraryUIStore = create<LibraryUIState>()(
         set({
           selectedIds: new Set([id]),
           activeItemId: id,
-          isInspectorOpen: true,
         }),
 
       selectAll: (ids: string[]) =>
@@ -171,7 +192,6 @@ export const useLibraryUIStore = create<LibraryUIState>()(
       setActiveItem: (id: string | null) =>
         set({
           activeItemId: id,
-          isInspectorOpen: id !== null,
         }),
 
       setViewMode: (viewMode: ViewMode) => set({ viewMode }),
@@ -196,6 +216,7 @@ export const useLibraryUIStore = create<LibraryUIState>()(
         width: state.width,
         sidebarWidth: state.sidebarWidth,
         inspectorWidth: state.inspectorWidth,
+        displayOptions: state.displayOptions,
       }),
     },
   ),

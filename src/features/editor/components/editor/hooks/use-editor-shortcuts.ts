@@ -26,7 +26,8 @@ import {
   FileCheck,
 } from 'lucide-react';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
-import { useActionsStore, usePageStore } from '@/features/editor/store';
+import { useActionsStore } from '@/features/editor/store';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 
 export interface MenuAction {
   icon?: React.ElementType;
@@ -64,7 +65,6 @@ export function useEditorShortcuts({
   ctxEndLine,
   ctxSelText,
 }: UseEditorShortcutsOptions) {
-  const compileRef = usePageStore((s) => s.compileRef);
   const setPendingComment = useActionsStore((s) => s.setPendingComment);
 
   const trigger = (action: string) => {
@@ -214,6 +214,15 @@ export function useEditorShortcuts({
         action: () => trigger('actions.find'),
       },
       {
+        icon: Search,
+        label: 'Search in Project',
+        kbd: 'Ctrl+Shift+F',
+        action: () => {
+          EditorEventBus.emit('flux:open-panel', { panel: 'Search', query: ctxSelText || undefined });
+          closeMenu();
+        },
+      },
+      {
         icon: Pencil,
         label: 'Rename Occurrences',
         kbd: 'F2',
@@ -224,7 +233,7 @@ export function useEditorShortcuts({
         label: 'Compile',
         kbd: 'Ctrl+↵',
         action: () => {
-          compileRef.current?.();
+          editorCommandBus.dispatch({ type: 'compiler:trigger' });
           closeMenu();
         },
       },

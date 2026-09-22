@@ -105,15 +105,15 @@ export default function DeletedFilesModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-xl text-foreground">
+      <DialogContent className="max-w-xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-300 rounded-lg text-foreground">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background">
           <div>
             <DialogTitle className="text-base font-semibold flex items-center gap-2">
               <Trash2 className="size-4 text-rose-500" />
               Deleted Files
               {deletedFiles.length > 0 && (
-                <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                <Badge variant="secondary" className="text-11 px-1.5 py-0 rounded-sm">
                   {deletedFiles.length}
                 </Badge>
               )}
@@ -126,7 +126,7 @@ export default function DeletedFilesModal({
             type="button"
             onClick={() => onOpenChange(false)}
             aria-label="Close"
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            className="size-7 rounded-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
           >
             <X className="size-4" />
           </button>
@@ -134,14 +134,14 @@ export default function DeletedFilesModal({
 
         {/* Search Bar */}
         {deletedFiles.length > 0 && (
-          <div className="px-6 py-3 border-b border-border/60 bg-muted/10">
+          <div className="px-6 py-3 border-b border-border bg-muted/10">
             <div className="relative">
               <Search className="size-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search deleted files..."
-                className="pl-8 h-8 text-xs bg-background"
+                className="pl-8 h-8 text-xs bg-background rounded-md border-border"
               />
             </div>
           </div>
@@ -151,13 +151,13 @@ export default function DeletedFilesModal({
         <div className="p-6 max-h-[50vh] overflow-y-auto">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
-              <Loader2 className="size-6 animate-spin" />
+              <Loader2 className="size-6 animate-spin text-primary" />
               <p className="text-xs">Loading deleted files…</p>
             </div>
           ) : filteredFiles.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-              <div className="size-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
-                <Trash2 className="size-6 text-muted-foreground/60" />
+              <div className="size-10 rounded-full bg-muted flex items-center justify-center mb-3">
+                <Trash2 className="size-5 text-muted-foreground/60" />
               </div>
               <p className="text-sm font-medium text-foreground">
                 {searchQuery ? 'No matching deleted files' : 'No deleted files'}
@@ -169,7 +169,7 @@ export default function DeletedFilesModal({
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-border/60 border border-border/80 rounded-lg overflow-hidden">
+            <div className="divide-y divide-border border border-border rounded-md overflow-hidden">
               {filteredFiles.map((file: PageFile) => {
                 const { icon: FileIcon, color: iconColor } = getFileIcon(file.title);
                 const isRestoring = restoringId === file.id;
@@ -180,7 +180,7 @@ export default function DeletedFilesModal({
                     className="flex items-center justify-between p-3 bg-card hover:bg-muted/30 transition-colors"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 pr-3">
-                      <div className="p-1.5 rounded-md bg-muted/60 shrink-0">
+                      <div className="p-1.5 rounded-sm bg-muted shrink-0">
                         <FileIcon className={cn('size-4 shrink-0', iconColor)} />
                       </div>
                       <div className="min-w-0">
@@ -199,7 +199,7 @@ export default function DeletedFilesModal({
                       variant="outline"
                       disabled={isRestoring}
                       onClick={() => handleRestore(file.id)}
-                      className="h-7 text-xs gap-1.5 shrink-0 cursor-pointer hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400"
+                      className="h-7 text-xs gap-1.5 shrink-0 cursor-pointer rounded-md border-border hover:bg-muted shadow-2xs"
                     >
                       {isRestoring ? (
                         <Loader2 className="size-3.5 animate-spin" />
@@ -216,15 +216,15 @@ export default function DeletedFilesModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-3 border-t border-border bg-muted/20 text-xs text-muted-foreground">
-          <span>
+        <div className="flex items-center justify-between px-6 py-3 border-t border-border bg-background text-xs text-muted-foreground">
+          <span className="text-11">
             {deletedFiles.length} file{deletedFiles.length === 1 ? '' : 's'} in trash
           </span>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="h-7 text-xs"
+            className="h-7 text-xs rounded-md border-border bg-background hover:bg-muted text-foreground shadow-2xs"
           >
             Close
           </Button>

@@ -189,6 +189,7 @@ export type CompileExecutionResult =
       pdfUrl: string;
       pdfBlob: Blob;
       synctexMap: SyncTeXMap | null;
+      rawSynctex?: string | null;
       logs: string;
       compiledAt: Date;
       diagnostics?: CompilerDiagnostic[];
@@ -296,6 +297,7 @@ export const LatexCompilerEngine = {
             pdfUrl: url,
             pdfBlob: blob,
             synctexMap,
+            rawSynctex: data.synctex || null,
             logs: data.logs || "",
             compiledAt: new Date(),
             diagnostics: data.diagnostics,

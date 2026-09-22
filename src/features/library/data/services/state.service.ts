@@ -12,16 +12,21 @@ export const StateService = {
   },
 
   updateState: async (
-    _scopeId?: string,
+    scopeId?: string,
     itemId?: string,
     data?: {
+      isStarred?: boolean;
       readStatus?: 'unread' | 'reading' | 'completed';
       rating?: number;
     },
   ): Promise<ItemStateData> => {
     if (!itemId) throw new Error('itemId is required');
+    const isProject = scopeId && scopeId !== 'user';
+    const basePath = isProject
+      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/items/${encodeURIComponent(itemId)}/state`
+      : `/api/v1/library/items/${encodeURIComponent(itemId)}/state`;
     const res = await apiPatch<ItemStateData | { data: ItemStateData }>(
-      `/api/v1/library/items/${encodeURIComponent(itemId)}/state`,
+      basePath,
       data ?? {},
     );
     return (res as any)?.data ?? res;

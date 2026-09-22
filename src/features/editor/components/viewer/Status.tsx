@@ -10,7 +10,8 @@ import {
   Terminal,
   Zap,
 } from 'lucide-react';
-import { useCompileStore, usePageStore, useSettingsStore, type CompileStatus } from '@/features/editor/store';
+import { useCompileStore, useSettingsStore, type CompileStatus } from '@/features/editor/store';
+import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 import type { ParsedLog } from './Logs';
 import { fetchWordCount } from '@/features/editor/services/compiler.service';
 import RawLogModal from './RawLogModal';
@@ -33,7 +34,7 @@ export default React.memo(function Status({
   onToggleLog,
   onJumpToFirstError,
 }: StatusProps) {
-  const getEditorContent = usePageStore((s) => s.getEditorContent);
+  const { getContent } = useEditorInstance();
   const compileLog = useCompileStore((s) => s.compileLog);
   const autoCompile = useSettingsStore((s) => s.autoCompile);
   const [wordCount, setWordCount] = useState<number | null>(null);
@@ -42,7 +43,7 @@ export default React.memo(function Status({
 
   useEffect(() => {
     if (compileStatus === 'done') {
-      const src = getEditorContent.current?.();
+      const src = getContent();
       if (src && src.trim().length > 0) {
         fetchWordCount(src)
           .then((res) => {
@@ -53,7 +54,7 @@ export default React.memo(function Status({
           .catch(() => {});
       }
     }
-  }, [compileStatus, getEditorContent]);
+  }, [compileStatus, getContent]);
 
   return (
     <div className="flex items-center justify-between px-3 py-1 border-t border-border bg-secondary text-xs text-muted-foreground shrink-0">
@@ -66,7 +67,7 @@ export default React.memo(function Status({
         {autoCompile && (
           <span
             title="Auto-compile is active (2.5s typing idle)"
-            className="inline-flex items-center gap-1 text-10 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-medium select-none"
+            className="inline-flex items-center gap-1 text-10 px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary font-mono font-medium select-none"
           >
             <Zap className="size-2.5" />
             Auto
@@ -101,7 +102,7 @@ export default React.memo(function Status({
             type="button"
             onClick={onToggleLog}
             aria-label={`Toggle build log: ${parsedLog.errors.length} errors, ${parsedLog.warnings.length} warnings`}
-            className="flex items-center gap-1.5 hover:opacity-75 transition-opacity outline-none focus-visible:ring-1 focus-visible:ring-primary rounded px-1"
+            className="flex items-center gap-1.5 hover:opacity-75 transition-opacity outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-sm px-1"
           >
             {parsedLog.errors.length > 0 && (
               <span className="flex items-center gap-0.5 text-destructive">
@@ -129,7 +130,7 @@ export default React.memo(function Status({
           <button
             type="button"
             onClick={onJumpToFirstError}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-11 font-medium bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors cursor-pointer"
             title="Jump directly to the first error in code"
           >
             <span>Jump to first error</span>
@@ -141,7 +142,7 @@ export default React.memo(function Status({
           <button
             type="button"
             onClick={() => setRawLogOpen(true)}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-11 font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
             title="View Raw LaTeX Engine Log"
           >
             <Terminal className="size-3 text-muted-foreground" />
@@ -154,7 +155,7 @@ export default React.memo(function Status({
           <button
             type="button"
             onClick={() => setWordCountOpen(true)}
-            className="flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/80 px-1.5 py-0.5 rounded transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted px-1.5 py-0.5 rounded-sm text-11 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             title="Click to view full TeXcount statistics breakdown"
           >
             <FileText className="size-3 text-primary shrink-0" />
@@ -178,7 +179,7 @@ export default React.memo(function Status({
       <WordCountDialog
         open={wordCountOpen}
         onClose={() => setWordCountOpen(false)}
-        content={getEditorContent.current?.() ?? ''}
+        content={getContent()}
       />
     </div>
   );

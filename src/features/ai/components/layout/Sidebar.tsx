@@ -1,14 +1,5 @@
 'use client';
 
-import {
-  Search,
-  SquarePen,
-  Trash2,
-  MessageSquare,
-  Pencil,
-  ChevronDown,
-  RotateCcw,
-} from 'lucide-react';
 import React, {
   useState,
   useEffect,
@@ -17,97 +8,62 @@ import React, {
   useMemo,
   useId,
 } from 'react';
+import {
+  PanelLeft,
+  SquarePen,
+  Search,
+  ChevronDown,
+  MessageSquare,
+  Pencil,
+  Trash2,
+  X,
+  Loader2,
+} from 'lucide-react';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { LayoutGroup } from 'framer-motion';
-import { useParams, useRouter } from 'next/navigation';
-import { cn } from "@/shared/lib/utils";
-import { logger } from "@/shared/lib/utils";
-import { getErrorMessage } from "@/shared/lib/utils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
+import { cn } from '@/shared/lib/utils';
+import { getErrorMessage } from '@/shared/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui';
+import { toast } from 'sonner';
+
 import type { ChatSession } from '../../types/chat.types';
 import {
   listChatSessions,
   deleteChatSession,
   renameChatSession,
-  clearAiMemory,
 } from '../../services/chat.service';
-import { useProjects } from '@/features/projects/shell/hooks/use-project';
-import { toast } from 'sonner';
-
-type ProjectGroup = { projectId: string | null; chats: ChatSession[] };
-
-function groupByProject(chats: ChatSession[]): ProjectGroup[] {
-  const map = new Map<string | null, ChatSession[]>();
-  for (const c of chats) {
-    const k = c.projectId ?? null;
-    if (!map.has(k)) map.set(k, []);
-    map.get(k)!.push(c);
-  }
-  const result: ProjectGroup[] = [];
-  for (const [pid, cs] of map)
-    if (pid !== null) result.push({ projectId: pid, chats: cs });
-  result.sort(
-    (a, b) =>
-      new Date(b.chats[0].updatedAt).getTime() -
-      new Date(a.chats[0].updatedAt).getTime(),
-  );
-  const noproj = map.get(null);
-  if (noproj?.length) result.push({ projectId: null, chats: noproj });
-  return result;
-}
-
-function loadSet(k: string): Set<string> {
-  if (typeof window === 'undefined') return new Set();
-  try {
-    const parsed = JSON.parse(localStorage.getItem(k) ?? '[]');
-    if (Array.isArray(parsed)) return new Set(parsed.filter((x): x is string => typeof x === 'string'));
-    return new Set();
-  } catch (err) {
-    logger.debug('[AiSidebar] Failed to parse collapsed projects from localStorage', { key: k, err });
-    return new Set();
-  }
-}
-function saveSet(k: string, s: Set<string>) {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(k, JSON.stringify(Array.from(s)));
-  } catch (err) {
-    logger.debug('[AiSidebar] Failed to save collapsed projects to localStorage', { key: k, err });
-  }
-}
+import { useAiUIStore } from '../../store';
 
 export function Sidebar() {
   const { chatId } = useParams<{ chatId?: string }>();
+  const pathname = usePathname();
   const router = useRouter();
   const activeChatId = chatId ?? null;
   const layoutGroupId = useId();
 
-  const { projects = [] } = useProjects();
+  const {
+    toggleSidebar,
+    searchQuery,
+    setSearchQuery,
+    isSearchVisible,
+    toggleSearchVisible,
+    setSearchVisible,
+  } = useAiUIStore();
 
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState('');
-  const [selectedProjectId] = useState<string | null>(null);
+  const [isRecentsCollapsed, setIsRecentsCollapsed] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
-  const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(() => new Set());
-  const [isClearingMemory, setIsClearingMemory] = useState(false);
-
-  useEffect(() => {
-    setCollapsedProjects(loadSet('ai-sidebar-collapsed'));
-  }, []);
 
   const editInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const projectNameMap = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const p of projects ?? []) m.set(p.id, p.name);
-    return m;
-  }, [projects]);
-
+  // Load chat sessions
   const loadSessions = useCallback(async () => {
     try {
       setLoading(true);
-      const list = await listChatSessions(selectedProjectId);
+      const list = await listChatSessions();
       setChats(list);
     } catch (e) {
       console.error('Failed to load chat sessions:', e);
@@ -115,7 +71,7 @@ export function Sidebar() {
     } finally {
       setLoading(false);
     }
-  }, [selectedProjectId]);
+  }, []);
 
   useEffect(() => {
     loadSessions();
@@ -128,16 +84,13 @@ export function Sidebar() {
     }
   }, [editingId]);
 
-  const handleToggleCollapse = (pid: string) => {
-    setCollapsedProjects((prev) => {
-      const next = new Set(prev);
-      if (next.has(pid)) next.delete(pid);
-      else next.add(pid);
-      saveSet('ai-sidebar-collapsed', next);
-      return next;
-    });
-  };
+  useEffect(() => {
+    if (isSearchVisible && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchVisible]);
 
+  // Rename session
   const handleStartRename = (e: React.MouseEvent, chat: ChatSession) => {
     e.stopPropagation();
     setEditingId(chat.id);
@@ -163,6 +116,7 @@ export function Sidebar() {
     }
   };
 
+  // Delete session
   const handleDelete = async (e: React.MouseEvent, targetChatId: string) => {
     e.stopPropagation();
     try {
@@ -177,182 +131,238 @@ export function Sidebar() {
     }
   };
 
-  const handleClearMemory = async () => {
-    if (!confirm('Clear all AI conversational memory?')) return;
-    try {
-      setIsClearingMemory(true);
-      await clearAiMemory();
-      toast.success('AI memory cleared');
-    } catch (err) {
-      toast.error(getErrorMessage(err) || 'Failed to clear AI memory');
-    } finally {
-      setIsClearingMemory(false);
-    }
-  };
-
-  const filtered = useMemo(() => {
-    let list = chats;
-    if (selectedProjectId) {
-      list = list.filter((c) => c.projectId === selectedProjectId);
-    }
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      list = list.filter(
-        (c) =>
-          c.title.toLowerCase().includes(q) ||
-          c.lastMessage.toLowerCase().includes(q),
-      );
-    }
-    return list;
-  }, [chats, selectedProjectId, query]);
-
-  const groups = useMemo(() => groupByProject(filtered), [filtered]);
+  // Filtered chats
+  const filteredChats = useMemo(() => {
+    if (!searchQuery.trim()) return chats;
+    const q = searchQuery.toLowerCase();
+    return chats.filter(
+      (c) =>
+        (c.title && c.title.toLowerCase().includes(q)) ||
+        (c.lastMessage && c.lastMessage.toLowerCase().includes(q)),
+    );
+  }, [chats, searchQuery]);
 
   return (
-    <aside className="w-60 shrink-0 h-full border-r border-border bg-sidebar flex flex-col overflow-hidden select-none">
-      {/* Header */}
-      <div className="p-2.5 border-b border-border flex items-center justify-between gap-2">
-        <button
-          onClick={() => router.push('/ai')}
-          className="flex-1 flex items-center justify-center gap-2 h-8 rounded-md border border-border bg-background hover:bg-muted text-foreground text-13 font-medium transition-colors shadow-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-        >
-          <SquarePen className="size-3.5 text-foreground shrink-0" />
-          <span>New Chat</span>
-        </button>
+    <aside className="w-60 shrink-0 h-full border-r border-border bg-background flex flex-col overflow-hidden select-none">
+      {/* ── 1. Header: Brand (Flux AI, không icon, không border-b) ───────── */}
+      <div className="h-11 px-3.5 flex items-center justify-between">
+        <span className="text-sm font-semibold tracking-tight text-foreground">
+          Flux AI
+        </span>
 
         <Tooltip>
           <TooltipTrigger asChild>
             <button
-              onClick={handleClearMemory}
-              disabled={isClearingMemory}
-              className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              onClick={toggleSidebar}
+              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              aria-label="Collapse sidebar"
             >
-              <RotateCcw className={`size-3.5 text-foreground shrink-0 ${isClearingMemory ? 'animate-spin' : ''}`} />
+              <PanelLeft className="size-4 shrink-0" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            Clear AI memory
+          <TooltipContent side="right" className="text-xs">
+            Collapse sidebar
           </TooltipContent>
         </Tooltip>
       </div>
 
-      {/* Search */}
-      <div className="p-2.5 border-b border-border">
-        <div className="relative">
-          <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search conversations..."
-            className="w-full h-8 pl-8 pr-2.5 rounded-md bg-background border border-border text-xs placeholder:text-muted-foreground focus:outline-none focus:border-border transition-colors text-foreground"
-          />
-        </div>
+      {/* ── 2. Action Row: New Chat + Search ───────────────────────────────── */}
+      <div className="px-3 py-1.5 flex items-center gap-2">
+        {!isSearchVisible ? (
+          <>
+            {/* Expanded New Chat button */}
+            <button
+              type="button"
+              onClick={() => {
+                router.push('/ai');
+              }}
+              className="flex-1 flex items-center gap-2 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-foreground text-13 font-medium transition-colors cursor-pointer outline-none shadow-2xs"
+            >
+              <SquarePen className="size-4 text-foreground/85 shrink-0" />
+              <span>New chat</span>
+            </button>
+
+            {/* Square Search button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setSearchVisible(true)}
+                  className="size-8 flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted text-foreground/80 hover:text-foreground transition-colors cursor-pointer outline-none shadow-2xs shrink-0"
+                  aria-label="Search conversations"
+                >
+                  <Search className="size-4 shrink-0" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                Search
+              </TooltipContent>
+            </Tooltip>
+          </>
+        ) : (
+          <>
+            {/* Square New Chat button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    router.push('/ai');
+                  }}
+                  className="size-8 flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted text-foreground/80 hover:text-foreground transition-colors cursor-pointer outline-none shadow-2xs shrink-0"
+                  aria-label="New chat"
+                >
+                  <SquarePen className="size-4 text-foreground/85 shrink-0" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                New chat
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Expanded Search input */}
+            <div className="flex-1 flex items-center gap-2 h-8 px-2.5 rounded-md border border-border bg-white dark:bg-card focus-within:border-foreground/30 transition-colors shadow-2xs">
+              <Search className="size-4 text-muted-foreground shrink-0 pointer-events-none" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setSearchQuery('');
+                    setSearchVisible(false);
+                  }
+                }}
+                placeholder="Search"
+                className="w-full bg-transparent text-13 text-foreground placeholder:text-muted-foreground outline-none border-none p-0 focus:ring-0"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSearchVisible(false);
+                }}
+                className="size-4 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer shrink-0 transition-colors"
+                aria-label="Close search"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Sessions list */}
-      <div className="flex-1 overflow-y-auto p-2.5 space-y-3">
-        {loading ? (
-          <div className="p-4 text-center text-xs text-muted-foreground">Loading history…</div>
-        ) : filtered.length === 0 ? (
-          <div className="p-4 text-center text-xs text-muted-foreground">
-            {query ? 'No chats match search' : 'No chat history'}
-          </div>
-        ) : (
-          <LayoutGroup id={layoutGroupId}>
-            {groups.map((grp) => {
-              const pid = grp.projectId ?? '__none__';
-              const pName = grp.projectId ? projectNameMap.get(grp.projectId) || 'Project' : 'General';
-              const isCollapsed = collapsedProjects.has(pid);
+      {/* ── Recents Section ────────────────────────────────────────────────── */}
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-3 pt-2">
+        {/* Recents Header */}
+        <button
+          onClick={() => setIsRecentsCollapsed((prev) => !prev)}
+          className="flex items-center justify-between w-full py-1 px-1 text-11 font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer select-none"
+        >
+          <span>Recents</span>
+          <ChevronDown
+            className={cn(
+              'size-3.5 text-muted-foreground transition-transform duration-200',
+              isRecentsCollapsed && '-rotate-90',
+            )}
+          />
+        </button>
 
-              return (
-                <div key={pid} className="space-y-1">
-                  <button
-                    onClick={() => handleToggleCollapse(pid)}
-                    className="w-full flex items-center justify-between px-2 py-1 text-11 font-medium text-foreground cursor-pointer select-none transition-colors"
-                  >
-                    <span className="truncate">{pName}</span>
-                    <ChevronDown
-                      className={`size-3 text-muted-foreground transition-transform ${
-                        isCollapsed ? '-rotate-90' : ''
-                      } shrink-0`}
-                    />
-                  </button>
+        {/* Recents Chat List */}
+        {!isRecentsCollapsed && (
+          <div className="flex-1 overflow-y-auto space-y-0.5 mt-1.5 pb-3">
+            {loading ? (
+              <div className="py-6 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                <span className="text-11">Loading chats…</span>
+              </div>
+            ) : filteredChats.length === 0 ? (
+              <div className="py-6 px-2 text-center text-xs text-muted-foreground">
+                {searchQuery ? 'No matching chats' : 'No recent chats'}
+              </div>
+            ) : (
+              <LayoutGroup id={layoutGroupId}>
+                {filteredChats.map((chat) => {
+                  const isActive = activeChatId === chat.id;
+                  const isEditing = editingId === chat.id;
 
-                  {!isCollapsed && (
-                    <div className="space-y-1">
-                      {grp.chats.map((chat) => {
-                        const isActive = activeChatId === chat.id;
-                        const isEditing = editingId === chat.id;
+                  return (
+                    <div
+                      key={chat.id}
+                      onClick={() => router.push(`/ai/${chat.id}`)}
+                      className={cn(
+                        'group relative flex h-8 items-center justify-between gap-2 px-2.5 rounded-md text-13 leading-5 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                        isActive
+                          ? 'bg-muted text-foreground font-medium'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal',
+                      )}
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <MessageSquare
+                          className={cn(
+                            'size-3.5 shrink-0 transition-colors',
+                            isActive
+                              ? 'text-foreground'
+                              : 'text-muted-foreground group-hover:text-foreground',
+                          )}
+                        />
+                        {isEditing ? (
+                          <input
+                            ref={editInputRef}
+                            type="text"
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveRename(chat.id);
+                              if (e.key === 'Escape') setEditingId(null);
+                            }}
+                            onBlur={() => handleSaveRename(chat.id)}
+                            className="w-full bg-background px-1.5 py-0.5 text-xs rounded border border-primary focus:outline-none text-foreground"
+                          />
+                        ) : (
+                          <span className="truncate tracking-tight" title={chat.title}>
+                            {chat.title || 'Starting A Conversation With...'}
+                          </span>
+                        )}
+                      </div>
 
-                        return (
-                          <div
-                            key={chat.id}
-                            onClick={() =>
-                              router.push(`/ai/${chat.id}`)
-                            }
-                            className={cn(
-                              'group relative flex h-8 items-center justify-between gap-2 px-2.5 rounded-md text-13 leading-5 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                              isActive
-                                ? 'bg-muted text-foreground font-medium'
-                                : 'text-foreground hover:bg-muted font-normal',
-                            )}
+                      {/* Actions on hover and keyboard focus */}
+                      {!isEditing && (
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => handleStartRename(e, chat)}
+                            className="size-6 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                            title="Rename"
+                            aria-label={`Rename ${chat.title || 'conversation'}`}
                           >
-                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                              <MessageSquare className="size-4 shrink-0 text-foreground" />
-                              {isEditing ? (
-                                <input
-                                  ref={editInputRef}
-                                  type="text"
-                                  value={editTitle}
-                                  onChange={(e) => setEditTitle(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleSaveRename(chat.id);
-                                    if (e.key === 'Escape') setEditingId(null);
-                                  }}
-                                  onBlur={() => handleSaveRename(chat.id)}
-                                  className="w-full bg-background px-1.5 py-0.5 text-xs rounded border border-primary focus:outline-none text-foreground"
-                                />
-                              ) : (
-                                <span className="truncate tracking-tight">{chat.title || 'Untitled'}</span>
-                              )}
-                            </div>
-
-                            {/* Actions on hover */}
-                            {!isEditing && (
-                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={(e) => handleStartRename(e, chat)}
-                                  className="p-1 rounded hover:bg-muted text-foreground cursor-pointer transition-colors"
-                                  title="Rename"
-                                >
-                                  <Pencil className="size-3.5 text-foreground shrink-0" />
-                                </button>
-                                <button
-                                  onClick={(e) => handleDelete(e, chat.id)}
-                                  className="p-1 rounded text-foreground hover:bg-destructive/10 cursor-pointer transition-colors"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="size-3.5 shrink-0" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                            <Pencil className="size-3.5 shrink-0" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDelete(e, chat.id)}
+                            className="size-6 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                            title="Delete"
+                            aria-label={`Delete ${chat.title || 'conversation'}`}
+                          >
+                            <Trash2 className="size-3.5 shrink-0" />
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </LayoutGroup>
+                  );
+                })}
+              </LayoutGroup>
+            )}
+          </div>
         )}
       </div>
     </aside>
   );
 }
 
-// Backward compatibility alias
+// Backward compatibility aliases
 export const ChatSidebar = Sidebar;
 export const FluxAiSidebar = Sidebar;
 export default Sidebar;

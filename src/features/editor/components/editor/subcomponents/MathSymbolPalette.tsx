@@ -246,7 +246,7 @@ export function MathSymbolPalette({ onInsert, trigger }: MathSymbolPaletteProps)
           <button
             type="button"
             aria-label="LaTeX Math Symbol Palette"
-            className="h-7 px-1.5 flex items-center justify-center gap-1 rounded text-xs font-medium text-foreground hover:bg-muted active:scale-95 outline-none transition-all duration-150 select-none"
+            className="h-7 px-1.5 flex items-center justify-center gap-1 rounded-sm text-xs font-medium text-foreground hover:bg-muted active:scale-95 outline-none transition-all duration-150 select-none cursor-pointer"
           >
             <Pi className="size-3.5 shrink-0 text-primary" />
             <span className="text-xs">Symbols</span>
@@ -257,7 +257,7 @@ export function MathSymbolPalette({ onInsert, trigger }: MathSymbolPaletteProps)
       <PopoverContent
         align="start"
         side="bottom"
-        className="w-[390px] p-2.5 z-[9999] shadow-xl border border-border bg-popover/95 backdrop-blur-md rounded-lg"
+        className="w-[390px] p-2.5 z-[9999] shadow-raised-200 border border-border bg-popover text-popover-foreground rounded-md"
       >
         {/* Header Title & Search Input */}
         <div className="space-y-2 mb-2">
@@ -266,7 +266,7 @@ export function MathSymbolPalette({ onInsert, trigger }: MathSymbolPaletteProps)
               <Sigma className="size-4 text-primary shrink-0" />
               <span>Math Symbol Palette</span>
             </div>
-            <span className="text-[10px] text-muted-foreground font-mono">
+            <span className="text-10 text-muted-foreground font-mono">
               Click to insert
             </span>
           </div>
@@ -277,7 +277,7 @@ export function MathSymbolPalette({ onInsert, trigger }: MathSymbolPaletteProps)
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search symbols (e.g. alpha, sum, frac, matrix)..."
-              className="h-7 pl-8 pr-2 text-xs bg-muted/50 border-border focus-visible:ring-1 focus-visible:ring-primary"
+              className="h-7 pl-8 pr-2 text-xs bg-muted/50 border-border focus-visible:ring-1 focus-visible:ring-primary rounded-md"
             />
           </div>
         </div>
@@ -290,16 +290,16 @@ export function MathSymbolPalette({ onInsert, trigger }: MathSymbolPaletteProps)
             className="w-full"
           >
             <TabsList className="grid grid-cols-4 h-7 p-0.5 bg-muted/60 rounded-md mb-2">
-              <TabsTrigger value="greek" className="text-[11px] py-0.5 h-6">
+              <TabsTrigger value="greek" className="text-11 py-0.5 h-6 rounded-sm">
                 Greek
               </TabsTrigger>
-              <TabsTrigger value="operators" className="text-[11px] py-0.5 h-6">
+              <TabsTrigger value="operators" className="text-11 py-0.5 h-6 rounded-sm">
                 Operators
               </TabsTrigger>
-              <TabsTrigger value="relations" className="text-[11px] py-0.5 h-6">
+              <TabsTrigger value="relations" className="text-11 py-0.5 h-6 rounded-sm">
                 Relations
               </TabsTrigger>
-              <TabsTrigger value="structures" className="text-[11px] py-0.5 h-6">
+              <TabsTrigger value="structures" className="text-11 py-0.5 h-6 rounded-sm">
                 Matrices
               </TabsTrigger>
             </TabsList>
@@ -315,12 +315,12 @@ export function MathSymbolPalette({ onInsert, trigger }: MathSymbolPaletteProps)
                           <button
                             type="button"
                             onClick={() => handleSelect(item.latex)}
-                            className="flex items-center gap-2 p-1.5 rounded-md border border-border/60 hover:border-primary/50 hover:bg-primary/10 text-foreground transition-colors text-left group"
+                            className="flex items-center gap-2 p-1.5 rounded-sm border border-border/60 hover:border-primary/50 hover:bg-primary/10 text-foreground transition-colors text-left group cursor-pointer"
                           >
-                            <span className="font-mono text-xs font-semibold text-primary px-1 py-0.5 rounded bg-muted/50 shrink-0">
+                            <span className="font-mono text-xs font-semibold text-primary px-1 py-0.5 rounded-sm bg-muted/50 shrink-0">
                               {item.display}
                             </span>
-                            <span className="text-[11px] text-muted-foreground group-hover:text-foreground truncate">
+                            <span className="text-11 text-muted-foreground group-hover:text-foreground truncate">
                               {item.description || item.name}
                             </span>
                           </button>
@@ -340,7 +340,7 @@ export function MathSymbolPalette({ onInsert, trigger }: MathSymbolPaletteProps)
                           <button
                             type="button"
                             onClick={() => handleSelect(item.latex)}
-                            className="h-8 flex items-center justify-center rounded-md border border-transparent hover:border-border hover:bg-muted text-foreground font-serif text-sm transition-all duration-100 active:scale-90"
+                            className="h-8 flex items-center justify-center rounded-sm border border-transparent hover:border-border hover:bg-muted text-foreground font-serif text-sm transition-all duration-100 active:scale-90 cursor-pointer"
                           >
                             {item.display}
                           </button>
@@ -372,9 +372,9 @@ export function MathSymbolPalette({ onInsert, trigger }: MathSymbolPaletteProps)
                       <button
                         type="button"
                         onClick={() => handleSelect(item.latex)}
-                        className="flex items-center gap-2 p-1.5 rounded-md border border-border/60 hover:border-primary/50 hover:bg-primary/10 text-foreground transition-colors text-left group"
+                        className="flex items-center gap-2 p-1.5 rounded-sm border border-border/60 hover:border-primary/50 hover:bg-primary/10 text-foreground transition-colors text-left group cursor-pointer"
                       >
-                        <span className="font-serif text-sm font-semibold text-primary px-1.5 py-0.5 rounded bg-muted/60 shrink-0 min-w-6 text-center">
+                        <span className="font-serif text-sm font-semibold text-primary px-1.5 py-0.5 rounded-sm bg-muted/60 shrink-0 min-w-6 text-center">
                           {item.display}
                         </span>
                         <div className="flex flex-col min-w-0">

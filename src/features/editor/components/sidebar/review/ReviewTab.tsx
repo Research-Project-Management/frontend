@@ -43,6 +43,8 @@ import {
 } from "@/features/editor/hooks/use-suggestion";
 import type { PageComment, CommentReply, PageSuggestion } from "@/features/editor/types";
 import { usePageStore, useActionsStore, useSettingsStore } from "@/features/editor/store";
+import { useEditorInstance } from "@/features/editor/core/context/editor-instance.context";
+import { editorCommandBus } from "@/features/editor/core/command-bus/editor-command-bus";
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
@@ -177,7 +179,7 @@ const CommentCard = React.memo(function CommentCard({
       id={`comment-${comment.id}`}
       className={cn(
         "border-b border-border last:border-b-0 transition-all duration-300",
-        isHighlighted && "bg-primary/5 ring-2 ring-primary/40 rounded-sm shadow-xs",
+        isHighlighted && "bg-primary/5 ring-2 ring-primary/40 rounded-md shadow-xs",
       )}
     >
       {/* Main comment body */}
@@ -206,7 +208,7 @@ const CommentCard = React.memo(function CommentCard({
           {comment.line != null && (
             <button
               onClick={() => onNavigate?.(comment.line!)}
-              className="text-xs font-mono border border-border bg-background px-1.5 py-0.5 rounded text-foreground shrink-0 hover:bg-muted transition-colors cursor-pointer"
+              className="text-11 font-mono border border-border bg-background px-1.5 py-0.5 rounded-sm text-foreground shrink-0 hover:bg-muted transition-colors cursor-pointer"
               title="Jump to line"
             >
               L{comment.line}
@@ -231,7 +233,7 @@ const CommentCard = React.memo(function CommentCard({
             onClick={handleToggleStatus}
             disabled={resolveMutation.isPending}
             className={cn(
-              "flex items-center gap-1 text-xs transition-colors",
+              "flex items-center gap-1 text-xs transition-colors cursor-pointer",
               isResolved
                 ? "text-muted-foreground hover:bg-muted"
                 : "text-success hover:opacity-80",
@@ -249,7 +251,7 @@ const CommentCard = React.memo(function CommentCard({
 
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="flex items-center gap-1 text-xs text-foreground hover:bg-muted px-1.5 py-0.5 rounded transition-colors"
+            className="flex items-center gap-1 text-xs text-foreground hover:bg-muted px-1.5 py-0.5 rounded-sm transition-colors cursor-pointer"
           >
             <MessageSquare className="size-3 shrink-0" />
             {hasReplies
@@ -313,7 +315,7 @@ const CommentCard = React.memo(function CommentCard({
               <button
                 type="submit"
                 disabled={addReplyMutation.isPending || replyForm.formState.isSubmitting}
-                className="p-1 rounded text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 shrink-0 cursor-pointer"
+                className="p-1 rounded-sm text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 shrink-0 cursor-pointer"
               >
                 {addReplyMutation.isPending ? (
                   <Loader2 className="size-3.5 animate-spin shrink-0" />
@@ -402,7 +404,7 @@ const SuggestionCard = React.memo(function SuggestionCard({
     <div
       id={`suggestion-${suggestion.id}`}
       className={cn(
-        'mx-3 my-2 rounded-lg border bg-background p-3 space-y-2.5 transition-all duration-300 text-xs',
+        'mx-3 my-2 rounded-md border bg-background p-3 space-y-2.5 transition-all duration-300 text-xs',
         isHighlighted && 'ring-2 ring-amber-500/50 bg-amber-500/5 shadow-xs',
         isPending ? 'border-border shadow-xs' : 'border-border/40 opacity-70',
       )}
@@ -424,7 +426,7 @@ const SuggestionCard = React.memo(function SuggestionCard({
         <div className="flex items-center gap-1.5 shrink-0">
           <span
             className={cn(
-              'px-1.5 py-0.5 rounded text-10 font-medium capitalize border',
+              'px-1.5 py-0.5 rounded-sm text-10 font-medium capitalize border',
               typeColor,
             )}
           >
@@ -434,7 +436,7 @@ const SuggestionCard = React.memo(function SuggestionCard({
             <button
               type="button"
               onClick={() => onNavigate?.(suggestion.fromLine)}
-              className="px-1.5 py-0.5 rounded bg-muted hover:bg-muted/80 text-10 font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              className="px-1.5 py-0.5 rounded-sm bg-muted hover:bg-muted/80 text-10 font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               title={`Jump to line ${suggestion.fromLine}`}
             >
               L{suggestion.fromLine}
@@ -444,14 +446,14 @@ const SuggestionCard = React.memo(function SuggestionCard({
       </div>
 
       {/* Diff Preview */}
-      <div className="rounded bg-muted/40 p-2 font-mono text-11 leading-relaxed break-words space-y-1 border border-border/50">
+      <div className="rounded-md bg-muted/40 p-2 font-mono text-11 leading-relaxed break-words space-y-1 border border-border/50">
         {suggestion.originalText && (
-          <div className="text-rose-600 dark:text-rose-400 line-through bg-rose-500/10 px-1.5 py-0.5 rounded">
+          <div className="text-rose-600 dark:text-rose-400 line-through bg-rose-500/10 px-1.5 py-0.5 rounded-sm">
             - {suggestion.originalText}
           </div>
         )}
         {suggestion.suggestedText && (
-          <div className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+          <div className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-sm">
             + {suggestion.suggestedText}
           </div>
         )}
@@ -471,7 +473,7 @@ const SuggestionCard = React.memo(function SuggestionCard({
             type="button"
             onClick={() => onReject(suggestion.id)}
             disabled={isRejecting || isAccepting}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 cursor-pointer"
+            className="flex items-center gap-1 px-2 py-1 rounded-sm text-11 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 cursor-pointer"
           >
             <X className="size-3.5 shrink-0" />
             <span>Reject</span>
@@ -480,7 +482,7 @@ const SuggestionCard = React.memo(function SuggestionCard({
             type="button"
             onClick={() => onAccept(suggestion.id)}
             disabled={isAccepting || isRejecting}
-            className="flex items-center gap-1 px-2.5 py-1 rounded text-xs bg-emerald-600 text-white hover:bg-emerald-700 font-medium transition-colors disabled:opacity-50 shadow-xs cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-sm text-11 bg-primary text-primary-foreground hover:bg-primary-hover font-medium transition-colors disabled:opacity-50 shadow-2xs cursor-pointer"
           >
             <CheckCircle2 className="size-3.5 shrink-0" />
             <span>Accept</span>
@@ -502,9 +504,7 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
   const storeProjectId = usePageStore((s) => s.projectId);
   const currentPage = usePageStore((s) => s.currentPage);
   const projectId = currentPage?.projectId || routeProjectId || storeProjectId || '';
-  const editorRef = usePageStore((s) => s.editorRef);
-  const scrollToLineRef = usePageStore((s) => s.scrollToLineRef);
-  const scrollToPdfLineRef = usePageStore((s) => s.scrollToPdfLineRef);
+  const { engine } = useEditorInstance();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -662,9 +662,9 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
   const clearPendingComment = useActionsStore((s) => s.clearPendingComment);
 
   const handleNavigateToLine = useCallback((line: number) => {
-    scrollToLineRef.current?.(line);
-    scrollToPdfLineRef.current?.(line);
-  }, [scrollToLineRef, scrollToPdfLineRef]);
+    editorCommandBus.dispatch({ type: 'editor:jump-to-line', line });
+    editorCommandBus.dispatch({ type: 'viewer:jump-to-line', line });
+  }, []);
 
   useEffect(() => {
     if (!pendingComment) return;
@@ -725,10 +725,10 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
   };
 
   const handleOpenAddForm = () => {
-    const line = editorRef.current?.getPosition()?.lineNumber;
-    if (line) {
-      setValue('line', line);
-      setValue('lineEnd', line);
+    const pos = engine?.getCursorPosition();
+    if (pos?.line) {
+      setValue('line', pos.line);
+      setValue('lineEnd', pos.line);
     }
     setShowAddForm(true);
   };
@@ -765,14 +765,14 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
       </div>
 
       {/* ── Sub-tab Switcher: Comments vs Track Changes ── */}
-      <div className="flex border-b border-border bg-background p-1 gap-1 shrink-0">
+      <div className="flex border-b border-border bg-muted/40 p-1 gap-1 shrink-0">
         <button
           type="button"
           onClick={() => setSubTab('comments')}
           className={cn(
-            'flex-1 py-1 px-2 rounded text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer',
+            'flex-1 py-1 px-2 rounded-sm text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer',
             subTab === 'comments'
-              ? 'bg-background text-foreground shadow-xs'
+              ? 'bg-background text-foreground shadow-2xs'
               : 'text-muted-foreground hover:text-foreground',
           )}
         >
@@ -783,9 +783,9 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
           type="button"
           onClick={() => setSubTab('changes')}
           className={cn(
-            'flex-1 py-1 px-2 rounded text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer',
+            'flex-1 py-1 px-2 rounded-sm text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer',
             subTab === 'changes'
-              ? 'bg-background text-foreground shadow-xs'
+              ? 'bg-background text-foreground shadow-2xs'
               : 'text-muted-foreground hover:text-foreground',
           )}
         >
@@ -812,7 +812,7 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
                     <button
                       type="button"
                       onClick={() => setShowAddForm(false)}
-                      className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                      className="rounded-sm p-0.5 text-muted-foreground hover:text-foreground cursor-pointer"
                     >
                       <X className="size-3.5 shrink-0" />
                     </button>
@@ -831,7 +831,7 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="flex items-center gap-1 rounded bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-50 cursor-pointer"
+                      className="flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-50 cursor-pointer shadow-2xs"
                     >
                       <Send className="size-3" />
                       Post
@@ -856,7 +856,7 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
                 type="button"
                 onClick={() => setFilter(item.id)}
                 className={cn(
-                  'px-2 py-0.5 rounded text-xs transition-colors cursor-pointer',
+                  'px-2 py-0.5 rounded-sm text-11 transition-colors cursor-pointer',
                   filter === item.id
                     ? 'bg-primary/15 text-primary font-medium'
                     : 'text-muted-foreground hover:text-foreground',
@@ -911,14 +911,14 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
             <span className="text-[10px] font-semibold uppercase text-muted-foreground tracking-wider">
               Display Mode
             </span>
-            <div className="inline-flex rounded bg-muted p-0.5 text-xs font-medium">
+            <div className="inline-flex rounded-md bg-muted p-0.5 text-xs font-medium border border-border">
               {(['changes', 'clean', 'original'] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => setTrackChangesViewMode(m)}
                   className={cn(
-                    'px-2 py-0.5 rounded capitalize transition-colors cursor-pointer text-11',
+                    'px-2 py-0.5 rounded-sm capitalize transition-colors cursor-pointer text-11',
                     trackChangesViewMode === m
                       ? 'bg-background text-foreground shadow-2xs font-semibold'
                       : 'text-muted-foreground hover:text-foreground',
@@ -952,7 +952,7 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
                   type="button"
                   onClick={() => setChangesFilter(item.id)}
                   className={cn(
-                    'px-2 py-0.5 rounded text-xs transition-colors cursor-pointer',
+                    'px-2 py-0.5 rounded-sm text-11 transition-colors cursor-pointer',
                     changesFilter === item.id
                       ? 'bg-primary/15 text-primary font-medium'
                       : 'text-muted-foreground hover:text-foreground',
@@ -968,7 +968,7 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
               <select
                 value={selectedAuthorId}
                 onChange={(e) => setSelectedAuthorId(e.target.value)}
-                className="text-[11px] bg-background border border-border rounded px-1.5 py-0.5 text-muted-foreground focus:outline-none"
+                className="text-11 bg-background border border-border rounded-md px-1.5 py-0.5 text-muted-foreground focus:outline-none"
               >
                 <option value="all">All authors</option>
                 {uniqueAuthors.map((a: any) => (
@@ -991,7 +991,7 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
                   type="button"
                   onClick={() => pageId && rejectAllMutation.mutate({ pageId })}
                   disabled={rejectAllMutation.isPending}
-                  className="px-2 py-0.5 rounded text-11 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                  className="px-2 py-0.5 rounded-sm text-11 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
                 >
                   Reject All
                 </button>
@@ -999,7 +999,7 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
                   type="button"
                   onClick={() => pageId && acceptAllMutation.mutate({ pageId })}
                   disabled={acceptAllMutation.isPending}
-                  className="px-2.5 py-0.5 rounded text-11 bg-emerald-600 text-white hover:bg-emerald-700 font-medium transition-colors cursor-pointer"
+                  className="px-2.5 py-0.5 rounded-sm text-11 bg-primary text-primary-foreground hover:bg-primary-hover font-medium transition-colors cursor-pointer shadow-2xs"
                 >
                   Accept All
                 </button>

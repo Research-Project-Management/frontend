@@ -10,32 +10,16 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from "@/shared/components/ui";
-import { usePageStore } from '@/features/editor/store';
+import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 
 export default function InsertMenu() {
-  const { editorRef } = usePageStore();
+  const { engine } = useEditorInstance();
 
   const insertSnippet = (snippet: string) => {
-    const ed = editorRef.current;
-    if (!ed) return;
-    const selection = ed.getSelection();
-    ed.executeEdits('menu', [
-      {
-        range: selection!,
-        text: snippet,
-        forceMoveMarkers: true,
-      },
-    ]);
-    ed.focus();
+    engine?.insertText(snippet);
   };
 
-  const handleUploadFigure = () => {
-    EditorEventBus.emit('flux:upload-file');
-    insertSnippet(
-      '\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\linewidth]{image.png}\n  \\caption{Caption}\n  \\label{fig:figure}\n\\end{figure}\n',
-    );
-  };
 
   return (
     <MenubarMenu>
@@ -56,62 +40,25 @@ export default function InsertMenu() {
           </MenubarSubContent>
         </MenubarSub>
 
-        {/* Symbol */}
-        <MenubarItem onClick={() => insertSnippet('\\alpha')}>
-          Symbol
+        {/* Symbol Palette */}
+        <MenubarItem onClick={() => EditorEventBus.emit('flux:open-symbol-palette')}>
+          Symbol (LaTeX Palette)
         </MenubarItem>
 
-        {/* Figure > */}
-        <MenubarSub>
-          <MenubarSubTrigger>Figure</MenubarSubTrigger>
-          <MenubarSubContent className="text-xs min-w-48">
-            <MenubarItem onClick={handleUploadFigure}>
-              Upload from computer
-            </MenubarItem>
-            <MenubarItem
-              onClick={() =>
-                insertSnippet(
-                  '\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\linewidth]{image.png}\n  \\caption{Caption}\n  \\label{fig:figure}\n\\end{figure}\n',
-                )
-              }
-            >
-              From project files
-            </MenubarItem>
-            <MenubarItem
-              onClick={() =>
-                insertSnippet(
-                  '\\begin{figure}[htbp]\n  \\centering\n  % Reference asset from another project\n  \\includegraphics[width=0.8\\linewidth]{figure.png}\n  \\caption{Caption}\n  \\label{fig:figure}\n\\end{figure}\n',
-                )
-              }
-            >
-              From another project
-            </MenubarItem>
-            <MenubarItem
-              onClick={() =>
-                insertSnippet(
-                  '\\begin{figure}[htbp]\n  \\centering\n  % Image from external URL\n  \\includegraphics[width=0.8\\linewidth]{https://example.com/image.png}\n  \\caption{Caption}\n  \\label{fig:figure}\n\\end{figure}\n',
-                )
-              }
-            >
-              From URL
-            </MenubarItem>
-          </MenubarSubContent>
-        </MenubarSub>
-
-        {/* Table */}
-        <MenubarItem
-          onClick={() =>
-            insertSnippet(
-              '\\begin{table}[htbp]\n  \\centering\n  \\caption{Caption}\n  \\label{tab:table}\n  \\begin{tabular}{llr}\n    \\toprule\n    Header 1 & Header 2 & Header 3 \\\\\n    \\midrule\n    Row 1 & Value & 10.0 \\\\\n    \\bottomrule\n  \\end{tabular}\n\\end{table}\n',
-            )
-          }
-        >
-          Table
+        {/* Figure Wizard */}
+        <MenubarItem onClick={() => EditorEventBus.emit('flux:open-figure-wizard')}>
+          Figure (Image Wizard)
         </MenubarItem>
 
-        {/* Citation */}
-        <MenubarItem onClick={() => EditorEventBus.emit('flux:open-citation-picker')}>
-          Citation
+        {/* Table Wizard */}
+        <MenubarItem onClick={() => EditorEventBus.emit('flux:open-table-wizard')}>
+          Table (Wizard & Excel Import)
+        </MenubarItem>
+
+        {/* Citation / Reference Search */}
+        <MenubarItem onClick={() => EditorEventBus.emit('flux:open-citation-picker')} className="flex items-center justify-between gap-2">
+          <span>Citation / Reference Search</span>
+          <span className="text-[10px] font-mono text-muted-foreground">Ctrl+Shift+K</span>
         </MenubarItem>
 
         {/* Link */}

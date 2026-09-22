@@ -21,7 +21,7 @@ export const GlyphTooltip = React.memo(function GlyphTooltip({ tooltip }: GlyphT
 
   return createPortal(
     <div
-      className="fixed z-[9997] max-w-xs rounded-lg border border-border bg-popover py-2 px-3 pointer-events-none shadow-raised-200"
+      className="fixed z-[9997] max-w-xs rounded-md border border-border bg-popover text-popover-foreground py-2 px-3 pointer-events-none shadow-raised-200"
       style={{ left: tooltip.x, bottom: tooltip.bottom }}
     >
       {tooltip.comments.map((c, idx) => (
@@ -59,7 +59,7 @@ export const GlyphTooltip = React.memo(function GlyphTooltip({ tooltip }: GlyphT
       ))}
       <div className="mt-2 pt-1.5 border-t border-border/60 text-[10px] text-muted-foreground/80 flex items-center justify-between">
         <span>Click glyph to open review</span>
-        <span className="font-mono text-[9px] bg-muted px-1 py-0.5 rounded">Gutter</span>
+        <span className="font-mono text-10 bg-muted px-1 py-0.5 rounded-sm">Gutter</span>
       </div>
     </div>,
     document.body,

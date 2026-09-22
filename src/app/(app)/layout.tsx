@@ -18,6 +18,11 @@ const Sidebar = dynamic(
   { ssr: true, loading: () => null }
 );
 
+const AiCompanionSidebar = dynamic(
+  () => import('@/features/ai/components/companion/AiCompanionSidebar'),
+  { ssr: false, loading: () => null }
+);
+
 export default function AppLayout({
   children,
 }: {
@@ -93,6 +98,11 @@ export default function AppLayout({
             </Suspense>
           </ErrorBoundary>
         </div>
+        <ErrorBoundary fallback={null} featureName="Trợ lý AI Companion">
+          <Suspense fallback={null}>
+            <AiCompanionSidebar />
+          </Suspense>
+        </ErrorBoundary>
       </div>
     </div>
   );

@@ -2,12 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { User, SlidersHorizontal, LogOut, Image as ImageIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import {
+  Settings,
+  FolderPlus,
+  UserPlus,
+  LogOut,
+  Image as ImageIcon,
+  Mail,
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/components/ui";
 import { useAuth } from '@/features/auth/hooks/use-auth';
@@ -16,17 +23,25 @@ import { resolveFileUrl } from "@/shared/lib/file-client";
 import { useUserCover } from '@/features/account/hooks/use-user-cover';
 import { CoverModal } from '@/features/account/components/CoverModal';
 import { useUpload } from '@/shared/hooks/use-upload';
+import { CreateProjectModal } from '@/features/projects/shell/components/project/CreateProjectModal';
+import { ProjectInvitesModal } from '@/features/projects/invitation/components/ProjectInvitesModal';
+import { useMyProjectInvitations } from '@/features/projects/invitation/hooks/use-project-invitations';
 import { toast } from 'sonner';
 
 interface AccountDropdownProps {
   className?: string;
+  align?: 'start' | 'end';
 }
 
-export default function AccountDropdown({}: AccountDropdownProps = {}) {
+export default function AccountDropdown({ align = 'start' }: AccountDropdownProps = {}) {
+  const router = useRouter();
   const { user, isLoading, logout } = useAuth();
   const { cover, setCover } = useUserCover();
   const { uploadFile, isUploading } = useUpload();
+  const { data: invitations = [] } = useMyProjectInvitations();
   const [mounted, setMounted] = useState(false);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+  const [isProjectInvitesOpen, setIsProjectInvitesOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -81,6 +96,24 @@ export default function AccountDropdown({}: AccountDropdownProps = {}) {
         <button id="account-cover-modal-trigger" className="hidden" type="button" />
       </CoverModal>
 
+      {/* ── Create Project Modal ── */}
+      <CreateProjectModal
+        open={isCreateProjectOpen}
+        onOpenChange={setIsCreateProjectOpen}
+        onSuccess={(newProj) => {
+          setIsCreateProjectOpen(false);
+          if (newProj?.id) {
+            router.push(`/projects/${newProj.id}`);
+          }
+        }}
+      />
+
+      {/* ── Project Invites Modal ── */}
+      <ProjectInvitesModal
+        open={isProjectInvitesOpen}
+        onOpenChange={setIsProjectInvitesOpen}
+      />
+
       <DropdownMenu>
         <DropdownMenuTrigger className="flex items-center justify-center size-8 rounded-md transition-colors hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary data-[state=open]:bg-muted cursor-pointer">
           <Avatar className="size-7 rounded-full shrink-0 border border-border/60">
@@ -96,13 +129,13 @@ export default function AccountDropdown({}: AccountDropdownProps = {}) {
         </DropdownMenuTrigger>
 
         <DropdownMenuContent
-          align="end"
+          align={align}
           onCloseAutoFocus={(e) => e.preventDefault()}
-          className="w-72 p-0 overflow-hidden bg-popover rounded-lg shadow-raised-200 border border-border"
+          className="w-72 p-0 overflow-hidden bg-popover rounded-md shadow-raised-200 border border-border"
           alignOffset={0}
         >
           {/* Cover Banner Header with Change Background Button */}
-          <div className="relative border-b border-border bg-popover overflow-hidden">
+          <div className="relative bg-popover overflow-hidden">
             <div className="relative h-20 w-full bg-muted overflow-hidden group">
               {cover ? (
                 <img
@@ -130,7 +163,7 @@ export default function AccountDropdown({}: AccountDropdownProps = {}) {
             </div>
 
             {/* Hanging Avatar & Name / Email */}
-            <div className="flex flex-col items-center justify-center text-center px-4 pb-3.5 -mt-8 relative z-10">
+            <div className="flex flex-col items-center justify-center text-center px-4 pb-2.5 -mt-8 relative z-10">
               <Avatar className="size-14 rounded-full border-2 border-popover shadow-md shrink-0 bg-popover">
                 {user.avatar ? (
                   <AvatarImage
@@ -152,37 +185,65 @@ export default function AccountDropdown({}: AccountDropdownProps = {}) {
             </div>
           </div>
 
-          {/* Menu Items: Profile, Preferences, Sign out */}
-          <div className="p-1.5 space-y-0.5">
-            <DropdownMenuItem
-              className="cursor-pointer gap-2.5 px-3 py-2 text-foreground"
-              asChild
-            >
-              <Link href="/settings">
-                <User className="size-4 text-foreground shrink-0" />
-                <span>Profile</span>
-              </Link>
-            </DropdownMenuItem>
+          {/* Menu Items (no divider lines, natural spacing, rounded-md items) */}
+          <div className="p-1.5 space-y-1">
+            {/* Section 1: Navigation & Settings */}
+            <div className="space-y-0.5">
+              <DropdownMenuItem
+                className="cursor-pointer gap-2.5 px-3 py-2 text-foreground hover:bg-muted focus:bg-muted rounded-md transition-colors"
+                asChild
+              >
+                <Link href="/your-work">
+                  <Mail className="size-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm font-medium">Inbox</span>
+                </Link>
+              </DropdownMenuItem>
 
-            <DropdownMenuItem
-              className="cursor-pointer gap-2.5 px-3 py-2 text-foreground"
-              asChild
-            >
-              <Link href="/settings/preferences">
-                <SlidersHorizontal className="size-4 text-foreground shrink-0" />
-                <span>Preferences</span>
-              </Link>
-            </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2.5 px-3 py-2 text-foreground hover:bg-muted focus:bg-muted rounded-md transition-colors"
+                asChild
+              >
+                <Link href="/settings">
+                  <Settings className="size-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm font-medium">Settings</span>
+                </Link>
+              </DropdownMenuItem>
+            </div>
 
-            <DropdownMenuSeparator className="my-1 bg-border" />
+            {/* Section 2: Projects & Invitations */}
+            <div className="space-y-0.5 pt-1">
+              <DropdownMenuItem
+                onSelect={() => setIsCreateProjectOpen(true)}
+                className="cursor-pointer gap-2.5 px-3 py-2 text-foreground hover:bg-muted focus:bg-muted rounded-md transition-colors"
+              >
+                <FolderPlus className="size-4 text-muted-foreground shrink-0" />
+                <span className="text-sm font-medium">Create project</span>
+              </DropdownMenuItem>
 
-            <DropdownMenuItem
-              onClick={() => logout()}
-              className="cursor-pointer gap-2.5 px-3 py-2 text-destructive focus:text-destructive focus:bg-destructive/10"
-            >
-              <LogOut className="size-4 text-destructive shrink-0" />
-              <span>Sign out</span>
-            </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => setIsProjectInvitesOpen(true)}
+                className="cursor-pointer gap-2.5 px-3 py-2 text-foreground hover:bg-muted focus:bg-muted rounded-md transition-colors"
+              >
+                <UserPlus className="size-4 text-muted-foreground shrink-0" />
+                <span className="text-sm font-medium">Project invitations</span>
+                {invitations.length > 0 && (
+                  <span className="ml-auto px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-10 font-semibold leading-none">
+                    {invitations.length}
+                  </span>
+                )}
+              </DropdownMenuItem>
+            </div>
+
+            {/* Section 3: Sign out (Neutral gray tone, no red) */}
+            <div className="space-y-0.5 pt-1">
+              <DropdownMenuItem
+                onClick={() => logout()}
+                className="cursor-pointer gap-2.5 px-3 py-2 text-muted-foreground hover:text-foreground focus:text-foreground focus:bg-muted rounded-md transition-colors"
+              >
+                <LogOut className="size-4 text-muted-foreground shrink-0" />
+                <span className="text-sm font-medium">Sign out</span>
+              </DropdownMenuItem>
+            </div>
           </div>
         </DropdownMenuContent>
       </DropdownMenu>

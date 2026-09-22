@@ -2,18 +2,15 @@
 
 import React from 'react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from "@/shared/components/ui";
-import { usePageStore } from '@/features/editor/store';
+import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 
 export default function EditMenu() {
-  const { editorRef } = usePageStore();
-  const editor = () => editorRef.current;
+  const { engine } = useEditorInstance();
 
-  const handleUndo = () => editor()?.trigger('menu', 'undo', null);
-  const handleRedo = () => editor()?.trigger('menu', 'redo', null);
-  const handleSelectAll = () =>
-    editor()?.setSelection(editor()!.getModel()!.getFullModelRange());
-  const handleFind = () =>
-    editor()?.getAction('actions.find')?.run();
+  const handleUndo = () => engine?.undo();
+  const handleRedo = () => engine?.redo();
+  const handleSelectAll = () => engine?.selectAll();
+  const handleFind = () => engine?.openFind();
 
   return (
     <MenubarMenu>

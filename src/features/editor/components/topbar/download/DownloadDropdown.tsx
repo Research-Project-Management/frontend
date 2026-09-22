@@ -33,12 +33,15 @@ export interface DownloadDropdownProps {
   variant?: 'topbar' | 'compact';
 }
 
+import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
+
 export function DownloadDropdown({
   className,
   variant = 'topbar',
 }: DownloadDropdownProps) {
   const params = useParams<{ pageId?: string; projectId?: string }>();
-  const { currentPage, activeFilePage, getEditorContent } = usePageStore();
+  const { currentPage, activeFilePage } = usePageStore();
+  const { getContent } = useEditorInstance();
   const { pdfUrl, compileStatus } = useCompileStore();
 
   const [isZipping, setIsZipping] = useState(false);
@@ -80,7 +83,7 @@ export function DownloadDropdown({
       await exportProjectAsZip({
         parentPageId: rootId,
         projectTitle: currentPage?.title,
-        currentContent: getEditorContent.current?.(),
+        currentContent: getContent(),
         activeFileId: activeFilePage?.id,
         activeFileTitle: activeFilePage?.title,
       });
@@ -100,7 +103,7 @@ export function DownloadDropdown({
       await exportArxivSubmissionZip({
         parentPageId: rootId,
         projectTitle: currentPage?.title,
-        currentContent: getEditorContent.current?.(),
+        currentContent: getContent(),
         activeFileId: activeFilePage?.id,
         activeFileTitle: activeFilePage?.title,
       });
@@ -118,8 +121,8 @@ export function DownloadDropdown({
           aria-label="Download or export document options"
           className={cn(
             variant === 'topbar'
-              ? 'flex items-center gap-1.5 h-7 px-2.5 rounded-full text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer outline-none select-none disabled:opacity-50'
-              : 'flex items-center gap-1 h-6 px-2 rounded border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs disabled:opacity-50',
+              ? 'flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer outline-none select-none disabled:opacity-50'
+              : 'flex items-center gap-1 h-6 px-2 rounded-sm border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs disabled:opacity-50',
             className,
           )}
         >
@@ -133,8 +136,8 @@ export function DownloadDropdown({
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-64 text-xs z-[9999] p-1">
-        <DropdownMenuLabel className="text-[11px] font-medium text-muted-foreground px-2 py-1">
+      <DropdownMenuContent align="end" className="w-64 text-xs z-[9999] p-1 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200">
+        <DropdownMenuLabel className="text-11 font-medium text-muted-foreground px-2 py-1">
           Export & Archiving (Overleaf 1:1)
         </DropdownMenuLabel>
 
@@ -142,19 +145,19 @@ export function DownloadDropdown({
         <DropdownMenuItem
           onClick={handleDownloadSourceZip}
           disabled={isPending}
-          className="flex items-start gap-2.5 p-2 rounded-md cursor-pointer hover:bg-muted focus:bg-muted"
+          className="flex items-start gap-2.5 p-2 rounded-sm cursor-pointer hover:bg-muted focus:bg-muted"
         >
-          <div className="size-7 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+          <div className="size-7 rounded-sm bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
             <Archive className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="font-semibold text-foreground flex items-center gap-1.5">
               <span>Source (.zip)</span>
-              <span className="px-1 py-px rounded text-[9px] bg-primary/15 text-primary font-mono">
+              <span className="px-1 py-px rounded-sm text-9 bg-primary/15 text-primary font-mono">
                 Full
               </span>
             </div>
-            <p className="text-[11px] text-muted-foreground leading-tight">
+            <p className="text-11 text-muted-foreground leading-tight">
               All LaTeX files, .bib and image assets
             </p>
           </div>
@@ -164,9 +167,9 @@ export function DownloadDropdown({
         <DropdownMenuItem
           onClick={handleDownloadArxivZip}
           disabled={isPending}
-          className="flex items-start gap-2.5 p-2 rounded-md cursor-pointer hover:bg-muted focus:bg-muted"
+          className="flex items-start gap-2.5 p-2 rounded-sm cursor-pointer hover:bg-muted focus:bg-muted"
         >
-          <div className="size-7 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+          <div className="size-7 rounded-sm bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
             <FileText className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
@@ -174,33 +177,33 @@ export function DownloadDropdown({
               <span>arXiv Package (.zip)</span>
               <Sparkles className="size-3 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <p className="text-[11px] text-muted-foreground leading-tight">
+            <p className="text-11 text-muted-foreground leading-tight">
               Clean bundle ready for arXiv.org submission
             </p>
           </div>
         </DropdownMenuItem>
 
-        <DropdownMenuSeparator className="my-1" />
+        <DropdownMenuSeparator className="my-1 border-border" />
 
         {/* ── 3. Compiled PDF ── */}
         <DropdownMenuItem
           onClick={handleDownloadPdf}
           disabled={!pdfUrl || isPending}
-          className="flex items-start gap-2.5 p-2 rounded-md cursor-pointer hover:bg-muted focus:bg-muted"
+          className="flex items-start gap-2.5 p-2 rounded-sm cursor-pointer hover:bg-muted focus:bg-muted"
         >
-          <div className="size-7 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
+          <div className="size-7 rounded-sm bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
             <FileDown className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="font-semibold text-foreground flex items-center gap-1.5">
               <span>PDF Document (.pdf)</span>
               {!pdfUrl && (
-                <span className="text-[10px] text-muted-foreground font-normal">
+                <span className="text-10 text-muted-foreground font-normal">
                   (uncompiled)
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground leading-tight">
+            <p className="text-11 text-muted-foreground leading-tight">
               {pdfUrl ? 'Download the latest compiled output' : 'Compile first to generate PDF'}
             </p>
           </div>

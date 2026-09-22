@@ -5,79 +5,140 @@ import {
   Info,
   AlignLeft,
   Paperclip,
-  Quote,
   StickyNote,
   FolderTree,
+  Tag,
+  Network,
+  Quote,
+  PanelRight,
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 import type { InspectorSectionId } from '../../store';
 
-export type InspectorTabKey = 'info' | 'abstract' | 'files' | 'cite' | 'notes' | 'collections';
+export type InspectorTabKey = InspectorSectionId;
 
 interface TabItem {
   id: InspectorTabKey;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }>;
   badge?: number;
 }
 
-interface InspectorTabsProps {
+export interface InspectorTabsProps {
   activeTab: InspectorSectionId;
   onTabChange: (tab: InspectorSectionId) => void;
   attachmentCount?: number;
   noteCount?: number;
+  isInspectorOpen?: boolean;
+  onToggleInspector?: () => void;
+  className?: string;
 }
 
+/**
+ * Vertical Icon Panel Bar
+ * Replaces the horizontal tabs with a dedicated vertical bar adhering to Flux workspace specs.
+ */
 export function InspectorTabs({
   activeTab,
   onTabChange,
   attachmentCount = 0,
   noteCount = 0,
+  isInspectorOpen = true,
+  onToggleInspector,
+  className,
 }: InspectorTabsProps) {
   const tabs: TabItem[] = [
     { id: 'info', label: 'Details', icon: Info },
     { id: 'abstract', label: 'Abstract', icon: AlignLeft },
     { id: 'files', label: 'Files', icon: Paperclip, badge: attachmentCount },
-    { id: 'cite', label: 'Cite', icon: Quote },
     { id: 'notes', label: 'Notes', icon: StickyNote, badge: noteCount },
     { id: 'collections', label: 'Organize', icon: FolderTree },
+    { id: 'tags', label: 'Tags', icon: Tag },
+    { id: 'relations', label: 'Related', icon: Network },
+    { id: 'cite', label: 'Citation', icon: Quote },
   ];
 
   return (
-    <div className="flex items-center border-b border-border/60 bg-muted/10 px-2 overflow-x-auto no-scrollbar shrink-0 select-none">
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = activeTab === tab.id;
+    <aside
+      aria-label="Inspector panel bar"
+      className={cn(
+        'w-10 shrink-0 h-full border-l border-border bg-background flex flex-col items-center select-none z-20',
+        className,
+      )}
+    >
+      {/* Top: Toggle Panel Button Container - EXACTLY h-11 with border-b touching LibraryTopbar */}
+      <div className="h-11 w-full flex items-center justify-center shrink-0 border-b border-border/80">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onToggleInspector}
+              className="size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground hover:bg-muted cursor-pointer"
+              aria-label={isInspectorOpen ? 'Collapse inspector' : 'Expand inspector'}
+            >
+              <PanelRight className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="left" sideOffset={6} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-xs">
+            {isInspectorOpen ? 'Collapse inspector' : 'Expand inspector'}
+          </TooltipContent>
+        </Tooltip>
+      </div>
 
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => onTabChange(tab.id)}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 whitespace-nowrap transition-colors outline-none cursor-pointer',
-              isActive
-                ? 'border-primary text-foreground font-semibold'
-                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border/60'
-            )}
-          >
-            <Icon className="size-3.5 shrink-0" />
-            <span>{tab.label}</span>
-            {tab.badge !== undefined && tab.badge > 0 && (
-              <span
-                className={cn(
-                  'px-1.5 py-0.2 rounded-full text-[10px] tabular-nums font-mono',
-                  isActive
-                    ? 'bg-primary/15 text-primary font-bold'
-                    : 'bg-muted text-muted-foreground'
-                )}
+      {/* Middle: Vertical Section Icons with Tooltips and active states */}
+      <div className="flex flex-col items-center gap-1 w-full pt-1.5 px-1">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = isInspectorOpen && activeTab === tab.id;
+
+          return (
+            <Tooltip key={tab.id}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isInspectorOpen) {
+                      onToggleInspector?.();
+                      onTabChange(tab.id);
+                    } else if (activeTab === tab.id) {
+                      onToggleInspector?.();
+                    } else {
+                      onTabChange(tab.id);
+                    }
+                  }}
+                  className={cn(
+                    'relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer',
+                    isActive
+                      ? 'bg-muted font-medium text-foreground'
+                      : 'text-foreground hover:bg-muted hover:text-foreground',
+                  )}
+                  aria-label={tab.label}
+                >
+                  <Icon className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                  {tab.badge !== undefined && tab.badge > 0 && (
+                    <span className="absolute top-1 right-1 size-1.5 rounded-full bg-primary" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="left"
+                sideOffset={6}
+                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground"
               >
-                {tab.badge}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
+                {tab.label}
+                {tab.badge !== undefined && tab.badge > 0 ? ` (${tab.badge})` : ''}
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </div>
+
+      {/* Clean bottom spacer */}
+      <div className="flex-1" />
+    </aside>
   );
 }
+
+export default InspectorTabs;
+

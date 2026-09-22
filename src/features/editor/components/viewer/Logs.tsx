@@ -17,6 +17,8 @@ import {
 import { toast } from 'sonner';
 import { cn } from "@/shared/lib/utils";
 import { usePageStore } from '@/features/editor/store';
+import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import {
   suggestLatexFix,
   type AiErrorFixResult,
@@ -171,7 +173,7 @@ function EntryRow({
                   onSuggestFix(entry);
                 }}
                 className={cn(
-                  'flex items-center gap-1 text-[11px] px-2 py-0.5 rounded font-medium shrink-0 transition-all border shadow-2xs cursor-pointer',
+                  'flex items-center gap-1 text-11 px-2 py-0.5 rounded-sm font-medium shrink-0 transition-all border shadow-2xs cursor-pointer',
                   fixResult || isFixLoading
                     ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
                     : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 hover:border-primary/40'
@@ -208,7 +210,7 @@ function EntryRow({
       {(isFixLoading || fixResult) && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="ml-6 mt-1.5 p-3 rounded-lg bg-card border border-amber-500/30 shadow-sm text-xs space-y-2 select-text"
+          className="ml-6 mt-1.5 p-3 rounded-md bg-card border border-border shadow-2xs text-xs space-y-2 select-text"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 font-semibold text-foreground">
@@ -216,7 +218,7 @@ function EntryRow({
               <span>Overleaf AI Error Assist</span>
             </div>
             {fixResult && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium capitalize">
+              <span className="text-10 px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium capitalize">
                 {fixResult.confidence} confidence
               </span>
             )}
@@ -234,7 +236,7 @@ function EntryRow({
               </p>
 
               {/* Code Diff Preview */}
-              <div className="rounded-md border border-border/80 overflow-hidden font-mono text-[11px] my-1.5">
+              <div className="rounded-md border border-border overflow-hidden font-mono text-11 my-1.5">
                 {fixResult.originalSnippet && (
                   <div className="bg-rose-500/10 text-rose-600 dark:text-rose-400 px-2.5 py-1.5 border-b border-border/40 whitespace-pre-wrap">
                     <span className="select-none font-bold mr-2 text-rose-500">-</span>
@@ -258,7 +260,7 @@ function EntryRow({
                     'flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-colors cursor-pointer',
                     isFixApplied
                       ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                      : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                      : 'bg-primary hover:bg-primary-hover text-primary-foreground shadow-2xs'
                   )}
                 >
                   {isFixApplied ? (
@@ -304,7 +306,8 @@ export default function Logs({
   onJumpToError,
   onClearCacheAndCompile,
 }: LogsProps) {
-  const { scrollToLineRef, editorRef, compileRef, projectId } = usePageStore();
+  const { projectId } = usePageStore();
+  const { engine } = useEditorInstance();
   const parsed = useMemo(() => parseLatexLog(log), [log]);
   const defaultTab = useMemo<LogTab>(() => {
     if (parsed.errors.length > 0) return 'errors';
@@ -353,19 +356,11 @@ export default function Logs({
     }));
 
     let surroundingCode = '';
-    const editor = editorRef.current;
-    if (editor && entry.line) {
-      const model = editor.getModel();
-      if (model) {
-        const start = Math.max(1, entry.line - 3);
-        const end = Math.min(model.getLineCount(), entry.line + 3);
-        surroundingCode = model.getValueInRange({
-          startLineNumber: start,
-          startColumn: 1,
-          endLineNumber: end,
-          endColumn: model.getLineMaxColumn(end),
-        });
-      }
+    if (engine && entry.line) {
+      const lines = engine.getContent().split('\n');
+      const start = Math.max(0, entry.line - 4);
+      const end = Math.min(lines.length, entry.line + 3);
+      surroundingCode = lines.slice(start, end).join('\n');
     }
 
     const result = await suggestLatexFix({
@@ -384,60 +379,47 @@ export default function Logs({
 
   const handleApplyFix = (entry: LogEntry, fix: AiErrorFixResult, index: number) => {
     const key = getEntryKey(entry, index);
-    const editor = editorRef.current;
-    if (!editor) {
+    if (!engine) {
       toast.error('Editor not ready to apply fix');
       return;
     }
 
-    const model = editor.getModel();
-    if (!model) return;
-
-    const targetLine = entry.line || fix.startLine || 1;
-    const startLine = Math.max(1, Math.min(targetLine, model.getLineCount()));
-    const endLine = Math.max(startLine, Math.min(fix.endLine || startLine, model.getLineCount()));
-    const maxCol = model.getLineMaxColumn(endLine);
-
-    let rangeToReplace = {
-      startLineNumber: startLine,
-      startColumn: 1,
-      endLineNumber: endLine,
-      endColumn: maxCol,
-    };
-
+    const fullContent = engine.getContent();
     if (fix.originalSnippet && fix.originalSnippet.trim()) {
-      const matches = model.findMatches(fix.originalSnippet.trim(), false, false, false, null, true);
-      if (matches.length > 0) {
-        const closest = matches.reduce((prev, curr) => {
-          return Math.abs(curr.range.startLineNumber - startLine) < Math.abs(prev.range.startLineNumber - startLine)
-            ? curr
-            : prev;
-        });
-        rangeToReplace = closest.range;
+      const next = fullContent.replace(fix.originalSnippet.trim(), fix.fixedSnippet);
+      if (next !== fullContent) {
+        engine.setContent(next);
+        engine.focus();
+        setFixState((prev) => ({
+          ...prev,
+          [key]: { loading: false, applied: true, result: fix },
+        }));
+        toast.success('Fix applied! Recompiling...');
+        if (onClearCacheAndCompile) {
+          onClearCacheAndCompile();
+        } else {
+          editorCommandBus.dispatch({ type: 'compiler:trigger' });
+        }
+        return;
       }
     }
 
-    editor.executeEdits('ai-error-assist', [
-      {
-        range: rangeToReplace,
-        text: fix.fixedSnippet,
-        forceMoveMarkers: true,
-      },
-    ]);
-    editor.revealLineInCenter(startLine);
-    editor.focus();
+    const lines = fullContent.split('\n');
+    const targetLine = Math.max(1, Math.min(entry.line || fix.startLine || 1, lines.length));
+    lines[targetLine - 1] = fix.fixedSnippet;
+    engine.setContent(lines.join('\n'));
+    engine.focus();
 
     setFixState((prev) => ({
       ...prev,
-      [key]: { ...prev[key], applied: true },
+      [key]: { loading: false, applied: true, result: fix },
     }));
-
     toast.success('Fix applied! Recompiling...');
 
     if (onClearCacheAndCompile) {
       onClearCacheAndCompile();
-    } else if (compileRef.current) {
-      compileRef.current();
+    } else {
+      editorCommandBus.dispatch({ type: 'compiler:trigger' });
     }
   };
 
@@ -445,8 +427,12 @@ export default function Logs({
     if (entry.line) {
       if (onJumpToError) {
         onJumpToError(entry.file, entry.line);
-      } else if (scrollToLineRef.current) {
-        scrollToLineRef.current(entry.line, 'error');
+      } else {
+        editorCommandBus.dispatch({
+          type: 'editor:jump-to-line',
+          line: entry.line,
+          highlight: 'error',
+        });
       }
     }
   };
@@ -512,7 +498,7 @@ export default function Logs({
               {countOf(tab.key) !== null && (
                 <span
                   className={cn(
-                    'px-1 min-w-4 text-center rounded-full text-xs font-medium tabular-nums leading-4',
+                    'px-1 min-w-4 text-center rounded-full text-10 font-bold tabular-nums leading-4',
                     badgeClass(tab.key),
                   )}
                 >
@@ -527,7 +513,7 @@ export default function Logs({
             <button
               type="button"
               onClick={onClearCacheAndCompile}
-              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded transition-colors cursor-pointer"
+              className="flex items-center gap-1 px-2 py-1 text-11 font-medium text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-sm shadow-2xs transition-colors cursor-pointer"
               title="Clear compilation cache and recompile from scratch"
             >
               <RefreshCw className="size-3 shrink-0" />
@@ -538,7 +524,7 @@ export default function Logs({
             type="button"
             onClick={onClose}
             aria-label="Close log panel"
-            className="p-1.5 text-foreground hover:bg-muted rounded transition-colors shrink-0 cursor-pointer"
+            className="p-1.5 text-foreground hover:bg-muted rounded-sm transition-colors shrink-0 cursor-pointer"
           >
             <X className="size-3.5 shrink-0" />
           </button>
@@ -604,7 +590,7 @@ export default function Logs({
           <div className="p-3">
             {isLoadingAux ? (
               <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground text-xs">
-                <Loader2 className="size-4 animate-spin shrink-0" />
+                <Loader2 className="size-4 animate-spin text-primary shrink-0" />
                 <span>Loading output files...</span>
               </div>
             ) : auxFiles.length === 0 ? (
@@ -613,7 +599,7 @@ export default function Logs({
               <div className="space-y-2">
                 <div className="flex items-center justify-between pb-1 border-b border-border text-xs text-muted-foreground">
                   <span>Generated Auxiliary & Intermediates ({auxFiles.length} files)</span>
-                  <span className="text-[11px]">Click download icon to save files locally</span>
+                  <span className="text-11">Click download icon to save files locally</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                   {auxFiles.map((file) => {
@@ -627,13 +613,13 @@ export default function Logs({
                           <FileCode className="size-4 text-primary shrink-0" />
                           <div className="min-w-0">
                             <p className="font-mono font-medium text-foreground truncate">{file.name}</p>
-                            <p className="text-[10px] text-muted-foreground">{sizeKb} KB</p>
+                            <p className="text-10 text-muted-foreground">{sizeKb} KB</p>
                           </div>
                         </div>
                         <a
                           href={downloadAuxFileUrl(projectId, file.name)}
                           download={file.name}
-                          className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+                          className="p-1.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
                           title={`Download ${file.name}`}
                         >
                           <Download className="size-3.5" />

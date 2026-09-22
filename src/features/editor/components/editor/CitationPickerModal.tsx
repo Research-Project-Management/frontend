@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useMemo } from 'react';
 import {
@@ -10,7 +10,8 @@ import {
   CommandItem,
   Badge,
 } from "@/shared/components/ui";
-import { BookOpen, FileText } from 'lucide-react';
+import { BookOpen, FileText, Copy } from 'lucide-react';
+import { toast } from 'sonner';
 import { formatCitationSnippet } from '../../utils/citation.util';
 import type { BibEntry } from '@/features/editor/utils/bib-parser.util';
 
@@ -61,23 +62,23 @@ export default function CitationPickerModal({
         onOpenChange={onOpenChange}
         title="Insert Citation"
         description="Search .bib file entries and insert citation snippet"
-        className="max-w-2xl rounded-lg border border-border "
+        className="max-w-2xl rounded-lg border border-border shadow-raised-300"
       >
-        <div className="flex items-center justify-between px-3 pt-3 pb-2 border-b border-border bg-muted">
+        <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border bg-background">
           <div className="flex items-center gap-2">
             <BookOpen className="size-4 text-foreground shrink-0" />
             <span className="text-13 font-semibold text-foreground">Insert Citation</span>
           </div>
           {/* Style selector pills */}
-          <div className="flex items-center gap-1 bg-background p-0.5 rounded-md border border-border">
+          <div className="flex items-center gap-1 bg-muted/50 p-0.5 rounded-md border border-border">
             {STYLE_OPTIONS.map((opt) => (
               <button
                 key={opt.id}
                 type="button"
                 onClick={() => setSelectedStyle(opt.id)}
-                className={`px-2 py-0.5 text-11 font-mono rounded-md transition-colors ${
+                className={`px-2 py-0.5 text-11 font-mono rounded-sm transition-colors cursor-pointer ${
                   selectedStyle === opt.id
-                    ? 'bg-primary text-primary-foreground font-medium'
+                    ? 'bg-background text-foreground shadow-2xs font-medium'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
                 title={opt.preview}
@@ -139,6 +140,18 @@ export default function CitationPickerModal({
                     >
                       {entry.type}
                     </Badge>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(entry.key);
+                        toast.success(`Copied key "${entry.key}"`);
+                      }}
+                      className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                      title="Copy citation key to clipboard"
+                    >
+                      <Copy className="size-3" />
+                    </button>
                   </div>
                 </CommandItem>
               );

@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useEditorSave } from '@/features/editor/components/editor/hooks/use-editor-save';
-import { useCompileStore, usePageStore, useSettingsStore } from '@/features/editor/store';
+import { useCompileStore, useSettingsStore } from '@/features/editor/store';
+import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 
 // Mock usePageActions
@@ -16,6 +17,8 @@ vi.mock('@/features/editor/hooks/use-core', () => ({
 }));
 
 describe('Auto-Compile on Typing with Debounce (Overleaf Parity)', () => {
+  let unsubscribeCompile: (() => void) | null = null;
+
   beforeEach(() => {
     vi.useFakeTimers();
     useSettingsStore.setState({ autoCompile: true });
@@ -27,6 +30,10 @@ describe('Auto-Compile on Typing with Debounce (Overleaf Parity)', () => {
   });
 
   afterEach(() => {
+    if (unsubscribeCompile) {
+      unsubscribeCompile();
+      unsubscribeCompile = null;
+    }
     vi.clearAllTimers();
     vi.useRealTimers();
   });
@@ -39,7 +46,7 @@ describe('Auto-Compile on Typing with Debounce (Overleaf Parity)', () => {
 
   it('should trigger compilation after 2.5s (2500ms) of typing idle', () => {
     const compileMock = vi.fn();
-    usePageStore.setState({ compileRef: { current: compileMock } });
+    unsubscribeCompile = editorCommandBus.subscribe('compiler:trigger', compileMock);
 
     const { result } = renderHook(() =>
       useEditorSave({ page: mockPage, isRealtimeActive: false }),
@@ -55,7 +62,7 @@ describe('Auto-Compile on Typing with Debounce (Overleaf Parity)', () => {
       );
     });
 
-    // Advance 1000ms: still within typing window, should not compile
+    // Advance 1000ms: should NOT compile yet (still in debounce period)
     act(() => {
       vi.advanceTimersByTime(1000);
     });
@@ -70,7 +77,7 @@ describe('Auto-Compile on Typing with Debounce (Overleaf Parity)', () => {
 
   it('should reset debounce timer if user continues typing before 2.5s expires', () => {
     const compileMock = vi.fn();
-    usePageStore.setState({ compileRef: { current: compileMock } });
+    unsubscribeCompile = editorCommandBus.subscribe('compiler:trigger', compileMock);
 
     const { result } = renderHook(() =>
       useEditorSave({ page: mockPage, isRealtimeActive: false }),
@@ -107,7 +114,7 @@ describe('Auto-Compile on Typing with Debounce (Overleaf Parity)', () => {
 
   it('should NOT trigger compilation if content has not changed from previous compilation', () => {
     const compileMock = vi.fn();
-    usePageStore.setState({ compileRef: { current: compileMock } });
+    unsubscribeCompile = editorCommandBus.subscribe('compiler:trigger', compileMock);
 
     const { result } = renderHook(() =>
       useEditorSave({ page: mockPage, isRealtimeActive: false }),
@@ -133,7 +140,7 @@ describe('Auto-Compile on Typing with Debounce (Overleaf Parity)', () => {
 
   it('should queue pendingCompile = true when compiler is busy (compiling/flushing/syncing)', () => {
     const compileMock = vi.fn();
-    usePageStore.setState({ compileRef: { current: compileMock } });
+    unsubscribeCompile = editorCommandBus.subscribe('compiler:trigger', compileMock);
 
     // Set compiler status to compiling (busy)
     useCompileStore.setState({ compileStatus: 'compiling' });
@@ -161,7 +168,7 @@ describe('Auto-Compile on Typing with Debounce (Overleaf Parity)', () => {
 
   it('should allow auto-compile when compileStatus is "done" (Overleaf status lock fix)', () => {
     const compileMock = vi.fn();
-    usePageStore.setState({ compileRef: { current: compileMock } });
+    unsubscribeCompile = editorCommandBus.subscribe('compiler:trigger', compileMock);
 
     // Status is 'done' from a previous compilation (previously was locked if status !== 'idle')
     useCompileStore.setState({ compileStatus: 'done' });
@@ -183,7 +190,7 @@ describe('Auto-Compile on Typing with Debounce (Overleaf Parity)', () => {
 
   it('should sync lastCompiledContentRef when flux:compile-started event is emitted', () => {
     const compileMock = vi.fn();
-    usePageStore.setState({ compileRef: { current: compileMock } });
+    unsubscribeCompile = editorCommandBus.subscribe('compiler:trigger', compileMock);
 
     const { result } = renderHook(() =>
       useEditorSave({ page: mockPage, isRealtimeActive: false }),
@@ -210,7 +217,7 @@ describe('Auto-Compile on Typing with Debounce (Overleaf Parity)', () => {
   it('should NOT trigger compilation when autoCompile setting is disabled (Off)', () => {
     useSettingsStore.setState({ autoCompile: false });
     const compileMock = vi.fn();
-    usePageStore.setState({ compileRef: { current: compileMock } });
+    unsubscribeCompile = editorCommandBus.subscribe('compiler:trigger', compileMock);
 
     const { result } = renderHook(() =>
       useEditorSave({ page: mockPage, isRealtimeActive: false }),

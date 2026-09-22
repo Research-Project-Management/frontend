@@ -37,7 +37,7 @@ export interface ItemTableProps {
  */
 export function ItemTable({
   items,
-  displayOptions = DEFAULT_LIBRARY_DISPLAY_OPTIONS,
+  displayOptions: propDisplayOptions,
   isTrash = false,
   scopeId,
   onRestoreItems,
@@ -50,7 +50,12 @@ export function ItemTable({
   const toggleSelect = useLibraryUIStore((s) => s.toggleSelect);
   const setActiveItem = useLibraryUIStore((s) => s.setActiveItem);
   const activeItemId = useLibraryUIStore((s) => s.activeItemId);
+  const storeDisplayOptions = useLibraryUIStore((s) => s.displayOptions);
+  const setStoreDisplayOptions = useLibraryUIStore((s) => s.setDisplayOptions);
   const selectedCount = useSelectedCount();
+
+  const displayOptions =
+    propDisplayOptions ?? storeDisplayOptions ?? DEFAULT_LIBRARY_DISPLAY_OPTIONS;
 
   // Mutations & Queries
   const toggleStarMutation = useToggleStarItemMutation(scopeId);
@@ -67,17 +72,34 @@ export function ItemTable({
     displayOptions?.orderDirection || 'desc',
   );
 
+  // Synchronize internal sort with displayOptions when updated from Topbar Popover
+  React.useEffect(() => {
+    if (displayOptions?.orderBy) {
+      setSortColumn(displayOptions.orderBy);
+    }
+    if (displayOptions?.orderDirection) {
+      setSortDirection(displayOptions.orderDirection);
+    }
+  }, [displayOptions?.orderBy, displayOptions?.orderDirection]);
+
   // Track last selected index for Shift + Click range selection
   const lastSelectedIndexRef = useRef<number | null>(null);
 
   // Column sort toggle
   const handleSort = (columnKey: string) => {
+    let nextDir: 'asc' | 'desc' = 'desc';
     if (sortColumn === columnKey) {
-      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      nextDir = sortDirection === 'asc' ? 'desc' : 'asc';
+      setSortDirection(nextDir);
     } else {
       setSortColumn(columnKey);
       setSortDirection('desc');
     }
+    setStoreDisplayOptions?.((prev) => ({
+      ...prev,
+      orderBy: columnKey as any,
+      orderDirection: nextDir,
+    }));
   };
 
   // Sort items client-side
@@ -241,6 +263,7 @@ export function ItemTable({
               item={item}
               index={index}
               columns={columns}
+              density={displayOptions.density}
               isTrash={isTrash}
               collections={collections}
               onRowClick={handleRowClick}

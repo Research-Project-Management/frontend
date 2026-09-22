@@ -362,7 +362,7 @@ export function resolveFileUrl(fileUrl?: string | null): string {
 export type SidebarTabName = 'Files' | 'Explorer' | 'Outline' | 'Search' | 'Review' | 'History' | 'AI' | 'Settings' | 'Citations';
 
 export interface EditorEventMap {
-  'flux:open-panel': SidebarTabName | { panel: SidebarTabName; commentId?: string; suggestionId?: string };
+  'flux:open-panel': SidebarTabName | { panel: SidebarTabName; query?: string; commentId?: string; suggestionId?: string };
   'flux:toggle-panel': SidebarTabName;
   'flux:review-event': { pageId: string; event: string; payload?: any };
   'flux:open-ai-panel': { initialPrompt?: string; selectedText?: string } | undefined;
@@ -372,6 +372,9 @@ export interface EditorEventMap {
   'flux:compile-finished': { success: boolean };
   'flux:insert-citation': { bibKey: string };
   'flux:open-citation-picker': undefined;
+  'flux:open-table-wizard': { initialSnippet?: string } | undefined;
+  'flux:open-figure-wizard': undefined;
+  'flux:open-symbol-palette': undefined;
   'flux:focus-editor': undefined;
   'flux:toggle-sidebar': undefined;
   'flux:synctex-forward': undefined;
@@ -401,6 +404,11 @@ export interface EditorEventMap {
       | 'orderedList'
       | 'blockquote'
       | 'insertMath'
+      | 'clearFormatting'
+      | 'paragraph'
+      | 'alignLeft'
+      | 'alignCenter'
+      | 'alignRight'
       | 'insertTable'
       | 'addColumnBefore'
       | 'addColumnAfter'

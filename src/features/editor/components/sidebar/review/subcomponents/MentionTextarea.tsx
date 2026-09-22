@@ -232,10 +232,10 @@ export const MentionTextarea = React.forwardRef<
       {isOpen && (
         <div
           ref={popoverRef}
-          className="absolute z-50 bottom-full mb-1 left-0 w-full min-w-[240px] max-w-sm rounded-lg border border-border bg-popover text-popover-foreground shadow-lg overflow-hidden animate-in fade-in-50 zoom-in-95 duration-100"
+          className="absolute z-50 bottom-full mb-1 left-0 w-full min-w-[240px] max-w-sm rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 overflow-hidden animate-in fade-in-50 zoom-in-95 duration-100"
           style={{ maxHeight: '220px' }}
         >
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border/60 bg-muted/40 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border bg-background text-10 text-muted-foreground font-medium uppercase tracking-wider">
             <Users className="size-3" />
             <span>Mention collaborator</span>
           </div>
@@ -259,7 +259,7 @@ export const MentionTextarea = React.forwardRef<
                     }}
                     onMouseEnter={() => setSelectedIndex(idx)}
                     className={cn(
-                      'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-left cursor-pointer transition-colors select-none',
+                      'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-left cursor-pointer transition-colors select-none',
                       isSelected
                         ? 'bg-primary text-primary-foreground font-medium'
                         : 'text-foreground hover:bg-muted/80',
@@ -271,7 +271,7 @@ export const MentionTextarea = React.forwardRef<
                       {member.email && (
                         <span
                           className={cn(
-                            'truncate text-[10px]',
+                            'truncate text-10',
                             isSelected
                               ? 'text-primary-foreground/80'
                               : 'text-muted-foreground',
@@ -284,7 +284,7 @@ export const MentionTextarea = React.forwardRef<
                     {member.role && (
                       <span
                         className={cn(
-                          'text-[9px] uppercase px-1 py-0.2 rounded font-semibold shrink-0',
+                          'text-10 uppercase px-1 py-0.2 rounded-sm font-semibold shrink-0',
                           isSelected
                             ? 'bg-primary-foreground/20 text-primary-foreground'
                             : 'bg-muted text-muted-foreground',

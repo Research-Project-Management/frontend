@@ -194,12 +194,12 @@ export default function ShareProjectModal() {
 
   return (
     <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
-      <DialogContent className="max-w-xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-xl text-foreground select-none">
+      <DialogContent className="max-w-xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-lg text-foreground select-none">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/80 bg-muted/30">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background">
           <div>
             <DialogTitle className="text-base font-semibold flex items-center gap-2">
-              <Users className="size-4 text-emerald-600 dark:text-emerald-500" />
+              <Users className="size-4 text-foreground" />
               Share Project
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground mt-0.5">
@@ -241,7 +241,7 @@ export default function ShareProjectModal() {
             {linkSharingEnabled ? (
               <div className="space-y-3 pt-1 animate-in fade-in-50 duration-200">
                 {/* Edit Link */}
-                <div className="rounded-lg border border-border/70 bg-muted/40 p-3 space-y-1.5">
+                <div className="rounded-md border border-border bg-muted/20 p-3 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-11 font-medium text-foreground flex items-center gap-1.5">
                       <span className="size-1.5 rounded-full bg-emerald-500" />
@@ -276,7 +276,7 @@ export default function ShareProjectModal() {
                 </div>
 
                 {/* View Link */}
-                <div className="rounded-lg border border-border/70 bg-muted/40 p-3 space-y-1.5">
+                <div className="rounded-md border border-border bg-muted/20 p-3 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-11 font-medium text-foreground flex items-center gap-1.5">
                       <span className="size-1.5 rounded-full bg-blue-500" />
@@ -360,7 +360,7 @@ export default function ShareProjectModal() {
               <button
                 type="submit"
                 disabled={isSubmitting || !inviteEmail.trim()}
-                className="h-8 px-4 rounded-md bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer shrink-0 flex items-center gap-1.5 shadow-2xs"
+                className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium transition-colors disabled:opacity-50 cursor-pointer shrink-0 flex items-center gap-1.5 shadow-2xs"
               >
                 {isSubmitting && <Loader2 className="size-3 animate-spin" />}
                 Share
@@ -377,11 +377,11 @@ export default function ShareProjectModal() {
               {loadingMembers && <Loader2 className="size-3 text-muted-foreground animate-spin" />}
             </div>
 
-            <div className="border border-border/80 rounded-lg divide-y divide-border/60 overflow-hidden">
+            <div className="border border-border/80 rounded-md divide-y divide-border/60 overflow-hidden">
               {members.map((member) => (
                 <div key={member.id} className="flex items-center justify-between px-3.5 py-2.5 bg-background hover:bg-muted/30 transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="size-7 rounded-full bg-emerald-600/15 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                    <div className="size-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs uppercase shrink-0">
                       {member.name.charAt(0)}
                     </div>
                     <div className="min-w-0">
@@ -436,7 +436,7 @@ export default function ShareProjectModal() {
         </div>
 
         {/* Footer info */}
-        <div className="px-6 py-3 bg-muted/40 border-t border-border/80 flex items-center justify-between text-11 text-muted-foreground">
+        <div className="px-6 py-3 bg-background border-t border-border flex items-center justify-between text-11 text-muted-foreground">
           <span>Collaborators count towards project collaboration limits.</span>
           <button
             type="button"

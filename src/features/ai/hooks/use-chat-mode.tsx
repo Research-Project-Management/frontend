@@ -15,6 +15,8 @@ export interface SourceDoc {
   id: string;
   name: string;
   enabled: boolean;
+  size?: number;
+  sourceType?: 'library' | 'storage' | 'upload';
 }
 
 type ChatModeContextType = {
@@ -28,7 +30,11 @@ type ChatModeContextType = {
   fluxDataEnabled: boolean;
   setFluxDataEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   /** Add a new source (no-op if id already present). Auto-enables it. */
-  addSource: (id: string, name: string) => void;
+  addSource: (
+    id: string,
+    name: string,
+    metadata?: { size?: number; sourceType?: 'library' | 'storage' | 'upload' },
+  ) => void;
   /** Permanently remove a source by id. */
   removeSource: (id: string) => void;
   /** Toggle the enabled state of a source. */
@@ -57,12 +63,28 @@ export function ChatModeProvider({ children }: { children: React.ReactNode }) {
     [sources],
   );
 
-  const addSource = useCallback((id: string, name: string) => {
-    setSources((prev) => {
-      if (prev.some((s) => s.id === id)) return prev;
-      return [...prev, { id, name, enabled: true }];
-    });
-  }, []);
+  const addSource = useCallback(
+    (
+      id: string,
+      name: string,
+      metadata?: { size?: number; sourceType?: 'library' | 'storage' | 'upload' },
+    ) => {
+      setSources((prev) => {
+        if (prev.some((s) => s.id === id)) return prev;
+        return [
+          ...prev,
+          {
+            id,
+            name,
+            enabled: true,
+            size: metadata?.size,
+            sourceType: metadata?.sourceType,
+          },
+        ];
+      });
+    },
+    [],
+  );
 
   const removeSource = useCallback((id: string) => {
     setSources((prev) => prev.filter((s) => s.id !== id));

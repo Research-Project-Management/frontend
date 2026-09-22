@@ -101,7 +101,7 @@ export function DuplicatesPage() {
     <div className="flex h-full w-full overflow-hidden bg-background">
       {/* Main Workspace Content */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <LibraryTopbar title="Duplicate Items" />
+        <LibraryTopbar title="Duplicate Items" showDisplay={false} />
 
         <div className="flex-1 overflow-y-auto min-h-0 bg-background/50">
           {isLoading ? (

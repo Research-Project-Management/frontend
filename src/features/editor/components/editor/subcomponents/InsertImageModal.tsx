@@ -53,7 +53,7 @@ export function InsertImageModal({
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="max-w-md p-6 bg-background border-border shadow-xl">
+      <DialogContent className="max-w-md p-6 bg-background rounded-lg border border-border shadow-raised-300">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
             <div className="size-7 rounded-md bg-primary/10 text-primary flex items-center justify-center">
@@ -96,7 +96,7 @@ export function InsertImageModal({
                   type="button"
                   onClick={() => setWidth(preset.value)}
                   className={cn(
-                    'px-2.5 py-1 rounded text-xs font-mono font-medium border transition-colors cursor-pointer',
+                    'px-2.5 py-1 rounded-sm text-xs font-mono font-medium border transition-colors cursor-pointer',
                     width === preset.value
                       ? 'bg-primary text-primary-foreground border-primary shadow-2xs'
                       : 'bg-background hover:bg-muted text-foreground border-border',

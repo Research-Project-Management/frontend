@@ -28,6 +28,7 @@ import 'katex/dist/katex.min.css';
 import { toast } from 'sonner';
 
 import { usePageStore } from '@/features/editor/store';
+import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import {
   streamEditorChat,
@@ -35,7 +36,7 @@ import {
   clearPageChat,
 } from '@/features/ai/services/chat.service';
 import type { ChatMessage } from '@/features/ai/types/chat.types';
-import { Badge } from '@/shared/components/ui';
+import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 
 interface AiTabProps {
@@ -77,7 +78,8 @@ const QUICK_ACTIONS = [
 
 export default function AiTab({ onClose }: AiTabProps) {
   const params = useParams<{ projectId?: string; pageId?: string; draftId?: string }>();
-  const { currentPage, editorRef, getEditorContent } = usePageStore();
+  const { currentPage } = usePageStore();
+  const { engine, getContent } = useEditorInstance();
 
   const currentProjectId =
     params?.projectId ||
@@ -117,7 +119,7 @@ export default function AiTab({ onClose }: AiTabProps) {
     setIsLoadingHistory(true);
 
     getPageChat(activePageId)
-      .then((history) => {
+      .then((history: ChatMessage[]) => {
         if (isMounted && Array.isArray(history) && history.length > 0) {
           setMessages(history);
         }
@@ -139,15 +141,10 @@ export default function AiTab({ onClose }: AiTabProps) {
     return EditorEventBus.on('flux:open-ai-panel', (detail) => {
       if (detail?.selectedText) {
         setSelectionContext(detail.selectedText);
-      } else if (editorRef.current) {
-        // Grab current selection if available
-        const sel = editorRef.current.getSelection();
-        if (sel && !sel.isEmpty()) {
-          const model = editorRef.current.getModel();
-          const text = model ? model.getValueInRange(sel) : '';
-          if (text.trim()) {
-            setSelectionContext(text);
-          }
+      } else if (engine) {
+        const text = engine.getSelectedText();
+        if (text.trim()) {
+          setSelectionContext(text);
         }
       }
 
@@ -159,7 +156,7 @@ export default function AiTab({ onClose }: AiTabProps) {
         textareaRef.current?.focus();
       }, 100);
     });
-  }, [editorRef]);
+  }, [engine]);
 
   // Auto-resize textarea
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -171,51 +168,23 @@ export default function AiTab({ onClose }: AiTabProps) {
 
   // Editor Actions: Insert at cursor
   const handleInsertAtCursor = (text: string) => {
-    const editor = editorRef.current;
-    if (!editor) {
-      toast.error('Không tìm thấy cửa sổ soạn thảo Monaco');
+    if (!engine) {
+      toast.error('Editor not ready');
       return;
     }
-
-    const selection = editor.getSelection();
-    if (!selection) {
-      toast.error('Không có vị trí con trỏ hợp lệ');
-      return;
-    }
-
-    editor.executeEdits('ai-assistant', [
-      {
-        range: selection,
-        text,
-        forceMoveMarkers: true,
-      },
-    ]);
-    editor.focus();
+    engine.insertText(text);
+    engine.focus();
     toast.success('Đã chèn mã vào tài liệu');
   };
 
   // Editor Actions: Replace current selection
   const handleReplaceSelection = (text: string) => {
-    const editor = editorRef.current;
-    if (!editor) {
-      toast.error('Không tìm thấy cửa sổ soạn thảo Monaco');
+    if (!engine) {
+      toast.error('Editor not ready');
       return;
     }
-
-    const selection = editor.getSelection();
-    if (!selection) {
-      toast.error('Không có đoạn văn bản nào đang được chọn');
-      return;
-    }
-
-    editor.executeEdits('ai-assistant', [
-      {
-        range: selection,
-        text,
-        forceMoveMarkers: true,
-      },
-    ]);
-    editor.focus();
+    engine.insertText(text);
+    engine.focus();
     toast.success('Đã thay thế đoạn văn bản bằng mã AI');
   };
 
@@ -272,7 +241,7 @@ export default function AiTab({ onClose }: AiTabProps) {
 
     try {
       const activeFilename = currentPage?.title || 'main.tex';
-      const fileContent = getEditorContent.current?.() || '';
+      const fileContent = getContent();
 
       const stream = streamEditorChat(newMessages, {
         projectId: currentProjectId,
@@ -345,7 +314,7 @@ export default function AiTab({ onClose }: AiTabProps) {
                 <button
                   type="button"
                   onClick={() => handleCopyCode(codeString, blockId)}
-                  className="flex items-center gap-1 rounded px-1.5 py-0.5 text-muted-foreground hover:bg-background hover:text-foreground transition-colors cursor-pointer"
+                  className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-muted-foreground hover:bg-background hover:text-foreground transition-colors cursor-pointer"
                   title="Sao chép mã"
                 >
                   {isCopied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
@@ -354,7 +323,7 @@ export default function AiTab({ onClose }: AiTabProps) {
                 <button
                   type="button"
                   onClick={() => handleInsertAtCursor(codeString)}
-                  className="flex items-center gap-1 rounded px-1.5 py-0.5 text-primary hover:bg-background hover:text-primary transition-colors cursor-pointer font-medium"
+                  className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-primary hover:bg-background hover:text-primary transition-colors cursor-pointer font-medium"
                   title="Chèn mã tại vị trí con trỏ"
                 >
                   <ArrowDownToLine className="size-3" />
@@ -364,7 +333,7 @@ export default function AiTab({ onClose }: AiTabProps) {
                   <button
                     type="button"
                     onClick={() => handleReplaceSelection(codeString)}
-                    className="flex items-center gap-1 rounded px-1.5 py-0.5 text-amber-600 dark:text-amber-400 hover:bg-background transition-colors cursor-pointer font-medium"
+                    className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-amber-600 dark:text-amber-400 hover:bg-background transition-colors cursor-pointer font-medium"
                     title="Thay thế đoạn bôi đen bằng mã này"
                   >
                     <Replace className="size-3" />
@@ -381,7 +350,7 @@ export default function AiTab({ onClose }: AiTabProps) {
       }
 
       return (
-        <code className="rounded bg-muted px-1 py-0.5 font-mono text-11 text-primary" {...props}>
+        <code className="rounded-sm bg-muted px-1 py-0.5 font-mono text-11 text-primary" {...props}>
           {children}
         </code>
       );
@@ -445,7 +414,7 @@ export default function AiTab({ onClose }: AiTabProps) {
           <button
             type="button"
             onClick={() => setSelectionContext(null)}
-            className="text-muted-foreground hover:text-foreground text-10 px-1 py-0.5 rounded hover:bg-muted transition-colors cursor-pointer"
+            className="text-muted-foreground hover:text-foreground text-10 px-1 py-0.5 rounded-sm hover:bg-muted transition-colors cursor-pointer"
             title="Hủy vùng chọn"
           >
             Bỏ chọn
@@ -464,7 +433,7 @@ export default function AiTab({ onClose }: AiTabProps) {
 
         {messages.length === 0 && !streamingMessage && !isLoadingHistory && (
           <div className="flex flex-col items-center justify-center h-full py-8 text-center text-muted-foreground space-y-3">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/80 text-primary/80">
+            <div className="flex size-12 items-center justify-center rounded-md bg-muted/80 text-primary/80">
               <Bot className="size-6" />
             </div>
             <div className="space-y-1 max-w-[240px]">
@@ -484,7 +453,7 @@ export default function AiTab({ onClose }: AiTabProps) {
                   key={act.id}
                   type="button"
                   onClick={() => handleSendMessage(act.prompt)}
-                  className="flex items-center justify-between rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground hover:bg-accent/60 hover:border-primary/30 transition-colors text-left cursor-pointer"
+                  className="flex items-center justify-between rounded-md border border-border bg-card px-2.5 py-1.5 text-xs text-foreground hover:bg-accent/60 hover:border-primary/30 transition-colors text-left cursor-pointer shadow-2xs"
                 >
                   <span className="truncate">{act.label}</span>
                   <Sparkles className="size-3 text-primary/60 shrink-0 ml-1.5" />
@@ -521,7 +490,7 @@ export default function AiTab({ onClose }: AiTabProps) {
 
               <div
                 className={cn(
-                  'rounded-xl px-3 py-2 max-w-[95%] leading-relaxed',
+                  'rounded-lg px-3 py-2 max-w-[95%] leading-relaxed',
                   isUser
                     ? 'bg-primary text-primary-foreground font-normal rounded-tr-xs'
                     : 'bg-muted/80 text-foreground border border-border/70 rounded-tl-xs',
@@ -551,7 +520,7 @@ export default function AiTab({ onClose }: AiTabProps) {
               <span className="font-medium">AI đang soạn câu trả lời...</span>
             </div>
 
-            <div className="rounded-xl rounded-tl-xs px-3 py-2 max-w-[95%] bg-muted/80 text-foreground border border-border/70 leading-relaxed">
+            <div className="rounded-lg rounded-tl-xs px-3 py-2 max-w-[95%] bg-muted/80 text-foreground border border-border/70 leading-relaxed">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeKatex]}
@@ -578,7 +547,7 @@ export default function AiTab({ onClose }: AiTabProps) {
                 type="button"
                 onClick={() => handleSendMessage(act.prompt)}
                 disabled={isStreaming}
-                className="shrink-0 rounded-full border border-border bg-card px-2.5 py-0.5 text-10 font-medium text-foreground hover:bg-muted hover:border-primary/40 transition-colors disabled:opacity-40 cursor-pointer"
+                className="shrink-0 rounded-sm border border-border bg-muted px-2.5 py-0.5 text-10 font-medium text-foreground hover:bg-muted/80 hover:border-primary/40 transition-colors disabled:opacity-40 cursor-pointer shadow-2xs"
               >
                 {act.label}
               </button>
@@ -586,7 +555,7 @@ export default function AiTab({ onClose }: AiTabProps) {
           </div>
         )}
 
-        <div className="relative flex items-end gap-1.5 rounded-xl border border-border bg-muted/40 p-1.5 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/40 transition-all">
+        <div className="relative flex items-end gap-1.5 rounded-md border border-border bg-muted/40 p-1.5 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/40 transition-all">
           <textarea
             ref={textareaRef}
             rows={1}
@@ -611,7 +580,7 @@ export default function AiTab({ onClose }: AiTabProps) {
             <button
               type="button"
               onClick={handleStopStreaming}
-              className="flex size-7 items-center justify-center rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors cursor-pointer shrink-0"
+              className="flex size-7 items-center justify-center rounded-sm bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors cursor-pointer shrink-0 shadow-2xs"
               title="Dừng sinh phản hồi"
             >
               <Square className="size-3.5 fill-current" />
@@ -621,7 +590,7 @@ export default function AiTab({ onClose }: AiTabProps) {
               type="button"
               onClick={() => handleSendMessage()}
               disabled={!inputPrompt.trim()}
-              className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 cursor-pointer shrink-0"
+              className="flex size-7 items-center justify-center rounded-sm bg-primary text-primary-foreground hover:bg-primary-hover transition-colors disabled:opacity-40 cursor-pointer shrink-0 shadow-2xs"
               title="Gửi câu hỏi (Enter)"
             >
               <Send className="size-3.5" />

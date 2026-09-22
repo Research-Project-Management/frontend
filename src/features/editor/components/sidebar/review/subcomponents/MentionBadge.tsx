@@ -21,7 +21,7 @@ export const MentionBadge = React.memo(function MentionBadge({
       data-mention-user-id={userId}
       data-mention-name={name}
       className={cn(
-        'inline-flex items-center gap-0.5 px-1.5 py-0.2 mx-0.5 rounded font-medium text-xs text-primary bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-colors select-all align-baseline',
+        'inline-flex items-center gap-0.5 px-1.5 py-0.2 mx-0.5 rounded-sm font-medium text-xs text-primary bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-colors select-all align-baseline',
         className,
       )}
       title={userId ? `@${name} (ID: ${userId})` : `@${name}`}

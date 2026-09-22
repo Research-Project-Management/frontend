@@ -9,7 +9,6 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
   output: isStandalone ? 'standalone' : undefined,
-  serverExternalPackages: ['pdfjs-dist'],
   allowedDevOrigins: [
     'localhost:2915',
     '127.0.0.1:2915',
@@ -21,7 +20,7 @@ const nextConfig: NextConfig = {
 
   turbopack: {
     resolveAlias: {
-      'pdfjs-dist': 'pdfjs-dist/build/pdf.min.mjs',
+      'pdfjs-dist': 'pdfjs-dist/legacy/build/pdf.mjs',
       'monaco-editor/esm/vs/editor/editor.api': 'monaco-editor',
       'monaco-editor/esm/vs/editor/editor.api.js': 'monaco-editor',
       'monaco-editor/esm/vs': 'monaco-editor',
@@ -42,7 +41,7 @@ const nextConfig: NextConfig = {
 
     config.resolve.alias = {
       ...config.resolve.alias,
-      'pdfjs-dist$': 'pdfjs-dist/build/pdf.min.mjs',
+      'pdfjs-dist$': 'pdfjs-dist/legacy/build/pdf.mjs',
       'monaco-editor/esm/vs/editor/editor.api$': 'monaco-editor',
       'monaco-editor/esm/vs/editor/editor.api.js$': 'monaco-editor',
       'monaco-editor/esm/vs': 'monaco-editor',

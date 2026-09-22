@@ -981,7 +981,7 @@ export function WorkItemPage({
             <span className="truncate">
               Viewing view: <strong className="font-semibold text-foreground">{savedViews?.find((v) => v.id === activeViewId)?.name || 'Custom View'}</strong>
             </span>
-            <span className="text-10 font-mono capitalize px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+            <span className="text-10 font-mono capitalize px-1.5 py-0.5 rounded-md bg-muted text-foreground font-medium">
               {viewMode}
             </span>
           </div>
@@ -994,7 +994,7 @@ export function WorkItemPage({
                 router.push(`/projects/${projectId}/work-items`);
               }
             }}
-            className="h-6 px-2 text-xs font-medium hover:bg-muted text-muted-foreground hover:text-foreground shrink-0"
+            className="h-6 px-2 text-xs font-medium hover:bg-muted text-foreground shrink-0 rounded-md cursor-pointer"
           >
             Clear view
           </Button>
@@ -1026,8 +1026,8 @@ export function WorkItemPage({
       <div className="flex-1 flex flex-col min-h-0 relative">
         {isArchivedEmpty ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-              <Archive className="w-8 h-8 text-muted-foreground shrink-0" />
+            <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center mb-4">
+              <Archive className="w-8 h-8 text-foreground shrink-0" />
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-1">
               No archived work items
@@ -1039,14 +1039,14 @@ export function WorkItemPage({
               variant="outline"
               size="sm"
               onClick={() => setShowArchived(false)}
-              className="gap-2 rounded-md cursor-pointer"
+              className="gap-2 rounded-md h-8 px-3 text-13 font-medium bg-background border border-border text-foreground hover:bg-muted shadow-2xs cursor-pointer"
             >
               <span>Back to active items</span>
             </Button>
           </div>
         ) : isCycleEmpty ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+            <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center mb-4">
               <WorkItemsIcon className="w-8 h-8 text-foreground shrink-0" />
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-1">
@@ -1060,7 +1060,7 @@ export function WorkItemPage({
                 variant="outline"
                 size="sm"
                 onClick={() => setModal({ type: 'add-existing' })}
-                className="gap-2 rounded-md"
+                className="gap-2 rounded-md h-8 px-3 text-13 font-medium bg-background border border-border text-foreground hover:bg-muted shadow-2xs cursor-pointer"
               >
                 <ArrowRightLeft className="size-4 shrink-0" />
                 <span>Add Existing Work Items</span>
@@ -1071,7 +1071,7 @@ export function WorkItemPage({
                   const firstCol = columns[0];
                   handleOpenAddDialog(firstCol ? resolveStateId(firstCol) : "");
                 }}
-                className="gap-2 rounded-md"
+                className="gap-2 rounded-md h-8 px-4 text-13 font-medium bg-primary text-primary-foreground hover:bg-primary-hover shadow-none cursor-pointer"
               >
                 <Plus className="size-4 shrink-0" />
                 <span>Create Work Item</span>
@@ -1249,6 +1249,8 @@ export function WorkItemPage({
           columns={columns}
           project={project}
           members={members}
+          cycles={cycles}
+          availableItems={allItems}
           onSave={handleSaveCard}
           onDelete={handleDeleteCard}
           onDuplicate={
@@ -1331,7 +1333,7 @@ export function WorkItemPage({
 
       {/* Save Current View Dialog */}
       <Dialog open={isSaveViewOpen} onOpenChange={setIsSaveViewOpen}>
-        <DialogContent className="sm:max-w-md p-5 bg-background border-border shadow-lg">
+        <DialogContent className="sm:max-w-md p-5 bg-background border-border shadow-lg rounded-md">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold text-foreground">
               Save Current View
@@ -1369,7 +1371,7 @@ export function WorkItemPage({
                 size="sm"
                 onClick={() => setIsSaveViewOpen(false)}
                 disabled={isSavingCurrentView}
-                className="h-8 px-3 text-13 font-medium rounded-md cursor-pointer"
+                className="h-8 px-3 text-13 font-medium rounded-md text-foreground hover:bg-muted cursor-pointer"
               >
                 Cancel
               </Button>

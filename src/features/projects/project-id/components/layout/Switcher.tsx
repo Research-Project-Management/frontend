@@ -190,6 +190,11 @@ export function Switcher({
         <span className="font-medium text-13 tracking-tight text-foreground truncate">
           {moduleTitle}
         </span>
+        {typeof count === 'number' && (
+          <span className="inline-flex items-center justify-center px-2 py-0.5 min-w-[20px] h-5 rounded-full text-11 font-mono font-medium bg-sky-500/15 text-sky-500 dark:bg-sky-500/20 dark:text-sky-400">
+            {count}
+          </span>
+        )}
       </div>
 
       {/* 3. Optional Breadcrumb Children (e.g. Cycle context or active view context) */}

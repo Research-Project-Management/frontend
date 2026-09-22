@@ -224,6 +224,7 @@ export function Topbar({
         project={project}
         moduleTitle={title}
         moduleIcon={HeaderIcon}
+        count={count}
       >
         {/* Cycle Context Selector (if in cycle mode and cycles module enabled) */}
         {isCyclesEnabled && cycleId && currentCycle && cycles.length > 0 && (

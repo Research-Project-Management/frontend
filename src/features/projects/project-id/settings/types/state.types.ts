@@ -83,9 +83,9 @@ export const STATE_GROUP_CONFIG: Record<
   },
   cancelled: {
     label: "Cancelled",
-    defaultColor: "#8A9093",
+    defaultColor: "#EF4444",
     defaultIcon: "x-circle",
-    description: "Abandoned, duplicate, or rejected items",
+    description: "Work items that are abandoned, rejected, or won’t be done.",
   },
 };
 
@@ -94,7 +94,7 @@ export const DEFAULT_WORK_ITEM_STATES: WorkItemState[] = [
   { id: 'todo', name: 'Todo', title: 'Todo', group: 'unstarted', color: '#525866', accentColor: '#525866', icon: 'circle', sequence: 1, isDefault: false },
   { id: 'in_progress', name: 'In Progress', title: 'In Progress', group: 'started', color: '#EAB308', accentColor: '#EAB308', icon: 'circle-dot', sequence: 2, isDefault: false },
   { id: 'done', name: 'Done', title: 'Done', group: 'completed', color: '#10B981', accentColor: '#10B981', icon: 'check-circle', sequence: 3, isDefault: false },
-  { id: 'cancelled', name: 'Cancelled', title: 'Cancelled', group: 'cancelled', color: '#8A9093', accentColor: '#8A9093', icon: 'x-circle', sequence: 4, isDefault: false },
+  { id: 'cancelled', name: 'Cancelled', title: 'Cancelled', group: 'cancelled', color: '#EF4444', accentColor: '#EF4444', icon: 'x-circle', sequence: 4, isDefault: false },
 ];
 
 export function resolveStateTitle(state?: Partial<WorkItemState> | null): string {

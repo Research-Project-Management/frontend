@@ -204,7 +204,7 @@ function getDefaultColorForIcon(icon: string): string {
       return '#10B981';
     case 'x-circle':
     case 'cancelled':
-      return '#8A9093';
+      return '#EF4444';
     default:
       return '#8A9093';
   }

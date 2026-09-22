@@ -1248,9 +1248,9 @@ function TimelineCanvas({
     <div
       ref={canvasScrollRef}
       onScroll={onScroll}
-      className="flex-1 overflow-auto select-none bg-background relative"
+      className="flex-1 overflow-auto select-none bg-background relative h-full"
     >
-      <div style={{ width: `${totalWidth}px` }} className="min-w-full relative flex flex-col">
+      <div style={{ width: `${totalWidth}px` }} className="min-w-full min-h-full relative flex flex-col">
         {/* Sticky Dual-tier Header */}
         <div
           className="sticky top-0 z-30 bg-background border-b border-border select-none shrink-0"
@@ -1269,7 +1269,7 @@ function TimelineCanvas({
                     {group.label}
                   </span>
                   {group.isCurrent && (
-                    <span className="bg-primary text-primary-foreground text-10 font-medium px-1.5 py-0.5 rounded-full shrink-0">
+                    <span className="bg-primary text-primary-foreground text-10 font-medium px-1.5 py-0.5 rounded-md shrink-0">
                       Current
                     </span>
                   )}
@@ -1291,11 +1291,14 @@ function TimelineCanvas({
                   <div
                     key={col.id}
                     style={{ width: `${col.width}px` }}
-                    className="shrink-0 flex items-center justify-center border-r border-border text-xs font-normal transition-colors"
+                    className={cn(
+                      "shrink-0 flex items-center justify-center border-r border-border text-xs font-normal transition-colors",
+                      col.isWeekend && "bg-muted/10"
+                    )}
                   >
                     {col.isCurrent ? (
                       <div className="flex items-center">
-                        <span className="bg-primary text-primary-foreground font-medium text-xs rounded-sm px-1 min-w-[20px] h-[18px] inline-flex items-center justify-center mr-1">
+                        <span className="bg-primary text-primary-foreground font-medium text-xs rounded-md px-1 min-w-[20px] h-[18px] inline-flex items-center justify-center mr-1">
                           {col.primaryLabel}
                         </span>
                         <span className="text-primary font-medium text-xs">
@@ -1305,7 +1308,7 @@ function TimelineCanvas({
                     ) : (
                       <div className="flex items-center gap-1 text-foreground">
                         <span className="font-normal text-xs">{col.primaryLabel}</span>
-                        <span className="text-muted-foreground text-xs font-normal">
+                        <span className="text-foreground text-xs font-normal">
                           {col.secondaryLabel}
                         </span>
                       </div>
@@ -1330,11 +1333,11 @@ function TimelineCanvas({
                       {col.primaryLabel}
                     </span>
                     {col.isCurrent ? (
-                      <span className="bg-primary text-primary-foreground font-medium text-xs px-1.5 py-0.5 rounded-sm">
+                      <span className="bg-primary text-primary-foreground font-medium text-xs px-1.5 py-0.5 rounded-md">
                         {col.secondaryLabel}
                       </span>
                     ) : (
-                      <span className="text-muted-foreground text-xs font-normal">
+                      <span className="text-foreground text-xs font-normal">
                         {col.secondaryLabel}
                       </span>
                     )}
@@ -1350,7 +1353,7 @@ function TimelineCanvas({
                   className="shrink-0 px-2 flex items-center justify-center border-r border-border text-xs transition-colors"
                 >
                   {col.isCurrent ? (
-                    <span className="bg-[#0070F3] text-white font-medium text-xs px-2 py-0.5 rounded-[4px]">
+                    <span className="bg-primary text-primary-foreground font-medium text-xs px-2 py-0.5 rounded-md">
                       {col.primaryLabel}
                     </span>
                   ) : (
@@ -1365,14 +1368,17 @@ function TimelineCanvas({
         </div>
 
         {/* Grid Body */}
-        <div className="relative flex-1">
+        <div className="relative flex-1 min-h-[calc(100vh-140px)]">
           {/* Vertical Grid Lines */}
           <div className="absolute inset-0 flex pointer-events-none z-0">
             {timelineColumns.map((col) => (
               <div
                 key={`grid-${col.id}`}
                 style={{ width: `${col.width}px` }}
-                className="shrink-0 border-r border-border/40 h-full"
+                className={cn(
+                  "shrink-0 border-r border-border h-full",
+                  col.isWeekend && "bg-muted/10"
+                )}
               />
             ))}
           </div>
@@ -1382,7 +1388,7 @@ function TimelineCanvas({
             <div
               aria-hidden="true"
               style={{ left: `${currentColLeft}px`, width: `${currentColWidth}px` }}
-              className="absolute top-0 bottom-0 bg-[#0070F3]/10 dark:bg-[#0070F3]/15 pointer-events-none z-0"
+              className="absolute top-0 bottom-0 bg-primary/10 dark:bg-primary/15 border-x border-primary/25 pointer-events-none z-0"
             />
           )}
 
@@ -1492,12 +1498,6 @@ function TimelineCanvas({
               );
             })}
           </div>
-
-          {/* Bottom spacer row matching sidebar's "+ New work item" */}
-          <div
-            style={{ height: `${ROW_HEIGHT}px` }}
-            className="border-t border-border relative z-10 bg-background"
-          />
         </div>
       </div>
     </div>

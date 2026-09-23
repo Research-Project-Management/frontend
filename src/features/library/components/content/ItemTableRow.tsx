@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Paperclip,
   StickyNote,
@@ -32,6 +32,7 @@ export interface ItemTableRowProps {
   onRestore?: (id: string) => void;
   onPurge?: (id: string) => void;
   onMoveToCollection?: (itemId: string, collectionId: string) => void;
+  onDetachFromCollection?: (id: string) => void;
 }
 
 // Formatted creator string
@@ -66,8 +67,12 @@ export const ItemTableRow = React.memo(function ItemTableRow({
   onRestore,
   onPurge,
   onMoveToCollection,
+  onDetachFromCollection,
 }: ItemTableRowProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentQuery = searchParams.get('q');
+  const qParam = currentQuery ? `?q=${encodeURIComponent(currentQuery)}` : '';
 
   // Granular Selectors - 60 FPS Re-render Barrier (True O(1))
   const isSelected = useIsItemSelected(item.id);
@@ -135,6 +140,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
       onRestore={onRestore ? handleRestoreContextMenu : undefined}
       onPurge={onPurge ? handlePurgeContextMenu : undefined}
       onMoveToCollection={onMoveToCollection ? handleMoveToCollection : undefined}
+      onDetachFromCollection={onDetachFromCollection ? () => onDetachFromCollection(item.id) : undefined}
     >
       <tr
         draggable={true}
@@ -148,14 +154,14 @@ export const ItemTableRow = React.memo(function ItemTableRow({
             : [item.id];
           e.dataTransfer.setData(
             'application/x-flux-items',
-            JSON.stringify(idsToDrag),
+            JSON.stringify({ ids: idsToDrag }),
           );
           e.dataTransfer.effectAllowed = 'move';
         }}
         onClick={(e) => onRowClick(e, item, index)}
         onDoubleClick={() => {
           if (!isTrash) {
-            router.push(`/library/papers/${item.id}`);
+            router.push(`/library/papers/${item.id}${qParam}`);
           }
         }}
         className={cn(

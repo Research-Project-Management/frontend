@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { editor } from 'monaco-editor';
 import {
   collaborationService,
   type CollaborationPresence,
@@ -11,7 +10,6 @@ import {
 import { pageKeys } from '@/features/editor/hooks/use-core';
 import { commentKeys } from '@/features/editor/hooks/use-comment';
 import { suggestionKeys } from '@/features/editor/hooks/use-suggestion';
-import { RemoteCursorManager, type RemoteUserCursor } from '../monaco-remote-cursor';
 import * as Y from 'yjs';
 import {
   YjsSocketIOProvider,
@@ -40,7 +38,6 @@ export function useEditorCollaborators({
   const [isDocumentLocked, setIsDocumentLocked] = useState(false);
   const [lockedBy, setLockedBy] = useState<string | null>(null);
 
-  const cursorManagerRef = useRef<RemoteCursorManager>(new RemoteCursorManager());
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pageIdRef = useRef(pageId);
   pageIdRef.current = pageId;
@@ -51,13 +48,6 @@ export function useEditorCollaborators({
   const [awareness, setAwareness] = useState<any | null>(null);
   const providerRef = useRef<YjsSocketIOProvider | null>(null);
   const yDocRef = useRef<Y.Doc | null>(null);
-
-  // Initialize RemoteCursorManager with editor instance if available
-  useEffect(() => {
-    if (editorRef?.current) {
-      cursorManagerRef.current.setEditor(editorRef.current, monacoRef?.current);
-    }
-  }, [editorRef, monacoRef]);
 
   // Initialize Yjs CRDT & Provider for concurrent conflict-free collaboration
   useEffect(() => {
@@ -133,14 +123,6 @@ export function useEditorCollaborators({
         const uid = u.id || u.userId;
         if (uid && uid !== currentUserId) {
           map.set(uid, u);
-          if (u.cursor) {
-            cursorManagerRef.current.updateUserCursor({
-              id: uid,
-              name: u.name,
-              color: u.color || '#3b82f6',
-              cursor: u.cursor,
-            });
-          }
         }
       });
       setCollaborators(map);
@@ -170,14 +152,6 @@ export function useEditorCollaborators({
               next.set(uid, u);
               return next;
             });
-            if (u.cursor) {
-              cursorManagerRef.current.updateUserCursor({
-                id: uid,
-                name: u.name,
-                color: u.color || '#3b82f6',
-                cursor: u.cursor,
-              });
-            }
           }
         } else if (type === 'cursor-updated' && event.user) {
           const u = event.user;
@@ -193,15 +167,6 @@ export function useEditorCollaborators({
               });
               return next;
             });
-
-            if (u.cursor) {
-              cursorManagerRef.current.updateUserCursor({
-                id: uid,
-                name: u.name,
-                color: u.color || '#3b82f6',
-                cursor: u.cursor,
-              });
-            }
           }
         } else if (type === 'user-left') {
           const uid = event.userId;
@@ -211,7 +176,6 @@ export function useEditorCollaborators({
               next.delete(uid);
               return next;
             });
-            cursorManagerRef.current.removeUserCursor(uid);
           }
         } else if (type.startsWith('suggestion')) {
           queryClient.invalidateQueries({ queryKey: suggestionKeys.byPage(pageId) });
@@ -276,50 +240,17 @@ export function useEditorCollaborators({
   // Cleanup on unmount or page change
   useEffect(() => {
     return () => {
-      cursorManagerRef.current.clearAll();
       if (pageId) {
         collaborationService.leaveRoom(pageId);
       }
     };
   }, [pageId]);
 
-  // Bind local cursor movement to broadcast
-  const bindMonacoCursorListeners = useCallback(
-    (ed: editor.IStandaloneCodeEditor) => {
-      const posDisposable = ed.onDidChangeCursorPosition((e) => {
-        if (debounceTimerRef.current) {
-          clearTimeout(debounceTimerRef.current);
-        }
-
-        debounceTimerRef.current = setTimeout(() => {
-          const sel = ed.getSelection();
-          const targetPageId = pageIdRef.current;
-          if (!targetPageId) return;
-
-          collaborationService.sendHeartbeat(targetPageId, {
-            line: e.position.lineNumber,
-            column: e.position.column,
-            selection: sel && !sel.isEmpty() ? {
-              startLineNumber: sel.startLineNumber,
-              startColumn: sel.startColumn,
-              endLineNumber: sel.endLineNumber,
-              endColumn: sel.endColumn,
-            } : undefined,
-          });
-        }, 150);
-      });
-
-      return {
-        dispose: () => {
-          posDisposable.dispose();
-          if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
-          }
-        },
-      };
-    },
-    [pageId],
-  );
+  const bindMonacoCursorListeners = useCallback(() => {
+    return {
+      dispose: () => {},
+    };
+  }, []);
 
   const activeCollaborators = Array.from(collaborators.values());
   const isRealtimeActive = connectionStatus === 'connected' && isSynced;

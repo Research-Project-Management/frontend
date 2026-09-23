@@ -1,9 +1,7 @@
 /**
  * adapters/index.ts
  *
- * Public API barrier for Editor Adapters.
+ * Public API barrier for Editor Adapters (Standardized on CodeMirror 6).
  */
 
-export * from './monaco/monaco.adapter';
-export * from './tiptap/tiptap.adapter';
 export * from './codemirror/codemirror.adapter';

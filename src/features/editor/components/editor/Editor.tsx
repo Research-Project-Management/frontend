@@ -35,7 +35,6 @@ import { cn } from '@/shared/lib/utils';
 import dynamic from 'next/dynamic';
 
 // Subcomponents & internal seams
-import './monaco-themes';
 import Format from './Format';
 import UnifiedCodeMirrorEditor from './UnifiedCodeMirrorEditor';
 import { EditorModeSwitcher } from './subcomponents/EditorModeSwitcher';
@@ -56,7 +55,6 @@ import { useEditorEmacs } from './hooks/use-editor-emacs';
 import { useSpellChecker } from './hooks/use-spell-checker';
 import { useSmartPaste } from './hooks/use-smart-paste';
 
-import { useMonacoDiagnostics } from '../../sub-features/code-editor/hooks/use-monaco-diagnostics';
 import { EditorFloatingOverlay } from '../../sub-features/code-editor/ui/EditorFloatingOverlay';
 import { EditorModals } from '../../sub-features/code-editor/ui/EditorModals';
 import { useEditorInstance } from '../../core/context/editor-instance.context';
@@ -69,7 +67,7 @@ interface EditorProps {
 type CtxPos = { x: number; y: number };
 
 export default function Editor({ page }: EditorProps) {
-  const { setEngine } = useEditorInstance();
+  const { engine, setEngine } = useEditorInstance();
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
 
@@ -88,7 +86,7 @@ export default function Editor({ page }: EditorProps) {
 
   const { resolvedTheme } = useTheme();
 
-  const activeMonacoTheme = useMemo(() => {
+  const activeEditorTheme = useMemo(() => {
     if (!editorTheme || editorTheme === 'auto') {
       return resolvedTheme === 'dark' ? 'latex-dark' : 'latex-light';
     }
@@ -99,14 +97,14 @@ export default function Editor({ page }: EditorProps) {
 
   const isDarkTheme = useMemo(() => {
     return (
-      activeMonacoTheme === 'latex-dark' ||
-      activeMonacoTheme === 'dracula' ||
-      activeMonacoTheme === 'monokai' ||
-      activeMonacoTheme === 'solarized-dark' ||
-      activeMonacoTheme === 'github-dark' ||
-      activeMonacoTheme === 'cobalt'
+      activeEditorTheme === 'latex-dark' ||
+      activeEditorTheme === 'dracula' ||
+      activeEditorTheme === 'monokai' ||
+      activeEditorTheme === 'solarized-dark' ||
+      activeEditorTheme === 'github-dark' ||
+      activeEditorTheme === 'cobalt'
     );
-  }, [activeMonacoTheme]);
+  }, [activeEditorTheme]);
 
   const { user } = useAuth();
   const isReviewerOnly = user?.role?.toLowerCase() === 'reviewer';
@@ -184,19 +182,10 @@ export default function Editor({ page }: EditorProps) {
   const rootPageId = (page as any)?.parentPageId || page?.id || null;
 
   const handleInsertWizardSnippet = useCallback((snippet: string) => {
-    const ed = editorRef.current;
-    if (!ed) return;
-    const sel = ed.getSelection();
-    if (!sel) return;
-    ed.executeEdits('wizard-insert', [
-      {
-        range: sel,
-        text: snippet,
-        forceMoveMarkers: true,
-      },
-    ]);
-    ed.focus();
-  }, [editorRef]);
+    if (engine) {
+      engine.insertText(snippet);
+    }
+  }, [engine]);
 
   useEffect(() => {
     const unsubTable = EditorEventBus.on('flux:open-table-wizard', () => {
@@ -276,13 +265,6 @@ export default function Editor({ page }: EditorProps) {
     editorMounted,
   });
 
-  // Compiler Diagnostics Markers
-  useMonacoDiagnostics({
-    editorRef,
-    monacoRef,
-    editorMounted,
-    page,
-  });
 
   const handleAcceptSuggestion = useCallback(async (s: PageSuggestion) => {
     try {
@@ -657,7 +639,7 @@ export default function Editor({ page }: EditorProps) {
               disabled.
             </span>
           </div>
-          <span className="text-11 font-mono font-medium bg-amber-500/20 px-1.5 py-0.5 rounded-sm text-amber-800 dark:text-amber-200 uppercase tracking-wide">
+          <span className="text-11 font-mono font-medium bg-amber-500/20 px-1.5 py-0.5 rounded-sm text-amber-800 dark:text-amber-200 tracking-normal">
             Read Only
           </span>
         </div>
@@ -768,36 +750,7 @@ export default function Editor({ page }: EditorProps) {
           />
         </div>
 
-        <style>{`
-          .monaco-editor .current-line { border-radius: 0 !important; border: none !important; }
-          .monaco-editor .margin { background-color: #f0f0f0 !important; }
-          .dark .monaco-editor .margin { background-color: #0f172a !important; }
-          .monaco-editor .margin-view-overlays .current-line,
-          .monaco-editor .margin-view-overlays .current-line-margin { background-color: #dcdcdc !important; border: none !important; }
-          .dark .monaco-editor .margin-view-overlays .current-line,
-          .dark .monaco-editor .margin-view-overlays .current-line-margin { background-color: #334155 !important; border: none !important; }
-          .monaco-editor .view-overlays .current-line { background-color: #ededed !important; border: none !important; }
-          .dark .monaco-editor .view-overlays .current-line { background-color: #1e293b !important; border: none !important; }
-          .monaco-editor .line-numbers.active-line-number { color: #1e293b !important; font-weight: 600 !important; }
-          .dark .monaco-editor .line-numbers.active-line-number { color: #93c5fd !important; }
-          .monaco-editor .scrollbar.vertical,
-          .monaco-editor .scrollbar.horizontal { opacity: 0 !important; transition: opacity 0.25s ease-in-out !important; }
-          .monaco-editor.editor-scrolling .scrollbar.vertical,
-          .monaco-editor.editor-scrolling .scrollbar.horizontal,
-          .monaco-editor .scrollbar.vertical:hover,
-          .monaco-editor .scrollbar.horizontal:hover,
-          .monaco-editor .scrollbar.vertical.active,
-          .monaco-editor .scrollbar.horizontal.active,
-          .monaco-editor .scrollbar.vertical.visible,
-          .monaco-editor .scrollbar.horizontal.visible { opacity: 1 !important; }
-          .monaco-editor .scrollbar .slider { border-radius: 4px !important; background: rgba(100, 116, 139, 0.4) !important; }
-          .monaco-editor .scrollbar .slider:hover { background: rgba(100, 116, 139, 0.6) !important; }
-          .monaco-editor .scrollbar .slider.active { background: rgba(100, 116, 139, 0.8) !important; }
-          .monaco-editor .scrollbar .arrow-top,
-          .monaco-editor .scrollbar .arrow-bottom,
-          .monaco-editor .scrollbar .arrow-left,
-          .monaco-editor .scrollbar .arrow-right { display: none !important; }
-        `}</style>
+
 
         {/* Monaco Vim status bar */}
         {keybinding === 'vim' && (
@@ -824,14 +777,14 @@ export default function Editor({ page }: EditorProps) {
             aria-label="Emacs mode status bar"
           >
             <div className="flex items-center gap-2">
-              <span className="px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-10 font-semibold uppercase tracking-wider">
+              <span className="px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-10 font-semibold tracking-normal">
                 Emacs
               </span>
               <span className="text-foreground font-medium text-xs">
                 {emacsStatus || 'Ready'}
               </span>
             </div>
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-11 text-muted-foreground">
               C-x C-s to save · C-g to quit
             </span>
           </div>

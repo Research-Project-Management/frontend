@@ -18,6 +18,11 @@ import {
   File,
   FileUp,
   Search,
+  Mic,
+  Plus,
+  HardDrive,
+  BookOpen,
+  Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -27,10 +32,17 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { uploadDocument } from '../../services/chat.service';
+import { LibraryPickerModal } from './LibraryPickerModal';
+import { StoragePickerModal } from './StoragePickerModal';
 
 const ACCEPTED_TYPES =
   '.pdf,.doc,.docx,.txt,.md,.csv,.xls,.xlsx,.png,.jpg,.jpeg,.json,.ts,.tsx,.js,.py';
@@ -119,20 +131,28 @@ export interface SendMessageOptions {
 interface CompanionInputProps {
   currentProjectId?: string;
   onSend: (text: string, options?: SendMessageOptions) => void;
-  onStop: () => void;
-  isStreaming: boolean;
+  onStop?: () => void;
+  isStreaming?: boolean;
   initialText?: string;
+  placeholder?: string;
+  className?: string;
+  showDisclaimer?: boolean;
 }
 
 export function CompanionInput({
   currentProjectId,
   onSend,
-  onStop,
-  isStreaming,
+  onStop = () => {},
+  isStreaming = false,
   initialText = '',
+  placeholder = 'How can I help you today?',
+  className = 'px-3 pb-3 pt-1 bg-background',
+  showDisclaimer = true,
 }: CompanionInputProps) {
   const [text, setText] = useState(initialText);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false);
+  const [isStorageModalOpen, setIsStorageModalOpen] = useState(false);
   const [scopeOpen, setScopeOpen] = useState(false);
   const [projectSearch, setProjectSearch] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
@@ -325,20 +345,20 @@ export function CompanionInput({
   const currentProjectName = currentProjectObj?.name || 'None';
 
   return (
-    <div className='px-3 pb-3 pt-1 bg-background shrink-0 select-none'>
+    <div className={cn('w-full shrink-0 select-none', className)}>
       <div
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         className={cn(
-          'relative flex flex-col rounded-md border bg-background focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/20 transition-all p-2.5 shadow-2xs',
-          isDragging ? 'border-primary/70 ring-2 ring-primary/20 bg-primary/[0.02]' : 'border-border'
+          'relative flex flex-col rounded-lg border border-border bg-background shadow-2xs transition-all p-2.5',
+          isDragging && 'border-primary/70 ring-2 ring-primary/20 bg-primary/[0.02]'
         )}
       >
         {/* Drag & Drop Visual Overlay */}
         {isDragging && (
-          <div className='absolute inset-0 z-30 rounded-md bg-background/95 backdrop-blur-xs border-2 border-dashed border-primary flex flex-col items-center justify-center gap-1.5 pointer-events-none'>
+          <div className='absolute inset-0 z-30 rounded-lg bg-background/95 backdrop-blur-xs border-2 border-dashed border-primary flex flex-col items-center justify-center gap-1.5 pointer-events-none'>
             <FileUp className='size-5 text-foreground transition-transform duration-300 ease-out animate-pulse motion-reduce:animate-none' />
             <p className='text-12 font-medium text-foreground'>Drop files to attach to chat</p>
           </div>
@@ -355,7 +375,7 @@ export function CompanionInput({
         />
 
         {/* ── Top Bar: Project Scope Selector ────── */}
-        <div className='flex items-center pb-1.5 mb-1 border-b border-border/40'>
+        <div className='flex items-center pb-1 mb-0.5'>
           <Popover open={scopeOpen} onOpenChange={setScopeOpen}>
             <PopoverTrigger asChild>
               <button
@@ -523,97 +543,189 @@ export function CompanionInput({
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={isStreaming}
-          placeholder='Ask Flux AI... (Shift+Enter for newline)'
+          placeholder={placeholder}
           rows={1}
           className='w-full resize-none bg-transparent text-13 text-foreground placeholder:text-muted-foreground outline-none leading-relaxed min-h-[44px] max-h-[140px] px-1 py-0.5'
         />
 
         {/* ── Bottom Action Toolbar ─────────────────────────────────────────── */}
         <div className='flex items-center justify-between pt-1 mt-0.5'>
-          {/* Left tools: Attach file, Web search */}
+          {/* Left tools: Plus menu containing upload, storage import, library import, web search */}
           <div className='flex items-center gap-1'>
-            {/* Attach File Button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <button
                   type='button'
+                  disabled={isStreaming}
+                  className={cn(
+                    'relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                    isStreaming && 'opacity-40 cursor-not-allowed'
+                  )}
+                  aria-label='Add attachment or toggle features'
+                  title='Add attachment or toggle web search'
+                >
+                  <Plus className='size-4 shrink-0 text-foreground' />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align='start'
+                side='top'
+                sideOffset={8}
+                className='w-56 p-1 rounded-lg shadow-lg border border-border bg-popover text-foreground select-none space-y-0.5'
+              >
+                {/* 1. Upload from Device */}
+                <DropdownMenuItem
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={isStreaming}
-                  className={cn(
-                    'flex size-7 items-center justify-center rounded-md transition-colors outline-none',
-                    isStreaming
-                      ? 'opacity-40 cursor-not-allowed'
-                      : 'hover:bg-muted cursor-pointer'
-                  )}
-                  aria-label='Attach file'
+                  className='flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground'
                 >
-                  <Paperclip className='size-3.5 text-foreground shrink-0' />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side='top' sideOffset={4}>
-                Attach file (PDF, Docs, Code, Spreadsheets)
-              </TooltipContent>
-            </Tooltip>
+                  <Upload className='size-4 text-foreground shrink-0' />
+                  <span>Upload from device</span>
+                </DropdownMenuItem>
 
-            {/* Web Search Toggle Button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type='button'
-                  onClick={() => setWebSearchEnabled((v) => !v)}
-                  disabled={isStreaming}
-                  className={cn(
-                    'flex h-7 items-center gap-1.5 px-2 rounded-md transition-colors outline-none text-11 font-medium',
-                    isStreaming
-                      ? 'opacity-40 cursor-not-allowed border border-transparent'
-                      : webSearchEnabled
-                      ? 'bg-muted border border-border text-foreground cursor-pointer'
-                      : 'hover:bg-muted text-foreground border border-transparent cursor-pointer'
-                  )}
-                  aria-label='Toggle Web Search'
+                {/* 2. Upload from Storage */}
+                <DropdownMenuItem
+                  onClick={() => setIsStorageModalOpen(true)}
+                  className='flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground'
                 >
-                  <Globe className='size-3.5 text-foreground shrink-0' />
-                  <span className='text-foreground'>Web</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side='top' sideOffset={4}>
-                {webSearchEnabled
-                  ? 'Web search: Enabled (Click to disable)'
-                  : 'Web search: Disabled (Click to enable)'}
-              </TooltipContent>
-            </Tooltip>
+                  <HardDrive className='size-4 text-foreground shrink-0' />
+                  <span>Upload from storage</span>
+                </DropdownMenuItem>
+
+                {/* 3. Import from Library */}
+                <DropdownMenuItem
+                  onClick={() => setIsLibraryModalOpen(true)}
+                  className='flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground'
+                >
+                  <BookOpen className='size-4 text-foreground shrink-0' />
+                  <span>Import from Library</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className='my-1' />
+
+                {/* 4. Web Search Toggle inside the Plus menu */}
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setWebSearchEnabled(!webSearchEnabled);
+                  }}
+                  className='flex items-center justify-between px-2.5 py-1.5 rounded-md hover:bg-muted transition-colors cursor-pointer select-none text-foreground text-13 font-normal'
+                >
+                  <div className='flex items-center gap-2.5 min-w-0'>
+                    <Globe className='size-4 text-foreground shrink-0' />
+                    <span>Web search</span>
+                  </div>
+                  <div
+                    className={cn(
+                      'relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
+                      webSearchEnabled ? 'bg-primary' : 'bg-muted-foreground/30'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'pointer-events-none inline-block size-3 rounded-full bg-white shadow-xs transform ring-0 transition duration-200 ease-in-out',
+                        webSearchEnabled ? 'translate-x-3' : 'translate-x-0'
+                      )}
+                    />
+                  </div>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
-          {/* Right tool: Send or Stop */}
-          {isStreaming ? (
-            <button
-              type='button'
-              onClick={onStop}
-              className='flex size-7 items-center justify-center rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all active:scale-95 shadow-2xs cursor-pointer'
-              title='Stop generating'
-              aria-label='Stop generating'
-            >
-              <Square className='size-3 fill-current' />
-            </button>
-          ) : (
-            <button
-              type='button'
-              onClick={handleSubmit}
-              disabled={!text.trim() && attachedFiles.length === 0}
-              className={cn(
-                'flex size-7 items-center justify-center rounded-md transition-all shadow-2xs cursor-pointer',
-                text.trim() || attachedFiles.length > 0
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95'
-                  : 'bg-muted text-muted-foreground/40 cursor-not-allowed'
-              )}
-              title='Send message'
-              aria-label='Send message'
-            >
-              <ArrowUp className='size-3.5 stroke-[2.5]' />
-            </button>
-          )}
+          {/* Right tool: Mic, Send or Stop */}
+          <div className='flex items-center gap-1.5'>
+            {/* Voice Input Mic button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type='button'
+                  onClick={() => {
+                    toast.info('Voice input coming soon');
+                  }}
+                  disabled={isStreaming}
+                  className='flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none'
+                  aria-label='Voice input'
+                >
+                  <Mic className='size-3.5 shrink-0 text-foreground' />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side='top' sideOffset={4}>
+                Voice input
+              </TooltipContent>
+            </Tooltip>
+
+            {isStreaming ? (
+              <button
+                type='button'
+                onClick={onStop}
+                className='flex size-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all active:scale-95 shadow-2xs cursor-pointer'
+                title='Stop generating'
+                aria-label='Stop generating'
+              >
+                <Square className='size-3 fill-current' />
+              </button>
+            ) : (
+              <button
+                type='button'
+                onClick={handleSubmit}
+                disabled={!text.trim() && attachedFiles.length === 0}
+                className='flex size-7 items-center justify-center rounded-full p-0 transition-all shadow-2xs cursor-pointer select-none bg-primary text-white hover:bg-primary-hover active:scale-95 disabled:cursor-not-allowed'
+                title='Send message'
+                aria-label='Send message'
+              >
+                <ArrowUp className='size-3.5 shrink-0 stroke-[2.5] translate-y-[1px]' />
+              </button>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Plane Style Disclaimer Footer */}
+      {showDisclaimer && (
+        <p className='text-11 text-muted-foreground/75 text-center select-none pt-2 pb-0.5 leading-tight'>
+          Flux AI can make mistakes, please double-check responses.
+        </p>
+      )}
+
+      {/* Library Picker Modal */}
+      <LibraryPickerModal
+        isOpen={isLibraryModalOpen}
+        onClose={() => setIsLibraryModalOpen(false)}
+        projectId={selectedProject}
+        onSelectItems={(items) => {
+          setAttachedFiles((prev) => {
+            const existingIds = new Set(prev.map((f) => f.id));
+            const fresh = items.filter((f) => !existingIds.has(f.id));
+            return [...prev, ...fresh];
+          });
+        }}
+        onSelectItem={(item) => {
+          setAttachedFiles((prev) => {
+            if (prev.some((f) => f.id === item.id)) return prev;
+            return [...prev, item];
+          });
+        }}
+      />
+
+      {/* Storage Picker Modal */}
+      <StoragePickerModal
+        isOpen={isStorageModalOpen}
+        onClose={() => setIsStorageModalOpen(false)}
+        projectId={selectedProject}
+        onSelectItems={(items) => {
+          setAttachedFiles((prev) => {
+            const existingIds = new Set(prev.map((f) => f.id));
+            const fresh = items.filter((f) => !existingIds.has(f.id));
+            return [...prev, ...fresh];
+          });
+        }}
+        onSelectItem={(item) => {
+          setAttachedFiles((prev) => {
+            if (prev.some((f) => f.id === item.id)) return prev;
+            return [...prev, item];
+          });
+        }}
+      />
     </div>
   );
 }

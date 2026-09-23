@@ -110,12 +110,12 @@ export function UploadConflictDialog({
                 {/* ZIP archive options */}
                 {isZip && (
                   <div className="ml-5 mt-0.5 flex flex-wrap items-center gap-1.5">
-                    <span className="text-[11px] text-muted-foreground">Archive:</span>
+                    <span className="text-11 text-muted-foreground">Archive:</span>
                     <button
                       type="button"
                       onClick={() => onToggleUnpackZip?.(i, true)}
                       className={cn(
-                        'h-5 px-2 rounded-sm text-[11px] font-medium border transition-colors cursor-pointer',
+                        'h-5 px-2 rounded-sm text-11 font-medium border transition-colors cursor-pointer',
                         item.unpackZip !== false
                           ? 'bg-primary text-primary-foreground border-primary'
                           : 'border-border text-foreground hover:bg-muted',
@@ -127,7 +127,7 @@ export function UploadConflictDialog({
                       type="button"
                       onClick={() => onToggleUnpackZip?.(i, false)}
                       className={cn(
-                        'h-5 px-2 rounded-sm text-[11px] font-medium border transition-colors cursor-pointer',
+                        'h-5 px-2 rounded-sm text-11 font-medium border transition-colors cursor-pointer',
                         item.unpackZip === false
                           ? 'bg-primary text-primary-foreground border-primary'
                           : 'border-border text-foreground hover:bg-muted',

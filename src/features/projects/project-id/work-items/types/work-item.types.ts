@@ -284,7 +284,7 @@ export const RELATION_TYPE_CONFIG: Record<
   relates_to: {
     label: "Relates to",
     description: "This issue is related to the other issue",
-    badgeColor: "text-blue-500 bg-blue-500/10 border-blue-500/20",
+    badgeColor: "text-primary bg-primary/10 border-primary/20",
   },
   duplicate_of: {
     label: "Duplicate of",

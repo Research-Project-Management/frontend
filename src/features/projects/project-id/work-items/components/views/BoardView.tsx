@@ -1144,7 +1144,7 @@ export function BoardView({
         id: c.id,
         title: c.name,
         color: '#3b82f6',
-        icon: <RotateCcw className="size-3.5 text-blue-500 shrink-0" />,
+        icon: <RotateCcw className="size-3.5 text-primary shrink-0" />,
       }));
       defs = [
         ...cycleLanes,

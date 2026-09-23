@@ -112,7 +112,7 @@ export function ProjectStatusCard({
             {currentUpdate && config && (
               <Badge
                 variant="outline"
-                className={`text-[11px] font-semibold gap-1 py-0.5 px-2 ${config.badgeClass}`}
+                className={`text-11 font-semibold gap-1 py-0.5 px-2 ${config.badgeClass}`}
               >
                 <config.icon className="size-3" />
                 {config.label}
@@ -164,11 +164,11 @@ export function ProjectStatusCard({
                     <span className="text-xs font-semibold text-foreground">
                       {config.label}
                     </span>
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-11 text-muted-foreground">
                       • {formatRelativeTime(currentUpdate.createdAt)}
                     </span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                  <p className="text-11 text-muted-foreground mt-0.5">
                     {config.sublabel}
                   </p>
                 </div>
@@ -181,7 +181,7 @@ export function ProjectStatusCard({
             </div>
 
             {/* Author Footer */}
-            <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[11px] text-muted-foreground">
+            <div className="flex items-center justify-between pt-1 border-t border-border/40 text-11 text-muted-foreground">
               <div className="flex items-center gap-1.5">
                 <div className="size-4 rounded-full bg-muted flex items-center justify-center overflow-hidden">
                   {currentUpdate.author.avatar ? (
@@ -212,7 +212,7 @@ export function ProjectStatusCard({
             <p className="text-xs font-medium text-foreground">
               No status updates yet
             </p>
-            <p className="text-[11px] text-muted-foreground max-w-xs mt-1">
+            <p className="text-11 text-muted-foreground max-w-xs mt-1">
               Keep collaborators and stakeholders informed about milestones, progress, and blockers.
             </p>
             <Button
@@ -230,7 +230,7 @@ export function ProjectStatusCard({
         {/* Historical Timeline (Collapsible) */}
         {showHistory && updatesList && updatesList.length > 0 && (
           <div className="flex flex-col gap-2 pt-2 border-t border-border/50">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <span className="text-11 font-semibold text-muted-foreground tracking-normal">
               Update Timeline History
             </span>
             <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1">
@@ -245,15 +245,15 @@ export function ProjectStatusCard({
                       <div className="flex items-center gap-2">
                         <Badge
                           variant="outline"
-                          className={`text-[10px] font-medium py-0 px-1.5 gap-1 ${itemConfig.badgeClass}`}
+                          className={`text-10 font-medium py-0 px-1.5 gap-1 ${itemConfig.badgeClass}`}
                         >
                           <itemConfig.icon className="size-2.5" />
                           {itemConfig.label}
                         </Badge>
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-10 text-muted-foreground">
                           {formatRelativeTime(item.createdAt)}
                         </span>
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-10 text-muted-foreground">
                           by {item.author.name || 'Member'}
                         </span>
                       </div>
@@ -266,7 +266,7 @@ export function ProjectStatusCard({
                         <Trash2 className="size-3" />
                       </Button>
                     </div>
-                    <p className="text-[11px] text-foreground/80 whitespace-pre-wrap">
+                    <p className="text-11 text-foreground/80 whitespace-pre-wrap">
                       {item.message}
                     </p>
                   </div>

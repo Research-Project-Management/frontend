@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { EditorState } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useDocumentEditorStore } from '@/features/editor/store/editor.store';
-import { MonacoEngineAdapter } from '@/features/editor/adapters/monaco/monaco.adapter';
+import { CodeMirrorEngineAdapter } from '@/features/editor/adapters/codemirror/codemirror.adapter';
 import { getPageChat, clearPageChat, streamEditorChat } from '@/features/ai/services/chat.service';
 
 describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {
@@ -40,67 +42,41 @@ describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {
     });
   });
 
-  describe('2. Monaco Editor Insertion & Replacement Bridge', () => {
-    it('should execute edits to insert generated LaTeX code at current cursor via MonacoEngineAdapter', () => {
-      const mockExecuteEdits = vi.fn();
-      const mockFocus = vi.fn();
-      const mockSelection = {
-        startLineNumber: 10,
-        startColumn: 1,
-        endLineNumber: 10,
-        endColumn: 1,
-      };
+  describe('2. CodeMirror Editor Insertion & Replacement Bridge', () => {
+    it('should execute edits to insert generated LaTeX code at current cursor via CodeMirrorEngineAdapter', () => {
+      const container = document.createElement('div');
+      const state = EditorState.create({
+        doc: '\\documentclass{article}\n\\begin{document}\n\n\\end{document}',
+      });
+      const view = new EditorView({ state, parent: container });
+      const adapter = new CodeMirrorEngineAdapter(view);
 
-      const mockEditor = {
-        getSelection: vi.fn().mockReturnValue(mockSelection),
-        executeEdits: mockExecuteEdits,
-        focus: mockFocus,
-        onDidChangeModelContent: vi.fn().mockReturnValue({ dispose: vi.fn() }),
-        onDidChangeCursorPosition: vi.fn().mockReturnValue({ dispose: vi.fn() }),
-      };
-
-      const adapter = new MonacoEngineAdapter(mockEditor as any, null as any);
+      // Position cursor at line 3 (offset 39)
+      view.dispatch({ selection: { anchor: 39 } });
       const generatedLatex = '\\section{Methodology}\nProposed novel approach...';
       adapter.insertText(generatedLatex);
 
-      expect(mockExecuteEdits).toHaveBeenCalledWith('toolbar-command', [
-        {
-          range: mockSelection,
-          text: generatedLatex,
-          forceMoveMarkers: true,
-        },
-      ]);
-      expect(mockFocus).toHaveBeenCalled();
+      expect(adapter.getContent()).toContain(generatedLatex);
+      view.destroy();
+      container.remove();
     });
 
-    it('should replace highlighted selection with updated LaTeX code via MonacoEngineAdapter', () => {
-      const mockExecuteEdits = vi.fn();
-      const mockRange = {
-        startLineNumber: 5,
-        startColumn: 1,
-        endLineNumber: 7,
-        endColumn: 20,
-      };
+    it('should replace highlighted selection with updated LaTeX code via CodeMirrorEngineAdapter', () => {
+      const container = document.createElement('div');
+      const state = EditorState.create({
+        doc: 'Initial draft content to be polished.',
+      });
+      const view = new EditorView({ state, parent: container });
+      const adapter = new CodeMirrorEngineAdapter(view);
 
-      const mockEditor = {
-        getSelection: vi.fn().mockReturnValue(mockRange),
-        executeEdits: mockExecuteEdits,
-        focus: vi.fn(),
-        onDidChangeModelContent: vi.fn().mockReturnValue({ dispose: vi.fn() }),
-        onDidChangeCursorPosition: vi.fn().mockReturnValue({ dispose: vi.fn() }),
-      };
-
-      const adapter = new MonacoEngineAdapter(mockEditor as any, null as any);
-      const polishedLatex = '\\textbf{Revised formal academic content.}';
+      // Select "Initial draft content" (offsets 0 to 21)
+      view.dispatch({ selection: { anchor: 0, head: 21 } });
+      const polishedLatex = '\\textbf{Revised formal academic content}';
       adapter.insertText(polishedLatex);
 
-      expect(mockExecuteEdits).toHaveBeenCalledWith('toolbar-command', [
-        {
-          range: mockRange,
-          text: polishedLatex,
-          forceMoveMarkers: true,
-        },
-      ]);
+      expect(adapter.getContent()).toBe('\\textbf{Revised formal academic content} to be polished.');
+      view.destroy();
+      container.remove();
     });
   });
 

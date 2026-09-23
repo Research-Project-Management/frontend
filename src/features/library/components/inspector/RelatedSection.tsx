@@ -13,7 +13,6 @@ import { useRelations, useViewItems, useCollections } from '../../data';
 import {
   Button,
   Checkbox,
-  Badge,
   Input,
   Select,
   SelectContent,
@@ -44,34 +43,6 @@ interface RelatedSectionProps {
   onAddOpenChange?: (open: boolean) => void;
   canEdit?: boolean;
 }
-
-const RELATION_TYPE_OPTIONS = [
-  { value: 'related', label: 'Related Work' },
-  { value: 'cites', label: 'Cites' },
-  { value: 'cited_by', label: 'Cited By' },
-  { value: 'is_preprint_of', label: 'Preprint Of' },
-  { value: 'is_published_version_of', label: 'Published Version Of' },
-  { value: 'extends', label: 'Extends' },
-  { value: 'replicates', label: 'Replicates' },
-  { value: 'supplements', label: 'Supplements' },
-  { value: 'uses_dataset', label: 'Uses Dataset' },
-  { value: 'rebuts', label: 'Rebuts' },
-  { value: 'survey_of', label: 'Survey Of' },
-];
-
-const RELATION_TYPE_LABELS: Record<string, string> = {
-  related: 'Related',
-  cites: 'Cites',
-  cited_by: 'Cited by',
-  is_preprint_of: 'Preprint of',
-  is_published_version_of: 'Published as',
-  extends: 'Extends',
-  replicates: 'Replicates',
-  supplements: 'Supplements',
-  uses_dataset: 'Uses dataset',
-  rebuts: 'Rebuts',
-  survey_of: 'Survey of',
-};
 
 export default function RelatedSection({
   paper,
@@ -112,7 +83,6 @@ export default function RelatedSection({
 
   // Modal State
   const [selectedTargetIds, setSelectedTargetIds] = useState<Set<string>>(new Set());
-  const [selectedRelationType, setSelectedRelationType] = useState<string>('related');
   const [selectedCollectionFilter, setSelectedCollectionFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -188,11 +158,10 @@ export default function RelatedSection({
     try {
       await link({
         targetItemIds: targets,
-        relationType: selectedRelationType,
+        relationType: 'related',
       });
 
       setSelectedTargetIds(new Set());
-      setSelectedRelationType('related');
       setSearchQuery('');
       setSelectedCollectionFilter('all');
       setModalOpen(false);
@@ -270,74 +239,57 @@ export default function RelatedSection({
       {/* Relations list */}
       {!isLoading && relatedList.length > 0 && (
         <div className="divide-y divide-border border border-border rounded-md overflow-hidden bg-transparent">
-          {relatedList.map((item) => {
-            const hasSemanticBadge =
-              item.relationType && item.relationType !== 'related';
-            const badgeLabel =
-              RELATION_TYPE_LABELS[item.relationType] || item.relationType;
-
-            return (
-              <div
-                key={item.id}
-                className="px-2.5 py-1.5 hover:bg-muted flex items-center justify-between gap-2 group cursor-pointer transition-colors"
-                onClick={() => onSelectPaper?.(item.id)}
-                title={item.title || 'Untitled Item'}
-              >
-                <div className="flex items-start gap-2 min-w-0 flex-1">
-                  <div className="size-4 shrink-0 flex items-center justify-center pt-0.5">
-                    <FileText className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-normal text-foreground break-words leading-snug text-12 group-hover:underline">
-                      {item.title || 'Untitled Item'}
-                    </p>
-                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      {(item.authors?.length || item.year) && (
-                        <span className="text-11 text-muted-foreground break-words leading-snug">
-                          {[item.authors?.join(', '), item.year].filter(Boolean).join(' • ')}
-                        </span>
-                      )}
-                      {hasSemanticBadge && (
-                        <Badge
-                          variant="outline"
-                          className="text-10 font-medium px-1.5 py-0.2 rounded border-border bg-muted text-muted-foreground shrink-0 leading-tight"
-                        >
-                          {badgeLabel}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
+          {relatedList.map((item) => (
+            <div
+              key={item.id}
+              className="px-2.5 py-1.5 hover:bg-muted flex items-center justify-between gap-2 group cursor-pointer transition-colors"
+              onClick={() => onSelectPaper?.(item.id)}
+              title={item.title || 'Untitled Item'}
+            >
+              <div className="flex items-start gap-2 min-w-0 flex-1">
+                <div className="size-4 shrink-0 flex items-center justify-center pt-0.5">
+                  <FileText className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                 </div>
-
-                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  {item.doi && (
-                    <a
-                      href={`https://doi.org/${encodeURIComponent(item.doi)}`}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="p-1 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors"
-                      title={`Open DOI: ${item.doi}`}
-                      aria-label="Open DOI"
-                    >
-                      <ExternalLink className="size-3.5 shrink-0" strokeWidth={1.5} />
-                    </a>
-                  )}
-
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={(e) => handleUnlink(item.id, e)}
-                      className="p-1 rounded-md text-foreground hover:bg-muted invisible group-hover:visible cursor-pointer transition-colors"
-                      title="Unlink item"
-                      aria-label="Unlink item"
-                    >
-                      <X className="size-3.5 shrink-0" strokeWidth={1.5} />
-                    </button>
+                <div className="min-w-0 flex-1">
+                  <p className="font-normal text-foreground break-words leading-snug text-12 group-hover:underline">
+                    {item.title || 'Untitled Item'}
+                  </p>
+                  {(item.authors?.length || item.year) && (
+                    <p className="text-11 text-muted-foreground break-words leading-snug mt-0.5">
+                      {[item.authors?.join(', '), item.year].filter(Boolean).join(' • ')}
+                    </p>
                   )}
                 </div>
               </div>
-            );
-          })}
+
+              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                {item.doi && (
+                  <a
+                    href={`https://doi.org/${encodeURIComponent(item.doi)}`}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="p-1 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors"
+                    title={`Open DOI: ${item.doi}`}
+                    aria-label="Open DOI"
+                  >
+                    <ExternalLink className="size-3.5 shrink-0" strokeWidth={1.5} />
+                  </a>
+                )}
+
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleUnlink(item.id, e)}
+                    className="p-1 rounded-md text-foreground hover:bg-muted invisible group-hover:visible cursor-pointer transition-colors"
+                    title="Unlink item"
+                    aria-label="Unlink item"
+                  >
+                    <X className="size-3.5 shrink-0" strokeWidth={1.5} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -355,10 +307,10 @@ export default function RelatedSection({
 
           {/* Controls Bar */}
           <div className="space-y-2 pt-0.5">
-            {/* Filter row: Search + Collection + Relation Type */}
+            {/* Filter row: Search + Collection */}
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
               {/* Search Bar */}
-              <div className="relative sm:col-span-6 flex items-center">
+              <div className="relative sm:col-span-8 flex items-center">
                 <Search className="absolute left-2.5 size-3.5 text-muted-foreground pointer-events-none shrink-0" strokeWidth={1.5} />
                 <Input
                   type="text"
@@ -370,7 +322,7 @@ export default function RelatedSection({
               </div>
 
               {/* Collection Filter */}
-              <div className="sm:col-span-3">
+              <div className="sm:col-span-4">
                 <Select
                   value={selectedCollectionFilter}
                   onValueChange={setSelectedCollectionFilter}
@@ -385,25 +337,6 @@ export default function RelatedSection({
                     {collections.map((col: any) => (
                       <SelectItem key={col.id} value={col.id} className="rounded-md text-12">
                         {col.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Relation Type Selector */}
-              <div className="sm:col-span-3">
-                <Select
-                  value={selectedRelationType}
-                  onValueChange={setSelectedRelationType}
-                >
-                  <SelectTrigger className="w-full h-8 text-12 rounded-md border-border bg-background text-foreground" title="Relationship type">
-                    <SelectValue placeholder="Relationship" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
-                    {RELATION_TYPE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value} className="rounded-md text-12">
-                        {opt.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

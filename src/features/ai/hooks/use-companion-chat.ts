@@ -25,6 +25,8 @@ export function useCompanionChat() {
     activeChatId,
     setActiveChatId,
     selectedModel,
+    pendingPrompt,
+    setPendingPrompt,
   } = useAiCompanionStore();
 
   // Extract current project ID from URL if inside a project
@@ -212,6 +214,20 @@ export function useCompanionChat() {
       setStreamContent('');
     }
   }, []);
+
+  // Listen for pendingPrompt sent from other components (e.g. Home page ChatAi)
+  useEffect(() => {
+    if (pendingPrompt && pendingPrompt.text && !isStreaming) {
+      const prompt = { ...pendingPrompt };
+      setPendingPrompt(null);
+      sendMessage(prompt.text, {
+        projectId: prompt.projectId,
+        attachedFiles: prompt.attachedFiles,
+        webSearchSites:
+          prompt.webSearchSites || (prompt.webSearch ? ['*'] : undefined),
+      });
+    }
+  }, [pendingPrompt, isStreaming, sendMessage, setPendingPrompt]);
 
   const startNewChat = useCallback(() => {
     abortRef.current?.abort();

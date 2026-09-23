@@ -1,7 +1,7 @@
 import { apiGet, apiPost } from "@/shared/lib/api";
 import { logger } from "@/shared/lib/utils";
 import type { FormattedCitation, CslStyle, ReferenceData } from '../../types/library.types';
-import { cleanDoi } from '../../domain';
+import { cleanDoi, isProjectScope } from '../../domain';
 
 export type { ReferenceData };
 
@@ -168,7 +168,7 @@ export const CitationService = {
     style: CslStyle = 'apa',
     index: number = 1,
   ) => {
-    const projectId = scopeId && scopeId !== 'personal' ? scopeId : undefined;
+    const projectId = isProjectScope(scopeId) ? scopeId : undefined;
     return apiGet<FormattedCitation>(
       `/api/v1/library/citation/items/${encodeURIComponent(itemId)}/citation`,
       { params: { style, index, ...(projectId ? { projectId } : {}) } },
@@ -184,7 +184,7 @@ export const CitationService = {
     itemIds: string[],
     style: CslStyle = 'apa',
   ) => {
-    const projectId = scopeId && scopeId !== 'personal' ? scopeId : undefined;
+    const projectId = isProjectScope(scopeId) ? scopeId : undefined;
     return apiPost<{
       style: CslStyle;
       total: number;

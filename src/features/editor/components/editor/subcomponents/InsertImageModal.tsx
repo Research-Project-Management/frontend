@@ -76,7 +76,7 @@ export function InsertImageModal({
               placeholder="figures/chart.png"
               className="h-8 text-xs font-mono"
             />
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-11 text-muted-foreground">
               Relative to the root LaTeX document (e.g. <code>figures/chart.png</code>).
             </p>
           </div>
@@ -149,7 +149,7 @@ export function InsertImageModal({
                 className="h-7 w-24 text-xs font-mono text-center"
               />
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-11 text-muted-foreground">
               Default <code>htbp</code> (Here, Top, Bottom, Page).
             </p>
           </div>

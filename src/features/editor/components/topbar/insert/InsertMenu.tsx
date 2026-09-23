@@ -58,7 +58,7 @@ export default function InsertMenu() {
         {/* Citation / Reference Search */}
         <MenubarItem onClick={() => EditorEventBus.emit('flux:open-citation-picker')} className="flex items-center justify-between gap-2">
           <span>Citation / Reference Search</span>
-          <span className="text-[10px] font-mono text-muted-foreground">Ctrl+Shift+K</span>
+          <span className="text-10 font-mono text-muted-foreground">Ctrl+Shift+K</span>
         </MenubarItem>
 
         {/* Link */}

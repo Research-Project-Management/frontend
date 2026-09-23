@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { editor } from 'monaco-editor';
+import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 import {
   Bold,
   BookOpen,
@@ -38,7 +38,7 @@ export interface MenuAction {
 }
 
 export interface UseEditorShortcutsOptions {
-  editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
+  editorRef?: React.MutableRefObject<any>;
   closeMenu: () => void;
   openRenameDialog: () => void;
   openCitationModal: () => void;
@@ -65,53 +65,38 @@ export function useEditorShortcuts({
   ctxEndLine,
   ctxSelText,
 }: UseEditorShortcutsOptions) {
+  const { engine } = useEditorInstance();
   const setPendingComment = useActionsStore((s) => s.setPendingComment);
 
   const trigger = (action: string) => {
-    editorRef.current?.trigger('ctx-menu', action, null);
-    editorRef.current?.focus();
+    if (action === 'undo') {
+      engine?.undo();
+    } else if (action === 'redo') {
+      engine?.redo();
+    }
     closeMenu();
   };
 
   const wrapSel = (before: string, after: string) => {
-    const ed = editorRef.current;
-    if (!ed) return;
-    const sel = ed.getSelection();
-    if (!sel) return;
-    const text = ed.getModel()?.getValueInRange(sel) ?? '';
-    ed.executeEdits('ctx-menu', [
-      { range: sel, text: `${before}${text}${after}`, forceMoveMarkers: true },
-    ]);
-    ed.focus();
+    if (engine) {
+      engine.wrapSelection(before, after);
+    }
     closeMenu();
   };
 
   const insertAt = (text: string) => {
-    const ed = editorRef.current;
-    if (!ed) return;
-    const sel = ed.getSelection();
-    if (!sel) return;
-    ed.executeEdits('ctx-menu', [{ range: sel, text, forceMoveMarkers: true }]);
-    ed.focus();
+    if (engine) {
+      engine.insertText(text);
+    }
     closeMenu();
   };
 
   const applyRename = (word: string, newName: string) => {
     const trimmed = newName.trim();
-    if (!trimmed || trimmed === word) return;
-    const ed = editorRef.current;
-    if (!ed) return;
-    const model = ed.getModel();
-    if (!model) return;
-    const wordSep = "`~!@#$%^&*()-=+[{]}\\|;:'\",./<>?";
-    const matches = model.findMatches(word, false, false, true, wordSep, false);
-    if (matches.length > 0) {
-      ed.executeEdits(
-        'rename',
-        matches.map((m) => ({ range: m.range, text: trimmed })),
-      );
-    }
-    ed.focus();
+    if (!trimmed || trimmed === word || !engine) return;
+    const content = engine.getContent();
+    const regex = new RegExp(`\\b${word}\\b`, 'g');
+    engine.setContent(content.replace(regex, trimmed));
   };
 
   const menuGroups: MenuAction[][] = useMemo(() => [

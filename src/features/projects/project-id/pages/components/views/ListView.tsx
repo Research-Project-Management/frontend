@@ -55,7 +55,7 @@ export function ListView({ pages, workspaceId }: ListViewProps) {
                       {(page.labels as any[])?.slice(0, 2).map((label: any) => (
                         <span
                           key={label.id ?? label}
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border shrink-0"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-10 font-medium border shrink-0"
                           style={{
                             backgroundColor: `${label.color ?? '#3b82f6'}15`,
                             borderColor: `${label.color ?? '#3b82f6'}35`,

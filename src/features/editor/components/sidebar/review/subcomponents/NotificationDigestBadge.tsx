@@ -81,7 +81,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
   const getEventIcon = (type: string) => {
     switch (type) {
       case 'mention':
-        return <AtSign className="w-3.5 h-3.5 text-blue-500 shrink-0" />;
+        return <AtSign className="w-3.5 h-3.5 text-primary shrink-0" />;
       case 'suggestion':
         return <GitPullRequest className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
       default:
@@ -174,7 +174,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
                     <span className="font-semibold text-foreground truncate">
                       {item.authorName}
                     </span>
-                    <span className="text-[10px] text-muted-foreground uppercase">
+                    <span className="text-10 text-muted-foreground uppercase">
                       {item.type}
                     </span>
                   </div>

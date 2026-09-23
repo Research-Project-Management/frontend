@@ -106,7 +106,7 @@ export const CompileButton = React.memo(function CompileButton({
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="start" className="w-56 text-xs">
-          <DropdownMenuLabel className="text-11 font-semibold text-muted-foreground uppercase tracking-wider">
+          <DropdownMenuLabel className="text-11 font-semibold text-muted-foreground tracking-normal">
             Compilation Mode
           </DropdownMenuLabel>
           <DropdownMenuItem
@@ -132,7 +132,7 @@ export const CompileButton = React.memo(function CompileButton({
 
           <DropdownMenuSeparator />
 
-          <DropdownMenuLabel className="text-11 font-semibold text-muted-foreground uppercase tracking-wider">
+          <DropdownMenuLabel className="text-11 font-semibold text-muted-foreground tracking-normal">
             TeX Engine
           </DropdownMenuLabel>
           {([

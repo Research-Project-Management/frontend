@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useLibraryUIStore } from '../../store/library-ui.store';
@@ -32,9 +33,11 @@ export interface ItemTableProps {
   displayOptions?: LibraryDisplayOptions;
   isTrash?: boolean;
   scopeId?: string;
+  collectionId?: string;
   onRestoreItems?: (ids: string[]) => void;
   onPermanentDeleteItems?: (ids: string[]) => void;
   onMoveToCollection?: (itemId: string, collectionId: string) => void;
+  onDetachItem?: (id: string) => void;
   onSortChange?: (columnKey: string, direction: 'asc' | 'desc') => void;
 }
 
@@ -54,11 +57,14 @@ export const ItemTable = React.memo(function ItemTable({
   displayOptions: propDisplayOptions,
   isTrash = false,
   scopeId,
+  collectionId,
   onRestoreItems,
   onPermanentDeleteItems,
   onMoveToCollection: propOnMoveToCollection,
+  onDetachItem,
   onSortChange,
 }: ItemTableProps) {
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   // Store actions
@@ -219,7 +225,7 @@ export const ItemTable = React.memo(function ItemTable({
     [sortedItems, selectAll, toggleSelect],
   );
 
-  // Keyboard navigation
+  // Keyboard navigation matching Zotero 7 desktop parity
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!sortedItems.length) return;
     const currentIndex = sortedItems.findIndex((it) => it.id === activeItemId);
@@ -245,6 +251,36 @@ export const ItemTable = React.memo(function ItemTable({
       if (activeItemId) {
         toggleSelect(activeItemId);
       }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeItemId && !isTrash) {
+        const currentQuery = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('q') : null;
+        const qParam = currentQuery ? `?q=${encodeURIComponent(currentQuery)}` : '';
+        router.push(`/library/papers/${activeItemId}${qParam}`);
+      }
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      const currentSelectedIds = useLibraryUIStore.getState().selectedIds;
+      const ids = currentSelectedIds.size > 0 ? Array.from(currentSelectedIds) : (activeItemId ? [activeItemId] : []);
+      if (ids.length > 0) {
+        if (isTrash) {
+          if (window.confirm(`Permanently delete ${ids.length} selected item(s)? This action cannot be undone.`)) {
+            ids.forEach((id) => handlePurge(id));
+            clearSelection();
+          }
+        } else if (onDetachItem && collectionId && !e.shiftKey) {
+          // Zotero 7: In collection, Delete removes from collection without deleting paper from library
+          ids.forEach((id) => onDetachItem(id));
+          clearSelection();
+        } else {
+          // Move to trash
+          deleteMutation.mutate(ids);
+          clearSelection();
+        }
+      }
+    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+      e.preventDefault();
+      selectAll(items.map((it) => it.id));
     }
   };
 
@@ -337,6 +373,7 @@ export const ItemTable = React.memo(function ItemTable({
                 onRestore={handleRestore}
                 onPurge={handlePurge}
                 onMoveToCollection={handleMoveToCollection}
+                onDetachFromCollection={onDetachItem}
               />
             ))}
           </tbody>

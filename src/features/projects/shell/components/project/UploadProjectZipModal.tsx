@@ -239,7 +239,7 @@ export function UploadProjectZipModal({
                   style={{ width: `${Math.max(5, percentProgress)}%` }}
                 />
               </div>
-              <span className="text-[11px] font-mono text-muted-foreground">
+              <span className="text-11 font-mono text-muted-foreground">
                 {progress?.current ?? 0} / {progress?.total ?? 0} items ({percentProgress}%)
               </span>
             </div>
@@ -307,7 +307,7 @@ export function UploadProjectZipModal({
                       <p className="text-xs font-semibold text-foreground truncate max-w-[260px]">
                         {selectedFile?.name}
                       </p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-11 text-muted-foreground">
                         {formatBytes(extractedProject.totalSize)} · {extractedProject.totalFiles} usable files
                       </p>
                     </div>
@@ -325,18 +325,18 @@ export function UploadProjectZipModal({
 
                 {/* File breakdown badges */}
                 <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/60">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-muted text-foreground font-medium">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-11 bg-muted text-foreground font-medium">
                     <FileCode2 className="size-3 text-primary" />
                     <span>{extractedProject.textFiles.length} source file(s)</span>
                   </span>
                   {extractedProject.assetFiles.length > 0 && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-muted text-foreground font-medium">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-11 bg-muted text-foreground font-medium">
                       <ImageIcon className="size-3 text-amber-500" />
                       <span>{extractedProject.assetFiles.length} asset(s)</span>
                     </span>
                   )}
                   {extractedProject.mainFilePath && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-primary/10 text-primary font-medium">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-11 bg-primary/10 text-primary font-medium">
                       <FileText className="size-3" />
                       <span>Main: {extractedProject.mainFilePath}</span>
                     </span>
@@ -356,7 +356,7 @@ export function UploadProjectZipModal({
                   className="h-9 text-xs"
                   autoFocus
                 />
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-11 text-muted-foreground">
                   This project will be initialized in your personal workspace.
                 </p>
               </div>

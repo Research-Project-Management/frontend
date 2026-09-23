@@ -19,8 +19,8 @@ A cloud-native, multi-tenant B2B/Academic SaaS platform with AI integration, eng
 
 ### 📝 Document Management
 
-- Create and edit documents with rich text editor (TipTap)
-- Integrated code editor (Monaco Editor) supporting multiple languages
+- Create and edit documents with unified editor (CodeMirror 6)
+- Integrated LaTeX code & visual preview editor with Overleaf parity
 - Direct PDF preview
 - Storage system for file storage and sharing
 
@@ -66,10 +66,9 @@ A cloud-native, multi-tenant B2B/Academic SaaS platform with AI integration, eng
 - **TanStack Query v5** - Server state management & caching
 - **Zustand** - Lightweight client state management
 
-### Rich Text & Code Editing
+### Unified Text & Code Editing
 
-- **TipTap** - Rich text editor with task lists & math support
-- **Monaco Editor** - VS Code editor in browser with LaTeX support
+- **CodeMirror 6** - Next-generation modular editor engine powering unified LaTeX Source & Visual editing, Vim mode, and Yjs multiplayer collaboration
 
 ### Additional Features
 

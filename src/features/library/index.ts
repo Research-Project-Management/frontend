@@ -26,6 +26,7 @@ export * from './data';
 export * from './domain';
 export * from './components';
 export * from './utils';
+export * from './hooks/use-quick-copy';
 
 // Data Access Layer (Queries, Services, Centralized Query Keys)
 export {

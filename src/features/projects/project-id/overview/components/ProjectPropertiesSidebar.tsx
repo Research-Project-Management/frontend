@@ -88,7 +88,7 @@ export function ProjectPropertiesSidebar({
             <Clock className="size-3.5" /> State
           </span>
           <span
-            className={`px-2 py-0.5 rounded-md font-medium text-[11px] ${stateMeta.color}`}
+            className={`px-2 py-0.5 rounded-md font-medium text-11 ${stateMeta.color}`}
           >
             {stateMeta.label}
           </span>
@@ -111,7 +111,7 @@ export function ProjectPropertiesSidebar({
           </span>
           {currentUpdate ? (
             <span
-              className={`px-2 py-0.5 rounded-md font-semibold text-[11px] capitalize ${
+              className={`px-2 py-0.5 rounded-md font-semibold text-11 capitalize ${
                 currentUpdate.status === 'on_track'
                   ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
                   : currentUpdate.status === 'at_risk'
@@ -122,7 +122,7 @@ export function ProjectPropertiesSidebar({
               {currentUpdate.status.replace('_', ' ')}
             </span>
           ) : (
-            <span className="text-muted-foreground italic text-[11px]">Not reported</span>
+            <span className="text-muted-foreground italic text-11">Not reported</span>
           )}
         </div>
 
@@ -133,7 +133,7 @@ export function ProjectPropertiesSidebar({
           </span>
           {project.lead ? (
             <div className="flex items-center gap-1.5">
-              <div className="size-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold overflow-hidden">
+              <div className="size-5 rounded-full bg-muted flex items-center justify-center text-10 font-bold overflow-hidden">
                 {project.lead.avatar ? (
                   <img
                     src={project.lead.avatar}
@@ -160,11 +160,11 @@ export function ProjectPropertiesSidebar({
           </span>
           <div className="grid grid-cols-2 gap-2 text-foreground">
             <div>
-              <span className="text-[10px] text-muted-foreground block">Start Date</span>
+              <span className="text-10 text-muted-foreground block">Start Date</span>
               <span className="font-medium">{formatDate(project.startDate)}</span>
             </div>
             <div>
-              <span className="text-[10px] text-muted-foreground block">Target Date</span>
+              <span className="text-10 text-muted-foreground block">Target Date</span>
               <span className="font-medium">{formatDate(project.targetDate)}</span>
             </div>
           </div>
@@ -173,7 +173,7 @@ export function ProjectPropertiesSidebar({
             <div className="mt-1">
               <Badge
                 variant={project.isOverdue ? 'destructive' : 'secondary'}
-                className="text-[11px] font-medium"
+                className="text-11 font-medium"
               >
                 {project.isOverdue ? (
                   <span className="flex items-center gap-1">
@@ -198,7 +198,7 @@ export function ProjectPropertiesSidebar({
             </span>
             <Link
               href={`/projects/${project.id}/settings/members`}
-              className="text-[11px] text-primary hover:underline"
+              className="text-11 text-primary hover:underline"
             >
               Manage
             </Link>
@@ -211,7 +211,7 @@ export function ProjectPropertiesSidebar({
                 className="flex items-center justify-between gap-2 py-0.5"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="size-5 rounded-full bg-muted flex items-center justify-center text-[10px] overflow-hidden shrink-0">
+                  <div className="size-5 rounded-full bg-muted flex items-center justify-center text-10 overflow-hidden shrink-0">
                     {m.avatar ? (
                       <img
                         src={m.avatar}
@@ -226,13 +226,13 @@ export function ProjectPropertiesSidebar({
                     {m.name}
                   </span>
                 </div>
-                <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider">
+                <span className="text-10 text-muted-foreground uppercase font-mono tracking-wider">
                   {m.role}
                 </span>
               </div>
             ))}
             {(project.totalMembers || 0) > 5 && (
-              <span className="text-[11px] text-muted-foreground mt-1">
+              <span className="text-11 text-muted-foreground mt-1">
                 +{(project.totalMembers || 0) - 5} more members
               </span>
             )}

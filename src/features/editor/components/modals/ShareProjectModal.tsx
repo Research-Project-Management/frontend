@@ -279,7 +279,7 @@ export default function ShareProjectModal() {
                 <div className="rounded-md border border-border bg-muted/20 p-3 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-11 font-medium text-foreground flex items-center gap-1.5">
-                      <span className="size-1.5 rounded-full bg-blue-500" />
+                      <span className="size-1.5 rounded-full bg-primary" />
                       Anyone with this link can view this project (Read only)
                     </label>
                   </div>
@@ -320,7 +320,7 @@ export default function ShareProjectModal() {
           {/* Divider */}
           <div className="relative flex items-center justify-center">
             <hr className="w-full border-border/80" />
-            <span className="absolute bg-background px-3 text-10 font-semibold text-muted-foreground uppercase tracking-widest">
+            <span className="absolute bg-background px-3 text-10 font-semibold text-muted-foreground tracking-normal">
               or
             </span>
           </div>

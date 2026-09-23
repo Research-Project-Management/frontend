@@ -13,7 +13,7 @@ import {
   Search,
   Code2,
   ListTodo,
-  ArrowUpRight,
+  CornerDownRight,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { ChatMessage, SourceItem, AgentAction } from '../../types/chat.types';
@@ -179,30 +179,26 @@ function MessageBubble({
   );
 }
 
-const STARTER_PROMPTS = [
+const SUGGESTIONS = [
   {
-    label: 'Summarize literature',
-    desc: 'Synthesize papers and extract key evidence',
-    prompt: 'Summarize key literature and papers in this project',
-    icon: FileText,
+    id: '1',
+    text: 'Create a Page in the Wiki with work logs for each member in the last month',
+    prompt: 'Create a Page in the Wiki with work logs for each member in the last month',
   },
   {
-    label: 'Search references',
-    desc: 'Discover citations and related research',
-    prompt: 'Find relevant references and research papers for my current task',
-    icon: Search,
+    id: '2',
+    text: 'Create a Sticky with details of all Urgent workitems across this workspace',
+    prompt: 'Create a Sticky with details of all Urgent workitems across this workspace',
   },
   {
-    label: 'Generate LaTeX',
-    desc: 'Formulas, scientific tables and templates',
-    prompt: 'Generate a LaTeX equation and table template',
-    icon: Code2,
+    id: '3',
+    text: 'Synthesize recent papers from the Project Library and summarize key evidence',
+    prompt: 'Synthesize recent papers from the Project Library and summarize key evidence',
   },
   {
-    label: 'Decompose cycle goals',
-    desc: 'Break down milestones into work items',
-    prompt: 'Break down current cycle goals into executable tasks',
-    icon: ListTodo,
+    id: '4',
+    text: 'Draft research work items and milestone targets for the current Cycle',
+    prompt: 'Draft research work items and milestone targets for the current Cycle',
   },
 ];
 
@@ -234,44 +230,27 @@ export function CompanionMessages({
       className='flex-1 overflow-y-auto min-h-0 p-3 space-y-3 select-text'
     >
       {isEmpty ? (
-        <div className='flex flex-col items-center justify-center h-full text-center px-2 py-8 select-none max-w-[340px] mx-auto'>
-          {/* Brand icon */}
-          <div className='mb-3 flex items-center justify-center select-none'>
-            <img
-              src='/Chat.svg'
-              alt='Flux AI'
-              className='size-12 object-contain'
-            />
+        <div className='flex flex-col justify-end h-full px-1 pb-1 select-none'>
+          {/* Suggestions Header */}
+          <div className='mb-2 px-1'>
+            <span className='text-13 font-medium text-muted-foreground'>
+              Suggestions
+            </span>
           </div>
 
-          <h3 className='text-14 font-semibold text-foreground tracking-tight'>
-            How can I help you?
-          </h3>
-          <p className='text-11 text-muted-foreground mt-0.5 max-w-[260px] mx-auto leading-normal'>
-            Choose a research action or ask anything below
-          </p>
-
-          {/* Polished suggestion cards */}
-          <div className='mt-5 w-full space-y-2 text-left'>
-            {STARTER_PROMPTS.map((item, i) => (
+          {/* Suggestions List */}
+          <div className='divide-y divide-border/60 border-t border-border/40'>
+            {SUGGESTIONS.map((item) => (
               <button
-                key={i}
+                key={item.id}
                 type='button'
                 onClick={() => onSelectPrompt(item.prompt)}
-                className='w-full flex items-center justify-between gap-3 p-2.5 rounded-md border border-border bg-card hover:bg-muted transition-colors duration-150 cursor-pointer shadow-2xs group text-left outline-none focus-visible:ring-1 focus-visible:ring-primary'
+                className='w-full flex items-start gap-3 py-3 px-1 text-left text-13 text-foreground hover:bg-muted/40 rounded-md transition-colors cursor-pointer group'
               >
-                <div className='size-7 rounded-md bg-muted border border-border/50 flex items-center justify-center shrink-0'>
-                  <item.icon className='size-3.5 text-foreground shrink-0' />
-                </div>
-                <div className='min-w-0 flex-1'>
-                  <p className='text-12 font-medium text-foreground tracking-tight truncate'>
-                    {item.label}
-                  </p>
-                  <p className='text-10 text-muted-foreground truncate leading-tight mt-0.5'>
-                    {item.desc}
-                  </p>
-                </div>
-                <ArrowUpRight className='size-3.5 text-muted-foreground shrink-0' />
+                <CornerDownRight className='size-4 text-foreground shrink-0 mt-0.5' />
+                <span className='leading-snug text-13 font-normal text-foreground'>
+                  {item.text}
+                </span>
               </button>
             ))}
           </div>

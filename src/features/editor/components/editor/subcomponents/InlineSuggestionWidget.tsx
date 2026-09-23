@@ -124,7 +124,7 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
         <div className="flex items-center gap-1.5 shrink-0">
           <span
             className={cn(
-              'px-1.5 py-0.5 rounded-sm text-10 font-medium border uppercase tracking-wider',
+              'px-1.5 py-0.5 rounded-sm text-10 font-medium border tracking-normal',
               typeConfig.badgeClass,
             )}
           >

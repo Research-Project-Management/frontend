@@ -207,6 +207,14 @@ export async function batchRenameAttachments(
   return response;
 }
 
+export async function reExtractAttachment(
+  scopeId: string | undefined,
+  attachmentId: string,
+): Promise<{ status: string; attachmentId: string; message: string }> {
+  const url = getAttachmentUrl(scopeId, attachmentId, 're-extract');
+  return apiPost<{ status: string; attachmentId: string; message: string }>(url, {});
+}
+
 export const AttachmentsService = {
   getAttachments,
   getAttachment,
@@ -216,6 +224,7 @@ export const AttachmentsService = {
   createAttachment,
   renameAttachment,
   batchRenameAttachments,
+  reExtractAttachment,
   setPrimaryAttachment,
   getFileContentUrl,
   fetchFileContent,
@@ -234,6 +243,7 @@ export const AttachmentsService = {
   delete: deleteAttachment,
   rename: renameAttachment,
   batchRename: batchRenameAttachments,
+  reExtract: reExtractAttachment,
   add: createAttachment,
   create: createAttachment,
   setPrimary: setPrimaryAttachment,

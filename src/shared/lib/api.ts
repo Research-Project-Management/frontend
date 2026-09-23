@@ -304,18 +304,22 @@ export async function apiFetch<T>(
         // Non-JSON error body fallback
       }
 
+      if (!payload || typeof payload !== 'object') {
+        payload = {};
+      }
+
       const errorMessage =
-        payload.error?.message ||
-        payload.message ||
+        payload?.error?.message ||
+        payload?.message ||
         response.statusText ||
         'Request failed';
       const errorCode =
-        payload.error?.code ||
-        payload.code;
+        payload?.error?.code ||
+        payload?.code;
       const errorDetails =
-        payload.error?.details ||
-        payload.errors ||
-        payload.details;
+        payload?.error?.details ||
+        payload?.errors ||
+        payload?.details;
 
       const error = new ApiError({
         message: errorMessage,

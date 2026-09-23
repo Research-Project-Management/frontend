@@ -72,7 +72,7 @@ export function RecentActivityList({ activities }: RecentActivityListProps) {
                     {formatVerb(act)}
                   </span>
                 </p>
-                <span className="text-[11px] text-muted-foreground/70 mt-0.5 block">
+                <span className="text-11 text-muted-foreground/70 mt-0.5 block">
                   {formatRelativeTime(act.createdAt)}
                 </span>
               </div>

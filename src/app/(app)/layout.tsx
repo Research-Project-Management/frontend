@@ -98,11 +98,13 @@ export default function AppLayout({
             </Suspense>
           </ErrorBoundary>
         </div>
-        <ErrorBoundary fallback={null} featureName="Trợ lý AI Companion">
-          <Suspense fallback={null}>
-            <AiCompanionSidebar />
-          </Suspense>
-        </ErrorBoundary>
+        {!pathname.startsWith('/ai') && (
+          <ErrorBoundary fallback={null} featureName="Trợ lý AI Companion">
+            <Suspense fallback={null}>
+              <AiCompanionSidebar />
+            </Suspense>
+          </ErrorBoundary>
+        )}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import {
   FileText,
   BookOpen,
@@ -271,6 +271,9 @@ export default function AttachmentsSection({
 }: AttachmentsSectionProps) {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
+  const currentQuery = searchParams.get('q');
+  const qParam = currentQuery ? `?q=${encodeURIComponent(currentQuery)}` : '';
   const rawScopeId = (scopeId || projectId || (paper as any)?.projectId || (params as any)?.projectId || 'user') as string;
 
   const {
@@ -397,7 +400,7 @@ export default function AttachmentsSection({
 
   const handleOpenReader = () => {
     if (!paper.id) return;
-    router.push(`/library/papers/${paper.id}`);
+    router.push(`/library/papers/${paper.id}${qParam}`);
   };
 
   const handleDownload = (url: string, filename: string) => {

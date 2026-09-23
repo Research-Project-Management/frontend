@@ -185,7 +185,7 @@ export default function NotificationsTab() {
                 <h3 className="text-13 font-semibold text-foreground tracking-tight">
                   Overleaf Review Digest & Notification Bundling
                 </h3>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                <span className="px-1.5 py-0.5 rounded text-10 font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                   Overleaf Parity
                 </span>
               </div>

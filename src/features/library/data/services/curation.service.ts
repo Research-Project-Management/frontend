@@ -4,6 +4,7 @@ import type {
   DuplicateGroup,
   LibraryIntegrityReport,
 } from '../../types/library.types';
+import { isProjectScope } from './items.service';
 
 export interface RawDuplicateCluster {
   clusterId: string;
@@ -22,10 +23,9 @@ export interface RawDuplicateCluster {
 
 export const QualityService = {
   getDuplicates: async (scopeId?: string) => {
-    const scopeParam =
-      scopeId && scopeId !== 'user'
-        ? `?projectId=${encodeURIComponent(scopeId)}`
-        : '';
+    const scopeParam = isProjectScope(scopeId)
+      ? `?projectId=${encodeURIComponent(scopeId!)}`
+      : '';
     const res = await apiGet<any>(
       `/api/v1/library/curation/duplicates${scopeParam}`,
     );
@@ -59,15 +59,14 @@ export const QualityService = {
   },
 
   mergePapers: async (
-    scopeId: string,
+    scopeId: string | undefined,
     masterPaperId: string,
     sourcePaperIds: string[],
     fieldSelections?: Record<string, any>,
   ) => {
-    const scopeParam =
-      scopeId && scopeId !== 'user'
-        ? `?projectId=${encodeURIComponent(scopeId)}`
-        : '';
+    const scopeParam = isProjectScope(scopeId)
+      ? `?projectId=${encodeURIComponent(scopeId!)}`
+      : '';
     const res = await apiPost<any>(
       `/api/v1/library/curation/merge${scopeParam}`,
       {
@@ -101,10 +100,11 @@ export const QualityService = {
   },
 
   getIntegrityReport: async (
-    _scopeId?: string,
+    scopeId?: string,
   ): Promise<LibraryIntegrityReport> => {
     const res = await apiGet<any>(
       `/api/v1/library/curation/integrity`,
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     );
     return res?.data || res;
   },

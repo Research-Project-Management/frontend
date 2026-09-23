@@ -1,13 +1,15 @@
 import { apiGet, apiPatch, apiPost } from "@/shared/lib/api";
 import type { ItemStateData } from '../../types/library.types';
+import { isProjectScope } from './items.service';
 export type { ItemStateData };
 
 export const StateService = {
-  getState: async (_scopeId?: string, itemId?: string): Promise<ItemStateData | null> => {
+  getState: async (scopeId?: string, itemId?: string): Promise<ItemStateData | null> => {
     if (!itemId) return null;
-    const res = await apiGet<ItemStateData | { data: ItemStateData }>(
-      `/api/v1/library/items/${encodeURIComponent(itemId)}/state`,
-    );
+    const basePath = isProjectScope(scopeId)
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/items/${encodeURIComponent(itemId)}/state`
+      : `/api/v1/library/items/${encodeURIComponent(itemId)}/state`;
+    const res = await apiGet<ItemStateData | { data: ItemStateData }>(basePath);
     return (res as any)?.data ?? res ?? null;
   },
 
@@ -21,9 +23,9 @@ export const StateService = {
     },
   ): Promise<ItemStateData> => {
     if (!itemId) throw new Error('itemId is required');
-    const isProject = scopeId && scopeId !== 'user';
+    const isProject = isProjectScope(scopeId);
     const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/items/${encodeURIComponent(itemId)}/state`
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/items/${encodeURIComponent(itemId)}/state`
       : `/api/v1/library/items/${encodeURIComponent(itemId)}/state`;
     const res = await apiPatch<ItemStateData | { data: ItemStateData }>(
       basePath,
@@ -32,10 +34,13 @@ export const StateService = {
     return (res as any)?.data ?? res;
   },
 
-  markAsRead: async (_scopeId?: string, itemId?: string): Promise<ItemStateData> => {
+  markAsRead: async (scopeId?: string, itemId?: string): Promise<ItemStateData> => {
     if (!itemId) throw new Error('itemId is required');
+    const basePath = isProjectScope(scopeId)
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/items/${encodeURIComponent(itemId)}/state/read`
+      : `/api/v1/library/items/${encodeURIComponent(itemId)}/state/read`;
     const res = await apiPost<ItemStateData | { data: ItemStateData }>(
-      `/api/v1/library/items/${encodeURIComponent(itemId)}/state/read`,
+      basePath,
       {},
     );
     return (res as any)?.data ?? res;
@@ -46,12 +51,15 @@ export const StateService = {
    * Backed by POST /api/v1/library/items/state/batch
    */
   batchStates: async (
-    _scopeId?: string,
+    scopeId?: string,
     itemIds?: string[],
   ): Promise<Record<string, ItemStateData>> => {
+    const basePath = isProjectScope(scopeId)
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/items/state/batch`
+      : `/api/v1/library/items/state/batch`;
     const res = await apiPost<
       Record<string, ItemStateData> | { data: Record<string, ItemStateData> }
-    >(`/api/v1/library/items/state/batch`, { itemIds: itemIds ?? [] });
+    >(basePath, { itemIds: itemIds ?? [] });
     return (res as any)?.data ?? res ?? {};
   },
 };

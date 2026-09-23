@@ -111,12 +111,12 @@ export function WordCountDialog({
               <DialogTitle className="text-sm font-semibold">
                 Word Count (TeXcount)
               </DialogTitle>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-11 text-muted-foreground">
                 Official academic manuscript statistics
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted border border-border text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted border border-border text-11 text-muted-foreground">
             {loading ? (
               <>
                 <Loader2 className="size-3 animate-spin text-primary shrink-0" />
@@ -136,7 +136,7 @@ export function WordCountDialog({
         {/* Highlight Banner: Total Manuscript Words */}
         <div className="bg-primary/5 border border-primary/20 rounded-md p-3.5 flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            <span className="text-11 font-medium text-muted-foreground tracking-normal">
               Total Manuscript Words
             </span>
             <div className="text-2xl font-bold font-mono text-primary mt-0.5">
@@ -165,7 +165,7 @@ export function WordCountDialog({
         {/* Detailed Breakdown Grid */}
         <div className="grid grid-cols-3 gap-2.5 text-xs">
           <div className="bg-muted/40 p-2.5 rounded-md border border-border/50 flex flex-col">
-            <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+            <span className="text-muted-foreground flex items-center gap-1 text-11">
               <Heading className="size-3 text-blue-500 shrink-0" /> Headings
             </span>
             <span className="text-base font-bold font-mono text-foreground mt-1">
@@ -174,7 +174,7 @@ export function WordCountDialog({
           </div>
 
           <div className="bg-muted/40 p-2.5 rounded-md border border-border/50 flex flex-col">
-            <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+            <span className="text-muted-foreground flex items-center gap-1 text-11">
               <LayoutGrid className="size-3 text-amber-500 shrink-0" /> Floats / Tables
             </span>
             <span className="text-base font-bold font-mono text-foreground mt-1">
@@ -183,7 +183,7 @@ export function WordCountDialog({
           </div>
 
           <div className="bg-muted/40 p-2.5 rounded-md border border-border/50 flex flex-col">
-            <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+            <span className="text-muted-foreground flex items-center gap-1 text-11">
               <Sigma className="size-3 text-indigo-500 shrink-0" /> Math Formulas
             </span>
             <span className="text-base font-bold font-mono text-foreground mt-1">
@@ -192,13 +192,13 @@ export function WordCountDialog({
                 : localStats.mathInline + localStats.mathDisplay
               ).toLocaleString()}
             </span>
-            <span className="text-[10px] text-muted-foreground/70">
+            <span className="text-10 text-muted-foreground/70">
               {serverStats ? `${serverStats.mathInlines} in, ${serverStats.mathDisplayed} disp` : `${localStats.mathInline} in, ${localStats.mathDisplay} disp`}
             </span>
           </div>
 
           <div className="bg-muted/40 p-2.5 rounded-md border border-border/50 flex flex-col">
-            <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+            <span className="text-muted-foreground flex items-center gap-1 text-11">
               <AlignLeft className="size-3 text-emerald-500 shrink-0" /> Characters
             </span>
             <span className="text-base font-bold font-mono text-foreground mt-1">
@@ -207,7 +207,7 @@ export function WordCountDialog({
           </div>
 
           <div className="bg-muted/40 p-2.5 rounded-md border border-border/50 flex flex-col">
-            <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+            <span className="text-muted-foreground flex items-center gap-1 text-11">
               <Hash className="size-3 text-purple-500 shrink-0" /> Lines
             </span>
             <span className="text-base font-bold font-mono text-foreground mt-1">
@@ -216,7 +216,7 @@ export function WordCountDialog({
           </div>
 
           <div className="bg-muted/40 p-2.5 rounded-md border border-border/50 flex flex-col">
-            <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+            <span className="text-muted-foreground flex items-center gap-1 text-11">
               <FileText className="size-3 text-rose-500 shrink-0" /> Body Words
             </span>
             <span className="text-base font-bold font-mono text-foreground mt-1">

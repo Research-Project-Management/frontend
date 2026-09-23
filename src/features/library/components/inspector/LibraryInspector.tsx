@@ -215,9 +215,14 @@ export function LibraryInspector({
 
   const handleUpdatePaper = (payload: Partial<Item>) => {
     if (!effectiveItem) return;
+    const version =
+      (payload as any)?.expectedVersion ??
+      (payload as any)?.version ??
+      effectiveItem.version;
     updateMutation.mutate({
       id: effectiveItem.id,
       payload: payload as any,
+      expectedVersion: typeof version === 'number' ? version : undefined,
     });
   };
 
@@ -274,7 +279,9 @@ export function LibraryInspector({
       payload: {
         collectionIds: newIds,
         collectionId: newIds[0] || null,
+        expectedVersion: effectiveItem.version,
       } as any,
+      expectedVersion: effectiveItem.version,
     });
   };
 

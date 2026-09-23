@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { LibraryTopbar } from '../components/topbar';
@@ -15,6 +15,8 @@ import {
 } from '../store';
 import {
   useCollectionsQuery,
+  useSavedSearches,
+  useBatchPurgeItemsMutation,
   uploadLibraryFile,
   IngestionService,
   ItemService,
@@ -87,19 +89,34 @@ export function ModernLibraryPage({
     activeScope.role === 'coordinator' ||
     activeScope.role === 'contributor';
 
+  const searchParams = useSearchParams();
+  const filterParam = searchParams.get('filter');
+  const savedSearchId = searchParams.get('savedSearchId') || undefined;
+  const isSavedSearchView = filterParam === 'saved-search' && Boolean(savedSearchId);
+
   const { data: collections = [] } = useCollectionsQuery(effectiveScopeId);
+  const { savedSearches = [] } = useSavedSearches(effectiveScopeId);
   const currentCollection = effectiveCollectionId
     ? collections.find((c) => c.id === effectiveCollectionId)
+    : undefined;
+  const currentSavedSearch = savedSearchId
+    ? savedSearches.find((s) => s.id === savedSearchId)
     : undefined;
 
   // Breadcrumb navigation
   const breadcrumbs = useMemo(() => {
+    if (isSavedSearchView && currentSavedSearch) {
+      return [
+        { id: undefined, name: activeScope.name || 'My Library' },
+        { id: currentSavedSearch.id, name: currentSavedSearch.name },
+      ];
+    }
     if (!currentCollection) return undefined;
     return [
       { id: undefined, name: activeScope.name || 'My Library' },
       { id: currentCollection.id, name: currentCollection.name },
     ];
-  }, [currentCollection, activeScope.name]);
+  }, [isSavedSearchView, currentSavedSearch, currentCollection, activeScope.name]);
 
   const handleNavigateCrumb = (crumbId?: string) => {
     if (!crumbId) {
@@ -166,8 +183,45 @@ export function ModernLibraryPage({
     }
   };
 
+  const isTrash = view === 'trash';
+  const purgeMutation = useBatchPurgeItemsMutation(effectiveScopeId);
+  const clearSelection = useLibraryUIStore((s) => s.clearSelection);
+
+  const handleEmptyTrash = async () => {
+    if (
+      !window.confirm(
+        'Are you sure you want to permanently empty the trash? All items will be permanently deleted and cannot be recovered.',
+      )
+    ) {
+      return;
+    }
+
+    const toastId = toast.loading('Emptying trash...', { id: 'empty-trash' });
+    try {
+      const trashData = await ItemService.getAll(effectiveScopeId, { view: 'trash', limit: 500 });
+      const ids = (trashData?.items || []).map((it) => it.id);
+      if (ids.length === 0) {
+        toast.info('Trash is already empty', { id: toastId });
+        return;
+      }
+      await purgeMutation.mutateAsync(ids);
+      clearSelection();
+      toast.success('Trash emptied', {
+        description: `Permanently deleted ${ids.length} item(s).`,
+        id: toastId,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Could not empty trash.';
+      toast.error('Failed to empty trash', {
+        description: message,
+        id: toastId,
+      });
+    }
+  };
+
   const displayTitle =
     title ||
+    (isSavedSearchView && currentSavedSearch ? currentSavedSearch.name : undefined) ||
     (currentCollection ? currentCollection.name : undefined) ||
     activeScope.name ||
     'My Library';
@@ -182,6 +236,8 @@ export function ModernLibraryPage({
           onNavigateCrumb={handleNavigateCrumb}
           scopeId={effectiveScopeId}
           canEdit={canEdit}
+          isTrash={isTrash}
+          onEmptyTrash={canEdit && isTrash ? handleEmptyTrash : undefined}
           onDirectFilesUpload={canEdit ? handleDirectFilesUpload : undefined}
           onDirectFolderUpload={canEdit ? handleDirectFolderUpload : undefined}
           onAddLink={canEdit ? () => openModal('ADD_LINK', { collectionId: effectiveCollectionId }) : undefined}
@@ -202,6 +258,7 @@ export function ModernLibraryPage({
           <LibraryContent
             scopeId={effectiveScopeId}
             collectionId={effectiveCollectionId}
+            savedSearchId={isSavedSearchView ? savedSearchId : undefined}
             view={view}
             canEdit={canEdit}
             onDirectFilesUpload={canEdit ? handleDirectFilesUpload : undefined}

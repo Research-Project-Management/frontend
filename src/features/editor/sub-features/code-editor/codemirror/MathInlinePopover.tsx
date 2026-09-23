@@ -34,18 +34,20 @@ const QUICK_MATH = [
 ];
 
 export function MathInlinePopover({ trigger, onApply, onClose }: MathInlinePopoverProps) {
-  if (!trigger) return null;
-
-  const [formula, setFormula] = useState(trigger.math);
+  const [formula, setFormula] = useState(trigger?.math ?? '');
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!trigger) return;
     setFormula(trigger.math);
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       inputRef.current?.focus();
       inputRef.current?.select();
     }, 50);
+    return () => clearTimeout(timer);
   }, [trigger]);
+
+  if (!trigger) return null;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -84,7 +86,7 @@ export function MathInlinePopover({ trigger, onApply, onClose }: MathInlinePopov
         <div className="flex items-center gap-1.5 text-primary">
           <Sigma className="size-3.5" />
           <span>Edit LaTeX Math (In-place)</span>
-          <span className="text-[10px] text-muted-foreground font-normal">
+          <span className="text-10 text-muted-foreground font-normal">
             {trigger.isDisplay ? '$$ Display $$' : '$ Inline $'}
           </span>
         </div>
@@ -118,7 +120,7 @@ export function MathInlinePopover({ trigger, onApply, onClose }: MathInlinePopov
             key={m.label}
             type="button"
             onClick={() => setFormula((prev) => `${prev} ${m.snippet}`.trim())}
-            className="px-1.5 py-0.5 rounded-sm bg-muted/60 hover:bg-muted text-[10px] font-mono text-muted-foreground hover:text-foreground shrink-0 cursor-pointer transition-colors"
+            className="px-1.5 py-0.5 rounded-sm bg-muted/60 hover:bg-muted text-10 font-mono text-muted-foreground hover:text-foreground shrink-0 cursor-pointer transition-colors"
           >
             {m.label}
           </button>
@@ -131,7 +133,7 @@ export function MathInlinePopover({ trigger, onApply, onClose }: MathInlinePopov
       </div>
 
       {/* Footer Actions */}
-      <div className="flex items-center justify-between pt-1.5 border-t border-border/40 text-[11px] text-muted-foreground">
+      <div className="flex items-center justify-between pt-1.5 border-t border-border/40 text-11 text-muted-foreground">
         <span>Press Enter to save</span>
         <div className="flex items-center gap-1.5">
           <button

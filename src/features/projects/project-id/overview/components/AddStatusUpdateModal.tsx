@@ -126,7 +126,7 @@ export function AddStatusUpdateModal({
                     >
                       <Icon className={`size-5 mb-1.5 ${isSelected ? opt.textColor : 'text-muted-foreground'}`} />
                       <span className="text-xs font-semibold">{opt.label}</span>
-                      <span className="text-[10px] leading-tight opacity-75 mt-0.5 line-clamp-2">
+                      <span className="text-10 leading-tight opacity-75 mt-0.5 line-clamp-2">
                         {opt.value === 'on_track' ? 'On schedule' : opt.value === 'at_risk' ? 'Has risks' : 'Delayed'}
                       </span>
                     </button>
@@ -149,7 +149,7 @@ export function AddStatusUpdateModal({
                 className="min-h-[110px] text-xs resize-none"
                 maxLength={2000}
               />
-              <div className="flex justify-end text-[10px] text-muted-foreground">
+              <div className="flex justify-end text-10 text-muted-foreground">
                 {message.length} / 2000
               </div>
             </div>

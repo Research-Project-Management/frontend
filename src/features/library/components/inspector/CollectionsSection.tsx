@@ -88,19 +88,29 @@ export default function CollectionsSection({
   const handleAddToCollection = (targetColId: string) => {
     if (!paper.id) return;
     const newIds = Array.from(new Set([...itemCollectionIds, targetColId]));
-    updatePaper(paper.id, {
-      collectionIds: newIds,
-      collectionId: newIds[0] || null,
-    });
+    updatePaper(
+      paper.id,
+      {
+        collectionIds: newIds,
+        collectionId: newIds[0] || null,
+        expectedVersion: paper.version,
+      },
+      { expectedVersion: paper.version },
+    );
   };
 
   const handleRemoveFromCollection = (targetColId: string) => {
     if (!paper.id) return;
     const remainingIds = itemCollectionIds.filter((id) => id !== targetColId);
-    updatePaper(paper.id, {
-      collectionIds: remainingIds,
-      collectionId: remainingIds[0] || null,
-    });
+    updatePaper(
+      paper.id,
+      {
+        collectionIds: remainingIds,
+        collectionId: remainingIds[0] || null,
+        expectedVersion: paper.version,
+      },
+      { expectedVersion: paper.version },
+    );
   };
 
   return (

@@ -76,12 +76,12 @@ export const SyncStatusBadge = React.memo(function SyncStatusBadge({
           <div
             className={cn(
               'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium',
-              'bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-400 select-none cursor-default',
+              'bg-primary/10 border border-primary/20 text-primary select-none cursor-default',
               className,
             )}
           >
-            <Loader2 className="size-3 shrink-0 animate-spin text-blue-500" />
-            <span className="hidden xl:inline text-[11px]">Syncing...</span>
+            <Loader2 className="size-3 shrink-0 animate-spin text-primary" />
+            <span className="hidden xl:inline text-11">Syncing...</span>
           </div>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">
@@ -103,7 +103,7 @@ export const SyncStatusBadge = React.memo(function SyncStatusBadge({
             )}
           >
             <Loader2 className="size-3 shrink-0 animate-spin" />
-            <span className="hidden xl:inline text-[11px]">Connecting...</span>
+            <span className="hidden xl:inline text-11">Connecting...</span>
           </div>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">
@@ -125,7 +125,7 @@ export const SyncStatusBadge = React.memo(function SyncStatusBadge({
           )}
         >
           <CloudOff className="size-3.5 shrink-0" />
-          <span className="hidden 2xl:inline text-[11px]">Auto-save</span>
+          <span className="hidden 2xl:inline text-11">Auto-save</span>
         </div>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="text-xs max-w-xs">

@@ -132,7 +132,7 @@ export function WorkspacePagesPage() {
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <h2 className="text-xs font-semibold text-muted-foreground tracking-normal">
             Documents & Knowledge Pages
           </h2>
           <span className="text-11 text-muted-foreground font-mono">

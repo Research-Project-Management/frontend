@@ -205,7 +205,7 @@ export function Card({ project, onArchive, onManageTags }: CardProps) {
               {project.projectLabelsList.slice(0, 3).map((label) => (
                 <span
                   key={label.id}
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border shrink-0"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-10 font-medium border shrink-0"
                   style={{
                     backgroundColor: `${label.color}15`,
                     borderColor: `${label.color}35`,
@@ -220,7 +220,7 @@ export function Card({ project, onArchive, onManageTags }: CardProps) {
                 </span>
               ))}
               {project.projectLabelsList.length > 3 && (
-                <span className="text-[10px] text-muted-foreground font-mono px-1 py-0.5 rounded bg-muted border border-border">
+                <span className="text-10 text-muted-foreground font-mono px-1 py-0.5 rounded bg-muted border border-border">
                   +{project.projectLabelsList.length - 3}
                 </span>
               )}

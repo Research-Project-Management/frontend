@@ -70,6 +70,16 @@ const nextConfig: NextConfig = {
       '@radix-ui/react-popover',
       '@radix-ui/react-tabs',
       '@radix-ui/react-accordion',
+      '@radix-ui/react-avatar',
+      '@radix-ui/react-checkbox',
+      '@radix-ui/react-switch',
+      '@radix-ui/react-slider',
+      '@radix-ui/react-scroll-area',
+      '@radix-ui/react-separator',
+      '@radix-ui/react-collapsible',
+      '@radix-ui/react-hover-card',
+      '@radix-ui/react-toggle',
+      '@radix-ui/react-toggle-group',
       'cmdk',
       'sonner',
     ],
@@ -211,9 +221,9 @@ const nextConfig: NextConfig = {
     const rawBackendUrl =
       process.env.INTERNAL_API_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
-      'http://localhost:3000';
+      'http://127.0.0.1:3000';
     const backendUrl =
-      rawBackendUrl.trim().replace(/\/+$/, '') || 'http://localhost:3000';
+      rawBackendUrl.trim().replace(/\/+$/, '') || 'http://127.0.0.1:3000';
     return [
       {
         source: '/api/:path*',

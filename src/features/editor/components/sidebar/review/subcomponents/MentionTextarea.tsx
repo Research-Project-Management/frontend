@@ -235,7 +235,7 @@ export const MentionTextarea = React.forwardRef<
           className="absolute z-50 bottom-full mb-1 left-0 w-full min-w-[240px] max-w-sm rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 overflow-hidden animate-in fade-in-50 zoom-in-95 duration-100"
           style={{ maxHeight: '220px' }}
         >
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border bg-background text-10 text-muted-foreground font-medium uppercase tracking-wider">
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border bg-background text-10 text-muted-foreground font-medium tracking-normal">
             <Users className="size-3" />
             <span>Mention collaborator</span>
           </div>

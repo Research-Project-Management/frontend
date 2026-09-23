@@ -4,22 +4,42 @@ import React, { useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { useAiCompanionStore } from '@/features/ai/store';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/shared/components/ui';
+import { usePathname, useRouter } from 'next/navigation';
 import AccountDropdown from './AccountDropdown';
 
 export default function Topbar() {
-  const { isOpen, toggleOpen } = useAiCompanionStore();
+  const pathname = usePathname();
+  const router = useRouter();
+  const isAiRoute = pathname?.startsWith('/ai');
+  const { toggleOpen } = useAiCompanionStore();
 
   // Global keyboard shortcut: Cmd+J or Ctrl+J to toggle AI Companion
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
         e.preventDefault();
-        toggleOpen();
+        if (!isAiRoute) {
+          toggleOpen();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleOpen]);
+  }, [toggleOpen, isAiRoute]);
+
+  const handleAiClick = () => {
+    if (isAiRoute) {
+      router.push('/ai');
+    } else {
+      toggleOpen();
+    }
+  };
 
   return (
     <nav
@@ -42,29 +62,33 @@ export default function Topbar() {
         </button>
       </div>
 
-      {/* Right: Ask Flux AI button (clean, centered icon and text, rounded-md) */}
+      {/* Right: AI assistant button (clean, centered icon and text, rounded-md, no hover/active color, tooltip enabled) */}
       <div className='flex items-center shrink-0'>
-        <button
-          type='button'
-          onClick={toggleOpen}
-          className={cn(
-            'group inline-flex h-8 items-center gap-2 rounded-md border px-2.5 text-13 font-medium shadow-2xs transition-all duration-200 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none active:scale-98',
-            isOpen
-              ? 'border-primary/50 bg-primary/10 text-primary shadow-xs'
-              : 'border-border bg-white dark:bg-card text-foreground hover:border-foreground/20 hover:bg-accent/40'
-          )}
-          title='Ask Flux AI'
-        >
-          <img
-            src='/Chat.svg'
-            alt='Flux AI'
-            className={cn(
-              'size-4 shrink-0 rounded-full block object-contain transition-transform duration-300',
-              isOpen ? 'scale-110' : 'group-hover:scale-110'
-            )}
-          />
-          <span className='tracking-tight leading-none'>Ask Flux AI</span>
-        </button>
+        <TooltipProvider delayDuration={150}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type='button'
+                onClick={handleAiClick}
+                className='inline-flex h-8 items-center gap-2 rounded-md border border-border bg-white dark:bg-card px-2.5 text-13 font-medium text-foreground shadow-2xs cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none'
+                aria-label='AI assistant'
+              >
+                <img
+                  src='/Chat.svg'
+                  alt='AI assistant'
+                  className='size-4 shrink-0 rounded-full block object-contain'
+                />
+                <span className='tracking-tight leading-none'>AI assistant</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side='bottom' sideOffset={6} className='flex items-center gap-1.5'>
+              <span>AI assistant</span>
+              <kbd className='rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground'>
+                Ctrl+J
+              </kbd>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </nav>
   );

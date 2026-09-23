@@ -3,12 +3,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+export interface PendingPromptData {
+  text: string;
+  projectId?: string | null;
+  attachedFiles?: Array<{ id: string; name: string; size?: number }>;
+  webSearch?: boolean;
+  webSearchSites?: string[] | null;
+}
+
 export interface AiCompanionState {
   isOpen: boolean;
   width: number;
   activeChatId: string | null;
   isHistoryView: boolean;
   selectedModel: string;
+  pendingPrompt: PendingPromptData | null;
 
   toggleOpen: () => void;
   setOpen: (open: boolean) => void;
@@ -17,6 +26,7 @@ export interface AiCompanionState {
   toggleHistoryView: () => void;
   setHistoryView: (open: boolean) => void;
   setSelectedModel: (model: string) => void;
+  setPendingPrompt: (prompt: PendingPromptData | null) => void;
 }
 
 export const useAiCompanionStore = create<AiCompanionState>()(
@@ -27,6 +37,7 @@ export const useAiCompanionStore = create<AiCompanionState>()(
       activeChatId: null,
       isHistoryView: false,
       selectedModel: 'Claude Sonnet 3.7',
+      pendingPrompt: null,
 
       toggleOpen: () => set((state) => ({ isOpen: !state.isOpen })),
       setOpen: (open: boolean) => set({ isOpen: open }),
@@ -38,6 +49,11 @@ export const useAiCompanionStore = create<AiCompanionState>()(
         set((state) => ({ isHistoryView: !state.isHistoryView })),
       setHistoryView: (open: boolean) => set({ isHistoryView: open }),
       setSelectedModel: (model: string) => set({ selectedModel: model }),
+      setPendingPrompt: (prompt: PendingPromptData | null) =>
+        set((state) => ({
+          pendingPrompt: prompt,
+          isOpen: prompt ? true : state.isOpen,
+        })),
     }),
     {
       name: 'flux-ai-companion-storage',

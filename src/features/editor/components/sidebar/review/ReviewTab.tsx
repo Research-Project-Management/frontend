@@ -908,7 +908,7 @@ const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => v
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Row 1: Overleaf View Mode Switcher */}
           <div className="flex items-center justify-between border-b border-border bg-muted/20 px-3 py-1.5 text-xs shrink-0">
-            <span className="text-[10px] font-semibold uppercase text-muted-foreground tracking-wider">
+            <span className="text-10 font-semibold uppercase text-muted-foreground tracking-wider">
               Display Mode
             </span>
             <div className="inline-flex rounded-md bg-muted p-0.5 text-xs font-medium border border-border">

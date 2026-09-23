@@ -763,10 +763,12 @@ export function useLibraryItemsQuery(
 export function useInfiniteLibraryItemsQuery(
   scopeId?: string,
   params?: ItemQueryParams,
+  options?: { enabled?: boolean },
 ) {
   const targetScope = scopeId || 'user';
   return useInfiniteQuery({
     queryKey: [...libraryKeys.items(targetScope, params), 'infinite'],
+    enabled: options?.enabled ?? true,
     queryFn: async ({ pageParam }): Promise<LibraryItemsQueryResult> => {
       const res = await ItemService.getAll(targetScope, {
         ...params,
@@ -824,15 +826,24 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
       itemId,
       payload,
       data,
+      expectedVersion,
     }: {
       id?: string;
       itemId?: string;
       payload?: Partial<Item>;
       data?: Partial<Item>;
+      expectedVersion?: number;
     }) => {
       const targetId = id || itemId || '';
       const updateData = payload || data || {};
-      return ItemService.update(effectiveScope, targetId, updateData);
+      const cached = queryClient.getQueryData<any>(itemKeys.byId(effectiveScope, targetId));
+      const cachedVersion = cached?.item?.version ?? cached?.version;
+      const resolvedVersion =
+        expectedVersion ??
+        (updateData as any)?.expectedVersion ??
+        (updateData as any)?.version ??
+        (typeof cachedVersion === 'number' ? cachedVersion : undefined);
+      return ItemService.update(effectiveScope, targetId, updateData, resolvedVersion);
     },
     onSuccess: (_, variables) => {
       const targetId = variables.id || variables.itemId || '';

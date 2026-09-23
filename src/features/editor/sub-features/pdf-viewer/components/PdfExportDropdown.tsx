@@ -109,7 +109,7 @@ export const PdfExportDropdown = React.memo(function PdfExportDropdown({
       </Tooltip>
 
       <DropdownMenuContent align="end" className="w-56 text-xs">
-        <DropdownMenuLabel className="text-11 font-semibold text-muted-foreground uppercase tracking-wider">
+        <DropdownMenuLabel className="text-11 font-semibold text-muted-foreground tracking-normal">
           Download Output
         </DropdownMenuLabel>
         <DropdownMenuItem
@@ -123,7 +123,7 @@ export const PdfExportDropdown = React.memo(function PdfExportDropdown({
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuLabel className="text-11 font-semibold text-muted-foreground uppercase tracking-wider">
+        <DropdownMenuLabel className="text-11 font-semibold text-muted-foreground tracking-normal">
           Source & Submission
         </DropdownMenuLabel>
         <DropdownMenuItem onClick={handleExportZip} className="flex items-center gap-2 cursor-pointer">
@@ -137,7 +137,7 @@ export const PdfExportDropdown = React.memo(function PdfExportDropdown({
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuLabel className="text-11 font-semibold text-muted-foreground uppercase tracking-wider">
+        <DropdownMenuLabel className="text-11 font-semibold text-muted-foreground tracking-normal">
           Convert Format
         </DropdownMenuLabel>
         <DropdownMenuItem onClick={handleExportWord} className="flex items-center gap-2 cursor-pointer">

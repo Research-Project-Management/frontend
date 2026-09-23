@@ -96,6 +96,7 @@ interface ViewerProps {
   activeTool?: ReaderAnnotationTool;
   isSearchOpen?: boolean;
   onCloseSearch?: () => void;
+  initialSearchQuery?: string;
   viewMode?: 'single' | 'continuous' | 'spread';
   fitMode?: 'fit-width' | 'fit-page' | 'auto';
 }
@@ -124,6 +125,7 @@ export default function Viewer({
   activeTool = 'highlight',
   isSearchOpen = false,
   onCloseSearch,
+  initialSearchQuery,
   viewMode = 'continuous',
   fitMode = 'fit-width',
 }: ViewerProps) {
@@ -184,9 +186,15 @@ export default function Viewer({
   }, [annotations]);
 
   // In-Document Search State
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (initialSearchQuery) {
+      setSearchQuery(initialSearchQuery);
+    }
+  }, [initialSearchQuery]);
 
   useEffect(() => {
     if (isSearchOpen) {
@@ -303,6 +311,41 @@ export default function Viewer({
     const el = pageRefs.current.get(page);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
+
+  // Auto-scroll to first match when search query is active
+  const lastScrolledQueryRef = useRef<string>('');
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q && q.length >= 2 && searchMatches.length > 0 && lastScrolledQueryRef.current !== q) {
+      lastScrolledQueryRef.current = q;
+      setCurrentMatchIdx(0);
+      const first = searchMatches[0];
+      if (first?.page) {
+        scrollToPage(first.page);
+      }
+    }
+  }, [searchQuery, searchMatches, scrollToPage]);
+
+  // Zotero-standard PDF Fulltext search match highlighter
+  const escapeRegExp = useCallback((str: string) => {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }, []);
+
+  const customTextRenderer = useMemo(() => {
+    const q = searchQuery.trim();
+    if (!q || q.length < 2) return undefined;
+    const escaped = escapeRegExp(q);
+    const regex = new RegExp(`(${escaped})`, 'gi');
+
+    return ({ str }: { str: string }) => {
+      if (!str) return '';
+      return str.replace(
+        regex,
+        (match) =>
+          `<mark class="bg-yellow-300/60 dark:bg-yellow-400/60 text-transparent rounded-[1px]" style="background-color: rgba(250, 204, 21, 0.45); color: transparent; border-radius: 2px;">${match}</mark>`,
+      );
+    };
+  }, [searchQuery, escapeRegExp]);
 
   const [pulsingAnnotationId, setPulsingAnnotationId] = useState<string | null>(null);
 
@@ -767,6 +810,7 @@ export default function Viewer({
                     renderTextLayer={true}
                     renderAnnotationLayer={true}
                     loading={<DocumentPageSkeleton width={effectivePageWidth} />}
+                    customTextRenderer={customTextRenderer}
                   />
 
                   {/* ACTIVE AREA SELECTION MARQUEE */}
@@ -872,7 +916,7 @@ export default function Viewer({
                               {isRect && (
 
                                 <span
-                                  className="absolute -top-3.5 left-0 px-1 py-0.2 text-[9px] font-mono uppercase rounded text-white font-semibold pointer-events-none tracking-wide"
+                                  className="absolute -top-3.5 left-0 px-1 py-0.2 text-9 font-mono uppercase rounded text-white font-semibold pointer-events-none tracking-wide"
                                   style={{ backgroundColor: colorHex }}
                                 >
                                   Area

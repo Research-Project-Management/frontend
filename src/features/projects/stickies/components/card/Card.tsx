@@ -2,10 +2,9 @@
 
 import { type Sticky } from '@/features/projects/stickies/types/sticky.types';
 import { STICKY_COLOR_MAP } from '@/features/projects/stickies/types/sticky.types';
-import Content from "./Content";
+import Content, { type StickiesEditorHandle } from "./Content";
 import Toolbar from "./Toolbar";
 import React, { useState, memo } from "react";
-import type { Editor } from "@tiptap/react";
 import { GripVertical } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
@@ -28,7 +27,7 @@ const Card = memo(
     isOverlay,
   }: CardProps) {
     const colorConfig = STICKY_COLOR_MAP[sticky.color];
-    const [editor, setEditor] = useState<Editor | null>(null);
+    const [editor, setEditor] = useState<StickiesEditorHandle | null>(null);
     const [activeModal, setActiveModal] = useState<string | null>(null);
 
     const topAccentStyle = {

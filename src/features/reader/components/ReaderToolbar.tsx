@@ -106,6 +106,11 @@ export interface ReaderToolbarProps {
   isEntitiesDrawerOpen?: boolean;
   onToggleEntitiesDrawer?: () => void;
   onExtractToNote?: () => void;
+
+  // OCR & Scanned Document Indicator
+  isScanned?: boolean;
+  ocrStatus?: 'pending' | 'processing' | 'ready' | 'completed' | 'none';
+  onTriggerOcr?: () => void;
 }
 
 export const ZOTERO_COLORS = [
@@ -167,6 +172,9 @@ export function ReaderToolbar({
   isEntitiesDrawerOpen = false,
   onToggleEntitiesDrawer,
   onExtractToNote,
+  isScanned = false,
+  ocrStatus = 'none',
+  onTriggerOcr,
 }: ReaderToolbarProps) {
   const pageNavForm = useForm<PageNavFormData>({
     resolver: zodResolver(pageNavFormSchema),
@@ -949,6 +957,28 @@ export function ReaderToolbar({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          )}
+
+          {/* Scanned Document & OCR Indicator */}
+          {isScanned && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onTriggerOcr}
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-10 font-medium select-none cursor-pointer transition-colors hover:bg-amber-100 dark:hover:bg-amber-900/50"
+                  aria-label="Scanned document OCR indicator"
+                >
+                  <Scan className="size-3 text-amber-600 dark:text-amber-400 shrink-0" strokeWidth={1.5} />
+                  <span>{ocrStatus === 'processing' ? 'OCR Running...' : 'Scanned PDF'}</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-11">
+                {ocrStatus === 'processing'
+                  ? 'Optical character recognition is processing text layer'
+                  : 'Document is image-based (no native text layer). Text layer ready via OCR.'}
+              </TooltipContent>
+            </Tooltip>
           )}
 
           <div className="w-px h-3.5 bg-border mx-0.5" />

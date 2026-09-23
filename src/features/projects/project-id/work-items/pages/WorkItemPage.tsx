@@ -1249,6 +1249,8 @@ export function WorkItemPage({
           columns={columns}
           project={project}
           members={members}
+          cycles={cycles}
+          availableItems={allItems}
           onSave={handleSaveCard}
           onDelete={handleDeleteCard}
           onDuplicate={

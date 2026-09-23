@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import { Button } from "@/shared/components/ui";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui";
 import { Textarea } from "@/shared/components/ui";
-import { SmilePlus, MessageSquare } from "lucide-react";
+import { SmilePlus, MessageSquare, History, ListFilter, Activity as ActivityIcon } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/g;
@@ -115,6 +115,8 @@ export type ActivitiesProps = {
   isReadOnly?: boolean;
 };
 
+type ActivityTab = "all" | "activity" | "comments" | "history";
+
 export function Activities({
   commentText,
   setCommentText,
@@ -137,6 +139,7 @@ export function Activities({
   activities,
   isReadOnly = false,
 }: ActivitiesProps) {
+  const [activeTab, setActiveTab] = useState<ActivityTab>("all");
   const [showCommentActions, setShowCommentActions] = useState(false);
   const [isCommentSubmitRequested, setIsCommentSubmitRequested] = useState(false);
   const [isEditCommentSubmitRequested, setIsEditCommentSubmitRequested] = useState(false);
@@ -153,6 +156,22 @@ export function Activities({
   const hasObservedEditUpdatePendingRef = useRef(false);
 
   const reactionOptions = ["👍", "❤️", "😆", "😮", "😢", "😡"];
+
+  const filteredActivities = useMemo(() => {
+    if (activeTab === "all") return activities;
+    if (activeTab === "comments") return activities.filter((a) => a.kind === "comment");
+    if (activeTab === "activity") return activities.filter((a) => a.kind !== "comment");
+    if (activeTab === "history") return activities.filter((a) => a.kind === "activity" || a.kind === "system");
+    return activities;
+  }, [activities, activeTab]);
+
+  const commentCount = useMemo(() => {
+    return activities.filter((a) => a.kind === "comment").length;
+  }, [activities]);
+
+  const activityCount = useMemo(() => {
+    return activities.filter((a) => a.kind !== "comment").length;
+  }, [activities]);
 
   const handleSaveComment = () => {
     const trimmedComment = commentText.trim();
@@ -261,20 +280,70 @@ export function Activities({
   }, []);
 
   return (
-    <div className="w-full flex flex-col space-y-3">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-2 border-b border-border">
-        <div className="flex items-center gap-1.5">
-          <MessageSquare className="size-3.5 shrink-0 text-foreground" />
-          <h3 className="text-11 font-semibold tracking-normal text-foreground">
-            Comments & Activity
-          </h3>
+    <div className="w-full flex flex-col space-y-3.5">
+      {/* Plane Style Filter Tabs Header */}
+      <div className="flex items-center justify-between pb-2 border-b border-border flex-wrap gap-2">
+        <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-lg border border-border">
+          <button
+            type="button"
+            onClick={() => setActiveTab("all")}
+            className={cn(
+              "px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer",
+              activeTab === "all"
+                ? "bg-background text-foreground font-semibold shadow-2xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+            )}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("activity")}
+            className={cn(
+              "px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer flex items-center gap-1",
+              activeTab === "activity"
+                ? "bg-background text-foreground font-semibold shadow-2xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+            )}
+          >
+            <span>Activity</span>
+            {activityCount > 0 && (
+              <span className="text-10 text-muted-foreground tabular-nums">({activityCount})</span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("comments")}
+            className={cn(
+              "px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer flex items-center gap-1",
+              activeTab === "comments"
+                ? "bg-background text-foreground font-semibold shadow-2xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+            )}
+          >
+            <span>Comments</span>
+            {commentCount > 0 && (
+              <span className="text-10 text-muted-foreground tabular-nums">({commentCount})</span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("history")}
+            className={cn(
+              "px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer",
+              activeTab === "history"
+                ? "bg-background text-foreground font-semibold shadow-2xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+            )}
+          >
+            History
+          </button>
         </div>
 
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 px-1.5 text-11 font-medium text-foreground hover:bg-muted cursor-pointer shadow-none rounded-md"
+          className="h-6 px-2 text-11 font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer shadow-none rounded-md"
           onClick={() => setShowDetailActivity((prev) => !prev)}
         >
           {showDetailActivity ? "Hide details" : "Show details"}
@@ -313,7 +382,7 @@ export function Activities({
           placeholder={canComment ? "Write a comment..." : "Save card before commenting"}
           disabled={!canComment || isReadOnly}
           className={cn(
-            "min-h-[58px] rounded-md border border-border bg-background p-2.5 text-xs text-foreground shadow-none focus-visible:ring-1 focus-visible:ring-primary resize-none transition-colors leading-relaxed",
+            "min-h-[64px] rounded-md border border-border bg-background p-3 text-xs sm:text-sm text-foreground shadow-none focus-visible:ring-1 focus-visible:ring-primary resize-none transition-colors leading-relaxed",
             (!canComment || isReadOnly) && "cursor-not-allowed bg-muted"
           )}
           rows={2}
@@ -328,7 +397,7 @@ export function Activities({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs text-foreground hover:bg-muted rounded-md shadow-none"
+              className="h-7 px-2.5 text-xs text-foreground hover:bg-muted rounded-md shadow-none cursor-pointer"
               onClick={handleCancelComment}
               disabled={isSavingComment}
             >
@@ -337,14 +406,14 @@ export function Activities({
             <Button
               type="button"
               size="sm"
-              className="h-7 px-3 text-xs rounded-md shadow-none"
+              className="h-7 px-3 text-xs rounded-md shadow-none cursor-pointer"
               onClick={handleSaveComment}
               disabled={!commentText.trim() || isSavingComment}
             >
               {isSavingComment ? (
                 <span className="inline-block size-3 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent mr-1" />
               ) : null}
-              Save
+              Comment
             </Button>
           </div>
         ) : null}
@@ -353,20 +422,20 @@ export function Activities({
       {/* Activity Timeline List */}
       <div className="space-y-3 pt-1">
         {activityLoading ? (
-          <div className="rounded-md bg-muted px-2.5 py-1.5 text-11 text-muted-foreground">
+          <div className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
             Loading activity...
           </div>
         ) : null}
 
         {activityError ? (
-          <div className="rounded-md bg-destructive/10 px-2.5 py-1.5 text-11 text-destructive">
+          <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
             Could not load activity. Please try again.
           </div>
         ) : null}
 
-        {activities.length > 0 ? (
-          <div className="space-y-3 max-h-[420px] overflow-y-auto pr-0.5">
-            {activities.map((item) => {
+        {filteredActivities.length > 0 ? (
+          <div className="space-y-3 max-h-[480px] overflow-y-auto pr-0.5">
+            {filteredActivities.map((item) => {
               const isComment = item.kind === "comment";
               const isEditing = editingCommentId === item.id;
               const isSubmittingEdit =
@@ -375,7 +444,7 @@ export function Activities({
                 editSubmittingCommentId === item.id;
 
               return (
-                <div key={item.id} className="flex items-start gap-2 text-xs">
+                <div key={item.id} className="flex items-start gap-2.5 text-xs">
                   <Avatar className="size-6 shrink-0 mt-0.5">
                     <AvatarImage src={item.avatarUrl || undefined} />
                     <AvatarFallback className="bg-muted text-10 font-semibold text-foreground">
@@ -386,7 +455,7 @@ export function Activities({
                   <div className="min-w-0 flex-1 space-y-1">
                     {isComment ? (
                       <>
-                        <div className="flex items-center gap-1.5 text-11">
+                        <div className="flex items-center gap-1.5 text-xs">
                           <span className="font-semibold text-foreground truncate">{item.author}</span>
                           <span className="text-10 text-muted-foreground">{item.timestamp}</span>
                         </div>
@@ -405,7 +474,7 @@ export function Activities({
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 px-2 text-xs text-foreground hover:bg-muted rounded-md shadow-none"
+                                className="h-6 px-2 text-xs text-foreground hover:bg-muted rounded-md shadow-none cursor-pointer"
                                 onClick={handleCancelEditComment}
                                 disabled={isSubmittingEdit}
                               >
@@ -414,7 +483,7 @@ export function Activities({
                               <Button
                                 type="button"
                                 size="sm"
-                                className="h-6 px-2.5 text-xs rounded-md shadow-none"
+                                className="h-6 px-2.5 text-xs rounded-md shadow-none cursor-pointer"
                                 onClick={handleSaveEditedComment}
                                 disabled={!editingCommentText.trim() || isSubmittingEdit}
                               >
@@ -427,7 +496,7 @@ export function Activities({
                           </div>
                         ) : (
                           <>
-                            <div className="rounded-md border border-border bg-muted px-2.5 py-1.5 text-xs leading-relaxed text-foreground shadow-none whitespace-pre-wrap break-words">
+                            <div className="rounded-md border border-border bg-muted/60 px-3 py-2 text-xs leading-relaxed text-foreground shadow-none whitespace-pre-wrap break-words">
                               {renderCommentContent(item.content, attachmentLinks)}
                             </div>
                             {item.reactionEmoji ? (
@@ -495,7 +564,7 @@ export function Activities({
                         )}
                       </>
                     ) : (
-                      <div className="text-11 leading-snug">
+                      <div className="text-xs leading-snug">
                         <p className="text-foreground">
                           <span className="font-semibold">{item.author}</span> {item.content}
                         </p>
@@ -511,7 +580,7 @@ export function Activities({
           </div>
         ) : canComment ? (
           <div className="py-6 text-center text-xs text-muted-foreground">
-            No activity yet
+            No activity yet for {activeTab}
           </div>
         ) : (
           <div className="py-6 text-center text-xs text-muted-foreground">
@@ -551,7 +620,7 @@ export function Activities({
               type="button"
               variant="destructive"
               size="sm"
-              className="h-7 text-11 px-3 shadow-none rounded-md"
+              className="h-7 text-xs px-3 shadow-none rounded-md cursor-pointer"
               onClick={handleConfirmDeleteComment}
               disabled={isDeleteCommentRunning}
             >

@@ -1248,9 +1248,9 @@ function TimelineCanvas({
     <div
       ref={canvasScrollRef}
       onScroll={onScroll}
-      className="flex-1 overflow-auto select-none bg-background relative"
+      className="flex-1 overflow-auto select-none bg-background relative h-full"
     >
-      <div style={{ width: `${totalWidth}px` }} className="min-w-full relative flex flex-col">
+      <div style={{ width: `${totalWidth}px` }} className="min-w-full min-h-full relative flex flex-col">
         {/* Sticky Dual-tier Header */}
         <div
           className="sticky top-0 z-30 bg-background border-b border-border select-none shrink-0"
@@ -1291,7 +1291,10 @@ function TimelineCanvas({
                   <div
                     key={col.id}
                     style={{ width: `${col.width}px` }}
-                    className="shrink-0 flex items-center justify-center border-r border-border text-xs font-normal transition-colors"
+                    className={cn(
+                      "shrink-0 flex items-center justify-center border-r border-border text-xs font-normal transition-colors",
+                      col.isWeekend && "bg-muted/10"
+                    )}
                   >
                     {col.isCurrent ? (
                       <div className="flex items-center">
@@ -1365,14 +1368,17 @@ function TimelineCanvas({
         </div>
 
         {/* Grid Body */}
-        <div className="relative flex-1">
+        <div className="relative flex-1 min-h-[calc(100vh-140px)]">
           {/* Vertical Grid Lines */}
           <div className="absolute inset-0 flex pointer-events-none z-0">
             {timelineColumns.map((col) => (
               <div
                 key={`grid-${col.id}`}
                 style={{ width: `${col.width}px` }}
-                className="shrink-0 border-r border-border/40 h-full"
+                className={cn(
+                  "shrink-0 border-r border-border h-full",
+                  col.isWeekend && "bg-muted/10"
+                )}
               />
             ))}
           </div>
@@ -1382,7 +1388,7 @@ function TimelineCanvas({
             <div
               aria-hidden="true"
               style={{ left: `${currentColLeft}px`, width: `${currentColWidth}px` }}
-              className="absolute top-0 bottom-0 bg-primary/10 dark:bg-primary/15 pointer-events-none z-0"
+              className="absolute top-0 bottom-0 bg-primary/10 dark:bg-primary/15 border-x border-primary/25 pointer-events-none z-0"
             />
           )}
 
@@ -1492,12 +1498,6 @@ function TimelineCanvas({
               );
             })}
           </div>
-
-          {/* Bottom spacer row matching sidebar's "+ New work item" */}
-          <div
-            style={{ height: `${ROW_HEIGHT}px` }}
-            className="border-t border-border relative z-10 bg-background"
-          />
         </div>
       </div>
     </div>

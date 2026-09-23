@@ -94,6 +94,7 @@ export function DoneStatusIcon({ className, color }: { className?: string; color
  * Cancelled: Solid red circle with white cross ('x')
  */
 export function CancelledStatusIcon({ className, color }: { className?: string; color?: string }) {
+  const finalColor = color && color !== '#8A9093' && color !== '#8a9093' ? color : '#EF4444';
   return (
     <svg
       viewBox="0 0 16 16"
@@ -101,7 +102,7 @@ export function CancelledStatusIcon({ className, color }: { className?: string; 
       className={cn("size-3.5 shrink-0", className)}
       aria-label="Cancelled"
     >
-      <circle cx="8" cy="8" r="7" fill={color || "#ef4444"} />
+      <circle cx="8" cy="8" r="7" fill={finalColor} />
       <path
         d="M5.5 5.5L10.5 10.5M10.5 5.5L5.5 10.5"
         stroke="#ffffff"
@@ -184,7 +185,8 @@ export function StatusIcon({
     normalizedTitle.includes('rejected') ||
     normalizedId.includes('cancel')
   ) {
-    return <CancelledStatusIcon className={className} color={color} />;
+    const finalColor = color && color !== '#8A9093' && color !== '#8a9093' ? color : '#EF4444';
+    return <CancelledStatusIcon className={className} color={finalColor} />;
   }
 
   // Fallback: custom state using accentColor

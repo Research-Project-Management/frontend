@@ -1,8 +1,14 @@
 'use client';
 
 import React from 'react';
-import { Library, Folder, X } from 'lucide-react';
+import { Library, Folder, X, Plus } from 'lucide-react';
 import { useItems, useCollections } from '../../data';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/shared/components/ui';
 import type { Item, Collection } from '../../types/library.types';
 
 interface CollectionsSectionProps {
@@ -74,6 +80,20 @@ export default function CollectionsSection({
     });
   }, [itemCollectionIds, collections, paper.collections]);
 
+  const unassignedCollections = React.useMemo(() => {
+    if (!collections || collections.length === 0) return [];
+    return collections.filter((c: Collection) => !itemCollectionIds.includes(c.id));
+  }, [collections, itemCollectionIds]);
+
+  const handleAddToCollection = (targetColId: string) => {
+    if (!paper.id) return;
+    const newIds = Array.from(new Set([...itemCollectionIds, targetColId]));
+    updatePaper(paper.id, {
+      collectionIds: newIds,
+      collectionId: newIds[0] || null,
+    });
+  };
+
   const handleRemoveFromCollection = (targetColId: string) => {
     if (!paper.id) return;
     const remainingIds = itemCollectionIds.filter((id) => id !== targetColId);
@@ -87,18 +107,44 @@ export default function CollectionsSection({
     <div className="space-y-1 select-none font-sans">
       {!hideHeader && (
         <div className="flex items-center justify-between pb-1">
-          <h3 className="text-13 font-medium text-foreground">
+          <h3 className="text-12 font-medium text-foreground">
             Libraries and Collections
           </h3>
+          {canEdit && unassignedCollections.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+                  title="Add to collection"
+                  aria-label="Add to collection"
+                >
+                  <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5 text-xs font-sans">
+                {unassignedCollections.map((col: Collection) => (
+                  <DropdownMenuItem
+                    key={col.id}
+                    onClick={() => handleAddToCollection(col.id)}
+                    className="flex items-center gap-2 h-7 px-2 cursor-pointer text-foreground hover:bg-muted rounded-md"
+                  >
+                    <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                    <span className="truncate">{col.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       )}
 
       {/* Primary Library Row (Root) */}
-      <div className="flex items-center gap-2 py-1 px-2 text-13 rounded-md hover:bg-muted/60 transition-colors">
+      <div className="flex items-center gap-2 py-1 px-2 text-13 rounded-md hover:bg-muted transition-colors">
         <div className="size-4 shrink-0 flex items-center justify-center">
           <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
         </div>
-        <span className="font-medium text-13 text-foreground tracking-tight truncate">My Library</span>
+        <span className="font-medium text-13 text-foreground tracking-tight break-words">My Library</span>
       </div>
 
       {/* Collection Tree Rows */}
@@ -112,14 +158,14 @@ export default function CollectionsSection({
                 <div
                   key={`${colId}-${col.id}-${idx}`}
                   style={{ paddingLeft: `${indentPx}px` }}
-                  className="flex items-center justify-between gap-1.5 py-1 pr-2 text-13 rounded-md hover:bg-muted/60 transition-colors group"
+                  className="flex items-center justify-between gap-1.5 py-1 pr-2 text-13 rounded-md hover:bg-muted transition-colors group"
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     <div className="size-4 shrink-0 flex items-center justify-center">
                       <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                     </div>
                     <span
-                      className="text-13 truncate text-foreground font-normal"
+                      className="text-13 break-words leading-snug text-foreground font-normal"
                       title={col.name}
                     >
                       {col.name}

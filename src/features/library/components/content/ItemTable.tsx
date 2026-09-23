@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { useLibraryUIStore } from '../../store/library-ui.store';
 import { useSelectedCount } from '../../store/selectors';
 import {
@@ -9,6 +11,9 @@ import {
   useBatchRestoreItemsMutation,
   useBatchPurgeItemsMutation,
   useCollectionsQuery,
+  CollectionsService,
+  itemKeys,
+  invalidateCollections,
 } from '../../data';
 import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
@@ -20,11 +25,17 @@ import type { Item } from '../../types/library.types';
 
 export interface ItemTableProps {
   items: Item[];
+  totalCount?: number;
+  hasNextPage?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
   displayOptions?: LibraryDisplayOptions;
   isTrash?: boolean;
   scopeId?: string;
   onRestoreItems?: (ids: string[]) => void;
   onPermanentDeleteItems?: (ids: string[]) => void;
+  onMoveToCollection?: (itemId: string, collectionId: string) => void;
+  onSortChange?: (columnKey: string, direction: 'asc' | 'desc') => void;
 }
 
 /**
@@ -35,14 +46,21 @@ export interface ItemTableProps {
  * - ItemTableRow: Memoized row listening to granular boolean selectors
  * - ItemContextMenu: Isolated context menu portal
  */
-export function ItemTable({
+export const ItemTable = React.memo(function ItemTable({
   items,
+  hasNextPage,
+  isLoadingMore,
+  onLoadMore,
   displayOptions: propDisplayOptions,
   isTrash = false,
   scopeId,
   onRestoreItems,
   onPermanentDeleteItems,
+  onMoveToCollection: propOnMoveToCollection,
+  onSortChange,
 }: ItemTableProps) {
+  const queryClient = useQueryClient();
+
   // Store actions
   const selectOnly = useLibraryUIStore((s) => s.selectOnly);
   const selectAll = useLibraryUIStore((s) => s.selectAll);
@@ -63,6 +81,33 @@ export function ItemTable({
   const restoreMutation = useBatchRestoreItemsMutation(scopeId);
   const purgeMutation = useBatchPurgeItemsMutation(scopeId);
   const { data: collections = [] } = useCollectionsQuery(scopeId);
+
+  const handleMoveToCollection = useCallback(
+    async (itemId: string, targetCollectionId: string) => {
+      if (propOnMoveToCollection) {
+        propOnMoveToCollection(itemId, targetCollectionId);
+        return;
+      }
+      const toastId = toast.loading('Moving reference...', { id: 'move-doc' });
+      try {
+        await CollectionsService.moveItems(scopeId, targetCollectionId, [itemId]);
+        queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
+        queryClient.invalidateQueries({ queryKey: ['items', scopeId || 'user'] });
+        queryClient.invalidateQueries({ queryKey: itemKeys.byCollection(scopeId, targetCollectionId) });
+        invalidateCollections(queryClient, scopeId);
+        toast.success('Reference moved', {
+          description: 'Reference successfully moved to collection.',
+          id: toastId,
+        });
+      } catch (err: any) {
+        toast.error('Failed to move reference', {
+          description: err?.message || 'Could not move document to collection.',
+          id: toastId,
+        });
+      }
+    },
+    [propOnMoveToCollection, scopeId, queryClient],
+  );
 
   // Sorting state
   const [sortColumn, setSortColumn] = useState<string | null>(
@@ -100,15 +145,18 @@ export function ItemTable({
       orderBy: columnKey as any,
       orderDirection: nextDir,
     }));
+    onSortChange?.(columnKey, nextDir);
   };
 
   // Sort items client-side
   const sortedItems = useMemo(() => {
     if (!sortColumn) return items;
 
-    return [...items].sort((a: any, b: any) => {
-      let valA: any = a[sortColumn];
-      let valB: any = b[sortColumn];
+    return [...items].sort((a, b) => {
+      const recordA = a as unknown as Record<string, unknown>;
+      const recordB = b as unknown as Record<string, unknown>;
+      let valA: unknown = recordA[sortColumn];
+      let valB: unknown = recordB[sortColumn];
 
       if (sortColumn === 'authors') {
         valA = Array.isArray(a.authors) ? a.authors[0] : a.authors;
@@ -129,8 +177,8 @@ export function ItemTable({
         return sortDirection === 'asc' ? cmp : -cmp;
       }
 
-      if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-      if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+      if (Number(valA) < Number(valB)) return sortDirection === 'asc' ? -1 : 1;
+      if (Number(valA) > Number(valB)) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
   }, [items, sortColumn, sortDirection]);
@@ -145,25 +193,30 @@ export function ItemTable({
     }
   };
 
-  // Row selection handler with Shift + Click support
+  // Row click handler: activates the item to view in inspector, NEVER selects the checkbox automatically
   const handleRowClick = useCallback(
-    (e: React.MouseEvent, item: Item, index: number) => {
+    (_e: React.MouseEvent, item: Item, index: number) => {
+      setActiveItem(item.id);
+      lastSelectedIndexRef.current = index;
+    },
+    [setActiveItem],
+  );
+
+  // Checkbox toggle handler: explicit user choice with Shift + Click range support
+  const handleToggleSelect = useCallback(
+    (id: string, e: React.MouseEvent, index: number) => {
       if (e.shiftKey && lastSelectedIndexRef.current !== null) {
         const currentSelectedIds = useLibraryUIStore.getState().selectedIds;
         const start = Math.min(lastSelectedIndexRef.current, index);
         const end = Math.max(lastSelectedIndexRef.current, index);
         const rangeIds = sortedItems.slice(start, end + 1).map((it) => it.id);
         selectAll(Array.from(new Set([...Array.from(currentSelectedIds), ...rangeIds])));
-      } else if (e.metaKey || e.ctrlKey) {
-        toggleSelect(item.id);
-        setActiveItem(item.id);
-        lastSelectedIndexRef.current = index;
       } else {
-        selectOnly(item.id);
-        lastSelectedIndexRef.current = index;
+        toggleSelect(id);
       }
+      lastSelectedIndexRef.current = index;
     },
-    [sortedItems, selectAll, toggleSelect, selectOnly, setActiveItem],
+    [sortedItems, selectAll, toggleSelect],
   );
 
   // Keyboard navigation
@@ -177,7 +230,6 @@ export function ItemTable({
       const nextItem = sortedItems[nextIndex];
       if (nextItem) {
         setActiveItem(nextItem.id);
-        selectOnly(nextItem.id);
         lastSelectedIndexRef.current = nextIndex;
       }
     } else if (e.key === 'ArrowUp') {
@@ -186,7 +238,6 @@ export function ItemTable({
       const prevItem = sortedItems[prevIndex];
       if (prevItem) {
         setActiveItem(prevItem.id);
-        selectOnly(prevItem.id);
         lastSelectedIndexRef.current = prevIndex;
       }
     } else if (e.key === ' ') {
@@ -240,43 +291,77 @@ export function ItemTable({
     displayOptions?.columns || DEFAULT_LIBRARY_DISPLAY_OPTIONS.columns;
 
   return (
-    <div
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-      className="w-full h-full overflow-auto text-xs focus:outline-none select-none"
-    >
-      <table className="w-full table-fixed text-left border-collapse">
-        <ItemTableHeader
-          columns={columns}
-          isTrash={isTrash}
-          isAllSelected={isAllSelected}
-          onSelectAll={handleSelectAll}
-          sortColumn={sortColumn}
-          sortDirection={sortDirection}
-          onSort={handleSort}
-        />
+    <div className="flex flex-col h-full w-full overflow-hidden select-none">
+      {/* Scrollable Data Table Container */}
+      <div
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+        className="flex-1 w-full overflow-auto text-13 focus:outline-none"
+      >
+        <table className="w-full min-w-[960px] table-fixed text-left border-collapse">
+          <colgroup>
+            <col />
+            {columns.authors !== false && <col style={{ width: '200px' }} />}
+            {columns.year !== false && <col style={{ width: '70px' }} />}
+            {columns.publication !== false && <col style={{ width: '180px' }} />}
+            {columns.itemType && <col style={{ width: '120px' }} />}
+            {columns.doi && <col style={{ width: '140px' }} />}
+            {columns.citationKey && <col style={{ width: '120px' }} />}
+            {columns.citations && <col style={{ width: '80px' }} />}
+            {isTrash && <col style={{ width: '120px' }} />}
+          </colgroup>
+          <ItemTableHeader
+            columns={columns}
+            isTrash={isTrash}
+            isAllSelected={isAllSelected}
+            onSelectAll={handleSelectAll}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+          />
 
-        <tbody className="divide-y divide-border/30">
-          {sortedItems.map((item, index) => (
-            <ItemTableRow
-              key={item.id}
-              item={item}
-              index={index}
-              columns={columns}
-              density={displayOptions.density}
-              isTrash={isTrash}
-              collections={collections}
-              onRowClick={handleRowClick}
-              onToggleStar={handleToggleStar}
-              onDelete={handleDelete}
-              onRestore={handleRestore}
-              onPurge={handlePurge}
-            />
-          ))}
-        </tbody>
-      </table>
+          <tbody className="divide-y divide-border">
+            {sortedItems.map((item, index) => (
+              <ItemTableRow
+                key={item.id}
+                item={item}
+                index={index}
+                columns={columns}
+                density={displayOptions.density}
+                isTrash={isTrash}
+                collections={collections}
+                onRowClick={handleRowClick}
+                onToggleSelect={handleToggleSelect}
+                onToggleStar={handleToggleStar}
+                onDelete={handleDelete}
+                onRestore={handleRestore}
+                onPurge={handlePurge}
+                onMoveToCollection={handleMoveToCollection}
+              />
+            ))}
+          </tbody>
+        </table>
+
+        {/* Invisible sentinel for seamless infinite scroll */}
+        {hasNextPage && (
+          <div
+            ref={(node) => {
+              if (!node || !hasNextPage || isLoadingMore) return;
+              const observer = new IntersectionObserver((entries) => {
+                if (entries[0]?.isIntersecting) {
+                  onLoadMore?.();
+                }
+              });
+              observer.observe(node);
+              return () => observer.disconnect();
+            }}
+            className="h-1 w-full"
+          />
+        )}
+      </div>
     </div>
   );
-}
+});
 
 export default ItemTable;
+

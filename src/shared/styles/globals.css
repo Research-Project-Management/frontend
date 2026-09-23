@@ -1163,4 +1163,45 @@
 .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
 }
+
+/* Inspector interactive scrollbar: overlay and border-touching */
+.inspector-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.25s ease;
+}
+
+@supports (overflow-y: overlay) {
+  .inspector-scrollbar {
+    overflow-y: overlay !important;
+  }
+}
+
+.inspector-scrollbar:hover,
+.inspector-scrollbar:focus-within {
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+}
+
+.inspector-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.inspector-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.inspector-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9999px;
+  transition: background-color 0.25s ease;
+}
+
+.inspector-scrollbar:hover::-webkit-scrollbar-thumb,
+.inspector-scrollbar:focus-within::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+}
+
+.inspector-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
 

@@ -21,7 +21,7 @@ export function SidebarResizer({
       aria-orientation="vertical"
       aria-valuenow={width}
       aria-valuemin={200}
-      aria-valuemax={480}
+      aria-valuemax={400}
       aria-label="Resize library sidebar (double-click to reset width)"
       tabIndex={0}
       onMouseDown={onMouseDown}
@@ -32,13 +32,18 @@ export function SidebarResizer({
           setWidth(Math.max(200, width - 10));
         } else if (e.key === 'ArrowRight') {
           e.preventDefault();
-          setWidth(Math.min(480, width + 10));
+          setWidth(Math.min(400, width + 10));
         }
       }}
-      className={cn(
-        "absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-primary/40 transition-colors z-30 select-none focus-visible:outline-none",
-        isDragging && "bg-primary/50"
-      )}
-    />
+      className="hidden md:flex absolute top-0 -right-1.5 w-3 h-full cursor-col-resize items-center justify-center z-30 select-none group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+    >
+      <div
+        className={cn(
+          "w-0.5 h-full transition-colors duration-150",
+          "group-hover:bg-primary/60",
+          isDragging && "bg-primary"
+        )}
+      />
+    </div>
   );
 }

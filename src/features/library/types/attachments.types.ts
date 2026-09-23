@@ -11,6 +11,13 @@ export const attachmentRevisionSchema = z.object({
   createdAt: z.string().optional().default(''),
 });
 
+export const linkModeSchema = z.enum([
+  'imported_file',
+  'imported_url',
+  'linked_url',
+  'linked_file',
+]);
+
 export const attachmentTypeSchema = z.enum([
   'primary_pdf',
   'supplementary',
@@ -18,7 +25,9 @@ export const attachmentTypeSchema = z.enum([
   'slides',
   'code',
   'figure',
+  'snapshot',
   'other',
+  'preview',
 ]);
 
 export const attachmentExtractionStatusSchema = z.enum([
@@ -40,6 +49,7 @@ export const attachmentSchema = z.object({
   fileHash: z.string().nullable().optional(),
   size: z.number().optional().default(0),
   mimeType: z.string().optional().default(''),
+  linkMode: linkModeSchema.optional().default('imported_file'),
   attachmentType: attachmentTypeSchema.optional().default('supplementary'),
   uploadedAt: z.string().optional(),
   extractionStatus: attachmentExtractionStatusSchema.optional(),
@@ -58,16 +68,18 @@ export const addRevisionSchema = z.object({
 });
 
 export const createAttachmentSchema = z.object({
-  fileId: z.string().min(1, 'fileId is required'),
-  filename: z.string().min(1, 'filename is required'),
+  fileId: z.string().optional(),
+  filename: z.string().optional().default(''),
   url: z.string().optional(),
   mimeType: z.string().optional(),
   size: z.number().optional(),
+  linkMode: linkModeSchema.optional(),
   attachmentType: attachmentTypeSchema.optional(),
 });
 
 export const updateAttachmentSchema = z.object({
   filename: z.string().optional(),
+  linkMode: linkModeSchema.optional(),
   attachmentType: attachmentTypeSchema.optional(),
 });
 
@@ -77,6 +89,7 @@ export type ItemAttachment = z.infer<typeof attachmentSchema>;
 export type AttachmentDto = ItemAttachment;
 export type AttachmentRevision = z.infer<typeof attachmentRevisionSchema>;
 export type AttachmentRevisionDto = AttachmentRevision;
+export type LinkMode = z.infer<typeof linkModeSchema>;
 export type AttachmentType = z.infer<typeof attachmentTypeSchema>;
 export type AttachmentExtractionStatus = z.infer<
   typeof attachmentExtractionStatusSchema

@@ -118,7 +118,7 @@ export default function AuthorshipModal({
                           id="authorship-confirm"
                           checked={field.value}
                           onCheckedChange={field.onChange}
-                          className="mt-0.5 shrink-0"
+                          className="size-3.5 border-border data-[state=checked]:border-primary mt-0.5 shrink-0"
                         />
                       )}
                     />

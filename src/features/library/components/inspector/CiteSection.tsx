@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Copy, Check, ChevronDown, Download, ShieldAlert } from 'lucide-react';
+import { Copy, Check, ChevronDown, Download, ShieldAlert, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from "@/shared/lib/utils";
 import {
@@ -297,13 +297,28 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
         </span>
       </div>
 
-      {/* ⚠️ Citation Guard: Retraction Notice */}
-      {paper.isRetracted && (
-        <div className="p-2.5 rounded-md border border-rose-300 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 text-xs flex items-start gap-2 select-none shrink-0">
-          <ShieldAlert className="size-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <span className="font-semibold text-rose-700 dark:text-rose-400">Citation Guard: </span>
-            <span>You are generating a citation for a <strong>retracted publication</strong>. Citing this paper may compromise academic rigor.</span>
+      {/* ⚠️ Citation Guard: Retraction Notice (Zotero Style) */}
+      {(paper.isRetracted || (paper as any).retractionStatus === 'retracted') && (
+        <div className="p-2.5 rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-xs flex items-start gap-2.5 select-none shrink-0 animate-in fade-in duration-200">
+          <ShieldAlert className="size-4 text-destructive shrink-0 mt-0.5" strokeWidth={1.5} />
+          <div className="flex-1 space-y-1 min-w-0">
+            <span className="font-semibold text-destructive block text-12">
+              Warning: Retracted Publication
+            </span>
+            <p className="text-11 text-destructive/90 leading-snug break-words">
+              This publication has been flagged as retracted in academic databases. Citing this paper may compromise academic rigor.
+            </p>
+            {((paper.retractionDetails as Record<string, any>)?.noticeUrl || (paper as any).noticeUrl || (paper.doi ? `https://doi.org/${paper.doi}` : undefined)) && (
+              <a
+                href={((paper.retractionDetails as Record<string, any>)?.noticeUrl || (paper as any).noticeUrl || `https://doi.org/${paper.doi}`)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-11 font-medium text-destructive hover:underline mt-0.5"
+              >
+                <span>View Retraction Notice</span>
+                <ExternalLink className="size-3 shrink-0" strokeWidth={1.5} />
+              </a>
+            )}
           </div>
         </div>
       )}
@@ -385,7 +400,7 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
         <div className="flex items-center justify-between px-2.5 py-1.5 rounded-md border border-border bg-transparent text-xs">
           <div className="flex items-center gap-1.5 min-w-0 pr-2">
             <span className="text-muted-foreground text-11 shrink-0 font-medium">In-text</span>
-            <span className="font-mono text-11 text-foreground truncate select-text">
+            <span className="font-mono text-11 text-foreground break-words leading-snug select-text">
               {inTextPreview}
             </span>
           </div>

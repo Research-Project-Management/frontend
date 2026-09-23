@@ -23,6 +23,7 @@ export type LibraryModalType =
   | 'RENAME_COLLECTION'
   | 'DELETE_COLLECTION'
   | 'IMPORT_PAPER'
+  | 'UPLOAD_FILES'
   | 'EDIT_METADATA'
   | 'DELETE_ITEMS'
   | 'MOVE_ITEMS'
@@ -134,11 +135,11 @@ export const useLibraryUIStore = create<LibraryUIState>()(
       toggleSidebar: () => set((s) => ({ isOpen: !s.isOpen, isSidebarOpen: !s.isOpen })),
 
       setWidth: (width: number) => {
-        const clamped = Math.min(Math.max(width, 180), 400);
+        const clamped = Math.min(Math.max(width, 200), 400);
         set({ width: clamped, sidebarWidth: clamped });
       },
       setSidebarWidth: (width: number) => {
-        const clamped = Math.min(Math.max(width, 180), 400);
+        const clamped = Math.min(Math.max(width, 200), 400);
         set({ width: clamped, sidebarWidth: clamped });
       },
 

@@ -155,16 +155,16 @@ export function normalizeAuthors(
     ? creators
     : (Array.isArray(contributors) && contributors.length > 0)
     ? contributors
-    : (rawAuthors && typeof rawAuthors === 'object' && Array.isArray((rawAuthors as any).creators))
-    ? (rawAuthors as any).creators
-    : (rawAuthors && typeof rawAuthors === 'object' && Array.isArray((rawAuthors as any).contributors))
-    ? (rawAuthors as any).contributors
+    : (rawAuthors && typeof rawAuthors === 'object' && Array.isArray((rawAuthors as { creators?: unknown[] }).creators))
+    ? (rawAuthors as { creators: unknown[] }).creators
+    : (rawAuthors && typeof rawAuthors === 'object' && Array.isArray((rawAuthors as { contributors?: unknown[] }).contributors))
+    ? (rawAuthors as { contributors: unknown[] }).contributors
     : [];
 
   if (creatorList.length > 0) {
     const fromCreators: string[] = [];
     const hasExplicitAuthors = creatorList.some(
-      (c: any) => c && typeof c === 'object' && c.creatorType === 'author',
+      (c) => c && typeof c === 'object' && 'creatorType' in c && (c as { creatorType: unknown }).creatorType === 'author',
     );
 
     for (const c of creatorList) {
@@ -173,15 +173,24 @@ export function normalizeAuthors(
         fromCreators.push(...splitAuthorString(c));
         continue;
       }
-      if (hasExplicitAuthors && c.creatorType && c.creatorType !== 'author') {
+      const creator = c as {
+        creatorType?: string;
+        fullName?: string;
+        name?: string;
+        firstName?: string;
+        given?: string;
+        lastName?: string;
+        family?: string;
+      };
+      if (hasExplicitAuthors && creator.creatorType && creator.creatorType !== 'author') {
         continue;
       }
-      const fullName = (c.fullName || c.name || '').trim();
+      const fullName = (creator.fullName || creator.name || '').trim();
       if (fullName) {
         fromCreators.push(...splitAuthorString(fullName));
       } else {
-        const first = (c.firstName || c.given || '').trim();
-        const last = (c.lastName || c.family || '').trim();
+        const first = (creator.firstName || creator.given || '').trim();
+        const last = (creator.lastName || creator.family || '').trim();
         const full = [first, last].filter(Boolean).join(' ');
         if (full) fromCreators.push(full);
       }

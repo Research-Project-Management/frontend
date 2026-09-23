@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   ItemService,
@@ -720,7 +720,14 @@ export function useItem(id?: string, scopeId?: string) {
   });
 }
 
-// ── 7. Direct Raw Query Hook ────────────────────────────────────────────────
+export interface LibraryItemsQueryResult {
+  items: Item[];
+  total: number;
+  meta: any;
+  pagination: any;
+  hasNextPage: boolean;
+  nextCursor?: string | null;
+}
 
 export function useLibraryItemsQuery(
   scopeId?: string,
@@ -729,23 +736,81 @@ export function useLibraryItemsQuery(
   const targetScope = scopeId || 'user';
   return useQuery({
     queryKey: libraryKeys.items(targetScope, params),
-    queryFn: async () => {
+    queryFn: async (): Promise<LibraryItemsQueryResult> => {
       const res = await ItemService.getAll(targetScope, params);
-      return res?.items || [];
+      const items: Item[] = res?.items || [];
+      const pagination = res?.pagination || res?.meta || null;
+      const total =
+        pagination?.totalCount ??
+        res?.total ??
+        items.length;
+      const hasNextPage = Boolean(pagination?.hasNextPage);
+      const nextCursor = pagination?.nextCursor || null;
+
+      return {
+        items,
+        total,
+        meta: pagination,
+        pagination,
+        hasNextPage,
+        nextCursor,
+      };
     },
+    staleTime: 1000 * 30,
+  });
+}
+
+export function useInfiniteLibraryItemsQuery(
+  scopeId?: string,
+  params?: ItemQueryParams,
+) {
+  const targetScope = scopeId || 'user';
+  return useInfiniteQuery({
+    queryKey: [...libraryKeys.items(targetScope, params), 'infinite'],
+    queryFn: async ({ pageParam }): Promise<LibraryItemsQueryResult> => {
+      const res = await ItemService.getAll(targetScope, {
+        ...params,
+        cursor: pageParam ? String(pageParam) : undefined,
+      });
+      const items: Item[] = res?.items || [];
+      const pagination = res?.pagination || res?.meta || null;
+      const total =
+        pagination?.totalCount ??
+        res?.total ??
+        items.length;
+      const hasNextPage = Boolean(pagination?.hasNextPage);
+      const nextCursor = pagination?.nextCursor || null;
+
+      return {
+        items,
+        total,
+        meta: pagination,
+        pagination,
+        hasNextPage,
+        nextCursor,
+      };
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) =>
+      lastPage?.hasNextPage && lastPage?.nextCursor ? lastPage.nextCursor : undefined,
     staleTime: 1000 * 30,
   });
 }
 
 // ── 8. Dedicated Hooks for Modern UI (ItemTable, Inspector, Modals) ──────────
 
-export function useLibraryItemDetailQuery(arg1?: string, arg2?: string) {
-  let itemId = arg1;
-  let scopeId = arg2;
-  if (arg1 === 'user' || (arg2 && !arg2.includes('user'))) {
-    scopeId = arg1;
-    itemId = arg2;
+export function useLibraryItemDetailQuery(
+  scopeIdOrItemId?: string,
+  maybeItemId?: string,
+) {
+  let scopeId = 'user';
+  let itemId = scopeIdOrItemId;
+
+  if (arguments.length >= 2) {
+    scopeId = scopeIdOrItemId || 'user';
+    itemId = maybeItemId;
   }
+
   return useItem(itemId, scopeId);
 }
 
@@ -886,4 +951,23 @@ export function useBatchPurgeItemsMutation(scopeId?: string) {
     },
   });
 }
+
+export function useItemMetadataSourcesQuery(
+  scopeId?: string | null,
+  itemId?: string | null,
+  options?: { enabled?: boolean },
+) {
+  const effectiveScope = scopeId || 'user';
+  return useQuery({
+    queryKey: libraryKeys.itemMetadataSources(effectiveScope, itemId || undefined),
+    queryFn: () => ItemsService.getMetadataSources(effectiveScope, itemId!),
+    enabled: !!itemId && (options?.enabled ?? true),
+  });
+}
+
+export type { ItemMetadataSourceItem, ItemMetadataSourcesResponse } from '../services/items.service';
+
+export const useLibraryItemsData = useItems;
+
+
 

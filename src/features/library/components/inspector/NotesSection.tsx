@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { MinusCircle, Plus } from 'lucide-react';
-import { Textarea } from "@/shared/components/ui";
+import { MinusCircle, Plus, StickyNote } from 'lucide-react';
+import { Textarea, Button } from "@/shared/components/ui";
 import { normalizeNotes, type NormalizedNote } from '../../domain';
 import { useNotes } from '../../data';
 import { cn } from "@/shared/lib/utils";
@@ -26,21 +26,10 @@ export interface NotesSectionProps {
 
 export function NoteIcon({ className = 'size-3.5' }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      className={cn('shrink-0 text-muted-foreground/80', className)}
-      strokeWidth="1.2"
-    >
-      <path
-        d="M3.5 2.5h6l3 3V13.5a1 1 0 0 1-1 1h-8a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z"
-        fill="white"
-        className="dark:fill-background"
-      />
-      <path d="M9.5 2.5V5.5H12.5" />
-      <line x1="3" y1="2.5" x2="9.5" y2="2.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-    </svg>
+    <StickyNote
+      className={cn('size-3.5 shrink-0 text-foreground', className)}
+      strokeWidth={1.5}
+    />
   );
 }
 
@@ -226,9 +215,20 @@ export default function NotesSection({
     <div className="space-y-1 min-w-0 font-sans">
       {!hideHeader && (
         <div className="flex items-center justify-between pb-1">
-          <h3 className="text-xs font-medium text-foreground">
+          <h3 className="text-12 font-medium text-foreground">
             Notes
           </h3>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setIsAdding(true)}
+              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              title="Add note"
+              aria-label="Add note"
+            >
+              <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+            </button>
+          )}
         </div>
       )}
 
@@ -254,23 +254,40 @@ export default function NotesSection({
               }
             }}
             rows={2}
-            className="text-xs resize-none w-full max-h-36 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-muted-foreground/60"
+            className="text-xs resize-none w-full max-h-36 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-muted-foreground"
           />
-          <div className="flex items-center justify-between text-10 font-normal text-muted-foreground select-none pt-1 border-t border-border/40 font-mono">
+          <div className="flex items-center justify-between text-10 font-normal text-muted-foreground select-none pt-1 border-t border-border font-mono">
             <span>Shift + Enter for new line</span>
             <span>Enter to save · Esc to cancel</span>
           </div>
         </div>
       )}
 
-      {/* Flat Notes List - Matching UI in media_1788420362997.png */}
-      <div className="space-y-0.5 min-w-0">
+      {/* Flat Notes List */}
+      {notes.length === 0 && !isAdding ? (
+        <div className="py-2.5 px-3 text-center text-11 text-muted-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
+          <span>No notes for this reference.</span>
+          {canEdit && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsAdding(true)}
+              className="h-6 text-11 text-foreground hover:bg-muted px-2 gap-1 cursor-pointer font-normal"
+            >
+              <Plus className="size-3 text-foreground" strokeWidth={1.5} />
+              <span>Add note</span>
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-0.5 min-w-0">
         {notes.map((n) => {
           const isEditing = editingNoteId === n.id;
 
           if (isEditing) {
             return (
-              <div key={n.id} className="space-y-1.5 p-2.5 bg-background rounded-md border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-colors text-xs shadow-2xs">
+              <div key={n.id} className="space-y-1.5 p-2.5 bg-background rounded-md border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-colors text-xs shadow-2xs">
                 <Textarea
                   autoFocus
                   value={editingContent}
@@ -287,9 +304,9 @@ export default function NotesSection({
                     }
                   }}
                   rows={2}
-                  className="text-xs resize-none w-full max-h-36 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-muted-foreground/60"
+                  className="text-xs resize-none w-full max-h-36 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-muted-foreground"
                 />
-                <div className="flex items-center justify-between text-10 font-normal text-muted-foreground select-none pt-1 border-t border-border/40 font-mono">
+                <div className="flex items-center justify-between text-10 font-normal text-muted-foreground select-none pt-1 border-t border-border font-mono">
                   <span>Shift + Enter for new line</span>
                   <span>Enter to save · Esc to cancel</span>
                 </div>
@@ -310,7 +327,7 @@ export default function NotesSection({
                 <div className="size-4 shrink-0 flex items-center justify-center">
                   <NoteIcon className="size-3.5 text-foreground shrink-0" />
                 </div>
-                <span className="truncate text-xs font-normal text-foreground tracking-tight select-text" title={n.content}>
+                <span className="text-xs font-normal text-foreground tracking-tight select-text break-words leading-snug" title={n.content}>
                   {n.content}
                 </span>
               </div>
@@ -341,6 +358,7 @@ export default function NotesSection({
           );
         })}
       </div>
+      )}
     </div>
   );
 }

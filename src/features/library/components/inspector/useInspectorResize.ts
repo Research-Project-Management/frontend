@@ -14,6 +14,7 @@ export function useInspectorResize() {
   const [isDragging, setIsDragging] = useState(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(inspectorWidth);
+  const latestClientXRef = useRef(0);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -21,6 +22,7 @@ export function useInspectorResize() {
       setIsDragging(true);
       startXRef.current = e.clientX;
       startWidthRef.current = inspectorWidth;
+      latestClientXRef.current = e.clientX;
     },
     [inspectorWidth],
   );
@@ -31,15 +33,16 @@ export function useInspectorResize() {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (rafIdRef.current !== null) return;
-      const clientX = e.clientX;
-      rafIdRef.current = requestAnimationFrame(() => {
-        // Dragging left increases width, dragging right decreases width
-        const delta = startXRef.current - clientX;
-        const nextWidth = Math.min(Math.max(startWidthRef.current + delta, 300), 640);
-        setInspectorWidth(nextWidth);
-        rafIdRef.current = null;
-      });
+      latestClientXRef.current = e.clientX;
+      if (rafIdRef.current === null) {
+        rafIdRef.current = requestAnimationFrame(() => {
+          // Dragging left increases width, dragging right decreases width
+          const delta = startXRef.current - latestClientXRef.current;
+          const nextWidth = Math.min(Math.max(startWidthRef.current + delta, 300), 640);
+          setInspectorWidth(nextWidth);
+          rafIdRef.current = null;
+        });
+      }
     };
 
     const handleMouseUp = () => {
@@ -47,6 +50,9 @@ export function useInspectorResize() {
         cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = null;
       }
+      const delta = startXRef.current - latestClientXRef.current;
+      const nextWidth = Math.min(Math.max(startWidthRef.current + delta, 300), 640);
+      setInspectorWidth(nextWidth);
       setIsDragging(false);
     };
 

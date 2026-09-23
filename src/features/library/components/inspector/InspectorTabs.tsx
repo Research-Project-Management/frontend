@@ -67,14 +67,14 @@ export function InspectorTabs({
         className,
       )}
     >
-      {/* Top: Toggle Panel Button Container - EXACTLY h-11 with border-b touching LibraryTopbar */}
-      <div className="h-11 w-full flex items-center justify-center shrink-0 border-b border-border/80">
+      {/* Top: Toggle Panel Button Container - EXACTLY h-11 matching LibraryTopbar */}
+      <div className="h-11 w-full flex items-center justify-center shrink-0 relative">
         <Tooltip>
           <TooltipTrigger asChild>
             <button
               type="button"
               onClick={onToggleInspector}
-              className="size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground hover:bg-muted cursor-pointer"
+              className="size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors text-foreground hover:bg-muted cursor-pointer"
               aria-label={isInspectorOpen ? 'Collapse inspector' : 'Expand inspector'}
             >
               <PanelRight className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
@@ -84,13 +84,15 @@ export function InspectorTabs({
             {isInspectorOpen ? 'Collapse inspector' : 'Expand inspector'}
           </TooltipContent>
         </Tooltip>
+
+        {/* Inset divider line separating toggle button from section icons without touching borders */}
+        <div className="absolute bottom-0 left-2 right-2 h-px bg-border" />
       </div>
 
-      {/* Middle: Vertical Section Icons with Tooltips and active states */}
+      {/* Middle: Vertical Section Icons with Tooltips */}
       <div className="flex flex-col items-center gap-1 w-full pt-1.5 px-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = isInspectorOpen && activeTab === tab.id;
 
           return (
             <Tooltip key={tab.id}>
@@ -100,24 +102,15 @@ export function InspectorTabs({
                   onClick={() => {
                     if (!isInspectorOpen) {
                       onToggleInspector?.();
-                      onTabChange(tab.id);
-                    } else if (activeTab === tab.id) {
-                      onToggleInspector?.();
-                    } else {
-                      onTabChange(tab.id);
                     }
+                    onTabChange(tab.id);
                   }}
-                  className={cn(
-                    'relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer',
-                    isActive
-                      ? 'bg-muted font-medium text-foreground'
-                      : 'text-foreground hover:bg-muted hover:text-foreground',
-                  )}
+                  className="relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer text-foreground hover:bg-muted"
                   aria-label={tab.label}
                 >
                   <Icon className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                   {tab.badge !== undefined && tab.badge > 0 && (
-                    <span className="absolute top-1 right-1 size-1.5 rounded-full bg-primary" />
+                    <span className="absolute top-1 right-1 size-1.5 rounded-full bg-foreground" />
                   )}
                 </button>
               </TooltipTrigger>

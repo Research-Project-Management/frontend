@@ -4,6 +4,7 @@ export function useSidebarResize(width: number, setWidth: (w: number) => void) {
   const [isDragging, setIsDragging] = useState(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(width);
+  const latestClientXRef = useRef(0);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -11,6 +12,7 @@ export function useSidebarResize(width: number, setWidth: (w: number) => void) {
       setIsDragging(true);
       startXRef.current = e.clientX;
       startWidthRef.current = width;
+      latestClientXRef.current = e.clientX;
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
     },
@@ -23,13 +25,14 @@ export function useSidebarResize(width: number, setWidth: (w: number) => void) {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (rafIdRef.current !== null) return;
-      const clientX = e.clientX;
-      rafIdRef.current = requestAnimationFrame(() => {
-        const deltaX = clientX - startXRef.current;
-        setWidth(startWidthRef.current + deltaX);
-        rafIdRef.current = null;
-      });
+      latestClientXRef.current = e.clientX;
+      if (rafIdRef.current === null) {
+        rafIdRef.current = requestAnimationFrame(() => {
+          const deltaX = latestClientXRef.current - startXRef.current;
+          setWidth(startWidthRef.current + deltaX);
+          rafIdRef.current = null;
+        });
+      }
     };
 
     const handleMouseUp = () => {
@@ -37,6 +40,8 @@ export function useSidebarResize(width: number, setWidth: (w: number) => void) {
         cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = null;
       }
+      const deltaX = latestClientXRef.current - startXRef.current;
+      setWidth(startWidthRef.current + deltaX);
       setIsDragging(false);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';

@@ -55,7 +55,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui'
 import { LibraryFilterPopover } from './LibraryFilterPopover';
 import { LibraryDisplayPopover, type LibraryDisplayOptions } from './LibraryDisplayPopover';
 import { TopbarSearch } from './TopbarSearch';
-import { TopbarBulkBar } from './TopbarBulkBar';
 import {
   useLibrarySidebarStore,
   useLibraryViewStore,
@@ -97,6 +96,7 @@ export interface TopbarProps {
   onNavigateCrumb?: (crumbId?: string) => void;
   showInspectorToggle?: boolean;
   onToggleInspector?: () => void;
+  canEdit?: boolean;
   children?: React.ReactNode;
   className?: string;
 }
@@ -134,11 +134,17 @@ export function LibraryTopbar({
   onNavigateCrumb,
   showInspectorToggle = true,
   onToggleInspector,
+  canEdit = true,
   children,
   className,
 }: TopbarProps) {
   const { isInspectorOpen, toggleInspector, activeScope } = useLibrarySidebarStore();
-  const selectedCount = useLibraryViewStore((s) => s.selectedIds.size);
+  const isEffectiveCanEdit =
+    canEdit &&
+    (activeScope.type === 'personal' ||
+      (activeScope.role !== 'reviewer' &&
+        activeScope.role !== 'viewer' &&
+        activeScope.role !== 'commenter'));
   const activeItemId = useLibraryViewStore((s) => s.activeItemId);
   const openModal = useLibraryModalStore((s) => s.openModal);
   const storeDisplayOptions = useLibraryUIStore((s) => s.displayOptions);
@@ -158,47 +164,18 @@ export function LibraryTopbar({
 
   const displayTitle = title || activeScope.name || 'My Library';
 
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const directFileInputRef = useRef<HTMLInputElement>(null);
   const directFolderInputRef = useRef<HTMLInputElement>(null);
 
-  const expandSearch = () => {
-    setIsSearchExpanded(true);
-    setTimeout(() => inputRef.current?.focus(), 50);
-  };
-
-  const collapseSearch = (query: string) => {
-    if (!query) {
-      setIsSearchExpanded(false);
-    }
-  };
-
-  const handleClearSearch = (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    if (onSearchChange) {
-      onSearchChange('');
-    }
-    setIsSearchExpanded(false);
-  };
-
   const handleAddFileClick = () => {
-    if (onDirectFilesUpload && directFileInputRef.current) {
-      directFileInputRef.current.click();
-    } else if (onAddPaper) {
-      onAddPaper('file');
-    } else {
-      openModal('IMPORT_PAPER');
-    }
+    openModal('UPLOAD_FILES', { collectionId: params?.collectionId });
   };
 
   const handleAddFolderClick = () => {
     if (onDirectFolderUpload && directFolderInputRef.current) {
       directFolderInputRef.current.click();
-    } else if (onAddPaper) {
-      onAddPaper('folder');
     } else {
-      openModal('IMPORT_PAPER');
+      openModal('UPLOAD_FILES', { collectionId: params?.collectionId });
     }
   };
 
@@ -236,7 +213,7 @@ export function LibraryTopbar({
                 return (
                   <React.Fragment key={crumb.id || idx}>
                     {idx > 0 && (
-                      <ChevronRight className="size-3.5 text-muted-foreground/60 shrink-0" />
+                      <ChevronRight className="size-3.5 text-muted-foreground shrink-0" />
                     )}
                     <div className="flex items-center justify-center shrink-0">
                       <MoreHorizontal className="size-4 text-muted-foreground shrink-0" />
@@ -250,7 +227,7 @@ export function LibraryTopbar({
               return (
                 <React.Fragment key={crumb.id || idx}>
                   {idx > 0 && (
-                    <ChevronRight className="size-3.5 text-muted-foreground/60 shrink-0" />
+                    <ChevronRight className="size-3.5 text-muted-foreground shrink-0" />
                   )}
                   <div
                     role={!isLast && onNavigateCrumb ? 'button' : undefined}
@@ -302,11 +279,11 @@ export function LibraryTopbar({
         ) : (
           <div className="flex items-center gap-2 min-w-0">
             {Icon && <Icon className="size-4 text-foreground shrink-0" />}
-            <h1 className="text-sm font-semibold tracking-tight text-foreground truncate">
+            <h1 className="text-16 font-semibold tracking-tight text-foreground truncate">
               {displayTitle}
             </h1>
             {typeof count === 'number' && (
-              <span className="text-xs text-muted-foreground font-mono">
+              <span className="text-12 text-foreground font-mono tabular-nums">
                 ({count})
               </span>
             )}
@@ -314,61 +291,14 @@ export function LibraryTopbar({
         )}
       </div>
 
-      {/* Center Section: Bulk Bar or Search */}
+      {/* Center Section: Search */}
       <div className="flex items-center gap-2.5 shrink-0">
-        {selectedCount > 0 ? (
-          <TopbarBulkBar />
-        ) : onSearchChange !== undefined ? (
-          /* Controlled Search Mode */
-          <div
-            className={cn(
-              'relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-md overflow-hidden group',
-              isSearchExpanded || search
-                ? 'w-64 border border-border bg-background'
-                : 'w-8 hover:bg-muted cursor-pointer'
-            )}
-            onClick={expandSearch}
-          >
-            <Search
-              className={cn(
-                'absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 shrink-0',
-                isSearchExpanded || search
-                  ? 'left-2 translate-x-0 text-muted-foreground'
-                  : 'left-1/2 -translate-x-1/2 text-muted-foreground'
-              )}
-            />
-            <Input
-              ref={inputRef}
-              placeholder={searchPlaceholder}
-              aria-label={searchPlaceholder}
-              value={search || ''}
-              onChange={(e) => onSearchChange(e.target.value)}
-              onBlur={() => collapseSearch(search || '')}
-              className={cn(
-                'h-full text-13 font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/60 placeholder:font-normal transition-opacity duration-200 pl-7 pr-7 text-foreground',
-                isSearchExpanded || search ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              )}
-              autoFocus={isSearchExpanded}
-            />
-            {(isSearchExpanded || search) && (
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onClick={handleClearSearch}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-md"
-                aria-label="Clear search"
-              >
-                <Plus className="size-3.5 rotate-45 shrink-0" />
-              </button>
-            )}
-          </div>
-        ) : (
-          /* Autonomous URL-synced Search Mode */
-          <TopbarSearch />
-        )}
+        <TopbarSearch
+          placeholder={searchPlaceholder}
+          value={search}
+          onChange={onSearchChange}
+          onClear={onSearchChange ? () => onSearchChange('') : undefined}
+        />
 
         {/* Academic Library Multi-Criteria Filter */}
         {showFilter && (
@@ -383,16 +313,17 @@ export function LibraryTopbar({
           />
         )}
 
-        {/* New Item Dropdown Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="sm"
-              className="h-8 px-3 rounded-md cursor-pointer font-medium text-13 shadow-none inline-flex items-center justify-center"
-            >
-              <span>New</span>
-            </Button>
-          </DropdownMenuTrigger>
+        {/* New Item Dropdown Menu (Only when canEdit is true) */}
+        {isEffectiveCanEdit && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                className="h-8 px-3 rounded-md cursor-pointer font-medium text-13 shadow-none inline-flex items-center justify-center"
+              >
+                <span>New</span>
+              </Button>
+            </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
             sideOffset={4}
@@ -544,45 +475,35 @@ export function LibraryTopbar({
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+        )}
 
         {children}
 
-        {/* Inspector Toggle Button */}
-        {showInspectorToggle && (
-          <div className="flex items-center gap-1 shrink-0 ml-0.5">
-            <div className="h-4 border-l border-border shrink-0" aria-hidden="true" />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  disabled={!activeItemId && !isInspectorOpen}
-                  onClick={onToggleInspector || toggleInspector}
-                  className={cn(
-                    'size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0 disabled:opacity-40 disabled:cursor-not-allowed',
-                    isInspectorOpen && 'bg-accent text-accent-foreground'
-                  )}
-                  aria-label="Toggle inspector"
-                >
-                  <PanelRight className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                align="start"
-                sideOffset={6}
-                alignOffset={2}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+        {/* Inspector Toggle Button - Hidden when panel is open */}
+        {showInspectorToggle && !isInspectorOpen && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onToggleInspector || toggleInspector}
+                className="size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0"
+                aria-label="Open inspector"
               >
-                {!activeItemId && !isInspectorOpen
-                  ? 'Select a paper to open panel'
-                  : isInspectorOpen
-                  ? 'Collapse panel'
-                  : 'Expand panel'}
-              </TooltipContent>
-            </Tooltip>
-          </div>
+                <PanelRight className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent
+              side="bottom"
+              align="start"
+              sideOffset={6}
+              alignOffset={2}
+              className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+            >
+              Expand panel
+            </TooltipContent>
+          </Tooltip>
         )}
 
         {/* Hidden Direct File Input */}

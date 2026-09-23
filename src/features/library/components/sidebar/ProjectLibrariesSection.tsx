@@ -147,7 +147,7 @@ export function ProjectLibrariesSection({
                 setIsProjectsExpanded((v) => !v);
               }}
               aria-label={isProjectsExpanded ? 'Collapse Project Libraries' : 'Expand Project Libraries'}
-              className="absolute right-2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer"
+              className="absolute right-2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <ChevronRight
                 className={cn(
@@ -173,7 +173,7 @@ export function ProjectLibrariesSection({
       {isProjectsExpanded && (
         <div className="flex flex-col gap-0.5 w-full">
           {projects.length === 0 ? (
-            <div className="pl-6 pr-2.5 py-1.5 text-11 text-muted-foreground/70 italic select-none">
+            <div className="pl-6 pr-2.5 py-1.5 text-11 text-muted-foreground italic select-none">
               No project libraries
             </div>
           ) : (
@@ -250,7 +250,7 @@ export function ProjectLibrariesSection({
                         />
 
                         {savedSearches && savedSearches.length > 0 && (
-                          <div className="my-1 flex flex-col gap-0.5 border-t border-border/40 pt-1">
+                          <div className="my-1 flex flex-col gap-0.5 border-t border-border pt-1">
                             <div className="px-6 py-1 text-11 font-medium text-muted-foreground flex items-center justify-between">
                               <span>Saved Searches</span>
                             </div>

@@ -1,20 +1,18 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  FileText,
-  Book,
-  BookOpen,
-  File,
-  CheckSquare,
-  Square,
-  Star,
+  Paperclip,
+  StickyNote,
+  ShieldAlert,
 } from 'lucide-react';
+import { Checkbox } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 import {
   useIsItemSelected,
   useIsActiveItem,
+  useIsInspectorOpen,
 } from '../../store/selectors';
 import { useLibraryUIStore } from '../../store/library-ui.store';
 import { ItemContextMenu } from './ItemContextMenu';
@@ -28,26 +26,13 @@ export interface ItemTableRowProps {
   isTrash?: boolean;
   collections?: any[];
   onRowClick: (e: React.MouseEvent, item: Item, index: number) => void;
-  onToggleStar: (item: Item, isStarred: boolean) => void;
+  onToggleSelect?: (id: string, e: React.MouseEvent, index: number) => void;
+  onToggleStar?: (item: Item, isStarred: boolean) => void;
   onDelete?: (id: string) => void;
   onRestore?: (id: string) => void;
   onPurge?: (id: string) => void;
+  onMoveToCollection?: (itemId: string, collectionId: string) => void;
 }
-
-// Helper for item icons
-const getItemIcon = (type?: string) => {
-  switch (type) {
-    case 'book':
-    case 'bookSection':
-      return <Book className="h-4 w-4 text-amber-500 shrink-0" />;
-    case 'conferencePaper':
-      return <BookOpen className="h-4 w-4 text-emerald-500 shrink-0" />;
-    case 'journalArticle':
-      return <FileText className="h-4 w-4 text-blue-500 shrink-0" />;
-    default:
-      return <File className="h-4 w-4 text-muted-foreground shrink-0" />;
-  }
-};
 
 // Formatted creator string
 const formatAuthors = (authors: any) => {
@@ -75,31 +60,81 @@ export const ItemTableRow = React.memo(function ItemTableRow({
   isTrash = false,
   collections = [],
   onRowClick,
+  onToggleSelect,
   onToggleStar,
   onDelete,
   onRestore,
   onPurge,
+  onMoveToCollection,
 }: ItemTableRowProps) {
   const router = useRouter();
 
   // Granular Selectors - 60 FPS Re-render Barrier (True O(1))
   const isSelected = useIsItemSelected(item.id);
   const isActive = useIsActiveItem(item.id);
+  const isInspectorOpen = useIsInspectorOpen();
+  const isRowActive = isActive && isInspectorOpen;
   const toggleSelect = useLibraryUIStore((s) => s.toggleSelect);
 
   const isStarred =
-    Boolean((item as any).isStarred) ||
+    Boolean(item.isStarred) ||
     Boolean(typeof item.rating === 'number' && item.rating > 0);
+
+  const isRetracted = Boolean(
+    item.isRetracted ||
+    (item as any).retractionStatus === 'retracted' ||
+    (item as any).is_retracted
+  );
+  const hasAttachment = Boolean(
+    item.hasFile ||
+    (item.attachmentCount ?? 0) > 0 ||
+    item.fileUrl ||
+    (Array.isArray(item.attachments) && item.attachments.length > 0)
+  );
+  const attachmentCount =
+    item.attachmentCount ||
+    (Array.isArray(item.attachments) ? item.attachments.length : 1);
+  const hasNotes = Boolean(
+    (item.noteCount ?? 0) > 0 ||
+    (Array.isArray(item.notes) && item.notes.length > 0)
+  );
+  const noteCount =
+    item.noteCount ||
+    (Array.isArray(item.notes) ? item.notes.length : 1);
+
+  const handleMoveToCollection = useCallback(
+    (colId: string) => {
+      onMoveToCollection?.(item.id, colId);
+    },
+    [onMoveToCollection, item.id],
+  );
+
+  const handleToggleStarContextMenu = useCallback(() => {
+    onToggleStar?.(item, isStarred);
+  }, [onToggleStar, item, isStarred]);
+
+  const handleDeleteContextMenu = useCallback(() => {
+    onDelete?.(item.id);
+  }, [onDelete, item.id]);
+
+  const handleRestoreContextMenu = useCallback(() => {
+    onRestore?.(item.id);
+  }, [onRestore, item.id]);
+
+  const handlePurgeContextMenu = useCallback(() => {
+    onPurge?.(item.id);
+  }, [onPurge, item.id]);
 
   return (
     <ItemContextMenu
       item={item}
       isTrash={isTrash}
       collections={collections}
-      onToggleStar={() => onToggleStar(item, isStarred)}
-      onDelete={onDelete ? () => onDelete(item.id) : undefined}
-      onRestore={onRestore ? () => onRestore(item.id) : undefined}
-      onPurge={onPurge ? () => onPurge(item.id) : undefined}
+      onToggleStar={onToggleStar ? handleToggleStarContextMenu : undefined}
+      onDelete={onDelete ? handleDeleteContextMenu : undefined}
+      onRestore={onRestore ? handleRestoreContextMenu : undefined}
+      onPurge={onPurge ? handlePurgeContextMenu : undefined}
+      onMoveToCollection={onMoveToCollection ? handleMoveToCollection : undefined}
     >
       <tr
         draggable={true}
@@ -120,78 +155,82 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         onClick={(e) => onRowClick(e, item, index)}
         onDoubleClick={() => {
           if (!isTrash) {
-            router.push(`/reader?itemId=${item.id}`);
+            router.push(`/library/papers/${item.id}`);
           }
         }}
         className={cn(
-          'cursor-pointer transition-colors group select-none [content-visibility:auto]',
-          density === 'compact'
-            ? 'h-8 [contain-intrinsic-size:0_32px]'
-            : 'h-9 [contain-intrinsic-size:0_36px]',
+          'cursor-pointer transition-colors duration-150 group select-none text-13',
+          density === 'compact' ? 'h-8' : 'h-9',
           isSelected
-            ? 'bg-primary/5 hover:bg-primary/10'
-            : isActive
-            ? 'bg-accent/40 hover:bg-accent/50'
-            : 'hover:bg-muted/40',
+            ? 'bg-muted'
+            : isRowActive
+            ? 'bg-muted'
+            : 'hover:bg-muted',
         )}
       >
-        {/* Checkbox Column */}
-        <td
-          className="px-2 text-center"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleSelect(item.id);
-          }}
-        >
-          <button
-            type="button"
-            className="inline-flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
-          >
-            {isSelected ? (
-              <CheckSquare className="h-3.5 w-3.5 text-primary" />
-            ) : (
-              <Square className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/60" />
+        {/* Title with Checkbox & Status Indicators */}
+        <td className="w-auto px-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onToggleSelect) {
+                  onToggleSelect(item.id, e, index);
+                } else {
+                  toggleSelect(item.id);
+                }
+              }}
+              className="flex items-center justify-center shrink-0 cursor-pointer"
+            >
+              <Checkbox
+                checked={isSelected}
+                tabIndex={-1}
+                aria-label="Select item"
+                className={cn(
+                  'size-3.5 border-border data-[state=checked]:border-primary transition-opacity duration-150 pointer-events-none',
+                  !isSelected && 'opacity-0 group-hover:opacity-100',
+                )}
+              />
+            </div>
+            {isRetracted && (
+              <span
+                title="This item has been retracted"
+                className="inline-flex items-center shrink-0"
+              >
+                <ShieldAlert className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
+              </span>
             )}
-          </button>
-        </td>
-
-        {/* Star / Favorite Button */}
-        <td
-          className="px-1 text-center"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleStar(item, isStarred);
-          }}
-        >
-          <button
-            type="button"
-            className="inline-flex items-center justify-center cursor-pointer p-0.5 rounded hover:bg-muted"
-            title={isStarred ? 'Unstar' : 'Star'}
-          >
-            <Star
+            {hasAttachment && (
+              <span
+                title={`${attachmentCount} attachment(s)`}
+                className="inline-flex items-center shrink-0"
+              >
+                <Paperclip className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+              </span>
+            )}
+            {hasNotes && (
+              <span
+                title={`${noteCount} note(s)`}
+                className="inline-flex items-center shrink-0"
+              >
+                <StickyNote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+              </span>
+            )}
+            <span
               className={cn(
-                'h-3.5 w-3.5 transition-colors',
-                isStarred
-                  ? 'text-amber-500 fill-amber-500'
-                  : 'text-muted-foreground/30 hover:text-amber-400 group-hover:opacity-100 opacity-0',
+                'truncate text-13 text-foreground',
+                isSelected ? 'font-medium' : 'font-normal',
               )}
-            />
-          </button>
-        </td>
-
-        {/* Item Type Icon */}
-        <td className="px-1 text-center">{getItemIcon(item.itemType)}</td>
-
-        {/* Title */}
-        <td className="px-3 truncate text-foreground font-medium">
-          <span title={item.title || 'Untitled'}>
-            {item.title || 'Untitled'}
-          </span>
+              title={item.title || 'Untitled'}
+            >
+              {item.title || 'Untitled'}
+            </span>
+          </div>
         </td>
 
         {/* Authors */}
         {columns.authors !== false && (
-          <td className="px-3 truncate text-muted-foreground">
+          <td className={cn("w-48 min-w-[160px] px-3 truncate text-13 text-foreground", isSelected ? "font-medium" : "font-normal")}>
             <span
               title={
                 Array.isArray(item.authors)
@@ -206,14 +245,14 @@ export const ItemTableRow = React.memo(function ItemTableRow({
 
         {/* Year */}
         {columns.year !== false && (
-          <td className="px-2 text-center text-muted-foreground font-mono">
+          <td className={cn("w-16 min-w-[64px] px-2 text-center text-13 font-mono tabular-nums text-foreground", isSelected ? "font-medium" : "font-normal")}>
             {item.year || '—'}
           </td>
         )}
 
         {/* Publication Venue */}
         {columns.publication !== false && (
-          <td className="px-3 truncate text-muted-foreground">
+          <td className={cn("w-44 min-w-[140px] px-3 truncate text-13 text-foreground", isSelected ? "font-medium" : "font-normal")}>
             <span title={item.publicationTitle || (item as any).journal || ''}>
               {item.publicationTitle ||
                 (item as any).journal ||
@@ -225,21 +264,21 @@ export const ItemTableRow = React.memo(function ItemTableRow({
 
         {/* Item Type Label */}
         {columns.itemType && (
-          <td className="px-3 truncate text-muted-foreground capitalize">
+          <td className={cn("w-28 min-w-[100px] px-3 truncate text-13 capitalize text-foreground", isSelected ? "font-medium" : "font-normal")}>
             {item.itemType || '—'}
           </td>
         )}
 
         {/* DOI */}
         {columns.doi && (
-          <td className="px-3 truncate text-muted-foreground font-mono text-11">
+          <td className={cn("w-32 min-w-[120px] px-3 truncate text-13 font-mono tabular-nums text-foreground", isSelected ? "font-medium" : "font-normal")}>
             {item.doi ? (
               <a
                 href={`https://doi.org/${item.doi}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="hover:underline text-primary"
+                className="hover:underline text-foreground transition-colors"
               >
                 {item.doi}
               </a>
@@ -251,21 +290,21 @@ export const ItemTableRow = React.memo(function ItemTableRow({
 
         {/* Citation Key */}
         {columns.citationKey && (
-          <td className="px-3 truncate text-muted-foreground font-mono text-11">
+          <td className={cn("w-32 min-w-[110px] px-3 truncate text-13 font-mono text-foreground", isSelected ? "font-medium" : "font-normal")}>
             {item.citationKey || (item as any).key || '—'}
           </td>
         )}
 
         {/* Citations Count */}
         {columns.citations && (
-          <td className="px-2 text-center text-muted-foreground font-mono">
+          <td className={cn("w-20 min-w-[70px] px-2 text-center text-13 font-mono tabular-nums text-foreground", isSelected ? "font-medium" : "font-normal")}>
             {(item as any).citationCount ?? '—'}
           </td>
         )}
 
         {/* Trash deletedAt */}
         {isTrash && (
-          <td className="px-3 text-muted-foreground text-11">
+          <td className={cn("w-32 min-w-[110px] px-3 text-13 font-mono tabular-nums text-foreground", isSelected ? "font-medium" : "font-normal")}>
             {item.deletedAt
               ? new Date(item.deletedAt).toLocaleDateString()
               : '—'}

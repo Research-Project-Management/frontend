@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Tag, MinusCircle } from 'lucide-react';
+import { Tag, MinusCircle, Plus } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
+import { Button } from "@/shared/components/ui";
 import type { Item } from '@/features/library/types/library.types';
 import { normalizeTags, cleanSingleFrontendTag } from '../../domain';
 
@@ -41,7 +42,7 @@ function TagItemInput({
         <div className="size-4 shrink-0 flex items-center justify-center">
           <Tag className="size-3.5 text-foreground shrink-0" />
         </div>
-        <span className="flex-1 min-w-0 h-7 text-foreground px-2 py-1 text-xs font-normal truncate select-text flex items-center font-sans">
+        <span className="flex-1 min-w-0 min-h-7 h-auto text-foreground px-2 py-1 text-xs font-normal break-words leading-snug select-text flex items-center font-sans">
           {tag}
         </span>
       </div>
@@ -80,7 +81,7 @@ function TagItemInput({
             inputRef.current?.blur();
           }
         }}
-        className="flex-1 min-w-0 h-7 bg-transparent text-foreground px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-xs font-normal truncate focus:outline-none focus-visible:outline-none font-sans cursor-pointer focus:cursor-text"
+        className="flex-1 min-w-0 h-7 bg-transparent text-foreground px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-xs font-normal focus:outline-none focus-visible:outline-none font-sans cursor-pointer focus:cursor-text"
         title={tag}
       />
 
@@ -123,7 +124,7 @@ export default function TagsSection({
 
   const saveTags = (updatedTags: string[]) => {
     if (onUpdateTags) onUpdateTags(updatedTags);
-    if (onUpdatePaper) onUpdatePaper({ tags: updatedTags as any });
+    if (onUpdatePaper) onUpdatePaper({ tags: updatedTags });
   };
 
   const handleAddTag = () => {
@@ -157,15 +158,42 @@ export default function TagsSection({
     saveTags(Array.from(new Set(updated)));
   };
 
-  if (tags.length === 0 && !isAdding && hideHeader) {
-    return null;
+  if (tags.length === 0 && !isAdding) {
+    return (
+      <div className="py-2.5 px-3 text-center text-11 text-muted-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
+        <span>No tags assigned.</span>
+        {canEdit && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsAdding(true)}
+            className="h-6 text-11 text-foreground hover:bg-muted px-2 gap-1 cursor-pointer font-normal"
+          >
+            <Plus className="size-3 text-foreground" strokeWidth={1.5} />
+            <span>Add tag</span>
+          </Button>
+        )}
+      </div>
+    );
   }
 
   return (
     <div className="space-y-0.5 text-xs select-none font-sans">
       {!hideHeader && (
         <div className="flex items-center justify-between pb-1 px-1">
-          <h3 className="text-xs font-medium text-foreground">Tags</h3>
+          <h3 className="text-12 font-medium text-foreground">Tags</h3>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setIsAdding(true)}
+              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              title="Add tag"
+              aria-label="Add tag"
+            >
+              <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+            </button>
+          )}
         </div>
       )}
 
@@ -204,7 +232,7 @@ export default function TagsSection({
                 onCancelAdding?.();
               }
             }}
-            className="flex-1 min-w-0 h-7 bg-background text-foreground px-2 py-1 rounded-md border border-primary focus:ring-1 focus:ring-primary outline-none text-xs font-normal truncate focus:outline-none focus-visible:outline-none font-sans"
+            className="flex-1 min-w-0 h-7 bg-background text-foreground px-2 py-1 rounded-md border border-primary focus:ring-1 focus:ring-primary outline-none text-xs font-normal focus:outline-none focus-visible:outline-none font-sans"
           />
           <button
             type="button"

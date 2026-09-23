@@ -52,9 +52,9 @@ export function ConvertModal({
 }: ConvertModalProps) {
   const currentItem = item || paper;
   const itemId = currentItem?.id || '';
-  const itemType = currentItem?.itemType || (currentItem as unknown as { type?: string })?.type || 'journalArticle';
-  const scopeId = currentItem?.projectId || (currentItem as any)?.userId || 'user';
-  const itemTitle = currentItem?.title || (currentItem as any)?.name || 'Untitled Item';
+  const itemType = currentItem?.itemType || 'journalArticle';
+  const scopeId = currentItem?.projectId || currentItem?.userId || 'user';
+  const itemTitle = currentItem?.title || 'Untitled Item';
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [preview, setPreview] = useState<TypeConversionPreview | null>(null);
@@ -150,11 +150,11 @@ export function ConvertModal({
                 The following {droppedWithValues.length === 1 ? 'field is' : `${droppedWithValues.length} fields are`} not supported and will be removed:
               </p>
 
-              <div className="rounded-md border border-border bg-muted/20 overflow-hidden max-h-[160px] overflow-y-auto">
+              <div className="rounded-md border border-border bg-muted overflow-hidden max-h-[160px] overflow-y-auto">
                 <table className="w-full text-xs text-left table-fixed">
                   <tbody className="divide-y divide-border">
                     {droppedWithValues.map((d, i) => (
-                      <tr key={d.field + i} className="hover:bg-muted/40">
+                      <tr key={d.field + i} className="hover:bg-muted">
                         <td className="py-1.5 px-3 font-medium text-foreground whitespace-nowrap align-top w-2/5 truncate" title={d.label || d.field}>
                           {d.label || d.field}
                         </td>
@@ -179,7 +179,7 @@ export function ConvertModal({
                   id="retain-extra-fields"
                   checked={retainUnmapped}
                   onCheckedChange={(checked) => setRetainUnmapped(Boolean(checked))}
-                  className="rounded-sm"
+                  className="size-3.5 border-border data-[state=checked]:border-primary"
                 />
                 <Label
                   htmlFor="retain-extra-fields"

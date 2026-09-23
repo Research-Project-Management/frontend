@@ -174,9 +174,9 @@ export function previewAttachmentFilename(
   const effectivePattern =
     pattern && pattern.trim() ? pattern.trim() : DEFAULT_RENAME_PATTERN;
 
-  const rawAuthors = normalizeAuthors(item.authors, (item as any)?.creators);
+  const rawAuthors = normalizeAuthors(item.authors, item.creators);
   const { authors, firstAuthor, allAuthors, lastNames } = extractAuthorTokens(
-    (item as any)?.contributors,
+    item.contributors,
     rawAuthors
   );
 

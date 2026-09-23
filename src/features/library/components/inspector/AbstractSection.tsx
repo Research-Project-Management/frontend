@@ -34,17 +34,27 @@ export default function AbstractSection({
     setDraft(currentAbstract || '');
   }, [currentAbstract]);
 
-  // Auto-resize textarea to fit content naturally
+  // Auto-resize textarea to fit content naturally without jump
   const adjustHeight = useCallback(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.max(textareaRef.current.scrollHeight, 100)}px`;
-    }
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(48, el.scrollHeight)}px`;
   }, []);
 
   useEffect(() => {
     adjustHeight();
   }, [draft, adjustHeight]);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      adjustHeight();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [adjustHeight]);
 
   const commit = useCallback(() => {
     const trimmed = draft.trim();
@@ -60,38 +70,45 @@ export default function AbstractSection({
   }, [draft, paper, onUpdatePaper]);
 
   return (
-    <div className="space-y-1.5 text-xs min-w-0 font-sans">
+    <div className="space-y-1 text-xs min-w-0 font-sans">
       {!hideHeader && (
-        <div className="flex items-center justify-between px-0.5 pb-0.5">
+        <div className="flex items-center justify-between px-1 pb-0.5">
           <span className="font-sans font-medium text-foreground text-12">Abstract</span>
         </div>
       )}
 
-      {/* Abstract textarea */}
-      <div
+      {/* Abstract Content: Seamless auto-resizing without size jump */}
+      <textarea
+        ref={textareaRef}
+        rows={2}
+        value={draft}
+        placeholder={canEdit ? "No abstract available. Click to add abstract..." : "No abstract available."}
+        aria-label="Paper abstract summary"
+        readOnly={!canEdit}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            e.preventDefault();
+            commit();
+            textareaRef.current?.blur();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            setDraft(currentAbstract || '');
+            textareaRef.current?.blur();
+          }
+        }}
         className={cn(
-          "rounded-md border border-border bg-background transition-colors",
-          canEdit && "focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20"
+          "w-full text-12 leading-normal text-foreground font-sans resize-none overflow-hidden outline-none break-words select-text rounded-md",
+          "px-1.5 py-1 border border-transparent bg-transparent transition-[border-color,background-color,box-shadow]",
+          canEdit && [
+            "cursor-pointer hover:bg-muted/40",
+            "focus:cursor-text focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary focus:hover:bg-background",
+          ],
+          !canEdit && "cursor-default",
+          !draft && "placeholder:italic placeholder:text-muted-foreground"
         )}
-      >
-        <textarea
-          ref={textareaRef}
-          value={draft}
-          readOnly={!canEdit}
-          placeholder={canEdit ? "No abstract available. Click to add abstract..." : "No abstract available."}
-          aria-label="Paper abstract summary"
-          onChange={canEdit ? (e) => setDraft(e.target.value) : undefined}
-          onBlur={canEdit ? commit : undefined}
-          onKeyDown={canEdit ? (e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-              e.preventDefault();
-              commit();
-              textareaRef.current?.blur();
-            }
-          } : undefined}
-          className="w-full bg-transparent p-2.5 text-foreground text-12 leading-normal outline-none resize-none select-text font-sans focus:outline-none focus-visible:outline-none placeholder:text-muted-foreground/60 text-left"
-        />
-      </div>
+      />
     </div>
   );
 }

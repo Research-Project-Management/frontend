@@ -249,6 +249,11 @@ export const ItemsService = {
       };
     }),
 
+  getMetadataSources: (scopeId: string | undefined, itemId: string) =>
+    apiGet<ItemMetadataSourcesResponse>(
+      getItemUrl(scopeId, `${encodeURIComponent(itemId)}/metadata-sources`),
+    ),
+
 
   getByCollection: (scopeId: string, collectionId: string, search?: string) =>
     apiGet<any>(
@@ -471,6 +476,22 @@ export const ItemsService = {
           getItemUrl(scopeId, `${encodeURIComponent(itemId)}/my-publication`),
         ).then((res) => res?.item || res?.data || res),
 };
+
+export interface ItemMetadataSourceItem {
+  id: string;
+  sourceProvider: string;
+  sourceUri?: string | null;
+  format?: string | null;
+  fetchedAt: string;
+  createdAt: string;
+  rawPayload?: any;
+}
+
+export interface ItemMetadataSourcesResponse {
+  itemId: string;
+  count: number;
+  sources: ItemMetadataSourceItem[];
+}
 
 export { getPaperFileUrl } from '../../domain';
 export const ItemService = ItemsService;

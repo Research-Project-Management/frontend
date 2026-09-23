@@ -160,9 +160,9 @@ export default function ProcessModal({
                         {isItemSuccess ? (
                           <span
                             className="truncate block text-foreground font-normal text-12"
-                            title={(item as any).itemName || item.title}
+                            title={item.title}
                           >
-                            {(item as any).itemName || item.title}
+                            {item.title}
                           </span>
                         ) : isItemProcessing ? (
                           <span className="text-foreground text-12 font-normal">

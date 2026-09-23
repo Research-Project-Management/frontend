@@ -135,26 +135,26 @@ export function LibraryDisplayPopover({
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-68 sm:w-72 max-h-[85vh] overflow-y-auto p-2 rounded-md text-12 border-border bg-popover shadow-none space-y-1.5 select-none font-sans no-scrollbar"
+        className="w-68 sm:w-72 max-h-[85vh] overflow-y-auto p-2 rounded-md text-12 border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-1.5 select-none font-sans no-scrollbar"
       >
         {/* 1. Display Properties (Columns) */}
         <div>
           <button
             type="button"
             onClick={() => setColumnsOpen(!columnsOpen)}
-            className="flex w-full items-center justify-between px-1 py-0.5 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+            className="flex w-full items-center justify-between px-1 py-0.5 text-12 font-medium text-foreground cursor-pointer select-none"
           >
             <span>Columns</span>
             {columnsOpen ? (
-              <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
+              <ChevronUp className="size-3.5 text-foreground shrink-0" />
             ) : (
-              <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+              <ChevronDown className="size-3.5 text-foreground shrink-0" />
             )}
           </button>
 
           {columnsOpen && (
             <div className="flex flex-wrap items-center gap-1 pt-1 px-0.5 select-none">
-              <span className="h-6 px-2 text-11 font-medium rounded-md bg-muted text-muted-foreground border border-transparent cursor-not-allowed select-none inline-flex items-center justify-center">
+              <span className="h-6 px-2 text-11 font-medium rounded-md bg-primary text-primary-foreground border border-primary select-none inline-flex items-center justify-center">
                 Title
               </span>
               {COLUMN_ITEMS.map((item) => {
@@ -168,8 +168,8 @@ export function LibraryDisplayPopover({
                     className={cn(
                       "h-6 px-2 text-11 font-medium rounded-md border transition-colors cursor-pointer select-none inline-flex items-center justify-center",
                       isSelected
-                        ? "border-primary bg-primary text-primary-foreground font-semibold"
-                        : "border-border/70 bg-background text-foreground hover:bg-muted font-normal"
+                        ? "border-primary bg-primary text-primary-foreground font-medium"
+                        : "border-border bg-background text-foreground hover:bg-muted font-normal"
                     )}
                   >
                     {item.label}
@@ -180,7 +180,7 @@ export function LibraryDisplayPopover({
           )}
         </div>
 
-        <div className="border-t border-border/50 my-0.5" />
+        <div className="border-t border-border my-0.5" />
 
         {/* 2. Order by */}
         <div>
@@ -188,7 +188,7 @@ export function LibraryDisplayPopover({
             <button
               type="button"
               onClick={() => setOrderByOpen(!orderByOpen)}
-              className="hover:text-foreground/80 transition-colors cursor-pointer text-12 font-medium"
+              className="text-12 font-medium text-foreground cursor-pointer"
             >
               <span>Order by</span>
             </button>
@@ -211,13 +211,13 @@ export function LibraryDisplayPopover({
               <button
                 type="button"
                 onClick={() => setOrderByOpen(!orderByOpen)}
-                className="p-0.5 text-foreground hover:text-foreground/80 transition-colors cursor-pointer"
+                className="p-0.5 text-foreground cursor-pointer"
                 aria-label={orderByOpen ? "Collapse order by" : "Expand order by"}
               >
                 {orderByOpen ? (
-                  <ChevronUp className="size-3.5 shrink-0" />
+                  <ChevronUp className="size-3.5 shrink-0 text-foreground" />
                 ) : (
-                  <ChevronDown className="size-3.5 shrink-0" />
+                  <ChevronDown className="size-3.5 shrink-0 text-foreground" />
                 )}
               </button>
             </div>
@@ -231,14 +231,14 @@ export function LibraryDisplayPopover({
                   <label
                     key={opt.value}
                     className={cn(
-                      "flex w-full items-center gap-2 py-1 px-1.5 rounded-md text-12 text-foreground transition-colors cursor-pointer select-none hover:bg-muted/50",
+                      "flex w-full items-center gap-2 py-1 px-1.5 rounded-md text-12 text-foreground transition-colors cursor-pointer select-none hover:bg-muted",
                       isSelected ? "font-medium" : "font-normal"
                     )}
                   >
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={() => handleOrderByChange(opt.value)}
-                      className="size-4 rounded-sm border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary cursor-pointer"
+                      className="size-3.5 border-border data-[state=checked]:border-primary cursor-pointer shrink-0"
                     />
                     <span>{opt.label}</span>
                   </label>
@@ -248,20 +248,20 @@ export function LibraryDisplayPopover({
           )}
         </div>
 
-        <div className="border-t border-border/50 my-0.5" />
+        <div className="border-t border-border my-0.5" />
 
         {/* 3. Density */}
         <div>
           <button
             type="button"
             onClick={() => setDensityOpen(!densityOpen)}
-            className="flex w-full items-center justify-between px-1 py-0.5 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+            className="flex w-full items-center justify-between px-1 py-0.5 text-12 font-medium text-foreground cursor-pointer select-none"
           >
             <span>Density</span>
             {densityOpen ? (
-              <ChevronUp className="size-3.5 text-muted-foreground shrink-0" />
+              <ChevronUp className="size-3.5 text-foreground shrink-0" />
             ) : (
-              <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+              <ChevronDown className="size-3.5 text-foreground shrink-0" />
             )}
           </button>
 
@@ -276,14 +276,14 @@ export function LibraryDisplayPopover({
                   <label
                     key={item.value}
                     className={cn(
-                      "flex w-full items-center gap-2 py-1 px-1.5 rounded-md text-12 text-foreground transition-colors cursor-pointer select-none hover:bg-muted/50",
+                      "flex w-full items-center gap-2 py-1 px-1.5 rounded-md text-12 text-foreground transition-colors cursor-pointer select-none hover:bg-muted",
                       isSelected ? "font-medium" : "font-normal"
                     )}
                   >
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={() => handleDensityChange(item.value)}
-                      className="size-4 rounded-sm border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary cursor-pointer"
+                      className="size-3.5 border-border data-[state=checked]:border-primary cursor-pointer shrink-0"
                     />
                     <span>{item.label}</span>
                   </label>

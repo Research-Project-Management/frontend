@@ -19,3 +19,4 @@ export * from './state.service';
 export * from './types.service';
 export * from './upload.service';
 export * from './citation.service';
+export * from './sync.service';

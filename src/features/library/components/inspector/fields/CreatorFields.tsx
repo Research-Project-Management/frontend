@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Minus, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Minus, Check, ChevronDown, ChevronUp, Building2, User } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { Item, CreatorCredit } from '@/features/library/types/library.types';
 import { normalizeAuthors, splitAuthorString } from '../../../domain';
@@ -23,8 +23,10 @@ import {
 export interface CreatorEntry {
   creatorType: string;
   name: string;
+  fieldMode?: number;
   firstName?: string;
   lastName?: string;
+  shortName?: string;
 }
 
 export interface CreatorFieldsProps {
@@ -34,7 +36,7 @@ export interface CreatorFieldsProps {
   onUpdatePaper?: (data: Partial<Item>) => void;
 }
 
-const MAX_COLLAPSED_AUTHORS = 5;
+const MAX_COLLAPSED_AUTHORS = 3;
 
 /** Filter out empty, null, undefined, or junk placeholder string values */
 function cleanValue(val?: any): string {
@@ -69,6 +71,8 @@ export function parseCreators(paper: Item): CreatorEntry[] {
     const parsedCreators: CreatorEntry[] = [];
     for (const rawCreatorItem of rawCreators) {
       const creatorType = rawCreatorItem.creatorType || 'author';
+      const fieldMode = (rawCreatorItem as any).fieldMode ?? 0;
+      const shortName = cleanValue((rawCreatorItem as any).shortName);
       let creatorName = cleanValue(rawCreatorItem.name || rawCreatorItem.fullName);
       const firstName = cleanValue(
         rawCreatorItem.firstName || (rawCreatorItem as Record<string, unknown>).given,
@@ -82,18 +86,32 @@ export function parseCreators(paper: Item): CreatorEntry[] {
 
       if (creatorName) {
         const splitNameParts = splitAuthorString(creatorName);
-        for (const authorPart of splitNameParts) {
+        if (splitNameParts.length > 1) {
+          for (const authorPart of splitNameParts) {
+            parsedCreators.push({
+              creatorType,
+              name: authorPart,
+              fieldMode: 0,
+            });
+          }
+        } else {
           parsedCreators.push({
             creatorType,
-            name: authorPart,
+            name: creatorName,
+            fieldMode,
+            firstName: firstName || undefined,
+            lastName: lastName || undefined,
+            shortName: shortName || undefined,
           });
         }
       } else {
         parsedCreators.push({
           creatorType,
           name: '',
-          firstName,
-          lastName,
+          fieldMode,
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
+          shortName: shortName || undefined,
         });
       }
     }
@@ -110,6 +128,7 @@ export function parseCreators(paper: Item): CreatorEntry[] {
     return normalizedAuthorList.map((authorName) => ({
       creatorType: defaultRole,
       name: authorName || '',
+      fieldMode: 0,
     }));
   }
 
@@ -143,9 +162,17 @@ export function areCreatorsEqual(
     if (firstCreatorRole !== secondCreatorRole) {
       return false;
     }
+    if ((firstCreator.fieldMode ?? 0) !== (secondCreator.fieldMode ?? 0)) {
+      return false;
+    }
     const firstCreatorName = firstCreator.name.trim();
     const secondCreatorName = secondCreator.name.trim();
     if (firstCreatorName !== secondCreatorName) {
+      return false;
+    }
+    const firstShort = (firstCreator.shortName || '').trim();
+    const secondShort = (secondCreator.shortName || '').trim();
+    if (firstShort !== secondShort) {
       return false;
     }
   }
@@ -158,10 +185,12 @@ export function toItemCreators(creatorEntries: CreatorEntry[]): CreatorCredit[] 
   return creatorEntries.map((creatorEntry, indexPosition) => ({
     orderIndex: indexPosition,
     creatorType: creatorEntry.creatorType || 'author',
+    fieldMode: creatorEntry.fieldMode ?? 0,
     fullName: creatorEntry.name.trim(),
     name: creatorEntry.name.trim(),
     firstName: creatorEntry.firstName,
     lastName: creatorEntry.lastName,
+    shortName: creatorEntry.shortName?.trim() || undefined,
   }));
 }
 
@@ -248,11 +277,28 @@ export function CreatorFields({
     }
   };
 
+  const handleToggleFieldMode = (targetIndex: number) => {
+    const current = localCreators[targetIndex];
+    if (!current) return;
+    const nextMode = (current.fieldMode ?? 0) === 1 ? 0 : 1;
+    const updatedCreators = [...localCreators];
+    updatedCreators[targetIndex] = {
+      ...current,
+      fieldMode: nextMode,
+    };
+    setLocalCreators(updatedCreators);
+    if (onUpdatePaper) {
+      onUpdatePaper({
+        creators: toItemCreators(updatedCreators),
+      });
+    }
+  };
+
   const handleAddCreator = (afterIndex?: number) => {
     const primaryRole = typeDefinition.primaryCreatorType || getPrimaryCreatorType(currentItemType) || 'author';
     const insertPosition = typeof afterIndex === 'number' ? afterIndex + 1 : localCreators.length;
     const updatedCreators = [...localCreators];
-    updatedCreators.splice(insertPosition, 0, { creatorType: primaryRole, name: '' });
+    updatedCreators.splice(insertPosition, 0, { creatorType: primaryRole, name: '', fieldMode: 0 });
     setLocalCreators(updatedCreators);
     setIsAuthorsExpanded(true);
     setFocusAuthorIndex(insertPosition);
@@ -282,8 +328,8 @@ export function CreatorFields({
     <div className="py-0.5 space-y-0.5">
       {localCreators.length === 0 ? (
         canEdit ? (
-          <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5">
-            <span className="text-muted-foreground text-right font-normal select-none pr-2 text-12 leading-normal truncate">
+          <div className="grid grid-cols-[80px_1fr] gap-1.5 items-center py-0.5">
+            <span className="text-muted-foreground text-right font-normal select-none pr-1.5 text-12 leading-tight break-words">
               {typeDefinition.creatorTypes[0]?.label || 'Author'}
             </span>
             <input
@@ -300,6 +346,7 @@ export function CreatorFields({
                         {
                           orderIndex: 0,
                           creatorType: 'author',
+                          fieldMode: 0,
                           fullName: trimmedValue,
                           name: trimmedValue,
                         },
@@ -320,6 +367,7 @@ export function CreatorFields({
                           {
                             orderIndex: 0,
                             creatorType: 'author',
+                            fieldMode: 0,
                             fullName: trimmedValue,
                             name: trimmedValue,
                           },
@@ -337,7 +385,7 @@ export function CreatorFields({
       ) : (
         <>
           {visibleCreators.map((creatorEntry, creatorIndex) => (
-            <div key={creatorIndex} className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5 group">
+            <div key={creatorIndex} className="grid grid-cols-[76px_1fr] gap-1.5 items-center py-0.5 group">
               {/* Left Role Column */}
               <div className="flex items-center justify-end min-w-0">
                 {canEdit ? (
@@ -345,10 +393,10 @@ export function CreatorFields({
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className="w-full h-7 flex items-center justify-end pr-2 rounded-md text-12 leading-normal font-normal text-muted-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-right"
+                        className="w-full min-h-7 h-auto flex items-center justify-end pr-1.5 rounded-md text-12 leading-normal font-normal text-muted-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-right"
                         aria-label={`Change role for creator ${creatorIndex + 1}`}
                       >
-                        <span className="truncate">
+                        <span className="break-words leading-tight">
                           {ALL_CREATOR_TYPES[creatorEntry.creatorType] || creatorEntry.creatorType || 'Author'}
                         </span>
                       </button>
@@ -372,8 +420,8 @@ export function CreatorFields({
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : (
-                  <div className="w-full h-7 flex items-center justify-end pr-2 text-12 leading-normal font-normal text-muted-foreground select-text text-right truncate">
-                    <span className="truncate">
+                  <div className="w-full min-h-7 h-auto flex items-center justify-end pr-1.5 text-12 leading-normal font-normal text-muted-foreground select-text text-right">
+                    <span className="break-words leading-tight">
                       {ALL_CREATOR_TYPES[creatorEntry.creatorType] || creatorEntry.creatorType || 'Author'}
                     </span>
                   </div>
@@ -389,6 +437,7 @@ export function CreatorFields({
                       }}
                       type="text"
                       value={creatorEntry.name}
+                      placeholder={creatorEntry.fieldMode === 1 ? 'Institution or organization name' : 'Author name'}
                       aria-label={`Creator ${creatorIndex + 1}`}
                       onChange={(changeEvent) => {
                         const inputValue = changeEvent.target.value;
@@ -398,6 +447,7 @@ export function CreatorFields({
                             const updatedCreators = [...localCreators];
                             const newCreatorEntries = splitParts.map((authorNamePart) => ({
                               creatorType: updatedCreators[creatorIndex]?.creatorType || 'author',
+                              fieldMode: updatedCreators[creatorIndex]?.fieldMode ?? 0,
                               name: authorNamePart,
                             }));
                             updatedCreators.splice(creatorIndex, 1, ...newCreatorEntries);
@@ -436,16 +486,90 @@ export function CreatorFields({
                           handleAddCreator(creatorIndex);
                         }
                       }}
-                      className="flex-1 h-7 bg-transparent px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-12 leading-normal outline-none min-w-0 font-normal font-sans"
+                      className="flex-1 min-w-0 h-7 bg-transparent px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-12 leading-normal outline-none font-normal font-sans"
                     />
-                    {/* Action Buttons (Add / Remove) */}
+
+                    {/* Optional Short Name / Acronym when in single-field institutional mode */}
+                    {creatorEntry.fieldMode === 1 && (
+                      <Tooltip delayDuration={700}>
+                        <TooltipTrigger asChild>
+                          <input
+                            type="text"
+                            value={creatorEntry.shortName || ''}
+                            placeholder="Acronym (e.g. WHO)"
+                            aria-label={`Short name or acronym for creator ${creatorIndex + 1}`}
+                            onChange={(changeEvent) => {
+                              const updatedCreators = [...localCreators];
+                              updatedCreators[creatorIndex] = {
+                                ...updatedCreators[creatorIndex],
+                                shortName: changeEvent.target.value,
+                              };
+                              setLocalCreators(updatedCreators);
+                            }}
+                            onBlur={() => {
+                              const originalCreators = parseCreators(paper);
+                              if (areCreatorsEqual(localCreators, originalCreators)) return;
+                              if (onUpdatePaper) {
+                                onUpdatePaper({
+                                  creators: toItemCreators(localCreators),
+                                });
+                              }
+                            }}
+                            className="w-24 sm:w-28 h-7 bg-transparent px-2 py-1 rounded-md border border-border/50 focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-11 placeholder:text-muted-foreground/60 leading-normal outline-none font-normal font-sans shrink-0"
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="bottom"
+                          align="start"
+                          sideOffset={6}
+                          alignOffset={2}
+                          className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                        >
+                          Short name / acronym for CSL in-text citations (e.g. WHO, UNESCO)
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+
+                    {/* Action Buttons (Field mode, Add, Remove) - only visible on hover */}
                     <div className="invisible group-hover:visible flex items-center gap-0.5 shrink-0">
                       <Tooltip delayDuration={700}>
                         <TooltipTrigger asChild>
                           <button
                             type="button"
+                            onClick={() => handleToggleFieldMode(creatorIndex)}
+                            className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none"
+                            aria-label={
+                              creatorEntry.fieldMode === 1
+                                ? 'Single field (institution) — Click to switch to personal author'
+                                : 'Personal author — Click to switch to single field (institution)'
+                            }
+                          >
+                            {creatorEntry.fieldMode === 1 ? (
+                              <Building2 className="size-3.5 text-primary shrink-0" aria-hidden="true" strokeWidth={1.5} />
+                            ) : (
+                              <User className="size-3.5 text-muted-foreground hover:text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
+                            )}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="bottom"
+                          align="start"
+                          sideOffset={6}
+                          alignOffset={2}
+                          className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                        >
+                          {creatorEntry.fieldMode === 1
+                            ? 'Institution — Click for personal author'
+                            : 'Personal author — Click for institution'}
+                        </TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip delayDuration={700}>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
                             onClick={() => handleAddCreator(creatorIndex)}
-                            className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer focus-visible:outline-none"
+                            className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none"
                             aria-label="Add creator below"
                           >
                             <Plus className="size-3.5 text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
@@ -468,7 +592,7 @@ export function CreatorFields({
                             <button
                               type="button"
                               onClick={() => handleRemoveCreator(creatorIndex)}
-                              className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer focus-visible:outline-none"
+                              className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none"
                               aria-label="Remove creator"
                             >
                               <Minus className="size-3.5 text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
@@ -488,8 +612,13 @@ export function CreatorFields({
                     </div>
                   </>
                 ) : (
-                  <div className="flex-1 h-7 px-2 py-1 text-foreground text-12 leading-normal min-w-0 font-normal font-sans truncate select-text flex items-center">
-                    {creatorEntry.name}
+                  <div className="flex-1 min-h-7 h-auto px-2 py-1 text-foreground text-12 leading-snug min-w-0 font-normal font-sans break-words select-text flex items-center gap-1.5">
+                    <span>{creatorEntry.name}</span>
+                    {creatorEntry.shortName && (
+                      <span className="text-11 text-muted-foreground font-mono">
+                        ({creatorEntry.shortName})
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -497,23 +626,26 @@ export function CreatorFields({
           ))}
 
           {localCreators.length > MAX_COLLAPSED_AUTHORS && (
-            <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center pt-0.5">
+            <div className="grid grid-cols-[76px_1fr] gap-1.5 items-center pt-0.5">
               <span />
               <button
                 type="button"
                 onClick={() => setIsAuthorsExpanded(!isAuthorsExpanded)}
-                className="flex items-center gap-1.5 text-12 text-foreground font-medium cursor-pointer py-1 px-1.5 -ml-1 hover:bg-sidebar-accent focus-visible:outline-none rounded-md w-fit transition-colors select-none"
+                className="flex items-center gap-1.5 text-11 text-muted-foreground hover:text-foreground font-medium cursor-pointer py-0.5 px-2 hover:bg-muted focus-visible:outline-none rounded-md w-fit transition-colors select-none"
                 aria-expanded={isAuthorsExpanded}
               >
                 {isAuthorsExpanded ? (
                   <>
                     <ChevronUp className="size-3.5 shrink-0" aria-hidden="true" strokeWidth={1.5} />
-                    <span>Show less</span>
+                    <span>Show fewer authors</span>
                   </>
                 ) : (
                   <>
                     <ChevronDown className="size-3.5 shrink-0" aria-hidden="true" strokeWidth={1.5} />
-                    <span>Show {localCreators.length - MAX_COLLAPSED_AUTHORS} more authors</span>
+                    <span>
+                      Show {localCreators.length - MAX_COLLAPSED_AUTHORS}{' '}
+                      {localCreators.length - MAX_COLLAPSED_AUTHORS === 1 ? 'more author' : 'more authors'}
+                    </span>
                   </>
                 )}
               </button>

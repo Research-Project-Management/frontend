@@ -16,10 +16,14 @@ import {
   Star,
   FileDown,
   FolderSync,
+  Plus,
+  Upload,
+  Link2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Document, Page, pdfjs } from 'react-pdf';
 import {
+  Button,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -33,6 +37,7 @@ import {
   useAttachmentRevisions,
   useRenameAttachment,
   downloadAnnotatedPdf,
+  uploadLibraryAttachment,
 } from '../../data';
 import { SnapshotViewerModal } from '../modals';
 import type { Item, ItemAttachment } from '../../types/library.types';
@@ -250,6 +255,7 @@ interface AttachmentsSectionProps {
   isUploading?: boolean;
   hideHeader?: boolean;
   canEdit?: boolean;
+  onRegisterAdd?: (trigger: () => void) => void;
 }
 
 const EMPTY_ATTACHMENTS: ItemAttachment[] = [];
@@ -261,6 +267,7 @@ export default function AttachmentsSection({
   workspaceId,
   hideHeader = false,
   canEdit = true,
+  onRegisterAdd,
 }: AttachmentsSectionProps) {
   const router = useRouter();
   const params = useParams();
@@ -271,10 +278,72 @@ export default function AttachmentsSection({
     isCapturingSnapshot,
     setPrimary,
     isSettingPrimary,
+    add: addAttachment,
   } = useAttachments(rawScopeId, paper.id || '');
   const [activeSnapshot, setActiveSnapshot] = useState<{ url: string; title: string; sourceUrl?: string } | null>(null);
   const [isDownloadingAnnotated, setIsDownloadingAnnotated] = useState(false);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const renameAttachmentMutation = useRenameAttachment(rawScopeId);
+
+  useEffect(() => {
+    if (onRegisterAdd) {
+      onRegisterAdd(() => {
+        fileInputRef.current?.click();
+      });
+    }
+  }, [onRegisterAdd]);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !paper.id) return;
+    try {
+      setIsUploadingFile(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('itemId', paper.id);
+      const uploaded = await uploadLibraryAttachment(rawScopeId, formData);
+      await addAttachment({
+        itemId: paper.id,
+        filename: uploaded.filename,
+        url: uploaded.url,
+        size: uploaded.size,
+        mimeType: uploaded.mimeType,
+        linkMode: 'imported_file',
+        attachmentType: 'supplementary',
+      });
+      toast.success('File attached successfully');
+    } catch (err: any) {
+      toast.error('Failed to attach file', { description: err?.message });
+    } finally {
+      setIsUploadingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleAddLinkAttachment = async () => {
+    if (!paper.id) return;
+    const rawUrl = window.prompt('Enter web link / URL (e.g. https://...):');
+    if (!rawUrl || !rawUrl.trim()) return;
+    const targetUrl = rawUrl.trim();
+    const rawTitle = window.prompt('Enter link label / title (optional):', targetUrl);
+    const linkTitle = (rawTitle && rawTitle.trim()) || targetUrl;
+
+    try {
+      await addAttachment({
+        itemId: paper.id,
+        filename: linkTitle,
+        url: targetUrl,
+        size: 0,
+        mimeType: 'text/uri-list',
+        linkMode: 'linked_url',
+        attachmentType: 'other',
+      });
+      toast.success('Web link attached successfully');
+    } catch (err: any) {
+      toast.error('Failed to attach link', { description: err?.message });
+    }
+  };
 
   const rawAttachments = paper.attachments || (paper as any).files || EMPTY_ATTACHMENTS;
   const paperUrl = getPaperFileUrl(paper);
@@ -306,6 +375,7 @@ export default function AttachmentsSection({
         filename: 'Open Access Full Text.pdf',
         url: openAccessPdfUrl,
         size: 0,
+        linkMode: 'linked_url',
         attachmentType: 'supplementary',
         mimeType: 'application/pdf',
       });
@@ -317,6 +387,8 @@ export default function AttachmentsSection({
   const hasSnapshot = useMemo(() => {
     return rawAttachments.some(
       (att: any) =>
+        att.linkMode === 'imported_url' ||
+        att.attachmentType === 'snapshot' ||
         att.attachmentType === 'web_snapshot' ||
         att.mimeType === 'text/html' ||
         att.filename?.toLowerCase().endsWith('.html'),
@@ -374,16 +446,80 @@ export default function AttachmentsSection({
   };
 
   if (!paperUrl && otherAttachments.length === 0 && !paper.url) {
-    return null;
+    return (
+      <div className="py-2.5 px-3 text-center text-11 text-muted-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+        <span>No attached files or snapshots.</span>
+        {canEdit && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            className="h-6 text-11 text-foreground hover:bg-muted px-2 gap-1 cursor-pointer font-normal"
+            disabled={isUploadingFile}
+          >
+            <Plus className="size-3 text-foreground" strokeWidth={1.5} />
+            <span>Upload file</span>
+          </Button>
+        )}
+      </div>
+    );
   }
 
   return (
     <div className="space-y-3 text-xs font-sans select-none">
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
       {!hideHeader && (
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-semibold text-foreground">
+        <div className="flex items-center justify-between pb-1">
+          <h3 className="text-12 font-medium text-foreground">
             Attachments
           </h3>
+          {canEdit && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  disabled={isUploadingFile}
+                  className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+                  title="Add attachment"
+                  aria-label="Add attachment"
+                >
+                  {isUploadingFile ? (
+                    <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
+                  ) : (
+                    <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 p-1.5 text-xs font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5">
+                <DropdownMenuItem
+                  onClick={() => fileInputRef.current?.click()}
+                  className="gap-2 cursor-pointer"
+                >
+                  <Upload className="size-3.5 text-foreground shrink-0" />
+                  <span>Attach Stored File...</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleAddLinkAttachment}
+                  className="gap-2 cursor-pointer"
+                >
+                  <Link2 className="size-3.5 text-foreground shrink-0" />
+                  <span>Attach Link to URI...</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       )}
 
@@ -407,7 +543,7 @@ export default function AttachmentsSection({
                 <FileText className="size-4 text-foreground shrink-0" />
               </div>
               <span
-                className="text-xs font-medium text-foreground truncate"
+                className="text-xs font-medium text-foreground break-all leading-snug"
                 title={paper.filename || ((paper as any)?.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
               >
                 {paper.filename || ((paper as any)?.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
@@ -478,8 +614,13 @@ export default function AttachmentsSection({
           const downloadUrl = att.fileUrl || att.url;
           const isSnapshot =
             att.attachmentType === 'web_snapshot' ||
+            att.attachmentType === 'snapshot' ||
+            att.linkMode === 'imported_url' ||
             att.mimeType === 'text/html' ||
             att.filename?.toLowerCase().endsWith('.html');
+          const isLink =
+            att.linkMode === 'linked_url' ||
+            (!att.fileId && att.url && /^https?:\/\//i.test(att.url) && !isSnapshot);
 
           return (
             <div
@@ -487,29 +628,41 @@ export default function AttachmentsSection({
               className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted border border-border transition-colors"
             >
               <div
-                className={`flex items-center gap-1.5 min-w-0 flex-1 mr-2 ${isSnapshot ? 'cursor-pointer' : ''}`}
-                onClick={isSnapshot ? () => setActiveSnapshot({
-                  url: downloadUrl,
-                  title: att.filename || paper.title,
-                  sourceUrl: paper.url,
-                }) : undefined}
+                className={`flex items-center gap-1.5 min-w-0 flex-1 mr-2 ${isSnapshot || isLink ? 'cursor-pointer' : ''}`}
+                onClick={
+                  isSnapshot
+                    ? () =>
+                        setActiveSnapshot({
+                          url: downloadUrl,
+                          title: att.filename || paper.title,
+                          sourceUrl: paper.url,
+                        })
+                    : isLink && downloadUrl
+                    ? () => window.open(downloadUrl, '_blank', 'noopener,noreferrer')
+                    : undefined
+                }
               >
                 <div className="size-4 shrink-0 flex items-center justify-center">
                   {isSnapshot ? (
-                    <Globe className="size-3.5 text-primary shrink-0" />
+                    <Globe className="size-3.5 text-foreground shrink-0" />
+                  ) : isLink ? (
+                    <ExternalLink className="size-3.5 text-foreground shrink-0" />
                   ) : (
                     <FileText className="size-3.5 text-foreground shrink-0" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-foreground truncate" title={att.filename || att.name}>
+                  <p className="text-xs font-medium text-foreground break-all leading-snug" title={att.filename || att.name}>
                     {att.filename || att.name}
                   </p>
                   <p className="text-10 text-muted-foreground flex items-center gap-1.5">
                     {isSnapshot && (
-                      <span className="text-primary font-medium">Snapshot •</span>
+                      <span className="text-foreground font-medium">Snapshot •</span>
                     )}
-                    <span>{formatSize(att.size)}</span>
+                    {isLink && (
+                      <span className="text-foreground font-medium">Link •</span>
+                    )}
+                    {att.size ? <span>{formatSize(att.size)}</span> : null}
                   </p>
                 </div>
               </div>
@@ -541,13 +694,15 @@ export default function AttachmentsSection({
                         <span>View Snapshot</span>
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem
-                      onClick={() => handleDownload(downloadUrl, att.filename || att.name || (isSnapshot ? 'snapshot.html' : 'file'))}
-                      className="gap-2 cursor-pointer"
-                    >
-                      <Download className="size-3.5 text-foreground shrink-0" />
-                      <span>Download</span>
-                    </DropdownMenuItem>
+                    {!isLink && (
+                      <DropdownMenuItem
+                        onClick={() => handleDownload(downloadUrl, att.filename || att.name || (isSnapshot ? 'snapshot.html' : 'file'))}
+                        className="gap-2 cursor-pointer"
+                      >
+                        <Download className="size-3.5 text-foreground shrink-0" />
+                        <span>Download</span>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                       onClick={() => window.open(downloadUrl, '_blank', 'noopener,noreferrer')}
                       className="gap-2 cursor-pointer"
@@ -555,7 +710,7 @@ export default function AttachmentsSection({
                       <ExternalLink className="size-3.5 text-foreground shrink-0" />
                       <span>Open in New Tab</span>
                     </DropdownMenuItem>
-                    {canEdit && rawScopeId && att.id && att.id !== 'open-access-pdf' && !isSnapshot && (
+                    {canEdit && rawScopeId && att.id && att.id !== 'open-access-pdf' && !isSnapshot && !isLink && (
                       <DropdownMenuItem
                         onClick={() => handleSetPrimary(att.id)}
                         disabled={isSettingPrimary}
@@ -565,7 +720,7 @@ export default function AttachmentsSection({
                         <span>Set as Primary Document</span>
                       </DropdownMenuItem>
                     )}
-                    {canEdit && rawScopeId && att.id && att.id !== 'open-access-pdf' && (
+                    {canEdit && rawScopeId && att.id && att.id !== 'open-access-pdf' && !isLink && (
                       <DropdownMenuItem
                         onClick={() => renameAttachmentMutation.mutate({ attachmentId: att.id })}
                         disabled={renameAttachmentMutation.isPending}
@@ -575,7 +730,7 @@ export default function AttachmentsSection({
                         <span>Rename File from Parent Metadata</span>
                       </DropdownMenuItem>
                     )}
-                    {rawScopeId && att.id && (
+                    {rawScopeId && att.id && !isLink && (
                       <>
                         <DropdownMenuSeparator />
                         <AttachmentRevisions
@@ -607,7 +762,7 @@ export default function AttachmentsSection({
             </>
           ) : (
             <>
-              <Globe className="size-3.5 text-primary shrink-0" />
+              <Globe className="size-3.5 text-foreground shrink-0" />
               <span>{hasSnapshot ? 'Update Web Snapshot' : 'Capture Web Snapshot'}</span>
             </>
           )}

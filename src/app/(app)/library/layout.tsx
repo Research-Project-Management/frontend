@@ -13,23 +13,20 @@ export default function LibraryLayout({
   const isReader = pathname.includes('/library/papers/');
   const { isOpen } = useLibrarySidebarStore();
 
-  return (
-    <div className="flex h-full w-full flex-col bg-background overflow-hidden relative select-none">
-      {isReader ? (
-        <main className="flex-1 min-h-0 relative flex flex-col overflow-hidden">
-          {children}
-        </main>
-      ) : (
-        <div className="flex flex-1 min-h-0 w-full overflow-hidden relative">
-          {isOpen && <Sidebar />}
+  if (isReader) {
+    return (
+      <main className="flex-1 min-h-0 relative flex flex-col overflow-hidden select-none">
+        {children}
+      </main>
+    );
+  }
 
-          <div className="flex-1 min-w-0 flex flex-col overflow-hidden relative">
-            <main className="flex-1 min-h-0 relative flex flex-col overflow-hidden">
-              {children}
-            </main>
-          </div>
-        </div>
-      )}
+  return (
+    <div className="flex h-full w-full overflow-hidden relative select-none">
+      {isOpen && <Sidebar />}
+      <main className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden relative">
+        {children}
+      </main>
     </div>
   );
 }

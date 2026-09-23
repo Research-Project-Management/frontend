@@ -4,5 +4,5 @@ import React from 'react';
 import { ModernLibraryPage } from './LibraryPage';
 
 export default function RecentlyReadPage() {
-  return <ModernLibraryPage view="recent-read" title="Recently Read" />;
+  return <ModernLibraryPage view="recent" title="Recently Read" />;
 }

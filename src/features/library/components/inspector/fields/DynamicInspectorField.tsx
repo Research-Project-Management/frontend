@@ -60,9 +60,9 @@ export function DynamicInspectorField({
     fieldDef.field.toLowerCase() === 'citekey';
 
   return (
-    <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5 group">
+    <div className="grid grid-cols-[76px_1fr] gap-1.5 items-center py-0.5 group">
       <span
-        className="text-muted-foreground text-right font-normal select-none pr-2 text-12 leading-normal truncate"
+        className="text-muted-foreground text-right font-normal select-none pr-1.5 text-12 leading-tight break-words"
         title={fieldDef.label}
       >
         {fieldDef.label}

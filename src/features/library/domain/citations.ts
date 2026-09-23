@@ -20,7 +20,7 @@ export function generateCitationKey(paper?: Partial<Item> | null): string {
     return paper.citationKey.trim().replace(/\s+/g, '');
   }
 
-  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
+  const authors = normalizeAuthors(paper.authors, paper.creators);
   let authorPart = 'unknown';
   if (authors.length > 0) {
     const parsed = parseCreatorName(authors[0]);
@@ -51,7 +51,7 @@ export const getPaperCitationKey = generateCitationKey;
  */
 export function toBibTeXEntry(item: Partial<Item>): string {
   const citeKey = generateCitationKey(item);
-  const authors = normalizeAuthors(item.authors, (item as any)?.creators);
+  const authors = normalizeAuthors(item.authors, item.creators);
   const authorBibtex = authors.join(' and ');
 
   const typeMap: Record<string, string> = {

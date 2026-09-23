@@ -121,8 +121,8 @@ export function normalizeTags(
     ...(Array.isArray(paper.tags) ? paper.tags : []),
     ...(Array.isArray(paper.labels) ? paper.labels : []),
     ...(Array.isArray(paper.keywords) ? paper.keywords : []),
-    ...(Array.isArray((paper as any).itemTags)
-      ? (paper as any).itemTags.map((it: any) => it?.tag?.name ?? '')
+    ...(Array.isArray(paper.itemTags)
+      ? paper.itemTags.map((it) => it?.tag?.name ?? '')
       : []),
   ];
   const seen = new Set<string>();
@@ -132,10 +132,10 @@ export function normalizeTags(
       typeof t === 'string'
         ? t
         : t && typeof t === 'object'
-          ? (typeof (t as any).tag === 'string'
-              ? (t as any).tag
-              : typeof (t as any).name === 'string'
-                ? (t as any).name
+          ? (typeof (t as { tag?: unknown }).tag === 'string'
+              ? ((t as { tag: string }).tag)
+              : typeof (t as { name?: unknown }).name === 'string'
+                ? ((t as { name: string }).name)
                 : '')
           : '';
     if (!s) continue;
@@ -481,13 +481,13 @@ export function formatAndSanitizeExtraMetadata(
   const paperFileUrl = associatedPaperItem?.fileUrl?.trim();
   const paperOaUrl = associatedPaperItem?.openAccessPdfUrl?.trim();
   const paperCiteKey = associatedPaperItem?.citationKey?.trim().toLowerCase();
-  const paperDoi = cleanDoi(associatedPaperItem?.doi || (associatedPaperItem as any)?.DOI);
+  const paperDoi = cleanDoi(associatedPaperItem?.doi || associatedPaperItem?.DOI);
   const paperPmid = associatedPaperItem?.pmid?.trim();
   const paperPmcid = associatedPaperItem?.pmcid?.trim();
   const paperIsbn = associatedPaperItem?.isbn?.trim();
   const paperIssn = associatedPaperItem?.issn?.trim();
   const isPreprint = associatedPaperItem?.itemType === 'preprint';
-  const paperArchiveId = (associatedPaperItem?.archiveId || (associatedPaperItem as any)?.archiveID || associatedPaperItem?.arxivId)?.trim();
+  const paperArchiveId = (associatedPaperItem?.archiveId || associatedPaperItem?.archiveID || associatedPaperItem?.arxivId)?.trim();
 
   const lines = textContent ? textContent.split(/\r?\n/) : [];
   const sanitizedLines: string[] = [];

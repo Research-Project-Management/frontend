@@ -186,8 +186,8 @@ export default function ImportFromPersonalModal({
         {/* Modal Body: 2 Columns */}
         <div className="flex-1 flex min-h-0 overflow-hidden">
           {/* Left Column: My Library Collections Tree */}
-          <aside className="w-64 shrink-0 border-r border-border bg-muted/15 flex flex-col overflow-hidden">
-            <div className="px-3 py-2 text-11 font-medium text-muted-foreground tracking-tight border-b border-border/40 select-none">
+          <aside className="w-64 shrink-0 border-r border-border bg-muted flex flex-col overflow-hidden">
+            <div className="px-3 py-2 text-11 font-medium text-muted-foreground tracking-tight border-b border-border select-none">
               Personal Collections
             </div>
 
@@ -200,7 +200,7 @@ export default function ImportFromPersonalModal({
                   "w-full h-8 px-2.5 flex items-center justify-between rounded-md text-12 transition-colors text-left cursor-pointer",
                   selectedScope === 'all'
                     ? "bg-muted text-foreground font-medium"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground font-normal"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground font-normal"
                 )}
               >
                 <div className="flex items-center gap-2 truncate">
@@ -225,7 +225,7 @@ export default function ImportFromPersonalModal({
                       "w-full h-8 px-2.5 flex items-center justify-between rounded-md text-12 transition-colors text-left cursor-pointer",
                       isSelected
                         ? "bg-muted text-foreground font-medium"
-                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground font-normal"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground font-normal"
                     )}
                   >
                     <div className="flex items-center gap-2 truncate">
@@ -252,7 +252,7 @@ export default function ImportFromPersonalModal({
                     "w-full h-8 px-2.5 flex items-center justify-between rounded-md text-12 transition-colors text-left cursor-pointer",
                     selectedScope === 'unfiled'
                       ? "bg-muted text-foreground font-medium"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground font-normal"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground font-normal"
                   )}
                 >
                   <div className="flex items-center gap-2 truncate">
@@ -335,17 +335,17 @@ export default function ImportFromPersonalModal({
                       className={cn(
                         "flex items-start gap-3 px-4 py-2.5 transition-colors select-none",
                         isAlreadyInProject
-                          ? "opacity-50 cursor-not-allowed bg-muted/10"
+                          ? "opacity-50 cursor-not-allowed bg-muted"
                           : isSelected
-                            ? "bg-muted/60 cursor-pointer"
-                            : "hover:bg-muted/30 cursor-pointer"
+                            ? "bg-muted cursor-pointer"
+                            : "hover:bg-muted cursor-pointer"
                       )}
                     >
                       <Checkbox
                         checked={isSelected}
                         disabled={isAlreadyInProject}
                         onCheckedChange={() => toggleSelect(item.id, isAlreadyInProject)}
-                        className="mt-0.5 shrink-0"
+                        className="size-3.5 border-border data-[state=checked]:border-primary mt-0.5 shrink-0"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 min-w-0">
@@ -358,7 +358,7 @@ export default function ImportFromPersonalModal({
                             </span>
                           )}
                           {colName && (
-                            <span className="text-10 font-mono text-muted-foreground bg-muted/50 border border-border/60 px-1.5 py-0.2 rounded-sm shrink-0 truncate max-w-[120px]">
+                            <span className="text-10 font-mono text-muted-foreground bg-muted border border-border px-1.5 py-0.2 rounded-sm shrink-0 truncate max-w-[120px]">
                               {colName}
                             </span>
                           )}

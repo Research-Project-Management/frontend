@@ -37,7 +37,7 @@ export default function CreateCollectionModal({
     defaultValues: {
       name: 'Untitled',
       description: '',
-      color: '#2563eb',
+      color: '',
       parent: defaultParentId ?? null,
     },
   });
@@ -55,7 +55,7 @@ export default function CreateCollectionModal({
       reset({
         name: 'Untitled',
         description: '',
-        color: '#2563eb',
+        color: '',
         parent: defaultParentId ?? null,
       });
     }
@@ -66,7 +66,7 @@ export default function CreateCollectionModal({
     onSubmit({
       name: data.name.trim() || 'Untitled',
       description: data.description?.trim() || '',
-      color: data.color || '#2563eb',
+      color: data.color || '',
       parentId: rawParent,
       parent: rawParent,
     });
@@ -78,11 +78,11 @@ export default function CreateCollectionModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-[520px] p-6 bg-background border border-border shadow-raised-200 rounded-lg"
+        className="sm:max-w-[520px] p-6 bg-background border border-border shadow-raised-200 rounded-md"
         showCloseButton={false}
       >
         <DialogHeader>
-          <DialogTitle className="text-base font-medium text-foreground">
+          <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
             New Collection
           </DialogTitle>
         </DialogHeader>
@@ -99,7 +99,7 @@ export default function CreateCollectionModal({
                 placeholder="Collection name"
                 autoFocus
                 onFocus={(e) => e.target.select()}
-                className="h-8 text-12 text-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-md border-border"
+                className="h-8 text-13 text-foreground bg-white dark:bg-card shadow-2xs hover:border-foreground/30 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-md border-border placeholder:text-foreground/50"
                 {...register('name')}
               />
               {errors.name && (
@@ -120,12 +120,12 @@ export default function CreateCollectionModal({
                     value={field.value || 'root'}
                     onValueChange={(val) => field.onChange(val === 'root' ? null : val)}
                   >
-                    <SelectTrigger className="w-full h-8 text-12 text-foreground justify-between rounded-md border-border">
+                    <SelectTrigger className="w-full h-8 text-13 text-foreground justify-between rounded-md border-border bg-white dark:bg-card shadow-2xs hover:border-foreground/30">
                       <SelectValue placeholder="Select location" />
                     </SelectTrigger>
                     <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
                       {/* Root My Library */}
-                      <SelectItem value="root" className="rounded-sm text-12">
+                      <SelectItem value="root" className="rounded-md text-13">
                         <div className="flex items-center gap-2">
                           <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                           <span className="text-foreground">My Library</span>
@@ -134,7 +134,7 @@ export default function CreateCollectionModal({
 
                       {/* Existing Collections */}
                       {collections.map((col) => (
-                        <SelectItem key={col.id} value={col.id} className="rounded-sm text-12">
+                        <SelectItem key={col.id} value={col.id} className="rounded-md text-13">
                           <div className="flex items-center gap-2 pl-2">
                             <Folder className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                             <span className="truncate text-foreground">{col.name}</span>

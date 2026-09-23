@@ -52,6 +52,18 @@ export const libraryKeys = {
   // Citations
   citation: (scopeId?: string, itemId?: string, style?: string, index?: number) =>
     [...libraryKeys.all, 'citation', scopeId || 'user', itemId || 'none', style || 'apa', index || 1] as const,
+
+  // Sync (Distributed Replication CDC)
+  syncVersion: (scopeId?: string) =>
+    [...libraryKeys.all, 'sync-version', scopeId || 'user'] as const,
+  syncChanges: (scopeId?: string, params?: Record<string, any> | string) =>
+    [...libraryKeys.all, 'sync-changes', scopeId || 'user', typeof params === 'string' ? { since: params } : (params ?? {})] as const,
+  syncTombstones: (scopeId?: string, params?: Record<string, any> | string) =>
+    [...libraryKeys.all, 'sync-tombstones', scopeId || 'user', typeof params === 'string' ? { since: params } : (params ?? {})] as const,
+
+  // Metadata Sources (Provenance)
+  itemMetadataSources: (scopeId?: string, itemId?: string) =>
+    [...libraryKeys.all, 'metadata-sources', scopeId || 'user', itemId || 'none'] as const,
 };
 
 /**

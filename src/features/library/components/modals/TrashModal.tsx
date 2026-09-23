@@ -122,14 +122,11 @@ export function TrashModal({
           </Button>
           <Button
             type="button"
+            variant={isRed ? 'destructive' : 'default'}
+            size="sm"
             onClick={handleConfirm}
             disabled={loading}
-            className={cn(
-              'h-8 px-3 text-12 font-medium cursor-pointer shadow-none rounded-md',
-              isRed
-                ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                : 'bg-primary text-primary-foreground hover:bg-primary-hover'
-            )}
+            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md"
           >
             {loading ? (
               <span className="inline-flex items-center gap-1.5">

@@ -16,4 +16,5 @@ export * from './conversion.queries';
 export * from './ingestion.queries';
 export * from './exports.queries';
 export * from './state.queries';
+export * from './sync.queries';
 

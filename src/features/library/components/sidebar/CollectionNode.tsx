@@ -113,7 +113,7 @@ export function CollectionNode({
 
         {renamingId === node.id && canManageCollections ? (
           <div
-            className="relative z-10 flex h-9.5 w-full items-center pr-2 min-w-0"
+            className="relative z-10 flex h-8 w-full items-center pr-2 min-w-0"
             style={{ paddingLeft: `${paddingLeft}px` }}
           >
             <input
@@ -125,7 +125,7 @@ export function CollectionNode({
                 if (e.key === 'Enter') onSubmitRename(node.id);
                 if (e.key === 'Escape') onSubmitRename('__cancel__');
               }}
-              className="h-8 w-full min-w-0 rounded-md border border-border bg-background px-2 text-sm font-normal focus:outline-none focus:ring-1 focus:ring-ring shadow-none"
+              className="h-7 w-full min-w-0 rounded-md border border-border bg-background px-2 text-13 font-normal focus:outline-none focus:ring-1 focus:ring-ring shadow-none"
             />
           </div>
         ) : (
@@ -151,7 +151,7 @@ export function CollectionNode({
                       setIsOpen((v) => !v);
                     }}
                     aria-label={effectiveIsOpen ? `Collapse ${node.name}` : `Expand ${node.name}`}
-                    className="flex size-5 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer"
+                    className="flex size-5 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
                   >
                     <ChevronRight
                       className={cn('size-3.5 transition-transform duration-150 shrink-0', effectiveIsOpen && 'rotate-90')}

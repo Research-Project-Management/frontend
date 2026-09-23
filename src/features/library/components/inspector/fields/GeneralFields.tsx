@@ -64,18 +64,18 @@ export function GeneralFields({
     <>
       {/* ⚠️ Retraction Warning Alert Banner */}
       {paper.isRetracted && (
-        <div className="mb-3 p-3 rounded-lg border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 text-xs select-none">
+        <div className="mb-3 p-3 rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-xs select-none">
           <div className="flex items-start gap-2.5">
-            <ShieldAlert className="size-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+            <ShieldAlert className="size-4 text-destructive shrink-0 mt-0.5" strokeWidth={1.5} />
             <div className="flex-1 space-y-1">
-              <div className="font-semibold text-11 text-rose-700 dark:text-rose-400">
+              <div className="font-semibold text-11 text-destructive">
                 {paper.retractionNature === 'expression_of_concern'
                   ? '⚠️ Expression of Concern'
                   : paper.retractionNature === 'correction'
                   ? 'ℹ️ Publisher Correction Notice'
                   : '🚨 Retracted Publication'}
               </div>
-              <p className="text-xs text-rose-800 dark:text-rose-300">
+              <p className="text-xs text-destructive/90 break-words leading-snug">
                 {((paper.retractionDetails as any)?.reason) ||
                   'This publication has been flagged as retracted or unreliable by academic integrity audits.'}
               </p>
@@ -84,10 +84,10 @@ export function GeneralFields({
                   href={(paper.retractionDetails as any).noticeUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-11 font-medium text-rose-700 dark:text-rose-400 underline hover:text-rose-900 mt-1"
+                  className="inline-flex items-center gap-1 text-11 font-medium text-destructive underline hover:text-destructive/80 mt-1"
                 >
                   View publisher retraction notice
-                  <ExternalLink className="size-3 shrink-0" />
+                  <ExternalLink className="size-3 shrink-0" strokeWidth={1.5} />
                 </a>
               )}
             </div>
@@ -96,9 +96,9 @@ export function GeneralFields({
       )}
 
       {/* Item Type Selector */}
-      <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5">
+      <div className="grid grid-cols-[76px_1fr] gap-1.5 items-center py-0.5">
         <span
-          className="text-muted-foreground text-right font-normal select-none pr-2 text-12 leading-normal truncate"
+          className="text-muted-foreground text-right font-normal select-none pr-1.5 text-12 leading-tight break-words"
           id="label-item-type"
         >
           Item Type
@@ -109,14 +109,14 @@ export function GeneralFields({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="w-full h-7 text-left px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary data-[state=open]:border-primary data-[state=open]:bg-muted text-12 leading-normal font-normal text-foreground bg-transparent cursor-pointer outline-none select-none truncate flex items-center justify-between"
+                  className="w-full min-h-7 h-auto text-left px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary data-[state=open]:border-primary data-[state=open]:bg-muted text-12 leading-normal font-normal text-foreground bg-transparent cursor-pointer outline-none select-none flex items-center justify-between"
                   aria-label="Item Type"
                 >
-                  <div className="flex items-center gap-1.5 truncate">
+                  <div className="flex items-center gap-1.5 min-w-0">
                     {isCheckingType ? (
                       <Loader2 className="size-3 animate-spin text-foreground shrink-0" />
                     ) : null}
-                    <span className="truncate">
+                    <span className="break-words leading-snug">
                       {selectableItemTypes.find((t) => t.value === currentItemType)?.label ||
                         typeDefinition.label ||
                         currentItemType}
@@ -173,15 +173,15 @@ export function GeneralFields({
                       <span className="w-2.5 text-center text-xs font-normal text-foreground shrink-0 select-none">
                         {isSelected ? '•' : ''}
                       </span>
-                      <span className="truncate text-foreground">{t.label}</span>
+                      <span className="break-words leading-snug text-foreground">{t.label}</span>
                     </DropdownMenuItem>
                   );
                 })}
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div className="w-full h-7 text-left px-2 py-1 text-12 leading-normal font-normal text-foreground truncate flex items-center select-text font-sans">
-              <span className="truncate">
+            <div className="w-full min-h-7 h-auto text-left px-2 py-1 text-12 leading-normal font-normal text-foreground flex items-center select-text font-sans">
+              <span className="break-words leading-snug">
                 {selectableItemTypes.find((t) => t.value === currentItemType)?.label ||
                   typeDefinition.label ||
                   currentItemType}
@@ -192,9 +192,9 @@ export function GeneralFields({
       </div>
 
       {/* Title */}
-      <div className="grid grid-cols-[96px_1fr] gap-1.5 items-start py-0.5">
+      <div className="grid grid-cols-[76px_1fr] gap-1.5 items-start py-0.5">
         <span
-          className="text-muted-foreground text-right font-normal select-none pr-2 pt-1 text-12 leading-normal whitespace-nowrap"
+          className="text-muted-foreground text-right font-normal select-none pr-1.5 pt-1 text-12 leading-normal whitespace-nowrap"
           id="label-title"
         >
           Title

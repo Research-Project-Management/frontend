@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FolderInput, Copy, Trash2, X, Folder, Library, Quote, Download, RotateCcw, GitMerge } from 'lucide-react';
+import { FolderInput, Copy, Trash2, X, Folder, Library, Quote, Download, RotateCcw, GitMerge, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyToClipboard } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui";
@@ -86,7 +86,27 @@ export function BatchBar({
   // Support both selectedItems and deprecated selectedPapers prop
   const resolvedItems = selectedItems || selectedPapers || [];
 
+  const retractedSelected = resolvedItems.filter(
+    (i) =>
+      i.isRetracted ||
+      (i as any).retractionStatus === 'retracted' ||
+      (i as any).is_retracted,
+  );
+
+  const warnIfRetractedPresent = (actionLabel: string) => {
+    if (retractedSelected.length > 0) {
+      toast.warning(
+        `Retraction Alert: ${retractedSelected.length} of ${resolvedItems.length} selected item(s) have been retracted!`,
+        {
+          description: `Proceeding with ${actionLabel}. Please verify validity before citing in your research.`,
+          duration: 6000,
+        },
+      );
+    }
+  };
+
   const handleCopyMultiCite = async (style: CslStyle | 'latex' = 'apa') => {
+    warnIfRetractedPresent('citation formatting');
     if (style === 'latex') {
       const keys = resolvedItems.map((p) => generateCitationKey(p)).filter(Boolean);
       const citeCmd = `\\cite{${keys.join(', ')}}`;
@@ -119,6 +139,7 @@ export function BatchBar({
   };
 
   const handleExportAllBibtex = async () => {
+    warnIfRetractedPresent('BibTeX export');
     const itemIds = resolvedItems.map((p) => p.id).filter(Boolean);
     if (itemIds.length === 0) return;
 
@@ -150,6 +171,7 @@ export function BatchBar({
   };
 
   const handleDownloadBibFile = async () => {
+    warnIfRetractedPresent('BibTeX download');
     const itemIds = resolvedItems.map((p) => p.id).filter(Boolean);
     if (itemIds.length === 0) return;
 
@@ -204,9 +226,22 @@ export function BatchBar({
       >
         {/* Selection Count */}
         <div className="flex items-center gap-1.5 pr-2.5 border-r border-border">
-          <span className="text-xs font-medium text-foreground whitespace-nowrap">
+          <span className="text-12 font-medium text-foreground whitespace-nowrap">
             <span className="font-mono tabular-nums">{selectedCount}</span> selected
           </span>
+          {retractedSelected.length > 0 && (
+            <Tooltip delayDuration={250}>
+              <TooltipTrigger asChild>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-10 font-medium bg-destructive/10 text-destructive rounded-md border border-destructive/30 cursor-help">
+                  <ShieldAlert className="size-3 text-destructive shrink-0" strokeWidth={1.5} />
+                  <span>{retractedSelected.length} retracted</span>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-1 rounded-md border border-destructive/30 bg-popover text-foreground shadow-xs">
+                Warning: {retractedSelected.length} selected item(s) have retraction notices
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
 
         {/* Move To Collection Dropdown */}
@@ -218,7 +253,7 @@ export function BatchBar({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none"
+                    className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none"
                   >
                     <FolderInput className="size-3.5 text-foreground shrink-0" />
                     <span>Move to</span>
@@ -237,7 +272,7 @@ export function BatchBar({
             >
               <DropdownMenuItem
                 onClick={() => onBatchMove(null)}
-                className="h-8 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
               >
                 <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                 <span>My Library</span>
@@ -246,7 +281,7 @@ export function BatchBar({
                 <DropdownMenuItem
                   key={c.id}
                   onClick={() => onBatchMove(c.id)}
-                  className="h-8 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                 >
                   <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                   <span className="truncate">{c.name}</span>
@@ -264,7 +299,7 @@ export function BatchBar({
                 variant="ghost"
                 size="sm"
                 onClick={onBatchMerge}
-                className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+                className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
               >
                 <GitMerge className="size-3.5 shrink-0 text-foreground" />
                 <span>Merge {selectedCount} items</span>
@@ -284,7 +319,7 @@ export function BatchBar({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+                  className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
                   title="Copy citations for all selected"
                 >
                   <Quote className="size-3.5 shrink-0 text-foreground" />
@@ -304,49 +339,49 @@ export function BatchBar({
           >
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('apa')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
               <span>APA (7th Edition)</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('ieee')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
               <span>IEEE Style</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('mla')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
               <span>MLA (9th Edition)</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('chicago')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
               <span>Chicago (Author-Date)</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('nature')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
               <span>Nature</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('harvard')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
               <span>Harvard</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('vancouver')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
               <span>Vancouver</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('latex')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors font-mono text-11"
+              className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors font-mono text-11"
             >
               <span>LaTeX (\cite&#123;...&#125;)</span>
             </DropdownMenuItem>
@@ -360,7 +395,7 @@ export function BatchBar({
               variant="ghost"
               size="sm"
               onClick={handleExportAllBibtex}
-              className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+              className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
             >
               <Copy className="size-3.5 shrink-0 text-foreground" />
               <span>Copy BibTeX</span>
@@ -378,7 +413,7 @@ export function BatchBar({
               variant="ghost"
               size="sm"
               onClick={handleDownloadBibFile}
-              className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+              className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
             >
               <Download className="size-3.5 shrink-0 text-foreground" />
               <span>Download .bib</span>
@@ -399,7 +434,7 @@ export function BatchBar({
                     variant="ghost"
                     size="sm"
                     onClick={onBatchRestore}
-                    className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+                    className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
                   >
                     <RotateCcw className="size-3.5 shrink-0 text-foreground" />
                     <span>Restore</span>
@@ -417,7 +452,7 @@ export function BatchBar({
                     variant="ghost"
                     size="sm"
                     onClick={onBatchDelete}
-                    className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+                    className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
                   >
                     <Trash2 className="size-3.5 shrink-0 text-foreground" />
                     <span>Delete permanently</span>
@@ -437,7 +472,7 @@ export function BatchBar({
                   variant="ghost"
                   size="sm"
                   onClick={onBatchDelete}
-                  className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+                  className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
                 >
                   <Trash2 className="size-3.5 shrink-0 text-foreground" />
                   <span>Move to trash</span>

@@ -13,20 +13,24 @@ export const creatorCreditSchema = z.object({
   id: z.string().optional(),
   orderIndex: z.number(),
   creatorType: z.string(),
+  fieldMode: z.number().optional().default(0),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   fullName: z.string(),
   name: z.string().optional(),
+  shortName: z.string().optional(),
 });
 
 export const contributorRelationSchema = z.object({
   id: z.string().optional(),
   itemId: z.string().optional(),
   creatorType: z.string().optional().default('author'),
+  fieldMode: z.number().optional().default(0),
   firstName: z.string().nullable().optional(),
   lastName: z.string().nullable().optional(),
   fullName: z.string().optional().default(''),
   name: z.string().optional(),
+  shortName: z.string().nullable().optional(),
   orderIndex: z.number().optional().default(0),
   createdAt: z.string().optional(),
 });
@@ -233,6 +237,11 @@ export const itemSchema = z.object({
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
   lastReadAt: z.string().nullish(),
+  isStarred: z.boolean().optional().default(false),
+  hasFile: z.boolean().optional().default(false),
+  attachmentCount: z.number().optional().default(0),
+  noteCount: z.number().optional().default(0),
+  firstAuthor: z.string().nullish(),
   readStatus: z.enum(['unread', 'reading', 'completed']).optional().default('unread'),
   version: z.number().optional().default(1),
   provenance: provenanceSchema.nullish(),
@@ -331,13 +340,20 @@ export interface ItemQueryParams {
   smartFilter?: 'unfiled' | 'missing-doi' | 'missing-pdf' | 'with-notes';
   limit?: number;
   skip?: number;
+  cursor?: string;
   view?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  orderBy?: string;
+  orderDirection?: 'asc' | 'desc';
   tagId?: string;
   tags?: string[];
   type?: string;
   itemType?: string;
   year?: number;
-  readStatus?: 'unread' | 'reading' | 'completed';
+  fromYear?: number;
+  toYear?: number;
+  readStatus?: 'unread' | 'reading' | 'completed' | string;
+  hasFile?: boolean;
 }
+

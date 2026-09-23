@@ -10,4 +10,5 @@ export { default as AuthorshipModal } from './AuthorshipModal';
 export { default as FlagRetractionModal } from './FlagRetractionModal';
 export { default as ImportFromPersonalModal } from './ImportFromPersonalModal';
 export { default as ProcessModal } from './ProcessModal';
+export { default as UploadFilesModal } from './UploadFilesModal';
 export { CreateSavedSearchModal } from './CreateSavedSearchModal';

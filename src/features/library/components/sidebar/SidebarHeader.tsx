@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Search, Plus, FolderPlus, SlidersHorizontal, PanelLeft } from 'lucide-react';
+import { Search, Plus, X, FolderPlus, SlidersHorizontal, PanelLeft } from 'lucide-react';
 import { Input } from "@/shared/components/ui";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 
@@ -41,8 +41,8 @@ export function SidebarHeader({
   return (
     <div className="mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground select-none">
       {isSearchExpanded || searchQuery ? (
-        <div className="relative flex items-center transition-all duration-300 ease-in-out w-full h-8 rounded-md border border-border bg-background/80 overflow-hidden group font-normal text-xs">
-          <Search className="absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 left-2 translate-x-0 text-foreground pointer-events-none shrink-0" />
+        <div className="relative flex items-center transition-all duration-300 ease-in-out w-full h-8 rounded-md border border-border bg-white dark:bg-card shadow-2xs overflow-hidden group font-normal text-11 hover:border-foreground/30">
+          <Search className="absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 left-2 translate-x-0 text-foreground pointer-events-none shrink-0" strokeWidth={1.5} />
           <Input
             ref={searchInputRef}
             autoFocus
@@ -61,7 +61,7 @@ export function SidebarHeader({
                 setIsSearchExpanded(false);
               }
             }}
-            className="h-full text-xs font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/60 placeholder:font-normal transition-opacity duration-200 pl-7 pr-7 text-foreground"
+            className="h-full text-11 font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-foreground placeholder:font-normal transition-opacity duration-200 pl-7 pr-7 text-foreground"
           />
           <Tooltip delayDuration={700}>
             <TooltipTrigger asChild>
@@ -72,10 +72,10 @@ export function SidebarHeader({
                   e.stopPropagation();
                 }}
                 onClick={handleClearSearch}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer p-0.5 rounded-md"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-md"
                 aria-label="Clear search"
               >
-                <Plus className="size-3.5 rotate-45 text-foreground shrink-0" strokeWidth={1.5} />
+                <X className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2}>
@@ -85,7 +85,7 @@ export function SidebarHeader({
         </div>
       ) : (
         <>
-          <span className="truncate min-w-0 font-semibold text-sm tracking-tight text-foreground">Library</span>
+          <span className="truncate min-w-0 font-semibold text-16 tracking-tight text-foreground">Library</span>
 
           <div className="flex items-center gap-0.5 shrink-0">
             {/* Search collections toggle button */}
@@ -93,7 +93,7 @@ export function SidebarHeader({
               <TooltipTrigger asChild>
                 <button
                   onClick={expandSearch}
-                  className="rounded-md p-1.5 text-foreground hover:bg-sidebar-accent cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   aria-label="Search collections"
                 >
                   <Search className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
@@ -110,7 +110,7 @@ export function SidebarHeader({
                 <TooltipTrigger asChild>
                   <button
                     onClick={onOpenCreateRoot}
-                    className="rounded-md p-1.5 text-foreground hover:bg-sidebar-accent cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     aria-label="New collection"
                   >
                     <FolderPlus className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
@@ -128,7 +128,7 @@ export function SidebarHeader({
                 <TooltipTrigger asChild>
                   <button
                     onClick={onOpenCreateSavedSearch}
-                    className="rounded-md p-1.5 text-foreground hover:bg-sidebar-accent cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     aria-label="New saved search"
                   >
                     <SlidersHorizontal className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
@@ -146,7 +146,7 @@ export function SidebarHeader({
                 <button
                   onClick={onToggleCollapse}
                   aria-label="Toggle sidebar"
-                  className="rounded-md p-1.5 text-foreground hover:bg-sidebar-accent cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
                   <PanelLeft className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                 </button>

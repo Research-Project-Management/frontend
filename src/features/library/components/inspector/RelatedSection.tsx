@@ -7,10 +7,20 @@ import {
   ExternalLink,
   Loader2,
   Search,
-  Check,
+  Plus,
 } from 'lucide-react';
 import { useRelations, useViewItems, useCollections } from '../../data';
-import { Button } from '@/shared/components/ui';
+import {
+  Button,
+  Checkbox,
+  Badge,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui';
 import {
   Dialog,
   DialogContent,
@@ -78,7 +88,7 @@ export default function RelatedSection({
   const activeScopeId =
     scopeId ||
     projectId ||
-    (paper as any)?.projectId ||
+    paper.projectId ||
     workspaceId ||
     'user';
 
@@ -119,13 +129,13 @@ export default function RelatedSection({
 
       // Filter by Collection if selected
       if (selectedCollectionFilter && selectedCollectionFilter !== 'all') {
-        const itemColIds: string[] = (targetItem as any).collectionIds || [];
-        const itemCols: any[] = (targetItem as any).collections || [];
-        const singleColId = (targetItem as any).collectionId;
+        const itemColIds = targetItem.collectionIds || [];
+        const itemCols = targetItem.collections || [];
+        const singleColId = targetItem.collectionId;
 
         const inColIds = itemColIds.includes(selectedCollectionFilter);
         const inColObjs = itemCols.some(
-          (c) => c.collectionId === selectedCollectionFilter || c.id === selectedCollectionFilter,
+          (c) => c.id === selectedCollectionFilter,
         );
         const inSingle = singleColId === selectedCollectionFilter;
 
@@ -203,9 +213,25 @@ export default function RelatedSection({
     }
   };
 
-  // If there are no items and modal is closed, show nothing (clean zero empty state)
+  // Empty state when no related items exist
   if (!isLoading && relatedList.length === 0 && !isModalOpen) {
-    return null;
+    return (
+      <div className="py-2.5 px-3 text-center text-11 text-muted-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
+        <span>No related items.</span>
+        {canEdit && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setModalOpen(true)}
+            className="h-6 text-11 text-foreground hover:bg-muted px-2 gap-1 cursor-pointer font-normal"
+          >
+            <Plus className="size-3 text-foreground" strokeWidth={1.5} />
+            <span>Link paper</span>
+          </Button>
+        )}
+      </div>
+    );
   }
 
   const isAllSelected =
@@ -219,6 +245,17 @@ export default function RelatedSection({
           <h3 className="text-12 font-medium text-foreground">
             Related
           </h3>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              title="Add related item"
+              aria-label="Add related item"
+            >
+              <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+            </button>
+          )}
         </div>
       )}
 
@@ -232,7 +269,7 @@ export default function RelatedSection({
 
       {/* Relations list */}
       {!isLoading && relatedList.length > 0 && (
-        <div className="divide-y divide-border/40 border border-border rounded-md overflow-hidden bg-transparent">
+        <div className="divide-y divide-border border border-border rounded-md overflow-hidden bg-transparent">
           {relatedList.map((item) => {
             const hasSemanticBadge =
               item.relationType && item.relationType !== 'related';
@@ -242,28 +279,31 @@ export default function RelatedSection({
             return (
               <div
                 key={item.id}
-                className="px-2.5 py-1.5 hover:bg-muted/60 flex items-center justify-between gap-2 group cursor-pointer transition-colors"
+                className="px-2.5 py-1.5 hover:bg-muted flex items-center justify-between gap-2 group cursor-pointer transition-colors"
                 onClick={() => onSelectPaper?.(item.id)}
                 title={item.title || 'Untitled Item'}
               >
                 <div className="flex items-start gap-2 min-w-0 flex-1">
                   <div className="size-4 shrink-0 flex items-center justify-center pt-0.5">
-                    <FileText className="size-3.5 text-muted-foreground group-hover:text-foreground shrink-0" strokeWidth={1.5} />
+                    <FileText className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-normal text-foreground truncate text-12 group-hover:underline">
+                    <p className="font-normal text-foreground break-words leading-snug text-12 group-hover:underline">
                       {item.title || 'Untitled Item'}
                     </p>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       {(item.authors?.length || item.year) && (
-                        <span className="text-11 text-muted-foreground truncate">
+                        <span className="text-11 text-muted-foreground break-words leading-snug">
                           {[item.authors?.join(', '), item.year].filter(Boolean).join(' • ')}
                         </span>
                       )}
                       {hasSemanticBadge && (
-                        <span className="text-10 font-medium px-1.5 py-0.2 rounded border border-border bg-muted/60 text-muted-foreground shrink-0 leading-tight">
+                        <Badge
+                          variant="outline"
+                          className="text-10 font-medium px-1.5 py-0.2 rounded border-border bg-muted text-muted-foreground shrink-0 leading-tight"
+                        >
                           {badgeLabel}
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   </div>
@@ -275,7 +315,7 @@ export default function RelatedSection({
                       href={`https://doi.org/${encodeURIComponent(item.doi)}`}
                       target="_blank"
                       rel="noreferrer noopener"
-                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+                      className="p-1 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors"
                       title={`Open DOI: ${item.doi}`}
                       aria-label="Open DOI"
                     >
@@ -287,7 +327,7 @@ export default function RelatedSection({
                     <button
                       type="button"
                       onClick={(e) => handleUnlink(item.id, e)}
-                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted invisible group-hover:visible cursor-pointer transition-colors"
+                      className="p-1 rounded-md text-foreground hover:bg-muted invisible group-hover:visible cursor-pointer transition-colors"
                       title="Unlink item"
                       aria-label="Unlink item"
                     >
@@ -308,7 +348,7 @@ export default function RelatedSection({
             <DialogTitle className="text-13 font-semibold text-foreground">
               Add Related Items
             </DialogTitle>
-            <DialogDescription className="text-11 text-muted-foreground truncate">
+            <DialogDescription className="text-11 text-muted-foreground break-words leading-snug">
               Select one or more items to relate with &ldquo;{paper.title || 'Current Reference'}&rdquo;
             </DialogDescription>
           </DialogHeader>
@@ -320,46 +360,54 @@ export default function RelatedSection({
               {/* Search Bar */}
               <div className="relative sm:col-span-6 flex items-center">
                 <Search className="absolute left-2.5 size-3.5 text-muted-foreground pointer-events-none shrink-0" strokeWidth={1.5} />
-                <input
+                <Input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by title, author, year..."
-                  className="w-full pl-8 pr-2.5 py-1.5 text-12 bg-background text-foreground placeholder:text-muted-foreground rounded-md border border-border focus:border-border outline-none transition-colors h-8"
+                  className="w-full pl-8 pr-2.5 text-12 bg-background text-foreground placeholder:text-muted-foreground rounded-md border-border h-8 shadow-none"
                 />
               </div>
 
               {/* Collection Filter */}
               <div className="sm:col-span-3">
-                <select
+                <Select
                   value={selectedCollectionFilter}
-                  onChange={(e) => setSelectedCollectionFilter(e.target.value)}
-                  className="w-full px-2 py-1 text-12 bg-background text-foreground rounded-md border border-border focus:border-border outline-none cursor-pointer h-8 truncate"
-                  title="Filter by collection"
+                  onValueChange={setSelectedCollectionFilter}
                 >
-                  <option value="all">All Collections</option>
-                  {collections.map((col: any) => (
-                    <option key={col.id} value={col.id}>
-                      {col.name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-8 text-12 rounded-md border-border bg-background text-foreground" title="Filter by collection">
+                    <SelectValue placeholder="All Collections" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
+                    <SelectItem value="all" className="rounded-md text-12">
+                      All Collections
+                    </SelectItem>
+                    {collections.map((col: any) => (
+                      <SelectItem key={col.id} value={col.id} className="rounded-md text-12">
+                        {col.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Relation Type Selector */}
               <div className="sm:col-span-3">
-                <select
+                <Select
                   value={selectedRelationType}
-                  onChange={(e) => setSelectedRelationType(e.target.value)}
-                  className="w-full px-2 py-1 text-12 bg-background text-foreground rounded-md border border-border focus:border-border outline-none cursor-pointer h-8 truncate"
-                  title="Relationship type"
+                  onValueChange={setSelectedRelationType}
                 >
-                  {RELATION_TYPE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full h-8 text-12 rounded-md border-border bg-background text-foreground" title="Relationship type">
+                    <SelectValue placeholder="Relationship" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
+                    {RELATION_TYPE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value} className="rounded-md text-12">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -370,7 +418,7 @@ export default function RelatedSection({
                   type="button"
                   onClick={handleSelectAll}
                   disabled={availableItems.length === 0}
-                  className="hover:text-foreground cursor-pointer font-medium disabled:opacity-50"
+                  className="text-foreground cursor-pointer font-medium disabled:opacity-50"
                 >
                   {isAllSelected ? 'Deselect All' : 'Select All'}
                 </button>
@@ -388,7 +436,7 @@ export default function RelatedSection({
                   <button
                     type="button"
                     onClick={handleClearSelection}
-                    className="hover:text-foreground cursor-pointer underline text-muted-foreground"
+                    className="text-foreground cursor-pointer underline"
                   >
                     Clear
                   </button>
@@ -421,31 +469,25 @@ export default function RelatedSection({
                         'w-full text-left px-2 py-1.5 rounded-md text-12 flex items-center gap-2.5 cursor-pointer transition-colors',
                         isChecked
                           ? 'bg-muted text-foreground'
-                          : 'text-foreground hover:bg-muted/50',
+                          : 'text-foreground hover:bg-muted',
                       )}
                     >
                       {/* Checkbox */}
-                      <div
-                        className={cn(
-                          'size-4 rounded border flex items-center justify-center shrink-0 transition-colors',
-                          isChecked
-                            ? 'bg-foreground border-foreground text-background'
-                            : 'border-border bg-background',
-                        )}
-                      >
-                        {isChecked && <Check className="size-3 stroke-[2.5]" />}
-                      </div>
+                      <Checkbox
+                        checked={isChecked}
+                        className="size-3.5 border-border data-[state=checked]:border-primary pointer-events-none"
+                      />
 
                       {/* Item Icon */}
                       <FileText className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
 
                       {/* Content */}
                       <div className="min-w-0 flex-1">
-                        <p className="font-normal truncate text-12 text-foreground" title={targetItem.title || 'Untitled Reference'}>
+                        <p className="font-normal break-words leading-snug text-12 text-foreground" title={targetItem.title || 'Untitled Reference'}>
                           {targetItem.title || 'Untitled Reference'}
                         </p>
                         {authorYear && (
-                          <p className="text-11 text-muted-foreground truncate">
+                          <p className="text-11 text-muted-foreground break-words leading-snug">
                             {authorYear}
                           </p>
                         )}

@@ -97,11 +97,18 @@ export function DuplicatesPage() {
     toast.success('Dismissed duplicate group');
   };
 
+  const isPersonalScope = activeScope.type === 'personal';
+  const canEdit =
+    isPersonalScope ||
+    activeScope.role === 'owner' ||
+    activeScope.role === 'coordinator' ||
+    activeScope.role === 'contributor';
+
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
       {/* Main Workspace Content */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <LibraryTopbar title="Duplicate Items" showDisplay={false} />
+        <LibraryTopbar title="Duplicate Items" showDisplay={false} canEdit={canEdit} />
 
         <div className="flex-1 overflow-y-auto min-h-0 bg-background/50">
           {isLoading ? (
@@ -116,7 +123,7 @@ export function DuplicatesPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => refetch()}
-                className="mt-4 text-xs"
+                className="mt-4 text-12"
               >
                 Try again
               </Button>
@@ -127,23 +134,23 @@ export function DuplicatesPage() {
                 <Sparkles className="h-7 w-7 text-emerald-500" />
               </div>
               <p className="text-base font-semibold text-foreground">No duplicate items</p>
-              <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+              <p className="text-12 text-muted-foreground mt-1 max-w-sm">
                 Your library is clean. No duplicate items detected.
               </p>
             </div>
           ) : (
             <div className="max-w-5xl mx-auto p-6 space-y-6">
               {/* Header Overview Banner */}
-              <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border border-border/80 bg-card shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-md border border-border bg-card shadow-2xs">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                    <Layers className="h-5 w-5" />
+                  <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center text-primary">
+                    <Layers className="h-4 w-4" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-semibold text-foreground">
+                    <h2 className="text-13 font-semibold text-foreground">
                       Detected {activeGroups.length} duplicate {activeGroups.length === 1 ? 'group' : 'groups'}
                     </h2>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-12 text-muted-foreground">
                       Found {totalDuplicatePapers} items with matching identifiers or titles.
                     </p>
                   </div>
@@ -160,23 +167,23 @@ export function DuplicatesPage() {
                   return (
                     <div
                       key={groupKey}
-                      className="rounded-xl border border-border bg-card overflow-hidden shadow-2xs transition-all hover:border-border/80"
+                      className="rounded-md border border-border bg-card overflow-hidden shadow-2xs transition-all hover:border-foreground/30"
                     >
                       {/* Cluster Header */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-muted/40 border-b border-border/60">
+                      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-background border-b border-border">
                         <div className="flex items-center gap-2.5">
-                          <span className="text-xs font-bold text-foreground">
+                          <span className="text-12 font-semibold text-foreground">
                             Group #{groupIdx + 1}
                           </span>
                           <Badge
                             variant={isHighConfidence ? 'default' : 'secondary'}
-                            className="text-[11px] font-normal h-5"
+                            className="text-11 font-normal h-5 rounded-md"
                           >
                             {group.matchType === 'DOI' ? 'Matching DOI' : 'Matching Title & Author'}
                           </Badge>
                           <Badge
                             variant="outline"
-                            className="text-[10px] text-muted-foreground font-normal h-5"
+                            className="text-10 text-muted-foreground font-normal h-5 rounded-md"
                           >
                             {items.length} {items.length === 1 ? 'item' : 'items'}
                           </Badge>
@@ -187,18 +194,20 @@ export function DuplicatesPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDismissGroup(groupKey)}
-                            className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+                            className="h-7 px-2.5 text-12 text-muted-foreground hover:text-foreground"
                           >
                             Dismiss
                           </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleOpenMerge(group)}
-                            className="h-7 px-3 text-xs gap-1.5 font-medium"
-                          >
-                            <GitMerge className="h-3.5 w-3.5" />
-                            Merge this group
-                          </Button>
+                          {canEdit && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleOpenMerge(group)}
+                              className="h-7 px-3 text-12 gap-1.5 font-medium shadow-none"
+                            >
+                              <GitMerge className="h-3.5 w-3.5" />
+                              Merge this group
+                            </Button>
+                          )}
                         </div>
                       </div>
 
@@ -219,12 +228,12 @@ export function DuplicatesPage() {
                                 setActiveItem(item.id);
                                 setIsInspectorOpen(true);
                               }}
-                              onDoubleClick={() => router.push(`/reader?itemId=${item.id}`)}
+                              onDoubleClick={() => router.push(`/library/papers/${item.id}`)}
                               className={cn(
-                                'flex items-center justify-between gap-4 px-5 py-3 cursor-pointer transition-colors text-xs',
+                                'flex items-center justify-between gap-4 px-5 py-3 cursor-pointer transition-colors text-13',
                                 isSelected
-                                  ? 'bg-primary/10'
-                                  : 'hover:bg-muted/30'
+                                  ? 'bg-muted'
+                                  : 'hover:bg-muted'
                               )}
                             >
                               <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -233,7 +242,7 @@ export function DuplicatesPage() {
                                   <div className="font-medium text-foreground truncate">
                                     {item.title || 'Untitled item'}
                                   </div>
-                                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5 truncate">
+                                  <div className="flex items-center gap-2 text-11 text-muted-foreground mt-0.5 truncate">
                                     {authorStr && <span>{authorStr}</span>}
                                     {item.year && (
                                       <span className="flex items-center gap-0.5">
@@ -242,7 +251,7 @@ export function DuplicatesPage() {
                                     )}
                                     {item.journal && <span>• {item.journal}</span>}
                                     {item.doi && (
-                                      <span className="font-mono text-[10px] text-primary/80">
+                                      <span className="font-mono text-10 text-primary">
                                         • DOI: {item.doi}
                                       </span>
                                     )}
@@ -256,14 +265,14 @@ export function DuplicatesPage() {
                                   size="icon"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    router.push(`/reader?itemId=${item.id}`);
+                                    router.push(`/library/papers/${item.id}`);
                                   }}
                                   className="h-7 w-7 text-muted-foreground hover:text-foreground"
                                   title="Open in Reader"
                                 >
                                   <ExternalLink className="h-3.5 w-3.5" />
                                 </Button>
-                                <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
                               </div>
                             </div>
                           );
@@ -279,7 +288,7 @@ export function DuplicatesPage() {
       </div>
 
       {/* Zone 4: Inspector Panel */}
-      <LibraryInspector scopeId={effectiveScopeId} />
+      <LibraryInspector scopeId={effectiveScopeId} canEdit={canEdit} />
 
       {/* Zone 5: Self-managed Modals */}
       <LibraryModals scopeId={effectiveScopeId} />

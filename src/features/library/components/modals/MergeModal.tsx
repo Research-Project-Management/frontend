@@ -226,10 +226,10 @@ export function MergeModal({
   return (
     <Dialog open={open} onOpenChange={(v) => { if (isMerging || isDismissing) return; onOpenChange(v); }}>
       <DialogContent
-        className="sm:max-w-5xl w-[95vw] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-background border border-border rounded-lg shadow-raised-200 font-sans"
+        className="sm:max-w-5xl w-[95vw] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-background border border-border rounded-md shadow-raised-200 font-sans"
       >
         {/* ── Header ──────────────────────────────────────────────────────── */}
-        <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 shrink-0">
+        <DialogHeader className="px-6 py-4 border-b border-border bg-background shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="space-y-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -321,11 +321,11 @@ export function MergeModal({
                   >
                     <div className="space-y-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-10 font-mono text-muted-foreground uppercase tracking-wider">
+                        <span className="text-10 font-mono text-muted-foreground">
                           Version {idx + 1}
                         </span>
                         {isMaster ? (
-                          <Badge className="h-4 px-1.5 text-9 font-medium bg-primary text-primary-foreground rounded-sm">
+                          <Badge className="h-4 px-1.5 text-10 font-medium bg-primary text-primary-foreground rounded-md shadow-none">
                             Master
                           </Badge>
                         ) : (
@@ -405,7 +405,7 @@ export function MergeModal({
                           <div className="flex items-center gap-1.5">
                             <span>Version {idx + 1}</span>
                             {isMaster && (
-                              <Badge variant="outline" className="text-9 px-1 py-0 h-4 border-primary/40 text-primary bg-primary/5">
+                              <Badge variant="outline" className="text-10 px-1.5 py-0 h-4 rounded-md border-primary/40 text-primary bg-primary/5">
                                 Master
                               </Badge>
                             )}
@@ -436,12 +436,12 @@ export function MergeModal({
                             {field.hasConflict ? (
                               <Badge
                                 variant="outline"
-                                className="text-9 h-4 px-1 rounded-sm border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10"
+                                className="text-10 h-4 px-1.5 rounded-md border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10"
                               >
                                 Conflict
                               </Badge>
                             ) : (
-                              <span className="text-9 text-muted-foreground font-mono">
+                              <span className="text-10 text-muted-foreground font-mono">
                                 identical
                               </span>
                             )}
@@ -503,7 +503,7 @@ export function MergeModal({
                                 </div>
 
                                 {isRecommended && (
-                                  <div className="flex items-center gap-1 text-9 text-primary font-medium">
+                                  <div className="flex items-center gap-1 text-10 text-primary font-medium">
                                     <Sparkles className="size-2.5" />
                                     <span>Recommended value</span>
                                   </div>
@@ -522,7 +522,7 @@ export function MergeModal({
         </div>
 
         {/* ── Footer Actions ────────────────────────────────────────────────── */}
-        <DialogFooter className="px-6 py-3 border-t border-border bg-muted/20 flex flex-row items-center justify-between sm:justify-between shrink-0 gap-2">
+        <DialogFooter className="px-6 py-3 border-t border-border bg-background flex flex-row items-center justify-between sm:justify-between shrink-0 gap-2">
           {/* Left: Not Duplicates action */}
           <div className="flex items-center gap-2">
             {onDismissDuplicate && (
@@ -563,7 +563,7 @@ export function MergeModal({
               size="sm"
               onClick={handleConfirmMerge}
               disabled={isMerging || !masterPaper}
-              className="h-8 px-3 text-12 font-medium gap-1.5 rounded-md bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90"
+              className="h-8 px-3 text-12 font-medium gap-1.5 rounded-md bg-primary text-primary-foreground shadow-none hover:bg-primary/90"
             >
               {isMerging ? (
                 <Loader2 className="size-3.5 animate-spin shrink-0" />

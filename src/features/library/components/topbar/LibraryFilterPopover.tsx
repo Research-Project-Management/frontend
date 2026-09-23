@@ -34,7 +34,7 @@ function FilterCheckbox({ checked }: { checked: boolean }) {
   return (
     <Checkbox
       checked={checked}
-      className="size-4 rounded-sm border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary pointer-events-none shrink-0"
+      className="size-3.5 border-border data-[state=checked]:border-primary pointer-events-none shrink-0"
     />
   );
 }
@@ -406,11 +406,9 @@ export function LibraryFilterPopover({
     // 1. Gather all raw items from props, hook, or query cache fallback
     const hookItems: Item[] = Array.isArray(allItemsFromHook)
       ? allItemsFromHook
-      : Array.isArray((allItemsFromHook as any)?.items)
-        ? (allItemsFromHook as any).items
-        : Array.isArray((allItemsFromHook as any)?.papers)
-          ? (allItemsFromHook as any).papers
-          : [];
+      : Array.isArray((allItemsFromHook as { items?: Item[] })?.items)
+        ? ((allItemsFromHook as { items: Item[] }).items)
+        : [];
 
     let sourceItems: Item[] = Array.isArray(items) && items.length > 0 ? items : hookItems;
     if (!sourceItems || sourceItems.length === 0) {
@@ -443,11 +441,7 @@ export function LibraryFilterPopover({
     if (Array.isArray(sourceItems) && sourceItems.length > 0) {
       for (const item of sourceItems) {
         if (!item || item.deletedAt) continue;
-        const raw =
-          item.itemType ||
-          (item as any).item_type ||
-          (item as any).type ||
-          (item as any).cslType;
+        const raw = item.itemType || item.type;
         if (raw && typeof raw === 'string' && raw.trim()) {
           const trimmed = raw.trim();
           const lower = trimmed.toLowerCase();
@@ -588,7 +582,7 @@ export function LibraryFilterPopover({
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-72 max-h-[85vh] p-2 rounded-md border border-border bg-popover text-popover-foreground shadow-none z-50 font-sans flex flex-col select-none"
+        className="w-72 max-h-[85vh] p-2 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 z-50 font-sans flex flex-col select-none"
       >
         {/* 1. Main Search Header at Top - Fixed, Flat, No Shadow (Matches Project Standard) */}
         <div className="relative flex items-center mb-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -599,7 +593,7 @@ export function LibraryFilterPopover({
             placeholder="Search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 w-full pl-8 pr-7 text-xs bg-background border border-border rounded-md outline-none focus:outline-none focus:border-border focus:ring-0 text-foreground placeholder:text-muted-foreground shadow-none"
+            className="h-8 w-full pl-8 pr-7 text-11 bg-background border border-border rounded-md outline-none focus:outline-none focus:border-foreground/40 focus:ring-0 text-foreground placeholder:text-foreground placeholder:font-normal shadow-none"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           />
@@ -607,7 +601,7 @@ export function LibraryFilterPopover({
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground cursor-pointer rounded-md"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-foreground cursor-pointer rounded-md"
               aria-label="Clear filter search"
             >
               <X className="size-3 shrink-0" />
@@ -625,7 +619,7 @@ export function LibraryFilterPopover({
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="mt-2 text-11 text-primary hover:underline cursor-pointer font-medium"
+                className="mt-2 text-11 text-foreground underline cursor-pointer font-medium"
               >
                 Clear search
               </button>
@@ -634,11 +628,11 @@ export function LibraryFilterPopover({
 
           {/* 4. Type Section (Moved to Top) */}
           {matchingTypeItems.length > 0 && (
-            <div className="pt-0.5 shrink-0">
+            <div className="border-t border-border pt-1.5 mt-0.5 first:border-t-0 first:pt-0.5 first:mt-0 shrink-0">
               <button
                 type="button"
                 onClick={() => setTypesOpen(!typesOpen)}
-                className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+                className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground cursor-pointer select-none"
               >
                 <div className="flex items-center gap-1.5">
                   <Shapes className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -679,11 +673,11 @@ export function LibraryFilterPopover({
 
           {/* 5. Tags Section (Moved to Top) */}
           {matchingTags.length > 0 && (
-            <div className="border-t border-border/50 pt-1.5 mt-0.5 shrink-0">
+            <div className="border-t border-border pt-1.5 mt-0.5 first:border-t-0 first:pt-0.5 first:mt-0 shrink-0">
               <button
                 type="button"
                 onClick={() => setTagsOpen(!tagsOpen)}
-                className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+                className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground cursor-pointer select-none"
               >
                 <div className="flex items-center gap-1.5">
                   <TagIcon className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -729,11 +723,11 @@ export function LibraryFilterPopover({
 
           {/* 6. Files Section */}
           {matchingFileItems.length > 0 && (
-            <div className="border-t border-border/50 pt-1.5 mt-0.5 shrink-0">
+            <div className="border-t border-border pt-1.5 mt-0.5 first:border-t-0 first:pt-0.5 first:mt-0 shrink-0">
               <button
                 type="button"
                 onClick={() => setFilesOpen(!filesOpen)}
-                className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+                className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground cursor-pointer select-none"
               >
                 <div className="flex items-center gap-1.5">
                   <FileText className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -765,11 +759,11 @@ export function LibraryFilterPopover({
 
           {/* 7. Progress Section */}
           {matchingReadingItems.length > 0 && (
-            <div className="border-t border-border/50 pt-1.5 mt-0.5 shrink-0">
+            <div className="border-t border-border pt-1.5 mt-0.5 first:border-t-0 first:pt-0.5 first:mt-0 shrink-0">
               <button
                 type="button"
                 onClick={() => setReadingOpen(!readingOpen)}
-                className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+                className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground cursor-pointer select-none"
               >
                 <div className="flex items-center gap-1.5">
                   <BookmarkCheck className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -801,17 +795,17 @@ export function LibraryFilterPopover({
 
           {/* 8. Date Section */}
           {dateSectionMatch.matches && (
-            <div className="border-t border-border/50 pt-1.5 mt-0.5 shrink-0">
+            <div className="border-t border-border pt-1.5 mt-0.5 first:border-t-0 first:pt-0.5 first:mt-0 shrink-0">
               <button
                 type="button"
                 onClick={() => setYearOpen(!yearOpen)}
-                className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground hover:text-foreground/80 transition-colors cursor-pointer select-none"
+                className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground cursor-pointer select-none"
               >
                 <div className="flex items-center gap-1.5">
                   <CalendarIcon className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                   <span>Date</span>
                   {hasDateFilter && (
-                    <span className="size-1.5 rounded-full bg-primary shrink-0" />
+                    <span className="size-1.5 rounded-full bg-foreground shrink-0" />
                   )}
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -821,7 +815,7 @@ export function LibraryFilterPopover({
                         e.stopPropagation();
                         handleClearDate();
                       }}
-                      className="text-11 text-muted-foreground hover:text-destructive cursor-pointer px-1 py-0.5 rounded-md"
+                      className="text-11 text-foreground underline cursor-pointer px-1 py-0.5 rounded-md"
                       title="Clear date filter"
                     >
                       Clear

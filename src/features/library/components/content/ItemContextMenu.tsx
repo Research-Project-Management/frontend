@@ -35,6 +35,7 @@ export interface ItemContextMenuProps {
   onDelete?: () => void;
   onRestore?: () => void;
   onPurge?: () => void;
+  onMoveToCollection?: (collectionId: string) => void;
 }
 
 export function ItemContextMenu({
@@ -46,6 +47,7 @@ export function ItemContextMenu({
   onDelete,
   onRestore,
   onPurge,
+  onMoveToCollection,
 }: ItemContextMenuProps) {
   const router = useRouter();
   const setActiveItem = useLibraryUIStore((s) => s.setActiveItem);
@@ -59,22 +61,22 @@ export function ItemContextMenu({
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
 
-      <ContextMenuContent className="w-56 text-xs select-none">
+      <ContextMenuContent className="w-56 text-13 shadow-raised-200 select-none">
         {!isTrash ? (
           <>
             <ContextMenuItem
-              onClick={() => router.push(`/reader?itemId=${item.id}`)}
-              className="gap-2 cursor-pointer"
+              onClick={() => router.push(`/library/papers/${item.id}`)}
+              className="gap-2 text-13 cursor-pointer"
             >
-              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+              <ExternalLink className="h-3.5 w-3.5 text-foreground" />
               Open in Reader
             </ContextMenuItem>
 
             <ContextMenuItem
               onClick={() => setActiveItem(item.id)}
-              className="gap-2 cursor-pointer"
+              className="gap-2 text-13 cursor-pointer"
             >
-              <PanelRight className="h-3.5 w-3.5 text-muted-foreground" />
+              <PanelRight className="h-3.5 w-3.5 text-foreground" />
               View Details (Inspector)
             </ContextMenuItem>
 
@@ -83,14 +85,12 @@ export function ItemContextMenu({
             {onToggleStar && (
               <ContextMenuItem
                 onClick={onToggleStar}
-                className="gap-2 cursor-pointer"
+                className="gap-2 text-13 cursor-pointer"
               >
                 <Star
                   className={cn(
-                    'h-3.5 w-3.5',
-                    isStarred
-                      ? 'text-amber-500 fill-amber-500'
-                      : 'text-muted-foreground',
+                    'h-3.5 w-3.5 text-foreground',
+                    isStarred && 'fill-current',
                   )}
                 />
                 {isStarred ? 'Remove from Starred' : 'Add to Starred'}
@@ -106,9 +106,9 @@ export function ItemContextMenu({
                   toast.info('Item does not have a citation key');
                 }
               }}
-              className="gap-2 cursor-pointer"
+              className="gap-2 text-13 cursor-pointer"
             >
-              <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+              <Copy className="h-3.5 w-3.5 text-foreground" />
               Copy Citation Key
             </ContextMenuItem>
 
@@ -116,18 +116,22 @@ export function ItemContextMenu({
 
             {collections.length > 0 && (
               <ContextMenuSub>
-                <ContextMenuSubTrigger className="gap-2 cursor-pointer">
-                  <FolderPlus className="h-3.5 w-3.5 text-muted-foreground" />
+                <ContextMenuSubTrigger className="gap-2 text-13 cursor-pointer">
+                  <FolderPlus className="h-3.5 w-3.5 text-foreground" />
                   Add to Collection
                 </ContextMenuSubTrigger>
-                <ContextMenuSubContent className="w-48 text-xs max-h-56 overflow-y-auto">
+                <ContextMenuSubContent className="w-48 text-13 shadow-raised-200 max-h-56 overflow-y-auto">
                   {collections.map((col: any) => (
                     <ContextMenuItem
                       key={col.id}
                       onClick={() => {
-                        openModal('CREATE_COLLECTION', { parentId: col.id });
+                        if (onMoveToCollection) {
+                          onMoveToCollection(col.id);
+                        } else {
+                          openModal('CREATE_COLLECTION', { parentId: col.id });
+                        }
                       }}
-                      className="cursor-pointer truncate"
+                      className="cursor-pointer truncate text-13"
                     >
                       {col.name}
                     </ContextMenuItem>
@@ -141,9 +145,9 @@ export function ItemContextMenu({
             {onDelete && (
               <ContextMenuItem
                 onClick={onDelete}
-                className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                className="gap-2 text-13 cursor-pointer text-foreground focus:text-foreground"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3.5 w-3.5 text-foreground" />
                 Move to Trash
               </ContextMenuItem>
             )}
@@ -153,9 +157,9 @@ export function ItemContextMenu({
             {onRestore && (
               <ContextMenuItem
                 onClick={onRestore}
-                className="gap-2 cursor-pointer"
+                className="gap-2 text-13 cursor-pointer text-foreground focus:text-foreground"
               >
-                <RotateCcw className="h-3.5 w-3.5 text-primary" />
+                <RotateCcw className="h-3.5 w-3.5 text-foreground" />
                 Restore Item
               </ContextMenuItem>
             )}
@@ -165,9 +169,9 @@ export function ItemContextMenu({
             {onPurge && (
               <ContextMenuItem
                 onClick={onPurge}
-                className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                className="gap-2 text-13 cursor-pointer text-foreground focus:text-foreground"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3.5 w-3.5 text-foreground" />
                 Delete Permanently
               </ContextMenuItem>
             )}

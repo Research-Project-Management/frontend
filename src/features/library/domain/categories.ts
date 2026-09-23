@@ -251,7 +251,7 @@ export const KNOWN_CANONICAL_ARXIV_CATEGORIES: Record<string, string> = {
 
 export function resolveArxivCategory(
   arxivId?: string | null,
-  associatedPaperItem?: any,
+  associatedPaperItem?: Record<string, any> | null,
   additionalExtraFields?: Record<string, any> | null
 ): string | undefined {
   if (arxivId) {

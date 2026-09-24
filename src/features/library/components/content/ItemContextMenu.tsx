@@ -58,7 +58,12 @@ export function ItemContextMenu({
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentQuery = searchParams.get('q');
-  const qParam = currentQuery ? `?q=${encodeURIComponent(currentQuery)}` : '';
+  const currentProjectId = searchParams.get('projectId');
+  const queryParts = [
+    currentProjectId ? `projectId=${encodeURIComponent(currentProjectId)}` : '',
+    currentQuery ? `q=${encodeURIComponent(currentQuery)}` : '',
+  ].filter(Boolean);
+  const qParam = queryParts.length ? `?${queryParts.join('&')}` : '';
   const isMac = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
 
   const setActiveItem = useLibraryUIStore((s) => s.setActiveItem);

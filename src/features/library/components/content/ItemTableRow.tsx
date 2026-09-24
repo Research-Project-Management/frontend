@@ -61,7 +61,12 @@ export const ItemTableRow = React.memo(function ItemTableRow({
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentQuery = searchParams.get('q');
-  const qParam = currentQuery ? `?q=${encodeURIComponent(currentQuery)}` : '';
+  const currentProjectId = searchParams.get('projectId');
+  const queryParts = [
+    currentProjectId ? `projectId=${encodeURIComponent(currentProjectId)}` : '',
+    currentQuery ? `q=${encodeURIComponent(currentQuery)}` : '',
+  ].filter(Boolean);
+  const qParam = queryParts.length ? `?${queryParts.join('&')}` : '';
 
   // Granular Selectors - 60 FPS Re-render Barrier (True O(1))
   const isSelected = useIsItemSelected(item.id);
@@ -176,6 +181,21 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         <td className="px-3 h-[34px] py-0 align-middle min-w-0">
           <div className="flex items-center gap-2 min-w-0 h-full">
             <div
+              role="checkbox"
+              aria-checked={isSelected}
+              aria-label={`Select ${cleanTitle}`}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (onToggleSelect) {
+                    onToggleSelect(item.id, e as any, index);
+                  } else {
+                    toggleSelect(item.id);
+                  }
+                }
+              }}
               onClick={(e) => {
                 e.stopPropagation();
                 if (onToggleSelect) {
@@ -184,12 +204,12 @@ export const ItemTableRow = React.memo(function ItemTableRow({
                   toggleSelect(item.id);
                 }
               }}
-              className="flex items-center justify-center shrink-0 cursor-pointer"
+              className="flex items-center justify-center shrink-0 cursor-pointer rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <Checkbox
                 checked={isSelected}
                 tabIndex={-1}
-                aria-label="Select item"
+                aria-hidden="true"
                 className={cn(
                   'size-3.5 border-border data-[state=checked]:border-primary transition-opacity duration-150 pointer-events-none',
                   !isSelected && 'opacity-0 group-hover:opacity-100',

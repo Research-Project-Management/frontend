@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Plus, Folder, FolderPlus } from 'lucide-react';
 import {
   DropdownMenu,
@@ -20,7 +21,6 @@ import {
   useUpdateLibraryItemMutation,
   useCollections,
   useRelations,
-  useViewItems,
 } from '../../data';
 import { normalizeTags } from '../../domain';
 
@@ -203,12 +203,25 @@ export function LibraryInspector({
     queryItemId,
   );
 
-  // Fast-lookup in all-items list query cache to eliminate any loading flicker/jump when clicking different papers
-  const { data: allItemsRes } = useViewItems(targetScope, 'all');
+  const queryClient = useQueryClient();
+
+  // Fast-lookup in existing query cache to eliminate any loading flicker/jump when clicking different papers
+  // without triggering an unneeded network fetch of the entire library
   const cachedListItem = useMemo(() => {
-    if (!queryItemId || !allItemsRes?.items) return null;
-    return allItemsRes.items.find((it) => it.id === queryItemId) || null;
-  }, [allItemsRes?.items, queryItemId]);
+    if (!queryItemId) return null;
+    const directCached = queryClient.getQueryData<any>(['library', 'item', targetScope, queryItemId]);
+    const resolvedDirect = directCached?.item ?? directCached;
+    if (resolvedDirect && resolvedDirect.id === queryItemId) return resolvedDirect as Item;
+
+    const queries = queryClient.getQueriesData<any>({ queryKey: ['library', 'items', targetScope] });
+    for (const [_, data] of queries) {
+      if (Array.isArray(data?.items)) {
+        const found = data.items.find((it: Item) => it.id === queryItemId);
+        if (found) return found;
+      }
+    }
+    return null;
+  }, [queryClient, targetScope, queryItemId]);
 
   // Keep previous item while switching papers to prevent unmounting and layout bounce
   const lastItemRef = useRef<Item | null>(null);
@@ -287,10 +300,10 @@ export function LibraryInspector({
     const ids = new Set<string>();
     if (effectiveItem.collectionId) ids.add(effectiveItem.collectionId);
     if (Array.isArray(effectiveItem.collectionIds)) {
-      effectiveItem.collectionIds.forEach((id) => id && ids.add(id));
+      effectiveItem.collectionIds.forEach((id: string) => id && ids.add(id));
     }
     if (Array.isArray(effectiveItem.collections)) {
-      effectiveItem.collections.forEach((c) => c?.id && ids.add(c.id));
+      effectiveItem.collections.forEach((c: { id?: string }) => c?.id && ids.add(c.id));
     }
     return Array.from(ids);
   }, [effectiveItem]);

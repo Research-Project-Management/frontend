@@ -180,9 +180,9 @@ export const ItemTable = React.memo(function ItemTable({
     onSortChange?.(columnKey, nextDir);
   };
 
-  // Sort items client-side
+  // Sort items client-side only when server-side sorting (onSortChange) is not active
   const sortedItems = useMemo(() => {
-    if (!sortColumn) return items;
+    if (onSortChange || !sortColumn) return items;
 
     return [...items].sort((a, b) => {
       const recordA = a as unknown as Record<string, unknown>;

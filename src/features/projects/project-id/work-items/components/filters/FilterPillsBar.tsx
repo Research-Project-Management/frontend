@@ -156,7 +156,7 @@ export function FilterPillsBar({
   const activeSearch = filters?.search || '';
 
   return (
-    <div className="flex items-center gap-2 px-4 py-1.5 border-b border-border bg-background text-xs text-foreground overflow-x-auto select-none shrink-0 min-h-9">
+    <div className="flex items-center gap-2 px-3 sm:px-4 py-1.5 border-b border-border bg-background text-xs text-foreground overflow-x-auto scrollbar-none select-none shrink-0 min-h-9">
       {/* Active Filter Chips */}
       <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto py-0.5">
         {/* 1. Search Query Pill */}

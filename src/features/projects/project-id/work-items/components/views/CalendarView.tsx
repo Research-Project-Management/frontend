@@ -458,7 +458,7 @@ export function CalendarView({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="w-44 p-1 rounded-md border border-border bg-popover shadow-md z-50"
+                className="w-44 p-1 rounded-md border border-border bg-popover shadow-2xs z-50"
               >
                 <DropdownMenuItem
                   onClick={() => setLayoutMode("month")}

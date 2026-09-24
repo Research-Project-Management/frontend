@@ -22,7 +22,7 @@ const ForgotPasswordPage = () => {
 
   if (isSubmitted) {
     return (
-      <div className='flex min-h-dvh items-center justify-center bg-background px-4 py-8'>
+      <div className='flex min-h-dvh items-center justify-center bg-background px-4 py-8' suppressHydrationWarning>
         <div className='mx-auto w-full max-w-sm flex flex-col gap-5'>
           <div className='flex flex-col items-center gap-3 text-center'>
             <Link className="shrink-0" href='/'>
@@ -54,7 +54,7 @@ const ForgotPasswordPage = () => {
   }
 
   return (
-    <div className='flex min-h-dvh items-center justify-center bg-background px-4 py-8'>
+    <div className='flex min-h-dvh items-center justify-center bg-background px-4 py-8' suppressHydrationWarning>
       <div className='mx-auto w-full max-w-sm flex flex-col gap-5'>
         <div className='flex flex-col items-center gap-3 text-center'>
           <Link className="shrink-0" href='/'>

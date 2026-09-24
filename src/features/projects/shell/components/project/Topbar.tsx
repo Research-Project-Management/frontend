@@ -54,11 +54,11 @@ export function Topbar({
 }: TopbarProps) {
   return (
     <header
-      className="flex items-center justify-between px-4 h-11 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-20 shrink-0 select-none min-w-0"
+      className="flex items-center justify-between px-3 sm:px-4 h-11 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-20 shrink-0 select-none min-w-0 overflow-x-auto scrollbar-none"
       style={{ paddingLeft: 'max(1rem, var(--header-offset, 0px))' }}
     >
       {/* Left: Icon, Title & Project Count */}
-      <div className="flex items-center gap-2.5 min-w-0">
+      <div className="flex items-center gap-2.5 min-w-0 shrink-0">
         <Briefcase className="size-4 text-foreground shrink-0" />
         <h1 className="text-sm font-semibold text-foreground tracking-tight">
           Projects
@@ -71,7 +71,7 @@ export function Topbar({
       </div>
 
       {/* Right: Search, Filter, Archives Link & Add Project */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
         {/* Search matching sticky style */}
         <CollapsibleSearchInput
           placeholder="Search projects..."
@@ -96,12 +96,12 @@ export function Topbar({
           asChild
           variant="outline"
           size="sm"
-          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted inline-flex cursor-pointer"
+          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted inline-flex cursor-pointer shrink-0"
           title="View your work"
         >
           <Link className="shrink-0" href="/your-work">
             <UserStar className="size-3.5 text-foreground shrink-0" />
-            <span>Your work</span>
+            <span className="hidden sm:inline">Your work</span>
           </Link>
         </Button>
 
@@ -110,7 +110,7 @@ export function Topbar({
           asChild
           variant="outline"
           size="sm"
-          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted inline-flex cursor-pointer"
+          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted hidden md:inline-flex cursor-pointer shrink-0"
           title="View drafts"
         >
           <Link className="shrink-0" href="/drafts">
@@ -124,7 +124,7 @@ export function Topbar({
           asChild
           variant="outline"
           size="sm"
-          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted inline-flex cursor-pointer"
+          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted hidden md:inline-flex cursor-pointer shrink-0"
           title="View favorite projects"
         >
           <Link className="shrink-0" href="/projects/favorite">
@@ -138,7 +138,7 @@ export function Topbar({
           asChild
           variant="outline"
           size="sm"
-          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted inline-flex cursor-pointer"
+          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted hidden sm:inline-flex cursor-pointer shrink-0"
           title="View analytics"
         >
           <Link className="shrink-0" href="/projects/analytics">
@@ -152,12 +152,12 @@ export function Topbar({
           asChild
           variant="outline"
           size="sm"
-          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted inline-flex cursor-pointer"
+          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted inline-flex cursor-pointer shrink-0"
           title="View archived projects"
         >
           <Link className="shrink-0" href="/archives">
             <Archive className="size-3.5 text-foreground shrink-0" />
-            <span>Archives</span>
+            <span className="hidden sm:inline">Archives</span>
             {archivedCount > 0 && (
               <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted text-foreground">
                 {archivedCount}

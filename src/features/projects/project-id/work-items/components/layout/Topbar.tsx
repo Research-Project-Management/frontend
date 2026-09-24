@@ -215,7 +215,7 @@ export function Topbar({
   return (
     <header
       className={cn(
-        'h-11 border-b border-border px-4 flex items-center justify-between gap-3 bg-background shrink-0 text-13 w-full min-w-0 overflow-x-auto scrollbar-none sticky top-0 z-20',
+        'h-11 border-b border-border px-3 sm:px-4 flex items-center justify-between gap-2.5 sm:gap-3 bg-background shrink-0 text-13 w-full min-w-0 overflow-x-auto scrollbar-none sticky top-0 z-20',
         className,
       )}
     >
@@ -230,7 +230,7 @@ export function Topbar({
         {isCyclesEnabled && cycleId && currentCycle && cycles.length > 0 && (
           <>
             <ChevronRight className="size-3.5 text-muted-foreground/40 shrink-0 mx-0.5" strokeWidth={1.75} />
-            <span className="text-13 font-medium text-foreground truncate max-w-[120px]">
+            <span className="text-13 font-medium text-foreground truncate max-w-[100px] sm:max-w-[120px]">
               {currentCycle.name}
             </span>
           </>
@@ -239,7 +239,7 @@ export function Topbar({
         {showArchived && (
           <>
             <ChevronRight className="size-3.5 text-muted-foreground/40 shrink-0 mx-0.5" strokeWidth={1.75} />
-            <span className="text-13 font-medium text-amber-600 dark:text-amber-400">
+            <span className="text-13 font-medium text-amber-600 dark:text-amber-400 shrink-0">
               Archived
             </span>
           </>

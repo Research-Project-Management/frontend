@@ -283,7 +283,7 @@ export function Activities({
     <div className="w-full flex flex-col space-y-3.5">
       {/* Plane Style Filter Tabs Header */}
       <div className="flex items-center justify-between pb-2 border-b border-border flex-wrap gap-2">
-        <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-lg border border-border">
+        <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-md border border-border">
           <button
             type="button"
             onClick={() => setActiveTab("all")}

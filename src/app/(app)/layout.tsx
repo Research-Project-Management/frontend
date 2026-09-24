@@ -60,7 +60,7 @@ export default function AppLayout({
   // Show loading indicator while session is being verified
   if (isLoading) {
     return (
-      <div className='flex h-dvh w-full items-center justify-center bg-background'>
+      <div className='flex h-dvh w-full items-center justify-center bg-background' suppressHydrationWarning>
         <Loader2 className='h-8 w-8 animate-spin text-primary shrink-0' />
       </div>
     );
@@ -68,7 +68,7 @@ export default function AppLayout({
 
   if (isPaperReader) {
     return (
-      <div className='h-dvh w-full overflow-hidden bg-background'>
+      <div className='h-dvh w-full overflow-hidden bg-background' suppressHydrationWarning>
         <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Trình đọc tài liệu">
           <Suspense fallback={null}>
             {children}
@@ -79,7 +79,7 @@ export default function AppLayout({
   }
 
   return (
-    <div className='h-dvh max-h-dvh flex flex-col overflow-hidden bg-muted'>
+    <div className='h-dvh max-h-dvh flex flex-col overflow-hidden bg-muted' suppressHydrationWarning>
       <ErrorBoundary fallback={null} featureName="Thanh công cụ">
         <Suspense fallback={null}>
           <Topbar />

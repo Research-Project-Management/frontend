@@ -85,6 +85,16 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
     );
   }
 
+  const userInitials = (() => {
+    const raw = String(user?.name || '').trim();
+    if (!raw) return 'U';
+    const parts = raw.split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return raw.slice(0, 2).toUpperCase();
+  })();
+
   return (
     <>
       <CoverModal
@@ -124,7 +134,7 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
                 referrerPolicy="no-referrer"
               />
             ) : null}
-            <AvatarFallback>{String(user.name || '').substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
+            <AvatarFallback className="text-11 font-semibold">{userInitials}</AvatarFallback>
           </Avatar>
         </DropdownMenuTrigger>
 

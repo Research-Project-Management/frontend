@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
   poweredByHeader: false,
   compress: true,
+  devIndicators: false,
   output: isStandalone ? 'standalone' : undefined,
   serverExternalPackages: ['pdfjs-dist'],
   allowedDevOrigins: [

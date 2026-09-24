@@ -57,6 +57,7 @@ export default function RootLayout({
       </head>
       <body
         className="font-sans antialiased bg-background text-foreground min-h-dvh flex flex-col"
+        suppressHydrationWarning
       >
         <Toaster />
         <Providers>{children}</Providers>

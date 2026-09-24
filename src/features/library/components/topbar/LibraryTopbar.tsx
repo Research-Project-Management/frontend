@@ -200,12 +200,12 @@ export function LibraryTopbar({
   return (
     <header
       className={cn(
-        'flex items-center justify-between border-b border-border bg-background px-4 h-11 sticky top-0 z-10 shrink-0 select-none',
+        'flex items-center justify-between border-b border-border bg-background px-3 sm:px-4 h-11 sticky top-0 z-10 shrink-0 select-none overflow-x-auto scrollbar-none min-w-0',
         className
       )}
     >
       {/* Left Section: Breadcrumbs / Title */}
-      <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+      <div className="flex items-center gap-2.5 min-w-0 shrink-0 mr-2">
         {breadcrumbs && breadcrumbs.length > 0 ? (
           <nav aria-label="Breadcrumbs" className="flex items-center gap-1.5 sm:gap-2 min-w-0 overflow-hidden">
             {breadcrumbs.map((crumb, idx) => {

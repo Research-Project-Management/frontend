@@ -1036,9 +1036,9 @@ export function DetailModal({
       <div
         className={cn(
           "z-50 bg-background text-foreground flex flex-col overflow-hidden border-border",
-          isSidePeek && "fixed inset-y-0 right-0 w-full sm:w-[680px] md:w-[760px] lg:w-[840px] xl:w-[900px] border-l shadow-2xl animate-in slide-in-from-right duration-200",
+          isSidePeek && "fixed inset-y-0 right-0 w-full sm:w-[680px] md:w-[760px] lg:w-[840px] xl:w-[900px] border-l shadow-lg animate-in slide-in-from-right duration-200",
           isFullScreen && "fixed inset-0 w-full h-full animate-in fade-in duration-150",
-          isModal && "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[94vw] max-w-[900px] max-h-[88vh] rounded-lg border shadow-2xl animate-in zoom-in-95 duration-150"
+          isModal && "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[94vw] max-w-[900px] max-h-[88vh] rounded-lg border shadow-lg animate-in zoom-in-95 duration-150"
         )}
         role="dialog"
         aria-modal="true"
@@ -1246,7 +1246,7 @@ export function DetailModal({
 
         {/* Scrollable Main Body Content */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
-          <div className="px-5 sm:px-7 py-5 sm:py-6 space-y-6 max-w-4xl mx-auto">
+          <div className="px-4 sm:px-7 py-4 sm:py-6 space-y-6 max-w-4xl mx-auto">
             
             {/* Title & Character Length Counter (e.g. 19/255) */}
             <div className="space-y-1">
@@ -1258,7 +1258,7 @@ export function DetailModal({
                   placeholder="Work item title"
                   aria-label="Work item title"
                   disabled={isReadOnly}
-                  className="w-full text-xl sm:text-2xl font-bold text-foreground outline-none bg-transparent placeholder:text-muted-foreground/60 border-none p-0 focus:ring-0 tracking-tight"
+                  className="w-full text-xl sm:text-2xl font-semibold text-foreground outline-none bg-transparent placeholder:text-muted-foreground/60 border-none p-0 focus:ring-0 tracking-tight"
                 />
                 <span className="text-10 text-muted-foreground tabular-nums shrink-0 pt-1 select-none">
                   {title.length}/255
@@ -1547,7 +1547,7 @@ export function DetailModal({
             </div>
 
             {/* Collapsible Properties Section (Plane Style Accordion) */}
-            <div className="border border-border rounded-lg bg-card overflow-hidden">
+            <div className="border border-border rounded-md bg-card overflow-hidden">
               {/* Accordion Header */}
               <button
                 type="button"

@@ -625,7 +625,7 @@ export function CreateModal({
       >
         <Form {...form}>
           {/* Header */}
-          <DialogHeader className="px-6 pt-5 pb-0 flex flex-row items-center justify-between shrink-0 space-y-0">
+          <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-5 pb-0 flex flex-row items-center justify-between shrink-0 space-y-0">
             <DialogTitle className="text-base font-semibold text-foreground tracking-tight">
               Create new work item
             </DialogTitle>
@@ -634,7 +634,7 @@ export function CreateModal({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 px-6 pt-3 pb-5 space-y-3.5">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 px-4 sm:px-6 pt-3 pb-5 space-y-3.5">
             {/* Project Selector Trigger & Popover */}
             <div className="flex items-center gap-2 pb-0.5">
               <ProjectSelectorPopover
@@ -883,10 +883,10 @@ export function CreateModal({
         </div>
 
         {/* Footer */}
-        <DialogFooter className="flex items-center justify-between px-6 py-3.5 border-t border-border bg-background shrink-0">
+        <DialogFooter className="flex flex-wrap items-center justify-between gap-2.5 px-4 sm:px-6 py-3 sm:py-3.5 border-t border-border bg-background shrink-0">
           <div className="flex items-center gap-2" />
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 ml-auto">
             <div className="flex items-center gap-2">
               <Switch
                 id="create-more-switch"

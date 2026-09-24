@@ -18,7 +18,7 @@ export interface TopbarProps {
 export function Topbar({ project, viewMode, setViewMode, onCreateClick }: TopbarProps) {
   return (
     <header
-      className="flex items-center justify-between px-4 h-11 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none"
+      className="flex items-center justify-between px-3 sm:px-4 h-11 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none overflow-x-auto scrollbar-none min-w-0"
       style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
     >
       <Switcher
@@ -26,7 +26,7 @@ export function Topbar({ project, viewMode, setViewMode, onCreateClick }: Topbar
         moduleTitle="Pages"
         moduleIcon={PenLine}
       />
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 ml-auto">
         <Button variant="ghost" size="icon" aria-label="Search pages" className="size-8 text-foreground hover:bg-muted cursor-pointer">
           <Search className="size-4 text-foreground shrink-0" />
         </Button>

@@ -6,7 +6,6 @@ import Link from 'next/link';
 import {
   ChevronDown,
   Home,
-  PanelLeft,
   Plus,
   Settings,
   UserStar,
@@ -462,26 +461,10 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <aside className="flex flex-col h-full w-60 shrink-0 overflow-hidden border-r border-border bg-transparent p-2 py-3 select-none">
+    <aside className="flex flex-col h-full w-60 shrink-0 overflow-hidden border-r border-border bg-background p-2 py-3 select-none">
       {/* Header */}
       <div className="mb-2 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground shrink-0">
         <span className="text-14 font-semibold text-foreground">Projects</span>
-        <div className="flex items-center gap-0.5">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={onToggle}
-                aria-label="Toggle sidebar"
-                className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
-              >
-                <PanelLeft className="size-4 text-foreground shrink-0" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={6}>
-              Toggle sidebar
-            </TooltipContent>
-          </Tooltip>
-        </div>
       </div>
 
       {/* Quick Action: New Work Item */}

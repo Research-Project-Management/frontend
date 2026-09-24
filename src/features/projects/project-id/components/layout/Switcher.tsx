@@ -111,19 +111,19 @@ export function Switcher({
   };
 
   return (
-    <div className={cn('flex items-center gap-2 min-w-0 shrink select-none', className)}>
+    <div className={cn('flex items-center gap-1.5 sm:gap-2 shrink-0 select-none min-w-0', className)}>
       {/* 1. Project Switcher */}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
             type="button"
             className={cn(
-              'flex items-center gap-2 h-7 px-1.5 -ml-1 rounded-md text-13 font-medium text-foreground hover:bg-muted/60 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 select-none',
+              'flex items-center gap-1.5 sm:gap-2 h-7 px-1.5 -ml-1 rounded-md text-13 font-medium text-foreground hover:bg-muted/60 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 select-none',
               open && 'bg-muted/60',
             )}
           >
             <ProjectAvatar avatar={currentProject.avatar} name={currentProject.name} id={currentProject.id} size="xs" />
-            <span className="truncate max-w-[150px] text-13 font-medium text-foreground">
+            <span className="truncate max-w-[100px] sm:max-w-[150px] text-13 font-medium text-foreground">
               {displayName}
             </span>
           </button>

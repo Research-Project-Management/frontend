@@ -268,7 +268,7 @@ export function TableColumnPropertiesPopover({
           </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-64 p-2 border-border bg-popover shadow-md z-100 rounded-md">
+      <PopoverContent align="end" className="w-64 p-2 border-border bg-popover shadow-2xs z-100 rounded-md">
         <div className="flex items-center justify-between pb-2 mb-2 border-b border-border px-1">
           <span className="text-xs font-semibold text-foreground">Display properties</span>
         </div>

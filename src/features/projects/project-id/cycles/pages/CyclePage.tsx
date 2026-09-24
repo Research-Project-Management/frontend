@@ -283,7 +283,7 @@ export function CyclePage() {
 
   return (
     <div className="flex-1 flex min-h-0 flex-col h-full bg-background overflow-hidden">
-      <header className="h-11 border-b border-border px-3 sm:px-4 flex items-center justify-between gap-2 sm:gap-3 bg-background shrink-0 text-13 w-full min-w-0 select-none sticky top-0 z-10">
+      <header className="h-11 border-b border-border px-3 sm:px-4 flex items-center justify-between gap-2 sm:gap-3 bg-background shrink-0 text-13 w-full min-w-0 select-none sticky top-0 z-10 overflow-x-auto scrollbar-none">
         <Switcher
           project={projectData}
           moduleTitle="Cycles"

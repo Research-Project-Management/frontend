@@ -24,7 +24,7 @@ const LoginPage = () => {
 
   if (isAuthLoading) {
     return (
-      <div className='flex min-h-screen items-center justify-center bg-background'>
+      <div className='flex min-h-screen items-center justify-center bg-background' suppressHydrationWarning>
         <Loader2 className='h-8 w-8 animate-spin text-primary shrink-0' />
       </div>
     );
@@ -33,7 +33,7 @@ const LoginPage = () => {
   if (user) return null;
 
   return (
-    <div className='flex min-h-dvh items-center justify-center bg-background px-4 py-8'>
+    <div className='flex min-h-dvh items-center justify-center bg-background px-4 py-8' suppressHydrationWarning>
       <div className='mx-auto w-full max-w-sm flex flex-col gap-5'>
         <div className='flex flex-col items-center gap-3 text-center'>
           <Link className="shrink-0" href='/'>

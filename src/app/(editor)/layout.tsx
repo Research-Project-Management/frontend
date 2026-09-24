@@ -33,6 +33,7 @@ export default function EditorLayout({
         aria-live="polite"
         aria-label="Loading workspace..."
         className="flex h-dvh w-full items-center justify-center bg-background"
+        suppressHydrationWarning
       >
         <Loader2 className="h-8 w-8 animate-spin text-primary shrink-0" />
         <span className="sr-only">Loading workspace...</span>

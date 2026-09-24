@@ -1,18 +1,18 @@
 'use client';
 
-import type { Sticky } from "@/features/projects/stickies/types/sticky.types";
-import { Bold, Italic, ListTodo, Trash2 } from "lucide-react";
-import React from "react";
-import type { Editor } from "@tiptap/react";
-import { ToolbarBtn } from "../ui/ToolbarBtn";
-import ColorModal from "../modals/ColorModal";
-import DeleteModal from "../modals/DeleteModal";
+import type { Sticky } from '@/features/projects/stickies/types/sticky.types';
+import { Bold, Italic, ListTodo, Trash2 } from 'lucide-react';
+import React from 'react';
+import type { StickiesEditorHandle } from './Content';
+import { ToolbarBtn } from '../ui/ToolbarBtn';
+import ColorModal from '../modals/ColorModal';
+import DeleteModal from '../modals/DeleteModal';
 
 interface ToolbarProps {
   sticky: Sticky;
   onUpdate: (id: string, updates: Partial<Sticky>) => void;
   onDelete: (id: string) => void;
-  editor: Editor | null;
+  editor: StickiesEditorHandle | null;
   activeModal: string | null;
   onActiveModalChange: (modal: any) => void;
 }
@@ -25,53 +25,38 @@ export default function Toolbar({
   activeModal,
   onActiveModalChange,
 }: ToolbarProps) {
-  const [, setRenderTick] = React.useState(0);
-
-  React.useEffect(() => {
-    if (!editor) return;
-
-    const update = () => setRenderTick((t) => t + 1);
-    editor.on("transaction", update);
-    editor.on("selectionUpdate", update);
-
-    return () => {
-      editor.off("transaction", update);
-      editor.off("selectionUpdate", update);
-    };
-  }, [editor]);
-
-  const isColorOpen = activeModal === "color";
-  const isDeleteOpen = activeModal === "delete";
+  const isColorOpen = activeModal === 'color';
+  const isDeleteOpen = activeModal === 'delete';
 
   return (
     <div className="h-10 px-4 flex items-center justify-between bg-transparent">
       <div className="relative flex items-center gap-1.5">
-        <ColorModal 
-          sticky={sticky} 
-          onUpdate={onUpdate} 
+        <ColorModal
+          sticky={sticky}
+          onUpdate={onUpdate}
           isActive={isColorOpen}
-          onActiveChange={(open) => onActiveModalChange(open ? "color" : null)}
+          onActiveChange={(open) => onActiveModalChange(open ? 'color' : null)}
         />
         <ToolbarBtn
           title="Bold"
-          onClick={() => editor?.chain().focus().toggleBold().run()}
-          isActive={editor?.isActive("bold")}
+          onClick={() => editor?.toggleBold()}
+          isActive={editor?.isBoldActive?.()}
           disabled={!editor}
         >
           <Bold size={14} className="shrink-0" />
         </ToolbarBtn>
         <ToolbarBtn
           title="Italic"
-          onClick={() => editor?.chain().focus().toggleItalic().run()}
-          isActive={editor?.isActive("italic")}
+          onClick={() => editor?.toggleItalic()}
+          isActive={editor?.isItalicActive?.()}
           disabled={!editor}
         >
           <Italic size={14} className="shrink-0" />
         </ToolbarBtn>
         <ToolbarBtn
           title="To-do list"
-          onClick={() => editor?.chain().focus().toggleTaskList().run()}
-          isActive={editor?.isActive("taskList")}
+          onClick={() => editor?.toggleTodoList()}
+          isActive={editor?.isTodoActive?.()}
           disabled={!editor}
         >
           <ListTodo size={14} className="shrink-0" />
@@ -81,7 +66,7 @@ export default function Toolbar({
       <ToolbarBtn
         title="Delete"
         danger
-        onClick={() => onActiveModalChange(isDeleteOpen ? null : "delete")}
+        onClick={() => onActiveModalChange(isDeleteOpen ? null : 'delete')}
         isActive={isDeleteOpen}
       >
         <Trash2 className="shrink-0" size={14} />

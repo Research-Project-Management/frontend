@@ -13,23 +13,124 @@ import {
   ExternalLink,
   ChevronRight,
   ShieldAlert,
+  Columns,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import { Button, Badge } from '@/shared/components/ui';
 import dynamic from 'next/dynamic';
 import { LibraryTopbar } from '../components/topbar';
-import { LibraryInspector } from '../components/inspector';
+import { LibraryInspector, DuplicateMergeInspector } from '../components/inspector';
 import { LibraryModals } from '../components/modals';
 
 const MergeModal = dynamic(() => import('../components/modals/MergeModal'), { ssr: false });
 import { ContentSkeleton } from '../components/content/ContentSkeleton';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
+import {
+  DuplicatesStackIllustration,
+  libraryIllustrationStyles,
+} from '../components/content/LibraryIllustrations';
 import {
   useDuplicateGroupsQuery,
   useMergeDuplicatesMutation,
 } from '../data';
 import { useLibrarySidebarStore, useLibraryViewStore } from '../store';
+import { inspectItemDifferences } from '../domain';
 import type { Item, DuplicateGroup } from '../types/library.types';
+
+function InlineDiffView({ items }: { items: Item[] }) {
+  const diff = useMemo(() => inspectItemDifferences(items, items[0]?.id), [items]);
+
+  return (
+    <div className="p-4 bg-muted/20 border-t border-border space-y-2.5">
+      <div className="flex items-center justify-between text-11 text-muted-foreground font-medium">
+        <span className="flex items-center gap-1.5 font-semibold text-foreground">
+          <Columns className="size-3.5 text-primary" />
+          Field-by-Field Comparison
+        </span>
+        <div className="flex items-center gap-2">
+          {diff.conflictCount > 0 ? (
+            <Badge
+              variant="outline"
+              className="text-10 h-4 px-1.5 border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 font-normal"
+            >
+              {diff.conflictCount} conflict(s)
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="text-10 h-4 px-1.5 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 font-normal"
+            >
+              Identical
+            </Badge>
+          )}
+          <span className="text-10 font-mono">
+            {diff.fields.length} fields evaluated
+          </span>
+        </div>
+      </div>
+
+      <div className="rounded-md border border-border overflow-hidden bg-background">
+        <div className="max-h-72 overflow-y-auto">
+          <table className="w-full text-left border-collapse text-11">
+            <thead className="sticky top-0 bg-muted/90 backdrop-blur-xs z-10 border-b border-border">
+              <tr className="text-muted-foreground font-medium">
+                <th className="w-36 px-3 py-1.5">Field</th>
+                {items.map((it, idx) => (
+                  <th key={it.id || idx} className="px-3 py-1.5">
+                    Version {idx + 1}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {diff.fields.map((field) => (
+                <tr
+                  key={field.key}
+                  className={cn(
+                    'transition-colors',
+                    field.hasConflict
+                      ? 'bg-amber-500/[0.04] hover:bg-amber-500/[0.07]'
+                      : 'hover:bg-muted/30',
+                  )}
+                >
+                  <td className="px-3 py-2 font-medium text-foreground align-top">
+                    <div className="space-y-0.5">
+                      <span>{field.label}</span>
+                      {field.hasConflict ? (
+                        <span className="block text-9 text-amber-600 dark:text-amber-400 font-mono">
+                          conflict
+                        </span>
+                      ) : (
+                        <span className="block text-9 text-muted-foreground/70 font-mono">
+                          identical
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  {field.options.map((opt) => (
+                    <td
+                      key={opt.itemId}
+                      className="px-3 py-2 align-top text-muted-foreground"
+                    >
+                      <div className="line-clamp-3 leading-relaxed text-11">
+                        {opt.isEmpty ? (
+                          <span className="italic text-muted-foreground/60">(Empty)</span>
+                        ) : (
+                          opt.displayValue
+                        )}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * DuplicatesPage - Modern, streamlined duplicate curation page.
@@ -50,6 +151,8 @@ export function DuplicatesPage() {
 
   // Local state
   const [dismissedGroupKeys, setDismissedGroupKeys] = useState<Set<string>>(new Set());
+  const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
+  const [expandedDiffGroupKeys, setExpandedDiffGroupKeys] = useState<Set<string>>(new Set());
   const [mergeCluster, setMergeCluster] = useState<Item[] | null>(null);
   const [mergeOpen, setMergeOpen] = useState(false);
 
@@ -63,6 +166,33 @@ export function DuplicatesPage() {
       return !dismissedGroupKeys.has(key);
     });
   }, [rawGroups, dismissedGroupKeys]);
+
+  const selectedGroup = useMemo(() => {
+    if (activeGroups.length === 0) return null;
+    if (selectedGroupKey) {
+      const found = activeGroups.find((g, idx) => (g.key || `cluster-${idx}`) === selectedGroupKey);
+      if (found) return found;
+    }
+    return activeGroups[0] || null;
+  }, [activeGroups, selectedGroupKey]);
+
+  const selectedGroupItems = useMemo(() => {
+    if (!selectedGroup) return [];
+    return ((selectedGroup.papers || selectedGroup.items || []) as Item[]);
+  }, [selectedGroup]);
+
+  const toggleInlineDiff = (groupKey: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedDiffGroupKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) {
+        next.delete(groupKey);
+      } else {
+        next.add(groupKey);
+      }
+      return next;
+    });
+  };
 
   const totalDuplicatePapers = useMemo(() => {
     return activeGroups.reduce((acc, g) => acc + (g.papers?.length || g.items?.length || 0), 0);
@@ -116,26 +246,21 @@ export function DuplicatesPage() {
               <ContentSkeleton rowCount={8} />
             </div>
           ) : isError ? (
-            <div className="flex h-full w-full flex-col items-center justify-center p-8 text-center text-destructive">
-              <ShieldAlert className="h-10 w-10 mb-2 opacity-80" />
-              <p className="text-sm font-medium">Failed to load duplicate items</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refetch()}
-                className="mt-4 text-12"
-              >
-                Try again
-              </Button>
-            </div>
+            <PlaneErrorState
+              title="Unable to load duplicates"
+              description="An issue occurred while scanning for duplicate references in your library."
+            />
           ) : activeGroups.length === 0 ? (
-            <div className="flex h-full w-full flex-col items-center justify-center p-8 text-center text-muted-foreground">
-              <div className="h-14 w-14 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3">
-                <Sparkles className="h-7 w-7 text-emerald-500" />
+            <div className="flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200 bg-background">
+              <style dangerouslySetInnerHTML={{ __html: libraryIllustrationStyles }} />
+              <div className="plane-library-illustration mb-6 flex items-center justify-center">
+                <DuplicatesStackIllustration />
               </div>
-              <p className="text-base font-semibold text-foreground">No duplicate items</p>
-              <p className="text-12 text-muted-foreground mt-1 max-w-sm">
-                Your library is clean. No duplicate items detected.
+              <h3 className="text-16 font-semibold text-foreground mb-2 tracking-tight">
+                No duplicate items
+              </h3>
+              <p className="text-13 text-muted-foreground max-w-[420px] leading-relaxed font-normal">
+                Your library is completely clean. No duplicate papers or matching identifiers detected.
               </p>
             </div>
           ) : (
@@ -163,11 +288,19 @@ export function DuplicatesPage() {
                   const groupKey = group.key || `cluster-${groupIdx}`;
                   const items = ((group.papers || group.items || []) as Item[]);
                   const isHighConfidence = group.confidence === 'high';
+                  const isSelectedGroup = (selectedGroup?.key || activeGroups[0]?.key || 'cluster-0') === groupKey;
+                  const isDiffExpanded = expandedDiffGroupKeys.has(groupKey);
 
                   return (
                     <div
                       key={groupKey}
-                      className="rounded-md border border-border bg-card overflow-hidden shadow-2xs transition-all hover:border-foreground/30"
+                      onClick={() => setSelectedGroupKey(groupKey)}
+                      className={cn(
+                        'rounded-md border bg-card overflow-hidden shadow-2xs transition-all cursor-pointer',
+                        isSelectedGroup
+                          ? 'border-primary/80 ring-1 ring-primary/30 shadow-xs'
+                          : 'border-border hover:border-foreground/30',
+                      )}
                     >
                       {/* Cluster Header */}
                       <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-background border-b border-border">
@@ -193,7 +326,26 @@ export function DuplicatesPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDismissGroup(groupKey)}
+                            onClick={(e) => toggleInlineDiff(groupKey, e)}
+                            className={cn(
+                              'h-7 px-2.5 text-12 gap-1.5 transition-colors',
+                              isDiffExpanded
+                                ? 'bg-primary/10 text-primary font-medium'
+                                : 'text-muted-foreground hover:text-foreground',
+                            )}
+                            title="Toggle inline side-by-side diff comparison"
+                          >
+                            <Columns className="size-3.5" />
+                            <span>{isDiffExpanded ? 'Hide Diff' : 'Inline Diff'}</span>
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDismissGroup(groupKey);
+                            }}
                             className="h-7 px-2.5 text-12 text-muted-foreground hover:text-foreground"
                           >
                             Dismiss
@@ -201,7 +353,10 @@ export function DuplicatesPage() {
                           {canEdit && (
                             <Button
                               size="sm"
-                              onClick={() => handleOpenMerge(group)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenMerge(group);
+                              }}
                               className="h-7 px-3 text-12 gap-1.5 font-medium shadow-none"
                             >
                               <GitMerge className="h-3.5 w-3.5" />
@@ -224,16 +379,17 @@ export function DuplicatesPage() {
                           return (
                             <div
                               key={item.id || itemIdx}
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedGroupKey(groupKey);
                                 setActiveItem(item.id);
-                                setIsInspectorOpen(true);
                               }}
                               onDoubleClick={() => router.push(`/library/papers/${item.id}`)}
                               className={cn(
                                 'flex items-center justify-between gap-4 px-5 py-3 cursor-pointer transition-colors text-13',
                                 isSelected
                                   ? 'bg-muted'
-                                  : 'hover:bg-muted'
+                                  : 'hover:bg-muted',
                               )}
                             >
                               <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -278,6 +434,11 @@ export function DuplicatesPage() {
                           );
                         })}
                       </div>
+
+                      {/* Inline Side-by-Side Diff Workbench */}
+                      {isDiffExpanded && (
+                        <InlineDiffView items={items} />
+                      )}
                     </div>
                   );
                 })}
@@ -287,8 +448,28 @@ export function DuplicatesPage() {
         </div>
       </div>
 
-      {/* Zone 4: Inspector Panel */}
-      <LibraryInspector scopeId={effectiveScopeId} canEdit={canEdit} />
+      {/* Zone 4: Inspector Panel (Zotero 7 Merge Inspector when duplicates selected) */}
+      {selectedGroupItems.length >= 2 ? (
+        <div className="w-80 lg:w-96 xl:w-[420px] h-full shrink-0 flex flex-col overflow-hidden border-l border-border bg-background">
+          <DuplicateMergeInspector
+            items={selectedGroupItems}
+            scopeId={effectiveScopeId}
+            canEdit={canEdit}
+            onOpenModal={() => {
+              setMergeCluster(selectedGroupItems);
+              setMergeOpen(true);
+            }}
+            onMerge={handleExecuteMerge}
+            onDismiss={() => {
+              if (selectedGroup) {
+                handleDismissGroup(selectedGroup.key || selectedGroupKey || '');
+              }
+            }}
+          />
+        </div>
+      ) : (
+        <LibraryInspector scopeId={effectiveScopeId} canEdit={canEdit} />
+      )}
 
       {/* Zone 5: Self-managed Modals */}
       <LibraryModals scopeId={effectiveScopeId} />

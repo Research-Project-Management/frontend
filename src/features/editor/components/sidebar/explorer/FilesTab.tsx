@@ -984,7 +984,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
                     >
                       <Icon className="size-3.5 shrink-0" />
                       {badge !== undefined && (
-                        <span className="absolute -top-0.5 -right-0.5 flex size-3.5 items-center justify-center rounded-full bg-rose-500 text-[9px] font-bold text-white shadow-xs">
+                        <span className="absolute -top-0.5 -right-0.5 flex size-3.5 items-center justify-center rounded-full bg-rose-500 text-9 font-bold text-white shadow-xs">
                           {badge > 9 ? '9+' : badge}
                         </span>
                       )}
@@ -1157,7 +1157,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
                     <button
                       type="button"
                       onClick={() => setFileFilter('')}
-                      className="text-[11px] text-primary hover:underline cursor-pointer"
+                      className="text-11 text-primary hover:underline cursor-pointer"
                     >
                       Clear filter
                     </button>
@@ -1265,7 +1265,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
                         {isMain && !renamingId && (
                           <span
                             className={cn(
-                              "shrink-0 text-[10px] px-1.5 py-px rounded-full font-medium mr-1",
+                              "shrink-0 text-10 px-1.5 py-px rounded-full font-medium mr-1",
                               isActive
                                 ? "bg-white/20 text-white"
                                 : "border border-primary/30 bg-primary/8 text-primary/80",
@@ -1357,7 +1357,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
             />
             <span className="min-w-0 flex-1 truncate">File outline</span>
             {outline.length > 0 && (
-              <span className="rounded-full bg-muted px-1.5 py-0.2 text-[10px] font-mono font-medium text-muted-foreground">
+              <span className="rounded-full bg-muted px-1.5 py-0.2 text-10 font-mono font-medium text-muted-foreground">
                 {outline.length}
               </span>
             )}
@@ -1375,7 +1375,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
                   <p className="text-xs text-foreground/80 font-medium">
                     We can&apos;t find any sections or subsections in this file.
                   </p>
-                  <span className="text-[11px] text-primary hover:underline mt-1.5 cursor-pointer">
+                  <span className="text-11 text-primary hover:underline mt-1.5 cursor-pointer">
                     Find out more about the file outline
                   </span>
                 </div>
@@ -1402,7 +1402,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
                     <span className="min-w-0 flex-1 truncate">
                       {entry.title}
                     </span>
-                    <span className="shrink-0 text-[11px] font-mono text-muted-foreground">
+                    <span className="shrink-0 text-11 font-mono text-muted-foreground">
                       :{entry.line}
                     </span>
                   </button>

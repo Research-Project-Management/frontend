@@ -38,6 +38,7 @@ import {
   UserCheck,
   Map,
   Palette,
+  Trash2,
 } from 'lucide-react';
 import { LibraryIcon } from '@/shared/components/icons';
 import { Button, Input } from '@/shared/components/ui';
@@ -97,6 +98,8 @@ export interface TopbarProps {
   showInspectorToggle?: boolean;
   onToggleInspector?: () => void;
   canEdit?: boolean;
+  isTrash?: boolean;
+  onEmptyTrash?: () => void;
   children?: React.ReactNode;
   className?: string;
 }
@@ -135,6 +138,8 @@ export function LibraryTopbar({
   showInspectorToggle = true,
   onToggleInspector,
   canEdit = true,
+  isTrash = false,
+  onEmptyTrash,
   children,
   className,
 }: TopbarProps) {
@@ -313,8 +318,18 @@ export function LibraryTopbar({
           />
         )}
 
-        {/* New Item Dropdown Menu (Only when canEdit is true) */}
-        {isEffectiveCanEdit && (
+        {/* Empty Trash Button or New Item Dropdown Menu */}
+        {isTrash && isEffectiveCanEdit && onEmptyTrash ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onEmptyTrash}
+            className="h-8 px-3 rounded-md cursor-pointer font-medium text-13 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/60 inline-flex items-center gap-1.5"
+          >
+            <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
+            <span>Empty Trash</span>
+          </Button>
+        ) : isEffectiveCanEdit && !isTrash ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -475,7 +490,7 @@ export function LibraryTopbar({
             )}
           </DropdownMenuContent>
         </DropdownMenu>
-        )}
+        ) : null}
 
         {children}
 

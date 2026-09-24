@@ -23,7 +23,7 @@ export interface OutlineTabProps {
 
 const LEVEL_BADGES: Record<number, { label: string; className: string }> = {
   0: { label: 'Part', className: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30' },
-  1: { label: 'Sec', className: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30' },
+  1: { label: 'Sec', className: 'bg-primary/15 text-primary border-primary/30' },
   2: { label: 'Sub', className: 'bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/30' },
   3: { label: 'Sub2', className: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30' },
   4: { label: 'Para', className: 'bg-muted text-muted-foreground border-border' },
@@ -74,7 +74,7 @@ export default function OutlineTab({ onClose }: OutlineTabProps) {
             Document Outline
           </span>
           {outlineEntries.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full font-mono text-[10px] font-medium bg-muted text-muted-foreground">
+            <span className="px-1.5 py-0.2 rounded-full font-mono text-10 font-medium bg-muted text-muted-foreground">
               {outlineEntries.length}
             </span>
           )}
@@ -131,8 +131,8 @@ export default function OutlineTab({ onClose }: OutlineTabProps) {
             <p className="text-xs text-foreground/80 font-medium">
               No sections found in this document
             </p>
-            <p className="text-[11px] text-muted-foreground/80 mt-1 max-w-[200px]">
-              Use commands like <code className="font-mono text-primary text-[10px] bg-muted px-1 py-0.5 rounded-sm">\section&#123;...&#125;</code> or <code className="font-mono text-primary text-[10px] bg-muted px-1 py-0.5 rounded-sm">\chapter&#123;...&#125;</code> to structure your manuscript.
+            <p className="text-11 text-muted-foreground/80 mt-1 max-w-[200px]">
+              Use commands like <code className="font-mono text-primary text-10 bg-muted px-1 py-0.5 rounded-sm">\section&#123;...&#125;</code> or <code className="font-mono text-primary text-10 bg-muted px-1 py-0.5 rounded-sm">\chapter&#123;...&#125;</code> to structure your manuscript.
             </p>
           </div>
         ) : filteredEntries.length === 0 ? (
@@ -144,7 +144,7 @@ export default function OutlineTab({ onClose }: OutlineTabProps) {
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="text-[11px] text-primary hover:underline mt-1 cursor-pointer"
+              className="text-11 text-primary hover:underline mt-1 cursor-pointer"
             >
               Clear filter
             </button>
@@ -178,7 +178,7 @@ export default function OutlineTab({ onClose }: OutlineTabProps) {
                   />
                   <span
                     className={cn(
-                      'shrink-0 text-[9px] font-mono px-1 py-0.2 rounded-sm border font-semibold',
+                      'shrink-0 text-9 font-mono px-1 py-0.2 rounded-sm border font-semibold',
                       badge.className
                     )}
                   >
@@ -194,7 +194,7 @@ export default function OutlineTab({ onClose }: OutlineTabProps) {
                   >
                     {entry.title}
                   </span>
-                  <span className="shrink-0 text-[10px] font-mono text-muted-foreground/60">
+                  <span className="shrink-0 text-10 font-mono text-muted-foreground/60">
                     L{entry.line}
                   </span>
                 </button>

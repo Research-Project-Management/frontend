@@ -1,16 +1,19 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronDown, ChevronRight, Plus, Folder } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { ChevronDown, ChevronRight, Plus, Folder, FolderPlus } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '@/shared/components/ui';
 import {
   useLibrarySidebarStore,
   useLibraryViewStore,
+  useLibraryModalStore,
   type InspectorSectionId,
 } from '../../store';
 import {
@@ -69,16 +72,16 @@ function InspectorSection({
   onAdd,
   actionSlot,
   children,
-  contentClassName = 'px-3 py-2',
+  contentClassName = 'px-[13px] pt-[5px] pb-[13px]',
   canEdit = true,
 }: InspectorSectionProps) {
   return (
-    <div id={`inspector-section-${id}`} className="group/section border-b border-border/40 last:border-b-0 w-full">
-      {/* Section Header Bar */}
+    <div id={`inspector-section-${id}`} className="group/section border-b border-border/60 last:border-b-0 w-full">
+      {/* Section Header Bar: Exactly 34px height to synchronize with Table Rows */}
       <div
         onClick={!isExpanded ? onToggleExpand : undefined}
         className={cn(
-          "flex items-center justify-between px-3 py-1.5 min-h-[32px] select-none transition-colors w-full",
+          "flex items-center justify-between px-[13px] h-[34px] box-border select-none transition-colors w-full",
           isExpanded
             ? "bg-transparent"
             : "bg-transparent hover:bg-muted/40 cursor-pointer"
@@ -89,20 +92,20 @@ function InspectorSection({
           onClick={onToggleExpand}
           aria-expanded={isExpanded}
           aria-controls={`section-content-${id}`}
-          className="flex-1 flex items-center gap-1.5 min-w-0 text-left outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-xs py-0.5 cursor-pointer"
+          className="flex-1 flex items-center gap-[5px] min-w-0 text-left outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-xs py-0.5 cursor-pointer"
         >
           <span className="text-12 font-medium text-foreground tracking-tight">
             {title}
           </span>
           {count !== undefined && count > 0 && (
-            <span className="text-11 font-mono font-medium text-foreground px-1 py-0.5 rounded bg-muted">
+            <span className="text-11 font-mono font-medium text-foreground px-[5px] py-0.5 rounded bg-muted">
               {count}
             </span>
           )}
         </button>
 
         {/* Right Corner Action Cluster: [ + ] [ > / v ] */}
-        <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-[5px] shrink-0" onClick={(e) => e.stopPropagation()}>
           {actionSlot ? (
             actionSlot
           ) : onAdd && canEdit ? (
@@ -186,6 +189,7 @@ export function LibraryInspector({
   const setActiveInspectorTab = useLibrarySidebarStore((s) => s.setActiveInspectorTab);
 
   const activeItemId = useLibraryViewStore((s) => s.activeItemId);
+  const openModal = useLibraryModalStore((s) => s.openModal);
   const { width, isDragging, handleMouseDown } = useInspectorResize();
 
   // Scope & Item resolution
@@ -199,7 +203,41 @@ export function LibraryInspector({
     queryItemId,
   );
 
-  const effectiveItem = incomingItem || queriedItem || null;
+  const queryClient = useQueryClient();
+
+  // Fast-lookup in existing query cache to eliminate any loading flicker/jump when clicking different papers
+  // without triggering an unneeded network fetch of the entire library
+  const cachedListItem = useMemo(() => {
+    if (!queryItemId) return null;
+    const directCached = queryClient.getQueryData<any>(['library', 'item', targetScope, queryItemId]);
+    const resolvedDirect = directCached?.item ?? directCached;
+    if (resolvedDirect && resolvedDirect.id === queryItemId) return resolvedDirect as Item;
+
+    const queries = queryClient.getQueriesData<any>({ queryKey: ['library', 'items', targetScope] });
+    for (const [_, data] of queries) {
+      if (Array.isArray(data?.items)) {
+        const found = data.items.find((it: Item) => it.id === queryItemId);
+        if (found) return found;
+      }
+    }
+    return null;
+  }, [queryClient, targetScope, queryItemId]);
+
+  // Keep previous item while switching papers to prevent unmounting and layout bounce
+  const lastItemRef = useRef<Item | null>(null);
+  if (queriedItem) {
+    lastItemRef.current = queriedItem;
+  } else if (cachedListItem) {
+    lastItemRef.current = cachedListItem;
+  } else if (!activeItemId) {
+    lastItemRef.current = null;
+  }
+
+  const effectiveItem =
+    incomingItem ||
+    queriedItem ||
+    cachedListItem ||
+    (activeItemId ? lastItemRef.current : null);
   const handleClose = propOnClose || toggleInspector;
 
   // Calculate file & note counts for tab badges
@@ -213,24 +251,34 @@ export function LibraryInspector({
 
   const updateMutation = useUpdateLibraryItemMutation(targetScope);
 
-  const handleUpdatePaper = (payload: Partial<Item>) => {
+  const handleUpdatePaper = (
+    payload: Partial<Item>,
+    options?: { silent?: boolean },
+  ) => {
     if (!effectiveItem) return;
+    const version =
+      (payload as any)?.expectedVersion ??
+      (payload as any)?.version ??
+      effectiveItem.version;
+    const isSilent = Boolean(options?.silent || (payload as any)?.silent);
     updateMutation.mutate({
       id: effectiveItem.id,
       payload: payload as any,
+      expectedVersion: typeof version === 'number' ? version : undefined,
+      silent: isSilent,
     });
   };
 
-  // Collapsible section state (all 8 sections default expanded for effortless discovery)
+  // Collapsible section state: Only "Details" (info) is expanded by default, all others remain collapsed until user interaction
   const [expandedSections, setExpandedSections] = useState<Record<InspectorSectionId, boolean>>({
     info: true,
-    abstract: true,
-    files: true,
-    notes: true,
-    collections: true,
-    tags: true,
-    relations: true,
-    cite: true,
+    abstract: false,
+    files: false,
+    notes: false,
+    collections: false,
+    tags: false,
+    relations: false,
+    cite: false,
   });
 
   const toggleSection = (id: InspectorSectionId) => {
@@ -252,10 +300,10 @@ export function LibraryInspector({
     const ids = new Set<string>();
     if (effectiveItem.collectionId) ids.add(effectiveItem.collectionId);
     if (Array.isArray(effectiveItem.collectionIds)) {
-      effectiveItem.collectionIds.forEach((id) => id && ids.add(id));
+      effectiveItem.collectionIds.forEach((id: string) => id && ids.add(id));
     }
     if (Array.isArray(effectiveItem.collections)) {
-      effectiveItem.collections.forEach((c) => c?.id && ids.add(c.id));
+      effectiveItem.collections.forEach((c: { id?: string }) => c?.id && ids.add(c.id));
     }
     return Array.from(ids);
   }, [effectiveItem]);
@@ -274,7 +322,9 @@ export function LibraryInspector({
       payload: {
         collectionIds: newIds,
         collectionId: newIds[0] || null,
+        expectedVersion: effectiveItem.version,
       } as any,
+      expectedVersion: effectiveItem.version,
     });
   };
 
@@ -295,26 +345,32 @@ export function LibraryInspector({
   const hasNotes = noteCount > 0 || isAddingNote;
   const hasTags = tagsList.length > 0 || isAddingTag;
   const hasRelations = relatedItems.length > 0 || isAddRelatedOpen;
-
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleTabChange = (tabId: InspectorSectionId) => {
     setActiveInspectorTab(tabId);
+    if (tabId === 'relations' && relatedItems.length === 0) {
+      // Do not expand relations if empty
+      const container = scrollContainerRef.current;
+      if (!container) return;
+      requestAnimationFrame(() => {
+        const el = document.getElementById(`inspector-section-${tabId}`);
+        if (el && container) {
+          container.scrollTo({ top: el.offsetTop, behavior: 'smooth' });
+        }
+      });
+      return;
+    }
     setExpandedSections((prev) => ({ ...prev, [tabId]: true }));
-  };
-
-  // Smoothly scroll the activated section into view and ensure expanded when changed
-  useEffect(() => {
-    if (!activeInspectorTab) return;
-    setExpandedSections((prev) => ({ ...prev, [activeInspectorTab]: true }));
-    const timer = setTimeout(() => {
-      const el = document.getElementById(`inspector-section-${activeInspectorTab}`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`inspector-section-${tabId}`);
+      if (el && container) {
+        container.scrollTo({ top: el.offsetTop, behavior: 'smooth' });
       }
-    }, 60);
-    return () => clearTimeout(timer);
-  }, [activeInspectorTab]);
+    });
+  };
 
   if (!isInspectorOpen) {
     return null;
@@ -332,6 +388,9 @@ export function LibraryInspector({
       {/* Drawer content when open */}
       <aside
         style={{ width: `${width}px` }}
+        onScroll={(e) => {
+          e.currentTarget.scrollTop = 0;
+        }}
         className={cn(
           'fixed inset-y-0 right-10 z-40 max-w-[calc(100vw-40px)] md:static md:max-w-none md:z-20',
           'h-full border-l border-border bg-background flex flex-col shrink-0 overflow-hidden select-text shadow-elevation-3 md:shadow-none',
@@ -373,7 +432,7 @@ export function LibraryInspector({
               {/* Scrollable Collapsible Sections */}
               <div
                 ref={scrollContainerRef}
-                className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 bg-background inspector-scrollbar"
+                className="relative flex-1 overflow-y-auto overflow-x-hidden min-h-0 bg-background inspector-scrollbar"
               >
                 {/* 1. Details */}
                 <InspectorSection
@@ -381,7 +440,7 @@ export function LibraryInspector({
                   title="Details"
                   isExpanded={expandedSections.info}
                   onToggleExpand={() => toggleSection('info')}
-                  contentClassName="px-3 py-2"
+                  contentClassName="px-[13px] pt-[5px] pb-[13px] flex flex-col gap-[8px]"
                   canEdit={canEdit}
                 >
                   <InfoSection
@@ -397,7 +456,7 @@ export function LibraryInspector({
                   title="Abstract"
                   isExpanded={expandedSections.abstract}
                   onToggleExpand={() => toggleSection('abstract')}
-                  contentClassName="px-3 py-2"
+                  contentClassName="px-[13px] pt-[5px] pb-[13px]"
                   canEdit={canEdit}
                 >
                   <AbstractSection
@@ -419,7 +478,7 @@ export function LibraryInspector({
                     setExpandedSections((prev) => ({ ...prev, files: true }));
                     attachmentsAddRef.current?.();
                   }}
-                  contentClassName={hasFiles ? 'px-3 py-2' : 'p-0'}
+                  contentClassName={hasFiles ? 'px-[13px] pt-[5px] pb-[13px] flex flex-col gap-[8px]' : 'p-0'}
                   canEdit={canEdit}
                 >
                   <AttachmentsSection
@@ -444,7 +503,7 @@ export function LibraryInspector({
                     setExpandedSections((prev) => ({ ...prev, notes: true }));
                     setIsAddingNote(true);
                   }}
-                  contentClassName={hasNotes ? 'px-3 py-2' : 'p-0'}
+                  contentClassName={hasNotes ? 'px-[13px] pt-[5px] pb-[13px] flex flex-col gap-[8px]' : 'p-0'}
                   canEdit={canEdit}
                 >
                   <NotesSection
@@ -465,7 +524,7 @@ export function LibraryInspector({
                   isExpanded={expandedSections.collections}
                   onToggleExpand={() => toggleSection('collections')}
                   actionSlot={
-                    canEdit && unassignedCollections.length > 0 ? (
+                    canEdit ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
@@ -487,21 +546,41 @@ export function LibraryInspector({
                           align="end"
                           className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5 text-xs font-sans"
                         >
-                          {unassignedCollections.map((col: Collection) => (
-                            <DropdownMenuItem
-                              key={col.id}
-                              onClick={() => handleAddToCollection(col.id)}
-                              className="flex items-center gap-2 h-7 px-2 cursor-pointer text-foreground hover:bg-muted rounded-md"
-                            >
-                              <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                              <span className="truncate">{col.name}</span>
-                            </DropdownMenuItem>
-                          ))}
+                          <DropdownMenuItem
+                            onClick={() => openModal('CREATE_COLLECTION')}
+                            className="flex items-center gap-2 h-7 px-2 cursor-pointer text-foreground hover:bg-muted rounded-md"
+                          >
+                            <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                            <span className="font-medium">New Collection...</span>
+                          </DropdownMenuItem>
+
+                          {unassignedCollections.length > 0 ? (
+                            <>
+                              <DropdownMenuSeparator className="my-1" />
+                              <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                                Add to collection
+                              </div>
+                              {unassignedCollections.map((col: Collection) => (
+                                <DropdownMenuItem
+                                  key={col.id}
+                                  onClick={() => handleAddToCollection(col.id)}
+                                  className="flex items-center gap-2 h-7 px-2 cursor-pointer text-foreground hover:bg-muted rounded-md"
+                                >
+                                  <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                                  <span className="truncate">{col.name}</span>
+                                </DropdownMenuItem>
+                              ))}
+                            </>
+                          ) : collections.length > 0 ? (
+                            <div className="px-2 py-1 text-[11px] text-muted-foreground italic">
+                              All collections assigned
+                            </div>
+                          ) : null}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     ) : null
                   }
-                  contentClassName="px-3 py-2 flex flex-col gap-1.5"
+                  contentClassName="px-[13px] pt-[5px] pb-[13px] flex flex-col gap-[8px]"
                   canEdit={canEdit}
                 >
                   <CollectionsSection
@@ -523,7 +602,7 @@ export function LibraryInspector({
                     setExpandedSections((prev) => ({ ...prev, tags: true }));
                     setIsAddingTag(true);
                   }}
-                  contentClassName={hasTags ? 'px-3 py-2' : 'p-0'}
+                  contentClassName={hasTags ? 'px-[13px] pt-[5px] pb-[13px]' : 'p-0'}
                   canEdit={canEdit}
                 >
                   <TagsSection
@@ -540,13 +619,18 @@ export function LibraryInspector({
                   id="relations"
                   title="Related"
                   count={relatedItems.length}
-                  isExpanded={expandedSections.relations}
-                  onToggleExpand={() => toggleSection('relations')}
+                  isExpanded={Boolean(expandedSections.relations && relatedItems.length > 0)}
+                  onToggleExpand={() => {
+                    if (relatedItems.length === 0) {
+                      return;
+                    }
+                    toggleSection('relations');
+                  }}
                   onAdd={() => {
                     setExpandedSections((prev) => ({ ...prev, relations: true }));
                     setIsAddRelatedOpen(true);
                   }}
-                  contentClassName={hasRelations ? 'px-3 py-2' : 'p-0'}
+                  contentClassName={relatedItems.length > 0 ? 'px-[13px] pt-[5px] pb-[13px]' : 'p-0'}
                   canEdit={canEdit}
                 >
                   <RelatedSection
@@ -560,13 +644,26 @@ export function LibraryInspector({
                   />
                 </InspectorSection>
 
+                {/* Render modal dialog when collapsed/empty so Add Related modal can open */}
+                {(!expandedSections.relations || relatedItems.length === 0) && isAddRelatedOpen && (
+                  <RelatedSection
+                    paper={effectiveItem}
+                    scopeId={targetScope}
+                    onSelectPaper={onSelectPaper}
+                    hideHeader
+                    isAddOpen={isAddRelatedOpen}
+                    onAddOpenChange={setIsAddRelatedOpen}
+                    canEdit={canEdit}
+                  />
+                )}
+
                 {/* 8. Citation */}
                 <InspectorSection
                   id="cite"
                   title="Citation"
                   isExpanded={expandedSections.cite}
                   onToggleExpand={() => toggleSection('cite')}
-                  contentClassName="px-3 py-2"
+                  contentClassName="px-[13px] pt-[5px] pb-[13px]"
                   canEdit={canEdit}
                 >
                   <CiteSection
@@ -579,18 +676,23 @@ export function LibraryInspector({
             </>
           ) : (
             /* Empty State */
-            <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-muted-foreground gap-2">
-              {isLoading ? (
-                <p className="text-12">Loading item details...</p>
-              ) : (
-                <>
-                  <p className="text-12 font-medium">No item selected</p>
-                  <p className="text-11 text-muted-foreground">
-                    Select an item from the list to view its details, attachments, and citation metadata.
-                  </p>
-                </>
-              )}
-            </div>
+            <>
+              <div className="sticky top-0 z-10 h-11 px-3 flex items-center border-b border-border bg-background shrink-0 select-none">
+                <span className="text-12 font-medium text-muted-foreground">Inspector</span>
+              </div>
+              <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-muted-foreground gap-2">
+                {isLoading ? (
+                  <p className="text-12">Loading item details...</p>
+                ) : (
+                  <>
+                    <p className="text-12 font-medium">No item selected</p>
+                    <p className="text-11 text-muted-foreground">
+                      Select an item from the list to view its details, attachments, and citation metadata.
+                    </p>
+                  </>
+                )}
+              </div>
+            </>
           )}
         </aside>
 

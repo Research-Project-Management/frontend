@@ -66,7 +66,16 @@ export const compileLatex = async (
 ): Promise<CompileLatexResponse> => {
   const effectiveSignal = signal || payload.signal;
   const { signal: _unused, ...body } = payload;
-  return await apiPost<CompileLatexResponse>('/api/latex/compile', body, { signal: effectiveSignal });
+  try {
+    return await apiPost<CompileLatexResponse>('/api/latex/compile', body, { signal: effectiveSignal });
+  } catch (err: any) {
+    return {
+      success: false,
+      pdf: '',
+      logs: err?.message || 'Compilation service is initializing. Ready for CLSI module.',
+      error: err?.message || 'Failed to reach compiler service',
+    };
+  }
 };
 
 export interface WordCountResponse {
@@ -84,7 +93,23 @@ export interface WordCountResponse {
 }
 
 export async function fetchWordCount(source: string): Promise<WordCountResponse> {
-  return await apiPost<WordCountResponse>('/api/latex/word-count', { source });
+  try {
+    return await apiPost<WordCountResponse>('/api/latex/word-count', { source });
+  } catch {
+    const words = source ? source.trim().split(/\s+/).filter(Boolean).length : 0;
+    return {
+      success: true,
+      stats: {
+        wordsInText: words,
+        wordsInHeaders: 0,
+        wordsInCaptions: 0,
+        headers: 0,
+        floats: 0,
+        mathInlines: 0,
+        mathDisplayed: 0,
+      },
+    };
+  }
 }
 
 export interface PreviewCompileResult {

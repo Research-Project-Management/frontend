@@ -12,7 +12,6 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
       '~': path.resolve(__dirname, './src'),
-      'monaco-editor/esm/vs': path.resolve(__dirname, './node_modules/monaco-editor/esm/vs'),
     },
   },
   esbuild: {
@@ -24,10 +23,7 @@ export default defineConfig({
     setupFiles: [path.resolve(__dirname, './tests/unit/setup.ts')],
     include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
     passWithNoTests: true,
-    pool: 'forks',
-    forks: {
-      singleFork: true,
-    },
+    pool: 'vmThreads',
     isolate: false,
     testTimeout: 120000,
     hookTimeout: 120000,

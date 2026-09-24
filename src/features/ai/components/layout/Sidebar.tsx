@@ -221,7 +221,7 @@ export function Sidebar() {
             </Tooltip>
 
             {/* Expanded Search input */}
-            <div className="flex-1 flex items-center gap-2 h-8 px-2.5 rounded-md border border-border bg-white dark:bg-card focus-within:border-foreground/30 transition-colors shadow-2xs">
+            <div className="flex-1 flex items-center gap-2 h-8 px-2.5 rounded-md border border-border bg-white dark:bg-card focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-colors shadow-2xs">
               <Search className="size-4 text-muted-foreground shrink-0 pointer-events-none" />
               <input
                 ref={searchInputRef}

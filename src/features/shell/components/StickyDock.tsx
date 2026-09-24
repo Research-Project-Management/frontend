@@ -19,7 +19,7 @@ import {
 } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 import { stripHtml } from '@/features/projects/stickies/utils/sticky.utils';
-import type { Editor } from '@tiptap/react';
+import type { StickiesEditorHandle } from '@/features/projects/stickies/components/card/Content';
 
 // ── 1. Single Sticky Rail Icon (Folded bottom-right corner) ───────────────────
 export function StickyRailIcon({ className, size = 18, ...props }: React.SVGProps<SVGSVGElement> & { size?: number | string }) {
@@ -100,7 +100,7 @@ const ModalStickyCard = React.memo(function ModalStickyCard({
   onUpdate,
   onDelete,
 }: ModalStickyCardProps) {
-  const [editor, setEditor] = useState<Editor | null>(null);
+  const [editor, setEditor] = useState<StickiesEditorHandle | null>(null);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const currentColor = (sticky.color as StickyColor) || 'yellow-1';
   const colorConfig = STICKY_COLOR_MAP[currentColor] || STICKY_COLOR_MAP['yellow-1'];
@@ -152,7 +152,7 @@ export default function StickyDock() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Active floating note editor state
-  const [editor, setEditor] = useState<Editor | null>(null);
+  const [editor, setEditor] = useState<StickiesEditorHandle | null>(null);
   const [activeModal, setActiveModal] = useState<string | null>(null);
 
   const dockRef = useRef<HTMLDivElement>(null);
@@ -465,7 +465,7 @@ export default function StickyDock() {
             </button>
           </div>
 
-          {/* Content (Tiptap Editor) */}
+          {/* Content (CodeMirror Editor) */}
           <Content
             sticky={activeSticky}
             onUpdate={(id, updates) => mutations.update.mutate({ stickyId: id, updates })}

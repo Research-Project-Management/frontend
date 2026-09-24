@@ -63,7 +63,7 @@ export function LatexDiagnosticsBadge() {
     <div className="relative inline-flex items-center select-none" ref={popoverRef}>
       {totalIssues === 0 ? (
         <div
-          className="flex items-center gap-1 h-6 px-1.5 rounded-md text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shrink-0"
+          className="flex items-center gap-1 h-6 px-1.5 rounded-md text-11 font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shrink-0"
           title="LaTeX Syntax OK: No issues detected in current file"
         >
           <CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" />
@@ -74,7 +74,7 @@ export function LatexDiagnosticsBadge() {
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            'flex items-center gap-1.5 h-6 px-2 rounded-md text-[11px] font-semibold transition-all cursor-pointer shadow-2xs',
+            'flex items-center gap-1.5 h-6 px-2 rounded-md text-11 font-semibold transition-all cursor-pointer shadow-2xs',
             errorCount > 0
               ? 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-700 dark:text-rose-300 border border-rose-500/30'
               : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30',
@@ -127,7 +127,7 @@ export function LatexDiagnosticsBadge() {
                       <AlertTriangle className="size-3.5 text-amber-500 shrink-0 mt-0.5" />
                     )}
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 text-[11px] font-mono text-muted-foreground">
+                      <div className="flex items-center gap-1.5 text-11 font-mono text-muted-foreground">
                         <span className="font-semibold text-foreground">
                           Line {diag.startLineNumber}:{diag.startColumn}
                         </span>
@@ -139,7 +139,7 @@ export function LatexDiagnosticsBadge() {
                         {diag.message}
                       </p>
                       {diag.suggestions && diag.suggestions.length > 0 && (
-                        <div className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-mono">
+                        <div className="mt-1 text-11 text-emerald-600 dark:text-emerald-400 font-mono">
                           Quick fix: {diag.suggestions[0]}
                         </div>
                       )}
@@ -151,7 +151,7 @@ export function LatexDiagnosticsBadge() {
             })}
           </div>
 
-          <div className="px-3 py-1.5 border-t border-border bg-muted/20 flex items-center justify-between text-[11px] text-muted-foreground">
+          <div className="px-3 py-1.5 border-t border-border bg-muted/20 flex items-center justify-between text-11 text-muted-foreground">
             <span>Click any item to jump and highlight in editor</span>
             <button
               type="button"

@@ -219,7 +219,7 @@ export function FloatingAiAssistant({
           <>
             {/* Original with Strikethrough */}
             <div className="space-y-1">
-              <span className="text-10 font-semibold text-rose-500 uppercase tracking-wider">
+              <span className="text-10 font-semibold text-rose-500 tracking-normal">
                 Original ({result.diffSummary.wordsOriginal} words)
               </span>
               <div className="p-2 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-800 dark:text-rose-300 font-mono text-11 leading-relaxed line-through whitespace-pre-wrap select-text">
@@ -230,7 +230,7 @@ export function FloatingAiAssistant({
             {/* Suggested Replacement */}
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <span className="text-10 font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                <span className="text-10 font-semibold text-emerald-600 dark:text-emerald-400 tracking-normal">
                   Suggested ({result.diffSummary.wordsSuggested} words)
                 </span>
                 <span className="text-10 font-mono text-muted-foreground">

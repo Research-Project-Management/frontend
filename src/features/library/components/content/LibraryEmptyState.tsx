@@ -1,20 +1,20 @@
 'use client';
 
-import React, { useRef, useState, useCallback } from 'react';
-import {
-  Library,
-  Search,
-  FolderOpen,
-  Trash2,
-  Star,
-  ShieldCheck,
-  Upload,
-  Link2,
-  FileText,
-  UserCheck,
-} from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
+import React, { useState, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
+import { RecentlyReadEmptyState } from './RecentlyReadEmptyState';
+import {
+  libraryIllustrationStyles,
+  StarredStackIllustration,
+  TrashStackIllustration,
+  RetractedStackIllustration,
+  UnfiledStackIllustration,
+  PublicationsStackIllustration,
+  CollectionStackIllustration,
+  AllReferencesStackIllustration,
+  SearchStackIllustration,
+} from './LibraryIllustrations';
 
 export interface LibraryEmptyStateProps {
   search?: string;
@@ -29,17 +29,19 @@ export interface LibraryEmptyStateProps {
 }
 
 type EmptyStateVariant =
+  | 'recent'
   | 'search'
   | 'trash'
   | 'starred'
   | 'retracted'
+  | 'unfiled'
   | 'publications'
   | 'saved-search'
   | 'collection'
   | 'default';
 
 interface EmptyStateConfig {
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number | string }>;
+  illustration: React.ComponentType<{ className?: string }>;
   title: string;
   description: string;
   showDropzone: boolean;
@@ -55,17 +57,28 @@ export function LibraryEmptyState({
   onDirectFilesUpload,
   onAddLink,
 }: LibraryEmptyStateProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pathname = usePathname();
   const [isDragOver, setIsDragOver] = useState(false);
 
   const isSearchActive = Boolean(search.trim());
+  const isRecent =
+    activeFilter === 'recent' ||
+    activeFilter === 'recently-read' ||
+    pathname?.includes('/recently-read');
+
+  // Recently Read has its own dedicated component
+  if (isRecent && !isSearchActive) {
+    return <RecentlyReadEmptyState />;
+  }
 
   // Determine current context variant
   const variant: EmptyStateVariant = (() => {
     if (isSearchActive) return 'search';
+    if (isRecent) return 'recent';
     if (activeFilter === 'trash' || activeFilter === 'bin') return 'trash';
     if (activeFilter === 'starred' || activeFilter === 'favorites') return 'starred';
     if (activeFilter === 'retracted') return 'retracted';
+    if (activeFilter === 'unfiled') return 'unfiled';
     if (activeFilter === 'my-publications' || activeFilter === 'publications') return 'publications';
     if (activeFilter === 'saved-search') return 'saved-search';
     if (collectionId) return 'collection';
@@ -76,66 +89,73 @@ export function LibraryEmptyState({
     switch (variant) {
       case 'search':
         return {
-          icon: Search,
+          illustration: SearchStackIllustration,
           title: 'No matching references',
-          description: `No records found matching "${search}".`,
+          description: `No records found matching "${search}". Try checking for spelling errors or searching with broader keywords.`,
           showDropzone: false,
         };
       case 'trash':
         return {
-          icon: Trash2,
+          illustration: TrashStackIllustration,
           title: 'Trash is empty',
-          description: 'Deleted references appear here before permanent deletion.',
+          description: 'Deleted references from your library appear here before permanent deletion.',
           showDropzone: false,
         };
       case 'starred':
         return {
-          icon: Star,
+          illustration: StarredStackIllustration,
           title: 'No starred references',
-          description: 'Star items to save them here for quick access.',
+          description: 'Star papers and references to keep important academic literature within quick reach.',
           showDropzone: false,
         };
       case 'retracted':
         return {
-          icon: ShieldCheck,
+          illustration: RetractedStackIllustration,
           title: 'No retracted items',
-          description: 'No retraction notices detected across your references.',
+          description: 'No retraction notices or security alerts detected across your literature repository.',
+          showDropzone: false,
+        };
+      case 'unfiled':
+        return {
+          illustration: UnfiledStackIllustration,
+          title: 'No unfiled references',
+          description: 'All references in your library are neatly organized into collections.',
           showDropzone: false,
         };
       case 'publications':
         return {
-          icon: UserCheck,
-          title: 'No publications',
-          description: 'Add your authored or co-authored papers to organize your publications.',
+          illustration: PublicationsStackIllustration,
+          title: 'No publications yet',
+          description: 'Keep track of your authored, co-authored, and published scientific contributions in one place.',
           showDropzone: true,
         };
       case 'saved-search':
         return {
-          icon: Search,
-          title: 'No results',
-          description: 'No references match the active filter criteria.',
+          illustration: SearchStackIllustration,
+          title: 'No matching records',
+          description: 'No references match the active filter criteria of this saved search.',
           showDropzone: false,
         };
       case 'collection':
         return {
-          icon: FolderOpen,
-          title: collectionName || 'Collection is empty',
-          description: 'Drag references here or import files directly into this collection.',
+          illustration: CollectionStackIllustration,
+          title: collectionName ? `${collectionName} is empty` : 'Collection is empty',
+          description: 'Drag references here or import files directly into this research collection.',
           showDropzone: true,
         };
       case 'default':
       default:
         return {
-          icon: Library,
-          title: 'No references',
-          description: 'Upload PDFs or import bibliography files to build your library.',
+          illustration: AllReferencesStackIllustration,
+          title: 'Start with your first reference',
+          description: 'Upload PDF papers, import BibTeX or RIS files, or add references via DOI to build your academic library.',
           showDropzone: true,
         };
     }
   };
 
   const config = getConfig();
-  const IconComponent = config.icon;
+  const IllustrationComponent = config.illustration;
 
   // File drag & drop handling
   const handleDragOver = useCallback(
@@ -167,105 +187,32 @@ export function LibraryEmptyState({
     [canEdit, onDirectFilesUpload, config.showDropzone],
   );
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0 && onDirectFilesUpload) {
-      onDirectFilesUpload(Array.from(e.target.files));
-    }
-    e.target.value = '';
-  };
-
   return (
     <div
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className="flex-1 w-full h-full min-h-[380px] flex items-center justify-center p-6 select-none animate-in fade-in-50 duration-150"
+      className={cn(
+        'flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200 bg-background transition-colors',
+        config.showDropzone && canEdit && isDragOver && 'border-2 border-dashed border-primary bg-primary/5 ring-1 ring-primary',
+      )}
     >
-      {/* Hidden File Input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept=".pdf,.bib,.ris,.json,.txt"
-        className="hidden"
-        onChange={handleFileChange}
-      />
+      <style dangerouslySetInnerHTML={{ __html: libraryIllustrationStyles }} />
 
-      {/* Central Workbench Box */}
-      <div
-        className={cn(
-          'w-full max-w-sm flex flex-col items-center text-center p-6 rounded-md transition-colors',
-          config.showDropzone && canEdit
-            ? isDragOver
-              ? 'border border-dashed border-primary bg-primary/5 ring-1 ring-primary'
-              : 'border border-dashed border-border bg-background hover:border-border'
-            : 'border border-border bg-background',
-        )}
-      >
-        {/* Abstract Minimal Icon Mark */}
-        <div className="size-9 rounded-md border border-border bg-muted shadow-2xs flex items-center justify-center text-foreground shrink-0 mb-3">
-          <IconComponent className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-        </div>
-
-        {/* Title */}
-        <h3 className="text-13 font-medium text-foreground tracking-tight mb-1">
-          {config.title}
-        </h3>
-
-        {/* Description */}
-        <p className="text-12 text-muted-foreground leading-normal max-w-[260px] mb-4 font-normal">
-          {config.description}
-        </p>
-
-        {/* Contextual Actions */}
-        {variant === 'search' ? (
-          onClearSearch && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onClearSearch}
-              className="h-7 px-3 rounded-md text-12 font-medium border border-border bg-background hover:bg-muted text-foreground transition-colors shadow-2xs cursor-pointer"
-            >
-              Clear search
-            </Button>
-          )
-        ) : canEdit && config.showDropzone ? (
-          <div className="flex flex-col items-center gap-2.5 w-full">
-            <div className="flex items-center gap-2">
-              {onDirectFilesUpload && (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="h-7 px-3 rounded-md text-12 font-medium bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-none cursor-pointer"
-                >
-                  <Upload className="size-3.5 mr-1.5 shrink-0" strokeWidth={1.5} />
-                  <span>Import files</span>
-                </Button>
-              )}
-
-              {onAddLink && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onAddLink}
-                  className="h-7 px-3 rounded-md text-12 font-medium border border-border bg-background hover:bg-muted text-foreground transition-colors shadow-2xs cursor-pointer"
-                >
-                  <Link2 className="size-3.5 mr-1.5 shrink-0" strokeWidth={1.5} />
-                  <span>Add via DOI</span>
-                </Button>
-              )}
-            </div>
-
-            {/* Supported Formats Footnote */}
-            <div className="flex items-center gap-1 text-11 font-mono text-muted-foreground mt-1">
-              <span>Drop files here (.pdf, .bib, .ris)</span>
-            </div>
-          </div>
-        ) : null}
+      {/* 3D Isometric Multi-Layer Illustration */}
+      <div className="plane-library-illustration mb-6 flex items-center justify-center">
+        <IllustrationComponent />
       </div>
+
+      {/* Title */}
+      <h3 className="text-16 font-semibold text-foreground mb-2 tracking-tight">
+        {config.title}
+      </h3>
+
+      {/* Description */}
+      <p className="text-13 text-muted-foreground max-w-[420px] leading-relaxed font-normal">
+        {config.description}
+      </p>
     </div>
   );
 }

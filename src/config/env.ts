@@ -15,7 +15,7 @@ const envSchema = z.object({
         message: 'NEXT_PUBLIC_API_URL must be a valid URL, relative path, or empty',
       },
     )
-    .default('http://localhost:3000'),
+    .default('http://127.0.0.1:3000'),
   NEXT_PUBLIC_APP_NAME: z.string().default('Flux'),
   NEXT_PUBLIC_ENABLE_ANALYTICS: z
     .preprocess((val) => String(val ?? 'false').toLowerCase().trim(), z.string())
@@ -34,7 +34,7 @@ const envSchema = z.object({
 
 const parseEnv = () => {
   const rawEnv = {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3000',
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME || 'Flux',
     NEXT_PUBLIC_ENABLE_ANALYTICS: process.env.NEXT_PUBLIC_ENABLE_ANALYTICS || 'false',
     INTERNAL_API_URL: process.env.INTERNAL_API_URL,
@@ -49,7 +49,7 @@ const parseEnv = () => {
       parsed.error.flatten().fieldErrors,
     );
     return {
-      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3000',
       NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME || 'Flux',
       NEXT_PUBLIC_ENABLE_ANALYTICS: false,
       INTERNAL_API_URL: undefined,

@@ -71,7 +71,7 @@ class MathWidget extends WidgetType {
     // Badge indicator on hover
     const badge = document.createElement('span');
     badge.className =
-      'absolute top-1 right-2 text-[10px] font-mono text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none';
+      'absolute top-1 right-2 text-10 font-mono text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none';
     badge.textContent = '✎ edit math';
     if (this.isDisplay) {
       wrap.appendChild(badge);

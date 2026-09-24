@@ -1,21 +1,21 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import type { editor } from 'monaco-editor';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { logger } from '@/shared/lib/utils';
 import { parseBibContent, type BibEntry } from '@/features/editor/utils/bib-parser.util';
+import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 
 export interface UseEditorCitationOptions {
-  editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
+  editorRef?: React.MutableRefObject<any>;
   /** All page files in the project (from useQuery filesQuery) */
   pageFiles: Array<{ name: string; content?: string; url?: string }>;
 }
 
 export function useEditorCitation({
-  editorRef,
   pageFiles,
 }: UseEditorCitationOptions) {
+  const { engine } = useEditorInstance();
   const [citationModalOpen, setCitationModalOpen] = useState(false);
 
   // Parse BibTeX entries from all .bib files in the project
@@ -55,18 +55,8 @@ export function useEditorCitation({
     const unsubInsert = EditorEventBus.on('flux:insert-citation', (detail) => {
       const bibKey = detail?.bibKey;
       if (!bibKey) return;
-      const ed = editorRef.current;
-      if (!ed) return;
-      const sel = ed.getSelection();
-      if (sel) {
-        ed.executeEdits('event-bus-citation', [
-          {
-            range: sel,
-            text: `\\cite{${bibKey}}`,
-            forceMoveMarkers: true,
-          },
-        ]);
-        ed.focus();
+      if (engine) {
+        engine.insertText(`\\cite{${bibKey}}`);
       }
     });
 
@@ -74,90 +64,18 @@ export function useEditorCitation({
       unsubOpen();
       unsubInsert();
     };
-  }, [editorRef]);
+  }, [engine]);
 
   const handleInsertCitationSnippet = (snippet: string, _citeKey?: string) => {
-    const ed = editorRef.current;
-    if (!ed) return;
-    const sel = ed.getSelection();
-    if (sel) {
-      ed.executeEdits('citation-picker-modal', [
-        {
-          range: sel,
-          text: snippet,
-          forceMoveMarkers: true,
-        },
-      ]);
+    if (engine) {
+      engine.insertText(snippet);
     }
-    ed.focus();
   };
 
-  /**
-   * Register Monaco completion provider for \cite{...}
-   * Reads entries from local .bib files in the project — no Library API calls.
-   */
-  const registerCitationProvider = (monaco: any): { dispose: () => void } => {
-    return monaco.languages.registerCompletionItemProvider('latex', {
-      triggerCharacters: ['{', ','],
-      provideCompletionItems: (model: any, position: any) => {
-        const textUntilPosition = model.getValueInRange({
-          startLineNumber: position.lineNumber,
-          startColumn: 1,
-          endLineNumber: position.lineNumber,
-          endColumn: position.column,
-        });
-
-        // Match \cite{..., \citep{..., \citet{..., \parencite{..., \textcite{...
-        const citeMatch = textUntilPosition.match(
-          /\\(cite|citep|citet|parencite|textcite|nocite)(?:\[[^\]]*\])*\{([^}]*)$/,
-        );
-        if (!citeMatch) return { suggestions: [] };
-
-        const entries = bibEntriesRef.current;
-        if (entries.length === 0) return { suggestions: [] };
-
-        const word = model.getWordUntilPosition(position);
-        const range = {
-          startLineNumber: position.lineNumber,
-          endLineNumber: position.lineNumber,
-          startColumn: word.startColumn,
-          endColumn: word.endColumn,
-        };
-
-        const suggestions = entries.map((entry) => {
-          const authors = entry.authors?.join(', ') || '';
-          const yearStr = entry.year ? ` (${entry.year})` : '';
-          const venue = entry.journal || entry.booktitle || '';
-
-          return {
-            label: {
-              label: entry.key,
-              description: `${entry.type}`,
-              detail: entry.title ? ` — ${entry.title.slice(0, 60)}` : '',
-            },
-            kind: monaco.languages.CompletionItemKind.Reference,
-            detail: `${authors}${yearStr}${venue ? ` — ${venue}` : ''}`,
-            documentation: {
-              value: [
-                `### ${entry.title || entry.key}`,
-                authors ? `**Authors:** ${authors}` : null,
-                entry.year ? `**Year:** ${entry.year}` : null,
-                venue ? `**Venue:** *${venue}*` : null,
-                entry.doi ? `**DOI:** [${entry.doi}](https://doi.org/${entry.doi})` : null,
-                entry.abstract ? `\n---\n*Abstract:*\n${entry.abstract}...` : null,
-              ]
-                .filter(Boolean)
-                .join('\n\n'),
-            },
-            insertText: entry.key,
-            range,
-            sortText: entry.key,
-          };
-        });
-
-        return { suggestions };
-      },
-    });
+  const registerCitationProvider = (_monaco?: any): { dispose: () => void } => {
+    return {
+      dispose: () => {},
+    };
   };
 
   return {
@@ -168,4 +86,3 @@ export function useEditorCitation({
     registerCitationProvider,
   };
 }
-

@@ -4,19 +4,22 @@ import type {
   FlagRetractionInput,
   RetractionStats,
 } from '../../types/library.types';
+import { isProjectScope } from './items.service';
 
 export const RetractionService = {
-  getRetractedItems: (_scopeId?: string) =>
+  getRetractedItems: (scopeId?: string) =>
     apiGet<Item[]>(
       `/api/v1/library/retraction/items`,
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
-  getStats: (_scopeId?: string) =>
+  getStats: (scopeId?: string) =>
     apiGet<RetractionStats>(
       `/api/v1/library/retraction/stats`,
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
-  checkItem: (_scopeId: string, itemId: string) =>
+  checkItem: (scopeId: string | undefined, itemId: string) =>
     apiPost<{
       itemId: string;
       isRetracted: boolean;
@@ -25,24 +28,26 @@ export const RetractionService = {
     }>(
       `/api/v1/library/retraction/items/${encodeURIComponent(itemId)}/check`,
       {},
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
-  checkLibrary: (_scopeId: string, itemIds?: string[]) =>
+  checkLibrary: (scopeId: string | undefined, itemIds?: string[]) =>
     apiPost<{ scanned: number; newlyRetracted: number }>(
       `/api/v1/library/retraction/check-all`,
       { itemIds },
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
-
-
-  flagItem: (_scopeId: string, itemId: string, data: FlagRetractionInput) =>
+  flagItem: (scopeId: string | undefined, itemId: string, data: FlagRetractionInput) =>
     apiPost<Item>(
       `/api/v1/library/retraction/items/${encodeURIComponent(itemId)}/flag`,
       data,
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
-  unflagItem: (_scopeId: string, itemId: string) =>
+  unflagItem: (scopeId: string | undefined, itemId: string) =>
     apiDelete<Item>(
       `/api/v1/library/retraction/items/${encodeURIComponent(itemId)}/flag`,
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 };

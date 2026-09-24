@@ -946,7 +946,7 @@ export function Attachments({
                                 </span>
                               )}
                               {doi && (
-                                <span className="px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 text-10 font-mono">
+                                <span className="px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-10 font-mono">
                                   DOI: {doi}
                                 </span>
                               )}

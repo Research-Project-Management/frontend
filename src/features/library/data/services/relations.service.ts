@@ -1,11 +1,12 @@
 import { apiGet, apiPost, apiDelete } from "@/shared/lib/api";
 import type { RelatedItem } from '../../types/library.types';
+import { isProjectScope } from './items.service';
 
 export const RelationsService = {
-  getRelated: (scopeId: string, itemId: string) => {
-    const isProject = scopeId && scopeId !== 'user';
+  getRelated: (scopeId: string | undefined, itemId: string) => {
+    const isProject = isProjectScope(scopeId);
     const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/items`
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/items`
       : `/api/v1/library/items`;
     return apiGet<{ relatedItems: RelatedItem[]; total: number }>(
       `${basePath}/${encodeURIComponent(itemId)}/relations`,
@@ -16,14 +17,14 @@ export const RelationsService = {
   },
 
   link: (
-    scopeId: string,
+    scopeId: string | undefined,
     itemId: string,
     targetItemId: string | string[],
     relationType: string = 'related',
   ) => {
-    const isProject = scopeId && scopeId !== 'user';
+    const isProject = isProjectScope(scopeId);
     const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/items`
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/items`
       : `/api/v1/library/items`;
     const payload = Array.isArray(targetItemId)
       ? { targetItemIds: targetItemId, relationType }
@@ -34,10 +35,10 @@ export const RelationsService = {
     );
   },
 
-  unlink: (scopeId: string, itemId: string, targetItemId: string, _relationType?: string) => {
-    const isProject = scopeId && scopeId !== 'user';
+  unlink: (scopeId: string | undefined, itemId: string, targetItemId: string, _relationType?: string) => {
+    const isProject = isProjectScope(scopeId);
     const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/items`
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/items`
       : `/api/v1/library/items`;
     return apiDelete<{ message: string }>(
       `${basePath}/${encodeURIComponent(itemId)}/relations/${encodeURIComponent(targetItemId)}`,

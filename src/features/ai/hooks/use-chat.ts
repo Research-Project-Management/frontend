@@ -12,6 +12,37 @@ import { buildResponseWidgetsFromActions } from '../components/chat/response-wid
 import { useChatMode } from './use-chat-mode';
 import { ItemService } from '@/features/library';
 
+export function mergeAgentAction(current: AgentAction[], action: AgentAction): AgentAction[] {
+  // If the action is finishing or updating a currently calling tool
+  if (action.tool && (action.status === 'done' || action.status === 'error')) {
+    const callingIdx = current
+      .map((a, i) => (a.tool === action.tool && a.status === 'calling' ? i : -1))
+      .filter((i) => i !== -1)
+      .pop() ?? -1;
+
+    if (callingIdx !== -1) {
+      const copy = [...current];
+      copy[callingIdx] = {
+        ...copy[callingIdx],
+        ...action,
+      };
+      return copy;
+    }
+  }
+
+  // If thinking action arrives and we already have a thinking action
+  if (action.type === 'thinking') {
+    const thinkIdx = current.findIndex((a) => a.type === 'thinking');
+    if (thinkIdx !== -1) {
+      const copy = [...current];
+      copy[thinkIdx] = { ...copy[thinkIdx], ...action };
+      return copy;
+    }
+  }
+
+  return [...current, action];
+}
+
 export function useChat() {
   const { chatId } = useParams() as { chatId?: string };
   const searchParams = useSearchParams();
@@ -248,8 +279,8 @@ export function useChat() {
             }
           },
           onAction: (action) => {
-            activeActionsRef.current = [...activeActionsRef.current, action];
-            setActiveActions(activeActionsRef.current);
+            activeActionsRef.current = mergeAgentAction(activeActionsRef.current, action);
+            setActiveActions([...activeActionsRef.current]);
           },
         })) {
           streamRef.current += chunk;
@@ -266,6 +297,10 @@ export function useChat() {
           sources:
             activeSourcesRef.current.length > 0
               ? [...activeSourcesRef.current]
+              : undefined,
+          actions:
+            activeActionsRef.current.length > 0
+              ? [...activeActionsRef.current]
               : undefined,
           widgets: buildResponseWidgetsFromActions(activeActionsRef.current),
         };

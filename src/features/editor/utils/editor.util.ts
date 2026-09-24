@@ -230,7 +230,7 @@ export interface RichEditorContext {
 }
 
 export function buildRichContext(
-  editor: import("monaco-editor").editor.IStandaloneCodeEditor,
+  editor: any,
   filename: string,
 ): RichEditorContext {
   const model = editor.getModel();
@@ -484,7 +484,7 @@ export type LatexFormatType =
 
 export const EditorCommandBus = {
   wrapSelection(
-    editor: import('monaco-editor').editor.IStandaloneCodeEditor | null,
+    editor: any,
     prefix: string,
     suffix: string,
     placeholder = '',
@@ -508,7 +508,7 @@ export const EditorCommandBus = {
   },
 
   insertSnippet(
-    editor: import('monaco-editor').editor.IStandaloneCodeEditor | null,
+    editor: any,
     snippet: string,
   ): void {
     if (!editor) return;
@@ -523,7 +523,7 @@ export const EditorCommandBus = {
   },
 
   format(
-    editor: import('monaco-editor').editor.IStandaloneCodeEditor | null,
+    editor: any,
     type: LatexFormatType,
   ): void {
     switch (type) {
@@ -590,13 +590,13 @@ export const EditorCommandBus = {
     }
   },
 
-  undo(editor: import('monaco-editor').editor.IStandaloneCodeEditor | null): void {
+  undo(editor: any): void {
     if (!editor) return;
     editor.trigger('toolbar', 'undo', null);
     editor.focus();
   },
 
-  redo(editor: import('monaco-editor').editor.IStandaloneCodeEditor | null): void {
+  redo(editor: any): void {
     if (!editor) return;
     editor.trigger('toolbar', 'redo', null);
     editor.focus();

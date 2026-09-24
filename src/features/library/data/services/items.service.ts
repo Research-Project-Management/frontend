@@ -292,8 +292,12 @@ export const ItemsService = {
     expectedVersion?: number,
   ) => {
     const payload = sanitizeItemPayload(data as Record<string, unknown>);
-    if (expectedVersion !== undefined) {
-      payload.expectedVersion = expectedVersion;
+    const resolvedVersion =
+      expectedVersion ??
+      (data as any)?.expectedVersion ??
+      (data as any)?.version;
+    if (resolvedVersion !== undefined && typeof resolvedVersion === 'number') {
+      payload.expectedVersion = resolvedVersion;
     }
     const res = await apiPatch<Record<string, unknown>>(
       getItemUrl(scopeId, encodeURIComponent(itemId)),
@@ -310,8 +314,12 @@ export const ItemsService = {
     expectedVersion?: number,
   ) => {
     const payload = sanitizeItemPayload(data as Record<string, unknown>);
-    if (expectedVersion !== undefined) {
-      payload.expectedVersion = expectedVersion;
+    const resolvedVersion =
+      expectedVersion ??
+      (data as any)?.expectedVersion ??
+      (data as any)?.version;
+    if (resolvedVersion !== undefined && typeof resolvedVersion === 'number') {
+      payload.expectedVersion = resolvedVersion;
     }
     const res = await apiPatch<Record<string, unknown>>(
       getItemUrl(scopeId, encodeURIComponent(itemId)),
@@ -387,7 +395,8 @@ export const ItemsService = {
       abstract?: string;
     },
   ) => {
-    const url = scopeId
+    const isProject = isProjectScope(scopeId);
+    const url = isProject
       ? `/api/v1/library/ingestion/submit?projectId=${encodeURIComponent(scopeId)}`
       : `/api/v1/library/ingestion/submit`;
     return apiPost<{ item: Item }>(url, {
@@ -395,7 +404,7 @@ export const ItemsService = {
       fileId: data.fileId,
       filename: data.filename,
       collectionIds: data.collectionId ? [data.collectionId] : undefined,
-      projectId: scopeId || undefined,
+      projectId: isProject ? scopeId : undefined,
       overrides: {
         title: data.title,
         authors: data.authors,

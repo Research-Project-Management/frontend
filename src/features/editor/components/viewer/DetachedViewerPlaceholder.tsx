@@ -70,7 +70,7 @@ export default function DetachedViewerPlaceholder({
       </div>
 
       {lastCompiledAt && (
-        <div className="mt-8 text-[11px] text-muted-foreground/80 flex items-center gap-1.5 font-mono">
+        <div className="mt-8 text-11 text-muted-foreground/80 flex items-center gap-1.5 font-mono">
           <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
           Last compiled at {lastCompiledAt.toLocaleTimeString()}
         </div>

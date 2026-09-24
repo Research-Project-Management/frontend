@@ -1,12 +1,15 @@
 /**
  * Centralized HTTP Client built on native Fetch API.
  * Features:
+ * - Clean Architecture separation: Network transport decoupled from UI routing
  * - Automatic JSON serialization / deserialization
- * - Bearer Token synchronization and silent 401 refresh mutex
- * - Typed ApiError with field validation details
- * - Query string builder via params
- * - In-flight request deduplication for concurrent GET calls
- * - Configurable request timeout via AbortController
+ * - Bearer Token synchronization and single-flight 401 refresh mutex
+ * - Decoupled onSessionExpired event subscriber (avoids hard page reloads)
+ * - Typed ApiError with field validation details and code classification
+ * - Safe query string builder via URLSearchParams
+ * - Auth-scoped in-flight request deduplication for concurrent GET calls
+ * - Composite AbortSignal and request timeout management
+ * - Safe envelope unwrapping without prototype corruption
  * - Structured telemetry via logger
  * - Safe fetch via Result<T, ApiError>
  */
@@ -38,12 +41,63 @@ export {
   hasAuthToken,
 };
 
+// ─── 1. Base URL Resolution (Secured against Production Storage Tampering) ───
+
 export function getEffectiveBaseUrl(): string {
-  if (typeof window !== 'undefined') {
-    const override = window.localStorage.getItem('FLUX_API_BASE_URL');
-    if (override && override.trim()) return override.trim().replace(/\/$/, '');
+  // Allow local development override only in non-production environments
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    try {
+      const override = window.localStorage.getItem('FLUX_API_BASE_URL');
+      if (override && override.trim()) return override.trim().replace(/\/$/, '');
+    } catch {
+      // Ignore security errors in restricted browser contexts
+    }
   }
   return API_BASE_URL;
+}
+
+// ─── 2. Auth Session Management & Decoupled Event Emitter ─────────────────────
+
+export type SessionExpiredCallback = () => void;
+const sessionExpiredListeners = new Set<SessionExpiredCallback>();
+
+/**
+ * Register a listener for authentication session expiration (401 refresh failed).
+ * Decouples HTTP client from UI router and avoids uncoordinated page reloads.
+ */
+export function onSessionExpired(callback: SessionExpiredCallback): () => void {
+  sessionExpiredListeners.add(callback);
+  return () => {
+    sessionExpiredListeners.delete(callback);
+  };
+}
+
+function handleSessionExpired(): void {
+  removeAuthToken();
+
+  if (sessionExpiredListeners.size > 0) {
+    sessionExpiredListeners.forEach((listener) => {
+      try {
+        listener();
+      } catch (err) {
+        logger.error('Error executing onSessionExpired listener', err);
+      }
+    });
+    return;
+  }
+
+  // Graceful fallback if no UI subscriber is attached
+  if (typeof window !== 'undefined') {
+    const publicPaths = ['/login', '/register', '/forgot-password', '/auth/callback', '/'];
+    const isPublicPath = publicPaths.some(
+      (publicPath) =>
+        window.location.pathname === publicPath ||
+        window.location.pathname.startsWith(publicPath + '/'),
+    );
+    if (!isPublicPath) {
+      window.location.href = '/login';
+    }
+  }
 }
 
 interface RefreshTokenResult {
@@ -127,8 +181,13 @@ const inFlightRequests = new Map<string, Promise<unknown>>();
 
 // ─── 4. Query String Builder ──────────────────────────────────────────────────
 
-function buildUrl(path: string, params?: RequestOptions['params']): string {
-  const base = path.startsWith('http') ? path : `${getEffectiveBaseUrl()}${path}`;
+function buildUrl(path: string, params?: RequestOptions['params'], relativeOnly = false): string {
+  let base: string;
+  if (relativeOnly) {
+    base = path.startsWith('/') ? path : `/${path}`;
+  } else {
+    base = path.startsWith('http') ? path : `${getEffectiveBaseUrl()}${path}`;
+  }
   if (!params) return base;
 
   const query = new URLSearchParams();
@@ -149,10 +208,18 @@ export async function rawFetch(
   body?: unknown,
   options: RequestOptions = {},
 ): Promise<Response> {
-  const { params, headers: extraHeaders, signal, timeout = 15000, idempotencyKey, ...rest } = options;
+  const {
+    params,
+    headers: extraHeaders,
+    signal,
+    timeout = 15000,
+    idempotencyKey,
+    skipAuth = false,
+    ...rest
+  } = options;
 
   const url = buildUrl(path, params);
-  const token = getAuthToken();
+  const token = !skipAuth ? getAuthToken() : null;
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
   const headers: Record<string, string> = {
     ...(body !== undefined && !isFormData ? { 'Content-Type': 'application/json' } : {}),
@@ -165,20 +232,34 @@ export async function rawFetch(
     headers['Idempotency-Key'] = idempotencyKey;
   }
 
-  // Handle AbortSignal & Timeout
+  // Composite Timeout & Signal Controller
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  let finalSignal = signal;
+  let finalSignal: AbortSignal | undefined = (signal || undefined);
 
-  if (!signal && timeout > 0) {
-    const controller = new AbortController();
+  if (timeout > 0) {
+    const timeoutController = new AbortController();
     timeoutId = setTimeout(() => {
       try {
-        controller.abort(new DOMException(`Request timeout after ${timeout}ms`, 'TimeoutError'));
+        timeoutController.abort(new DOMException(`Request timed out after ${timeout}ms`, 'TimeoutError'));
       } catch {
-        controller.abort();
+        timeoutController.abort();
       }
     }, timeout);
-    finalSignal = controller.signal;
+
+    if (signal) {
+      if (typeof (AbortSignal as any).any === 'function') {
+        finalSignal = (AbortSignal as any).any([signal, timeoutController.signal]);
+      } else {
+        if (signal.aborted) {
+          timeoutController.abort(signal.reason);
+        } else {
+          signal.addEventListener('abort', () => timeoutController.abort(signal.reason), { once: true });
+        }
+        finalSignal = timeoutController.signal;
+      }
+    } else {
+      finalSignal = timeoutController.signal;
+    }
   }
 
   try {
@@ -191,8 +272,11 @@ export async function rawFetch(
       ...rest,
     });
   } catch (err: unknown) {
-    if (err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError' || err.message?.includes('aborted'))) {
-      if (!signal && timeoutId) {
+    if (
+      err instanceof Error &&
+      (err.name === 'AbortError' || err.name === 'TimeoutError' || err.message?.includes('aborted') || err.message?.includes('timed out'))
+    ) {
+      if (timeoutId && (err.name === 'TimeoutError' || err.message?.includes('timed out'))) {
         throw new ApiError({
           message: `Request timed out after ${timeout}ms. Please ensure backend server is running.`,
           statusCode: 408,
@@ -201,6 +285,22 @@ export async function rawFetch(
       }
     }
     if (err instanceof TypeError && err.message?.includes('Failed to fetch')) {
+      // Fallback to relative proxy route via Next.js rewrites if direct cross-origin failed
+      if (typeof window !== 'undefined' && url.startsWith('http') && path.startsWith('/')) {
+        try {
+          const fallbackUrl = buildUrl(path, params, true);
+          return await fetch(fallbackUrl, {
+            method,
+            credentials: 'include',
+            headers,
+            body: body !== undefined ? (isFormData ? (body as any) : JSON.stringify(body)) : undefined,
+            signal: finalSignal,
+            ...rest,
+          });
+        } catch (fallbackErr: unknown) {
+          logger.debug('Relative proxy fallback also failed', { fallbackErr });
+        }
+      }
       throw new ApiError({
         message: 'Cannot connect to backend server. Please ensure backend is running.',
         statusCode: 503,
@@ -219,10 +319,13 @@ export async function apiFetch<T>(
   body?: unknown,
   options: RequestOptions = {},
 ): Promise<T> {
-  // Deduplicate concurrent in-flight GET requests ONLY when no component-specific signal is attached
   const normalizedMethod = method.toUpperCase();
   const isGet = normalizedMethod === 'GET';
-  const requestKey = isGet && !options.signal ? `${normalizedMethod}:${buildUrl(path, options.params)}` : null;
+
+  // Auth-scoped request deduplication key to prevent cross-identity cache leaks
+  const token = !options.skipAuth ? getAuthToken() : null;
+  const tokenScope = token ? token.slice(-8) : 'anon';
+  const requestKey = isGet && !options.signal ? `${tokenScope}:${normalizedMethod}:${buildUrl(path, options.params)}` : null;
 
   if (requestKey && inFlightRequests.has(requestKey)) {
     return inFlightRequests.get(requestKey) as Promise<T>;
@@ -236,10 +339,13 @@ export async function apiFetch<T>(
       if ((err as Error)?.name === 'AbortError') {
         throw err;
       }
-      const apiError = new ApiError({
-        message: err instanceof Error ? err.message : 'Network error: Failed to fetch',
-        statusCode: 0,
-      });
+      const apiError = isApiError(err)
+        ? err
+        : new ApiError({
+            message: err instanceof Error ? err.message : 'Network error: Failed to fetch',
+            statusCode: 0,
+            code: 'NETWORK_ERROR',
+          });
       logger.error(`Network Error: [${normalizedMethod}] ${path}`, apiError);
       throw apiError;
     }
@@ -252,7 +358,7 @@ export async function apiFetch<T>(
       path.includes('/auth/forgot-password') ||
       path.includes('/auth/oauth/exchange');
 
-    if (response.status === 401 && !isUnauthenticatedAuthEndpoint) {
+    if (response.status === 401 && !options.skipAuth && !isUnauthenticatedAuthEndpoint) {
       const refreshResult = await tryRefresh();
 
       if (refreshResult.success && refreshResult.accessToken) {
@@ -268,24 +374,13 @@ export async function apiFetch<T>(
                 ? caughtRetryError.message
                 : 'Network error: Failed to fetch',
             statusCode: 0,
+            code: 'NETWORK_ERROR',
           });
           logger.error(`Network Error on retry: [${normalizedMethod}] ${path}`, apiError);
           throw apiError;
         }
       } else if (refreshResult.isSessionInvalid) {
-        removeAuthToken();
-
-        if (typeof window !== 'undefined') {
-          const publicPaths = ['/login', '/register', '/forgot-password', '/auth/callback', '/'];
-          const isPublicPath = publicPaths.some(
-            (publicPath) =>
-              window.location.pathname === publicPath ||
-              window.location.pathname.startsWith(publicPath + '/'),
-          );
-          if (!isPublicPath) {
-            window.location.href = '/login';
-          }
-        }
+        handleSessionExpired();
       }
     }
 
@@ -304,18 +399,17 @@ export async function apiFetch<T>(
         // Non-JSON error body fallback
       }
 
+      if (!payload || typeof payload !== 'object') {
+        payload = {};
+      }
+
       const errorMessage =
-        payload.error?.message ||
-        payload.message ||
+        payload?.error?.message ||
+        payload?.message ||
         response.statusText ||
         'Request failed';
-      const errorCode =
-        payload.error?.code ||
-        payload.code;
-      const errorDetails =
-        payload.error?.details ||
-        payload.errors ||
-        payload.details;
+      const errorCode = payload?.error?.code || payload?.code;
+      const errorDetails = payload?.error?.details || payload?.errors || payload?.details;
 
       const error = new ApiError({
         message: errorMessage,
@@ -354,6 +448,11 @@ export async function apiFetch<T>(
 
     const json = await response.json();
 
+    // If caller explicitly requested the raw backend envelope, return directly
+    if (options.rawEnvelope) {
+      return json as T;
+    }
+
     // Transparently unpack backend ApiResponseEnvelope<T> if wrapped
     if (
       json !== null &&
@@ -364,28 +463,19 @@ export async function apiFetch<T>(
     ) {
       const data = (json as Record<string, unknown>).data;
       const pagination = (json as Record<string, unknown>).pagination;
+
       if (pagination && Array.isArray(data)) {
+        // Assign standard enumerable metadata properties without breaking V8 optimization
         try {
-          Object.defineProperty(data, 'pagination', {
-            value: pagination,
-            enumerable: false,
-            writable: true,
-            configurable: true,
-          });
-          Object.defineProperty(data, 'meta', {
-            value: pagination,
-            enumerable: false,
-            writable: true,
-            configurable: true,
-          });
-          Object.defineProperty(data, 'total', {
-            value: (pagination as any).totalCount ?? (pagination as any).total ?? data.length,
-            enumerable: false,
-            writable: true,
-            configurable: true,
-          });
+          const totalCount =
+            (pagination as any).totalCount ??
+            (pagination as any).total ??
+            data.length;
+          (data as any).pagination = pagination;
+          (data as any).meta = pagination;
+          (data as any).total = totalCount;
         } catch {
-          // Safe fallback if array cannot be extended
+          // Fallback if data is frozen
         }
       } else if (pagination && typeof data === 'object' && data !== null) {
         if (!('pagination' in (data as object))) {
@@ -403,7 +493,6 @@ export async function apiFetch<T>(
 
   if (requestKey) {
     inFlightRequests.set(requestKey, executionPromise);
-    // Attach .catch handler to prevent unhandled rejection on this cleanup promise fork
     executionPromise
       .catch(() => {})
       .finally(() => {
@@ -445,9 +534,10 @@ export const safeApiFetch = <T>(
       isApiError(err)
         ? err
         : new ApiError({
-          message: err instanceof Error ? err.message : 'Unknown Network Error',
-          statusCode: 0,
-        }),
+            message: err instanceof Error ? err.message : 'Unknown Network Error',
+            statusCode: 0,
+            code: 'NETWORK_ERROR',
+          }),
   );
 };
 

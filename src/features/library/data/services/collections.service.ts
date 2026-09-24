@@ -26,10 +26,12 @@ export const CollectionsService = {
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined }
     ),
 
-  getById: (_scopeId?: string, collectionId?: string) => {
-    const id = collectionId || _scopeId || '';
+  getById: (scopeId?: string, collectionId?: string) => {
+    const effectiveScope = collectionId ? scopeId : undefined;
+    const effectiveId = collectionId || scopeId || '';
     return apiGet<{ collection: Collection }>(
-      `/api/v1/library/collections/${encodeURIComponent(id)}`,
+      `/api/v1/library/collections/${encodeURIComponent(effectiveId)}`,
+      { params: isProjectScope(effectiveScope) ? { projectId: effectiveScope } : undefined },
     );
   },
 
@@ -40,16 +42,22 @@ export const CollectionsService = {
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined }
     ),
 
-  update: (_scopeId: string | undefined, collectionId: string, data: UpdateCollectionDTO) =>
+  update: (scopeId: string | undefined, collectionId: string, data: UpdateCollectionDTO) =>
     apiPut<{ collection: Collection }>(
       `/api/v1/library/collections/${encodeURIComponent(collectionId)}`,
       data,
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
-  delete: (_scopeId: string | undefined, collectionId: string, strategy?: "cascade" | "move-to-parent" | "orphan") =>
+  delete: (scopeId: string | undefined, collectionId: string, strategy?: "cascade" | "move-to-parent" | "orphan") =>
     apiDelete(
       `/api/v1/library/collections/${encodeURIComponent(collectionId)}`,
-      { params: strategy ? { strategy } : undefined },
+      {
+        params: {
+          ...(strategy ? { strategy } : {}),
+          ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+        },
+      },
     ),
 
   moveItems: (scopeId: string | undefined, collectionId: string, itemIds: string[]) =>
@@ -66,10 +74,11 @@ export const CollectionsService = {
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined }
     ),
 
-  reorder: (_scopeId: string | undefined, collections: Array<{ id: string; parentId?: string | null }>) =>
+  reorder: (scopeId: string | undefined, collections: Array<{ id: string; parentId?: string | null }>) =>
     apiPatch<{ collections: Collection[] }>(
       `/api/v1/library/collections/reorder`,
       { collections },
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
   /**
@@ -92,18 +101,21 @@ export const CollectionsService = {
    * Backed by DELETE /collections/:collectionId/items/:itemId
    */
   detachItem: (
-    _scopeId: string | undefined,
+    scopeId: string | undefined,
     collectionId: string,
     itemId: string,
   ) =>
     apiDelete<{ detached: boolean }>(
       `/api/v1/library/collections/${encodeURIComponent(collectionId)}/items/${encodeURIComponent(itemId)}`,
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
-  exportBibtex: (_scopeId: string | undefined, collectionId: string) =>
-    apiGet<{ bibtex: string; total: number; filename: string }>(
-      `/api/v1/library/exports?format=bibtex&collectionId=${encodeURIComponent(collectionId)}`,
-    ),
+  exportBibtex: (scopeId: string | undefined, collectionId: string) => {
+    const projectQuery = isProjectScope(scopeId) ? `&projectId=${encodeURIComponent(scopeId!)}` : '';
+    return apiGet<{ bibtex: string; total: number; filename: string }>(
+      `/api/v1/library/exports?format=bibtex&collectionId=${encodeURIComponent(collectionId)}${projectQuery}`,
+    );
+  },
 
   exportBundle: (_scopeId: string | undefined, collectionId: string) =>
     apiGet<{

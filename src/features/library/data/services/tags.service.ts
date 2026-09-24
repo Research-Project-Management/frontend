@@ -1,12 +1,13 @@
 import { apiGet, apiPost, apiDelete } from "@/shared/lib/api";
 import type { TagWithCount } from '../../types/library.types';
+import { isProjectScope } from './items.service';
 export type { TagWithCount };
 
 export const TagsService = {
   list: async (scopeId?: string): Promise<TagWithCount[]> => {
-    const isProject = scopeId && scopeId !== 'user';
+    const isProject = isProjectScope(scopeId);
     const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/tags`
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/tags`
       : `/api/v1/library/tags`;
     const raw = await apiGet<any>(basePath);
     if (Array.isArray(raw)) return raw;
@@ -17,14 +18,14 @@ export const TagsService = {
   },
 
   create: async (
-    scopeId: string,
+    scopeId: string | undefined,
     name: string,
     color?: string,
     type: string = 'manual',
   ): Promise<TagWithCount> => {
-    const isProject = scopeId && scopeId !== 'user';
+    const isProject = isProjectScope(scopeId);
     const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/tags`
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/tags`
       : `/api/v1/library/tags`;
     const raw = await apiPost<any>(
       basePath,
@@ -38,10 +39,10 @@ export const TagsService = {
     return raw?.data || raw;
   },
 
-  delete: async (scopeId: string, tagId: string): Promise<void> => {
-    const isProject = scopeId && scopeId !== 'user';
+  delete: async (scopeId: string | undefined, tagId: string): Promise<void> => {
+    const isProject = isProjectScope(scopeId);
     const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/tags`
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/tags`
       : `/api/v1/library/tags`;
     await apiDelete<any>(
       `${basePath}/${encodeURIComponent(tagId)}`,
@@ -51,9 +52,9 @@ export const TagsService = {
   deleteAutomatic: async (
     scopeId?: string,
   ): Promise<{ count: number }> => {
-    const isProject = scopeId && scopeId !== 'user';
+    const isProject = isProjectScope(scopeId);
     const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/tags`
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/tags`
       : `/api/v1/library/tags`;
     const raw = await apiDelete<any>(
       `${basePath}/automatic`,
@@ -62,13 +63,13 @@ export const TagsService = {
   },
 
   assignToItem: async (
-    scopeId: string,
+    scopeId: string | undefined,
     tagId: string,
     itemId: string,
   ): Promise<void> => {
-    const isProject = scopeId && scopeId !== 'user';
+    const isProject = isProjectScope(scopeId);
     const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/tags`
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/tags`
       : `/api/v1/library/tags`;
     await apiPost<any>(
       `${basePath}/${encodeURIComponent(tagId)}/items/${encodeURIComponent(itemId)}`,
@@ -77,13 +78,13 @@ export const TagsService = {
   },
 
   removeFromItem: async (
-    scopeId: string,
+    scopeId: string | undefined,
     tagId: string,
     itemId: string,
   ): Promise<void> => {
-    const isProject = scopeId && scopeId !== 'user';
+    const isProject = isProjectScope(scopeId);
     const basePath = isProject
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/tags`
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/tags`
       : `/api/v1/library/tags`;
     await apiDelete<any>(
       `${basePath}/${encodeURIComponent(tagId)}/items/${encodeURIComponent(itemId)}`,

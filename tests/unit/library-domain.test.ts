@@ -195,6 +195,34 @@ describe('Library Domain Layer — Pure Functional Logic', () => {
       expect(clusters[0].items.length).toBe(2);
       expect(clusters[0].items.map((i) => i.id)).toEqual(['1', '2']);
     });
+
+    it('should scale linearly O(N) without freezing for large item lists', () => {
+      // Generate 2000 items with scattered duplicates
+      const largeList: any[] = [];
+      for (let i = 0; i < 2000; i++) {
+        largeList.push({
+          id: `item-${i}`,
+          title: `Unique Academic Paper Title #${i} with more than fifteen characters`,
+          doi: `10.1000/paper.${i}`,
+          year: 2020 + (i % 5),
+        });
+      }
+      // Inject duplicate pairs
+      largeList.push({
+        id: 'dup-1',
+        title: 'Unique Academic Paper Title #10 with more than fifteen characters',
+        doi: '10.1000/paper.10',
+        year: 2020,
+      });
+
+      const start = performance.now();
+      const clusters = clusterDuplicateItems(largeList);
+      const durationMs = performance.now() - start;
+
+      // O(N) bucket hashing should finish 2000 items in well under 100ms (O(N^2) would take seconds)
+      expect(clusters.length).toBeGreaterThanOrEqual(1);
+      expect(durationMs).toBeLessThan(200);
+    });
   });
 
   describe('Deep Metadata Diff & Asset Aggregation (diff.ts)', () => {

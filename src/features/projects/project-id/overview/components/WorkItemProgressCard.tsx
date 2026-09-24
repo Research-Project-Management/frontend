@@ -105,10 +105,10 @@ export function WorkItemProgressCard({
           <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 p-2.5">
             <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
             <div className="flex flex-col min-w-0">
-              <span className="text-[11px] text-muted-foreground font-medium">Completed</span>
+              <span className="text-11 text-muted-foreground font-medium">Completed</span>
               <span className="text-sm font-bold text-foreground">
                 {completed}{' '}
-                <span className="text-[11px] font-normal text-muted-foreground">
+                <span className="text-11 font-normal text-muted-foreground">
                   ({completedPct.toFixed(0)}%)
                 </span>
               </span>
@@ -119,10 +119,10 @@ export function WorkItemProgressCard({
           <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 p-2.5">
             <Clock className="size-4 text-amber-500 shrink-0" />
             <div className="flex flex-col min-w-0">
-              <span className="text-[11px] text-muted-foreground font-medium">Started</span>
+              <span className="text-11 text-muted-foreground font-medium">Started</span>
               <span className="text-sm font-bold text-foreground">
                 {started}{' '}
-                <span className="text-[11px] font-normal text-muted-foreground">
+                <span className="text-11 font-normal text-muted-foreground">
                   ({startedPct.toFixed(0)}%)
                 </span>
               </span>
@@ -133,10 +133,10 @@ export function WorkItemProgressCard({
           <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 p-2.5">
             <CircleDot className="size-4 text-blue-500 shrink-0" />
             <div className="flex flex-col min-w-0">
-              <span className="text-[11px] text-muted-foreground font-medium">Unstarted</span>
+              <span className="text-11 text-muted-foreground font-medium">Unstarted</span>
               <span className="text-sm font-bold text-foreground">
                 {unstarted}{' '}
-                <span className="text-[11px] font-normal text-muted-foreground">
+                <span className="text-11 font-normal text-muted-foreground">
                   ({unstartedPct.toFixed(0)}%)
                 </span>
               </span>
@@ -147,10 +147,10 @@ export function WorkItemProgressCard({
           <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 p-2.5">
             <Inbox className="size-4 text-slate-400 shrink-0" />
             <div className="flex flex-col min-w-0">
-              <span className="text-[11px] text-muted-foreground font-medium">Backlog</span>
+              <span className="text-11 text-muted-foreground font-medium">Backlog</span>
               <span className="text-sm font-bold text-foreground">
                 {backlog}{' '}
-                <span className="text-[11px] font-normal text-muted-foreground">
+                <span className="text-11 font-normal text-muted-foreground">
                   ({backlogPct.toFixed(0)}%)
                 </span>
               </span>

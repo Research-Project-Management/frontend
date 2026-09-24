@@ -19,7 +19,7 @@ export const RECOMMENDED_VIEW_TEMPLATES: ViewTemplatePreset[] = [
     layout: 'board',
     access: 'public',
     badge: 'Sprint',
-    badgeColor: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+    badgeColor: 'bg-primary/10 text-primary border-primary/20',
     filters: {
       state_group: ['unstarted', 'started'],
     },

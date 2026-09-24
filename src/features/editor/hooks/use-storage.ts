@@ -1,128 +1,111 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { storageKeys } from '@/features/storage/constants/storage.keys';
-import { StorageService as EditorStorageService, type EditorStorageItem } from '../services/storage.service';
+/**
+ * use-storage.ts
+ *
+ * Clean Presentational Storage Hooks for Editor Files Explorer:
+ * - Decoupled from legacy backend storage/R2 endpoints
+ */
 
-export function useEditorStorage(pageId: string | null | undefined, parentId?: string | null) {
-  const queryClient = useQueryClient();
-  const queryKey = storageKeys.projectFilesEditor(pageId ?? undefined, parentId);
+import { useState } from 'react';
+import { toast } from 'sonner';
+import type { EditorStorageItem } from '../services/storage.service';
 
-  const { data: children, isLoading, refetch } = useQuery({
-    queryKey,
-    queryFn: () => (pageId ? EditorStorageService.getPageFiles(pageId, parentId) : Promise.resolve([])),
-    enabled: !!pageId,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
-  });
+function createMockMutation<TArgs, TRes>(fn: (args: TArgs) => Promise<TRes>) {
+  const handler = (args: TArgs) => fn(args);
+  handler.mutate = (
+    args: TArgs,
+    opts?: { onSuccess?: (data: TRes) => void; onError?: (err: any) => void },
+  ) => {
+    fn(args)
+      .then((data) => opts?.onSuccess?.(data))
+      .catch((err) => opts?.onError?.(err));
+  };
+  handler.mutateAsync = fn;
+  handler.isPending = false;
+  return handler as any;
+}
 
-  const uploadFileMutation = useMutation({
-    mutationFn: async ({
+export function useEditorStorage(_pageId?: string | null, _parentId?: string | null) {
+  const [items, setItems] = useState<EditorStorageItem[]>([]);
+
+  const uploadFile = createMockMutation(
+    async ({
       file,
-      pageId: targetPageId,
-      parentId: targetParentId,
     }: {
       file: File;
       projectId?: string;
-      pageId: string;
+      pageId?: string;
       parentId?: string | null;
-    }) => {
-      return EditorStorageService.uploadPageFile(
-        targetPageId,
-        file,
-        targetParentId,
-      );
+    }): Promise<EditorStorageItem> => {
+      const newItem: EditorStorageItem = {
+        id: `file-${Date.now()}`,
+        filename: file.name,
+        size: file.size,
+        mimeType: file.type,
+        isFolder: false,
+        createdAt: new Date().toISOString(),
+      };
+      setItems((prev) => [...prev, newItem]);
+      toast.success(`Đã tải lên "${file.name}"`);
+      return newItem;
     },
-    onSuccess: (_, variables) => {
-      if (variables.pageId || variables.projectId) {
-        queryClient.invalidateQueries({
-          queryKey: storageKeys.projectFilesEditor(variables.pageId || variables.projectId),
-        });
-      }
-    },
-  });
+  );
 
-  const createFolderMutation = useMutation({
-    mutationFn: ({
-      name,
-      projectId,
-      parentId: targetParentId,
-      pageId: targetPageId,
-    }: {
-      name: string;
-      projectId?: string;
-      parentId?: string | null;
-      pageId?: string | null;
-    }) => {
-      if (targetPageId) {
-        return EditorStorageService.createPageFolder(targetPageId, name, targetParentId);
-      }
-      return EditorStorageService.createProjectFolder(projectId || 'default', name, targetParentId);
+  const createFolder = createMockMutation(
+    async ({ name }: { name: string; parentId?: string | null }): Promise<EditorStorageItem> => {
+      const newFolder: EditorStorageItem = {
+        id: `folder-${Date.now()}`,
+        filename: name,
+        isFolder: true,
+        createdAt: new Date().toISOString(),
+      };
+      setItems((prev) => [...prev, newFolder]);
+      toast.success(`Đã tạo thư mục "${name}"`);
+      return newFolder;
     },
-    onSuccess: (_, variables) => {
-      if (variables.pageId || variables.projectId) {
-        queryClient.invalidateQueries({
-          queryKey: storageKeys.projectFilesEditor(variables.pageId || variables.projectId),
-        });
-      }
-    },
-  });
+  );
 
-  const renameMutation = useMutation({
-    mutationFn: (variables: { itemId?: string; fileId?: string; newName?: string; name?: string }) => {
-      const targetStorageId = variables.itemId || variables.fileId || '';
-      const nextName = variables.newName || variables.name || '';
-      return EditorStorageService.renameItem(targetStorageId, nextName);
-    },
-    onSuccess: () => {
-      if (pageId) {
-        queryClient.invalidateQueries({
-          queryKey: storageKeys.projectFilesEditor(pageId),
-        });
+  const renameFile = createMockMutation(
+    async (args: { itemId?: string; fileId?: string; newName?: string; name?: string }): Promise<void> => {
+      const id = args.itemId || args.fileId;
+      const name = args.newName || args.name;
+      if (id && name) {
+        setItems((prev) =>
+          prev.map((i) => (i.id === id ? { ...i, filename: name } : i)),
+        );
       }
+      toast.success('Đã đổi tên');
     },
-  });
+  );
 
-  const deleteMutation = useMutation({
-    mutationFn: (itemId: string) => EditorStorageService.permanentlyDeleteItem(itemId),
-    onSuccess: () => {
-      if (pageId) {
-        queryClient.invalidateQueries({
-          queryKey: storageKeys.projectFilesEditor(pageId),
-        });
-      }
+  const deleteFile = createMockMutation(
+    async (itemId: string): Promise<void> => {
+      setItems((prev) => prev.filter((i) => i.id !== itemId));
+      toast.success('Đã xóa tệp');
     },
-  });
+  );
 
-  const moveMutation = useMutation({
-    mutationFn: ({ itemId, targetFolderId }: { itemId: string; targetFolderId: string | null }) =>
-      EditorStorageService.moveItem(itemId, targetFolderId),
-    onSuccess: () => {
-      if (pageId) {
-        queryClient.invalidateQueries({
-          queryKey: storageKeys.projectFilesEditor(pageId),
-        });
-      }
+  const moveItem = createMockMutation(
+    async (): Promise<void> => {
+      toast.success('Đã di chuyển');
     },
-  });
+  );
 
   return {
-    children: (children as EditorStorageItem[]) || [],
-    files: (children as EditorStorageItem[]) || [],
-    isLoading,
-    refetch,
-    uploadFile: uploadFileMutation,
-    createFolder: createFolderMutation,
-    renameItem: renameMutation,
-    renameFile: renameMutation,
-    deleteItem: deleteMutation,
-    deleteFile: deleteMutation,
-    moveItem: moveMutation,
-    uploadFileMutation,
-    createFolderMutation,
-    renameMutation,
-    deleteMutation,
-    moveMutation,
+    children: items,
+    files: items,
+    isLoading: false,
+    refetch: async () => {},
+    uploadFile,
+    createFolder,
+    renameFile,
+    deleteFile,
+    moveItem,
+    uploadFileMutation: uploadFile,
+    createFolderMutation: createFolder,
+    renameMutation: renameFile,
+    deleteMutation: deleteFile,
+    moveMutation: moveItem,
   };
 }

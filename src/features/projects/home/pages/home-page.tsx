@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { format } from "date-fns";
-import { useParams, useRouter } from 'next/navigation';
 
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { Skeleton } from "@/shared/components/ui";
@@ -47,8 +46,6 @@ import {
 // ─── Main dashboard ──────────────────────────────────────────────────────────
 
 export default function HomePage() {
-  const router = useRouter();
-
   const { user, isLoading: isUserLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [config, setConfig] = useState<SectionConfig[]>(defaultSectionConfig);
@@ -58,13 +55,6 @@ export default function HomePage() {
     setMounted(true);
     setConfig(loadSectionConfig());
   }, []);
-
-  const handleChatSend = useCallback((text: string, projectId?: string) => {
-    const params = new URLSearchParams();
-    params.set("q", text);
-    if (projectId) params.set("project", projectId);
-    router.push(`/ai?${params.toString()}`);
-  }, [router]);
 
   const visibleSections = useMemo(
     () =>
@@ -127,7 +117,7 @@ export default function HomePage() {
 
           {/* AI Chat Block */}
           <Section title="AI Assistant">
-            <ChatAi onSend={handleChatSend} />
+            <ChatAi />
           </Section>
 
           {visibleSections.length > 0 ? (

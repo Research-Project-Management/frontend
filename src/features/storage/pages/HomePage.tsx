@@ -29,6 +29,8 @@ export default function HomePage() {
   const {
     data,
     isLoading: isFilesLoading,
+    isError,
+    error,
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
@@ -92,6 +94,8 @@ export default function HomePage() {
       >
         <StorageViewContainer
           isLoading={isFilesLoading && !data}
+          isError={isError}
+          error={error instanceof Error ? error : undefined}
           viewProps={viewProps}
           searchQuery={searchQuery}
           onClearSearch={() => setSearchQuery('')}

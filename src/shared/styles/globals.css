@@ -158,6 +158,19 @@
   --color-brand-hover: var(--primary-hover);
   --color-brand-foreground: var(--primary-foreground);
 
+  /* Dynamic Brand Palette tokens (Single Source of Truth --brand-hue) */
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+  --color-brand-950: var(--brand-950);
+
   /* Precision Blue / SaaS Blue Palette (DESIGN.md / PRODUCT.md) */
   --color-blue-50: var(--blue-50);
   --color-blue-100: var(--blue-100);
@@ -224,21 +237,34 @@
    -------------------------------------------------------------------------- */
 
 :root {
-  --brand-hue: 254;
+  --brand-hue: 265;
   --radius: 0.5rem;
 
-  /* Flux Official Brand Blue Palette (#3370FF - from Flux.svg) */
-  --blue-50: #EBF1FF;
-  --blue-100: #D6E3FF;
-  --blue-200: #ADC8FF;
-  --blue-300: #85ACFF;
-  --blue-400: #5C8FFF;
-  --blue-500: #3370FF;
-  --blue-600: #205CF5;
-  --blue-700: #1349DE;
-  --blue-800: #0E36B3;
-  --blue-900: #0A2685;
-  --blue-950: #061859;
+  /* Dynamic Brand Palette via OKLCH Single Source of Truth (--brand-hue) */
+  --brand-50: oklch(97% 0.02 var(--brand-hue));
+  --brand-100: oklch(93% 0.04 var(--brand-hue));
+  --brand-200: oklch(86% 0.08 var(--brand-hue));
+  --brand-300: oklch(76% 0.12 var(--brand-hue));
+  --brand-400: oklch(64% 0.15 var(--brand-hue));
+  --brand-500: oklch(47% 0.165 var(--brand-hue));
+  --brand-600: oklch(41% 0.16 var(--brand-hue));
+  --brand-700: oklch(34% 0.14 var(--brand-hue));
+  --brand-800: oklch(27% 0.11 var(--brand-hue));
+  --brand-900: oklch(20% 0.08 var(--brand-hue));
+  --brand-950: oklch(14% 0.05 var(--brand-hue));
+
+  /* Backward-compatible blue aliases dynamically bound to brand palette */
+  --blue-50: var(--brand-50);
+  --blue-100: var(--brand-100);
+  --blue-200: var(--brand-200);
+  --blue-300: var(--brand-300);
+  --blue-400: var(--brand-400);
+  --blue-500: var(--brand-500);
+  --blue-600: var(--brand-600);
+  --blue-700: var(--brand-700);
+  --blue-800: var(--brand-800);
+  --blue-900: var(--brand-900);
+  --blue-950: var(--brand-950);
 
   --gray-0: oklch(100% 0 0);
   --gray-25: oklch(98.5% 0 0);
@@ -267,10 +293,12 @@
   --card-foreground: var(--gray-900);
   --popover: var(--gray-0);
   --popover-foreground: var(--gray-900);
-  --primary: var(--blue-500);
-  --primary-hover: var(--blue-600);
+  --primary: oklch(47% 0.165 var(--brand-hue));
+  --primary-hover: oklch(42% 0.165 var(--brand-hue));
   --primary-foreground: #FFFFFF;
   --brand: var(--primary);
+  --brand-hover: var(--primary-hover);
+  --brand-foreground: var(--primary-foreground);
   --secondary: var(--gray-50);
   --secondary-foreground: var(--gray-900);
   --muted: var(--gray-100);
@@ -291,9 +319,9 @@
   --layer-transparent-hover: var(--gray-100);
   --surface-1: var(--gray-0);
   --input: var(--gray-200);
-  --ring: var(--blue-500);
+  --ring: oklch(47% 0.165 var(--brand-hue));
 
-  --chart-1: var(--blue-500);
+  --chart-1: oklch(47% 0.165 var(--brand-hue));
   --chart-2: oklch(0.600 0.118 185);
   --chart-3: oklch(0.398 0.070 227);
   --chart-4: oklch(0.828 0.189 84);
@@ -301,13 +329,13 @@
 
   --sidebar: var(--muted);
   --sidebar-foreground: var(--gray-900);
-  --sidebar-primary: var(--blue-500);
+  --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-hover: var(--gray-150);
   --sidebar-accent: var(--gray-200);
   --sidebar-accent-foreground: var(--gray-900);
   --sidebar-border: var(--gray-200);
-  --sidebar-ring: var(--blue-500);
+  --sidebar-ring: var(--ring);
 
   --shadow-2xs: 0 1px rgb(0 0 0 / 0.05);
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.06);
@@ -326,10 +354,12 @@
   --card-foreground: oklch(92% 0 0);
   --popover: oklch(14% 0 0);
   --popover-foreground: oklch(92% 0 0);
-  --primary: var(--blue-500);
-  --primary-hover: var(--blue-400);
+  --primary: oklch(55.3% 0.178 var(--brand-hue));
+  --primary-hover: oklch(62% 0.178 var(--brand-hue));
   --primary-foreground: #FFFFFF;
   --brand: var(--primary);
+  --brand-hover: var(--primary-hover);
+  --brand-foreground: var(--primary-foreground);
   --secondary: oklch(17% 0 0);
   --secondary-foreground: oklch(92% 0 0);
   --muted: oklch(17% 0 0);
@@ -350,9 +380,9 @@
   --layer-transparent-hover: oklch(17% 0 0);
   --surface-1: oklch(14% 0 0);
   --input: oklch(22% 0 0 / 70%);
-  --ring: var(--blue-500);
+  --ring: oklch(55.3% 0.178 var(--brand-hue));
 
-  --chart-1: var(--blue-500);
+  --chart-1: oklch(55.3% 0.178 var(--brand-hue));
   --chart-2: oklch(0.696 0.170 162);
   --chart-3: oklch(0.769 0.188 70);
   --chart-4: oklch(0.627 0.265 304);
@@ -360,13 +390,13 @@
 
   --sidebar: var(--muted);
   --sidebar-foreground: oklch(92% 0 0);
-  --sidebar-primary: var(--blue-500);
+  --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: oklch(100% 0 0);
   --sidebar-hover: oklch(21% 0 0);
   --sidebar-accent: oklch(25% 0 0);
   --sidebar-accent-foreground: oklch(95% 0 0);
   --sidebar-border: oklch(22% 0 0);
-  --sidebar-ring: var(--blue-500);
+  --sidebar-ring: var(--ring);
 
   --shadow-2xs: 0 1px rgb(0 0 0 / 0.25);
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.35);
@@ -775,69 +805,6 @@
 }
 
 
-.monaco-editor,
-.monaco-editor .margin,
-.monaco-editor-background {
-  transition: background-color 160ms ease, color 160ms ease;
-}
-
-.monaco-editor .line-numbers {
-  font-variant-numeric: tabular-nums;
-}
-
-/* Full-width seamless active line highlight across gutter and content without margin gap */
-.monaco-editor .current-line {
-  border-radius: 0 !important;
-}
-
-.monaco-editor .view-overlays .current-line {
-  width: 100% !important;
-  min-width: 100% !important;
-  border-radius: 0 !important;
-}
-
-.monaco-editor .margin-view-overlays .current-line-margin {
-  border-radius: 0 !important;
-}
-
-/* Monaco Editor Scrollbar: hidden by default, visible only on interaction / hover / scrolling */
-.monaco-editor .scrollbar {
-  opacity: 0 !important;
-  transition: opacity 0.2s ease-in-out !important;
-}
-
-.monaco-editor:hover .scrollbar,
-.monaco-editor .scrollbar.visible,
-.monaco-editor .scrollbar:hover,
-.monaco-editor .scrollbar.active,
-.monaco-editor .scrollbar.scrolling {
-  opacity: 1 !important;
-}
-
-.monaco-editor .scrollbar .slider {
-  border-radius: 9999px !important;
-  background: hsl(var(--muted-foreground) / 0.25) !important;
-  transition: background 0.15s ease !important;
-}
-
-.monaco-editor .scrollbar .slider:hover,
-.monaco-editor .scrollbar .slider.active {
-  background: hsl(var(--muted-foreground) / 0.5) !important;
-}
-
-.monaco-editor .suggest-widget,
-.monaco-editor .monaco-hover,
-.monaco-editor .parameter-hints-widget {
-  border-radius: 8px !important;
-  border-color: var(--border) !important;
-  box-shadow: 0 18px 40px oklch(0% 0 0 / 0.14), 0 2px 8px oklch(0% 0 0 / 0.08) !important;
-}
-
-.monaco-editor .find-widget {
-  border-radius: 8px !important;
-  box-shadow: 0 12px 28px oklch(0% 0 0 / 0.12) !important;
-}
-
 @keyframes flux-flash-active-line {
   0% {
     background-color: color-mix(in oklch, var(--primary) 35%, transparent);
@@ -1204,4 +1171,24 @@
 .inspector-scrollbar::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
 }
+
+/* --------------------------------------------------------------------------
+   Rendering Performance: CSS content-visibility for large lists & tables
+   Defers layout & painting for off-screen rows (Vercel React Best Practices)
+   -------------------------------------------------------------------------- */
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 44px;
+}
+
+.content-auto-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 40px;
+}
+
+.content-auto-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 120px;
+}
+
 

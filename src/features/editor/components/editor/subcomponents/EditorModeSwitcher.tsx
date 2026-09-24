@@ -99,7 +99,7 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
               <span className="font-medium">Editing</span>
               {!reviewMode && <Check className="size-3 shrink-0 text-primary" />}
             </div>
-            <p className="text-[11px] text-muted-foreground font-normal leading-tight mt-0.5">
+            <p className="text-11 text-muted-foreground font-normal leading-tight mt-0.5">
               Edit document directly in real-time
             </p>
           </div>
@@ -124,7 +124,7 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
                 <Check className="size-3 shrink-0 text-amber-600 dark:text-amber-400" />
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground font-normal leading-tight mt-0.5">
+            <p className="text-11 text-muted-foreground font-normal leading-tight mt-0.5">
               Edits become proposed suggestions (Track Changes)
             </p>
           </div>
@@ -133,7 +133,7 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
         {reviewMode && (
           <>
             <DropdownMenuSeparator className="my-1" />
-            <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <div className="px-2 py-1 text-10 font-semibold text-muted-foreground tracking-normal">
               Display Mode
             </div>
             <DropdownMenuItem

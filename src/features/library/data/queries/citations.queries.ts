@@ -57,3 +57,19 @@ export function useAcademicResolver() {
     },
   });
 }
+
+export function useSearchCslStyles(query: string = '', limit: number = 30) {
+  return useQuery({
+    queryKey: [...citationKeys.all, 'styles-search', query, limit] as const,
+    queryFn: () => CitationService.searchStyles(query, limit),
+    staleTime: 1000 * 60 * 60,
+  });
+}
+
+export function useUploadCustomCslStyle() {
+  return useMutation({
+    mutationFn: async ({ xml, title }: { xml: string; title?: string }) => {
+      return CitationService.uploadCustomStyle(xml, title);
+    },
+  });
+}

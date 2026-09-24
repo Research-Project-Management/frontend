@@ -2,21 +2,48 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useParams, useRouter, useSearchParams, usePathname } from "next/navigation";
+import dynamic from "next/dynamic";
 import Topbar from "../components/layout/Topbar";
 import { FilterPillsBar } from "../components/filters/FilterPillsBar";
-import { AnalyticsDrawer } from "../components/analytics/AnalyticsDrawer";
 import { BoardView } from "../components/views/BoardView";
 import { ListView } from "../components/views/ListView";
-import { CalendarView } from "../components/views/CalendarView";
-import { TableView } from "../components/views/TableView";
-import { TimelineView } from "../components/views/TimelineView";
 import { EmptyState } from "../components/views/EmptyState";
-import { CreateModal } from "../components/modals/CreateModal";
-import { DetailModal } from "../components/modals/DetailModal";
-import { DeleteModal } from "../components/modals/DeleteModal";
-import { TransferModal } from "../components/modals/TransferModal";
-import { AddExistingModal } from "../components/modals/AddExistingModal";
+
+const CalendarView = dynamic(
+  () => import("../components/views/CalendarView").then((m) => m.CalendarView),
+  { ssr: false }
+);
+const TableView = dynamic(
+  () => import("../components/views/TableView").then((m) => m.TableView),
+  { ssr: false }
+);
+const TimelineView = dynamic(
+  () => import("../components/views/TimelineView").then((m) => m.TimelineView),
+  { ssr: false }
+);
+
+const CreateModal = dynamic(
+  () => import("../components/modals/CreateModal").then((m) => m.CreateModal),
+  { ssr: false }
+);
+const DetailModal = dynamic(
+  () => import("../components/modals/DetailModal").then((m) => m.DetailModal),
+  { ssr: false }
+);
+const DeleteModal = dynamic(
+  () => import("../components/modals/DeleteModal").then((m) => m.DeleteModal),
+  { ssr: false }
+);
+const TransferModal = dynamic(
+  () => import("../components/modals/TransferModal").then((m) => m.TransferModal),
+  { ssr: false }
+);
+const AddExistingModal = dynamic(
+  () => import("../components/modals/AddExistingModal").then((m) => m.AddExistingModal),
+  { ssr: false }
+);
 import { BulkActionBar } from "../components/layout/BulkActionBar";
+import { AnalyticsDrawer } from "../components/analytics/AnalyticsDrawer";
 import {
   useProject,
   useBulkUpdate,
@@ -1222,21 +1249,23 @@ export function WorkItemPage({
       />
 
       {/* Work Item Create Dialog */}
-      <CreateModal
-        open={modal.type === 'create'}
-        onOpenChange={(open) => {
-          if (!open) closeModal();
-        }}
-        columns={columns}
-        members={members}
-        initialData={modal.type === 'create' ? modal.initialData : undefined}
-        cycleId={cycleId}
-        project={project || undefined}
-        cycles={cycles}
-        availableItems={allItems}
-        onSubmit={handleCreateItem}
-        isSubmitting={projectState.isSaving}
-      />
+      {modal.type === 'create' && (
+        <CreateModal
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) closeModal();
+          }}
+          columns={columns}
+          members={members}
+          initialData={modal.initialData}
+          cycleId={cycleId}
+          project={project || undefined}
+          cycles={cycles}
+          availableItems={allItems}
+          onSubmit={handleCreateItem}
+          isSubmitting={projectState.isSaving}
+        />
+      )}
 
       {/* Work Item Detail Dialog */}
       {modal.type === 'detail' && (
@@ -1297,37 +1326,43 @@ export function WorkItemPage({
       />
 
       {/* Work Item Delete Confirmation Modal */}
-      <DeleteModal
-        open={modal.type === 'delete'}
-        onOpenChange={(open) => !open && closeModal()}
-        item={modal.type === 'delete' ? modal.item : null}
-        onConfirm={handleItemDeleteConfirm}
-        isDeleting={projectState.status.isDeleting}
-      />
+      {modal.type === 'delete' && (
+        <DeleteModal
+          open={true}
+          onOpenChange={(open) => !open && closeModal()}
+          item={modal.item}
+          onConfirm={handleItemDeleteConfirm}
+          isDeleting={projectState.status.isDeleting}
+        />
+      )}
 
       {/* Cycle Modals */}
       {cycleId && (
         <>
-          <AddExistingModal
-            open={modal.type === 'add-existing'}
-            onOpenChange={(open: boolean) => (open ? setModal({ type: 'add-existing' }) : closeModal())}
-            projectId={projectId}
-            currentCycleId={cycleId}
-            columns={columns}
-            members={members}
-          />
+          {modal.type === 'add-existing' && (
+            <AddExistingModal
+              open={true}
+              onOpenChange={(open: boolean) => (open ? setModal({ type: 'add-existing' }) : closeModal())}
+              projectId={projectId}
+              currentCycleId={cycleId}
+              columns={columns}
+              members={members}
+            />
+          )}
 
-          <TransferModal
-            open={modal.type === 'transfer'}
-            onOpenChange={(open: boolean) => (open ? setModal({ type: 'transfer' }) : closeModal())}
-            projectId={projectId}
-            sourceCycleId={cycleId}
-            sourceCycleName={currentCycle?.name || "Current Cycle"}
-            items={allItems}
-            availableCycles={cycles}
-            columns={columns}
-            members={members}
-          />
+          {modal.type === 'transfer' && (
+            <TransferModal
+              open={true}
+              onOpenChange={(open: boolean) => (open ? setModal({ type: 'transfer' }) : closeModal())}
+              projectId={projectId}
+              sourceCycleId={cycleId}
+              sourceCycleName={currentCycle?.name || "Current Cycle"}
+              items={allItems}
+              availableCycles={cycles}
+              columns={columns}
+              members={members}
+            />
+          )}
         </>
       )}
 

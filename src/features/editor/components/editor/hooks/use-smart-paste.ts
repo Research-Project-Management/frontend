@@ -9,7 +9,6 @@
  */
 
 import { useEffect, useRef } from 'react';
-import type { editor } from 'monaco-editor';
 import { toast } from 'sonner';
 import {
   isTableData,
@@ -21,8 +20,8 @@ import {
 import { StorageService } from '@/features/editor/services/storage.service';
 
 interface UseSmartPasteOptions {
-  editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
-  monacoRef: React.MutableRefObject<any>;
+  editorRef?: React.MutableRefObject<any>;
+  monacoRef?: React.MutableRefObject<any>;
   pageId?: string | null;
   enabled?: boolean;
 }
@@ -36,10 +35,10 @@ export function useSmartPaste({
   const isUploadingRef = useRef(false);
 
   useEffect(() => {
-    const editor = editorRef.current;
+    const editor = editorRef?.current;
     if (!editor || !enabled) return;
 
-    const domNode = editor.getDomNode();
+    const domNode = editor.getDomNode ? editor.getDomNode() : null;
     if (!domNode) return;
 
     const handlePaste = async (e: ClipboardEvent) => {

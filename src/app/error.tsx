@@ -1,6 +1,7 @@
 'use client';
 
-import { Button } from "@/shared/components/ui/button";
+import React from 'react';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 
 export default function GlobalError({
   error,
@@ -10,17 +11,12 @@ export default function GlobalError({
   reset: () => void;
 }) {
   return (
-    <main className="pt-16 p-4 container mx-auto space-y-4">
-      <h1 className="text-xl font-semibold tracking-tight text-foreground">Oops!</h1>
-      <p className="text-sm text-muted-foreground">An unexpected error occurred.</p>
-      {process.env.NODE_ENV === 'development' && (
-        <pre className="w-full p-4 overflow-x-auto rounded-md border border-border bg-muted text-xs">
-          <code>{error.message}</code>
-        </pre>
-      )}
-      <Button type="button" onClick={reset} variant="default" size="md">
-        Try again
-      </Button>
-    </main>
+    <PlaneErrorState
+      isFullPage
+      title="An unexpected error occurred"
+      description="The application encountered an unexpected rendering error. Your saved data remains safe."
+      error={error}
+    />
   );
 }
+

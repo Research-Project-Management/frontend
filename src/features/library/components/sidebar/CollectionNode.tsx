@@ -79,9 +79,10 @@ export function CollectionNode({
       try {
         const raw = e.dataTransfer.getData('application/x-flux-items');
         if (raw) {
-          const parsed = JSON.parse(raw) as { ids?: string[] };
-          if (parsed.ids && parsed.ids.length > 0) {
-            onDropItems?.(parsed.ids, node.id);
+          const parsed = JSON.parse(raw) as string[] | { ids?: string[] };
+          const ids = Array.isArray(parsed) ? parsed : (parsed?.ids || []);
+          if (ids.length > 0) {
+            onDropItems?.(ids, node.id);
           }
         }
       } catch (err) {

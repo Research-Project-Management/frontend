@@ -44,8 +44,8 @@ export default function EditorLayout({
   return (
     <ErrorBoundary
       variant="full"
-      featureName="Trình soạn thảo văn bản"
-      description="Đã xảy ra sự cố trong quá trình kết xuất trình soạn thảo. Nhấn Thử lại để khôi phục trạng thái."
+      featureName="Document Editor"
+      description="An issue occurred while rendering the document editor."
     >
       {children}
     </ErrorBoundary>

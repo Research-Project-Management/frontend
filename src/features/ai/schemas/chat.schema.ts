@@ -59,11 +59,28 @@ export const responseWidgetSchema = z.discriminatedUnion('type', [
   metricSummaryWidgetSchema,
 ]);
 
+export const agentActionSchema = z.object({
+  type: z.enum(['tool_start', 'tool_end', 'tool_call', 'agent_handoff', 'agent_done', 'thinking']),
+  tool: z.string().optional(),
+  agent: z.string().optional(),
+  status: z.enum(['calling', 'done', 'error']).optional(),
+  input: z.record(z.string(), z.unknown()).optional(),
+  output: z.record(z.string(), z.unknown()).optional(),
+  needs_confirm: z.boolean().optional(),
+  error: z.string().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  parallel: z.boolean().optional(),
+  request: z.string().optional(),
+  success: z.boolean().optional(),
+});
+
 export const chatMessageSchema = z.object({
   role: z.enum(['user', 'assistant']),
   content: z.string(),
   sources: z.array(sourceItemSchema).optional(),
   widgets: z.array(responseWidgetSchema).optional(),
+  actions: z.array(agentActionSchema).optional(),
   selectionContext: z
     .object({
       filename: z.string(),
@@ -99,22 +116,6 @@ export const createChatSessionSchema = z.object({
   projectId: z.string().optional(),
   messages: z.array(chatMessageSchema),
   documentIds: z.array(z.string()).optional(),
-});
-
-export const agentActionSchema = z.object({
-  type: z.enum(['tool_start', 'tool_end', 'tool_call', 'agent_handoff', 'agent_done', 'thinking']),
-  tool: z.string().optional(),
-  agent: z.string().optional(),
-  status: z.enum(['calling', 'done', 'error']).optional(),
-  input: z.record(z.string(), z.unknown()).optional(),
-  output: z.record(z.string(), z.unknown()).optional(),
-  needs_confirm: z.boolean().optional(),
-  error: z.string().optional(),
-  from: z.string().optional(),
-  to: z.string().optional(),
-  parallel: z.boolean().optional(),
-  request: z.string().optional(),
-  success: z.boolean().optional(),
 });
 
 export const agentIdSchema = z.enum([

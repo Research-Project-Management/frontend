@@ -228,7 +228,7 @@ export function latexToHtml(latex: string): string {
       return `\n\n<div class="latex-protected-block my-4 p-3 bg-muted/30 border border-border/80 rounded-md font-mono text-xs" data-raw-latex="${enc}">
         <div class="flex items-center justify-between text-muted-foreground pb-2 border-b border-border/50 select-none">
           <span class="font-semibold text-foreground/80 flex items-center gap-1.5">📦 LaTeX [${escapeHtml(label)}]</span>
-          <span class="text-[10px] bg-muted px-1.5 py-0.5 rounded">Protected Block</span>
+          <span class="text-10 bg-muted px-1.5 py-0.5 rounded">Protected Block</span>
         </div>
         <pre class="mt-2 text-foreground/90 whitespace-pre-wrap overflow-x-auto select-all">${escapeHtml(block.trim())}</pre>
       </div>\n\n`;
@@ -270,7 +270,7 @@ export function latexToHtml(latex: string): string {
 
   // 5. Preserve labels: \label{xyz}
   text = text.replace(/\\label\{([^}]+)\}/g, (_, labelKey) => {
-    return `<span class="latex-label-token inline-flex items-center text-[10px] font-mono bg-muted/60 text-muted-foreground px-1 py-0.5 rounded ml-1 select-none" data-label="${encodeURIComponent(labelKey)}">🏷️${escapeHtml(labelKey)}</span>`;
+    return `<span class="latex-label-token inline-flex items-center text-10 font-mono bg-muted/60 text-muted-foreground px-1 py-0.5 rounded ml-1 select-none" data-label="${encodeURIComponent(labelKey)}">🏷️${escapeHtml(labelKey)}</span>`;
   });
 
   // 6. Sectioning

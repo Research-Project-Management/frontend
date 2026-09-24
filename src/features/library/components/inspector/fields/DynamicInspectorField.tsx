@@ -104,7 +104,8 @@ export function DynamicInspectorField({
               target="_blank"
               rel="noreferrer noopener"
               className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer focus-visible:outline-none"
-              aria-label="Open DOI link in new tab"
+              aria-label="Open DOI"
+              title="Open DOI"
             >
               <ExternalLink className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
             </a>
@@ -114,6 +115,7 @@ export function DynamicInspectorField({
               onClick={() => onCopy(displayDoi, 'DOI')}
               className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer focus-visible:outline-none"
               aria-label="Copy DOI"
+              title="Copy DOI"
             >
               {copiedKey === 'DOI' ? (
                 <CheckCircle2 className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
@@ -131,7 +133,8 @@ export function DynamicInspectorField({
               type="button"
               onClick={() => onCopy(`\\cite{${val}}`, 'Citation Key')}
               className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none"
-              aria-label={`Copy citation key \\cite{${val}}`}
+              aria-label="Copy citation key"
+              title="Copy citation key"
             >
               {copiedKey === 'Citation Key' ? (
                 <CheckCircle2 className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
@@ -150,7 +153,8 @@ export function DynamicInspectorField({
               target="_blank"
               rel="noreferrer noopener"
               className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer focus-visible:outline-none"
-              aria-label="Open URL in new tab"
+              aria-label="Open URL"
+              title="Open URL"
             >
               <ExternalLink className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
             </a>
@@ -169,7 +173,8 @@ export function DynamicInspectorField({
               target="_blank"
               rel="noreferrer noopener"
               className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer focus-visible:outline-none"
-              aria-label={`Open in PubMed ${fieldDef.field.toUpperCase()} in new tab`}
+              aria-label="Open in PubMed"
+              title="Open in PubMed"
             >
               <ExternalLink className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
             </a>
@@ -184,7 +189,8 @@ export function DynamicInspectorField({
               target="_blank"
               rel="noreferrer noopener"
               className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer focus-visible:outline-none"
-              aria-label="Open in arXiv in new tab"
+              aria-label="Open in arXiv"
+              title="Open in arXiv"
             >
               <ExternalLink className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
             </a>

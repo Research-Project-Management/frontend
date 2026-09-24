@@ -266,7 +266,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-background">
         <div className="flex min-w-0 items-center gap-1.5">
           <SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="truncate text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <span className="truncate text-xs font-semibold text-muted-foreground tracking-normal">
             Project Search
           </span>
         </div>
@@ -339,7 +339,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                 onClick={handleReplaceAllCurrentFile}
                 disabled={!debouncedQuery}
                 aria-label="Replace in active file"
-                className="h-7 rounded-md bg-muted px-2 text-[11px] font-medium text-foreground transition-colors hover:bg-muted/80 disabled:opacity-50 cursor-pointer"
+                className="h-7 rounded-md bg-muted px-2 text-11 font-medium text-foreground transition-colors hover:bg-muted/80 disabled:opacity-50 cursor-pointer"
                 title="Replace all matches in current active file"
               >
                 In Current File
@@ -349,7 +349,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                 onClick={handleReplaceAllEverywhere}
                 disabled={!debouncedQuery || isReplacingAll}
                 aria-label="Replace all in project"
-                className="h-7 rounded-md bg-primary px-2.5 text-[11px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer shadow-2xs"
+                className="h-7 rounded-md bg-primary px-2.5 text-11 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer shadow-2xs"
                 title="Replace all matches across all project files"
               >
                 {isReplacingAll ? "Replacing..." : "All Files"}
@@ -473,7 +473,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                                 }
                                 className="flex w-full cursor-pointer items-start gap-2.5 px-3 py-1.5 pl-7 text-left text-xs transition-colors hover:bg-primary/5 outline-none focus-visible:bg-muted"
                               >
-                                <span className="text-muted-foreground/70 w-7 text-right shrink-0 font-mono text-[11px] pt-0.5">
+                                <span className="text-muted-foreground/70 w-7 text-right shrink-0 font-mono text-11 pt-0.5">
                                   {match.line}
                                 </span>
                                 <span className="truncate font-mono text-xs text-foreground/80 leading-snug">
@@ -496,7 +496,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
               <div className="flex h-40 flex-col items-center justify-center gap-1.5 text-center text-muted-foreground px-4">
                 <SearchIcon className="size-6 opacity-30 shrink-0" />
                 <p className="text-xs font-medium">No results found</p>
-                <p className="text-[11px] text-muted-foreground/80">
+                <p className="text-11 text-muted-foreground/80">
                   No matching text found across project files.
                 </p>
               </div>
@@ -506,7 +506,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
           <div className="flex h-64 flex-col items-center justify-center gap-2 px-5 text-center text-muted-foreground">
             <SearchIcon className="size-8 opacity-25 shrink-0" />
             <p className="text-xs font-medium text-foreground/75">Project-wide Search</p>
-            <p className="text-[11px] text-muted-foreground/80 max-w-[200px]">
+            <p className="text-11 text-muted-foreground/80 max-w-[200px]">
               Search text across all LaTeX, BibTeX, and project files. Press <kbd className="px-1 py-0.5 rounded-sm bg-muted border border-border font-mono text-10">Ctrl+Shift+F</kbd> anytime.
             </p>
           </div>

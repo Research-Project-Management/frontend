@@ -1,15 +1,14 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
-import type { editor } from 'monaco-editor';
 import type { PageComment, PageSuggestion } from '@/features/editor/types';
 import { useCompileStore, usePageStore, useSettingsStore } from '@/features/editor/store';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import type { InlineSuggestionWidgetData } from '../subcomponents/InlineSuggestionWidget';
 
 export interface UseEditorDecorationsOptions {
-  editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
-  monacoRef: React.MutableRefObject<any>;
+  editorRef?: React.MutableRefObject<any>;
+  monacoRef?: React.MutableRefObject<any>;
   comments: PageComment[];
   suggestions: PageSuggestion[];
   editorMounted: boolean;
@@ -26,8 +25,8 @@ export function useEditorDecorations({
   const activeFilePage = usePageStore((s) => s.activeFilePage);
   const currentPage = usePageStore((s) => s.currentPage);
   const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
-  const decorationCollRef = useRef<editor.IEditorDecorationsCollection | null>(null);
-  const suggestionDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null);
+  const decorationCollRef = useRef<any>(null);
+  const suggestionDecorationsRef = useRef<any>(null);
   const lineCommentsRef = useRef<Map<number, PageComment[]>>(new Map());
   const suggestionsRef = useRef<PageSuggestion[]>(suggestions);
   suggestionsRef.current = suggestions;
@@ -74,11 +73,11 @@ export function useEditorDecorations({
     );
   }, [comments, editorMounted]);
 
-  // Synchronize compilation errors with Monaco inline squiggles & markers
+  // Synchronize compilation errors with inline squiggles & markers
   useEffect(() => {
-    const ed = editorRef.current;
-    const monaco = monacoRef.current;
-    if (!ed || !monaco) return;
+    const ed = editorRef?.current;
+    const monaco = monacoRef?.current;
+    if (!ed || !monaco || !ed.getModel) return;
     const model = ed.getModel();
     if (!model) return;
 
@@ -102,7 +101,7 @@ export function useEditorDecorations({
       );
     });
 
-    const markers: editor.IMarkerData[] = relevantErrors.map((err) => {
+    const markers: any[] = relevantErrors.map((err) => {
       const line = Math.max(1, Math.min(err.line || 1, model.getLineCount()));
       const lineContent = model.getLineContent(line);
       const isWarning = err.severity === 'warning';
@@ -119,27 +118,27 @@ export function useEditorDecorations({
     monaco.editor.setModelMarkers(model, 'latex-compiler', markers);
   }, [compileErrors, activeFilePage?.title, currentPage?.title, editorMounted, editorRef, monacoRef]);
 
-  // Synchronize Track Changes (Suggestions) with Monaco inline decorations
+  // Synchronize Track Changes (Suggestions) with inline decorations
   useEffect(() => {
-    const ed = editorRef.current;
-    const monaco = monacoRef.current;
-    if (!ed || !monaco) return;
+    const ed = editorRef?.current;
+    const monaco = monacoRef?.current;
+    if (!ed || !monaco || !ed.getModel) return;
     const model = ed.getModel();
     if (!model) return;
 
     if (!suggestionDecorationsRef.current) {
-      suggestionDecorationsRef.current = ed.createDecorationsCollection([]);
+      suggestionDecorationsRef.current = ed.createDecorationsCollection ? ed.createDecorationsCollection([]) : null;
     }
 
     // View Mode: 'original' hides all suggestions, showing clean original text
     if (!suggestions || suggestions.length === 0 || trackChangesViewMode === 'original') {
-      suggestionDecorationsRef.current.set([]);
+      suggestionDecorationsRef.current?.set([]);
       return;
     }
 
     const maxLine = model.getLineCount();
 
-    const newDecs: editor.IModelDeltaDecoration[] = suggestions.flatMap((s): editor.IModelDeltaDecoration[] => {
+    const newDecs: any[] = suggestions.flatMap((s): any[] => {
       if (s.status !== 'pending' && s.status) return [];
 
       const isDelete = s.type === 'delete';
@@ -253,25 +252,29 @@ export function useEditorDecorations({
 
   // Setup gutter and mouse event listeners for comments
   const bindDecorationListeners = (
-    ed: editor.IStandaloneCodeEditor,
+    ed: any,
     monaco: any,
   ): { dispose: () => void } => {
-    const scrollDisposable = ed.onDidScrollChange(() => {
+    if (!ed || !monaco) {
+      return { dispose: () => {} };
+    }
+
+    const scrollDisposable = ed?.onDidScrollChange?.(() => {
       setActiveSuggestionWidgetData(null);
       setGlyphTooltip(null);
-    });
+    }) ?? { dispose: () => {} };
 
-    const moveDisposable = ed.onMouseMove((e) => {
+    const moveDisposable = ed?.onMouseMove?.((e: any) => {
       const target = e.target;
       const isGlyph =
-        target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN ||
-        target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS;
+        target?.type === monaco.editor?.MouseTargetType?.GUTTER_GLYPH_MARGIN ||
+        target?.type === monaco.editor?.MouseTargetType?.GUTTER_LINE_NUMBERS;
 
       if (isGlyph && target.position) {
         const line = target.position.lineNumber;
         const matched = lineCommentsRef.current.get(line);
         if (matched && matched.length > 0) {
-          const editorDom = ed.getDomNode();
+          const editorDom = ed.getDomNode?.();
           if (editorDom) {
             const rect = editorDom.getBoundingClientRect();
             const glyphLeft = rect.left + (e.event.posx - rect.left);
@@ -286,19 +289,19 @@ export function useEditorDecorations({
         }
       }
       setGlyphTooltip(null);
-    });
+    }) ?? { dispose: () => {} };
 
-    const leaveDisposable = ed.onMouseLeave(() => {
+    const leaveDisposable = ed?.onMouseLeave?.(() => {
       setGlyphTooltip(null);
-    });
+    }) ?? { dispose: () => {} };
 
-    const downDisposable = ed.onMouseDown((e) => {
+    const downDisposable = ed?.onMouseDown?.((e: any) => {
       const target = e.target;
 
       // Handle comment glyph click
       if (
-        (target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN ||
-          target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS) &&
+        (target?.type === monaco.editor?.MouseTargetType?.GUTTER_GLYPH_MARGIN ||
+          target?.type === monaco.editor?.MouseTargetType?.GUTTER_LINE_NUMBERS) &&
         target.position
       ) {
         const line = target.position.lineNumber;
@@ -314,8 +317,8 @@ export function useEditorDecorations({
 
       // Handle suggestion click: open interactive suggestion action widget
       if (
-        (target.type === monaco.editor.MouseTargetType.CONTENT_TEXT ||
-          target.type === monaco.editor.MouseTargetType.CONTENT_EMPTY) &&
+        (target?.type === monaco.editor?.MouseTargetType?.CONTENT_TEXT ||
+          target?.type === monaco.editor?.MouseTargetType?.CONTENT_EMPTY) &&
         target.position
       ) {
         const line = target.position.lineNumber;
@@ -332,10 +335,10 @@ export function useEditorDecorations({
         });
 
         if (matched) {
-          const editorDom = ed.getDomNode();
+          const editorDom = ed.getDomNode?.();
           if (editorDom) {
             const rect = editorDom.getBoundingClientRect();
-            const visPos = ed.getScrolledVisiblePosition(target.position);
+            const visPos = ed.getScrolledVisiblePosition?.(target.position);
             if (visPos) {
               setActiveSuggestionWidgetData({
                 suggestion: matched,
@@ -350,14 +353,14 @@ export function useEditorDecorations({
 
       // Clicked on plain editor code -> dismiss suggestion widget
       setActiveSuggestionWidgetData(null);
-    });
+    }) ?? { dispose: () => {} };
 
     return {
       dispose: () => {
-        scrollDisposable.dispose();
-        moveDisposable.dispose();
-        leaveDisposable.dispose();
-        downDisposable.dispose();
+        scrollDisposable?.dispose?.();
+        moveDisposable?.dispose?.();
+        leaveDisposable?.dispose?.();
+        downDisposable?.dispose?.();
       },
     };
   };

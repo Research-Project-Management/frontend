@@ -57,7 +57,7 @@ export const GlyphTooltip = React.memo(function GlyphTooltip({ tooltip }: GlyphT
           )}
         </div>
       ))}
-      <div className="mt-2 pt-1.5 border-t border-border/60 text-[10px] text-muted-foreground/80 flex items-center justify-between">
+      <div className="mt-2 pt-1.5 border-t border-border/60 text-10 text-muted-foreground/80 flex items-center justify-between">
         <span>Click glyph to open review</span>
         <span className="font-mono text-10 bg-muted px-1 py-0.5 rounded-sm">Gutter</span>
       </div>

@@ -67,6 +67,8 @@ export default function MyFilesPage() {
   const {
     data,
     isLoading: isFilesLoading,
+    isError,
+    error,
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
@@ -215,6 +217,8 @@ export default function MyFilesPage() {
       >
         <StorageViewContainer
           isLoading={isFilesLoading && !data}
+          isError={isError}
+          error={error instanceof Error ? error : undefined}
           viewProps={viewProps}
           searchQuery={searchQuery}
           onClearSearch={() => setSearchQuery('')}

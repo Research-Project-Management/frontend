@@ -25,7 +25,7 @@ export function extractFilterBadges(filters?: Record<string, any>): FilterBadgeI
     badges.push({
       label: 'State',
       value: filters.state_group.map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(', '),
-      color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+      color: 'bg-primary/10 text-primary border-primary/20',
     });
   }
 

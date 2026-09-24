@@ -548,7 +548,7 @@ export default function HistoryView() {
         <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90 hover:text-foreground cursor-pointer">
           <GitBranch className="size-3.5 text-primary" />
           <span>{currentPage?.title || 'Project History'}</span>
-          <span className="text-[11px] font-normal text-muted-foreground">/ Version History</span>
+          <span className="text-11 font-normal text-muted-foreground">/ Version History</span>
         </div>
 
         {/* Right: Close & Status */}
@@ -563,7 +563,7 @@ export default function HistoryView() {
       <div className="flex-1 flex overflow-hidden">
         {/* ── Left Pane: Modified Files in this Revision (Width ~220px) ───── */}
         <div className="w-56 shrink-0 border-r border-border bg-background flex flex-col overflow-hidden">
-          <div className="px-3 py-2 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wider select-none">
+          <div className="px-3 py-2 border-b border-border text-11 font-semibold text-muted-foreground tracking-normal select-none">
             Project Files
           </div>
           <div className="flex-1 overflow-y-auto py-2 px-1.5 space-y-1">
@@ -578,7 +578,7 @@ export default function HistoryView() {
                   <FileText className="size-3.5 shrink-0" />
                   <span className="truncate">{activeRevision?.fileName || 'main.tex'}</span>
                 </div>
-                <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded-sm bg-primary-foreground/20 text-primary-foreground leading-none">
+                <span className="text-10 uppercase font-mono px-1.5 py-0.5 rounded-sm bg-primary-foreground/20 text-primary-foreground leading-none">
                   Edited
                 </span>
               </div>
@@ -603,7 +603,7 @@ export default function HistoryView() {
                     <div className="flex items-center gap-1 shrink-0">
                       <span
                         className={cn(
-                          'text-[10px] font-mono px-1.5 py-0.5 rounded-sm leading-none shrink-0',
+                          'text-10 font-mono px-1.5 py-0.5 rounded-sm leading-none shrink-0',
                           isActive
                             ? 'bg-primary-foreground/20 text-primary-foreground'
                             : 'bg-muted text-muted-foreground',
@@ -632,12 +632,12 @@ export default function HistoryView() {
 
             {deletedFiles.length > 0 && (
               <div className="pt-2 mt-2 border-t border-border">
-                <div className="px-2 py-1 flex items-center justify-between text-[11px] font-semibold text-rose-500/90 dark:text-rose-400 uppercase tracking-wider select-none">
+                <div className="px-2 py-1 flex items-center justify-between text-11 font-semibold text-rose-500/90 dark:text-rose-400 tracking-normal select-none">
                   <div className="flex items-center gap-1.5">
                     <Trash2 className="size-3 shrink-0" />
                     <span>Deleted Files</span>
                   </div>
-                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 font-mono text-[10px]">
+                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 font-mono text-10">
                     {deletedFiles.length}
                   </span>
                 </div>
@@ -660,7 +660,7 @@ export default function HistoryView() {
                           <span className="truncate">{file.title || 'deleted_file.tex'}</span>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-sm leading-none bg-rose-500/20 text-rose-300">
+                          <span className="text-10 font-mono px-1.5 py-0.5 rounded-sm leading-none bg-rose-500/20 text-rose-300">
                             Deleted
                           </span>
                           <button
@@ -701,7 +701,7 @@ export default function HistoryView() {
                   type="button"
                   onClick={() => setViewMode('diff')}
                   className={cn(
-                    'px-2 py-0.5 rounded-sm text-[11px] font-medium transition-colors cursor-pointer',
+                    'px-2 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer',
                     viewMode === 'diff'
                       ? 'bg-background text-foreground shadow-2xs font-semibold'
                       : 'text-muted-foreground hover:text-foreground',
@@ -713,7 +713,7 @@ export default function HistoryView() {
                   type="button"
                   onClick={() => setViewMode('snapshot')}
                   className={cn(
-                    'px-2 py-0.5 rounded-sm text-[11px] font-medium transition-colors cursor-pointer',
+                    'px-2 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer',
                     viewMode === 'snapshot'
                       ? 'bg-background text-foreground shadow-2xs font-semibold'
                       : 'text-muted-foreground hover:text-foreground',
@@ -725,7 +725,7 @@ export default function HistoryView() {
                   type="button"
                   onClick={() => setViewMode('timeline')}
                   className={cn(
-                    'px-2 py-0.5 rounded-sm text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1',
+                    'px-2 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer flex items-center gap-1',
                     viewMode === 'timeline'
                       ? 'bg-primary text-primary-foreground shadow-2xs font-semibold'
                       : 'text-muted-foreground hover:text-foreground',
@@ -738,11 +738,11 @@ export default function HistoryView() {
 
               {diffMode && (
                 <div className="flex items-center gap-1.5 animate-in fade-in duration-150">
-                  <span className="text-[11px] text-muted-foreground">Compare against:</span>
+                  <span className="text-11 text-muted-foreground">Compare against:</span>
                   <select
                     value={compareTargetId}
                     onChange={(e) => setCompareTargetId(e.target.value)}
-                    className="h-6 px-1.5 text-[11px] font-medium rounded-sm border border-border bg-background text-foreground cursor-pointer outline-none focus:ring-1 focus:ring-primary"
+                    className="h-6 px-1.5 text-11 font-medium rounded-sm border border-border bg-background text-foreground cursor-pointer outline-none focus:ring-1 focus:ring-primary"
                   >
                     <option value="current">Current Document</option>
                     {timelineItems
@@ -761,7 +761,7 @@ export default function HistoryView() {
 
               {/* Diff Stats Badge */}
               {diffMode && diffData?.stats && (
-                <div className="flex items-center gap-1.5 text-[11px] font-mono">
+                <div className="flex items-center gap-1.5 text-11 font-mono">
                   <span className="px-1.5 py-0.5 rounded-sm bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
                     +{diffData.stats.addedLines}
                   </span>
@@ -784,7 +784,7 @@ export default function HistoryView() {
                   type="button"
                   onClick={handleRestoreScrubPoint}
                   disabled={isScrubLoading}
-                  className="flex items-center gap-1.5 h-6 px-2.5 rounded-sm bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground font-semibold text-[11px] transition-colors cursor-pointer shadow-2xs"
+                  className="flex items-center gap-1.5 h-6 px-2.5 rounded-sm bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground font-semibold text-11 transition-colors cursor-pointer shadow-2xs"
                 >
                   <RotateCcw className="size-3 shrink-0" />
                   <span>Restore this point</span>
@@ -796,7 +796,7 @@ export default function HistoryView() {
                     <button
                       type="button"
                       onClick={() => handleRestoreDeletedFile()}
-                      className="flex items-center gap-1.5 h-6 px-2.5 rounded-sm bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold text-[11px] transition-colors cursor-pointer shadow-2xs"
+                      className="flex items-center gap-1.5 h-6 px-2.5 rounded-sm bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold text-11 transition-colors cursor-pointer shadow-2xs"
                       title={`Restore deleted file "${activeFileName}" back to project`}
                     >
                       <RotateCcw className="size-3 shrink-0" />
@@ -807,7 +807,7 @@ export default function HistoryView() {
                       type="button"
                       onClick={() => handleRestoreFile()}
                       disabled={isLoadingContent || previewContent === undefined}
-                      className="flex items-center gap-1.5 h-6 px-2.5 rounded-sm border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary font-semibold text-[11px] transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                      className="flex items-center gap-1.5 h-6 px-2.5 rounded-sm border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary font-semibold text-11 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
                       title={`Restore only "${activeFileName}" to this revision`}
                     >
                       <FileText className="size-3 shrink-0" />
@@ -819,7 +819,7 @@ export default function HistoryView() {
                   <button
                     type="button"
                     onClick={handleRestore}
-                    className="flex items-center gap-1.5 h-6 px-2.5 rounded-sm bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-[11px] transition-colors cursor-pointer shadow-2xs"
+                    className="flex items-center gap-1.5 h-6 px-2.5 rounded-sm bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-11 transition-colors cursor-pointer shadow-2xs"
                     title="Restore all project files to this revision"
                   >
                     <RotateCcw className="size-3 shrink-0" />
@@ -830,7 +830,7 @@ export default function HistoryView() {
                   <button
                     type="button"
                     onClick={() => handleDownloadVersionZip()}
-                    className="flex items-center gap-1.5 h-6 px-2.5 rounded-sm border border-border bg-background hover:bg-muted text-foreground font-medium text-[11px] transition-colors cursor-pointer shadow-2xs"
+                    className="flex items-center gap-1.5 h-6 px-2.5 rounded-sm border border-border bg-background hover:bg-muted text-foreground font-medium text-11 transition-colors cursor-pointer shadow-2xs"
                     title="Download project files at this revision as a ZIP archive"
                   >
                     <Download className="size-3 shrink-0 text-sky-500" />
@@ -847,7 +847,7 @@ export default function HistoryView() {
                         setLabelModalOpen(true);
                       }
                     }}
-                    className="flex items-center gap-1.5 h-6 px-2.5 rounded-sm border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 font-semibold text-[11px] transition-colors cursor-pointer shadow-2xs"
+                    className="flex items-center gap-1.5 h-6 px-2.5 rounded-sm border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 font-semibold text-11 transition-colors cursor-pointer shadow-2xs"
                     title="Add or edit a milestone label for this revision"
                   >
                     <Tag className="size-3 shrink-0" />
@@ -895,7 +895,7 @@ export default function HistoryView() {
 
               {/* Slider Track */}
               <div className="flex-1 flex items-center gap-3">
-                <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                <span className="text-10 font-mono text-muted-foreground shrink-0">
                   {new Date(minTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
                 <div className="relative flex-1 flex items-center">
@@ -908,7 +908,7 @@ export default function HistoryView() {
                     className="w-full h-1.5 bg-secondary rounded-full appearance-none cursor-pointer accent-primary focus:outline-none"
                   />
                 </div>
-                <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                <span className="text-10 font-mono text-muted-foreground shrink-0">
                   {new Date(maxTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
@@ -916,12 +916,12 @@ export default function HistoryView() {
               {/* Status and Ops Count */}
               <div className="flex items-center gap-2 shrink-0">
                 {isScrubLoading && (
-                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <div className="flex items-center gap-1 text-11 text-muted-foreground">
                     <Loader2 className="size-3 animate-spin text-primary" />
                     <span>Reconstructing…</span>
                   </div>
                 )}
-                <span className="px-2 py-0.5 rounded-sm bg-background border border-border text-[11px] font-mono text-muted-foreground">
+                <span className="px-2 py-0.5 rounded-sm bg-background border border-border text-11 font-mono text-muted-foreground">
                   {timelineOps.length} ops recorded
                 </span>
               </div>
@@ -970,7 +970,7 @@ export default function HistoryView() {
               >
                 <span>Labels</span>
                 {labeledCount > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-muted-foreground/20 text-foreground font-mono leading-none">
+                  <span className="text-10 px-1.5 py-0.2 rounded-full bg-muted-foreground/20 text-foreground font-mono leading-none">
                     {labeledCount}
                   </span>
                 )}
@@ -995,7 +995,7 @@ export default function HistoryView() {
                 <p className="font-semibold text-foreground">
                   {timelineTab === 'labels' ? 'No labeled versions' : 'No revisions found'}
                 </p>
-                <p className="text-[11px] text-muted-foreground mt-1">
+                <p className="text-11 text-muted-foreground mt-1">
                   {timelineTab === 'labels'
                     ? 'Label milestone revisions (e.g. "Draft v1", "Submitted to arXiv") to bookmark key checkpoints.'
                     : 'Changes will automatically be checkpointed as you compile and edit.'}
@@ -1004,7 +1004,7 @@ export default function HistoryView() {
             ) : (
               groupedTimeline.map(({ groupName, items }) => (
                 <div key={groupName} className="space-y-1.5">
-                  <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-1">
+                  <div className="text-11 font-bold text-muted-foreground tracking-normal px-1">
                     {groupName}
                   </div>
 
@@ -1078,7 +1078,7 @@ export default function HistoryView() {
 
                         {/* Label Badge if present */}
                         {item.label && (
-                          <div className="mt-1.5 flex items-center gap-1 px-2 py-0.5 rounded-sm bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 text-[11px] font-medium w-fit">
+                          <div className="mt-1.5 flex items-center gap-1 px-2 py-0.5 rounded-sm bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 text-11 font-medium w-fit">
                             <Tag className="size-3 shrink-0" />
                             <span className="truncate max-w-[200px]">{item.label}</span>
                           </div>

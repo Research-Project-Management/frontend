@@ -12,6 +12,8 @@ import {
   apiPatch,
   apiDelete,
   apiRawFetch,
+  getEffectiveBaseUrl,
+  getAuthToken,
 } from '@/shared/lib/api';
 import { logger } from '@/shared/lib/logger';
 
@@ -107,22 +109,23 @@ export async function* streamChatResponse(
   messages: ChatMessage[],
   options?: StreamChatOptions,
 ): AsyncGenerator<string, void, unknown> {
+  const { signal, onMeta, onAction, ...cleanOptions } = options ?? {};
   const aiMessages = messages.map(({ role, content }) => ({ role, content }));
   const response = await apiRawFetch('/api/ai/chat', 'POST', {
     messages: aiMessages,
-    project_id: options?.projectId ?? null,
-    document_ids: options?.documentIds ?? null,
-    intent_hint: options?.intentHint ?? null,
-    web_search_sites: options?.webSearchSites ?? null,
-    selection: options?.selection ?? null,
-    cursor_context: options?.cursorContext ?? null,
-    chat_id: options?.chatId ?? null,
-    ...options,
+    project_id: cleanOptions.projectId ?? null,
+    document_ids: cleanOptions.documentIds ?? null,
+    intent_hint: cleanOptions.intentHint ?? null,
+    web_search_sites: cleanOptions.webSearchSites ?? null,
+    selection: cleanOptions.selection ?? null,
+    cursor_context: cleanOptions.cursorContext ?? null,
+    chat_id: cleanOptions.chatId ?? null,
+    ...cleanOptions,
   }, {
     headers: {
       Accept: 'text/event-stream',
     },
-    signal: options?.signal,
+    signal,
   });
 
   if (!response.ok) {
@@ -195,33 +198,34 @@ export async function* streamEditorChat(
   messages: ChatMessage[],
   options?: StreamEditorChatOptions,
 ): AsyncGenerator<string, void, unknown> {
+  const { signal, onMeta, onAction, ...cleanOptions } = options ?? {};
   const aiMessages = messages.map(({ role, content }) => ({ role, content }));
   const response = await apiRawFetch('/api/ai/editor-chat', 'POST', {
     messages: aiMessages,
-    chat_id: options?.chatId ?? null,
-    project_id: options?.projectId ?? null,
-    document_ids: options?.documentIds ?? null,
-    filename: options?.filename ?? null,
-    file_content: options?.fileContent ?? null,
-    selection: options?.selection ?? null,
-    cursor_context: options?.cursorContext ?? null,
-    selection_start_line: options?.selectionStartLine ?? null,
-    selection_end_line: options?.selectionEndLine ?? null,
-    selection_start_column: options?.selectionStartColumn ?? null,
-    selection_end_column: options?.selectionEndColumn ?? null,
-    context_before: options?.contextBefore ?? null,
-    context_after: options?.contextAfter ?? null,
-    current_section: options?.currentSection ?? null,
-    current_environment: options?.currentEnvironment ?? null,
-    document_structure_summary: options?.documentStructureSummary ?? null,
-    compile_errors: options?.compileErrors ?? null,
-    user_selection: options?.userSelection ?? null,
-    ...options,
+    chat_id: cleanOptions.chatId ?? null,
+    project_id: cleanOptions.projectId ?? null,
+    document_ids: cleanOptions.documentIds ?? null,
+    filename: cleanOptions.filename ?? null,
+    file_content: cleanOptions.fileContent ?? null,
+    selection: cleanOptions.selection ?? null,
+    cursor_context: cleanOptions.cursorContext ?? null,
+    selection_start_line: cleanOptions.selectionStartLine ?? null,
+    selection_end_line: cleanOptions.selectionEndLine ?? null,
+    selection_start_column: cleanOptions.selectionStartColumn ?? null,
+    selection_end_column: cleanOptions.selectionEndColumn ?? null,
+    context_before: cleanOptions.contextBefore ?? null,
+    context_after: cleanOptions.contextAfter ?? null,
+    current_section: cleanOptions.currentSection ?? null,
+    current_environment: cleanOptions.currentEnvironment ?? null,
+    document_structure_summary: cleanOptions.documentStructureSummary ?? null,
+    compile_errors: cleanOptions.compileErrors ?? null,
+    user_selection: cleanOptions.userSelection ?? null,
+    ...cleanOptions,
   }, {
     headers: {
       Accept: 'text/event-stream',
     },
-    signal: options?.signal,
+    signal,
   });
 
   if (!response.ok) {
@@ -394,22 +398,98 @@ export async function clearPageChat(pageId: string): Promise<void> {
 
 // ── Document RAG & Sources ────────────────────────────────────────────────────
 
-export async function uploadDocument(
+export interface UploadDocumentProgress {
+  loaded: number;
+  total: number;
+  percent: number;
+  stage: 'uploading' | 'processing';
+}
+
+export function uploadDocument(
   scopeId: string,
   file: File,
+  onProgress?: (progress: UploadDocumentProgress) => void,
 ): Promise<{ id: string; name: string; size: number }> {
-  const formData = new FormData();
-  formData.append('file', file);
-  if (scopeId) {
-    formData.append('projectId', scopeId);
-  }
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const isPersonal =
+      !scopeId ||
+      scopeId === 'me' ||
+      scopeId === 'user' ||
+      scopeId === 'all' ||
+      scopeId === 'personal' ||
+      scopeId === 'null' ||
+      scopeId === 'undefined';
 
-  const response = await apiRawFetch('/api/ai/documents/upload', 'POST', formData);
-  if (!response.ok) {
-    throw new Error(`Failed to upload document: ${response.status}`);
-  }
-  const data = (await response.json()) as any;
-  return (data.data || data) as { id: string; name: string; size: number };
+    if (!isPersonal) {
+      formData.append('projectId', scopeId);
+    }
+    formData.append('scopeId', isPersonal ? 'user' : scopeId);
+
+    const xhr = new XMLHttpRequest();
+    const url = `${getEffectiveBaseUrl()}/api/ai/documents/upload`;
+
+    xhr.open('POST', url);
+    xhr.withCredentials = true;
+
+    const token = getAuthToken();
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    // Real-time byte upload tracking
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable && e.total > 0) {
+        const percent = Math.min(99, Math.round((e.loaded / e.total) * 100));
+        onProgress?.({
+          loaded: e.loaded,
+          total: e.total,
+          percent,
+          stage: 'uploading',
+        });
+      }
+    });
+
+    // Byte upload finished, server now parsing & embedding chunks into Qdrant
+    xhr.upload.addEventListener('load', () => {
+      onProgress?.({
+        loaded: file.size,
+        total: file.size,
+        percent: 100,
+        stage: 'processing',
+      });
+    });
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const json = JSON.parse(xhr.responseText) as any;
+          const data = json?.data || json;
+          resolve(data as { id: string; name: string; size: number });
+        } catch {
+          reject(new Error('Invalid response from server'));
+        }
+      } else {
+        try {
+          const errJson = JSON.parse(xhr.responseText) as any;
+          reject(new Error(errJson?.message || `Upload failed with status ${xhr.status}`));
+        } catch {
+          reject(new Error(`Failed to upload document: ${xhr.status}`));
+        }
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error('Network error during upload'));
+    };
+
+    xhr.ontimeout = () => {
+      reject(new Error('Upload timed out'));
+    };
+
+    xhr.send(formData);
+  });
 }
 
 export async function fetchDocumentsBulk(

@@ -23,8 +23,17 @@ import {
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui';
 import { Textarea } from '@/shared/components/ui';
-import ScientificViewerModal from './ScientificViewerModal';
-import VersionHistoryModal from '../modal/VersionHistoryModal';
+import dynamic from 'next/dynamic';
+
+const ScientificViewerModal = dynamic(
+  () => import('./ScientificViewerModal'),
+  { ssr: false }
+);
+
+const VersionHistoryModal = dynamic(
+  () => import('../modal/VersionHistoryModal'),
+  { ssr: false }
+);
 import {
   getFileType,
   getFileIcon,
@@ -97,32 +106,32 @@ export default function Preview() {
   const fileDetails = [
     {
       icon: <Tag className="size-3.5 text-muted-foreground/70 shrink-0" />,
-      label: 'Loại tệp',
+      label: 'Type',
       value: formatMimeType(item as any),
     },
     {
       icon: <HardDrive className="size-3.5 text-muted-foreground/70 shrink-0" />,
-      label: 'Kích thước',
+      label: 'Size',
       value: formatDetailedSize(item.size),
     },
     {
       icon: <Folder className="size-3.5 text-muted-foreground/70 shrink-0" />,
-      label: 'Vị trí',
+      label: 'Location',
       value: formatFileLocation(item, item.project?.name),
     },
     {
       icon: <User className="size-3.5 text-muted-foreground/70 shrink-0" />,
-      label: 'Chủ sở hữu',
+      label: 'Owner',
       value: item.author?.name || 'Researcher',
     },
     {
       icon: <Calendar className="size-3.5 text-muted-foreground/70 shrink-0" />,
-      label: 'Đã tạo',
+      label: 'Created',
       value: formatDetailedDate(item.createdAt),
     },
     {
       icon: <Clock className="size-3.5 text-muted-foreground/70 shrink-0" />,
-      label: 'Sửa đổi lần cuối',
+      label: 'Modified',
       value: formatDetailedDate(item.updatedAt),
     },
   ];
@@ -190,7 +199,7 @@ export default function Preview() {
                   {getFileIcon('image', 10)}
                 </div>
                 <span className="text-xs text-muted-foreground/50">
-                  Không thể hiển thị xem trước
+                  Unable to display preview
                 </span>
               </div>
             )
@@ -199,7 +208,7 @@ export default function Preview() {
               <div className="relative w-[calc(100%-32px)] mx-4 my-6 rounded-md overflow-hidden bg-muted h-32 flex items-center justify-center">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
                   <Loader2 className="size-3.5 animate-spin shrink-0" />
-                  Đang tải hình xem trước…
+                  Loading preview…
                 </div>
               </div>
             ) : previewDataUrl ? (
@@ -212,7 +221,7 @@ export default function Preview() {
               <div className="flex flex-col items-center gap-2 py-8">
                 <FileText className="size-9 text-muted-foreground/20 shrink-0" />
                 <span className="text-xs text-muted-foreground/50">
-                  Tài liệu PDF
+                  PDF Document
                 </span>
               </div>
             )
@@ -220,7 +229,7 @@ export default function Preview() {
             <div
               onClick={() => setScientificViewerOpen(true)}
               className="flex flex-col items-center gap-2.5 py-6 px-4 cursor-pointer hover:bg-muted/40 rounded-lg transition-all group"
-              title="Nhấp để xem bảng dữ liệu và mã nguồn"
+              title="Click to view data table & source code"
             >
               <div className="size-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-105 transition-transform shadow-xs">
                 {ext === 'csv' || ext === 'tsv' ? (
@@ -231,10 +240,10 @@ export default function Preview() {
               </div>
               <div className="text-center">
                 <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
-                  Dữ liệu {ext.toUpperCase()}
+                  {ext.toUpperCase()} Data
                 </span>
                 <p className="text-11 text-muted-foreground mt-0.5">
-                  Bấm để xem dữ liệu khoa học
+                  Click to open scientific viewer
                 </p>
               </div>
             </div>
@@ -247,7 +256,7 @@ export default function Preview() {
                 {getFileIcon(fileType, 10)}
               </div>
               <span className="text-xs text-muted-foreground/40">
-                {item.isFolder ? 'Thư mục' : 'Tập tin'}
+                {item.isFolder ? 'Folder' : 'File'}
               </span>
             </div>
           )}
@@ -258,20 +267,20 @@ export default function Preview() {
           <button
             onClick={handleDownload}
             className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
-            title="Tải tệp xuống máy tính"
+            title="Download file"
           >
             <Download className="size-3.5 shrink-0" />
-            Tải xuống
+            Download
           </button>
 
           {!item.isFolder && (
             <button
               onClick={() => setVersionHistoryOpen(true)}
               className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
-              title="Lịch sử phiên bản & Tải bản mới lên"
+              title="Version history & upload new version"
             >
               <History className="size-3.5 shrink-0 text-muted-foreground" />
-              Phiên bản
+              Versions
             </button>
           )}
 
@@ -279,10 +288,10 @@ export default function Preview() {
             <button
               onClick={() => setScientificViewerOpen(true)}
               className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-xs text-primary font-medium bg-primary/10 hover:bg-primary/20 transition-colors cursor-pointer"
-              title="Xem bảng tính & mã nguồn nghiên cứu"
+              title="View dataset & code"
             >
               <Table2 className="size-3.5 shrink-0" />
-              Dữ liệu
+              Dataset
             </button>
           )}
 
@@ -290,18 +299,18 @@ export default function Preview() {
             <button
               onClick={() => window.open(resolvedUrl || item.url, '_blank')}
               className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
-              title="Mở toàn màn hình trong tab mới"
+              title="Open in new tab"
             >
               <Maximize2 className="size-3.5 shrink-0" />
-              Mở rộng
+              Expand
             </button>
           )}
         </div>
 
-        {/* ─── Google Drive: Chi tiết tệp (File details) ──────────────── */}
+        {/* ─── File Details ──────────────── */}
         <div className="px-3.5 py-3.5 border-b border-border">
           <p className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
-            Chi tiết tệp
+            File details
           </p>
           <div className="divide-y divide-border/30">
             {fileDetails.map(({ icon, label, value }) => (
@@ -321,22 +330,22 @@ export default function Preview() {
           </div>
         </div>
 
-        {/* ─── Google Drive: Mô tả tệp (Description / Notes) ───────────── */}
+        {/* ─── Description / Notes ───────────── */}
         <div className="px-3.5 py-3.5">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-semibold text-foreground">
-              Mô tả tệp
+              Description
             </p>
             {!isSaved && (
               <span className="text-11 text-amber-500 font-medium">
-                Chưa lưu
+                Unsaved
               </span>
             )}
           </div>
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Thêm mô tả về tài liệu này..."
+            placeholder="Add a description for this file..."
             rows={3}
             className="text-xs resize-none bg-muted/20 border-border placeholder:text-muted-foreground/40 focus-visible:ring-1"
           />
@@ -354,7 +363,7 @@ export default function Preview() {
                 ) : (
                   <Save className="size-3 shrink-0" />
                 )}
-                Lưu mô tả
+                Save description
               </Button>
             </div>
           )}
@@ -362,18 +371,22 @@ export default function Preview() {
       </div>
 
       {/* ─── Scientific Data & Code Viewer Modal ───────────────────── */}
-      <ScientificViewerModal
-        open={scientificViewerOpen}
-        onOpenChange={setScientificViewerOpen}
-        file={item as any}
-      />
+      {scientificViewerOpen && (
+        <ScientificViewerModal
+          open={true}
+          onOpenChange={setScientificViewerOpen}
+          file={item as any}
+        />
+      )}
 
       {/* ─── Version History Modal ─────────────────────────────────── */}
-      <VersionHistoryModal
-        open={versionHistoryOpen}
-        onOpenChange={setVersionHistoryOpen}
-        file={item as any}
-      />
+      {versionHistoryOpen && (
+        <VersionHistoryModal
+          open={true}
+          onOpenChange={setVersionHistoryOpen}
+          file={item as any}
+        />
+      )}
     </div>
   );
 }

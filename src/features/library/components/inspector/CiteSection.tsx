@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Copy, Check, ChevronDown, Download, ShieldAlert, ExternalLink } from 'lucide-react';
+import { Copy, Check, ChevronDown, Download, ShieldAlert, ExternalLink, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from "@/shared/lib/utils";
 import {
@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/shared/components/ui";
 import {
   Tooltip,
@@ -19,6 +20,7 @@ import {
 import { useCslCitation } from '../../data';
 import type { Item, CslStyle } from '../../types/library.types';
 import { getPaperCitationKey, cleanDoi } from '../../domain';
+import CslStyleSearchModal from '../modals/CslStyleSearchModal';
 
 export interface CiteSectionProps {
   paper: Item;
@@ -37,9 +39,10 @@ export type CitationFormat =
   | 'harvard'
   | 'nature'
   | 'vancouver'
-  | 'ris';
+  | 'ris'
+  | (string & {});
 
-export const ALL_FORMATS: Array<{ id: CitationFormat; label: string }> = [
+export const DEFAULT_FORMATS: Array<{ id: CitationFormat; label: string }> = [
   { id: 'apa', label: 'APA' },
   { id: 'ieee', label: 'IEEE' },
   { id: 'mla', label: 'MLA' },
@@ -51,9 +54,11 @@ export const ALL_FORMATS: Array<{ id: CitationFormat; label: string }> = [
   { id: 'ris', label: 'RIS' },
 ];
 
+export const ALL_FORMATS = DEFAULT_FORMATS;
+
 // Fallback exports for backward compatibility
-export const PRIMARY_FORMATS = ALL_FORMATS.slice(0, 4);
-export const MORE_FORMATS = ALL_FORMATS.slice(4);
+export const PRIMARY_FORMATS = DEFAULT_FORMATS.slice(0, 4);
+export const MORE_FORMATS = DEFAULT_FORMATS.slice(4);
 
 /** Robust clipboard copy — tries modern Clipboard API, falls back to execCommand */
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -139,6 +144,43 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
   const [activeFormat, setActiveFormat] = useState<CitationFormat>('apa');
   const [copied, setCopied] = useState(false);
   const [copiedInText, setCopiedInText] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+
+  // Recently selected/installed custom styles
+  const [customFormats, setCustomFormats] = useState<Array<{ id: CitationFormat; label: string }>>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem('flux_custom_citation_formats');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return [];
+  });
+
+  const allFormats = useMemo(() => {
+    return [...DEFAULT_FORMATS, ...customFormats];
+  }, [customFormats]);
+
+  const handleSelectSearchedStyle = useCallback((style: { id: string; label: string }) => {
+    const inDefault = DEFAULT_FORMATS.some((f) => f.id === style.id);
+    if (!inDefault) {
+      setCustomFormats((prev) => {
+        const filtered = prev.filter((f) => f.id !== style.id);
+        const updated = [{ id: style.id, label: style.label }, ...filtered].slice(0, 10);
+        try {
+          localStorage.setItem('flux_custom_citation_formats', JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+        return updated;
+      });
+    }
+    setActiveFormat(style.id);
+  }, []);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
@@ -175,10 +217,10 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
     if (availableWidth <= 0) return;
 
     const children = Array.from(measure.children) as HTMLElement[];
-    if (children.length < ALL_FORMATS.length + 1) return;
+    if (children.length < allFormats.length + 1) return;
 
-    const itemWidths = children.slice(0, ALL_FORMATS.length).map((el) => el.offsetWidth);
-    const moreBtnEl = children[ALL_FORMATS.length];
+    const itemWidths = children.slice(0, allFormats.length).map((el) => el.offsetWidth);
+    const moreBtnEl = children[allFormats.length];
     const moreBtnWidth = moreBtnEl ? moreBtnEl.offsetWidth : 60;
     const gap = 4;
 
@@ -188,7 +230,7 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
     }
 
     if (totalAllWidth <= availableWidth) {
-      setVisibleCount(ALL_FORMATS.length);
+      setVisibleCount(allFormats.length);
       return;
     }
 
@@ -208,7 +250,7 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
     }
 
     setVisibleCount(Math.max(1, count));
-  }, []);
+  }, [allFormats.length]);
 
   useEffect(() => {
     updateOverflow();
@@ -224,8 +266,8 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
     return () => observer.disconnect();
   }, [updateOverflow]);
 
-  const primaryFormats = useMemo(() => ALL_FORMATS.slice(0, visibleCount), [visibleCount]);
-  const moreFormats = useMemo(() => ALL_FORMATS.slice(visibleCount), [visibleCount]);
+  const primaryFormats = useMemo(() => allFormats.slice(0, visibleCount), [allFormats, visibleCount]);
+  const moreFormats = useMemo(() => allFormats.slice(visibleCount), [allFormats, visibleCount]);
   const isMoreFormatActive = moreFormats.some((f) => f.id === activeFormat);
   const activeMoreFormat = moreFormats.find((f) => f.id === activeFormat);
 
@@ -276,14 +318,14 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
   const inTextPreview = cslData?.inText || '';
 
   return (
-    <div className="space-y-2 min-w-0 font-sans select-none">
+    <>
       {/* Hidden strip to measure exact DOM pixel widths for responsive overflow */}
       <div
         ref={measureRef}
         aria-hidden="true"
         className="absolute -top-[9999px] left-0 flex items-center gap-1 text-xs opacity-0 pointer-events-none select-none invisible"
       >
-        {ALL_FORMATS.map((fmt) => (
+        {allFormats.map((fmt) => (
           <span
             key={fmt.id}
             className="h-6 px-2 text-xs rounded font-medium inline-block shrink-0"
@@ -296,6 +338,8 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
           <ChevronDown className="size-3 shrink-0" />
         </span>
       </div>
+
+      <div className="flex flex-col gap-2 min-w-0 font-sans select-none">
 
       {/* ⚠️ Citation Guard: Retraction Notice (Zotero Style) */}
       {(paper.isRetracted || (paper as any).retractionStatus === 'retracted') && (
@@ -347,51 +391,62 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
           );
         })}
 
-        {moreFormats.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className={cn(
-                  'h-6 px-2 text-xs rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none font-medium inline-flex items-center gap-1 shrink-0',
-                  isMoreFormatActive
-                    ? 'bg-muted text-foreground font-semibold'
-                    : 'text-foreground hover:bg-muted',
-                )}
-              >
-                <span>{activeMoreFormat ? activeMoreFormat.label : 'More'}</span>
-                <ChevronDown className="size-3 text-foreground shrink-0" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              sideOffset={4}
-              className="w-52 p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200 text-xs z-50"
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                'h-6 px-2 text-xs rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none font-medium inline-flex items-center gap-1 shrink-0',
+                isMoreFormatActive
+                  ? 'bg-muted text-foreground font-semibold'
+                  : 'text-foreground hover:bg-muted',
+              )}
             >
-              {moreFormats.map((fmt) => {
-                const isSelected = activeFormat === fmt.id;
-                return (
-                  <DropdownMenuItem
-                    key={fmt.id}
-                    onSelect={() => setActiveFormat(fmt.id)}
-                    onClick={() => setActiveFormat(fmt.id)}
-                    className={cn(
-                      'h-7.5 px-2 text-xs cursor-pointer rounded-md hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary flex items-center justify-between',
-                      isSelected
-                        ? 'font-medium text-foreground bg-muted'
-                        : 'text-foreground',
-                    )}
-                  >
-                    <span>{fmt.label}</span>
-                    {isSelected && (
-                      <Check className="size-3 text-foreground shrink-0" />
-                    )}
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+              <span className="truncate max-w-[80px]">
+                {activeMoreFormat ? activeMoreFormat.label : 'More'}
+              </span>
+              <ChevronDown className="size-3 text-foreground shrink-0" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            sideOffset={4}
+            className="w-56 p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200 text-xs z-50 max-h-72 overflow-y-auto"
+          >
+            {moreFormats.map((fmt) => {
+              const isSelected = activeFormat === fmt.id;
+              return (
+                <DropdownMenuItem
+                  key={fmt.id}
+                  onSelect={() => setActiveFormat(fmt.id)}
+                  onClick={() => setActiveFormat(fmt.id)}
+                  className={cn(
+                    'h-7.5 px-2 text-xs cursor-pointer rounded-md hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary flex items-center justify-between',
+                    isSelected
+                      ? 'font-medium text-foreground bg-muted'
+                      : 'text-foreground',
+                  )}
+                >
+                  <span className="truncate pr-2">{fmt.label}</span>
+                  {isSelected && (
+                    <Check className="size-3 text-foreground shrink-0" />
+                  )}
+                </DropdownMenuItem>
+              );
+            })}
+
+            {moreFormats.length > 0 && <DropdownMenuSeparator className="my-1 bg-border" />}
+
+            <DropdownMenuItem
+              onSelect={() => setIsSearchModalOpen(true)}
+              onClick={() => setIsSearchModalOpen(true)}
+              className="h-7.5 px-2 text-xs cursor-pointer rounded-md hover:bg-muted text-foreground font-medium flex items-center gap-1.5"
+            >
+              <Search className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+              <span>Search 10,000+ Styles...</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
 
@@ -501,6 +556,14 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
           )}
         </div>
       </div>
+
+      <CslStyleSearchModal
+        open={isSearchModalOpen}
+        onOpenChange={setIsSearchModalOpen}
+        onSelectStyle={handleSelectSearchedStyle}
+        currentStyleId={activeFormat}
+      />
     </div>
+    </>
   );
 }

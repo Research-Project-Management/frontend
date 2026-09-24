@@ -22,10 +22,11 @@ import {
   SelectValue,
 } from "@/shared/components/ui";
 import { Switch } from "@/shared/components/ui";
-import { useTheme } from "@/shared/providers";
+import { useTheme, BRAND_COLOR_PRESETS, type BrandPresetKey } from "@/shared/providers";
+import { cn } from "@/shared/lib/utils";
 
 export default function PreferencesTab() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, brandPreset, setBrandPreset } = useTheme();
 
   const form = useForm<z.infer<typeof preferencesSchema>>({
     resolver: zodResolver(preferencesSchema),
@@ -109,6 +110,38 @@ export default function PreferencesTab() {
                 </FormItem>
               )}
             />
+
+            {/* Brand Accent Color */}
+            <div className='flex items-center justify-between px-5 py-3.5 space-y-0 gap-4'>
+              <div className='flex flex-col min-w-0 pr-2'>
+                <span className='text-13 font-medium text-foreground'>Brand Accent Color</span>
+                <span className='text-12 text-muted-foreground mt-0.5'>
+                  Choose your primary accent hue. Synchronizes actions, focus rings, and selection across the platform.
+                </span>
+              </div>
+              <div className='flex items-center gap-2 shrink-0'>
+                {(Object.entries(BRAND_COLOR_PRESETS) as [BrandPresetKey, typeof BRAND_COLOR_PRESETS[BrandPresetKey]][]).map(([key, preset]) => {
+                  const isSelected = brandPreset === key;
+                  return (
+                    <button
+                      key={key}
+                      type='button'
+                      onClick={() => setBrandPreset(key)}
+                      title={`${preset.label} (${preset.hue}°)`}
+                      className={cn(
+                        'size-6 rounded-full flex items-center justify-center transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        isSelected ? 'ring-2 ring-foreground/60 ring-offset-2 scale-110 shadow-xs' : 'hover:scale-105 opacity-80 hover:opacity-100'
+                      )}
+                      style={{ backgroundColor: preset.colorHex }}
+                    >
+                      {isSelected && (
+                        <div className='size-1.5 rounded-full bg-white shadow-xs' />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* Smooth Cursor */}
             <FormField

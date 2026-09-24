@@ -51,9 +51,9 @@ export function InspectorTabs({
   const tabs: TabItem[] = [
     { id: 'info', label: 'Details', icon: Info },
     { id: 'abstract', label: 'Abstract', icon: AlignLeft },
-    { id: 'files', label: 'Files', icon: Paperclip, badge: attachmentCount },
+    { id: 'files', label: 'Attachments', icon: Paperclip, badge: attachmentCount },
     { id: 'notes', label: 'Notes', icon: StickyNote, badge: noteCount },
-    { id: 'collections', label: 'Organize', icon: FolderTree },
+    { id: 'collections', label: 'Collections', icon: FolderTree },
     { id: 'tags', label: 'Tags', icon: Tag },
     { id: 'relations', label: 'Related', icon: Network },
     { id: 'cite', label: 'Citation', icon: Quote },
@@ -67,8 +67,8 @@ export function InspectorTabs({
         className,
       )}
     >
-      {/* Top: Toggle Panel Button Container - EXACTLY h-11 matching LibraryTopbar */}
-      <div className="h-11 w-full flex items-center justify-center shrink-0 relative">
+      {/* Top: Toggle Panel Button Container - EXACTLY h-11 with border-b matching LibraryTopbar and InspectorHeader */}
+      <div className="h-11 w-full flex items-center justify-center shrink-0 border-b border-border">
         <Tooltip>
           <TooltipTrigger asChild>
             <button
@@ -84,9 +84,6 @@ export function InspectorTabs({
             {isInspectorOpen ? 'Collapse inspector' : 'Expand inspector'}
           </TooltipContent>
         </Tooltip>
-
-        {/* Inset divider line separating toggle button from section icons without touching borders */}
-        <div className="absolute bottom-0 left-2 right-2 h-px bg-border" />
       </div>
 
       {/* Middle: Vertical Section Icons with Tooltips */}

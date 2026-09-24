@@ -153,7 +153,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
             type="button"
             onClick={handleSyncToBibtex}
             disabled={isSyncingBib}
-            className="h-7 px-2 flex items-center gap-1 rounded-sm text-[11px] font-medium text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
+            className="h-7 px-2 flex items-center gap-1 rounded-sm text-11 font-medium text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
             title="Sync all citations to references.bib"
           >
             <Download className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />

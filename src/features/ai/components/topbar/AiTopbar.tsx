@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { PanelLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui';
-import { AIIcon } from '@/shared/components/icons';
 import { useAiUIStore } from '../../store';
 import { getChatSession } from '../../services/chat.service';
 
@@ -67,9 +66,13 @@ export function AiTopbar({ title: propTitle, className }: AiTopbarProps) {
         <nav aria-label="Breadcrumbs" className="flex items-center gap-1.5 min-w-0">
           <button
             onClick={() => router.push('/ai')}
-            className="flex items-center gap-1.5 text-foreground font-semibold text-13 tracking-tight hover:opacity-80 transition-opacity cursor-pointer outline-none"
+            className="flex items-center gap-2 text-foreground font-semibold text-13 tracking-tight hover:opacity-80 transition-opacity cursor-pointer outline-none"
           >
-            <AIIcon className="size-4 shrink-0 text-foreground" />
+            <img
+              src="/Chat.svg"
+              alt="Flux AI"
+              className="size-4.5 shrink-0 object-contain"
+            />
             <span>Flux AI</span>
           </button>
 

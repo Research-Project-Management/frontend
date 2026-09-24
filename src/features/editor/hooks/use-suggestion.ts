@@ -3,22 +3,14 @@
 /**
  * use-suggestion.ts
  *
- * Frontend hooks mirroring Backend `modules/document/suggestion/`:
- *  - usePageSuggestions
- *  - useCreateSuggestion
- *  - useAcceptSuggestion
- *  - useRejectSuggestion
- *  - useAcceptAllSuggestions
- *  - useRejectAllSuggestions
+ * Clean Presentational Suggestion Hooks (Track Changes):
+ * - In-memory reactive suggestion management for UI preview
+ * - Decoupled from legacy backend endpoints
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { SuggestionStatus } from '../types';
-import {
-  suggestionService,
-  type CreateSuggestionPayload,
-} from '../services/suggestion.service';
-import { EditorEventBus } from '../utils/editor.util';
+import { useState } from 'react';
+import type { SuggestionStatus, PageSuggestion } from '../types';
+import { toast } from 'sonner';
 
 export const suggestionKeys = {
   all: ['page-suggestions'] as const,
@@ -26,97 +18,173 @@ export const suggestionKeys = {
     ['page-suggestions', pageId, status] as const,
 };
 
-export const usePageSuggestions = (pageId: string | null, status?: SuggestionStatus) => {
-  return useQuery({
-    queryKey: suggestionKeys.byPage(pageId, status),
-    queryFn: () => (pageId ? suggestionService.getSuggestions(pageId, status) : Promise.resolve([])),
-    enabled: !!pageId,
+let sessionSuggestions: PageSuggestion[] = [];
+const suggestionListeners = new Set<() => void>();
+
+function notifySuggestionListeners() {
+  suggestionListeners.forEach((fn) => fn());
+}
+
+export const usePageSuggestions = (_pageId: string | null, status?: SuggestionStatus) => {
+  const [, setTick] = useState(0);
+
+  useState(() => {
+    const listener = () => setTick((t) => t + 1);
+    suggestionListeners.add(listener);
+    return () => {
+      suggestionListeners.delete(listener);
+    };
   });
+
+  const filtered = status
+    ? sessionSuggestions.filter((s) => s.status === status)
+    : sessionSuggestions;
+
+  return {
+    data: filtered,
+    isLoading: false,
+    error: null,
+  };
 };
 
 export const useCreateSuggestion = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: CreateSuggestionPayload) => suggestionService.createSuggestion(payload),
-    onSuccess: (data, { pageId }) => {
-      queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
-      EditorEventBus.emit('flux:review-event', {
-        pageId,
-        event: 'suggestion:created',
-        payload: { suggestion: data },
-      });
+  return {
+    mutate: (payload: any) => {
+      const newSug: PageSuggestion = {
+        id: `sug-${Date.now()}`,
+        pageId: payload.pageId,
+        authorId: 'me',
+        type: payload.type,
+        originalText: payload.originalText,
+        suggestedText: payload.suggestedText,
+        fromLine: payload.fromLine,
+        toLine: payload.toLine,
+        description: payload.description,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        author: {
+          id: 'me',
+          name: 'Researcher',
+          email: 'researcher@flux.local',
+        },
+      } as any;
+      sessionSuggestions = [newSug, ...sessionSuggestions];
+      notifySuggestionListeners();
+      toast.success('Suggestion proposed');
+      return newSug;
     },
-  });
+    mutateAsync: async (payload: any) => {
+      const newSug: PageSuggestion = {
+        id: `sug-${Date.now()}`,
+        pageId: payload.pageId,
+        authorId: 'me',
+        type: payload.type,
+        originalText: payload.originalText,
+        suggestedText: payload.suggestedText,
+        fromLine: payload.fromLine,
+        toLine: payload.toLine,
+        description: payload.description,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        author: {
+          id: 'me',
+          name: 'Researcher',
+          email: 'researcher@flux.local',
+        },
+      } as any;
+      sessionSuggestions = [newSug, ...sessionSuggestions];
+      notifySuggestionListeners();
+      toast.success('Suggestion proposed');
+      return newSug;
+    },
+    isPending: false,
+  };
 };
 
 export const useAcceptSuggestion = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ pageId, suggestionId }: { pageId: string; suggestionId: string }) =>
-      suggestionService.acceptSuggestion(pageId, suggestionId),
-    onSuccess: (data, { pageId }) => {
-      queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
-      queryClient.invalidateQueries({ queryKey: ['pages', 'detail', pageId] });
-      if (data?.page) {
-        queryClient.setQueryData(['pages', 'detail', pageId], data.page);
-      }
-      EditorEventBus.emit('flux:review-event', {
-        pageId,
-        event: 'suggestion:accepted',
-        payload: data,
-      });
+  return {
+    mutate: ({ suggestionId }: { pageId: string; suggestionId: string }) => {
+      sessionSuggestions = sessionSuggestions.map((s) =>
+        s.id === suggestionId ? { ...s, status: 'accepted' as const } : s,
+      );
+      notifySuggestionListeners();
+      toast.success('Suggestion accepted');
     },
-  });
+    mutateAsync: async ({ suggestionId }: { pageId: string; suggestionId: string }) => {
+      sessionSuggestions = sessionSuggestions.map((s) =>
+        s.id === suggestionId ? { ...s, status: 'accepted' as const } : s,
+      );
+      notifySuggestionListeners();
+      toast.success('Suggestion accepted');
+      return { success: true };
+    },
+    isPending: false,
+  };
 };
 
 export const useRejectSuggestion = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ pageId, suggestionId }: { pageId: string; suggestionId: string }) =>
-      suggestionService.rejectSuggestion(pageId, suggestionId),
-    onSuccess: (data, { pageId, suggestionId }) => {
-      queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
-      EditorEventBus.emit('flux:review-event', {
-        pageId,
-        event: 'suggestion:rejected',
-        payload: { ...data, suggestionId },
-      });
+  return {
+    mutate: ({ suggestionId }: { pageId: string; suggestionId: string }) => {
+      sessionSuggestions = sessionSuggestions.map((s) =>
+        s.id === suggestionId ? { ...s, status: 'rejected' as const } : s,
+      );
+      notifySuggestionListeners();
+      toast.info('Suggestion rejected');
     },
-  });
+    mutateAsync: async ({ suggestionId }: { pageId: string; suggestionId: string }) => {
+      sessionSuggestions = sessionSuggestions.map((s) =>
+        s.id === suggestionId ? { ...s, status: 'rejected' as const } : s,
+      );
+      notifySuggestionListeners();
+      toast.info('Suggestion rejected');
+      return { success: true };
+    },
+    isPending: false,
+  };
 };
 
 export const useAcceptAllSuggestions = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ pageId }: { pageId: string }) =>
-      suggestionService.acceptAllSuggestions(pageId),
-    onSuccess: (data, { pageId }) => {
-      queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
-      queryClient.invalidateQueries({ queryKey: ['pages', 'detail', pageId] });
-      if (data?.page) {
-        queryClient.setQueryData(['pages', 'detail', pageId], data.page);
-      }
-      EditorEventBus.emit('flux:review-event', {
-        pageId,
-        event: 'suggestions:accepted-all',
-        payload: data,
-      });
+  return {
+    mutate: (_params: { pageId: string }) => {
+      sessionSuggestions = sessionSuggestions.map((s) => ({
+        ...s,
+        status: 'accepted' as const,
+      }));
+      notifySuggestionListeners();
+      toast.success('All suggestions accepted');
     },
-  });
+    mutateAsync: async (_params: { pageId: string }) => {
+      sessionSuggestions = sessionSuggestions.map((s) => ({
+        ...s,
+        status: 'accepted' as const,
+      }));
+      notifySuggestionListeners();
+      toast.success('All suggestions accepted');
+      return { success: true };
+    },
+    isPending: false,
+  };
 };
 
 export const useRejectAllSuggestions = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ pageId }: { pageId: string }) =>
-      suggestionService.rejectAllSuggestions(pageId),
-    onSuccess: (data, { pageId }) => {
-      queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
-      EditorEventBus.emit('flux:review-event', {
-        pageId,
-        event: 'suggestions:rejected-all',
-        payload: data,
-      });
+  return {
+    mutate: (_params: { pageId: string }) => {
+      sessionSuggestions = sessionSuggestions.map((s) => ({
+        ...s,
+        status: 'rejected' as const,
+      }));
+      notifySuggestionListeners();
+      toast.info('All suggestions rejected');
     },
-  });
+    mutateAsync: async (_params: { pageId: string }) => {
+      sessionSuggestions = sessionSuggestions.map((s) => ({
+        ...s,
+        status: 'rejected' as const,
+      }));
+      notifySuggestionListeners();
+      toast.info('All suggestions rejected');
+      return { success: true };
+    },
+    isPending: false,
+  };
 };

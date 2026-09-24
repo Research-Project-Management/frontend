@@ -30,6 +30,8 @@ import {
   X,
   Folder,
   FileUp,
+  Upload,
+  PanelRightOpen,
   BookOpen,
   HardDrive,
   FileImage,
@@ -41,6 +43,7 @@ import { toast } from 'sonner';
 import { cn } from "@/shared/lib/utils";
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { useChatMode } from '../../hooks/use-chat-mode';
+import { useAiUIStore } from '../../store';
 import { uploadDocument } from '../../services/chat.service';
 import { SourcePickerModal } from '../modals/source-picker-modal';
 import type { AgentId } from '../../types/chat.types';
@@ -116,7 +119,7 @@ function getFileMeta(name: string, sourceType?: string, size?: number) {
       typeLabel: 'Storage',
       sizeText,
       icon: HardDrive,
-      iconColor: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
+      iconColor: 'text-primary bg-primary/10 border-primary/20',
     };
   }
 
@@ -169,6 +172,7 @@ export function ChatInput({
     toggleSource,
     setFluxDataEnabled,
   } = useChatMode();
+  const { isSourcesOpen, toggleSources } = useAiUIStore();
 
   const [message, setMessage] = useState(initialMessage || '');
   const [webSearch, setWebSearch] = useState(Boolean(initialWebSearch));
@@ -176,7 +180,15 @@ export function ChatInput({
   const [scopeOpen, setScopeOpen] = useState(false);
   const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const [modalTab, setModalTab] = useState<'library' | 'storage'>('library');
-  const [uploadingFiles, setUploadingFiles] = useState<Array<{ id: string; name: string; size?: number }>>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<
+    Array<{
+      id: string;
+      name: string;
+      size?: number;
+      progress?: number;
+      stage?: 'uploading' | 'processing';
+    }>
+  >([]);
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
 
@@ -237,6 +249,8 @@ export function ChatInput({
         id: `upload-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
         name: f.name,
         size: f.size,
+        progress: 0,
+        stage: 'uploading' as const,
       }));
 
       setUploadingFiles((prev) => [...prev, ...tempItems]);
@@ -246,7 +260,19 @@ export function ChatInput({
         const file = files[i];
         const tempId = tempItems[i].id;
         try {
-          const res = await uploadDocument(targetScope, file);
+          const res = await uploadDocument(targetScope, file, (progress) => {
+            setUploadingFiles((prev) =>
+              prev.map((item) =>
+                item.id === tempId
+                  ? {
+                      ...item,
+                      progress: progress.percent,
+                      stage: progress.stage,
+                    }
+                  : item
+              )
+            );
+          });
           addSource(res.id, res.name, {
             size: res.size || file.size,
             sourceType: 'upload',
@@ -391,13 +417,13 @@ export function ChatInput({
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         className={cn(
-          "relative rounded-md border bg-background shadow-xs focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all p-3 sm:p-3.5",
-          isDragging ? "border-primary/70 ring-2 ring-primary/20 bg-primary/[0.02]" : "border-border"
+          "relative rounded-lg border border-border bg-background shadow-2xs transition-all p-3 sm:p-3.5",
+          isDragging && "border-primary/70 ring-2 ring-primary/20 bg-primary/[0.02]"
         )}
       >
         {/* Drag & Drop Visual Overlay */}
         {isDragging && (
-          <div className="absolute inset-0 z-30 rounded-md bg-background/95 backdrop-blur-xs border-2 border-dashed border-primary flex flex-col items-center justify-center gap-2 pointer-events-none transition-all">
+          <div className="absolute inset-0 z-30 rounded-lg bg-background/95 backdrop-blur-xs border-2 border-dashed border-primary flex flex-col items-center justify-center gap-2 pointer-events-none transition-all">
             <div className="size-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shadow-xs">
               <FileUp className="size-5 transition-transform duration-300 ease-out animate-pulse motion-reduce:animate-none" />
             </div>
@@ -488,23 +514,28 @@ export function ChatInput({
         {(sources.length > 0 || uploadingFiles.length > 0) && (
           <div className="flex items-center gap-2 flex-wrap px-1 pt-0.5 pb-2.5 border-b border-border/40 mb-1 max-h-48 overflow-y-auto">
             {/* Uploading File Cards */}
-            {uploadingFiles.map((up) => (
-              <div
-                key={up.id}
-                className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/70 bg-muted/40 max-w-[240px] shadow-2xs animate-pulse"
-              >
-                <div className="size-7 rounded-md flex items-center justify-center shrink-0 border border-border/50 bg-background text-primary">
-                  <Loader2 className="size-3.5 animate-spin" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-11 font-medium text-foreground truncate">{up.name}</p>
-                  <div className="flex items-center gap-1.5 text-10 text-muted-foreground">
-                    <span>Uploading...</span>
-                    {up.size ? <span>• {formatBytes(up.size)}</span> : null}
+            {uploadingFiles.map((up) => {
+              const isProcessing = up.stage === 'processing';
+              return (
+                <div
+                  key={up.id}
+                  className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/70 bg-muted/40 max-w-[240px] shadow-2xs"
+                >
+                  <div className="size-7 rounded-md flex items-center justify-center shrink-0 border border-border/50 bg-background text-primary">
+                    <Loader2 className="size-3.5 animate-spin text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-11 font-medium text-foreground truncate">{up.name}</p>
+                    <div className="flex items-center gap-1.5 text-10 text-muted-foreground">
+                      <span className={isProcessing ? "text-primary font-medium" : ""}>
+                        {isProcessing ? 'Indexing vectors...' : `Uploading (${up.progress ?? 0}%)`}
+                      </span>
+                      {up.size ? <span>• {formatBytes(up.size)}</span> : null}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {/* Attached Source Cards */}
             {sources.map((src) => {
@@ -585,7 +616,7 @@ export function ChatInput({
 
         {/* ── Bottom Action Bar ──────────────────────────────────────────────── */}
         <div className="flex items-center justify-between gap-2 pt-2">
-          {/* Left tools: + button (Source Picker menu) and Web Search toggle */}
+          {/* Left tools: + button and indicators */}
           <div className="flex items-center gap-1">
             {/* Hidden File Input for Direct Upload */}
             <input
@@ -597,7 +628,7 @@ export function ChatInput({
               onChange={handleFileUpload}
             />
 
-            {/* ChatGPT-style Attach Sources Button (+) with Dropdown Menu */}
+            {/* Attach Sources Button (+) with Dropdown Menu */}
             <DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -605,16 +636,15 @@ export function ChatInput({
                     <button
                       type="button"
                       className={cn(
-                        "relative size-8 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none",
-                        sources.length > 0
-                          ? "text-foreground bg-muted hover:bg-muted/80"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        "relative size-8 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary",
+                        (sources.length > 0 || isSourcesOpen) && "bg-muted"
                       )}
-                      aria-label="Add sources"
+                      aria-label="Add sources or toggle features"
+                      title="Add attachment or toggle features"
                     >
-                      <Plus className="size-4 shrink-0" />
+                      <Plus className="size-4 shrink-0 text-foreground" />
                       {sources.length > 0 && (
-                        <span className="absolute -top-1 -right-1 size-3.5 rounded-full bg-foreground text-background text-9 font-medium flex items-center justify-center shadow-2xs">
+                        <span className="absolute -top-1 -right-1 size-3.5 rounded-full bg-primary text-white text-9 font-medium flex items-center justify-center shadow-2xs">
                           {sources.length}
                         </span>
                       )}
@@ -622,7 +652,7 @@ export function ChatInput({
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">
-                  Attach content & files
+                  Add attachment or toggle features
                 </TooltipContent>
               </Tooltip>
 
@@ -630,184 +660,125 @@ export function ChatInput({
                 align="start"
                 side="top"
                 sideOffset={8}
-                className="w-56 p-1 rounded-md shadow-md z-50"
+                className="w-56 p-1 rounded-lg shadow-lg border border-border bg-popover text-foreground select-none space-y-0.5"
               >
-                {/* Option 1: Upload from computer */}
+                {/* 1. Upload from computer */}
                 <DropdownMenuItem
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2.5 px-2.5 py-2 cursor-pointer rounded-md text-12 text-foreground focus:bg-muted"
+                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
                 >
-                  <div className="size-6 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <FileUp className="size-3.5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-12 leading-tight">Upload from computer</p>
-                    <p className="text-10 text-muted-foreground">PDF, docs, images, code</p>
-                  </div>
+                  <Upload className="size-4 text-foreground shrink-0" />
+                  <span>Upload from device</span>
                 </DropdownMenuItem>
 
-                <DropdownMenuSeparator className="my-1 border-border/50" />
-
-                {/* Option 2: Add from Library */}
-                <DropdownMenuItem
-                  onClick={() => {
-                    setModalTab('library');
-                    setSourcePickerOpen(true);
-                  }}
-                  className="flex items-center gap-2.5 px-2.5 py-2 cursor-pointer rounded-md text-12 text-foreground focus:bg-muted"
-                >
-                  <div className="size-6 rounded-md bg-muted text-foreground flex items-center justify-center shrink-0">
-                    <BookOpen className="size-3.5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-12 leading-tight">Add from Library</p>
-                    <p className="text-10 text-muted-foreground">Papers & collections</p>
-                  </div>
-                </DropdownMenuItem>
-
-                {/* Option 3: Add from Storage */}
+                {/* 2. Upload from Storage */}
                 <DropdownMenuItem
                   onClick={() => {
                     setModalTab('storage');
                     setSourcePickerOpen(true);
                   }}
-                  className="flex items-center gap-2.5 px-2.5 py-2 cursor-pointer rounded-md text-12 text-foreground focus:bg-muted"
+                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
                 >
-                  <div className="size-6 rounded-md bg-muted text-foreground flex items-center justify-center shrink-0">
-                    <HardDrive className="size-3.5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-12 leading-tight">Add from Storage</p>
-                    <p className="text-10 text-muted-foreground">Workspace files & drive</p>
-                  </div>
+                  <HardDrive className="size-4 text-foreground shrink-0" />
+                  <span>Upload from storage</span>
                 </DropdownMenuItem>
+
+                {/* 3. Import from Library */}
+                <DropdownMenuItem
+                  onClick={() => {
+                    setModalTab('library');
+                    setSourcePickerOpen(true);
+                  }}
+                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
+                >
+                  <BookOpen className="size-4 text-foreground shrink-0" />
+                  <span>Import from Library</span>
+                </DropdownMenuItem>
+
+                {/* 4. Sources Panel */}
+                <DropdownMenuItem
+                  onClick={toggleSources}
+                  className="flex items-center justify-between px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <PanelRightOpen className="size-4 text-foreground shrink-0" />
+                    <span>Sources panel</span>
+                  </div>
+                  {isSourcesOpen && <Check className="size-3 text-foreground shrink-0" />}
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="my-1 border-border/50" />
+
+                {/* 5. Web search toggle inside */}
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setWebSearch(!webSearch);
+                  }}
+                  className="flex items-center justify-between px-2.5 py-1.5 rounded-md hover:bg-muted transition-colors cursor-pointer select-none text-foreground text-13 font-normal"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Globe className="size-4 text-foreground shrink-0" />
+                    <span>Web search</span>
+                  </div>
+                  <div
+                    className={cn(
+                      'relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
+                      webSearch ? 'bg-primary' : 'bg-muted-foreground/30'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'pointer-events-none inline-block size-3 rounded-full bg-white shadow-xs transform ring-0 transition duration-200 ease-in-out',
+                        webSearch ? 'translate-x-3' : 'translate-x-0'
+                      )}
+                    />
+                  </div>
+                </div>
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Web Search Sources Manager Popover */}
-            <Popover open={webSearchOpen} onOpenChange={setWebSearchOpen}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className={cn(
-                        "relative size-8 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none",
-                        webSearch
-                          ? "text-foreground bg-muted hover:bg-muted/80"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      )}
-                      aria-label="Web search"
-                    >
-                      {webSearch ? (
-                        <Globe className="size-4 shrink-0 text-foreground" />
-                      ) : (
-                        <GlobeOff className="size-4 shrink-0 text-muted-foreground/60" />
-                      )}
-                      {webSearch && webSites.length > 0 && (
-                        <span className="absolute -top-1 -right-1 size-3.5 rounded-full bg-foreground text-background text-9 font-medium flex items-center justify-center shadow-2xs">
-                          {webSites.length}
-                        </span>
-                      )}
-                    </button>
-                  </PopoverTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  Web search
-                </TooltipContent>
-              </Tooltip>
-
-              <PopoverContent
-                align="start"
-                side="bottom"
-                sideOffset={6}
-                className="w-64 p-2 rounded-md shadow-md z-50 space-y-1.5"
+            {/* Indicator button when Sources panel is open */}
+            {isSourcesOpen && (
+              <button
+                type="button"
+                onClick={toggleSources}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-10 font-medium bg-muted hover:bg-muted/80 text-foreground select-none cursor-pointer"
+                title="Click to close sources panel"
               >
-                {/* Switch row */}
-                <div className="flex items-center justify-between px-1 py-0.5">
-                  <div className="flex items-center gap-1.5 text-12 font-medium text-foreground">
-                    <Globe className="size-3.5 text-muted-foreground shrink-0" />
-                    <span>Web search</span>
-                  </div>
-                  <Switch
-                    checked={webSearch}
-                    onCheckedChange={setWebSearch}
-                  />
-                </div>
-
-                {/* Sources list & input */}
-                {webSearch && (
-                  <>
-                    <div className="border-t border-border/50" />
-                    <div className="space-y-0.5 max-h-44 overflow-y-auto">
-                      {webSites.length === 0 ? (
-                        <div className="text-11 text-muted-foreground italic py-1 text-center">
-                          All domains
-                        </div>
-                      ) : (
-                        webSites.map((site) => (
-                          <div
-                            key={site}
-                            className="flex items-center justify-between text-12 px-2 py-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            <span className="font-mono text-11 truncate">{site}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveSite(site)}
-                              className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                              aria-label={`Remove ${site}`}
-                              title={`Remove ${site}`}
-                            >
-                              <X className="size-3 shrink-0" />
-                            </button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    <div className="pt-1 border-t border-border/50">
-                      <Input
-                        type="text"
-                        value={newSiteInput}
-                        onChange={(e) => setNewSiteInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddSite();
-                          }
-                        }}
-                        placeholder="Add domain..."
-                        className="h-7 text-11 font-mono px-2 shadow-none"
-                      />
-                    </div>
-                  </>
-                )}
-              </PopoverContent>
-            </Popover>
+                <PanelRightOpen className="size-3 shrink-0 text-foreground" />
+                <span>Sources open</span>
+              </button>
+            )}
           </div>
 
-          {/* Right tools: Send button */}
+          {/* Right tools: Send or Stop button */}
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={!message.trim() && !disabled}
-              className={cn(
-                "size-8 rounded-md flex items-center justify-center transition-all shrink-0 cursor-pointer",
-                message.trim() && !disabled
-                  ? "bg-primary text-primary-foreground hover:opacity-90 active:scale-95 shadow-2xs"
-                  : disabled
-                  ? "bg-muted text-muted-foreground cursor-not-allowed"
-                  : "bg-muted text-muted-foreground/40 cursor-default"
-              )}
-              aria-label="Send message"
-            >
-              {disabled ? (
-                <Square className="size-3.5 fill-current shrink-0" />
-              ) : (
-                <ArrowUp className="size-4 shrink-0 stroke-[2.5]" />
-              )}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleSend}
+                  disabled={!message.trim() && !disabled}
+                  className={cn(
+                    "size-8 rounded-full flex items-center justify-center p-0 transition-all shrink-0 cursor-pointer shadow-2xs select-none",
+                    disabled
+                      ? "bg-primary text-white hover:bg-primary-hover cursor-pointer"
+                      : "bg-primary text-white hover:bg-primary-hover active:scale-95 disabled:cursor-not-allowed"
+                  )}
+                  aria-label={disabled ? "Stop generating" : "Send message"}
+                >
+                  {disabled ? (
+                    <Square className="size-3 fill-current shrink-0" />
+                  ) : (
+                    <ArrowUp className="size-3.5 shrink-0 stroke-[2.5] translate-y-[1px]" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={4}>
+                {disabled ? "Stop generating" : "Send message"}
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </div>

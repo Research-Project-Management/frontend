@@ -13,7 +13,6 @@
  */
 
 import { useEffect, useRef, useCallback } from 'react';
-import type { editor, IDisposable } from 'monaco-editor';
 
 // Words to skip: LaTeX commands, short words, numbers
 const SKIP_WORD_REGEX = /^(\\\w+|\d+|[^a-zA-Z]{1,2}|[a-zA-Z]{1,2})$/;
@@ -23,8 +22,8 @@ const WORD_REGEX = /\b([a-zA-Z'\u00C0-\u024F]{3,})\b/g;
 const LATEX_COMMAND_REGEX = /\\[a-zA-Z]+/g;
 
 interface UseSpellCheckerOptions {
-  editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
-  monacoRef: React.MutableRefObject<any>;
+  editorRef?: React.MutableRefObject<any>;
+  monacoRef?: React.MutableRefObject<any>;
   language?: string; // e.g. 'en_US'
   enabled?: boolean;
 }
@@ -39,20 +38,20 @@ export function useSpellChecker({
   const pendingRef = useRef<Map<string, (result: any) => void>>(new Map());
   const decorationsRef = useRef<string[]>([]);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const disposablesRef = useRef<IDisposable[]>([]);
+  const disposablesRef = useRef<any[]>([]);
 
   const spellCheck = useCallback(async () => {
-    const ed = editorRef.current;
-    const monaco = monacoRef.current;
+    const ed = editorRef?.current;
+    const monaco = monacoRef?.current;
     const worker = workerRef.current;
-    if (!ed || !monaco || !worker || !enabled) return;
+    if (!ed || !monaco || !worker || !enabled || !ed.getModel) return;
 
     const model = ed.getModel();
     if (!model) return;
 
     const content = model.getValue();
     const lines = content.split('\n');
-    const newDecorations: editor.IModelDeltaDecoration[] = [];
+    const newDecorations: any[] = [];
 
     // Collect all words to check in one batch
     const wordsToCheck: Array<{
@@ -225,10 +224,10 @@ export function useSpellChecker({
     };
   }, []);
 
-  // ─── Attach content-change listener to Monaco editor ───────────────────────
+  // ─── Attach content-change listener to editor ───────────────────────
   useEffect(() => {
-    const ed = editorRef.current;
-    if (!ed || !enabled) return;
+    const ed = editorRef?.current;
+    if (!ed || !enabled || !ed.onDidChangeModelContent) return;
 
     const disposable = ed.onDidChangeModelContent(() => {
       scheduleSpellCheck();
@@ -243,11 +242,11 @@ export function useSpellChecker({
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editorRef.current, enabled, scheduleSpellCheck]);
+  }, [editorRef, enabled, scheduleSpellCheck]);
 
   // ─── Clear decorations when disabled ───────────────────────────────────────
   useEffect(() => {
-    if (!enabled && editorRef.current) {
+    if (!enabled && editorRef?.current?.deltaDecorations) {
       decorationsRef.current = editorRef.current.deltaDecorations(
         decorationsRef.current,
         [],

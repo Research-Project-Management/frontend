@@ -21,7 +21,7 @@ export function formatFileLocation(item?: StorageItem | null, projectName?: stri
   if (projectName) {
     return `${projectName}${item.parent ? ` / ${item.parent}` : ''}`;
   }
-  return item.parent ? `My Files / ${item.parent}` : 'My Files (Thư mục gốc)';
+  return item.parent ? `My Files / ${item.parent}` : 'My Files (Root)';
 }
 
 /**

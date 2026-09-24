@@ -37,6 +37,11 @@ import {
 } from '@/features/ai/services/chat.service';
 import type { ChatMessage } from '@/features/ai/types/chat.types';
 import { Badge } from '@/shared/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 
 interface AiTabProps {
@@ -577,24 +582,38 @@ export default function AiTab({ onClose }: AiTabProps) {
           />
 
           {isStreaming ? (
-            <button
-              type="button"
-              onClick={handleStopStreaming}
-              className="flex size-7 items-center justify-center rounded-sm bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors cursor-pointer shrink-0 shadow-2xs"
-              title="Dừng sinh phản hồi"
-            >
-              <Square className="size-3.5 fill-current" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleStopStreaming}
+                  className="flex size-7 items-center justify-center rounded-sm bg-primary text-primary-foreground hover:bg-primary-hover transition-colors cursor-pointer shrink-0 shadow-2xs"
+                  aria-label="Dừng sinh phản hồi"
+                >
+                  <Square className="size-3.5 fill-current" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={4}>
+                Dừng sinh phản hồi
+              </TooltipContent>
+            </Tooltip>
           ) : (
-            <button
-              type="button"
-              onClick={() => handleSendMessage()}
-              disabled={!inputPrompt.trim()}
-              className="flex size-7 items-center justify-center rounded-sm bg-primary text-primary-foreground hover:bg-primary-hover transition-colors disabled:opacity-40 cursor-pointer shrink-0 shadow-2xs"
-              title="Gửi câu hỏi (Enter)"
-            >
-              <Send className="size-3.5" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => handleSendMessage()}
+                  disabled={!inputPrompt.trim()}
+                  className="flex size-7 items-center justify-center rounded-sm bg-primary text-primary-foreground hover:bg-primary-hover transition-colors disabled:opacity-40 cursor-pointer shrink-0 shadow-2xs"
+                  aria-label="Gửi câu hỏi"
+                >
+                  <Send className="size-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={4}>
+                Gửi câu hỏi (Enter)
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
         <div className="flex items-center justify-between px-1 pt-1.5 text-9 text-muted-foreground/70">

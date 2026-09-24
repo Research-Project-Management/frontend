@@ -12,4 +12,5 @@ export { default as NotesSection } from './NotesSection';
 export { default as TagsSection } from './TagsSection';
 export { default as CollectionsSection } from './CollectionsSection';
 export { default as RelatedSection } from './RelatedSection';
+export * from './DuplicateMergeInspector';
 export * from './fields';

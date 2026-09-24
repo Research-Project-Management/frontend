@@ -185,7 +185,7 @@ export function WorkspaceViewsPage() {
         {/* System Views Section */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <h2 className="text-xs font-semibold text-muted-foreground tracking-normal">
               System Views
             </h2>
             <span className="text-11 text-muted-foreground">Standard perspective lenses</span>
@@ -221,7 +221,7 @@ export function WorkspaceViewsPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <h2 className="text-xs font-semibold text-muted-foreground tracking-normal">
                 Saved Views
               </h2>
               {selectedProject && (

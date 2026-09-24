@@ -109,7 +109,7 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
         });
       }
       queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      queryClient.invalidateQueries({ queryKey: libraryKeys.tags(targetScope) });
       invalidateCollections(queryClient, targetScope);
       if (!variables?.silent) {
         toast.success('Document added', {
@@ -763,10 +763,12 @@ export function useLibraryItemsQuery(
 export function useInfiniteLibraryItemsQuery(
   scopeId?: string,
   params?: ItemQueryParams,
+  options?: { enabled?: boolean },
 ) {
   const targetScope = scopeId || 'user';
   return useInfiniteQuery({
     queryKey: [...libraryKeys.items(targetScope, params), 'infinite'],
+    enabled: options?.enabled ?? true,
     queryFn: async ({ pageParam }): Promise<LibraryItemsQueryResult> => {
       const res = await ItemService.getAll(targetScope, {
         ...params,
@@ -824,24 +826,43 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
       itemId,
       payload,
       data,
+      expectedVersion,
+      silent,
     }: {
       id?: string;
       itemId?: string;
       payload?: Partial<Item>;
       data?: Partial<Item>;
+      expectedVersion?: number;
+      silent?: boolean;
     }) => {
       const targetId = id || itemId || '';
-      const updateData = payload || data || {};
-      return ItemService.update(effectiveScope, targetId, updateData);
+      const rawData = (payload || data || {}) as any;
+      const { silent: _silent, ...updateData } = rawData;
+      const cached = queryClient.getQueryData<any>(itemKeys.byId(effectiveScope, targetId));
+      const cachedVersion = cached?.item?.version ?? cached?.version;
+      const resolvedVersion =
+        expectedVersion ??
+        (updateData as any)?.expectedVersion ??
+        (updateData as any)?.version ??
+        (typeof cachedVersion === 'number' ? cachedVersion : undefined);
+      return ItemService.update(effectiveScope, targetId, updateData, resolvedVersion);
     },
     onSuccess: (_, variables) => {
       const targetId = variables.id || variables.itemId || '';
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: libraryKeys.all });
+      queryClient.invalidateQueries({ queryKey: libraryKeys.tags(effectiveScope) });
       if (targetId) {
         queryClient.invalidateQueries({ queryKey: itemKeys.byId(effectiveScope, targetId) });
       }
-      toast.success('Item updated', { id: 'item-update' });
+      const isSilent = Boolean(
+        variables.silent ||
+        (variables.payload as any)?.silent ||
+        (variables.data as any)?.silent
+      );
+      if (!isSilent) {
+        toast.success('Item updated', { id: 'item-update' });
+      }
     },
     onError: (err: any) => {
       toast.error('Failed to update item', {
@@ -862,7 +883,6 @@ export function useToggleStarItemMutation(scopeId?: string) {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: libraryKeys.all });
       queryClient.invalidateQueries({ queryKey: itemKeys.byId(effectiveScope, variables.id) });
       toast.success(variables.isStarred ? 'Added to Starred' : 'Removed from Starred', {
         id: 'item-star-toggle',
@@ -889,8 +909,8 @@ export function useDeleteLibraryItemsMutation(scopeId?: string) {
     },
     onSuccess: (ids) => {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: libraryKeys.all });
       queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
+      invalidateCollections(queryClient, effectiveScope);
       toast.success(`Moved ${ids.length} ${ids.length === 1 ? 'item' : 'items'} to trash`, { id: 'item-delete' });
     },
     onError: (err: any) => {
@@ -914,8 +934,8 @@ export function useBatchRestoreItemsMutation(scopeId?: string) {
     },
     onSuccess: (ids) => {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: libraryKeys.all });
       queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
+      invalidateCollections(queryClient, effectiveScope);
       toast.success(`Restored ${ids.length} ${ids.length === 1 ? 'item' : 'items'}`, { id: 'item-restore' });
     },
     onError: (err: any) => {
@@ -939,8 +959,8 @@ export function useBatchPurgeItemsMutation(scopeId?: string) {
     },
     onSuccess: (ids) => {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: libraryKeys.all });
       queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
+      invalidateCollections(queryClient, effectiveScope);
       toast.success(`Permanently deleted ${ids.length} ${ids.length === 1 ? 'item' : 'items'}`, { id: 'item-purge' });
     },
     onError: (err: any) => {

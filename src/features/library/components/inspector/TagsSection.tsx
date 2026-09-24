@@ -8,7 +8,7 @@ import type { Item } from '@/features/library/types/library.types';
 import { normalizeTags, cleanSingleFrontendTag } from '../../domain';
 
 interface TagsSectionProps {
-  onUpdatePaper?: (data: Partial<Item>) => void;
+  onUpdatePaper?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
   paper: Item;
   onUpdateTags?: (tags: string[]) => void;
   hideHeader?: boolean;
@@ -38,11 +38,11 @@ function TagItemInput({
 
   if (!canEdit) {
     return (
-      <div className="flex items-center gap-1.5 px-1 py-0.5 min-h-7">
+      <div className="flex items-center gap-[8px] px-[8px] py-[5px] min-h-[34px] rounded-md">
         <div className="size-4 shrink-0 flex items-center justify-center">
           <Tag className="size-3.5 text-foreground shrink-0" />
         </div>
-        <span className="flex-1 min-w-0 min-h-7 h-auto text-foreground px-2 py-1 text-xs font-normal break-words leading-snug select-text flex items-center font-sans">
+        <span className="flex-1 min-w-0 h-auto text-foreground px-[8px] py-[5px] text-xs font-normal break-words leading-snug select-text flex items-center font-sans">
           {tag}
         </span>
       </div>
@@ -59,7 +59,7 @@ function TagItemInput({
   };
 
   return (
-    <div className="group flex items-center gap-1.5 px-1 py-0.5 min-h-7">
+    <div className="group flex items-center gap-[8px] px-[8px] py-[5px] min-h-[34px] rounded-md">
       <div className="size-4 shrink-0 flex items-center justify-center">
         <Tag className="size-3.5 text-foreground shrink-0" />
       </div>
@@ -81,7 +81,7 @@ function TagItemInput({
             inputRef.current?.blur();
           }
         }}
-        className="flex-1 min-w-0 h-7 bg-transparent text-foreground px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-xs font-normal focus:outline-none focus-visible:outline-none font-sans cursor-pointer focus:cursor-text"
+        className="flex-1 min-w-0 h-[26px] bg-transparent text-foreground px-[8px] py-[5px] rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-xs font-normal focus:outline-none focus-visible:outline-none font-sans cursor-pointer focus:cursor-text"
         title={tag}
       />
 
@@ -124,7 +124,7 @@ export default function TagsSection({
 
   const saveTags = (updatedTags: string[]) => {
     if (onUpdateTags) onUpdateTags(updatedTags);
-    if (onUpdatePaper) onUpdatePaper({ tags: updatedTags });
+    if (onUpdatePaper) onUpdatePaper({ tags: updatedTags, silent: true } as any, { silent: true });
   };
 
   const handleAddTag = () => {
@@ -160,7 +160,7 @@ export default function TagsSection({
 
   if (tags.length === 0 && !isAdding) {
     return (
-      <div className="py-2.5 px-3 text-center text-11 text-muted-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
+      <div className="py-2 px-1.5 text-center text-11 text-muted-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
         <span>No tags assigned.</span>
         {canEdit && (
           <Button
@@ -179,9 +179,9 @@ export default function TagsSection({
   }
 
   return (
-    <div className="space-y-0.5 text-xs select-none font-sans">
+    <div className="space-y-[5px] text-xs select-none font-sans">
       {!hideHeader && (
-        <div className="flex items-center justify-between pb-1 px-1">
+        <div className="flex items-center justify-between pb-[5px] px-[8px]">
           <h3 className="text-12 font-medium text-foreground">Tags</h3>
           {canEdit && (
             <button
@@ -210,7 +210,7 @@ export default function TagsSection({
 
       {/* Adding Tag Row */}
       {isAdding && (
-        <div className="flex items-center gap-1.5 px-1 py-0.5 min-h-7">
+        <div className="flex items-center gap-[8px] px-[8px] py-[5px] min-h-[34px] rounded-md">
           <div className="size-4 shrink-0 flex items-center justify-center">
             <Tag className="size-3.5 text-foreground shrink-0" />
           </div>
@@ -232,7 +232,7 @@ export default function TagsSection({
                 onCancelAdding?.();
               }
             }}
-            className="flex-1 min-w-0 h-7 bg-background text-foreground px-2 py-1 rounded-md border border-primary focus:ring-1 focus:ring-primary outline-none text-xs font-normal focus:outline-none focus-visible:outline-none font-sans"
+            className="flex-1 min-w-0 h-[26px] bg-background text-foreground px-[8px] py-[5px] rounded-md border border-primary focus:ring-1 focus:ring-primary outline-none text-xs font-normal focus:outline-none focus-visible:outline-none font-sans"
           />
           <button
             type="button"

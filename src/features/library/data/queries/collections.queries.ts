@@ -15,7 +15,7 @@ import type {
   UpdateCollectionDTO,
   Collection,
 } from '../../types/library.types';
-import { libraryKeys } from '../query-keys';
+import { libraryKeys, itemKeys } from '../query-keys';
 
 export const collectionKeys = {
   all: (scopeId?: string) => ['collections', scopeId || 'user'] as const,
@@ -200,6 +200,49 @@ export function useCreateCollectionMutation(scopeId?: string) {
       toast.error('Failed to create collection', {
         description: err?.message || 'Please try again.',
         id: 'collection-create',
+      });
+    },
+  });
+}
+
+export function useDetachItemFromCollectionMutation(scopeId?: string) {
+  const queryClient = useQueryClient();
+  const effectiveScope = scopeId || 'user';
+
+  return useMutation({
+    mutationFn: ({ collectionId, itemId }: { collectionId: string; itemId: string }) =>
+      CollectionsService.detachItem(effectiveScope, collectionId, itemId),
+    onSuccess: () => {
+      invalidateCollections(queryClient, effectiveScope);
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
+      toast.success('Removed item from collection');
+    },
+    onError: (err: any) => {
+      toast.error('Failed to remove item from collection', {
+        description: err?.message || 'Please try again.',
+      });
+    },
+  });
+}
+
+export function useBatchDetachItemsMutation(scopeId?: string) {
+  const queryClient = useQueryClient();
+  const effectiveScope = scopeId || 'user';
+
+  return useMutation({
+    mutationFn: async ({ collectionId, itemIds }: { collectionId: string; itemIds: string[] }) => {
+      await Promise.all(
+        itemIds.map((itemId) => CollectionsService.detachItem(effectiveScope, collectionId, itemId)),
+      );
+    },
+    onSuccess: (_data, variables) => {
+      invalidateCollections(queryClient, effectiveScope);
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
+      toast.success(`Removed ${variables.itemIds.length} item(s) from collection`);
+    },
+    onError: (err: any) => {
+      toast.error('Failed to remove items from collection', {
+        description: err?.message || 'Please try again.',
       });
     },
   });

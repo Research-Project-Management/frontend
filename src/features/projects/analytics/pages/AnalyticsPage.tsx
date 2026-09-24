@@ -275,7 +275,7 @@ export function AnalyticsPage({ initialProjectId }: AnalyticsPageProps) {
           <div className="p-4 rounded-lg border border-border bg-card space-y-2">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Contributors</span>
-              <Users className="size-4 text-blue-500" />
+              <Users className="size-4 text-primary" />
             </div>
             {isLoading ? (
               <Skeleton className="h-7 w-16 rounded" />

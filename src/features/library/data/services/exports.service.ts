@@ -1,5 +1,6 @@
 import { apiGet, apiPost } from "@/shared/lib/api";
 import type { ExportBundleResponse } from '../../types';
+import { isProjectScope } from './items.service';
 
 export const ExportService = {
   /**
@@ -17,7 +18,7 @@ export const ExportService = {
   ) => {
     const projectId =
       options?.projectId ||
-      (scopeId && scopeId !== 'personal' && scopeId !== 'user' ? scopeId : undefined);
+      (isProjectScope(scopeId) ? scopeId : undefined);
     return apiPost<{ content: string; filename: string; itemCount: number }>(
       `/api/v1/library/exports`,
       {
@@ -30,19 +31,24 @@ export const ExportService = {
   /**
    * Export citations by specific citation keys in BibTeX format (POST /exports/citations/bibtex)
    */
-  exportByCitationKeys: (_scopeId?: string, keys: string[] = []) =>
+  exportByCitationKeys: (scopeId?: string, keys: string[] = []) =>
     apiPost<{ bibtex: string; count: number }>(
       `/api/v1/library/exports/citations/bibtex`,
-      { keys },
+      {
+        keys,
+        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+      },
     ),
 
   /**
    * Export collection items to BibTeX format
    */
-  exportBibtex: (_scopeId?: string, collectionId?: string) =>
-    apiGet<{ bibtex: string; total: number; filename: string }>(
-      `/api/v1/library/exports?format=bibtex&collectionId=${encodeURIComponent(collectionId || '')}`,
-    ),
+  exportBibtex: (scopeId?: string, collectionId?: string) => {
+    const projectQuery = isProjectScope(scopeId) ? `&projectId=${encodeURIComponent(scopeId!)}` : '';
+    return apiGet<{ bibtex: string; total: number; filename: string }>(
+      `/api/v1/library/exports?format=bibtex&collectionId=${encodeURIComponent(collectionId || '')}${projectQuery}`,
+    );
+  },
 
   /**
    * Export full bundle containing BibTeX and associated file metadata
@@ -55,17 +61,20 @@ export const ExportService = {
   /**
    * Export item PDF with baked annotations (highlights, sticky notes, rectangles)
    */
-  exportAnnotatedPdf: (_scopeId?: string, itemId?: string) =>
-    apiGet<{ filename: string; mimeType: string; base64: string }>(
-      `/api/v1/library/exports/items/${encodeURIComponent(itemId || '')}/annotated-pdf`,
-    ),
+  exportAnnotatedPdf: (scopeId?: string, itemId?: string) => {
+    const projectQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
+    return apiGet<{ filename: string; mimeType: string; base64: string }>(
+      `/api/v1/library/exports/items/${encodeURIComponent(itemId || '')}/annotated-pdf${projectQuery}`,
+    );
+  },
 
   /**
    * Download item PDF with baked annotations directly in browser
    */
-  downloadAnnotatedPdf: async (_scopeId?: string, itemId?: string, fallbackFilename?: string) => {
+  downloadAnnotatedPdf: async (scopeId?: string, itemId?: string, fallbackFilename?: string) => {
+    const projectQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
     const res = await apiGet<{ filename: string; mimeType: string; base64: string }>(
-      `/api/v1/library/exports/items/${encodeURIComponent(itemId || '')}/annotated-pdf`,
+      `/api/v1/library/exports/items/${encodeURIComponent(itemId || '')}/annotated-pdf${projectQuery}`,
     );
     if (!res || !res.base64) {
       throw new Error('Failed to generate annotated PDF: No content received');

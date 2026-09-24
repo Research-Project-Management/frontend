@@ -351,10 +351,10 @@ export default function UnifiedCodeMirrorEditor({
       {editorMode === 'visual' && (
         <div className="flex items-center justify-between px-3 py-1 bg-primary/10 border-b border-primary/20 text-primary text-xs shrink-0 select-none">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-10 px-1.5 py-0.5 rounded-sm bg-primary/20 text-primary uppercase tracking-wide">
+            <span className="font-semibold text-10 px-1.5 py-0.5 rounded-sm bg-primary/20 text-primary tracking-normal">
               Visual Mode (CodeMirror 6)
             </span>
-            <span className="text-[11px] text-foreground/80">
+            <span className="text-11 text-foreground/80">
               Interactive KaTeX rendering. Click any math formula to edit in-place.
             </span>
           </div>

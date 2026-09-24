@@ -79,4 +79,6 @@ export type RequestOptions = Omit<RequestInit, 'method' | 'body'> & {
   timeout?: number;
   idempotencyKey?: string;
   silent?: boolean;
+  skipAuth?: boolean;
+  rawEnvelope?: boolean;
 };

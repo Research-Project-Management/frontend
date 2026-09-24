@@ -1,9 +1,9 @@
 import { apiGet, apiPost } from "@/shared/lib/api";
 import { logger } from "@/shared/lib/utils";
-import type { FormattedCitation, CslStyle, ReferenceData } from '../../types/library.types';
-import { cleanDoi } from '../../domain';
+import type { FormattedCitation, CslStyle, ReferenceData, CslStyleMetadata } from '../../types/library.types';
+import { cleanDoi, isProjectScope } from '../../domain';
 
-export type { ReferenceData };
+export type { ReferenceData, CslStyleMetadata };
 
 export async function fetchReferenceByDoi(
   doi: string,
@@ -98,6 +98,26 @@ export const CitationService = {
     ),
 
   /**
+   * Search 10,000+ CSL styles from repository
+   * Backed by GET /api/v1/library/citation/styles/search
+   */
+  searchStyles: (query: string = '', limit: number = 30) =>
+    apiGet<{ total: number; styles: CslStyleMetadata[] }>(
+      `/api/v1/library/citation/styles/search`,
+      { params: { q: query, limit: String(limit) } },
+    ),
+
+  /**
+   * Upload custom CSL XML stylesheet
+   * Backed by POST /api/v1/library/citation/styles/custom
+   */
+  uploadCustomStyle: (xml: string, title?: string) =>
+    apiPost<CslStyleMetadata>(
+      `/api/v1/library/citation/styles/custom`,
+      { xml, title },
+    ),
+
+  /**
    * Multi-source Academic Query Resolver (DOI, arXiv, PubMed PMID, URL, Title)
    */
   resolve: async (query: string, _scopeId?: string) => {
@@ -168,7 +188,7 @@ export const CitationService = {
     style: CslStyle = 'apa',
     index: number = 1,
   ) => {
-    const projectId = scopeId && scopeId !== 'personal' ? scopeId : undefined;
+    const projectId = isProjectScope(scopeId) ? scopeId : undefined;
     return apiGet<FormattedCitation>(
       `/api/v1/library/citation/items/${encodeURIComponent(itemId)}/citation`,
       { params: { style, index, ...(projectId ? { projectId } : {}) } },
@@ -184,7 +204,7 @@ export const CitationService = {
     itemIds: string[],
     style: CslStyle = 'apa',
   ) => {
-    const projectId = scopeId && scopeId !== 'personal' ? scopeId : undefined;
+    const projectId = isProjectScope(scopeId) ? scopeId : undefined;
     return apiPost<{
       style: CslStyle;
       total: number;

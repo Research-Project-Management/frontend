@@ -15,10 +15,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from "@/shared/components/ui";
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useReader } from '../hooks/use-reader';
 import { useReaderStore } from '../store/reader.store';
-import { useLibrarySidebarStore } from '@/features/library';
+import { useLibrarySidebarStore, AttachmentsService } from '@/features/library';
 import Topbar from '../components/Topbar';
 import MenuBar from '../components/MenuBar';
 import ReaderToolbar from '../components/ReaderToolbar';
@@ -55,8 +55,11 @@ export interface ReaderPageProps {
 
 export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialSearchQuery = searchParams.get('q') || searchParams.get('search') || undefined;
   const { state, actions } = useReader(paperId, onBack);
   const {
+    scopeId,
     workspaceId,
     isLoadingPapers,
     paper,
@@ -121,7 +124,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const { isInspectorOpen, setIsInspectorOpen, activeScope } = useLibrarySidebarStore();
 
   // In-Document Search & Academic Entities Drawer
-  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(Boolean(initialSearchQuery));
   const [isEntitiesDrawerOpen, setIsEntitiesDrawerOpen] = useState<boolean>(false);
 
   // Page Presentation Mode (Zotero 7: Continuous Scroll, Single Page, Two Pages/Spread)
@@ -259,6 +262,40 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     [handleAnnotate, isToolLocked, activeTool, setActiveTool]
   );
 
+  // Scanned document detection & OCR status
+  const primaryAttachment = (paper?.attachments as any[])?.find(
+    (a) => a.id === effectiveAttachmentId
+  ) || (paper?.attachments as any[])?.[0];
+
+  const isScanned = Boolean(
+    (primaryAttachment?.metadata as any)?.isScanned ||
+    (paper as any)?.metadata?.isScanned ||
+    (fulltext && (!fulltext.sections || fulltext.sections.length === 0) && (!fulltext.abstract || fulltext.abstract.length === 0) && (numPages > 0))
+  );
+
+  const rawOcrStatus = (primaryAttachment?.extractionStatus?.toLowerCase() as any) ||
+    (primaryAttachment?.metadata as any)?.ocrStatus ||
+    (paper as any)?.metadata?.ocrStatus ||
+    'none';
+
+  const ocrStatus = (['pending', 'processing', 'ready', 'completed', 'none'].includes(rawOcrStatus)
+    ? rawOcrStatus
+    : 'none') as 'pending' | 'processing' | 'ready' | 'completed' | 'none';
+
+  const handleTriggerOcr = useCallback(async () => {
+    if (!effectiveAttachmentId) {
+      toast.error('No attachment available to run OCR');
+      return;
+    }
+    try {
+      toast.info('Submitting OCR re-extraction job...', { id: 'reader-ocr-trigger' });
+      await AttachmentsService.reExtract(scopeId || workspaceId, effectiveAttachmentId);
+      toast.success('OCR job queued successfully', { id: 'reader-ocr-trigger' });
+    } catch (err: any) {
+      toast.error(`Failed to trigger OCR: ${err?.message || 'Unknown error'}`, { id: 'reader-ocr-trigger' });
+    }
+  }, [effectiveAttachmentId, scopeId, workspaceId]);
+
   return (
     <div className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background ${isResizingPanel ? 'select-none' : ''}`}>
       {/* 0. ZOTERO 7 APPLICATION MENU BAR (File, Edit, View, Go) - Hidden in Reading Mode */}
@@ -318,6 +355,9 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           isEntitiesDrawerOpen={isEntitiesDrawerOpen}
           onToggleEntitiesDrawer={() => setIsEntitiesDrawerOpen((v) => !v)}
           onExtractToNote={handleExtractAllAnnotationsToNote}
+          isScanned={isScanned}
+          ocrStatus={ocrStatus}
+          onTriggerOcr={handleTriggerOcr}
         />
       )}
 
@@ -326,7 +366,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         <div className="bg-rose-600 text-white px-4 py-2 flex items-center justify-between text-xs shadow-sm z-30 shrink-0 border-b border-rose-700 select-none">
           <div className="flex items-center gap-2 min-w-0">
             <ShieldAlert className="size-4 shrink-0 text-white animate-pulse" />
-            <span className="font-bold uppercase tracking-wider">
+            <span className="font-bold tracking-normal">
               {(paper as any).retractionNature === 'expression_of_concern'
                 ? 'Expression of Concern'
                 : (paper as any).retractionNature === 'correction'
@@ -426,6 +466,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 fitMode={fitMode}
                 isSearchOpen={isSearchOpen}
                 onCloseSearch={() => setIsSearchOpen(false)}
+                initialSearchQuery={initialSearchQuery}
               />
             ) : (
               <div className={cn(
@@ -460,6 +501,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                     fitMode={fitMode}
                     isSearchOpen={isSearchOpen}
                     onCloseSearch={() => setIsSearchOpen(false)}
+                    initialSearchQuery={initialSearchQuery}
                   />
                 </div>
                 {/* Secondary Split View (Zotero: compare two sections of same document) */}

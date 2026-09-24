@@ -46,6 +46,44 @@ export function normalizeSearchText(text: string): string {
     .trim();
 }
 
+interface NormalizedItemSearchFields {
+  authors: string[];
+  title: string;
+  abstract: string;
+  journal: string;
+  doi: string;
+  yearStr: string;
+  tags: string[];
+}
+
+const itemSearchIndexCache = new WeakMap<object, NormalizedItemSearchFields>();
+
+function getOrComputeSearchFields(paper: Item): NormalizedItemSearchFields {
+  let cached = itemSearchIndexCache.get(paper);
+  if (!cached) {
+    const p = paper as {
+      creators?: Array<{ name?: string }>;
+      tags?: unknown[];
+      labels?: unknown[];
+      keywords?: unknown[];
+    };
+    const rawTags = p.tags || p.labels || p.keywords || [];
+    cached = {
+      authors: normalizeAuthors(paper.authors, p.creators).map(normalizeSearchText),
+      title: normalizeSearchText(paper.title || ''),
+      abstract: normalizeSearchText(paper.abstract || ''),
+      journal: normalizeSearchText(paper.journal || paper.publicationTitle || paper.publisher || ''),
+      doi: normalizeSearchText(paper.doi || ''),
+      yearStr: String(paper.year || ''),
+      tags: rawTags.map((t) =>
+        normalizeSearchText(typeof t === 'string' ? t : (t as { name?: string })?.name || '')
+      ),
+    };
+    itemSearchIndexCache.set(paper, cached);
+  }
+  return cached;
+}
+
 export class LibraryFilterEngine {
   static filterBySearch(items: Item[], query: string): Item[] {
     if (!query || !query.trim()) return items;
@@ -56,22 +94,7 @@ export class LibraryFilterEngine {
     const scoredItems: Array<{ paper: Item; score: number }> = [];
 
     for (const paper of items) {
-      const p = paper as {
-        creators?: Array<{ name?: string }>;
-        tags?: unknown[];
-        labels?: unknown[];
-        keywords?: unknown[];
-      };
-      const authors = normalizeAuthors(paper.authors, p.creators).map(normalizeSearchText);
-      const title = normalizeSearchText(paper.title || '');
-      const abs = normalizeSearchText(paper.abstract || '');
-      const journal = normalizeSearchText(paper.journal || paper.publicationTitle || paper.publisher || '');
-      const doi = normalizeSearchText(paper.doi || '');
-      const yearStr = String(paper.year || '');
-      const rawTags = p.tags || p.labels || p.keywords || [];
-      const tags = rawTags.map((t) =>
-        normalizeSearchText(typeof t === 'string' ? t : (t as { name?: string })?.name || '')
-      );
+      const { authors, title, abstract: abs, journal, doi, yearStr, tags } = getOrComputeSearchFields(paper);
 
       let totalScore = 0;
       let allTokensMatch = true;
@@ -171,26 +194,47 @@ export class LibraryFilterEngine {
     const { field, direction } = options;
     const modifier = direction === 'desc' ? -1 : 1;
 
-    return [...items].sort((a, b) => {
-      if (field === 'year') {
+    if (!items || items.length <= 1) return items;
+
+    if (field === 'year') {
+      return [...items].sort((a, b) => {
         const yA = typeof a.year === 'number' ? a.year : parseInt(String(a.year || 0), 10);
         const yB = typeof b.year === 'number' ? b.year : parseInt(String(b.year || 0), 10);
         return (yA - yB) * modifier;
-      }
+      });
+    }
 
-      if (field === 'title') {
-        return (a.title || '').localeCompare(b.title || '') * modifier;
-      }
+    if (field === 'title') {
+      const projected = items.map((item, idx) => ({
+        item,
+        key: (item.title || '').toLowerCase(),
+        idx,
+      }));
+      projected.sort((a, b) => {
+        const cmp = a.key.localeCompare(b.key);
+        return (cmp !== 0 ? cmp : a.idx - b.idx) * modifier;
+      });
+      return projected.map((p) => p.item);
+    }
 
-      if (field === 'authors') {
-        const aCreators = (a as { creators?: Array<{ name?: string }> }).creators;
-        const bCreators = (b as { creators?: Array<{ name?: string }> }).creators;
-        const a1 = normalizeAuthors(a.authors, aCreators)[0] || '';
-        const b1 = normalizeAuthors(b.authors, bCreators)[0] || '';
-        return a1.localeCompare(b1) * modifier;
-      }
+    if (field === 'authors') {
+      // Schwartzian Transform: O(N) pre-projection instead of O(N log N) normalizeAuthors in comparator
+      const projected = items.map((item, idx) => {
+        const aCreators = (item as { creators?: Array<{ name?: string }> }).creators;
+        const a1 = (normalizeAuthors(item.authors, aCreators)[0] || '').toLowerCase();
+        return { item, a1, idx };
+      });
+      projected.sort((a, b) => {
+        const cmp = a.a1.localeCompare(b.a1);
+        return (cmp !== 0 ? cmp : a.idx - b.idx) * modifier;
+      });
+      return projected.map((p) => p.item);
+    }
 
-      return 0;
+    return [...items].sort((a, b) => {
+      const valA = String((a as any)[field] || '');
+      const valB = String((b as any)[field] || '');
+      return valA.localeCompare(valB) * modifier;
     });
   }
 }

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FolderInput, Copy, Trash2, X, Folder, Library, Quote, Download, RotateCcw, GitMerge, ShieldAlert } from 'lucide-react';
+import { FolderInput, FolderMinus, Copy, Trash2, X, Folder, Library, Quote, Download, RotateCcw, GitMerge, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyToClipboard } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui";
@@ -30,6 +30,7 @@ export interface BatchBarProps {
   onBatchDelete?: () => void;
   onBatchRestore?: () => void;
   onBatchMerge?: () => void;
+  onBatchDetach?: () => void;
   isTrash?: boolean;
   scopeId?: string;
   projectId?: string;
@@ -48,6 +49,7 @@ export function BatchBar({
   onBatchDelete,
   onBatchRestore,
   onBatchMerge,
+  onBatchDetach,
   isTrash = false,
   scopeId: propsScopeId,
   projectId: propsProjectId,
@@ -136,6 +138,30 @@ export function BatchBar({
     const keys = resolvedItems.map((p) => generateCitationKey(p)).filter(Boolean);
     const citeCmd = `\\cite{${keys.join(', ')}}`;
     await copyWithToast(citeCmd, `Copied ${citeCmd} to clipboard`);
+  };
+
+  const handleCopyInTextCite = async (style: CslStyle = 'apa') => {
+    warnIfRetractedPresent('in-text citation');
+    const itemIds = resolvedItems.map((p) => p.id).filter(Boolean);
+    if (itemIds.length > 0) {
+      try {
+        const res = await CitationService.batchFormat(effectiveScopeId, itemIds, style);
+        const inTexts = res.citations.map((c) => c.citation?.inText).filter(Boolean);
+        let text = '';
+        if (inTexts.every((t) => t.startsWith('(') && t.endsWith(')'))) {
+          const stripped = inTexts.map((t) => t.slice(1, -1));
+          text = `(${stripped.join('; ')})`;
+        } else {
+          text = inTexts.join('; ');
+        }
+        if (text) {
+          await copyWithToast(text, `Copied in-text citation (${itemIds.length} items)`);
+          return;
+        }
+      } catch {
+        // Fallback
+      }
+    }
   };
 
   const handleExportAllBibtex = async () => {
@@ -320,7 +346,7 @@ export function BatchBar({
                   variant="ghost"
                   size="sm"
                   className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
-                  title="Copy citations for all selected"
+                  aria-label="Copy citation"
                 >
                   <Quote className="size-3.5 shrink-0 text-foreground" />
                   <span>Copy citation</span>
@@ -384,6 +410,13 @@ export function BatchBar({
               className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors font-mono text-11"
             >
               <span>LaTeX (\cite&#123;...&#125;)</span>
+            </DropdownMenuItem>
+            <div className="h-px my-1 bg-border" />
+            <DropdownMenuItem
+              onClick={() => handleCopyInTextCite('apa')}
+              className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-primary font-medium rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+            >
+              <span>In-Text Citation (e.g. Smith et al., 2023)</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -465,24 +498,44 @@ export function BatchBar({
             )}
           </>
         ) : (
-          onBatchDelete && (
-            <Tooltip delayDuration={250}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onBatchDelete}
-                  className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
-                >
-                  <Trash2 className="size-3.5 shrink-0 text-foreground" />
-                  <span>Move to trash</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-                Move to trash
-              </TooltipContent>
-            </Tooltip>
-          )
+          <>
+            {onBatchDetach && (
+              <Tooltip delayDuration={250}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onBatchDetach}
+                    className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+                  >
+                    <FolderMinus className="size-3.5 shrink-0 text-foreground" />
+                    <span>Remove from collection</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+                  Remove from collection (keep in library)
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {onBatchDelete && (
+              <Tooltip delayDuration={250}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onBatchDelete}
+                    className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
+                  >
+                    <Trash2 className="size-3.5 shrink-0 text-foreground" />
+                    <span>Move to trash</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
+                  Move to trash
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </>
         )}
 
         {/* Dismiss selection */}

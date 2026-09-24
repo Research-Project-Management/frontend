@@ -3,29 +3,13 @@
  *
  * Frontend service for document compilation and manuscript export:
  * PDF, Word (.docx), Markdown (.md), LaTeX source, ZIP, and arXiv packages.
- * Mirrors Backend `modules/document/export`.
+ *
+ * Delegates to unified manuscriptService.export (`/api/v1/manuscripts/docs/:docId/export`).
  */
 
-import { apiPost } from '@/shared/lib/api';
-import type { DocumentExportFormat } from '../types/export.types';
-
-export interface ExportFileResult {
-  filename: string;
-  mimeType: string;
-  content: string; // base64 or raw string
-  isBase64: boolean;
-  sizeBytes: number;
-}
+import { manuscriptService } from './manuscript.service';
+export type { ExportFileResult } from './manuscript.service';
 
 export const exportService = {
-  exportDocument: async (
-    pageId: string,
-    format: DocumentExportFormat,
-    includeChildren = true,
-  ): Promise<ExportFileResult> => {
-    return apiPost<ExportFileResult>(`/api/pages/${pageId}/export`, {
-      format,
-      includeChildren,
-    });
-  },
+  exportDocument: manuscriptService.export.exportDocument,
 };

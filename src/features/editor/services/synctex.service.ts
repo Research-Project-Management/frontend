@@ -1,69 +1,24 @@
 /**
  * synctex.service.ts
  *
- * Frontend service mirroring Backend `modules/document/synctex/`:
+ * Frontend service mirroring Backend CLSI SyncTeX:
  *  - Forward Sync (Source Line -> PDF Coordinates)
  *  - Reverse Sync (PDF Click -> Source Line)
+ *
+ * Delegates to unified manuscriptService.synctex (`/api/v1/manuscripts/synctex`).
  */
 
-import { apiPost } from '@/shared/lib/api';
-
-export interface ForwardSyncPayload {
-  projectId: string;
-  file: string;
-  line: number;
-  column?: number;
-  pdfPath?: string;
-}
-
-export interface ForwardSyncResult {
-  page: number;
-  x: number;
-  y: number;
-  h: number;
-  w: number;
-}
-
-export interface ReverseSyncPayload {
-  projectId: string;
-  page: number;
-  x: number;
-  y: number;
-  pdfPath?: string;
-}
-
-export interface ReverseSyncResult {
-  file: string;
-  line: number;
-  column: number;
-}
+import { manuscriptService } from './manuscript.service';
+export type {
+  ForwardSyncPayload,
+  ForwardSyncResult,
+  ReverseSyncPayload,
+  ReverseSyncResult,
+} from './manuscript.service';
 
 export const synctexService = {
-  forwardSync: async (payload: ForwardSyncPayload): Promise<ForwardSyncResult | null> => {
-    const res = await apiPost<any>('/api/synctex/forward', payload);
-    if (res?.success && res?.result) {
-      return {
-        page: res.result.page ?? 1,
-        x: res.result.x ?? 72,
-        y: res.result.y ?? 72,
-        w: res.result.width ?? 450,
-        h: res.result.height ?? 14,
-      };
-    }
-    return null;
-  },
-
-  reverseSync: async (payload: ReverseSyncPayload): Promise<ReverseSyncResult | null> => {
-    const res = await apiPost<any>('/api/synctex/reverse', payload);
-    if (res?.success && res?.result) {
-      return {
-        file: res.result.file ?? '',
-        line: res.result.line ?? 1,
-        column: res.result.column ?? 0,
-      };
-    }
-    return null;
-  },
+  forwardSync: manuscriptService.synctex.forwardSync,
+  reverseSync: manuscriptService.synctex.reverseSync,
 };
 
 export const DocumentSynctexService = synctexService;

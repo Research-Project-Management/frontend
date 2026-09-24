@@ -31,7 +31,7 @@ export { InlineField, InlineTextarea, parseCreators, areCreatorsEqual, toItemCre
 
 export interface InfoSectionProps {
   paper: Item;
-  onUpdatePaper?: (data: Partial<Item>) => void;
+  onUpdatePaper?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
   canEdit?: boolean;
 }
 

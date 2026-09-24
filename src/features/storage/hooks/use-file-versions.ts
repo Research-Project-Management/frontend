@@ -39,13 +39,13 @@ export function useUploadNewVersion() {
       return uploadNewFileVersion(fileId, file, changeComment, onProgress);
     },
     onSuccess: (_, variables) => {
-      toast.success('Đã tải lên phiên bản mới thành công!');
+      toast.success('New version uploaded successfully!');
       queryClient.invalidateQueries({ queryKey: ['file-versions', variables.fileId] });
       queryClient.invalidateQueries({ queryKey: ['drive-files'] });
       queryClient.invalidateQueries({ queryKey: ['storage'] });
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Lỗi khi tải lên phiên bản mới');
+      toast.error(error.message || 'Failed to upload new version');
     },
   });
 }
@@ -64,13 +64,13 @@ export function useRevertFileVersion() {
       return revertFileVersion(fileId, versionNumber);
     },
     onSuccess: (_, variables) => {
-      toast.success(`Đã khôi phục về Phiên bản ${variables.versionNumber}!`);
+      toast.success(`Reverted to version ${variables.versionNumber}!`);
       queryClient.invalidateQueries({ queryKey: ['file-versions', variables.fileId] });
       queryClient.invalidateQueries({ queryKey: ['drive-files'] });
       queryClient.invalidateQueries({ queryKey: ['storage'] });
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Lỗi khi khôi phục phiên bản');
+      toast.error(error.message || 'Failed to revert version');
     },
   });
 }

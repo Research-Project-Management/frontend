@@ -5,4 +5,6 @@ export * from './ItemTableHeader';
 export * from './ItemContextMenu';
 export * from './ContentSkeleton';
 export * from './LibraryEmptyState';
+export * from './RecentlyReadEmptyState';
+export * from './LibraryIllustrations';
 export * from './BatchBar';

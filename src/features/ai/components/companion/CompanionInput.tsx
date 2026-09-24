@@ -67,6 +67,14 @@ function getFileMeta(name: string, size?: number) {
       sizeText,
     };
   }
+  if (['doc', 'docx'].includes(ext)) {
+    return {
+      type: 'Word',
+      icon: FileText,
+      iconColor: 'text-blue-500',
+      sizeText,
+    };
+  }
   if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) {
     return {
       type: 'Image',
@@ -115,10 +123,45 @@ function getFileMeta(name: string, size?: number) {
   };
 }
 
+function CircularProgress({ percent, className }: { percent: number; className?: string }) {
+  const r = 5;
+  const c = 2 * Math.PI * r;
+  const offset = c - (c * Math.min(Math.max(percent, 0), 100)) / 100;
+  return (
+    <svg className={cn('size-3 -rotate-90 shrink-0', className)} viewBox='0 0 14 14'>
+      <circle
+        cx='7'
+        cy='7'
+        r={r}
+        className='stroke-muted-foreground/30 fill-none'
+        strokeWidth='1.75'
+      />
+      <circle
+        cx='7'
+        cy='7'
+        r={r}
+        className='stroke-primary fill-none transition-all duration-150 ease-linear'
+        strokeWidth='1.75'
+        strokeDasharray={c}
+        strokeDashoffset={offset}
+        strokeLinecap='round'
+      />
+    </svg>
+  );
+}
+
 export interface AttachedFile {
   id: string;
   name: string;
   size?: number;
+}
+
+export interface UploadingFileItem {
+  id: string;
+  name: string;
+  size?: number;
+  progress: number;
+  stage: 'uploading' | 'processing';
 }
 
 export interface SendMessageOptions {
@@ -156,9 +199,7 @@ export function CompanionInput({
   const [scopeOpen, setScopeOpen] = useState(false);
   const [projectSearch, setProjectSearch] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
-  const [uploadingFiles, setUploadingFiles] = useState<
-    Array<{ id: string; name: string; size?: number }>
-  >([]);
+  const [uploadingFiles, setUploadingFiles] = useState<UploadingFileItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -224,10 +265,12 @@ export function CompanionInput({
 
       const targetScope = selectedProject || 'me';
 
-      const tempItems = files.map((f, idx) => ({
+      const tempItems: UploadingFileItem[] = files.map((f, idx) => ({
         id: `upload-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
         name: f.name,
         size: f.size,
+        progress: 0,
+        stage: 'uploading',
       }));
 
       setUploadingFiles((prev) => [...prev, ...tempItems]);
@@ -237,7 +280,19 @@ export function CompanionInput({
         const file = files[i];
         const tempId = tempItems[i].id;
         try {
-          const res = await uploadDocument(targetScope, file);
+          const res = await uploadDocument(targetScope, file, (progress) => {
+            setUploadingFiles((prev) =>
+              prev.map((item) =>
+                item.id === tempId
+                  ? {
+                      ...item,
+                      progress: progress.percent,
+                      stage: progress.stage,
+                    }
+                  : item
+              )
+            );
+          });
           setAttachedFiles((prev) => [
             ...prev,
             {
@@ -374,13 +429,13 @@ export function CompanionInput({
           onChange={handleFileUpload}
         />
 
-        {/* ── Top Bar: Project Scope Selector ────── */}
-        <div className='flex items-center pb-1 mb-0.5'>
+        {/* ── Top Bar: Project Scope Selector & Attached/Uploading Files ────── */}
+        <div className='flex items-center gap-1.5 flex-wrap pb-1 mb-1'>
           <Popover open={scopeOpen} onOpenChange={setScopeOpen}>
             <PopoverTrigger asChild>
               <button
                 type='button'
-                className='inline-flex h-6.5 max-w-[220px] items-center gap-1.5 rounded-md border border-border bg-background hover:bg-muted px-2 text-11 text-foreground transition-colors cursor-pointer outline-none shadow-2xs'
+                className='inline-flex h-6.5 max-w-[220px] items-center gap-1.5 rounded-md border border-border bg-background hover:bg-muted px-2 text-11 text-foreground transition-colors cursor-pointer outline-none shadow-2xs shrink-0'
                 title='Select project for chat context'
               >
                 <Folder className='size-3 text-foreground shrink-0' />
@@ -486,55 +541,61 @@ export function CompanionInput({
               </div>
             </PopoverContent>
           </Popover>
-        </div>
 
-        {/* ── Attached Files List ────────────────────────────────────────────── */}
-        {(attachedFiles.length > 0 || uploadingFiles.length > 0) && (
-          <div className='flex items-center gap-1.5 flex-wrap pb-1.5 pt-0.5 max-h-32 overflow-y-auto mb-1'>
-            {/* Uploading files */}
-            {uploadingFiles.map((up) => (
+          {/* Uploading files */}
+          {uploadingFiles.map((up) => {
+            const isProcessing = up.stage === 'processing';
+            return (
               <div
                 key={up.id}
-                className='flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/80 bg-muted/40 text-11 text-muted-foreground animate-pulse'
+                className='inline-flex h-6.5 items-center gap-1.5 px-2 rounded-md border border-border/70 bg-muted/40 text-11 text-foreground transition-all shadow-2xs select-none max-w-[240px]'
+                title={isProcessing ? 'Processing & embedding into vector index...' : `Uploading: ${up.progress}%`}
               >
-                <Loader2 className='size-3 animate-spin text-foreground shrink-0' />
-                <span className='truncate max-w-[120px]'>{up.name}</span>
+                {isProcessing ? (
+                  <Loader2 className='size-3 animate-spin text-primary shrink-0' />
+                ) : (
+                  <CircularProgress percent={up.progress} />
+                )}
+                <span className='truncate max-w-[120px] font-medium'>{up.name}</span>
+                <span className='text-10 text-muted-foreground font-mono shrink-0'>
+                  {isProcessing ? 'Indexing...' : `${up.progress}%`}
+                </span>
               </div>
-            ))}
+            );
+          })}
 
-            {/* Uploaded files */}
-            {attachedFiles.map((file) => {
-              const meta = getFileMeta(file.name, file.size);
-              const IconComp = meta.icon;
-              return (
-                <div
-                  key={file.id}
-                  className='group relative flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-card hover:bg-muted/50 text-11 text-foreground transition-all shadow-2xs select-none'
-                  title={file.name}
-                >
-                  <IconComp className={cn('size-3 shrink-0', meta.iconColor)} />
-                  <span className='truncate max-w-[120px] font-medium'>
-                    {file.name}
+          {/* Uploaded files */}
+          {attachedFiles.map((file) => {
+            const meta = getFileMeta(file.name, file.size);
+            const IconComp = meta.icon;
+            return (
+              <div
+                key={file.id}
+                className='group relative inline-flex h-6.5 items-center gap-1.5 px-2 rounded-md border border-border bg-card hover:bg-muted/50 text-11 text-foreground transition-all shadow-2xs select-none max-w-[240px]'
+                title={file.name}
+              >
+                <IconComp className={cn('size-3 shrink-0', meta.iconColor)} />
+                <span className='truncate max-w-[120px] font-medium'>
+                  {file.name}
+                </span>
+                {meta.sizeText && (
+                  <span className='text-10 text-muted-foreground shrink-0'>
+                    {meta.sizeText}
                   </span>
-                  {meta.sizeText && (
-                    <span className='text-10 text-muted-foreground shrink-0'>
-                      {meta.sizeText}
-                    </span>
-                  )}
-                  <button
-                    type='button'
-                    onClick={() => removeAttachedFile(file.id)}
-                    className='size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 ml-0.5 cursor-pointer'
-                    title={`Remove ${file.name}`}
-                    aria-label={`Remove ${file.name}`}
-                  >
-                    <X className='size-3' />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                )}
+                <button
+                  type='button'
+                  onClick={() => removeAttachedFile(file.id)}
+                  className='size-4.5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted ml-0.5 cursor-pointer'
+                  title={`Remove ${file.name}`}
+                  aria-label={`Remove ${file.name}`}
+                >
+                  <X className='size-2.5' />
+                </button>
+              </div>
+            );
+          })}
+        </div>
 
         {/* ── Textarea ───────────────────────────────────────────────────────── */}
         <textarea
@@ -655,26 +716,38 @@ export function CompanionInput({
             </Tooltip>
 
             {isStreaming ? (
-              <button
-                type='button'
-                onClick={onStop}
-                className='flex size-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all active:scale-95 shadow-2xs cursor-pointer'
-                title='Stop generating'
-                aria-label='Stop generating'
-              >
-                <Square className='size-3 fill-current' />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type='button'
+                    onClick={onStop}
+                    className='flex size-7 items-center justify-center rounded-full bg-primary text-white hover:bg-primary-hover transition-all active:scale-95 shadow-2xs cursor-pointer'
+                    aria-label='Stop generating'
+                  >
+                    <Square className='size-3 fill-current' />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side='top' sideOffset={4}>
+                  Stop generating
+                </TooltipContent>
+              </Tooltip>
             ) : (
-              <button
-                type='button'
-                onClick={handleSubmit}
-                disabled={!text.trim() && attachedFiles.length === 0}
-                className='flex size-7 items-center justify-center rounded-full p-0 transition-all shadow-2xs cursor-pointer select-none bg-primary text-white hover:bg-primary-hover active:scale-95 disabled:cursor-not-allowed'
-                title='Send message'
-                aria-label='Send message'
-              >
-                <ArrowUp className='size-3.5 shrink-0 stroke-[2.5] translate-y-[1px]' />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type='button'
+                    onClick={handleSubmit}
+                    disabled={!text.trim() && attachedFiles.length === 0}
+                    className='flex size-7 items-center justify-center rounded-full p-0 transition-all shadow-2xs cursor-pointer select-none bg-primary text-white hover:bg-primary-hover active:scale-95 disabled:cursor-not-allowed'
+                    aria-label='Send message'
+                  >
+                    <ArrowUp className='size-3.5 shrink-0 stroke-[2.5] translate-y-[1px]' />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side='top' sideOffset={4}>
+                  Send message
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
         </div>

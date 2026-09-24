@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Home, PanelLeft, History, Check, Loader2, MessageSquareQuote, UserPlus } from 'lucide-react';
+import { Home, PanelLeft, History, Check, Loader2, MessageSquareQuote } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import {
@@ -21,7 +21,6 @@ import InsertMenu from './insert/InsertMenu';
 import FormatMenu from './format/FormatMenu';
 import DocumentBreadcrumb from './breadcrumb/DocumentBreadcrumb';
 import LayoutSwitcher from './view/LayoutSwitcher';
-import ShareProjectModal from '@/features/editor/components/modals/ShareProjectModal';
 import TemplateGalleryModal from '@/features/editor/components/modals/TemplateGalleryModal';
 import KeyboardShortcutsModal from '@/features/editor/components/modals/KeyboardShortcutsModal';
 import QuickOpenModal from '@/features/editor/components/modals/QuickOpenModal';
@@ -40,7 +39,6 @@ export default function Topbar() {
     isHistoryOpen,
     activeSidebarPanel,
     setActiveSidebarPanel,
-    setIsShareModalOpen,
   } = useSettingsStore();
   const { dirtyContentMap } = useCompileStore();
   const { updateTitle: updateTitleMutation } = usePageActions();
@@ -169,7 +167,7 @@ export default function Topbar() {
       {/* ── Center: Document Breadcrumb & Inline Rename ── */}
       <DocumentBreadcrumb />
 
-      {/* ── Right: Save Status, Share, History, Quick Layout Switcher & Settings Trigger ── */}
+      {/* ── Right: Save Status, Review, History, Quick Layout Switcher & Settings Trigger ── */}
       <div className="flex items-center gap-1.5 shrink-0">
         {/* Save Status Indicator */}
         <div className="flex items-center shrink-0 mr-0.5">
@@ -191,18 +189,6 @@ export default function Topbar() {
             </span>
           )}
         </div>
-
-        {/* Share Button */}
-        <button
-          type="button"
-          onClick={() => setIsShareModalOpen(true)}
-          title="Share project with collaborators"
-          aria-label="Share project"
-          className="flex items-center gap-1.5 h-7 px-3 rounded-md text-xs font-medium bg-primary hover:bg-primary-hover text-primary-foreground shadow-2xs transition-colors cursor-pointer outline-none select-none"
-        >
-          <UserPlus className="size-3.5 shrink-0" />
-          <span className="hidden sm:inline">Share</span>
-        </button>
 
         <button
           type="button"
@@ -254,7 +240,6 @@ export default function Topbar() {
 
         <LayoutSwitcher />
 
-        <ShareProjectModal />
         <TemplateGalleryModal />
         <KeyboardShortcutsModal
           open={isShortcutsOpen}

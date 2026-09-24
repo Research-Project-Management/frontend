@@ -7,9 +7,12 @@ import GridView from '../views/GridView';
 import { useViewStore } from '../../store/use-view-store';
 
 import StorageEmptyState from './StorageEmptyState';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 
 export interface StorageViewContainerProps {
   isLoading: boolean;
+  isError?: boolean;
+  error?: Error | null;
   viewProps: StorageViewProps;
   searchQuery?: string;
   onClearSearch?: () => void;
@@ -17,6 +20,8 @@ export interface StorageViewContainerProps {
 
 export function StorageViewContainer({
   isLoading,
+  isError = false,
+  error = null,
   viewProps,
   searchQuery = '',
   onClearSearch,
@@ -34,6 +39,12 @@ export function StorageViewContainer({
             ))}
           </div>
         </div>
+      ) : isError ? (
+        <PlaneErrorState
+          title="Unable to load files"
+          description="An issue occurred while loading files from storage. Other features remain unaffected."
+          error={error instanceof Error ? error : undefined}
+        />
       ) : viewProps.items.length === 0 ? (
         <StorageEmptyState
           searchQuery={searchQuery}

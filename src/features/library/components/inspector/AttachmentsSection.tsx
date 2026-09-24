@@ -450,7 +450,7 @@ export default function AttachmentsSection({
 
   if (!paperUrl && otherAttachments.length === 0 && !paper.url) {
     return (
-      <div className="py-2.5 px-3 text-center text-11 text-muted-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
+      <div className="py-2 px-1.5 text-center text-11 text-muted-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
         <input
           ref={fileInputRef}
           type="file"
@@ -476,14 +476,15 @@ export default function AttachmentsSection({
   }
 
   return (
-    <div className="space-y-3 text-xs font-sans select-none">
+    <>
       <input
         ref={fileInputRef}
         type="file"
         className="hidden"
         onChange={handleFileSelect}
       />
-      {!hideHeader && (
+      <div className="flex flex-col gap-2.5 text-xs font-sans select-none w-full">
+        {!hideHeader && (
         <div className="flex items-center justify-between pb-1">
           <h3 className="text-12 font-medium text-foreground">
             Attachments
@@ -536,12 +537,12 @@ export default function AttachmentsSection({
       ) : null}
 
       {/* Attachments List */}
-      <div className="space-y-1.5">
+      <div className="flex flex-col gap-[5px] w-full">
 
         {/* Primary PDF Row */}
         {paperUrl ? (
-          <div className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted border border-border">
-            <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
+          <div className="flex items-center justify-between px-[8px] py-[5px] min-h-[34px] rounded-md hover:bg-muted border border-border">
+            <div className="flex items-center gap-[8px] min-w-0 flex-1 mr-2">
               <div className="size-4 shrink-0 flex items-center justify-center">
                 <FileText className="size-4 text-foreground shrink-0" />
               </div>
@@ -628,10 +629,10 @@ export default function AttachmentsSection({
           return (
             <div
               key={att.id}
-              className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted border border-border transition-colors"
+              className="flex items-center justify-between px-[8px] py-[5px] min-h-[34px] rounded-md hover:bg-muted border border-border transition-colors"
             >
               <div
-                className={`flex items-center gap-1.5 min-w-0 flex-1 mr-2 ${isSnapshot || isLink ? 'cursor-pointer' : ''}`}
+                className={`flex items-center gap-[8px] min-w-0 flex-1 mr-2 ${isSnapshot || isLink ? 'cursor-pointer' : ''}`}
                 onClick={
                   isSnapshot
                     ? () =>
@@ -783,6 +784,7 @@ export default function AttachmentsSection({
         sourceUrl={activeSnapshot?.sourceUrl}
       />
     </div>
+    </>
   );
 }
 

@@ -18,10 +18,18 @@ const Sidebar = dynamic(
   { ssr: true, loading: () => null }
 );
 
+import { useAiCompanionStore } from '@/features/ai/store';
+
 const AiCompanionSidebar = dynamic(
   () => import('@/features/ai/components/companion/AiCompanionSidebar'),
   { ssr: false, loading: () => null }
 );
+
+function AiCompanionSlot() {
+  const isOpen = useAiCompanionStore((s) => s.isOpen);
+  if (!isOpen) return null;
+  return <AiCompanionSidebar />;
+}
 
 export default function AppLayout({
   children,
@@ -69,7 +77,7 @@ export default function AppLayout({
   if (isPaperReader) {
     return (
       <div className='h-dvh w-full overflow-hidden bg-background'>
-        <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Trình đọc tài liệu">
+        <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Document Reader">
           <Suspense fallback={null}>
             {children}
           </Suspense>
@@ -80,28 +88,28 @@ export default function AppLayout({
 
   return (
     <div className='h-dvh max-h-dvh flex flex-col overflow-hidden bg-muted'>
-      <ErrorBoundary fallback={null} featureName="Thanh công cụ">
+      <ErrorBoundary fallback={null} featureName="Toolbar">
         <Suspense fallback={null}>
           <Topbar />
         </Suspense>
       </ErrorBoundary>
       <div className='flex w-full flex-1 min-h-0 flex-col gap-2 p-2 pt-0 md:flex-row'>
-        <ErrorBoundary fallback={null} featureName="Thanh điều hướng">
+        <ErrorBoundary fallback={null} featureName="Sidebar">
           <Suspense fallback={null}>
             <Sidebar />
           </Suspense>
         </ErrorBoundary>
         <div className='order-1 flex-1 min-w-0 rounded-md border border-border bg-background overflow-hidden md:order-2 flex flex-col relative'>
-          <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Nội dung trang">
+          <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Page Content">
             <Suspense fallback={null}>
               {children}
             </Suspense>
           </ErrorBoundary>
         </div>
         {!pathname.startsWith('/ai') && (
-          <ErrorBoundary fallback={null} featureName="Trợ lý AI Companion">
+          <ErrorBoundary fallback={null} featureName="AI Companion">
             <Suspense fallback={null}>
-              <AiCompanionSidebar />
+              <AiCompanionSlot />
             </Suspense>
           </ErrorBoundary>
         )}

@@ -346,7 +346,7 @@ export function BatchBar({
                   variant="ghost"
                   size="sm"
                   className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
-                  title="Copy citations for all selected"
+                  aria-label="Copy citation"
                 >
                   <Quote className="size-3.5 shrink-0 text-foreground" />
                   <span>Copy citation</span>

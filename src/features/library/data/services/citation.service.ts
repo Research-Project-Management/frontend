@@ -1,9 +1,9 @@
 import { apiGet, apiPost } from "@/shared/lib/api";
 import { logger } from "@/shared/lib/utils";
-import type { FormattedCitation, CslStyle, ReferenceData } from '../../types/library.types';
+import type { FormattedCitation, CslStyle, ReferenceData, CslStyleMetadata } from '../../types/library.types';
 import { cleanDoi, isProjectScope } from '../../domain';
 
-export type { ReferenceData };
+export type { ReferenceData, CslStyleMetadata };
 
 export async function fetchReferenceByDoi(
   doi: string,
@@ -95,6 +95,26 @@ export const CitationService = {
   getStyles: (_scopeId?: string) =>
     apiGet<{ styles: Array<{ id: string; name: string; shortName?: string }> }>(
       `/api/v1/library/citation/styles`,
+    ),
+
+  /**
+   * Search 10,000+ CSL styles from repository
+   * Backed by GET /api/v1/library/citation/styles/search
+   */
+  searchStyles: (query: string = '', limit: number = 30) =>
+    apiGet<{ total: number; styles: CslStyleMetadata[] }>(
+      `/api/v1/library/citation/styles/search`,
+      { params: { q: query, limit: String(limit) } },
+    ),
+
+  /**
+   * Upload custom CSL XML stylesheet
+   * Backed by POST /api/v1/library/citation/styles/custom
+   */
+  uploadCustomStyle: (xml: string, title?: string) =>
+    apiPost<CslStyleMetadata>(
+      `/api/v1/library/citation/styles/custom`,
+      { xml, title },
     ),
 
   /**

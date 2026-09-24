@@ -2,20 +2,20 @@ import { z } from 'zod';
 import { itemSchema, Provenance } from './items.types';
 import { relatedItemSchema } from './relations.types';
 
-export const cslStyleSchema = z.enum([
-  'apa',
-  'apa-7th',
-  'ieee',
-  'nature',
-  'harvard',
-  'chicago',
-  'chicago-author-date',
-  'mla',
-  'mla-9th',
-  'vancouver',
-  'bibtex',
-  'ris',
-]);
+export const cslStyleSchema = z.string().min(1);
+
+export const cslStyleMetadataSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  title: z.string(),
+  titleShort: z.string().optional(),
+  category: z.string(),
+  fields: z.array(z.string()).optional(),
+  updated: z.string().optional(),
+  isCustom: z.boolean().optional(),
+});
+
+export type CslStyleMetadata = z.infer<typeof cslStyleMetadataSchema>;
 
 export const formattedCitationSchema = z.object({
   style: cslStyleSchema.optional(),

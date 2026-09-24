@@ -2,6 +2,7 @@
 
 import React, { useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useInfiniteLibraryItemsQuery,
   useCollectionsQuery,
@@ -15,6 +16,7 @@ import {
 import { ContentSkeleton } from './ContentSkeleton';
 import { ItemTable } from './ItemTable';
 import LibraryEmptyState from './LibraryEmptyState';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { BatchBar } from './BatchBar';
 import { useLibraryModalStore, useLibraryViewStore, useLibraryUIStore } from '../../store';
 import { useQuickCopyShortcuts } from '../../hooks/use-quick-copy';
@@ -41,6 +43,7 @@ export function LibraryContent({
 }: LibraryContentProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const filterParam = searchParams.get('filter');
   const effectiveSavedSearchId =
@@ -222,9 +225,10 @@ export function LibraryContent({
 
   if (isError) {
     return (
-      <div className="flex h-full w-full items-center justify-center p-6 text-xs text-destructive">
-        Failed to load items. Please try again.
-      </div>
+      <PlaneErrorState
+        title="Unable to load references"
+        description="An issue occurred while loading the reference library. Other features remain unaffected."
+      />
     );
   }
 

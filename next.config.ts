@@ -82,6 +82,11 @@ const nextConfig: NextConfig = {
       '@radix-ui/react-toggle-group',
       'cmdk',
       'sonner',
+      '@codemirror/view',
+      '@codemirror/state',
+      '@codemirror/commands',
+      'react-markdown',
+      'yjs',
     ],
   },
 
@@ -236,6 +241,10 @@ const nextConfig: NextConfig = {
       {
         source: '/health/:path*',
         destination: `${backendUrl}/health/:path*`,
+      },
+      {
+        source: '/notifications/:path*',
+        destination: `${backendUrl}/notifications/:path*`,
       },
     ];
   },

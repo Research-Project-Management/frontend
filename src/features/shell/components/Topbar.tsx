@@ -12,6 +12,7 @@ import {
 } from '@/shared/components/ui';
 import { usePathname, useRouter } from 'next/navigation';
 import AccountDropdown from './AccountDropdown';
+import InboxPopover from '@/features/inbox/components/InboxPopover';
 
 export default function Topbar() {
   const pathname = usePathname();
@@ -62,8 +63,10 @@ export default function Topbar() {
         </button>
       </div>
 
-      {/* Right: AI assistant button (clean, centered icon and text, rounded-md, no hover/active color, tooltip enabled) */}
-      <div className='flex items-center shrink-0'>
+      {/* Right: Inbox Notification Bell + AI assistant button */}
+      <div className='flex items-center gap-2 shrink-0'>
+        <InboxPopover align='end' />
+
         <TooltipProvider delayDuration={150}>
           <Tooltip>
             <TooltipTrigger asChild>

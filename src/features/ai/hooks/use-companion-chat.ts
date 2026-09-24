@@ -11,6 +11,7 @@ import {
 } from '../services/chat.service';
 import { buildResponseWidgetsFromActions } from '../components/chat/response-widgets';
 import { useAiCompanionStore } from '../store/ai-companion.store';
+import { mergeAgentAction } from './use-chat';
 
 export interface CompanionSendOptions {
   projectId?: string | null;
@@ -161,7 +162,7 @@ export function useCompanionChat() {
             }
           },
           onAction: (action) => {
-            activeActionsRef.current = [...activeActionsRef.current, action];
+            activeActionsRef.current = mergeAgentAction(activeActionsRef.current, action);
             setActiveActions([...activeActionsRef.current]);
           },
         })) {
@@ -174,6 +175,8 @@ export function useCompanionChat() {
           content: streamRef.current,
           sources:
             activeSourcesRef.current.length > 0 ? activeSourcesRef.current : undefined,
+          actions:
+            activeActionsRef.current.length > 0 ? [...activeActionsRef.current] : undefined,
           widgets: buildResponseWidgetsFromActions(activeActionsRef.current),
         };
 

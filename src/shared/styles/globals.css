@@ -1171,4 +1171,24 @@
 .inspector-scrollbar::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
 }
+
+/* --------------------------------------------------------------------------
+   Rendering Performance: CSS content-visibility for large lists & tables
+   Defers layout & painting for off-screen rows (Vercel React Best Practices)
+   -------------------------------------------------------------------------- */
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 44px;
+}
+
+.content-auto-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 40px;
+}
+
+.content-auto-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 120px;
+}
+
 

@@ -33,10 +33,10 @@ export function ItemTableHeader({
   };
 
   return (
-    <thead className="sticky top-0 z-10 bg-background/95 border-b border-border backdrop-blur-xs select-none">
-      <tr className="h-8 text-foreground font-medium text-12">
+    <thead className="sticky top-0 z-10 bg-background select-none">
+      <tr className="h-[34px] text-foreground font-medium text-12">
         {/* Title (Primary Column: Checkbox + Title) */}
-        <th className="w-auto px-3 font-medium select-none">
+        <th className="px-3 h-[34px] py-0 align-middle font-medium select-none text-left bg-background border-b border-border">
           <div className="flex items-center gap-2 w-full">
             <div
               onClick={(e) => {
@@ -55,7 +55,7 @@ export function ItemTableHeader({
             </div>
             <div
               onClick={() => onSort('title')}
-              className="flex items-center gap-1 cursor-pointer min-w-0 text-foreground"
+              className="flex items-center gap-1.5 cursor-pointer min-w-0 text-foreground"
             >
               <span>Title</span>
               {renderSortIndicator('title')}
@@ -67,9 +67,9 @@ export function ItemTableHeader({
         {columns.authors !== false && (
           <th
             onClick={() => onSort('authors')}
-            className="w-48 min-w-[160px] px-3 font-medium cursor-pointer text-foreground select-none"
+            className="px-3 h-[34px] py-0 align-middle font-medium cursor-pointer text-foreground select-none text-left bg-background border-b border-border"
           >
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <span>Authors</span>
               {renderSortIndicator('authors')}
             </div>
@@ -80,9 +80,9 @@ export function ItemTableHeader({
         {columns.year !== false && (
           <th
             onClick={() => onSort('year')}
-            className="w-16 min-w-[64px] px-2 text-center font-medium cursor-pointer text-foreground select-none"
+            className="px-2 h-[34px] py-0 align-middle text-center font-medium cursor-pointer text-foreground select-none bg-background border-b border-border"
           >
-            <div className="flex items-center justify-center gap-1">
+            <div className="flex items-center justify-center gap-1.5">
               <span>Year</span>
               {renderSortIndicator('year')}
             </div>
@@ -93,9 +93,9 @@ export function ItemTableHeader({
         {columns.publication !== false && (
           <th
             onClick={() => onSort('publicationTitle')}
-            className="w-44 min-w-[140px] px-3 font-medium cursor-pointer text-foreground select-none"
+            className="px-3 h-[34px] py-0 align-middle font-medium cursor-pointer text-foreground select-none text-left bg-background border-b border-border"
           >
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <span>Publication</span>
               {renderSortIndicator('publicationTitle')}
             </div>
@@ -104,21 +104,21 @@ export function ItemTableHeader({
 
         {/* Item Type */}
         {columns.itemType && (
-          <th className="w-28 min-w-[100px] px-3 font-medium text-foreground">
+          <th className="px-3 h-[34px] py-0 align-middle font-medium text-foreground text-left bg-background border-b border-border">
             Type
           </th>
         )}
 
         {/* DOI */}
         {columns.doi && (
-          <th className="w-32 min-w-[120px] px-3 font-medium text-foreground">
+          <th className="px-3 h-[34px] py-0 align-middle font-medium text-foreground text-left bg-background border-b border-border">
             DOI
           </th>
         )}
 
         {/* Citation Key */}
         {columns.citationKey && (
-          <th className="w-32 min-w-[110px] px-3 font-medium text-foreground">
+          <th className="px-3 h-[34px] py-0 align-middle font-medium text-foreground text-left bg-background border-b border-border">
             Citation Key
           </th>
         )}
@@ -127,9 +127,9 @@ export function ItemTableHeader({
         {columns.citations && (
           <th
             onClick={() => onSort('citationCount')}
-            className="w-20 min-w-[70px] px-2 text-center font-medium cursor-pointer text-foreground select-none"
+            className="px-2 h-[34px] py-0 align-middle text-center font-medium cursor-pointer text-foreground select-none bg-background border-b border-border"
           >
-            <div className="flex items-center justify-center gap-1">
+            <div className="flex items-center justify-center gap-1.5">
               <span>Citations</span>
               {renderSortIndicator('citationCount')}
             </div>
@@ -138,7 +138,7 @@ export function ItemTableHeader({
 
         {/* Trash deletedAt column */}
         {isTrash && (
-          <th className="w-32 min-w-[110px] px-3 font-medium text-foreground">
+          <th className="px-3 h-[34px] py-0 align-middle font-medium text-foreground text-left bg-background border-b border-border">
             Date Deleted
           </th>
         )}

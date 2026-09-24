@@ -83,7 +83,7 @@ export function ActionCardsGroup({
   actions: AgentAction[];
   isStreaming?: boolean;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(!isStreaming);
 
   if (actions.length === 0) return null;
 
@@ -130,7 +130,7 @@ export function ActionCardsGroup({
       {/* Action items list */}
       {!collapsed && (
         <div className="border-t border-border divide-y divide-border/20 px-3 py-2 space-y-1.5 bg-background/50">
-          {thinkingAction && (
+          {thinkingAction && otherActions.length === 0 && (
             <div className="text-xs text-muted-foreground italic flex items-center gap-1.5 py-1">
               <CircleDashed className="size-3 text-muted-foreground animate-spin shrink-0" />
               <span>Analyzing intent and workspace context…</span>

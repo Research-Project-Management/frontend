@@ -70,14 +70,14 @@ export const uploadNewFileVersion = (
       } else {
         try {
           const err = JSON.parse(xhr.responseText) as any;
-          reject(new Error(err.message || 'Tải lên phiên bản mới thất bại'));
+          reject(new Error(err.message || 'Failed to upload new version'));
         } catch {
-          reject(new Error(`Tải lên thất bại: HTTP ${xhr.status}`));
+          reject(new Error(`Upload failed: HTTP ${xhr.status}`));
         }
       }
     };
 
-    xhr.onerror = () => reject(new Error('Lỗi kết nối khi tải phiên bản mới'));
+    xhr.onerror = () => reject(new Error('Connection error while uploading new version'));
 
     xhr.open('POST', `${API_BASE_URL}/api/files/${encodeURIComponent(fileId)}/versions`);
     const token = getAuthToken();

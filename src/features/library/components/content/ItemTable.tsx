@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useLibraryUIStore } from '../../store/library-ui.store';
-import { useSelectedCount } from '../../store/selectors';
 import {
   useToggleStarItemMutation,
   useDeleteLibraryItemsMutation,
@@ -76,7 +75,14 @@ export const ItemTable = React.memo(function ItemTable({
   const activeItemId = useLibraryUIStore((s) => s.activeItemId);
   const storeDisplayOptions = useLibraryUIStore((s) => s.displayOptions);
   const setStoreDisplayOptions = useLibraryUIStore((s) => s.setDisplayOptions);
-  const selectedCount = useSelectedCount();
+
+  // Granular Boolean Selector: Does NOT re-render ItemTable when selectedIds count increments (O(1) row isolation)
+  const isAllSelected = useLibraryUIStore(
+    useCallback(
+      (s) => items.length > 0 && s.selectedIds.size === items.length,
+      [items.length],
+    ),
+  );
 
   const displayOptions =
     propDisplayOptions ?? storeDisplayOptions ?? DEFAULT_LIBRARY_DISPLAY_OPTIONS;
@@ -136,6 +142,26 @@ export const ItemTable = React.memo(function ItemTable({
   // Track last selected index for Shift + Click range selection
   const lastSelectedIndexRef = useRef<number | null>(null);
 
+  // Sentinel ref and lifecycle-safe IntersectionObserver for infinite scrolling
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || !hasNextPage || isLoadingMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          onLoadMore?.();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasNextPage, isLoadingMore, onLoadMore]);
+
   // Column sort toggle
   const handleSort = (columnKey: string) => {
     let nextDir: 'asc' | 'desc' = 'desc';
@@ -190,7 +216,6 @@ export const ItemTable = React.memo(function ItemTable({
   }, [items, sortColumn, sortDirection]);
 
   // Select all handler
-  const isAllSelected = items.length > 0 && selectedCount === items.length;
   const handleSelectAll = () => {
     if (isAllSelected) {
       clearSelection();
@@ -199,9 +224,20 @@ export const ItemTable = React.memo(function ItemTable({
     }
   };
 
-  // Row click handler: activates the item to view in inspector, NEVER selects the checkbox automatically
+  // Row click handler: activates the item to view in inspector, and toggles off if clicked again.
+  // NEVER checks or shows the checkbox automatically (checkbox must be explicitly clicked by user).
   const handleRowClick = useCallback(
     (_e: React.MouseEvent, item: Item, index: number) => {
+      const currentActiveId = useLibraryUIStore.getState().activeItemId;
+
+      // If clicking the currently active item, toggle it off!
+      if (currentActiveId === item.id) {
+        setActiveItem(null);
+        lastSelectedIndexRef.current = null;
+        return;
+      }
+
+      // Otherwise, activate this item without touching checkboxes
       setActiveItem(item.id);
       lastSelectedIndexRef.current = index;
     },
@@ -246,6 +282,10 @@ export const ItemTable = React.memo(function ItemTable({
         setActiveItem(prevItem.id);
         lastSelectedIndexRef.current = prevIndex;
       }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setActiveItem(null);
+      clearSelection();
     } else if (e.key === ' ') {
       e.preventDefault();
       if (activeItemId) {
@@ -326,25 +366,82 @@ export const ItemTable = React.memo(function ItemTable({
   const columns =
     displayOptions?.columns || DEFAULT_LIBRARY_DISPLAY_OPTIONS.columns;
 
+  // Dynamically balance proportional column widths using Golden Ratio (phi ≈ 1.618)
+  const colWidths = useMemo(() => {
+    const showAuthors = columns.authors !== false;
+    const showPub = columns.publication !== false;
+
+    // Calculate space consumed by active fixed-width columns based on Fibonacci progression (55px, 89px, 144px)
+    let fixedPx = 0;
+    if (columns.year !== false) fixedPx += 89;
+    if (columns.itemType) fixedPx += 89;
+    if (columns.doi) fixedPx += 144;
+    if (columns.citationKey) fixedPx += 144;
+    if (columns.citations) fixedPx += 55;
+    if (isTrash) fixedPx += 89;
+
+    let authorsWidth: string | undefined = undefined;
+    let pubWidth: string | undefined = undefined;
+
+    // Golden Ratio column proportions: Title : Authors : Publication = phi^2 : phi : 1 = 2.618 : 1.618 : 1.000
+    // => Title = 50.0%, Authors = 30.9%, Publication = 19.1% (Adjacent ratios = 1.618)
+    // When fixed columns consume higher width (> 200px), scaled by 1/phi^2:
+    // => Authors = 23.6%, Publication = 14.6% (Ratio 23.6 / 14.6 = 1.618)
+    if (showAuthors && showPub) {
+      authorsWidth = fixedPx > 200 ? '23.6%' : '30.9%';
+      pubWidth = fixedPx > 200 ? '14.6%' : '19.1%';
+    } else if (showAuthors) {
+      // Title : Authors = phi : 1 => Title = 61.8%, Authors = 38.2%
+      authorsWidth = fixedPx > 200 ? '30.9%' : '38.2%';
+    } else if (showPub) {
+      // Title : Publication = phi : 1 => Title = 61.8%, Publication = 38.2%
+      pubWidth = fixedPx > 200 ? '23.6%' : '38.2%';
+    }
+
+    return {
+      authors: authorsWidth,
+      publication: pubWidth,
+    };
+  }, [
+    columns.authors,
+    columns.publication,
+    columns.year,
+    columns.itemType,
+    columns.doi,
+    columns.citationKey,
+    columns.citations,
+    isTrash,
+  ]);
+
   return (
     <div className="flex flex-col h-full w-full overflow-hidden select-none">
       {/* Scrollable Data Table Container */}
       <div
         tabIndex={0}
         onKeyDown={handleKeyDown}
+        onClick={(e) => {
+          if (
+            e.target === e.currentTarget ||
+            (e.target as HTMLElement).tagName === 'TABLE' ||
+            (e.target as HTMLElement).tagName === 'TBODY'
+          ) {
+            setActiveItem(null);
+            clearSelection();
+          }
+        }}
         className="flex-1 w-full overflow-auto text-13 focus:outline-none"
       >
-        <table className="w-full min-w-[960px] table-fixed text-left border-collapse">
+        <table className="w-full min-w-[640px] table-fixed text-left border-collapse">
           <colgroup>
             <col />
-            {columns.authors !== false && <col style={{ width: '200px' }} />}
-            {columns.year !== false && <col style={{ width: '70px' }} />}
-            {columns.publication !== false && <col style={{ width: '180px' }} />}
-            {columns.itemType && <col style={{ width: '120px' }} />}
-            {columns.doi && <col style={{ width: '140px' }} />}
-            {columns.citationKey && <col style={{ width: '120px' }} />}
-            {columns.citations && <col style={{ width: '80px' }} />}
-            {isTrash && <col style={{ width: '120px' }} />}
+            {columns.authors !== false && <col style={{ width: colWidths.authors }} />}
+            {columns.year !== false && <col style={{ width: '89px' }} />}
+            {columns.publication !== false && <col style={{ width: colWidths.publication }} />}
+            {columns.itemType && <col style={{ width: '89px' }} />}
+            {columns.doi && <col style={{ width: '144px' }} />}
+            {columns.citationKey && <col style={{ width: '144px' }} />}
+            {columns.citations && <col style={{ width: '55px' }} />}
+            {isTrash && <col style={{ width: '89px' }} />}
           </colgroup>
           <ItemTableHeader
             columns={columns}
@@ -381,19 +478,7 @@ export const ItemTable = React.memo(function ItemTable({
 
         {/* Invisible sentinel for seamless infinite scroll */}
         {hasNextPage && (
-          <div
-            ref={(node) => {
-              if (!node || !hasNextPage || isLoadingMore) return;
-              const observer = new IntersectionObserver((entries) => {
-                if (entries[0]?.isIntersecting) {
-                  onLoadMore?.();
-                }
-              });
-              observer.observe(node);
-              return () => observer.disconnect();
-            }}
-            className="h-1 w-full"
-          />
+          <div ref={sentinelRef} className="h-1 w-full" />
         )}
       </div>
     </div>

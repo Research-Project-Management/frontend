@@ -22,7 +22,6 @@ import {
   DialogDescription,
   Button,
   Progress,
-  ScrollArea,
   Select,
   SelectTrigger,
   SelectValue,
@@ -447,7 +446,7 @@ export default function UploadFilesModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3.5 min-h-0 overflow-y-auto">
+        <div className="space-y-3.5 min-h-0 flex-1 overflow-y-auto pr-0.5">
           {/* Target Collection Selector */}
           <div className="flex items-center gap-2.5 text-12">
             <span className="text-muted-foreground shrink-0 font-medium">Collection:</span>
@@ -481,7 +480,9 @@ export default function UploadFilesModal({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border border-dashed rounded-xl py-10 px-6 text-center cursor-pointer transition-colors ${
+            className={`border border-dashed rounded-xl ${
+              items.length > 0 ? 'py-5 px-4' : 'py-9 px-6'
+            } text-center cursor-pointer transition-all ${
               isDragging
                 ? 'border-primary bg-primary/5'
                 : 'border-border hover:border-muted-foreground/50 hover:bg-muted/30'
@@ -495,13 +496,16 @@ export default function UploadFilesModal({
               className="hidden"
               onChange={handleFileInputChange}
             />
-            <div className="flex flex-col items-center justify-center gap-2.5">
-              <UploadCloud className="size-7 text-muted-foreground/60 mb-0.5" strokeWidth={1.5} />
-              <div className="space-y-1">
+            <div className="flex flex-col items-center justify-center gap-2">
+              <UploadCloud
+                className={`${items.length > 0 ? 'size-5' : 'size-7'} text-muted-foreground/60 transition-all`}
+                strokeWidth={1.5}
+              />
+              <div className="space-y-0.5">
                 <p className="text-13 font-medium text-foreground">
                   Drop files or click to browse
                 </p>
-                <p className="text-12 text-muted-foreground">
+                <p className="text-11 text-muted-foreground">
                   PDF, BibTeX, or RIS (max 100MB)
                 </p>
               </div>
@@ -528,7 +532,8 @@ export default function UploadFilesModal({
                 )}
               </div>
 
-              <ScrollArea className="max-h-[260px] rounded-md border border-border divide-y divide-border/60">
+              <div className="rounded-lg border border-border bg-background overflow-hidden">
+                <div className="max-h-[220px] overflow-y-auto divide-y divide-border/60">
                 {items.map((item) => (
                   <div
                     key={item.id}
@@ -622,10 +627,26 @@ export default function UploadFilesModal({
                     </div>
                   </div>
                 ))}
-              </ScrollArea>
+                </div>
+              </div>
             </div>
           )}
         </div>
+
+        {items.length > 0 && (
+          <div className="flex items-center justify-end pt-2 border-t border-border shrink-0">
+            <Button
+              type="button"
+              variant={isUploading ? "outline" : "default"}
+              size="sm"
+              disabled={isUploading}
+              onClick={() => onOpenChange(false)}
+              className="text-12 h-8 px-4"
+            >
+              {isUploading ? 'Uploading...' : 'Done'}
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

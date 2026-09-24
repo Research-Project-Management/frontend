@@ -84,30 +84,114 @@ export function isDuplicatePair(paperA: Partial<Item>, paperB: Partial<Item>): {
 }
 
 /**
- * Client-side fallback clusterer to detect duplicate groups across a list of items.
+ * Client-side deduplication clusterer optimized to O(N) average time complexity
+ * using multi-index inverted bucket maps (DOI, arXiv, Title) instead of O(N^2) pairwise comparisons.
  */
 export function clusterDuplicateItems(items: Item[]): DuplicateCandidatePair[] {
+  if (!items || items.length === 0) return [];
+
+  // Step 1: O(N) Multi-index Inverted Hash Buckets
+  const doiBucket = new Map<string, Item[]>();
+  const arxivBucket = new Map<string, Item[]>();
+  const titleBucket = new Map<string, Item[]>();
+
+  for (const item of items) {
+    if (!item?.id) continue;
+
+    if (item.doi) {
+      const clean = cleanDoi(item.doi)?.toLowerCase();
+      if (clean) {
+        const list = doiBucket.get(clean) || [];
+        list.push(item);
+        doiBucket.set(clean, list);
+      }
+    }
+
+    if (item.arxivId) {
+      const clean = item.arxivId.trim().toLowerCase().replace(/v\d+$/, '');
+      if (clean) {
+        const list = arxivBucket.get(clean) || [];
+        list.push(item);
+        arxivBucket.set(clean, list);
+      }
+    }
+
+    if (item.title) {
+      const norm = normalizeTitleForDeduplication(item.title);
+      if (norm.length >= 15) {
+        const list = titleBucket.get(norm) || [];
+        list.push(item);
+        titleBucket.set(norm, list);
+      }
+    }
+  }
+
+  // Step 2: O(N) Candidate-only matching (evaluates only items within shared buckets)
   const results: DuplicateCandidatePair[] = [];
   const visited = new Set<string>();
 
-  for (let i = 0; i < items.length; i++) {
-    const current = items[i];
+  for (const current of items) {
     const currentId = current.id;
-    if (visited.has(currentId)) continue;
+    if (!currentId || visited.has(currentId)) continue;
+
+    // Gather candidate duplicates strictly from this item's buckets
+    const candidateMap = new Map<string, Item>();
+
+    if (current.doi) {
+      const clean = cleanDoi(current.doi)?.toLowerCase();
+      if (clean) {
+        const bucket = doiBucket.get(clean);
+        if (bucket) {
+          for (const cand of bucket) {
+            if (cand.id !== currentId && !visited.has(cand.id)) {
+              candidateMap.set(cand.id, cand);
+            }
+          }
+        }
+      }
+    }
+
+    if (current.arxivId) {
+      const clean = current.arxivId.trim().toLowerCase().replace(/v\d+$/, '');
+      if (clean) {
+        const bucket = arxivBucket.get(clean);
+        if (bucket) {
+          for (const cand of bucket) {
+            if (cand.id !== currentId && !visited.has(cand.id)) {
+              candidateMap.set(cand.id, cand);
+            }
+          }
+        }
+      }
+    }
+
+    if (current.title) {
+      const norm = normalizeTitleForDeduplication(current.title);
+      if (norm.length >= 15) {
+        const bucket = titleBucket.get(norm);
+        if (bucket) {
+          for (const cand of bucket) {
+            if (cand.id !== currentId && !visited.has(cand.id)) {
+              candidateMap.set(cand.id, cand);
+            }
+          }
+        }
+      }
+    }
+
+    if (candidateMap.size === 0) continue;
 
     const dupes: Item[] = [];
     let detectedCriteria: DuplicateMatchCriteria = 'TITLE_AUTHOR_YEAR';
     let detectedConfidence: 'high' | 'medium' | 'low' = 'medium';
 
-    for (let j = i + 1; j < items.length; j++) {
-      const other = items[j];
-      const otherId = other.id;
-      if (visited.has(otherId)) continue;
+    for (const other of candidateMap.values()) {
+      if (visited.has(other.id)) continue;
 
       const check = isDuplicatePair(current, other);
       if (check.isMatch) {
         dupes.push(other);
-        visited.add(otherId);
+        visited.add(other.id);
         if (check.criteria) detectedCriteria = check.criteria;
         if (check.confidence === 'high') detectedConfidence = 'high';
       }

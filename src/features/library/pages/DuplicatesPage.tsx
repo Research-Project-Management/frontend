@@ -25,6 +25,11 @@ import { LibraryModals } from '../components/modals';
 
 const MergeModal = dynamic(() => import('../components/modals/MergeModal'), { ssr: false });
 import { ContentSkeleton } from '../components/content/ContentSkeleton';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
+import {
+  DuplicatesStackIllustration,
+  libraryIllustrationStyles,
+} from '../components/content/LibraryIllustrations';
 import {
   useDuplicateGroupsQuery,
   useMergeDuplicatesMutation,
@@ -241,26 +246,21 @@ export function DuplicatesPage() {
               <ContentSkeleton rowCount={8} />
             </div>
           ) : isError ? (
-            <div className="flex h-full w-full flex-col items-center justify-center p-8 text-center text-destructive">
-              <ShieldAlert className="h-10 w-10 mb-2 opacity-80" />
-              <p className="text-sm font-medium">Failed to load duplicate items</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refetch()}
-                className="mt-4 text-12"
-              >
-                Try again
-              </Button>
-            </div>
+            <PlaneErrorState
+              title="Unable to load duplicates"
+              description="An issue occurred while scanning for duplicate references in your library."
+            />
           ) : activeGroups.length === 0 ? (
-            <div className="flex h-full w-full flex-col items-center justify-center p-8 text-center text-muted-foreground">
-              <div className="h-14 w-14 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3">
-                <Sparkles className="h-7 w-7 text-emerald-500" />
+            <div className="flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200 bg-background">
+              <style dangerouslySetInnerHTML={{ __html: libraryIllustrationStyles }} />
+              <div className="plane-library-illustration mb-6 flex items-center justify-center">
+                <DuplicatesStackIllustration />
               </div>
-              <p className="text-base font-semibold text-foreground">No duplicate items</p>
-              <p className="text-12 text-muted-foreground mt-1 max-w-sm">
-                Your library is clean. No duplicate items detected.
+              <h3 className="text-16 font-semibold text-foreground mb-2 tracking-tight">
+                No duplicate items
+              </h3>
+              <p className="text-13 text-muted-foreground max-w-[420px] leading-relaxed font-normal">
+                Your library is completely clean. No duplicate papers or matching identifiers detected.
               </p>
             </div>
           ) : (

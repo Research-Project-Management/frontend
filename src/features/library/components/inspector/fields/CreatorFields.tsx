@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Minus, Check, ChevronDown, ChevronUp, Building2, User } from 'lucide-react';
+import { Plus, Minus, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import type { Item, CreatorCredit } from '@/features/library/types/library.types';
 import { normalizeAuthors, splitAuthorString } from '../../../domain';
@@ -33,7 +34,7 @@ export interface CreatorFieldsProps {
   paper: Item;
   typeDefinition: SchemaItemTypeDefinition;
   canEdit?: boolean;
-  onUpdatePaper?: (data: Partial<Item>) => void;
+  onUpdatePaper?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
 }
 
 const MAX_COLLAPSED_AUTHORS = 3;
@@ -270,31 +271,19 @@ export function CreatorFields({
       .filter(Boolean);
     const finalAuthors = primaryCreatorNames.length ? primaryCreatorNames : allCreatorNames;
     if (onUpdatePaper) {
-      onUpdatePaper({
-        authors: finalAuthors.length ? finalAuthors : undefined,
-        creators: toItemCreators(updatedCreators),
-      });
-    }
-  };
-
-  const handleToggleFieldMode = (targetIndex: number) => {
-    const current = localCreators[targetIndex];
-    if (!current) return;
-    const nextMode = (current.fieldMode ?? 0) === 1 ? 0 : 1;
-    const updatedCreators = [...localCreators];
-    updatedCreators[targetIndex] = {
-      ...current,
-      fieldMode: nextMode,
-    };
-    setLocalCreators(updatedCreators);
-    if (onUpdatePaper) {
-      onUpdatePaper({
-        creators: toItemCreators(updatedCreators),
-      });
+      onUpdatePaper(
+        {
+          authors: finalAuthors.length ? finalAuthors : undefined,
+          creators: toItemCreators(updatedCreators),
+          silent: true,
+        } as any,
+        { silent: true },
+      );
     }
   };
 
   const handleAddCreator = (afterIndex?: number) => {
+    toast.dismiss('item-update');
     const primaryRole = typeDefinition.primaryCreatorType || getPrimaryCreatorType(currentItemType) || 'author';
     const insertPosition = typeof afterIndex === 'number' ? afterIndex + 1 : localCreators.length;
     const updatedCreators = [...localCreators];
@@ -305,6 +294,7 @@ export function CreatorFields({
   };
 
   const handleRemoveCreator = (targetIndex: number) => {
+    toast.dismiss('item-update');
     const updatedCreators = localCreators.filter((_, creatorIndex) => creatorIndex !== targetIndex);
     setLocalCreators(updatedCreators);
     const primaryRole = typeDefinition.primaryCreatorType || getPrimaryCreatorType(currentItemType) || 'author';
@@ -317,10 +307,14 @@ export function CreatorFields({
       .filter(Boolean);
     const finalAuthors = primaryCreatorNames.length ? primaryCreatorNames : allCreatorNames;
     if (onUpdatePaper) {
-      onUpdatePaper({
-        authors: finalAuthors.length ? finalAuthors : undefined,
-        creators: updatedCreators.length ? toItemCreators(updatedCreators) : undefined,
-      });
+      onUpdatePaper(
+        {
+          authors: finalAuthors.length ? finalAuthors : undefined,
+          creators: updatedCreators.length ? toItemCreators(updatedCreators) : undefined,
+          silent: true,
+        } as any,
+        { silent: true },
+      );
     }
   };
 
@@ -340,28 +334,8 @@ export function CreatorFields({
                 const existingAuthors = normalizeAuthors(paper.authors, paper.creators, paper.contributors);
                 if (trimmedValue && (!existingAuthors.length || existingAuthors[0] !== trimmedValue)) {
                   if (onUpdatePaper) {
-                    onUpdatePaper({
-                      authors: [trimmedValue],
-                      creators: [
-                        {
-                          orderIndex: 0,
-                          creatorType: 'author',
-                          fieldMode: 0,
-                          fullName: trimmedValue,
-                          name: trimmedValue,
-                        },
-                      ],
-                    });
-                  }
-                }
-              }}
-              onKeyDown={(keyboardEvent) => {
-                if (keyboardEvent.key === 'Enter') {
-                  const trimmedValue = (keyboardEvent.target as HTMLInputElement).value.trim();
-                  const existingAuthors = normalizeAuthors(paper.authors, paper.creators, paper.contributors);
-                  if (trimmedValue && (!existingAuthors.length || existingAuthors[0] !== trimmedValue)) {
-                    if (onUpdatePaper) {
-                      onUpdatePaper({
+                    onUpdatePaper(
+                      {
                         authors: [trimmedValue],
                         creators: [
                           {
@@ -372,7 +346,35 @@ export function CreatorFields({
                             name: trimmedValue,
                           },
                         ],
-                      });
+                        silent: true,
+                      } as any,
+                      { silent: true },
+                    );
+                  }
+                }
+              }}
+              onKeyDown={(keyboardEvent) => {
+                if (keyboardEvent.key === 'Enter') {
+                  const trimmedValue = (keyboardEvent.target as HTMLInputElement).value.trim();
+                  const existingAuthors = normalizeAuthors(paper.authors, paper.creators, paper.contributors);
+                  if (trimmedValue && (!existingAuthors.length || existingAuthors[0] !== trimmedValue)) {
+                    if (onUpdatePaper) {
+                      onUpdatePaper(
+                        {
+                          authors: [trimmedValue],
+                          creators: [
+                            {
+                              orderIndex: 0,
+                              creatorType: 'author',
+                              fieldMode: 0,
+                              fullName: trimmedValue,
+                              name: trimmedValue,
+                            },
+                          ],
+                          silent: true,
+                        } as any,
+                        { silent: true },
+                      );
                     }
                   }
                   (keyboardEvent.target as HTMLInputElement).blur();
@@ -474,10 +476,14 @@ export function CreatorFields({
                           .filter(Boolean);
                         const finalAuthors = primaryCreatorNames.length ? primaryCreatorNames : allCreatorNames;
                         if (onUpdatePaper) {
-                          onUpdatePaper({
-                            authors: finalAuthors.length ? finalAuthors : undefined,
-                            creators: toItemCreators(localCreators),
-                          });
+                          onUpdatePaper(
+                            {
+                              authors: finalAuthors.length ? finalAuthors : undefined,
+                              creators: toItemCreators(localCreators),
+                              silent: true,
+                            } as any,
+                            { silent: true },
+                          );
                         }
                       }}
                       onKeyDown={(keyboardEvent) => {
@@ -491,12 +497,12 @@ export function CreatorFields({
 
                     {/* Optional Short Name / Acronym when in single-field institutional mode */}
                     {creatorEntry.fieldMode === 1 && (
-                      <Tooltip delayDuration={700}>
+                      <Tooltip delayDuration={300}>
                         <TooltipTrigger asChild>
                           <input
                             type="text"
                             value={creatorEntry.shortName || ''}
-                            placeholder="Acronym (e.g. WHO)"
+                            placeholder="Acronym"
                             aria-label={`Short name or acronym for creator ${creatorIndex + 1}`}
                             onChange={(changeEvent) => {
                               const updatedCreators = [...localCreators];
@@ -510,9 +516,13 @@ export function CreatorFields({
                               const originalCreators = parseCreators(paper);
                               if (areCreatorsEqual(localCreators, originalCreators)) return;
                               if (onUpdatePaper) {
-                                onUpdatePaper({
-                                  creators: toItemCreators(localCreators),
-                                });
+                                onUpdatePaper(
+                                  {
+                                    creators: toItemCreators(localCreators),
+                                    silent: true,
+                                  } as any,
+                                  { silent: true },
+                                );
                               }
                             }}
                             className="w-24 sm:w-28 h-7 bg-transparent px-2 py-1 rounded-md border border-border/50 focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-11 placeholder:text-muted-foreground/60 leading-normal outline-none font-normal font-sans shrink-0"
@@ -525,52 +535,20 @@ export function CreatorFields({
                           alignOffset={2}
                           className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
                         >
-                          Short name / acronym for CSL in-text citations (e.g. WHO, UNESCO)
+                          Short name
                         </TooltipContent>
                       </Tooltip>
                     )}
 
-                    {/* Action Buttons (Field mode, Add, Remove) - only visible on hover */}
+                    {/* Action Buttons (Add, Remove) - only visible on hover */}
                     <div className="invisible group-hover:visible flex items-center gap-0.5 shrink-0">
-                      <Tooltip delayDuration={700}>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleFieldMode(creatorIndex)}
-                            className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none"
-                            aria-label={
-                              creatorEntry.fieldMode === 1
-                                ? 'Single field (institution) — Click to switch to personal author'
-                                : 'Personal author — Click to switch to single field (institution)'
-                            }
-                          >
-                            {creatorEntry.fieldMode === 1 ? (
-                              <Building2 className="size-3.5 text-primary shrink-0" aria-hidden="true" strokeWidth={1.5} />
-                            ) : (
-                              <User className="size-3.5 text-muted-foreground hover:text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
-                            )}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent
-                          side="bottom"
-                          align="start"
-                          sideOffset={6}
-                          alignOffset={2}
-                          className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
-                        >
-                          {creatorEntry.fieldMode === 1
-                            ? 'Institution — Click for personal author'
-                            : 'Personal author — Click for institution'}
-                        </TooltipContent>
-                      </Tooltip>
-
-                      <Tooltip delayDuration={700}>
+                      <Tooltip delayDuration={300}>
                         <TooltipTrigger asChild>
                           <button
                             type="button"
                             onClick={() => handleAddCreator(creatorIndex)}
                             className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none"
-                            aria-label="Add creator below"
+                            aria-label="Add author"
                           >
                             <Plus className="size-3.5 text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
                           </button>
@@ -582,18 +560,18 @@ export function CreatorFields({
                           alignOffset={2}
                           className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
                         >
-                          Add author below
+                          Add author
                         </TooltipContent>
                       </Tooltip>
 
                       {localCreators.length > 1 && (
-                        <Tooltip delayDuration={700}>
+                        <Tooltip delayDuration={300}>
                           <TooltipTrigger asChild>
                             <button
                               type="button"
                               onClick={() => handleRemoveCreator(creatorIndex)}
                               className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none"
-                              aria-label="Remove creator"
+                              aria-label="Remove author"
                             >
                               <Minus className="size-3.5 text-foreground shrink-0" aria-hidden="true" strokeWidth={1.5} />
                             </button>

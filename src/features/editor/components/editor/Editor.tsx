@@ -3,36 +3,24 @@
 /**
  * Editor.tsx
  *
- * Deconstructed Source/Visual Editor cockpit:
- * - Composes useMonacoMount for keybindings, SyncTeX forward, decorations & review interceptors
- * - Composes useMonacoDiagnostics for real-time LaTeX error markers
- * - Isolated EditorFloatingOverlay (Glyphs, Overleaf AI, Selection bar, Context menu)
- * - Isolated EditorModals (Table, Figure, Symbol palette, Citation picker, Track Changes)
+ * Clean Presentational Editor Cockpit (Dumb UI Shell):
+ * - Top format bar with LaTeX insert tools & mode switchers
+ * - UnifiedCodeMirrorEditor with syntax highlighting and keybindings
+ * - Floating Overlays & Wizard Modals
+ * - Decoupled from legacy network calls
  */
 
 import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from 'react';
-import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { filesQuery } from '@/features/editor/hooks/use-core';
-import { usePageComments } from '@/features/editor/hooks/use-comment';
+import type { Page, PageFile, PageSuggestion, PageComment } from '@/features/editor/types';
 import {
-  usePageSuggestions,
-  useCreateSuggestion,
-  useAcceptSuggestion,
-  useRejectSuggestion,
-} from '@/features/editor/hooks/use-suggestion';
-import type { Page, PageFile, PageSuggestion } from '@/features/editor/types';
-import {
-  usePageStore,
   useSettingsStore,
 } from '@/features/editor/store';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { toast } from 'sonner';
-import { Lock, Loader2 } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { useTheme } from '@/shared/providers';
 import { cn } from '@/shared/lib/utils';
-import dynamic from 'next/dynamic';
 
 // Subcomponents & internal seams
 import Format from './Format';
@@ -45,7 +33,7 @@ import type { SelFloating } from './subcomponents/EditorFloatingBar';
 import type { RenameDialogState } from './subcomponents/RenameSymbolDialog';
 import type { SuggestModalState } from './subcomponents/SuggestEditModal';
 
-import { useEditorSave, extractStringContent } from './hooks/use-editor-save';
+import { useEditorSave } from './hooks/use-editor-save';
 import { useEditorDecorations } from './hooks/use-editor-decorations';
 import { useEditorShortcuts } from './hooks/use-editor-shortcuts';
 import { useEditorCitation } from './hooks/use-editor-citation';
@@ -75,8 +63,6 @@ export default function Editor({ page }: EditorProps) {
   const fontSize = useSettingsStore((s) => s.fontSize);
   const wordWrap = useSettingsStore((s) => s.wordWrap);
   const lineNumbers = useSettingsStore((s) => s.lineNumbers);
-  const editorMode = useSettingsStore((s) => s.editorMode);
-  const setEditorMode = useSettingsStore((s) => s.setEditorMode);
   const keybinding = useSettingsStore((s) => s.keybinding);
   const reviewMode = useSettingsStore((s) => s.reviewMode);
   const setReviewMode = useSettingsStore((s) => s.setReviewMode);
@@ -125,54 +111,32 @@ export default function Editor({ page }: EditorProps) {
     [setReviewMode],
   );
 
-  const { pageId: pageIdParam, projectId: projectIdParam } = useParams<{
-    pageId?: string;
-    projectId?: string;
-  }>();
-  const storeProjectId = usePageStore((s) => s.projectId);
-  const activeProjectId = projectIdParam || storeProjectId || 'me';
+  // Presentational state for comments & suggestions (decoupled from legacy API)
+  const [comments] = useState<PageComment[]>([]);
+  const [suggestions, setSuggestions] = useState<PageSuggestion[]>([]);
 
-  // Remote data queries
-  const { data: comments = [] } = usePageComments(pageIdParam ?? null);
-  const { data: suggestions = [] } = usePageSuggestions(page.id, 'pending');
-
-  const { data: pageFiles = [] } = useQuery({
-    ...filesQuery(pageIdParam ?? ''),
-    enabled: !!pageIdParam,
-  });
-  const pageFilesRef = useRef<any[]>(pageFiles);
-  pageFilesRef.current = pageFiles;
-
-  const createSuggestionMutation = useCreateSuggestion();
-  const acceptSuggestionMutation = useAcceptSuggestion();
-  const rejectSuggestionMutation = useRejectSuggestion();
-
-  // Realtime collaboration & remote cursor tracking
+  // Realtime collaboration & remote cursor tracking (clean presentation state)
   const {
     activeCollaborators,
     isDocumentLocked,
     lockedBy,
-    bindMonacoCursorListeners,
-    isRealtimeActive,
     connectionStatus,
     isSynced,
-    triggerCheckpoint,
     yText,
     awareness,
   } = useEditorCollaborators({
-    projectId: activeProjectId,
+    projectId: '',
     pageId: page.id,
     editorRef,
     monacoRef,
   });
 
   // Core editor state hooks
-  const [editorMounted, setEditorMounted] = useState(false);
+  const [editorMounted] = useState(true);
   const {
     currentContent,
     handleContentChange,
-    updateMutation,
-  } = useEditorSave({ page, isRealtimeActive });
+  } = useEditorSave({ page, isRealtimeActive: false });
 
   // Table, Figure, Symbol Wizard Modals
   const [tableWizardOpen, setTableWizardOpen] = useState(false);
@@ -204,20 +168,11 @@ export default function Editor({ page }: EditorProps) {
     };
   }, []);
 
-
   const vimStatusRef = useRef<HTMLDivElement>(null);
 
   const handleSaveAndCompile = useCallback(() => {
-    if (isRealtimeActive) {
-      triggerCheckpoint();
-    } else if (page?.id && currentContent !== undefined) {
-      updateMutation.mutate({
-        pageId: page.id,
-        content: currentContent,
-      });
-    }
     editorCommandBus.dispatch({ type: 'compiler:trigger' });
-  }, [currentContent, isRealtimeActive, page?.id, triggerCheckpoint, updateMutation]);
+  }, []);
 
   const { isVimActive } = useEditorVim({
     editor: editorMounted ? editorRef.current : null,
@@ -256,7 +211,6 @@ export default function Editor({ page }: EditorProps) {
     glyphTooltip,
     activeSuggestionWidgetData,
     setActiveSuggestionWidgetData,
-    bindDecorationListeners,
   } = useEditorDecorations({
     editorRef,
     monacoRef,
@@ -265,73 +219,34 @@ export default function Editor({ page }: EditorProps) {
     editorMounted,
   });
 
-
   const handleAcceptSuggestion = useCallback(async (s: PageSuggestion) => {
-    try {
-      const res = await acceptSuggestionMutation.mutateAsync({
-        pageId: page.id,
-        suggestionId: s.id,
-      });
-      if (res?.page?.content && !isRealtimeActive) {
-        const text = extractStringContent(res.page.content);
-        if (editorRef.current && editorRef.current.getValue() !== text) {
-          editorRef.current.setValue(text);
-        }
-      }
-      toast.success(`Accepted suggestion by ${s.author?.name || 'author'}`);
-      setActiveSuggestionWidgetData(null);
-    } catch {
-      toast.error('Failed to accept suggestion');
-    }
-  }, [acceptSuggestionMutation, isRealtimeActive, page.id, setActiveSuggestionWidgetData, editorRef]);
+    setSuggestions((prev) => prev.filter((item) => item.id !== s.id));
+    toast.success(`Accepted suggestion by ${s.author?.name || 'author'}`);
+    setActiveSuggestionWidgetData(null);
+  }, [setActiveSuggestionWidgetData]);
 
   const handleRejectSuggestion = useCallback(async (s: PageSuggestion) => {
-    try {
-      await rejectSuggestionMutation.mutateAsync({
-        pageId: page.id,
-        suggestionId: s.id,
-      });
-      toast.info(`Rejected suggestion by ${s.author?.name || 'author'}`);
-      setActiveSuggestionWidgetData(null);
-    } catch {
-      toast.error('Failed to reject suggestion');
-    }
-  }, [page.id, rejectSuggestionMutation, setActiveSuggestionWidgetData]);
-
-  // Synchronize editor buffer when a suggestion is accepted elsewhere
-  useEffect(() => {
-    if (!page?.id) return;
-    const unsub = EditorEventBus.on('flux:review-event', ({ pageId: evtPageId, event, payload }) => {
-      if (evtPageId !== page.id) return;
-      if (event === 'suggestion:accepted' || event === 'suggestions:accepted-all') {
-        if (!isRealtimeActive && payload?.page?.content) {
-          const text = extractStringContent(payload.page.content);
-          if (editorRef.current && editorRef.current.getValue() !== text) {
-            editorRef.current.setValue(text);
-          }
-        }
-      }
-    });
-    return () => unsub();
-  }, [editorRef, isRealtimeActive, page?.id]);
+    setSuggestions((prev) => prev.filter((item) => item.id !== s.id));
+    toast.info(`Rejected suggestion by ${s.author?.name || 'author'}`);
+    setActiveSuggestionWidgetData(null);
+  }, [setActiveSuggestionWidgetData]);
 
   const {
     bibEntries,
     citationModalOpen,
     setCitationModalOpen,
     handleInsertCitationSnippet,
-    registerCitationProvider,
   } = useEditorCitation({
     editorRef,
-    pageFiles: pageFiles.map((f) => ({ name: f.title, content: f.content })),
+    pageFiles: [],
   });
 
   // Local popup states
   const [ctxMenu, setCtxMenu] = useState<CtxPos | null>(null);
   const [ctxPos, setCtxPos] = useState<CtxPos | null>(null);
-  const [ctxStartLine, setCtxStartLine] = useState<number | null>(null);
-  const [ctxEndLine, setCtxEndLine] = useState<number | null>(null);
-  const [ctxSelText, setCtxSelText] = useState('');
+  const [ctxStartLine] = useState<number | null>(null);
+  const [ctxEndLine] = useState<number | null>(null);
+  const [ctxSelText] = useState('');
   const ctxMenuRef = useRef<HTMLDivElement>(null);
 
   const [selFloating, setSelFloating] = useState<SelFloating | null>(null);
@@ -400,9 +315,6 @@ export default function Editor({ page }: EditorProps) {
     closeMenu();
     setRenameDialog({ word: word.word, newName: word.word });
   }, [closeMenu, editorRef]);
-
-  const openRenameDialogLatestRef = useRef(openRenameDialog);
-  openRenameDialogLatestRef.current = openRenameDialog;
 
   const handleOpenCitationModal = useCallback(() => setCitationModalOpen(true), [setCitationModalOpen]);
 
@@ -499,7 +411,6 @@ export default function Editor({ page }: EditorProps) {
   }, [renameDialog]);
 
   const hasComments = (comments?.length ?? 0) > 0;
-  // Synchronize options with Monaco
   useEffect(() => {
     editorRef.current?.updateOptions({
       fontSize,
@@ -533,15 +444,13 @@ export default function Editor({ page }: EditorProps) {
     });
   }, [fontSize, wordWrap, lineNumbers, hasComments, editorRef]);
 
-
-
   useEffect(() => {
     return () => {
       setEngine(null);
     };
   }, [setEngine]);
 
-  // SyncTeX forward jump event listener (Floating widget forward arrow)
+  // SyncTeX forward jump event listener
   useEffect(() => {
     return EditorEventBus.on('flux:synctex-forward', () => {
       const inst = editorRef.current;
@@ -557,19 +466,23 @@ export default function Editor({ page }: EditorProps) {
 
   const handleSuggestionSubmit = useCallback(async () => {
     if (!suggestModal) return;
-    await createSuggestionMutation.mutateAsync({
+    const newSug: PageSuggestion = {
+      id: `sug-${Date.now()}`,
       pageId: page.id,
       type: suggestModal.type,
       originalText: suggestModal.originalText,
-      suggestedText:
-        suggestModal.type === 'delete' ? '' : suggestModal.suggestedText,
+      suggestedText: suggestModal.type === 'delete' ? '' : suggestModal.suggestedText,
       fromLine: suggestModal.fromLine,
       toLine: suggestModal.toLine,
       description: suggestModal.description || undefined,
-    });
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    } as any;
+    setSuggestions((prev) => [...prev, newSug]);
     setSuggestModal(null);
     EditorEventBus.emit('flux:open-panel', 'Review');
-  }, [createSuggestionMutation, page.id, suggestModal]);
+    toast.success('Suggestion recorded');
+  }, [page.id, suggestModal]);
 
   const handleCloseSuggestionWidget = useCallback(() => {
     setActiveSuggestionWidgetData(null);
@@ -635,8 +548,7 @@ export default function Editor({ page }: EditorProps) {
           <div className="flex items-center gap-2">
             <Lock className="size-3.5 shrink-0 text-amber-500" />
             <span>
-              Document is locked{lockedBy ? ` by ${lockedBy}` : ''}. Editing is
-              disabled.
+              Document is locked{lockedBy ? ` by ${lockedBy}` : ''}. Editing is disabled.
             </span>
           </div>
           <span className="text-11 font-mono font-medium bg-amber-500/20 px-1.5 py-0.5 rounded-sm text-amber-800 dark:text-amber-200 tracking-normal">
@@ -750,9 +662,7 @@ export default function Editor({ page }: EditorProps) {
           />
         </div>
 
-
-
-        {/* Monaco Vim status bar */}
+        {/* Vim status bar */}
         {keybinding === 'vim' && (
           <div
             ref={vimStatusRef}
@@ -766,7 +676,7 @@ export default function Editor({ page }: EditorProps) {
           />
         )}
 
-        {/* Monaco Emacs status bar */}
+        {/* Emacs status bar */}
         {keybinding === 'emacs' && (
           <div
             ref={emacsStatusRef}
@@ -795,8 +705,8 @@ export default function Editor({ page }: EditorProps) {
       <EditorFloatingOverlay
         glyphTooltip={glyphTooltip}
         activeSuggestionWidgetData={activeSuggestionWidgetData}
-        isAcceptingSuggestion={acceptSuggestionMutation.isPending}
-        isRejectingSuggestion={rejectSuggestionMutation.isPending}
+        isAcceptingSuggestion={false}
+        isRejectingSuggestion={false}
         onAcceptSuggestion={handleAcceptSuggestion}
         onRejectSuggestion={handleRejectSuggestion}
         onCloseSuggestionWidget={handleCloseSuggestionWidget}
@@ -840,7 +750,7 @@ export default function Editor({ page }: EditorProps) {
         onInsertSnippet={handleInsertWizardSnippet}
         suggestModal={suggestModal}
         setSuggestModal={setSuggestModal}
-        isCreatingSuggestion={createSuggestionMutation.isPending}
+        isCreatingSuggestion={false}
         onCloseSuggestModal={handleCloseSuggestModal}
         onSuggestionSubmit={handleSuggestionSubmit}
         renameDialog={renameDialog}

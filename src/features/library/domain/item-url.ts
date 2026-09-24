@@ -67,9 +67,13 @@ export function getPaperFileUrl(
     if (url) return url;
   }
 
-  // 2. Direct fileId on paper
-  if (paper.fileId) {
-    return `/api/v1/library/files/${encodeURIComponent(paper.fileId)}/content`;
+  // 2. Direct fileId on paper or paper.metadata
+  const resolvedDirectFileId =
+    paper.fileId ||
+    (paper as any)?.metadata?.fileId ||
+    (paper as any)?.metadata?.file_id;
+  if (resolvedDirectFileId) {
+    return `/api/v1/library/files/${encodeURIComponent(resolvedDirectFileId)}/content`;
   }
 
   // 3. PrimaryFile object

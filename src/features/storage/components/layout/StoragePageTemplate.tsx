@@ -16,6 +16,8 @@ export interface StoragePageTemplateProps {
   useFilesHook: (scopeId: string | undefined, params?: FileQueryParams) => {
     data?: { pages: Array<{ files?: StorageItem[] }> };
     isLoading: boolean;
+    isError?: boolean;
+    error?: unknown;
     hasNextPage?: boolean;
     isFetchingNextPage?: boolean;
     fetchNextPage: () => void;
@@ -43,7 +45,7 @@ export function StoragePageTemplate({
     queryParams,
   } = useStorageQueryParams();
 
-  const { data, isLoading: isFilesLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useFilesHook(
+  const { data, isLoading: isFilesLoading, isError, error, hasNextPage, isFetchingNextPage, fetchNextPage } = useFilesHook(
     projectId,
     queryParams,
   );
@@ -86,6 +88,8 @@ export function StoragePageTemplate({
       />
       <StorageViewContainer
         isLoading={isFilesLoading && !data}
+        isError={isError}
+        error={error instanceof Error ? error : undefined}
         viewProps={viewProps}
         searchQuery={searchQuery}
         onClearSearch={() => setSearchQuery('')}

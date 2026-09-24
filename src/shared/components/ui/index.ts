@@ -8,8 +8,8 @@ export * from "./breadcrumb";
 export * from "./button";
 export * from "./calendar";
 export * from "./card";
-export * from "./carousel";
-export * from "./chart";
+// Note: "chart" (recharts) and "carousel" (embla-carousel) are heavy isolated components
+// and should be imported directly (e.g. from '@/shared/components/ui/chart') to avoid polluting the core UI bundle.
 export * from "./checkbox";
 export * from "./collapsible";
 export * from "./command";
@@ -19,6 +19,7 @@ export * from "./drawer";
 export * from "./dropdown-menu";
 export * from "./error-boundary";
 export * from "./feature-error-boundary";
+export * from "./PlaneErrorState";
 export * from "./form";
 export * from "./hover-card";
 export * from "./input-otp";

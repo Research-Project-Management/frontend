@@ -180,7 +180,15 @@ export function ChatInput({
   const [scopeOpen, setScopeOpen] = useState(false);
   const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const [modalTab, setModalTab] = useState<'library' | 'storage'>('library');
-  const [uploadingFiles, setUploadingFiles] = useState<Array<{ id: string; name: string; size?: number }>>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<
+    Array<{
+      id: string;
+      name: string;
+      size?: number;
+      progress?: number;
+      stage?: 'uploading' | 'processing';
+    }>
+  >([]);
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
 
@@ -241,6 +249,8 @@ export function ChatInput({
         id: `upload-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
         name: f.name,
         size: f.size,
+        progress: 0,
+        stage: 'uploading' as const,
       }));
 
       setUploadingFiles((prev) => [...prev, ...tempItems]);
@@ -250,7 +260,19 @@ export function ChatInput({
         const file = files[i];
         const tempId = tempItems[i].id;
         try {
-          const res = await uploadDocument(targetScope, file);
+          const res = await uploadDocument(targetScope, file, (progress) => {
+            setUploadingFiles((prev) =>
+              prev.map((item) =>
+                item.id === tempId
+                  ? {
+                      ...item,
+                      progress: progress.percent,
+                      stage: progress.stage,
+                    }
+                  : item
+              )
+            );
+          });
           addSource(res.id, res.name, {
             size: res.size || file.size,
             sourceType: 'upload',
@@ -492,23 +514,28 @@ export function ChatInput({
         {(sources.length > 0 || uploadingFiles.length > 0) && (
           <div className="flex items-center gap-2 flex-wrap px-1 pt-0.5 pb-2.5 border-b border-border/40 mb-1 max-h-48 overflow-y-auto">
             {/* Uploading File Cards */}
-            {uploadingFiles.map((up) => (
-              <div
-                key={up.id}
-                className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/70 bg-muted/40 max-w-[240px] shadow-2xs animate-pulse"
-              >
-                <div className="size-7 rounded-md flex items-center justify-center shrink-0 border border-border/50 bg-background text-primary">
-                  <Loader2 className="size-3.5 animate-spin" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-11 font-medium text-foreground truncate">{up.name}</p>
-                  <div className="flex items-center gap-1.5 text-10 text-muted-foreground">
-                    <span>Uploading...</span>
-                    {up.size ? <span>• {formatBytes(up.size)}</span> : null}
+            {uploadingFiles.map((up) => {
+              const isProcessing = up.stage === 'processing';
+              return (
+                <div
+                  key={up.id}
+                  className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/70 bg-muted/40 max-w-[240px] shadow-2xs"
+                >
+                  <div className="size-7 rounded-md flex items-center justify-center shrink-0 border border-border/50 bg-background text-primary">
+                    <Loader2 className="size-3.5 animate-spin text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-11 font-medium text-foreground truncate">{up.name}</p>
+                    <div className="flex items-center gap-1.5 text-10 text-muted-foreground">
+                      <span className={isProcessing ? "text-primary font-medium" : ""}>
+                        {isProcessing ? 'Indexing vectors...' : `Uploading (${up.progress ?? 0}%)`}
+                      </span>
+                      {up.size ? <span>• {formatBytes(up.size)}</span> : null}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {/* Attached Source Cards */}
             {sources.map((src) => {
@@ -727,24 +754,31 @@ export function ChatInput({
 
           {/* Right tools: Send or Stop button */}
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={!message.trim() && !disabled}
-              className={cn(
-                "size-8 rounded-full flex items-center justify-center p-0 transition-all shrink-0 cursor-pointer shadow-2xs select-none",
-                disabled
-                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
-                  : "bg-primary text-white hover:bg-primary-hover active:scale-95 disabled:cursor-not-allowed"
-              )}
-              aria-label="Send message"
-            >
-              {disabled ? (
-                <Square className="size-3 fill-current shrink-0" />
-              ) : (
-                <ArrowUp className="size-3.5 shrink-0 stroke-[2.5] translate-y-[1px]" />
-              )}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleSend}
+                  disabled={!message.trim() && !disabled}
+                  className={cn(
+                    "size-8 rounded-full flex items-center justify-center p-0 transition-all shrink-0 cursor-pointer shadow-2xs select-none",
+                    disabled
+                      ? "bg-primary text-white hover:bg-primary-hover cursor-pointer"
+                      : "bg-primary text-white hover:bg-primary-hover active:scale-95 disabled:cursor-not-allowed"
+                  )}
+                  aria-label={disabled ? "Stop generating" : "Send message"}
+                >
+                  {disabled ? (
+                    <Square className="size-3 fill-current shrink-0" />
+                  ) : (
+                    <ArrowUp className="size-3.5 shrink-0 stroke-[2.5] translate-y-[1px]" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={4}>
+                {disabled ? "Stop generating" : "Send message"}
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </div>

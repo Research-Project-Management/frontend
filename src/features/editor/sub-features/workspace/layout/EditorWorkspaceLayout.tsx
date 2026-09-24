@@ -21,6 +21,7 @@ import Setting from '../../../components/topbar/settings/Setting';
 import { ResizeHandle } from './ResizeHandle';
 import { EditorColumn } from './EditorColumn';
 
+import { useShallow } from 'zustand/react/shallow';
 import { usePageStore, useSettingsStore } from '../../../store';
 import { EditorEventBus } from '../../../utils/editor.util';
 import { useCollaborationStream } from '../../../hooks/use-collaboration';
@@ -57,7 +58,22 @@ export function EditorWorkspaceLayout() {
     isHistoryOpen,
     activeSidebarPanel,
     setActiveSidebarPanel,
-  } = useSettingsStore();
+  } = useSettingsStore(
+    useShallow((s) => ({
+      layout: s.layout,
+      setLayout: s.setLayout,
+      sidebarWidth: s.sidebarWidth,
+      editorFlex: s.editorFlex,
+      setSidebarWidth: s.setSidebarWidth,
+      setEditorFlex: s.setEditorFlex,
+      settingsPanelOpen: s.settingsPanelOpen,
+      editorTheme: s.editorTheme,
+      setEditorTheme: s.setEditorTheme,
+      isHistoryOpen: s.isHistoryOpen,
+      activeSidebarPanel: s.activeSidebarPanel,
+      setActiveSidebarPanel: s.setActiveSidebarPanel,
+    }))
+  );
 
   const containerRef = useRef<HTMLDivElement>(null);
   const sidebarWidthRef = useRef(sidebarWidth);

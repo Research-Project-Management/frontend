@@ -33,11 +33,11 @@ export function usePreview(item: StorageItem | null) {
       }),
     onSuccess: () => {
       setIsSaved(true);
-      toast.success('Đã lưu mô tả tệp');
+      toast.success('Description saved');
       queryClient.invalidateQueries({ queryKey: storageKeys.all });
     },
     onError: () => {
-      toast.error('Lỗi khi lưu mô tả tệp');
+      toast.error('Failed to save description');
     },
   });
 

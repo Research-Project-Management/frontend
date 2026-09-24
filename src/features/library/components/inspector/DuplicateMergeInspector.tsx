@@ -149,9 +149,14 @@ export function DuplicateMergeInspector({
 
   if (!items || items.length < 2) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center text-muted-foreground">
-        <GitMerge className="h-8 w-8 mb-2 opacity-50" />
-        <p className="text-12 font-medium">Select a duplicate group to compare & merge</p>
+      <div className="flex h-full w-full flex-col bg-background border-l border-border select-none text-foreground">
+        <div className="h-11 px-4 border-b border-border flex items-center shrink-0 bg-background/95 backdrop-blur-xs">
+          <span className="text-12 font-medium text-muted-foreground">Duplicate Merge</span>
+        </div>
+        <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-muted-foreground">
+          <GitMerge className="h-8 w-8 mb-2 opacity-50" />
+          <p className="text-12 font-medium">Select a duplicate group to compare & merge</p>
+        </div>
       </div>
     );
   }
@@ -159,7 +164,7 @@ export function DuplicateMergeInspector({
   return (
     <div className="flex h-full w-full flex-col bg-background border-l border-border select-none text-foreground">
       {/* ── 1. Header ── */}
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0 bg-background/95 backdrop-blur-xs">
+      <div className="h-11 px-4 border-b border-border flex items-center justify-between shrink-0 bg-background/95 backdrop-blur-xs">
         <div className="flex items-center gap-2 min-w-0">
           <div className="size-6 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
             <GitMerge className="size-3.5" strokeWidth={1.75} />

@@ -78,7 +78,7 @@ export default function VersionHistoryModal({
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) {
-      toast.error('Vui lòng chọn tệp tin phiên bản mới');
+      toast.error('Please select a new version file');
       return;
     }
 
@@ -109,7 +109,7 @@ export default function VersionHistoryModal({
         : `${file.filename}_v${versionNumber}`;
 
     downloadFileUrl(url, versionedName);
-    toast.info(`Đang tải về Phiên bản ${versionNumber}...`);
+    toast.info(`Downloading version ${versionNumber}...`);
   };
 
   const handleRevertConfirm = async (versionNumber: number) => {
@@ -134,7 +134,7 @@ export default function VersionHistoryModal({
               </div>
               <div>
                 <DialogTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                  <span>Lịch sử phiên bản</span>
+                  <span>Version history</span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-mono font-medium">
                     v{currentVersionNumber}
                   </span>
@@ -152,12 +152,12 @@ export default function VersionHistoryModal({
               {isUploadOpen ? (
                 <>
                   <X className="size-3.5" />
-                  Đóng tải lên
+                  Close upload
                 </>
               ) : (
                 <>
                   <Plus className="size-3.5" />
-                  Tải bản mới (v{nextVersionNumber})
+                  New version (v{nextVersionNumber})
                 </>
               )}
             </button>
@@ -172,10 +172,10 @@ export default function VersionHistoryModal({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-semibold text-primary">
                   <FileUp className="size-4" />
-                  <span>Tải lên Phiên bản mới: v{nextVersionNumber}</span>
+                  <span>Upload new version: v{nextVersionNumber}</span>
                 </div>
                 <span className="text-11 text-muted-foreground">
-                  ID tệp và liên kết chia sẻ được giữ nguyên
+                  File ID and share links remain preserved
                 </span>
               </div>
 
@@ -206,10 +206,10 @@ export default function VersionHistoryModal({
                   <div className="flex flex-col items-center gap-1.5 py-2">
                     <UploadCloud className="size-6 text-muted-foreground/60" />
                     <p className="text-xs text-foreground font-medium">
-                      Nhấp hoặc kéo thả tệp phiên bản mới vào đây
+                      Click or drag new version file here
                     </p>
                     <span className="text-11 text-muted-foreground">
-                      Hệ thống tự động khử trùng lặp nếu nội dung tệp giống nhau
+                      Automatic deduplication if file content is unchanged
                     </span>
                   </div>
                 )}
@@ -218,11 +218,11 @@ export default function VersionHistoryModal({
               {/* Changelog / Comment Input */}
               <div>
                 <label className="block text-xs font-medium text-foreground mb-1">
-                  Ghi chú sửa đổi (Changelog - Tùy chọn):
+                  Changelog notes (Optional):
                 </label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: Bổ sung 50 mẫu thực nghiệm mới, hiệu chỉnh mục 4..."
+                  placeholder="e.g. Added 50 new samples, revised section 4..."
                   value={changeComment}
                   onChange={(e) => setChangeComment(e.target.value)}
                   className="w-full text-xs px-3 py-1.5 rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
@@ -250,7 +250,7 @@ export default function VersionHistoryModal({
                   }}
                   className="px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
                 >
-                  Hủy
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -261,12 +261,12 @@ export default function VersionHistoryModal({
                   {isUploading ? (
                     <>
                       <Loader2 className="size-3.5 animate-spin" />
-                      Đang tải lên ({uploadProgress}%)
+                      Uploading ({uploadProgress}%)
                     </>
                   ) : (
                     <>
                       <UploadCloud className="size-3.5" />
-                      Xác nhận lưu phiên bản v{nextVersionNumber}
+                      Save version v{nextVersionNumber}
                     </>
                   )}
                 </button>
@@ -277,21 +277,21 @@ export default function VersionHistoryModal({
           {/* Versions Timeline Section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
-              <span className="font-medium">Dòng thời gian các bản sửa đổi ({versions.length} phiên bản)</span>
-              <span>Sắp xếp từ mới nhất</span>
+              <span className="font-medium">Version timeline ({versions.length} versions)</span>
+              <span>Sorted newest first</span>
             </div>
 
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
                 <Loader2 className="size-6 animate-spin" />
-                <span className="text-xs">Đang tải lịch sử phiên bản...</span>
+                <span className="text-xs">Loading version history...</span>
               </div>
             ) : versions.length === 0 ? (
               <div className="text-center py-10 border border-dashed border-border rounded-xl text-muted-foreground">
                 <Clock className="size-8 mx-auto opacity-30 mb-2" />
-                <p className="text-xs font-medium text-foreground">Chưa có lịch sử sửa đổi</p>
+                <p className="text-xs font-medium text-foreground">No revision history</p>
                 <span className="text-11 text-muted-foreground">
-                  Đây là phiên bản gốc đầu tiên của tệp tin.
+                  This is the initial version of the file.
                 </span>
               </div>
             ) : (
@@ -327,7 +327,7 @@ export default function VersionHistoryModal({
                           {isCurrent && (
                             <span className="flex items-center gap-1 text-11 font-medium px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20">
                               <CheckCircle2 className="size-3" />
-                              Bản hiện tại
+                              Current
                             </span>
                           )}
                           <span className="text-xs text-muted-foreground font-mono">
@@ -340,20 +340,20 @@ export default function VersionHistoryModal({
                           <button
                             onClick={() => handleDownloadVersion(ver.versionNumber)}
                             className="flex items-center gap-1 h-7 px-2 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                            title="Tải về tệp của phiên bản này"
+                            title="Download this version"
                           >
                             <Download className="size-3.5" />
-                            Tải về
+                            Download
                           </button>
 
                           {!isCurrent && (
                             <button
                               onClick={() => setConfirmRevertVersion(isConfirmingRevert ? null : ver.versionNumber)}
                               className="flex items-center gap-1 h-7 px-2 rounded-md text-xs text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer"
-                              title="Khôi phục tệp về phiên bản này"
+                              title="Revert to this version"
                             >
                               <RotateCcw className="size-3.5" />
-                              Khôi phục
+                              Revert
                             </button>
                           )}
                         </div>
@@ -378,7 +378,7 @@ export default function VersionHistoryModal({
                           ) : (
                             <User className="size-3.5 text-muted-foreground/60" />
                           )}
-                          <span>{ver.author?.name || 'Nhà nghiên cứu'}</span>
+                          <span>{ver.author?.name || 'Researcher'}</span>
                         </div>
 
                         <div className="flex items-center gap-1">
@@ -393,8 +393,8 @@ export default function VersionHistoryModal({
                           <div className="flex items-start gap-2 text-amber-600 dark:text-amber-400">
                             <AlertCircle className="size-4 shrink-0 mt-0.5" />
                             <span>
-                              Bạn có chắc chắn muốn khôi phục tệp về <strong>Phiên bản {ver.versionNumber}</strong>?
-                              Hệ thống sẽ tạo ra <strong>Phiên bản {nextVersionNumber}</strong> chứa nội dung của bản này.
+                              Are you sure you want to revert to <strong>Version {ver.versionNumber}</strong>?
+                              A new <strong>Version {nextVersionNumber}</strong> will be created containing this content.
                             </span>
                           </div>
                           <div className="flex justify-end gap-2 pt-1">
@@ -402,7 +402,7 @@ export default function VersionHistoryModal({
                               onClick={() => setConfirmRevertVersion(null)}
                               className="px-2.5 py-1 rounded text-xs text-muted-foreground hover:bg-muted"
                             >
-                              Hủy
+                              Cancel
                             </button>
                             <button
                               disabled={isReverting}
@@ -414,7 +414,7 @@ export default function VersionHistoryModal({
                               ) : (
                                 <RotateCcw className="size-3" />
                               )}
-                              Xác nhận khôi phục
+                              Confirm revert
                             </button>
                           </div>
                         </div>
@@ -429,12 +429,12 @@ export default function VersionHistoryModal({
 
         {/* Modal Footer */}
         <div className="px-6 py-3 border-t border-border bg-muted/10 flex items-center justify-between text-xs text-muted-foreground shrink-0">
-          <span>Chuẩn kiểm soát phiên bản dữ liệu nghiên cứu (WORM & Audit Trail)</span>
+          <span>Research data version control (WORM & Audit Trail)</span>
           <button
             onClick={() => onOpenChange(false)}
             className="px-4 py-1.5 rounded-md text-xs font-medium bg-muted hover:bg-muted/80 text-foreground transition-colors cursor-pointer"
           >
-            Đóng
+            Close
           </button>
         </div>
       </DialogContent>

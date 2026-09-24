@@ -281,13 +281,13 @@ export default function NotesSection({
           )}
         </div>
       ) : (
-        <div className="space-y-0.5 min-w-0">
+        <div className="space-y-[5px] min-w-0">
         {notes.map((n) => {
           const isEditing = editingNoteId === n.id;
 
           if (isEditing) {
             return (
-              <div key={n.id} className="space-y-1.5 p-2.5 bg-background rounded-md border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-colors text-xs shadow-2xs">
+              <div key={n.id} className="space-y-[5px] p-[8px] bg-background rounded-md border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-colors text-xs shadow-2xs">
                 <Textarea
                   autoFocus
                   value={editingContent}
@@ -306,7 +306,7 @@ export default function NotesSection({
                   rows={2}
                   className="text-xs resize-none w-full max-h-36 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-muted-foreground"
                 />
-                <div className="flex items-center justify-between text-10 font-normal text-muted-foreground select-none pt-1 border-t border-border font-mono">
+                <div className="flex items-center justify-between text-10 font-normal text-muted-foreground select-none pt-[5px] border-t border-border font-mono">
                   <span>Shift + Enter for new line</span>
                   <span>Enter to save · Esc to cancel</span>
                 </div>
@@ -319,11 +319,11 @@ export default function NotesSection({
               key={n.id}
               onClick={canEdit ? () => handleStartEdit(n) : undefined}
               className={cn(
-                "group/note flex items-center justify-between gap-2 px-2 py-0.5 rounded-md text-xs select-none min-w-0",
+                "group/note flex items-center justify-between gap-[8px] px-[8px] py-[5px] min-h-[34px] rounded-md text-xs select-none min-w-0",
                 canEdit ? "hover:bg-muted cursor-pointer" : "cursor-default"
               )}
             >
-              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <div className="flex items-center gap-[8px] min-w-0 flex-1">
                 <div className="size-4 shrink-0 flex items-center justify-center">
                   <NoteIcon className="size-3.5 text-foreground shrink-0" />
                 </div>

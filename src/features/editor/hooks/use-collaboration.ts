@@ -3,70 +3,20 @@
 /**
  * use-collaboration.ts
  *
- * Frontend hooks mirroring Backend `modules/document/collaboration/`:
- *  - useCollaborationPresence
- *  - useCollaborationStream (Real-time SSE event stream auto-invalidating React Query caches)
+ * Clean decoupled collaboration hooks for Editor UI.
+ * Pure UI presentation state without legacy SSE or polling loops.
  */
 
-import { useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  collaborationService,
-  type CollaborationPresence,
-  type CollaborationEvent,
-} from '../services/collaboration.service';
-import { pageKeys } from './use-core';
-import { commentKeys } from './use-comment';
-import { suggestionKeys } from './use-suggestion';
+import { type CollaborationPresence } from '../services/collaboration.service';
 
-export function useCollaborationPresence(pageId: string | null) {
-  return useQuery<CollaborationPresence[], Error>({
-    queryKey: ['document-collaboration-presence', pageId],
-    queryFn: () => (pageId ? collaborationService.getPresence(pageId) : Promise.resolve([])),
-    enabled: !!pageId,
-    refetchInterval: 15000,
-  });
+export function useCollaborationPresence(_pageId: string | null) {
+  return {
+    data: [] as CollaborationPresence[],
+    isLoading: false,
+    error: null,
+  };
 }
 
-export function useCollaborationStream(projectId?: string | null, pageId?: string | null) {
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    if (!pageId) return;
-
-    const cleanup = collaborationService.createCollaborationStream(
-      projectId,
-      pageId,
-      (event: CollaborationEvent) => {
-        const type = event.type;
-        const targetPageId = event.pageId || pageId;
-
-        if (type.startsWith('suggestion')) {
-          queryClient.invalidateQueries({ queryKey: ['page-suggestions', targetPageId] });
-          if (targetPageId !== pageId) {
-            queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
-          }
-          if (type === 'suggestion-accepted' || type === 'suggestions-accepted-all') {
-            queryClient.invalidateQueries({ queryKey: ['pages', 'detail', targetPageId] });
-            queryClient.invalidateQueries({ queryKey: ['pages', 'detail', pageId] });
-          }
-        } else if (type.startsWith('comment')) {
-          queryClient.invalidateQueries({ queryKey: ['page-comments', targetPageId] });
-          if (targetPageId !== pageId) {
-            queryClient.invalidateQueries({ queryKey: ['page-comments', pageId] });
-          }
-        } else if (type === 'page-updated') {
-          queryClient.invalidateQueries({ queryKey: ['pages', 'detail', targetPageId] });
-          if (targetPageId !== pageId) {
-            queryClient.invalidateQueries({ queryKey: ['pages', 'detail', pageId] });
-          }
-        }
-      },
-      () => {
-        // SSE disconnected / re-connecting
-      },
-    );
-
-    return cleanup;
-  }, [projectId, pageId, queryClient]);
+export function useCollaborationStream(_projectId?: string | null, _pageId?: string | null) {
+  // Pure UI shell - no-op to eliminate legacy EventSource network errors
 }

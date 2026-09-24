@@ -827,15 +827,18 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
       payload,
       data,
       expectedVersion,
+      silent,
     }: {
       id?: string;
       itemId?: string;
       payload?: Partial<Item>;
       data?: Partial<Item>;
       expectedVersion?: number;
+      silent?: boolean;
     }) => {
       const targetId = id || itemId || '';
-      const updateData = payload || data || {};
+      const rawData = (payload || data || {}) as any;
+      const { silent: _silent, ...updateData } = rawData;
       const cached = queryClient.getQueryData<any>(itemKeys.byId(effectiveScope, targetId));
       const cachedVersion = cached?.item?.version ?? cached?.version;
       const resolvedVersion =
@@ -852,7 +855,14 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
       if (targetId) {
         queryClient.invalidateQueries({ queryKey: itemKeys.byId(effectiveScope, targetId) });
       }
-      toast.success('Item updated', { id: 'item-update' });
+      const isSilent = Boolean(
+        variables.silent ||
+        (variables.payload as any)?.silent ||
+        (variables.data as any)?.silent
+      );
+      if (!isSilent) {
+        toast.success('Item updated', { id: 'item-update' });
+      }
     },
     onError: (err: any) => {
       toast.error('Failed to update item', {

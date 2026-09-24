@@ -83,7 +83,7 @@ export default function ScientificViewerModal({
         .catch((err) => {
           if (isCancelled || err?.name === 'AbortError') return;
           logger.error('Failed to load scientific file content', err);
-          setContent('// Không thể tải nội dung tệp tin: ' + (err instanceof Error ? err.message : 'Unknown error'));
+          setContent('// Unable to load file content: ' + (err instanceof Error ? err.message : 'Unknown error'));
           setLoading(false);
         });
     }
@@ -99,7 +99,7 @@ export default function ScientificViewerModal({
     if (!content) return;
     await copyToClipboard(content);
     setCopied(true);
-    toast.success('Đã sao chép nội dung tệp tin');
+    toast.success('File content copied');
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -228,11 +228,11 @@ export default function ScientificViewerModal({
                   </span>
                   {parsedCsv && (
                     <span>
-                      {parsedCsv.rows.length} hàng • {parsedCsv.headers.length} cột
+                      {parsedCsv.rows.length} rows • {parsedCsv.headers.length} columns
                     </span>
                   )}
                   {parsedNotebook && (
-                    <span>{parsedNotebook.length} ô (cells)</span>
+                    <span>{parsedNotebook.length} cells</span>
                   )}
                 </div>
               </div>
@@ -243,14 +243,14 @@ export default function ScientificViewerModal({
               <button
                 onClick={handleCopy}
                 disabled={loading}
-                title="Sao chép nội dung"
+                title="Copy content"
                 className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40"
               >
                 {copied ? <Check className="size-4 text-emerald-500" /> : <Copy className="size-4" />}
               </button>
               <button
                 onClick={handleDownload}
-                title="Tải về tệp tin"
+                title="Download file"
                 className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
               >
                 <Download className="size-4" />
@@ -264,7 +264,7 @@ export default function ScientificViewerModal({
           {loading ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
               <Loader2 className="size-6 animate-spin text-primary" />
-              <span className="text-xs">Đang tải và phân tích cấu trúc dữ liệu…</span>
+              <span className="text-xs">Loading and parsing data structure…</span>
             </div>
           ) : isCsv && parsedCsv ? (
             /* ── CSV Interactive Table View ── */
@@ -280,14 +280,14 @@ export default function ScientificViewerModal({
                       setSearchQuery(e.target.value);
                       setCurrentPage(1);
                     }}
-                    placeholder="Lọc dữ liệu bảng…"
+                    placeholder="Filter table data…"
                     className="w-full pl-8 pr-3 py-1 text-xs rounded-md border border-border bg-background placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
 
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span>
-                    Hiển thị {paginatedRows.length} / {filteredRows.length} dòng
+                    Showing {paginatedRows.length} of {filteredRows.length} rows
                   </span>
                   <div className="flex items-center gap-1">
                     <button
@@ -412,7 +412,7 @@ export default function ScientificViewerModal({
                   <div className="p-4 rounded-lg border border-border bg-card/60">
                     <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
                       <BookOpen className="size-3.5 text-primary" />
-                      Bản xem trước nội dung:
+                      Content Preview:
                     </p>
                     <div className="prose prose-sm dark:prose-invert max-w-none">
                       {renderMarkdown(content)}
@@ -421,7 +421,7 @@ export default function ScientificViewerModal({
 
                   <div className="p-4 rounded-lg border border-border bg-card/40">
                     <p className="text-xs font-semibold text-muted-foreground mb-2">
-                      Mã nguồn gốc ({ext}):
+                      Raw Source ({ext}):
                     </p>
                     <pre className="font-mono text-xs overflow-x-auto text-muted-foreground whitespace-pre-wrap">
                       <code>{content}</code>

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import type { ChatMessage, SourceItem, AgentId } from '../types/chat.types';
+import type { ChatMessage, SourceItem, AgentId, AgentAction } from '../types/chat.types';
 import { renderMarkdown } from '../utils/render-markdown';
 import { ChatInput } from '../components/chat/chat-input';
 import { ActionCardsGroup } from '../components/chat/action-card';
@@ -168,12 +168,14 @@ const MessageBubble = memo(function MessageBubble({
   role,
   isStreaming = false,
   sources,
+  actions,
   widgets,
 }: {
   content: string;
   role: 'user' | 'assistant';
   isStreaming?: boolean;
   sources?: SourceItem[];
+  actions?: AgentAction[];
   widgets?: ChatMessage['widgets'];
 }) {
   const [copied, setCopied] = useState(false);
@@ -207,6 +209,9 @@ const MessageBubble = memo(function MessageBubble({
               const hasWidgets = Boolean(widgets?.length);
               return (
                 <>
+                  {!isStreaming && actions && actions.length > 0 && (
+                    <ActionCardsGroup actions={actions} />
+                  )}
                   {thinking !== null && <ThinkingBlock content={thinking} isOpen={isThinkingOpen} />}
                   <ResponseWidgets widgets={widgets} />
                   {answer && !hasWidgets && renderMarkdown(answer)}
@@ -390,6 +395,7 @@ export function ChatPage() {
                 content={msg.content}
                 role={msg.role}
                 sources={msg.sources}
+                actions={msg.actions}
                 widgets={msg.widgets}
               />
             ))}

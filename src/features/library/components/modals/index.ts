@@ -12,3 +12,4 @@ export { default as ImportFromPersonalModal } from './ImportFromPersonalModal';
 export { default as ProcessModal } from './ProcessModal';
 export { default as UploadFilesModal } from './UploadFilesModal';
 export { CreateSavedSearchModal } from './CreateSavedSearchModal';
+export { default as CslStyleSearchModal } from './CslStyleSearchModal';

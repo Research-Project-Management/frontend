@@ -17,6 +17,7 @@ import {
 import { useLibraryUIStore } from '../../store/library-ui.store';
 import { ItemContextMenu } from './ItemContextMenu';
 import type { Item } from '../../types/library.types';
+import { cleanAcademicText, formatAcademicAuthors } from '../../utils';
 
 export interface ItemTableRowProps {
   item: Item;
@@ -34,18 +35,6 @@ export interface ItemTableRowProps {
   onMoveToCollection?: (itemId: string, collectionId: string) => void;
   onDetachFromCollection?: (id: string) => void;
 }
-
-// Formatted creator string
-const formatAuthors = (authors: any) => {
-  if (!authors) return '—';
-  if (Array.isArray(authors)) {
-    if (authors.length === 0) return '—';
-    if (authors.length === 1) return authors[0];
-    if (authors.length === 2) return `${authors[0]} & ${authors[1]}`;
-    return `${authors[0]} et al.`;
-  }
-  return String(authors);
-};
 
 /**
  * ItemTableRow - High Performance Memoized Row Component
@@ -77,9 +66,21 @@ export const ItemTableRow = React.memo(function ItemTableRow({
   // Granular Selectors - 60 FPS Re-render Barrier (True O(1))
   const isSelected = useIsItemSelected(item.id);
   const isActive = useIsActiveItem(item.id);
-  const isInspectorOpen = useIsInspectorOpen();
-  const isRowActive = isActive && isInspectorOpen;
+  const isRowActive = isActive;
+  const isHighlighted = isSelected || isRowActive;
   const toggleSelect = useLibraryUIStore((s) => s.toggleSelect);
+
+  const cleanTitle = cleanAcademicText(item.title) || 'Untitled';
+  const authorTooltip = React.useMemo(() => {
+    if (!item.authors) return '';
+    if (Array.isArray(item.authors)) {
+      return item.authors
+        .map((a: any) => (typeof a === 'string' ? cleanAcademicText(a) : a?.name || ''))
+        .filter(Boolean)
+        .join(', ');
+    }
+    return cleanAcademicText(String(item.authors));
+  }, [item.authors]);
 
   const isStarred =
     Boolean(item.isStarred) ||
@@ -165,18 +166,15 @@ export const ItemTableRow = React.memo(function ItemTableRow({
           }
         }}
         className={cn(
-          'cursor-pointer transition-colors duration-150 group select-none text-13',
-          density === 'compact' ? 'h-8' : 'h-9',
-          isSelected
+          'cursor-pointer transition-colors duration-75 group select-none text-13 h-[34px]',
+          isRowActive || isSelected
             ? 'bg-muted'
-            : isRowActive
-            ? 'bg-muted'
-            : 'hover:bg-muted',
+            : 'hover:bg-muted/60',
         )}
       >
         {/* Title with Checkbox & Status Indicators */}
-        <td className="w-auto px-3">
-          <div className="flex items-center gap-2 min-w-0">
+        <td className="px-3 h-[34px] py-0 align-middle min-w-0">
+          <div className="flex items-center gap-2 min-w-0 h-full">
             <div
               onClick={(e) => {
                 e.stopPropagation();
@@ -223,61 +221,54 @@ export const ItemTableRow = React.memo(function ItemTableRow({
               </span>
             )}
             <span
-              className={cn(
-                'truncate text-13 text-foreground',
-                isSelected ? 'font-medium' : 'font-normal',
-              )}
-              title={item.title || 'Untitled'}
+              className="truncate text-13 text-foreground font-normal"
+              title={cleanTitle}
             >
-              {item.title || 'Untitled'}
+              {cleanTitle}
             </span>
           </div>
         </td>
 
         {/* Authors */}
         {columns.authors !== false && (
-          <td className={cn("w-48 min-w-[160px] px-3 truncate text-13 text-foreground", isSelected ? "font-medium" : "font-normal")}>
-            <span
-              title={
-                Array.isArray(item.authors)
-                  ? item.authors.join(', ')
-                  : item.authors || ''
-              }
-            >
-              {formatAuthors(item.authors)}
+          <td className="px-3 h-[34px] py-0 align-middle truncate text-13 text-foreground font-normal">
+            <span title={authorTooltip}>
+              {formatAcademicAuthors(item.authors)}
             </span>
           </td>
         )}
 
         {/* Year */}
         {columns.year !== false && (
-          <td className={cn("w-16 min-w-[64px] px-2 text-center text-13 font-mono tabular-nums text-foreground", isSelected ? "font-medium" : "font-normal")}>
+          <td className="px-2 h-[34px] py-0 align-middle text-center text-13 font-mono tabular-nums text-foreground font-normal">
             {item.year || '—'}
           </td>
         )}
 
         {/* Publication Venue */}
         {columns.publication !== false && (
-          <td className={cn("w-44 min-w-[140px] px-3 truncate text-13 text-foreground", isSelected ? "font-medium" : "font-normal")}>
-            <span title={item.publicationTitle || (item as any).journal || ''}>
-              {item.publicationTitle ||
+          <td className="px-3 h-[34px] py-0 align-middle truncate text-13 text-foreground font-normal">
+            <span title={cleanAcademicText(item.publicationTitle || (item as any).journal || (item as any).publisher || '')}>
+              {cleanAcademicText(
+                item.publicationTitle ||
                 (item as any).journal ||
                 (item as any).publisher ||
-                '—'}
+                ''
+              ) || '—'}
             </span>
           </td>
         )}
 
         {/* Item Type Label */}
         {columns.itemType && (
-          <td className={cn("w-28 min-w-[100px] px-3 truncate text-13 capitalize text-foreground", isSelected ? "font-medium" : "font-normal")}>
+          <td className="px-3 h-[34px] py-0 align-middle truncate text-13 capitalize text-foreground font-normal">
             {item.itemType || '—'}
           </td>
         )}
 
         {/* DOI */}
         {columns.doi && (
-          <td className={cn("w-32 min-w-[120px] px-3 truncate text-13 font-mono tabular-nums text-foreground", isSelected ? "font-medium" : "font-normal")}>
+          <td className="px-3 h-[34px] py-0 align-middle truncate text-13 font-mono tabular-nums text-foreground font-normal">
             {item.doi ? (
               <a
                 href={`https://doi.org/${item.doi}`}
@@ -296,21 +287,21 @@ export const ItemTableRow = React.memo(function ItemTableRow({
 
         {/* Citation Key */}
         {columns.citationKey && (
-          <td className={cn("w-32 min-w-[110px] px-3 truncate text-13 font-mono text-foreground", isSelected ? "font-medium" : "font-normal")}>
+          <td className="px-3 h-[34px] py-0 align-middle truncate text-13 font-mono text-foreground font-normal">
             {item.citationKey || (item as any).key || '—'}
           </td>
         )}
 
         {/* Citations Count */}
         {columns.citations && (
-          <td className={cn("w-20 min-w-[70px] px-2 text-center text-13 font-mono tabular-nums text-foreground", isSelected ? "font-medium" : "font-normal")}>
+          <td className="px-2 h-[34px] py-0 align-middle text-center text-13 font-mono tabular-nums text-foreground font-normal">
             {(item as any).citationCount ?? '—'}
           </td>
         )}
 
         {/* Trash deletedAt */}
         {isTrash && (
-          <td className={cn("w-32 min-w-[110px] px-3 text-13 font-mono tabular-nums text-foreground", isSelected ? "font-medium" : "font-normal")}>
+          <td className="px-3 h-[34px] py-0 align-middle text-13 font-mono tabular-nums text-foreground font-normal">
             {item.deletedAt
               ? new Date(item.deletedAt).toLocaleDateString()
               : '—'}

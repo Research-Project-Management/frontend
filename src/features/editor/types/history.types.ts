@@ -28,6 +28,7 @@ export interface PageVersion {
   fileName: string;
   savedBy: VersionAuthor;
   createdAt: string;
+  content?: string;
 }
 
 export interface PageVersionWithContent extends PageVersion {

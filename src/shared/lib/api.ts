@@ -127,8 +127,13 @@ const inFlightRequests = new Map<string, Promise<unknown>>();
 
 // ─── 4. Query String Builder ──────────────────────────────────────────────────
 
-function buildUrl(path: string, params?: RequestOptions['params']): string {
-  const base = path.startsWith('http') ? path : `${getEffectiveBaseUrl()}${path}`;
+function buildUrl(path: string, params?: RequestOptions['params'], relativeOnly = false): string {
+  let base: string;
+  if (relativeOnly) {
+    base = path.startsWith('/') ? path : `/${path}`;
+  } else {
+    base = path.startsWith('http') ? path : `${getEffectiveBaseUrl()}${path}`;
+  }
   if (!params) return base;
 
   const query = new URLSearchParams();
@@ -201,6 +206,23 @@ export async function rawFetch(
       }
     }
     if (err instanceof TypeError && err.message?.includes('Failed to fetch')) {
+      // If direct cross-origin fetch failed and we have an absolute URL targeting another origin,
+      // fallback to relative route via Next.js rewrites proxy
+      if (typeof window !== 'undefined' && url.startsWith('http') && path.startsWith('/')) {
+        try {
+          const fallbackUrl = buildUrl(path, params, true);
+          return await fetch(fallbackUrl, {
+            method,
+            credentials: 'include',
+            headers,
+            body: body !== undefined ? (isFormData ? (body as any) : JSON.stringify(body)) : undefined,
+            signal: finalSignal,
+            ...rest,
+          });
+        } catch (fallbackErr: unknown) {
+          logger.debug('Relative proxy fallback also failed', { fallbackErr });
+        }
+      }
       throw new ApiError({
         message: 'Cannot connect to backend server. Please ensure backend is running.',
         statusCode: 503,

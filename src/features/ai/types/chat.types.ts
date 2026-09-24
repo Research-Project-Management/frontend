@@ -93,6 +93,10 @@ export const TOOL_LABELS: Record<string, { label: string; icon: string; category
   remove_project_member:  { label: 'Removing Member',         icon: '👤', category: 'delete' },
   update_member_role:     { label: 'Updating Role',           icon: '🛡️', category: 'update' },
 
+  // ─── Research & RAG ────────────────────────────────────────────────────────
+  search_documents:       { label: 'Searching Documents',     icon: '🔍', category: 'read' },
+  web_search:             { label: 'Searching Web',           icon: '🌐', category: 'read' },
+
   // ─── Workspace ────────────────────────────────────────────────────────────
   search_workspace:       { label: 'Searching',               icon: '🔍', category: 'read' },
   list_members:           { label: 'Listing Members',         icon: '👥', category: 'read' },

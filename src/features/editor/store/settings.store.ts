@@ -50,7 +50,6 @@ export interface DocumentSettingsState {
   trackChangesViewMode: TrackChangesViewMode;
   activeSidebarPanel: 'Files' | 'Outline' | 'Search' | 'Citations' | 'Review' | 'AI' | null;
   isHistoryOpen: boolean;
-  isShareModalOpen: boolean;
   isTemplateModalOpen: boolean;
   spellCheck: boolean;
   spellCheckLanguage: string;
@@ -104,8 +103,6 @@ export interface DocumentSettingsState {
   toggleSidebarPanel: (panel: 'Files' | 'Outline' | 'Search' | 'Citations' | 'Review' | 'AI') => void;
   setIsHistoryOpen: (open: boolean) => void;
   toggleHistory: () => void;
-  setIsShareModalOpen: (open: boolean) => void;
-  toggleShareModal: () => void;
   setIsTemplateModalOpen: (open: boolean) => void;
   toggleTemplateModal: () => void;
   setMainFile: (mainFile: string) => void;
@@ -159,7 +156,6 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       trackChangesViewMode: 'changes',
       activeSidebarPanel: 'Files',
       isHistoryOpen: false,
-      isShareModalOpen: false,
       isTemplateModalOpen: false,
       spellCheck: true,
       spellCheckLanguage: 'en_US',
@@ -206,8 +202,6 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
         })),
       setIsHistoryOpen: (isHistoryOpen) => set({ isHistoryOpen }),
       toggleHistory: () => set((s) => ({ isHistoryOpen: !s.isHistoryOpen })),
-      setIsShareModalOpen: (isShareModalOpen) => set({ isShareModalOpen }),
-      toggleShareModal: () => set((s) => ({ isShareModalOpen: !s.isShareModalOpen })),
       setIsTemplateModalOpen: (isTemplateModalOpen) => set({ isTemplateModalOpen }),
       toggleTemplateModal: () => set((s) => ({ isTemplateModalOpen: !s.isTemplateModalOpen })),
       setMainFile: (mainFile) => set({ mainFile }),
@@ -248,7 +242,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       name: 'flux-editor-settings',
       partialize: (state) => {
         // Don't persist transient UI state or auto-compile (always on by default)
-        const { settingsPanelOpen, autoCompile, isHistoryOpen, isShareModalOpen, isTemplateModalOpen, activeSidebarPanel, ...rest } = state;
+        const { settingsPanelOpen, autoCompile, isHistoryOpen, isTemplateModalOpen, activeSidebarPanel, ...rest } = state;
         return rest;
       },
     },

@@ -1,14 +1,16 @@
 'use client';
 
 import React from 'react';
-import { Library, Folder, X, Plus } from 'lucide-react';
+import { Library, Folder, X, Plus, FolderPlus } from 'lucide-react';
 import { useItems, useCollections } from '../../data';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '@/shared/components/ui';
+import { useLibraryModalStore } from '../../store';
 import type { Item, Collection } from '../../types/library.types';
 
 interface CollectionsSectionProps {
@@ -26,6 +28,7 @@ export default function CollectionsSection({
   scopeId,
   projectId,
   workspaceId,
+  onCreateCollection,
   hideHeader = false,
   canEdit = true,
 }: CollectionsSectionProps) {
@@ -34,6 +37,7 @@ export default function CollectionsSection({
   const { updatePaper } = actions;
   const { state: colState } = useCollections(effectiveScope);
   const collections = colState.collections;
+  const openModal = useLibraryModalStore((s) => s.openModal);
 
   // Collect all collection IDs associated with this paper
   const itemCollectionIds = React.useMemo(() => {
@@ -114,13 +118,13 @@ export default function CollectionsSection({
   };
 
   return (
-    <div className="space-y-1 select-none font-sans">
+    <div className="space-y-[5px] select-none font-sans">
       {!hideHeader && (
         <div className="flex items-center justify-between pb-1">
           <h3 className="text-12 font-medium text-foreground">
             Libraries and Collections
           </h3>
-          {canEdit && unassignedCollections.length > 0 && (
+          {canEdit && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -133,16 +137,42 @@ export default function CollectionsSection({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5 text-xs font-sans">
-                {unassignedCollections.map((col: Collection) => (
-                  <DropdownMenuItem
-                    key={col.id}
-                    onClick={() => handleAddToCollection(col.id)}
-                    className="flex items-center gap-2 h-7 px-2 cursor-pointer text-foreground hover:bg-muted rounded-md"
-                  >
-                    <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                    <span className="truncate">{col.name}</span>
-                  </DropdownMenuItem>
-                ))}
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (onCreateCollection) {
+                      onCreateCollection();
+                    } else {
+                      openModal('CREATE_COLLECTION');
+                    }
+                  }}
+                  className="flex items-center gap-2 h-7 px-2 cursor-pointer text-foreground hover:bg-muted rounded-md"
+                >
+                  <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span className="font-medium">New Collection...</span>
+                </DropdownMenuItem>
+
+                {unassignedCollections.length > 0 ? (
+                  <>
+                    <DropdownMenuSeparator className="my-1" />
+                    <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                      Add to collection
+                    </div>
+                    {unassignedCollections.map((col: Collection) => (
+                      <DropdownMenuItem
+                        key={col.id}
+                        onClick={() => handleAddToCollection(col.id)}
+                        className="flex items-center gap-2 h-7 px-2 cursor-pointer text-foreground hover:bg-muted rounded-md"
+                      >
+                        <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                        <span className="truncate">{col.name}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                ) : collections.length > 0 ? (
+                  <div className="px-2 py-1 text-[11px] text-muted-foreground italic">
+                    All collections assigned
+                  </div>
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -150,27 +180,81 @@ export default function CollectionsSection({
       )}
 
       {/* Primary Library Row (Root) */}
-      <div className="flex items-center gap-2 py-1 px-2 text-13 rounded-md hover:bg-muted transition-colors">
-        <div className="size-4 shrink-0 flex items-center justify-center">
-          <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+      <div className="flex items-center justify-between gap-[8px] py-[5px] px-[8px] text-13 rounded-md hover:bg-muted transition-colors group">
+        <div className="flex items-center gap-[8px] min-w-0 flex-1">
+          <div className="size-4 shrink-0 flex items-center justify-center">
+            <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+          </div>
+          <span className="font-medium text-13 text-foreground tracking-tight break-words">My Library</span>
         </div>
-        <span className="font-medium text-13 text-foreground tracking-tight break-words">My Library</span>
+        {canEdit && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="invisible group-hover:visible size-5 flex items-center justify-center rounded hover:bg-muted-foreground/10 text-muted-foreground hover:text-foreground cursor-pointer transition-colors shrink-0 mr-1"
+                title="Add to collection"
+                aria-label="Add to collection"
+              >
+                <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5 text-xs font-sans">
+              <DropdownMenuItem
+                onClick={() => {
+                  if (onCreateCollection) {
+                    onCreateCollection();
+                  } else {
+                    openModal('CREATE_COLLECTION');
+                  }
+                }}
+                className="flex items-center gap-2 h-7 px-2 cursor-pointer text-foreground hover:bg-muted rounded-md"
+              >
+                <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                <span className="font-medium">New Collection...</span>
+              </DropdownMenuItem>
+
+              {unassignedCollections.length > 0 ? (
+                <>
+                  <DropdownMenuSeparator className="my-1" />
+                  <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                    Add to collection
+                  </div>
+                  {unassignedCollections.map((col: Collection) => (
+                    <DropdownMenuItem
+                      key={col.id}
+                      onClick={() => handleAddToCollection(col.id)}
+                      className="flex items-center gap-2 h-7 px-2 cursor-pointer text-foreground hover:bg-muted rounded-md"
+                    >
+                      <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                      <span className="truncate">{col.name}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              ) : collections.length > 0 ? (
+                <div className="px-2 py-1 text-[11px] text-muted-foreground italic">
+                  All collections assigned
+                </div>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {/* Collection Tree Rows */}
       {assignedCollections.map(({ id: colId, path }) => {
         return (
-          <div key={colId} className="space-y-0.5">
+          <div key={colId} className="space-y-[5px]">
             {path.map((col, idx) => {
               const isLeaf = idx === path.length - 1;
-              const indentPx = 8 + (idx + 1) * 12;
+              const indentPx = 8 + (idx + 1) * 13;
               return (
                 <div
                   key={`${colId}-${col.id}-${idx}`}
                   style={{ paddingLeft: `${indentPx}px` }}
-                  className="flex items-center justify-between gap-1.5 py-1 pr-2 text-13 rounded-md hover:bg-muted transition-colors group"
+                  className="flex items-center justify-between gap-[5px] py-[5px] pr-[8px] text-13 rounded-md hover:bg-muted transition-colors group"
                 >
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="flex items-center gap-[8px] min-w-0 flex-1">
                     <div className="size-4 shrink-0 flex items-center justify-center">
                       <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                     </div>

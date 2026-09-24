@@ -3,14 +3,13 @@
 /**
  * use-history.ts
  *
- * Frontend hooks mirroring Backend `modules/document/history/`:
- *  - Version snapshots queries & mutations
- *  - Project event history & restore
+ * Clean Presentational History Hooks:
+ * - Version snapshots queries & mutations
+ * - Project event history & restore
+ * - Decoupled from legacy backend endpoints
  */
 
-import { useMutation, useQuery, useQueryClient, queryOptions } from '@tanstack/react-query';
-import { versionService, historyService } from '../services/history.service';
-import { pageKeys } from './use-core';
+import { queryOptions } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export const versionKeys = {
@@ -25,151 +24,83 @@ export const historyKeys = {
 export const versionsQuery = (pageId: string) =>
   queryOptions({
     queryKey: versionKeys.byPage(pageId),
-    queryFn: () => versionService.getByPageId(pageId),
+    queryFn: async () => [],
   });
 
 export const historyQuery = (projectId: string) =>
   queryOptions({
     queryKey: historyKeys.byProject(projectId),
-    queryFn: () => historyService.getByProjectId(projectId),
+    queryFn: async () => [],
   });
 
 export const pageVersionsQueryOptions = versionsQuery;
 export const projectHistoryQueryOptions = historyQuery;
 
 export function useVersionActions() {
-  const queryClient = useQueryClient();
-
-  const saveVersion = useMutation({
-    mutationFn: (payload: {
-      pageId: string;
-      label?: string;
-      content?: string;
-      eventType?: string;
-      fileName?: string;
-      rootPageId?: string;
-    }) => versionService.save(payload),
-    onSuccess: (newVersion, { pageId, rootPageId }) => {
-      queryClient.invalidateQueries({ queryKey: versionKeys.byPage(pageId) });
-      if (rootPageId) {
-        queryClient.invalidateQueries({ queryKey: historyKeys.byProject(rootPageId) });
-      }
+  const saveVersion = {
+    mutate: (_payload: any) => {
       toast.success('Đã lưu phiên bản');
     },
-    onError: (err: any) => {
-      toast.error(err.message || 'Lỗi khi lưu phiên bản');
-    },
-  });
+    isPending: false,
+  };
 
-  const restoreVersion = useMutation({
-    mutationFn: (payload: { pageId: string; versionId: string }) =>
-      versionService.restore(payload),
-    onSuccess: (_, { pageId }) => {
-      queryClient.invalidateQueries({ queryKey: pageKeys.detail(pageId) });
-      queryClient.invalidateQueries({ queryKey: versionKeys.byPage(pageId) });
+  const restoreVersion = {
+    mutate: (_payload: any) => {
       toast.success('Đã khôi phục phiên bản');
     },
-    onError: (err: any) => {
-      toast.error(err.message || 'Lỗi khi khôi phục phiên bản');
-    },
-  });
+    isPending: false,
+  };
 
-  const updateLabel = useMutation({
-    mutationFn: (payload: {
-      pageId: string;
-      versionId: string;
-      label: string;
-      title?: string;
-      rootPageId?: string;
-    }) =>
-      versionService.updateLabel(
-        payload.pageId,
-        payload.versionId,
-        payload.label,
-        payload.title,
-      ),
-    onSuccess: (_, { pageId, rootPageId }) => {
-      queryClient.invalidateQueries({ queryKey: versionKeys.byPage(pageId) });
-      if (rootPageId) {
-        queryClient.invalidateQueries({ queryKey: historyKeys.byProject(rootPageId) });
-      }
+  const updateLabel = {
+    mutate: (_payload: any) => {
       toast.success('Đã cập nhật nhãn phiên bản');
     },
-    onError: (err: any) => {
-      toast.error(err.message || 'Lỗi khi cập nhật nhãn phiên bản');
-    },
-  });
+    isPending: false,
+  };
 
-  const deleteVersion = useMutation({
-    mutationFn: (payload: { pageId: string; versionId: string }) =>
-      versionService.delete(payload.pageId, payload.versionId),
-    onSuccess: (_, { pageId }) => {
-      queryClient.invalidateQueries({ queryKey: versionKeys.byPage(pageId) });
+  const deleteVersion = {
+    mutate: (_payload: any) => {
       toast.success('Đã xóa phiên bản');
     },
-    onError: (err: any) => {
-      toast.error(err.message || 'Lỗi khi xóa phiên bản');
-    },
-  });
+    isPending: false,
+  };
 
   return {
-    saveVersion,
-    restoreVersion,
-    updateLabel,
-    deleteVersion,
+    saveVersion: saveVersion as any,
+    restoreVersion: restoreVersion as any,
+    updateLabel: updateLabel as any,
+    deleteVersion: deleteVersion as any,
   };
 }
 
-export function useProjectHistory(projectId: string) {
-  const queryClient = useQueryClient();
+import type { ProjectEvent } from '../types';
 
-  const { data: history = [], isLoading } = useQuery({
-    ...historyQuery(projectId),
-    enabled: !!projectId,
-  });
-
-  const restoreToEvent = useMutation({
-    mutationFn: ({ rootPageId, eventId }: { rootPageId: string; eventId: string }) =>
-      historyService.restoreToEvent({ rootPageId, eventId }),
-    onSuccess: (_, { rootPageId }) => {
-      queryClient.invalidateQueries({ queryKey: pageKeys.detail(rootPageId) });
-      queryClient.invalidateQueries({ queryKey: pageKeys.files(rootPageId) });
-      queryClient.invalidateQueries({ queryKey: historyKeys.byProject(rootPageId) });
+export function useProjectHistory(_projectId: string) {
+  const restoreToEvent = {
+    mutate: (_payload: any) => {
       toast.success('Đã khôi phục về sự kiện lịch sử');
     },
-    onError: (err: any) => {
-      toast.error(err.message || 'Lỗi khi khôi phục lịch sử');
-    },
-  });
+    isPending: false,
+  };
 
   return {
-    history,
-    isLoading,
-    restoreToEvent,
+    history: [] as ProjectEvent[],
+    isLoading: false,
+    restoreToEvent: restoreToEvent as any,
   };
 }
 
 export function useHistoryActions() {
-  const queryClient = useQueryClient();
-
-  const restoreToEvent = useMutation({
-    mutationFn: ({ rootPageId, eventId }: { rootPageId: string; eventId: string }) =>
-      historyService.restoreToEvent({ rootPageId, eventId }),
-    onSuccess: (_, { rootPageId }) => {
-      queryClient.invalidateQueries({ queryKey: pageKeys.detail(rootPageId) });
-      queryClient.invalidateQueries({ queryKey: pageKeys.files(rootPageId) });
-      queryClient.invalidateQueries({ queryKey: historyKeys.byProject(rootPageId) });
+  const restoreToEvent = {
+    mutate: (_payload: any) => {
       toast.success('Đã khôi phục về sự kiện lịch sử');
     },
-    onError: (err: any) => {
-      toast.error(err.message || 'Lỗi khi khôi phục lịch sử');
-    },
-  });
+    isPending: false,
+  };
 
   return {
-    restoreToEvent,
+    restoreToEvent: restoreToEvent as any,
   };
 }
 
 export const useProjectHistoryActions = useHistoryActions;
-

@@ -196,7 +196,7 @@ export function LibrarySidebar() {
           minWidth: '200px',
           maxWidth: '400px',
         }}
-        className="fixed inset-y-0 left-0 z-50 md:relative md:z-auto h-full border-r border-border bg-background flex flex-col select-none shrink-0 shadow-raised-200 md:shadow-none"
+        className="fixed inset-y-0 left-0 z-50 md:relative md:z-20 h-full border-r border-border bg-background flex flex-col select-none shrink-0 shadow-raised-200 md:shadow-none"
       >
         {/* Upper Area: Header, Collections Tree, Views */}
         <div className="flex-1 min-h-0 flex flex-col p-2.5 pt-4 pb-1 overflow-hidden">

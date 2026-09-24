@@ -120,7 +120,7 @@ export function ProjectLibrariesSection({
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
 
   return (
-    <div className="mt-1 flex flex-col gap-1 w-full">
+    <div className="flex flex-col gap-1 w-full">
       <div className="relative group/root flex items-center w-full">
         <button
           type="button"
@@ -171,7 +171,7 @@ export function ProjectLibrariesSection({
       </div>
 
       {isProjectsExpanded && (
-        <div className="flex flex-col gap-0.5 w-full">
+        <div className="flex flex-col gap-1 w-full">
           {projects.length === 0 ? (
             <div className="pl-6 pr-2.5 py-1.5 text-11 text-muted-foreground italic select-none">
               No project libraries
@@ -187,7 +187,7 @@ export function ProjectLibrariesSection({
                     (activeScope.role === 'owner' || activeScope.role === 'coordinator' || activeScope.role === 'contributor');
 
               return (
-                <div key={project.id} className="flex flex-col gap-0.5 w-full">
+                <div key={project.id} className="flex flex-col gap-1 w-full">
                   <button
                     type="button"
                     onClick={() => {
@@ -223,7 +223,7 @@ export function ProjectLibrariesSection({
                   {/* Project Collections Tree (Rendered when this project is active) */}
                   {isProjectActive &&
                     (projectTree.length > 0 || (savedSearches && savedSearches.length > 0)) && (
-                      <div className="flex flex-col gap-0.5 w-full pl-2">
+                      <div className="flex flex-col gap-1 w-full pl-2">
                         <CollectionTree
                           tree={projectTree}
                           allCollections={projectCollections}

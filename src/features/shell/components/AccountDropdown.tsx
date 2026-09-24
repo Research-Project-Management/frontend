@@ -193,7 +193,7 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
                 className="cursor-pointer gap-2.5 px-3 py-2 text-foreground hover:bg-muted focus:bg-muted rounded-md transition-colors"
                 asChild
               >
-                <Link href="/your-work">
+                <Link href="/inbox">
                   <Mail className="size-4 text-muted-foreground shrink-0" />
                   <span className="text-sm font-medium">Inbox</span>
                 </Link>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { Search, PanelLeft } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { useAiCompanionStore } from '@/features/ai/store';
 import {
@@ -19,10 +19,6 @@ export default function Topbar() {
   const router = useRouter();
   const isAiRoute = pathname?.startsWith('/ai');
   const { toggleOpen } = useAiCompanionStore();
-
-  const handleToggleSidebar = () => {
-    window.dispatchEvent(new CustomEvent('toggle-project-sidebar'));
-  };
 
   // Global keyboard shortcut: Cmd+J or Ctrl+J to toggle AI Companion
   useEffect(() => {
@@ -51,17 +47,9 @@ export default function Topbar() {
       aria-label='App Header Navigation'
       className='relative flex h-11 max-h-11 w-full shrink-0 items-center justify-between bg-muted px-2.5 sm:px-3 select-none gap-2'
     >
-      {/* Left: Sidebar Toggle Menu Button */}
+      {/* Left: User Avatar (aligned with 44px left rail) */}
       <div className='flex w-8 sm:w-11 items-center justify-center shrink-0 relative z-10'>
-        <button
-          type='button'
-          onClick={handleToggleSidebar}
-          aria-label='Toggle sidebar'
-          title='Toggle menu'
-          className='flex size-8 items-center justify-center rounded-md text-foreground hover:bg-background/70 active:bg-background transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
-        >
-          <PanelLeft className='size-4 text-foreground shrink-0' />
-        </button>
+        <AccountDropdown align='start' />
       </div>
 
       {/* Center: Search box mathematically centered on desktop, fluid on mobile */}
@@ -75,7 +63,7 @@ export default function Topbar() {
         </button>
       </div>
 
-      {/* Right: Inbox Notification Bell + AI assistant button + AccountDropdown */}
+      {/* Right: Inbox Notification Bell + AI assistant button */}
       <div className='flex items-center gap-2 shrink-0 relative z-10'>
         <InboxPopover align='end' />
 
@@ -104,8 +92,6 @@ export default function Topbar() {
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-
-        <AccountDropdown align='end' />
       </div>
     </nav>
   );

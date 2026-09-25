@@ -7,9 +7,10 @@
  *  - Item management (rename, move, delete)
  */
 
-import { apiGet, apiPost, apiPut, apiDelete, getAuthToken } from "@/shared/lib/api";
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete, getAuthToken } from "@/shared/lib/api";
 import { API_BASE_URL } from '@/config/env';
 import { presignUpload, completePresigned } from '@/features/storage/services/upload.service';
+import { MANUSCRIPTS_API_BASE } from './manuscript.service';
 
 export interface EditorStorageItem {
   id: string;
@@ -26,11 +27,34 @@ export interface EditorStorageItem {
 
 export const StorageService = {
   getPageFiles: async (pageId: string, parentId?: string | null): Promise<EditorStorageItem[]> => {
-    const endpoint = parentId
+    try {
+      const endpoint = parentId
+        ? `${MANUSCRIPTS_API_BASE}/projects/${pageId}/structure/nodes?parentId=${parentId}`
+        : `${MANUSCRIPTS_API_BASE}/projects/${pageId}/structure/nodes`;
+      const nodes = await apiGet<any[]>(endpoint);
+      if (Array.isArray(nodes)) {
+        return nodes.map((n) => ({
+          id: n.id,
+          filename: n.name,
+          isFolder: n.type === 'FOLDER',
+          parentId: n.parentId,
+          size: n.sizeBytes,
+          createdAt: n.createdAt,
+          updatedAt: n.updatedAt,
+        }));
+      }
+    } catch {
+      // Fallback to legacy endpoint if project not found
+    }
+    const legacyEndpoint = parentId
       ? `/api/files/page/${pageId}?parentId=${parentId}`
       : `/api/files/page/${pageId}`;
-    const data = await apiGet<{ files: EditorStorageItem[] }>(endpoint);
-    return data.files || [];
+    try {
+      const data = await apiGet<{ files: EditorStorageItem[] }>(legacyEndpoint);
+      return data.files || [];
+    } catch {
+      return [];
+    }
   },
 
   uploadPageFile: async (
@@ -167,28 +191,61 @@ export const StorageService = {
   },
 
   createPageFolder: async (pageId: string, name: string, parentId?: string | null) => {
-    return apiPost(`/api/files/page/${pageId}/folder`, {
-      name,
-      parentId: parentId ?? null,
-    });
+    try {
+      return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${pageId}/structure/nodes`, {
+        name,
+        type: 'FOLDER',
+        parentId: parentId ?? null,
+      });
+    } catch {
+      return apiPost(`/api/files/page/${pageId}/folder`, {
+        name,
+        parentId: parentId ?? null,
+      });
+    }
   },
 
   createProjectFolder: async (projectId: string, name: string, parentId?: string | null) => {
-    return apiPost(`/api/files/project/${projectId}/folder`, {
-      name,
-      parentId: parentId ?? null,
-    });
+    try {
+      return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, {
+        name,
+        type: 'FOLDER',
+        parentId: parentId ?? null,
+      });
+    } catch {
+      return apiPost(`/api/files/project/${projectId}/folder`, {
+        name,
+        parentId: parentId ?? null,
+      });
+    }
   },
 
-  renameItem: async (itemId: string, name: string) => {
+  renameItem: async (itemId: string, name: string, projectId?: string) => {
+    if (projectId) {
+      try {
+        return await apiPatch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}/rename`, { name });
+      } catch {}
+    }
     return apiPut(`/api/files/${itemId}/rename`, { name });
   },
 
-  permanentlyDeleteItem: async (itemId: string) => {
+  permanentlyDeleteItem: async (itemId: string, projectId?: string) => {
+    if (projectId) {
+      try {
+        return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}`);
+      } catch {}
+    }
     return apiDelete(`/api/files/${itemId}`);
   },
 
-  moveItem: async (itemId: string, targetFolderId: string | null) => {
+  moveItem: async (itemId: string, targetFolderId: string | null, projectId?: string) => {
+    if (projectId) {
+      try {
+        return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}/move`, {
+          destParentId: targetFolderId,
+        });
+      } catch {}
+    }
     return apiPut(`/api/files/${itemId}/move`, { parentId: targetFolderId });
   },
 };

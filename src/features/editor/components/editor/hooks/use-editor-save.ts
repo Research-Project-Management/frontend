@@ -7,6 +7,8 @@ import { useDebounce } from '@/shared/hooks';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 
+import { manuscriptService } from '@/features/editor/services/manuscript.service';
+
 export const extractStringContent = (c: any): string =>
   typeof c === 'string'
     ? c
@@ -42,7 +44,7 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
 
   const debouncedPayload = useDebounce(contentPayload, 800);
 
-  // Sync to local page store when content settles
+  // Sync to local page store & persist to backend database when content settles
   useEffect(() => {
     const currentPage = pageRef.current;
     if (debouncedPayload.pageId !== activePageIdRef.current) return;
@@ -57,6 +59,13 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
         });
       }
       clearDirty(currentPage.id);
+
+      // Persist changes to PostgreSQL via Manuscript Docs API
+      manuscriptService.docs
+        .updateContent(currentPage.id, debouncedPayload.text)
+        .catch((err) => {
+          console.error('[useEditorSave] Auto-save failed:', err);
+        });
     }
   }, [debouncedPayload, clearDirty, setCurrentPage]);
 
@@ -120,11 +129,20 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
       ? contentPayload.text
       : extractStringContent(page.content);
 
-  const mockUpdateMutation = {
-    mutate: (_params: any, opts?: any) => {
-      opts?.onSuccess?.();
+  const updateMutation = {
+    mutate: (params: { pageId?: string; content: string }, opts?: any) => {
+      const targetId = params?.pageId || pageRef.current.id;
+      manuscriptService.docs
+        .updateContent(targetId, params.content)
+        .then((res) => opts?.onSuccess?.(res))
+        .catch((err) => opts?.onError?.(err));
+    },
+    mutateAsync: async (params: { pageId?: string; content: string }) => {
+      const targetId = params?.pageId || pageRef.current.id;
+      return await manuscriptService.docs.updateContent(targetId, params.content);
     },
     isLoading: false,
+    isPending: false,
   };
 
   return {
@@ -132,6 +150,6 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
     setContentPayload,
     currentContent,
     handleContentChange,
-    updateMutation: mockUpdateMutation as any,
+    updateMutation: updateMutation as any,
   };
 }

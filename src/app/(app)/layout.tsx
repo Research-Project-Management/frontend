@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import React, { Suspense, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { hasAuthToken } from '@/shared/lib/api';
 import { ErrorBoundary } from '@/shared/components/ui';
 
 const Topbar = dynamic(
@@ -42,9 +41,9 @@ export default function AppLayout({
   const isPaperReader = pathname.includes('/library/papers/');
 
   useEffect(() => {
-    if (!isLoading && !user && !hasAuthToken()) {
+    if (!isLoading && !user) {
       const redirectUrl =
-        pathname && pathname !== '/'
+        pathname && pathname !== '/' && !pathname.startsWith('/login')
           ? `/login?redirect=${encodeURIComponent(pathname)}`
           : '/login';
       router.replace(redirectUrl);
@@ -61,7 +60,7 @@ export default function AppLayout({
   }, []);
 
   // If unauthenticated, prevent rendering app shell and redirect to login
-  if (!isLoading && !user && !hasAuthToken()) {
+  if (!isLoading && !user) {
     return null;
   }
 

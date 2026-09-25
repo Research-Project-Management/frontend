@@ -3,109 +3,136 @@
 /**
  * use-storage.ts
  *
- * Clean Presentational Storage Hooks for Editor Files Explorer:
- * - Decoupled from legacy backend storage/R2 endpoints
+ * Real-time storage hooks for Editor Files Explorer wired to:
+ * - Manuscript Structure Service (`/api/v1/manuscripts/projects/:projectId/structure`)
+ * - Manuscript Filestore Service (`/api/v1/manuscripts/projects/:projectId/files`)
  */
 
-import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { EditorStorageItem } from '../services/storage.service';
+import { StorageService, type EditorStorageItem } from '../services/storage.service';
+import { usePageStore } from '../store';
 
-function createMockMutation<TArgs, TRes>(fn: (args: TArgs) => Promise<TRes>) {
-  const handler = (args: TArgs) => fn(args);
-  handler.mutate = (
-    args: TArgs,
-    opts?: { onSuccess?: (data: TRes) => void; onError?: (err: any) => void },
-  ) => {
-    fn(args)
-      .then((data) => opts?.onSuccess?.(data))
-      .catch((err) => opts?.onError?.(err));
-  };
-  handler.mutateAsync = fn;
-  handler.isPending = false;
-  return handler as any;
-}
+export function useEditorStorage(pageId?: string | null, parentId?: string | null) {
+  const queryClient = useQueryClient();
+  const currentPage = usePageStore((s) => s.currentPage);
+  const effectiveProjectId = currentPage?.projectId || pageId || '';
 
-export function useEditorStorage(_pageId?: string | null, _parentId?: string | null) {
-  const [items, setItems] = useState<EditorStorageItem[]>([]);
+  const {
+    data: items = [],
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ['editor-storage-files', effectiveProjectId, pageId, parentId],
+    queryFn: async (): Promise<EditorStorageItem[]> => {
+      const targetId = pageId || effectiveProjectId;
+      if (!targetId) return [];
+      try {
+        const files = await StorageService.getPageFiles(targetId, parentId);
+        return files || [];
+      } catch (err) {
+        console.warn('[useEditorStorage] Could not fetch remote files:', err);
+        return [];
+      }
+    },
+    enabled: !!(effectiveProjectId || pageId),
+  });
 
-  const uploadFile = createMockMutation(
-    async ({
+  const uploadFileMutation = useMutation({
+    mutationFn: async ({
       file,
+      projectId,
+      pageId: targetPageId,
+      parentId: targetParentId,
     }: {
       file: File;
       projectId?: string;
       pageId?: string;
       parentId?: string | null;
     }): Promise<EditorStorageItem> => {
-      const newItem: EditorStorageItem = {
-        id: `file-${Date.now()}`,
-        filename: file.name,
-        size: file.size,
-        mimeType: file.type,
-        isFolder: false,
-        createdAt: new Date().toISOString(),
-      };
-      setItems((prev) => [...prev, newItem]);
-      toast.success(`Đã tải lên "${file.name}"`);
-      return newItem;
+      const targetId = targetPageId || projectId || pageId || effectiveProjectId;
+      return await StorageService.uploadPageFile(targetId, file, targetParentId ?? parentId);
     },
-  );
-
-  const createFolder = createMockMutation(
-    async ({ name }: { name: string; parentId?: string | null }): Promise<EditorStorageItem> => {
-      const newFolder: EditorStorageItem = {
-        id: `folder-${Date.now()}`,
-        filename: name,
-        isFolder: true,
-        createdAt: new Date().toISOString(),
-      };
-      setItems((prev) => [...prev, newFolder]);
-      toast.success(`Đã tạo thư mục "${name}"`);
-      return newFolder;
+    onSuccess: (newItem) => {
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      toast.success(`Đã tải lên "${newItem.filename}"`);
     },
-  );
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể tải tệp lên');
+    },
+  });
 
-  const renameFile = createMockMutation(
-    async (args: { itemId?: string; fileId?: string; newName?: string; name?: string }): Promise<void> => {
-      const id = args.itemId || args.fileId;
-      const name = args.newName || args.name;
-      if (id && name) {
-        setItems((prev) =>
-          prev.map((i) => (i.id === id ? { ...i, filename: name } : i)),
-        );
-      }
+  const createFolderMutation = useMutation({
+    mutationFn: async ({ name, parentId: targetParentId }: { name: string; parentId?: string | null }): Promise<any> => {
+      const targetId = pageId || effectiveProjectId;
+      return await StorageService.createPageFolder(targetId, name, targetParentId ?? parentId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      toast.success('Đã tạo thư mục');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể tạo thư mục');
+    },
+  });
+
+  const renameMutation = useMutation({
+    mutationFn: async (args: { itemId?: string; fileId?: string; newName?: string; name?: string }): Promise<any> => {
+      const id = args.itemId || args.fileId || '';
+      const name = args.newName || args.name || '';
+      return await StorageService.renameItem(id, name, effectiveProjectId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       toast.success('Đã đổi tên');
     },
-  );
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể đổi tên');
+    },
+  });
 
-  const deleteFile = createMockMutation(
-    async (itemId: string): Promise<void> => {
-      setItems((prev) => prev.filter((i) => i.id !== itemId));
+  const deleteMutation = useMutation({
+    mutationFn: async (itemId: string): Promise<any> => {
+      return await StorageService.permanentlyDeleteItem(itemId, effectiveProjectId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       toast.success('Đã xóa tệp');
     },
-  );
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể xóa tệp');
+    },
+  });
 
-  const moveItem = createMockMutation(
-    async (): Promise<void> => {
+  const moveMutation = useMutation({
+    mutationFn: async (args: { itemId?: string; targetFolderId?: string | null } | string): Promise<any> => {
+      const itemId = typeof args === 'string' ? args : (args.itemId || '');
+      const targetFolderId = typeof args === 'string' ? null : (args.targetFolderId ?? null);
+      return await StorageService.moveItem(itemId, targetFolderId, effectiveProjectId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       toast.success('Đã di chuyển');
     },
-  );
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể di chuyển');
+    },
+  });
 
   return {
     children: items,
     files: items,
-    isLoading: false,
-    refetch: async () => {},
-    uploadFile,
-    createFolder,
-    renameFile,
-    deleteFile,
-    moveItem,
-    uploadFileMutation: uploadFile,
-    createFolderMutation: createFolder,
-    renameMutation: renameFile,
-    deleteMutation: deleteFile,
-    moveMutation: moveItem,
+    isLoading,
+    refetch,
+    uploadFile: uploadFileMutation as any,
+    createFolder: createFolderMutation as any,
+    renameFile: renameMutation as any,
+    deleteFile: deleteMutation as any,
+    moveItem: moveMutation as any,
+    uploadFileMutation: uploadFileMutation as any,
+    createFolderMutation: createFolderMutation as any,
+    renameMutation: renameMutation as any,
+    deleteMutation: deleteMutation as any,
+    moveMutation: moveMutation as any,
   };
 }

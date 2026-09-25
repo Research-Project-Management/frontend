@@ -11,8 +11,9 @@
 
 import { useEffect, useMemo, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { useQuery, queryOptions } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
 import { pageService, fileService } from '../services/core.service';
+import { manuscriptService } from '../services/manuscript.service';
 import { usePageStore, useTabsStore, useSettingsStore } from '../store';
 import { toast } from 'sonner';
 import type { Page, PageFile } from '../types';
@@ -277,65 +278,74 @@ export function useActiveDocument() {
 export function usePageActions() {
   const { isLocked } = useSettingsStore() as any;
   const setCurrentPage = usePageStore((s) => s.setCurrentPage);
+  const queryClient = useQueryClient();
 
-  const updateContent = {
-    mutate: ({ pageId, content }: { pageId: string; content: string }) => {
-      if (isLocked) {
-        toast.error('Tài liệu đang bị khóa');
-        return;
-      }
+  const updateContentMutation = useMutation({
+    mutationFn: async ({ pageId, content }: { pageId: string; content: string }) => {
+      if (isLocked) throw new Error('Tài liệu đang bị khóa');
       setCurrentPage((prev: any) => (prev ? { ...prev, content } : prev));
+      return await manuscriptService.docs.updateContent(pageId, content);
     },
-    isPending: false,
-  };
-
-  const updateThumbnail = {
-    mutate: ({ dataUrl }: { pageId: string; dataUrl: string }) => {
-      // Thumbnail recorded in store
+    onSuccess: (updated, variables) => {
+      queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });
     },
-    isPending: false,
-  };
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể lưu nội dung');
+    },
+  });
 
-  const updateTitle = {
-    mutate: ({ title }: { pageId: string; title: string }) => {
-      if (isLocked) {
-        toast.error('Tài liệu đang bị khóa');
-        return;
-      }
+  const updateThumbnailMutation = useMutation({
+    mutationFn: async ({ pageId, dataUrl }: { pageId: string; dataUrl: string }) => {
+      return await manuscriptService.docs.updateThumbnail(pageId, dataUrl);
+    },
+  });
+
+  const updateTitleMutation = useMutation({
+    mutationFn: async ({ pageId, title }: { pageId: string; title: string }) => {
+      if (isLocked) throw new Error('Tài liệu đang bị khóa');
       setCurrentPage((prev: any) => (prev ? { ...prev, title } : prev));
+      return await manuscriptService.docs.updateTitle(pageId, title);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });
       toast.success('Đã đổi tên tài liệu');
     },
-    isPending: false,
-  };
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể đổi tên tài liệu');
+    },
+  });
 
-  const deletePage = {
-    mutate: (_pageId: string) => {
-      if (isLocked) {
-        toast.error('Tài liệu đang bị khóa');
-        return;
-      }
+  const deletePageMutation = useMutation({
+    mutationFn: async (pageId: string) => {
+      if (isLocked) throw new Error('Tài liệu đang bị khóa');
+      return await manuscriptService.docs.delete(pageId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
       toast.success('Đã xóa trang');
     },
-    isPending: false,
-  };
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể xóa trang');
+    },
+  });
 
-  const restorePage = {
-    mutate: (_pageId: string) => {
-      if (isLocked) {
-        toast.error('Tài liệu đang bị khóa');
-        return;
-      }
+  const restorePageMutation = useMutation({
+    mutationFn: async (pageId: string) => {
+      if (isLocked) throw new Error('Tài liệu đang bị khóa');
+      return await manuscriptService.docs.restore(pageId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
       toast.success('Đã khôi phục tệp');
     },
-    isPending: false,
-  };
+  });
 
   return {
-    updateContent: updateContent as any,
-    updateThumbnail: updateThumbnail as any,
-    updateTitle: updateTitle as any,
-    deletePage: deletePage as any,
-    restorePage: restorePage as any,
+    updateContent: updateContentMutation as any,
+    updateThumbnail: updateThumbnailMutation as any,
+    updateTitle: updateTitleMutation as any,
+    deletePage: deletePageMutation as any,
+    restorePage: restorePageMutation as any,
   };
 }
 
@@ -343,31 +353,38 @@ export function usePageActions() {
 
 export function useFileActions() {
   const { isLocked } = useSettingsStore() as any;
+  const queryClient = useQueryClient();
 
-  const createFile = {
-    mutate: ({ title }: { parentPageId: string; title: string; content?: string }) => {
-      if (isLocked) {
-        toast.error('Tài liệu đang bị khóa');
-        return;
-      }
-      toast.success(`Đã tạo tệp "${title}"`);
+  const createFileMutation = useMutation({
+    mutationFn: async ({ parentPageId, title, content }: { parentPageId: string; title: string; content?: string }) => {
+      if (isLocked) throw new Error('Tài liệu đang bị khóa');
+      return await fileService.create({ parentPageId, title, content });
     },
-    isPending: false,
-  };
+    onSuccess: (newFile, variables) => {
+      queryClient.invalidateQueries({ queryKey: pageKeys.files(variables.parentPageId) });
+      toast.success(`Đã tạo tệp "${newFile.title}"`);
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể tạo tệp');
+    },
+  });
 
-  const setMainFile = {
-    mutate: (_payload: { pageId: string; fileId: string }) => {
-      if (isLocked) {
-        toast.error('Tài liệu đang bị khóa');
-        return;
-      }
+  const setMainFileMutation = useMutation({
+    mutationFn: async ({ pageId, fileId }: { pageId: string; fileId: string }) => {
+      if (isLocked) throw new Error('Tài liệu đang bị khóa');
+      return await fileService.setMain({ pageId, fileId });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });
       toast.success('Đã đặt làm tệp chính');
     },
-    isPending: false,
-  };
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể đặt làm tệp chính');
+    },
+  });
 
   return {
-    createFile: createFile as any,
-    setMainFile: setMainFile as any,
+    createFile: createFileMutation as any,
+    setMainFile: setMainFileMutation as any,
   };
 }

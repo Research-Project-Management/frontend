@@ -21,6 +21,7 @@ import {
   BarChart3,
   Pin,
   PinOff,
+  PanelLeft,
 } from 'lucide-react';
 import { motion, LayoutGroup } from 'framer-motion';
 import { toast } from 'sonner';
@@ -61,11 +62,11 @@ const MODULE_ORDER: ProjectModuleKey[] = [
 ];
 
 const modulesConfig: Record<ProjectModuleKey, { label: string; icon: React.ComponentType<any>; path: string }> = {
-  'overview':   { label: 'Overview',   icon: Compass,          path: 'overview' },
-  'work-items': { label: 'Work items', icon: WorkItemsIcon,    path: 'work-items' },
-  'views':      { label: 'Views',      icon: Layers,           path: 'views' },
-  'pages':      { label: 'Pages',      icon: FileText,         path: 'pages' },
-  'cycles':     { label: 'Cycles',     icon: CycleIcon,        path: 'cycles' },
+  'overview': { label: 'Overview', icon: Compass, path: 'overview' },
+  'work-items': { label: 'Work items', icon: WorkItemsIcon, path: 'work-items' },
+  'views': { label: 'Views', icon: Layers, path: 'views' },
+  'pages': { label: 'Pages', icon: FileText, path: 'pages' },
+  'cycles': { label: 'Cycles', icon: CycleIcon, path: 'cycles' },
 };
 
 type NavItem = {
@@ -465,6 +466,21 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
       {/* Header */}
       <div className="mb-2 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground shrink-0">
         <span className="text-14 font-semibold text-foreground">Projects</span>
+        <button
+          type="button"
+          onClick={() => {
+            if (onToggle) {
+              onToggle();
+            } else {
+              window.dispatchEvent(new CustomEvent('toggle-project-sidebar'));
+            }
+          }}
+          aria-label="Collapse sidebar"
+          title="Collapse sidebar"
+          className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        >
+          <PanelLeft className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+        </button>
       </div>
 
       {/* Quick Action: New Work Item */}
@@ -649,7 +665,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
               >
                 Favorites
               </Link>
-              
+
               <Tooltip>
                 <TooltipTrigger asChild>
                   <CollapsibleTrigger asChild>

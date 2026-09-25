@@ -12,6 +12,7 @@ import { registerUser } from '../services/auth.service';
 import { registerSchema, type RegisterSchema } from '../schemas/auth.schema';
 import { env } from '@/config/env';
 import type { RegisterPayload } from '../types/auth.types';
+import { getSafeRedirectUrl } from '@/shared/utils/auth-token.util';
 
 /**
  * Dedicated Hook for RegisterPage.
@@ -37,9 +38,10 @@ export const useRegister = () => {
         typeof window !== 'undefined'
           ? new URLSearchParams(window.location.search)
           : null;
-      const redirect = params?.get('redirect');
-      if (redirect) {
-        router.push(`/login?redirect=${encodeURIComponent(redirect)}`);
+      const rawRedirect = params?.get('redirect');
+      const safeRedirect = rawRedirect ? getSafeRedirectUrl(rawRedirect, '') : '';
+      if (safeRedirect) {
+        router.push(`/login?redirect=${encodeURIComponent(safeRedirect)}`);
       } else {
         router.push('/login');
       }

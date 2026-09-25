@@ -218,6 +218,7 @@ export function Topbar({
         'h-11 border-b border-border px-3 sm:px-4 flex items-center justify-between gap-2.5 sm:gap-3 bg-background shrink-0 text-13 w-full min-w-0 overflow-x-auto scrollbar-none sticky top-0 z-20',
         className,
       )}
+      style={{ paddingLeft: 'max(0.75rem, var(--header-offset, 0px))' }}
     >
       {/* Left: Project Switcher, Module Title & Scope Switcher */}
       <Switcher

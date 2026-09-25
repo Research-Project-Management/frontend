@@ -42,9 +42,11 @@ function setCookieValue(name: string, value: string, maxAgeSeconds: number = SEV
   document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax`;
 }
 
+import { isTokenValid } from '@/shared/utils/auth-token.util';
+
 function deleteCookieValue(name: string): void {
   if (typeof document === 'undefined') return;
-  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
+  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0; SameSite=Lax`;
 }
 
 // ─── 3. LocalStorage Adapter (Browser Runtime with Cookie Synchronization) ─────
@@ -56,18 +58,54 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
 
   public getAccessToken(): string | null {
     if (!this.isBrowser()) {
-      return getCookieValue(STORAGE_KEYS.ACCESS_TOKEN) || getCookieValue(STORAGE_KEYS.LEGACY_TOKEN);
+      const cookieVal =
+        getCookieValue(STORAGE_KEYS.ACCESS_TOKEN) || getCookieValue(STORAGE_KEYS.LEGACY_TOKEN);
+      return isTokenValid(cookieVal) ? cookieVal : null;
     }
     try {
-      return (
+      const localVal =
         window.localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) ||
-        window.localStorage.getItem(STORAGE_KEYS.LEGACY_TOKEN) ||
+        window.localStorage.getItem(STORAGE_KEYS.LEGACY_TOKEN);
+      const cookieVal =
         getCookieValue(STORAGE_KEYS.ACCESS_TOKEN) ||
-        getCookieValue(STORAGE_KEYS.LEGACY_TOKEN) ||
-        null
-      );
+        getCookieValue(STORAGE_KEYS.LEGACY_TOKEN);
+
+      const validLocal = isTokenValid(localVal) ? localVal : null;
+      const validCookie = isTokenValid(cookieVal) ? cookieVal : null;
+
+      // Clean up corrupt or expired values
+      if (localVal && !validLocal) {
+        window.localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+        window.localStorage.removeItem(STORAGE_KEYS.LEGACY_TOKEN);
+      }
+      if (cookieVal && !validCookie) {
+        deleteCookieValue(STORAGE_KEYS.ACCESS_TOKEN);
+        deleteCookieValue(STORAGE_KEYS.LEGACY_TOKEN);
+      }
+
+      // Re-sync: if valid token exists in localStorage but missing from cookie (e.g. after clearing cookies)
+      if (validLocal && !validCookie) {
+        setCookieValue(STORAGE_KEYS.ACCESS_TOKEN, validLocal, SEVEN_DAYS_SECONDS);
+        setCookieValue(STORAGE_KEYS.LEGACY_TOKEN, validLocal, SEVEN_DAYS_SECONDS);
+        return validLocal;
+      }
+
+      // Re-sync: if valid token exists in cookie but missing from localStorage (e.g. after clearing localStorage)
+      if (validCookie && !validLocal) {
+        try {
+          window.localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, validCookie);
+          window.localStorage.setItem(STORAGE_KEYS.LEGACY_TOKEN, validCookie);
+        } catch {
+          // Ignore storage quota
+        }
+        return validCookie;
+      }
+
+      return validLocal || validCookie || null;
     } catch {
-      return getCookieValue(STORAGE_KEYS.ACCESS_TOKEN) || getCookieValue(STORAGE_KEYS.LEGACY_TOKEN) || null;
+      const cookieVal =
+        getCookieValue(STORAGE_KEYS.ACCESS_TOKEN) || getCookieValue(STORAGE_KEYS.LEGACY_TOKEN);
+      return isTokenValid(cookieVal) ? cookieVal : null;
     }
   }
 
@@ -122,6 +160,7 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
       window.localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
       window.localStorage.removeItem(STORAGE_KEYS.LEGACY_TOKEN);
       window.localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+      window.localStorage.removeItem('flux_cached_user');
     } catch {
       // Ignore private browsing errors
     }
@@ -164,6 +203,7 @@ export class InMemoryTokenAdapter implements TokenStorageAdapter {
         window.localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
         window.localStorage.removeItem(STORAGE_KEYS.LEGACY_TOKEN);
         window.localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+        window.localStorage.removeItem('flux_cached_user');
       } catch (err) {
         logger.debug('[TokenStorage] Error removing storage keys', { err });
       }

@@ -249,6 +249,7 @@ export interface CollaborationEvent {
   suggestion?: any;
   comment?: any;
   user?: CollaborationPresence;
+  users?: CollaborationPresence[];
   userId?: string;
   isLocked?: boolean;
   lockedBy?: string;
@@ -511,9 +512,10 @@ const synctex = {
 // ─── 4. COMMENTS & DISCUSSION CLIENT ────────────────────────────────────────
 
 const comments = {
-  getComments: async (docId: string): Promise<PageComment[]> => {
-    const data = await apiGet<{ comments: PageComment[] }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}/comments`);
-    return data.comments;
+  getComments: async (docId: string, status?: string): Promise<PageComment[]> => {
+    const query = status ? `?status=${encodeURIComponent(status)}` : '';
+    const data = await apiGet<{ comments: PageComment[] }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}/comments${query}`);
+    return data.comments || [];
   },
 
   createComment: async (

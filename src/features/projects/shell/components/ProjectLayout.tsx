@@ -90,18 +90,33 @@ export default function ProjectsLayout({ children }: { children?: React.ReactNod
 
       {/* Project Sidebar Panel */}
       <div
-        className={`fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto h-full overflow-hidden transition-all duration-300 ease-in-out bg-background ${
-          isSidebarVisible
+        className={`fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto h-full overflow-hidden transition-all duration-300 ease-in-out bg-background ${isSidebarVisible
             ? "w-60 border-r border-border shadow-2xl lg:shadow-none"
             : "w-0 border-r-0 pointer-events-none lg:pointer-events-auto"
-        }`}
+          }`}
       >
         <div className="h-full w-60 bg-background">
           <ProjectsSidebar onToggle={() => handleToggleSidebar(false)} />
         </div>
       </div>
 
-      <div className="flex-1 min-w-0 flex flex-col h-full bg-background relative">
+      <div
+        className="flex-1 min-w-0 flex flex-col h-full bg-background relative"
+        style={{ '--header-offset': !isSidebarVisible ? '46px' : '0px' } as React.CSSProperties}
+      >
+        {!isSidebarVisible && (
+          <div className="absolute top-2 left-2.5 z-30">
+            <button
+              type="button"
+              onClick={() => handleToggleSidebar(true)}
+              aria-label="Open project sidebar"
+              title="Open project sidebar"
+              className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            >
+              <PanelLeft className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+            </button>
+          </div>
+        )}
         <div className="relative flex-1 min-h-0 overflow-hidden">
           <div className="h-full w-full min-w-0">
             {children}

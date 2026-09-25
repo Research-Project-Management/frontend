@@ -3,13 +3,13 @@
 /**
  * use-suggestion.ts
  *
- * Clean Presentational Suggestion Hooks (Track Changes):
- * - In-memory reactive suggestion management for UI preview
- * - Decoupled from legacy backend endpoints
+ * Real-time reactive suggestion hooks wired directly to:
+ * Manuscript Suggestions / Track Changes Service (`/api/v1/manuscripts/docs/:docId/suggestions`)
  */
 
-import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SuggestionStatus, PageSuggestion } from '../types';
+import { suggestionService, type CreateSuggestionPayload } from '../services/suggestion.service';
 import { toast } from 'sonner';
 
 export const suggestionKeys = {
@@ -18,173 +18,99 @@ export const suggestionKeys = {
     ['page-suggestions', pageId, status] as const,
 };
 
-let sessionSuggestions: PageSuggestion[] = [];
-const suggestionListeners = new Set<() => void>();
-
-function notifySuggestionListeners() {
-  suggestionListeners.forEach((fn) => fn());
-}
-
-export const usePageSuggestions = (_pageId: string | null, status?: SuggestionStatus) => {
-  const [, setTick] = useState(0);
-
-  useState(() => {
-    const listener = () => setTick((t) => t + 1);
-    suggestionListeners.add(listener);
-    return () => {
-      suggestionListeners.delete(listener);
-    };
+export const usePageSuggestions = (pageId: string | null, status?: SuggestionStatus) => {
+  return useQuery({
+    queryKey: suggestionKeys.byPage(pageId, status),
+    queryFn: async (): Promise<PageSuggestion[]> => {
+      if (!pageId) return [];
+      try {
+        const suggestions = await suggestionService.getSuggestions(pageId, status);
+        return suggestions || [];
+      } catch (err) {
+        console.error('[usePageSuggestions] Failed to load suggestions:', err);
+        return [];
+      }
+    },
+    enabled: !!pageId,
   });
-
-  const filtered = status
-    ? sessionSuggestions.filter((s) => s.status === status)
-    : sessionSuggestions;
-
-  return {
-    data: filtered,
-    isLoading: false,
-    error: null,
-  };
 };
 
 export const useCreateSuggestion = () => {
-  return {
-    mutate: (payload: any) => {
-      const newSug: PageSuggestion = {
-        id: `sug-${Date.now()}`,
-        pageId: payload.pageId,
-        authorId: 'me',
-        type: payload.type,
-        originalText: payload.originalText,
-        suggestedText: payload.suggestedText,
-        fromLine: payload.fromLine,
-        toLine: payload.toLine,
-        description: payload.description,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-        author: {
-          id: 'me',
-          name: 'Researcher',
-          email: 'researcher@flux.local',
-        },
-      } as any;
-      sessionSuggestions = [newSug, ...sessionSuggestions];
-      notifySuggestionListeners();
-      toast.success('Suggestion proposed');
-      return newSug;
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: CreateSuggestionPayload) => {
+      return await suggestionService.createSuggestion(payload);
     },
-    mutateAsync: async (payload: any) => {
-      const newSug: PageSuggestion = {
-        id: `sug-${Date.now()}`,
-        pageId: payload.pageId,
-        authorId: 'me',
-        type: payload.type,
-        originalText: payload.originalText,
-        suggestedText: payload.suggestedText,
-        fromLine: payload.fromLine,
-        toLine: payload.toLine,
-        description: payload.description,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-        author: {
-          id: 'me',
-          name: 'Researcher',
-          email: 'researcher@flux.local',
-        },
-      } as any;
-      sessionSuggestions = [newSug, ...sessionSuggestions];
-      notifySuggestionListeners();
-      toast.success('Suggestion proposed');
-      return newSug;
+    onSuccess: (_newSug, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
+      toast.success('Đã đề xuất thay đổi');
     },
-    isPending: false,
-  };
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể gửi đề xuất');
+    },
+  });
 };
 
 export const useAcceptSuggestion = () => {
-  return {
-    mutate: ({ suggestionId }: { pageId: string; suggestionId: string }) => {
-      sessionSuggestions = sessionSuggestions.map((s) =>
-        s.id === suggestionId ? { ...s, status: 'accepted' as const } : s,
-      );
-      notifySuggestionListeners();
-      toast.success('Suggestion accepted');
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ pageId, suggestionId }: { pageId: string; suggestionId: string }) => {
+      return await suggestionService.acceptSuggestion(pageId, suggestionId);
     },
-    mutateAsync: async ({ suggestionId }: { pageId: string; suggestionId: string }) => {
-      sessionSuggestions = sessionSuggestions.map((s) =>
-        s.id === suggestionId ? { ...s, status: 'accepted' as const } : s,
-      );
-      notifySuggestionListeners();
-      toast.success('Suggestion accepted');
-      return { success: true };
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
+      toast.success('Đã chấp nhận đề xuất');
     },
-    isPending: false,
-  };
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể chấp nhận đề xuất');
+    },
+  });
 };
 
 export const useRejectSuggestion = () => {
-  return {
-    mutate: ({ suggestionId }: { pageId: string; suggestionId: string }) => {
-      sessionSuggestions = sessionSuggestions.map((s) =>
-        s.id === suggestionId ? { ...s, status: 'rejected' as const } : s,
-      );
-      notifySuggestionListeners();
-      toast.info('Suggestion rejected');
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ pageId, suggestionId }: { pageId: string; suggestionId: string }) => {
+      return await suggestionService.rejectSuggestion(pageId, suggestionId);
     },
-    mutateAsync: async ({ suggestionId }: { pageId: string; suggestionId: string }) => {
-      sessionSuggestions = sessionSuggestions.map((s) =>
-        s.id === suggestionId ? { ...s, status: 'rejected' as const } : s,
-      );
-      notifySuggestionListeners();
-      toast.info('Suggestion rejected');
-      return { success: true };
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
+      toast.info('Đã từ chối đề xuất');
     },
-    isPending: false,
-  };
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể từ chối đề xuất');
+    },
+  });
 };
 
 export const useAcceptAllSuggestions = () => {
-  return {
-    mutate: (_params: { pageId: string }) => {
-      sessionSuggestions = sessionSuggestions.map((s) => ({
-        ...s,
-        status: 'accepted' as const,
-      }));
-      notifySuggestionListeners();
-      toast.success('All suggestions accepted');
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ pageId }: { pageId: string }) => {
+      return await suggestionService.acceptAllSuggestions(pageId);
     },
-    mutateAsync: async (_params: { pageId: string }) => {
-      sessionSuggestions = sessionSuggestions.map((s) => ({
-        ...s,
-        status: 'accepted' as const,
-      }));
-      notifySuggestionListeners();
-      toast.success('All suggestions accepted');
-      return { success: true };
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
+      toast.success('Đã chấp thuận tất cả đề xuất');
     },
-    isPending: false,
-  };
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể chấp thuận tất cả đề xuất');
+    },
+  });
 };
 
 export const useRejectAllSuggestions = () => {
-  return {
-    mutate: (_params: { pageId: string }) => {
-      sessionSuggestions = sessionSuggestions.map((s) => ({
-        ...s,
-        status: 'rejected' as const,
-      }));
-      notifySuggestionListeners();
-      toast.info('All suggestions rejected');
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ pageId }: { pageId: string }) => {
+      return await suggestionService.rejectAllSuggestions(pageId);
     },
-    mutateAsync: async (_params: { pageId: string }) => {
-      sessionSuggestions = sessionSuggestions.map((s) => ({
-        ...s,
-        status: 'rejected' as const,
-      }));
-      notifySuggestionListeners();
-      toast.info('All suggestions rejected');
-      return { success: true };
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
+      toast.info('Đã từ chối tất cả đề xuất');
     },
-    isPending: false,
-  };
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể từ chối tất cả đề xuất');
+    },
+  });
 };

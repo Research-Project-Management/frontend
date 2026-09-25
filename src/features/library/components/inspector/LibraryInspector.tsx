@@ -38,9 +38,12 @@ import { useInspectorResize } from './useInspectorResize';
 import { InspectorHeader } from './InspectorHeader';
 import { InspectorTabs } from './InspectorTabs';
 
+import dynamic from 'next/dynamic';
 import InfoSection from './InfoSection';
 import AbstractSection from './AbstractSection';
-import AttachmentsSection from './AttachmentsSection';
+const AttachmentsSection = dynamic(() => import('./AttachmentsSection'), {
+  ssr: false,
+});
 import CiteSection from './CiteSection';
 import NotesSection from './NotesSection';
 import TagsSection from './TagsSection';

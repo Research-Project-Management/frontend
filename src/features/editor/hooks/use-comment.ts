@@ -3,234 +3,180 @@
 /**
  * use-comment.ts
  *
- * Clean Presentational Comment Hooks:
- * - In-memory reactive comment management for UI preview
- * - Decoupled from legacy backend endpoints
+ * Real-time reactive comment management hooks wired directly to:
+ * Manuscript Comments Service (`/api/v1/manuscripts/docs/:docId/comments`)
  */
 
-import { useState } from 'react';
-import type { PageComment, CommentReply, CommentStatus } from '../types';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { PageComment, CommentStatus } from '../types';
+import { commentService } from '../services/comment.service';
 import { toast } from 'sonner';
 
 export const commentKeys = {
   all: ['page-comments'] as const,
-  byPage: (pageId: string | null, _status?: CommentStatus) => ['page-comments', pageId] as const,
+  byPage: (pageId: string | null, status?: CommentStatus) => ['page-comments', pageId, status] as const,
 };
 
-let sessionComments: PageComment[] = [];
-const commentListeners = new Set<() => void>();
-
-function notifyCommentListeners() {
-  commentListeners.forEach((fn) => fn());
-}
-
-export const usePageComments = (_pageId: string | null, status?: CommentStatus) => {
-  const [, setTick] = useState(0);
-
-  useState(() => {
-    const listener = () => setTick((t) => t + 1);
-    commentListeners.add(listener);
-    return () => {
-      commentListeners.delete(listener);
-    };
+export const usePageComments = (pageId: string | null, status?: CommentStatus) => {
+  return useQuery({
+    queryKey: commentKeys.byPage(pageId, status),
+    queryFn: async (): Promise<PageComment[]> => {
+      if (!pageId) return [];
+      try {
+        const comments = await commentService.getComments(pageId, status);
+        return comments || [];
+      } catch (err) {
+        console.error('[usePageComments] Failed to load comments:', err);
+        return [];
+      }
+    },
+    enabled: !!pageId,
   });
-
-  const filtered = status
-    ? sessionComments.filter((c) => c.status === status)
-    : sessionComments;
-
-  return {
-    data: filtered,
-    isLoading: false,
-    error: null,
-  };
 };
 
 export const useCreateComment = () => {
-  return {
-    mutate: (
-      {
-        pageId,
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      pageId,
+      content,
+      line,
+      lineEnd,
+    }: {
+      pageId: string;
+      content: string;
+      line?: number | null;
+      lineEnd?: number | null;
+    }) => {
+      return await commentService.createComment(pageId, {
         content,
-        line,
-        lineEnd,
-      }: {
-        pageId: string;
-        content: string;
-        line?: number | null;
-        lineEnd?: number | null;
-      },
-      opts?: { onSuccess?: () => void; onError?: (err: any) => void },
-    ) => {
-      const newComment: PageComment = {
-        id: `comment-${Date.now()}`,
-        page: pageId,
-        projectPageId: pageId,
-        content,
-        line: line ?? null,
-        lineEnd: lineEnd ?? null,
-        status: 'open',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        author: {
-          id: 'me',
-          name: 'Researcher',
-        },
-        replies: [],
-      };
-      sessionComments = [newComment, ...sessionComments];
-      notifyCommentListeners();
-      toast.success('Comment added');
-      opts?.onSuccess?.();
+        line: line ?? undefined,
+        lineEnd: lineEnd ?? undefined,
+      });
     },
-    isPending: false,
-  };
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
+      toast.success('Đã thêm bình luận');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể thêm bình luận');
+    },
+  });
 };
 
 export const useUpdateComment = () => {
-  return {
-    mutate: (
-      {
-        commentId,
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      pageId,
+      commentId,
+      content,
+      status,
+    }: {
+      pageId: string;
+      commentId: string;
+      content?: string;
+      status?: CommentStatus;
+    }) => {
+      return await commentService.updateComment(pageId, commentId, {
         content,
-        status,
-      }: {
-        pageId: string;
-        commentId: string;
-        content?: string;
-        status?: CommentStatus;
-      },
-      opts?: { onSuccess?: () => void; onError?: (err: any) => void },
-    ) => {
-      sessionComments = sessionComments.map((c) => {
-        if (c.id === commentId) {
-          return {
-            ...c,
-            content: content !== undefined ? content : c.content,
-            status: status || c.status,
-            updatedAt: new Date().toISOString(),
-          };
-        }
-        return c;
+        status: status === 'resolved' ? 'resolved' : 'open',
       });
-      notifyCommentListeners();
-      toast.success('Comment updated');
-      opts?.onSuccess?.();
     },
-    isPending: false,
-  };
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
+      toast.success('Đã cập nhật bình luận');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể cập nhật bình luận');
+    },
+  });
 };
 
 export const useDeleteComment = () => {
-  return {
-    mutate: (
-      { commentId }: { pageId: string; commentId: string },
-      opts?: { onSuccess?: () => void; onError?: (err: any) => void },
-    ) => {
-      sessionComments = sessionComments.filter((c) => c.id !== commentId);
-      notifyCommentListeners();
-      toast.success('Comment deleted');
-      opts?.onSuccess?.();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ pageId, commentId }: { pageId: string; commentId: string }) => {
+      return await commentService.deleteComment(pageId, commentId);
     },
-    isPending: false,
-  };
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
+      toast.success('Đã xóa bình luận');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể xóa bình luận');
+    },
+  });
 };
 
 export const useAddReply = () => {
-  return {
-    mutate: (
-      {
-        commentId,
-        content,
-      }: {
-        pageId: string;
-        commentId: string;
-        content: string;
-      },
-      opts?: { onSuccess?: () => void; onError?: (err: any) => void },
-    ) => {
-      const newReply: CommentReply = {
-        id: `reply-${Date.now()}`,
-        content,
-        createdAt: new Date().toISOString(),
-        author: {
-          id: 'me',
-          name: 'Researcher',
-        },
-      };
-      sessionComments = sessionComments.map((c) => {
-        if (c.id === commentId) {
-          return {
-            ...c,
-            replies: [...(c.replies || []), newReply],
-          };
-        }
-        return c;
-      });
-      notifyCommentListeners();
-      toast.success('Reply added');
-      opts?.onSuccess?.();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      pageId,
+      commentId,
+      content,
+    }: {
+      pageId: string;
+      commentId: string;
+      content: string;
+    }) => {
+      return await commentService.addReply(pageId, commentId, content);
     },
-    isPending: false,
-  };
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
+      toast.success('Đã trả lời bình luận');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể gửi phản hồi');
+    },
+  });
 };
 
 export const useResolveComment = () => {
-  return {
-    mutate: (
-      {
-        commentId,
-        resolved,
-      }: {
-        pageId: string;
-        commentId: string;
-        resolved: boolean;
-      },
-      opts?: { onSuccess?: () => void; onError?: (err: any) => void },
-    ) => {
-      sessionComments = sessionComments.map((c) =>
-        c.id === commentId
-          ? {
-              ...c,
-              status: resolved ? ('resolved' as CommentStatus) : ('open' as CommentStatus),
-              updatedAt: new Date().toISOString(),
-            }
-          : c,
-      );
-      notifyCommentListeners();
-      toast.success(resolved ? 'Comment resolved' : 'Comment re-opened');
-      opts?.onSuccess?.();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      pageId,
+      commentId,
+      resolved,
+    }: {
+      pageId: string;
+      commentId: string;
+      resolved: boolean;
+    }) => {
+      return await commentService.resolveComment(pageId, commentId, resolved);
     },
-    isPending: false,
-  };
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
+      toast.success(variables.resolved ? 'Đã giải quyết bình luận' : 'Đã mở lại bình luận');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể cập nhật trạng thái');
+    },
+  });
 };
 
 export const useDeleteReply = () => {
-  return {
-    mutate: (
-      {
-        commentId,
-        replyId,
-      }: {
-        pageId: string;
-        commentId: string;
-        replyId: string;
-      },
-      opts?: { onSuccess?: () => void; onError?: (err: any) => void },
-    ) => {
-      sessionComments = sessionComments.map((c) => {
-        if (c.id === commentId) {
-          return {
-            ...c,
-            replies: (c.replies || []).filter((r) => r.id !== replyId),
-          };
-        }
-        return c;
-      });
-      notifyCommentListeners();
-      toast.success('Reply deleted');
-      opts?.onSuccess?.();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      pageId,
+      commentId,
+      replyId,
+    }: {
+      pageId: string;
+      commentId: string;
+      replyId: string;
+    }) => {
+      return await commentService.deleteReply(pageId, commentId, replyId);
     },
-    isPending: false,
-  };
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
+      toast.success('Đã xóa phản hồi');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể xóa phản hồi');
+    },
+  });
 };

@@ -12,6 +12,7 @@ import { loginUser } from '../services/auth.service';
 import { authKeys } from '../constants/auth.keys';
 import { loginSchema, type LoginSchema } from '../schemas/auth.schema';
 import { env } from '@/config/env';
+import { getSafeRedirectUrl } from '@/shared/utils/auth-token.util';
 
 /**
  * Dedicated Hook for LoginPage.
@@ -39,14 +40,8 @@ export const useLogin = () => {
         typeof window !== 'undefined'
           ? new URLSearchParams(window.location.search)
           : null;
-      const redirect = params?.get('redirect');
-      if (redirect && redirect.startsWith('/')) {
-        router.push(redirect);
-        return;
-      }
-
-      // Direct routing to /home
-      router.push('/home');
+      const targetUrl = getSafeRedirectUrl(params?.get('redirect'), '/home');
+      router.push(targetUrl);
     },
     onError: (err: unknown) => {
       const message =
@@ -83,13 +78,8 @@ export const useLogin = () => {
       if (params?.get('force') === 'true') {
         return;
       }
-      const redirect = params?.get('redirect');
-      if (redirect && redirect.startsWith('/')) {
-        router.replace(redirect);
-        return;
-      }
-
-      router.replace('/home');
+      const targetUrl = getSafeRedirectUrl(params?.get('redirect'), '/home');
+      router.replace(targetUrl);
     }
     return () => {
       isMounted = false;

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { isTokenValid, getSafeRedirectUrl } from '@/shared/utils/auth-token.util';
 
 const PROTECTED_PREFIXES = [
   '/home',
@@ -20,15 +21,22 @@ const PROTECTED_PREFIXES = [
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const token =
+  const rawToken =
     request.cookies.get('accessToken')?.value ||
     request.cookies.get('token')?.value;
 
-  const isAuthenticated = Boolean(token);
+  const hasRawToken = Boolean(rawToken && rawToken.trim());
+  const isAuthenticated = isTokenValid(rawToken);
 
   // 1. Marketing root page:
   // Root page (landing page) is accessible to everyone (both authenticated and unauthenticated).
   if (pathname === '/') {
+    if (hasRawToken && !isAuthenticated) {
+      const response = NextResponse.next();
+      response.cookies.delete('accessToken');
+      response.cookies.delete('token');
+      return response;
+    }
     return NextResponse.next();
   }
 
@@ -38,12 +46,16 @@ export function proxy(request: NextRequest) {
     const isForce = request.nextUrl.searchParams.get('force') === 'true';
     if (isAuthenticated && !isForce) {
       const redirectParam = request.nextUrl.searchParams.get('redirect');
-      if (redirectParam && redirectParam.startsWith('/')) {
-        return NextResponse.redirect(new URL(redirectParam, request.url));
-      }
-      return NextResponse.redirect(new URL('/home', request.url));
+      const targetUrl = getSafeRedirectUrl(redirectParam, '/home');
+      return NextResponse.redirect(new URL(targetUrl, request.url));
     }
-    return NextResponse.next();
+
+    const response = NextResponse.next();
+    if (hasRawToken && !isAuthenticated) {
+      response.cookies.delete('accessToken');
+      response.cookies.delete('token');
+    }
+    return response;
   }
 
   // 3. Protected internal application routes:
@@ -55,7 +67,12 @@ export function proxy(request: NextRequest) {
   if (isProtected && !isAuthenticated) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+    if (hasRawToken) {
+      response.cookies.delete('accessToken');
+      response.cookies.delete('token');
+    }
+    return response;
   }
 
   return NextResponse.next();

@@ -116,6 +116,7 @@ export default function Editor({ page }: EditorProps) {
   const [suggestions, setSuggestions] = useState<PageSuggestion[]>([]);
 
   // Realtime collaboration & remote cursor tracking (clean presentation state)
+  const effectiveProjectId = (page as any)?.projectId || '';
   const {
     activeCollaborators,
     isDocumentLocked,
@@ -125,7 +126,7 @@ export default function Editor({ page }: EditorProps) {
     yText,
     awareness,
   } = useEditorCollaborators({
-    projectId: '',
+    projectId: effectiveProjectId,
     pageId: page.id,
     editorRef,
     monacoRef,

@@ -13,6 +13,7 @@ export * from "./LibraryIcon";
 export * from "./StorageIcon";
 export * from "./ProjectsIcon";
 export * from "./AIIcon";
+export * from "./IntegrationIcons";
 
 // Icon Picker & Project Avatar (consolidated from icon-picker)
 export { IconPicker, type IconPickerProps } from "./IconPicker";

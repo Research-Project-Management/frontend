@@ -5,7 +5,6 @@
 
 import type { Item } from '../types/library.types';
 import { normalizeAuthors } from './creators';
-import { cleanDoi } from './identifiers';
 
 export interface LibraryFilterOptions {
   searchQuery?: string;
@@ -232,8 +231,10 @@ export class LibraryFilterEngine {
     }
 
     return [...items].sort((a, b) => {
-      const valA = String((a as any)[field] || '');
-      const valB = String((b as any)[field] || '');
+      const recA = a as unknown as Record<string, unknown>;
+      const recB = b as unknown as Record<string, unknown>;
+      const valA = String(recA[field] ?? '');
+      const valB = String(recB[field] ?? '');
       return valA.localeCompare(valB) * modifier;
     });
   }
@@ -296,76 +297,70 @@ export function sortFilterItems({
   isRetractedOnly = null,
   isMyPublicationOnly = null,
 }: FilterItemsOptions): Item[] {
-  let result = items;
+  const effectiveTags =
+    activeTags && activeTags.length > 0
+      ? activeTags.map((t) => t.toLowerCase())
+      : activeTag
+      ? activeTag.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean)
+      : [];
 
-  if (activeFilter === 'trash') {
-    result = result.filter((item) => Boolean(item.deletedAt));
-  } else {
-    result = result.filter((item) => !item.deletedAt);
-  }
+  const lowerTypes = (itemTypes || []).map((t) => t.toLowerCase());
+  const targetReadStatuses =
+    readStatus && readStatus !== 'all'
+      ? readStatus.toLowerCase().split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
 
-  if (activeCollectionId) {
-    if (collectionIds && collectionIds.size > 0) {
-      result = result.filter(
-        (item) => item.collectionId && collectionIds.has(item.collectionId)
-      );
+  const effectiveFromYear =
+    fromYear ?? (startDate ? parseInt(startDate.split('-')[0], 10) : null);
+  const effectiveToYear =
+    toYear ?? (endDate ? parseInt(endDate.split('-')[0], 10) : null);
+
+  // Single-pass O(N) predicate evaluation: avoids 9 intermediate array allocations
+  const filtered = items.filter((item) => {
+    // 1. Trash status
+    if (activeFilter === 'trash') {
+      if (!item.deletedAt) return false;
     } else {
-      result = result.filter(
-        (item) => item.collectionId === activeCollectionId
-      );
+      if (item.deletedAt) return false;
     }
-  }
 
-  if (activeFilter === 'recent-read') {
-    const accessed = result.filter((item) => Boolean(item.accessedAt));
-    if (accessed.length > 0) {
-      result = accessed.sort(
-        (a, b) =>
-          new Date(b.accessedAt || 0).getTime() -
-          new Date(a.accessedAt || 0).getTime()
-      );
-    } else {
-      result = [...result].sort(
-        (a, b) =>
-          new Date(b.createdAt || 0).getTime() -
-          new Date(a.createdAt || 0).getTime()
-      );
+    // 2. Collection membership
+    if (activeCollectionId) {
+      if (collectionIds && collectionIds.size > 0) {
+        if (!item.collectionId || !collectionIds.has(item.collectionId)) return false;
+      } else {
+        if (item.collectionId !== activeCollectionId) return false;
+      }
     }
-  } else if (activeFilter === 'unfiled') {
-    result = result.filter((item) => !item.collectionId);
-  } else if (activeFilter === 'starred' || activeFilter === 'favorites') {
-    result = result.filter((item) => {
+
+    // 3. System View Filter
+    if (activeFilter === 'unfiled') {
+      if (item.collectionId) return false;
+    } else if (activeFilter === 'starred' || activeFilter === 'favorites') {
       const p = item as {
         rating?: number;
         isStarred?: boolean;
         states?: Array<{ rating?: number }>;
       };
-      return (
+      const isStarred =
         (typeof p.rating === 'number' && p.rating > 0) ||
         Boolean(p.isStarred) ||
-        Boolean(p.states?.[0]?.rating && p.states[0].rating > 0)
-      );
-    });
-  } else if (activeFilter === 'duplicates') {
-    result = result.filter((item) => duplicateItemIds.has(item.id));
-  } else if (activeFilter === 'retracted') {
-    result = result.filter((item) => Boolean(item.isRetracted));
-  } else if (
-    activeFilter === 'my-publications' ||
-    activeFilter === 'publications'
-  ) {
-    result = result.filter((item) => Boolean(item.isMyPublication));
-  }
+        Boolean(p.states?.[0]?.rating && p.states[0].rating > 0);
+      if (!isStarred) return false;
+    } else if (activeFilter === 'duplicates') {
+      if (!duplicateItemIds.has(item.id)) return false;
+    } else if (activeFilter === 'retracted' || isRetractedOnly) {
+      if (!item.isRetracted) return false;
+    } else if (
+      activeFilter === 'my-publications' ||
+      activeFilter === 'publications' ||
+      isMyPublicationOnly
+    ) {
+      if (!item.isMyPublication) return false;
+    }
 
-  const effectiveTags =
-    activeTags && activeTags.length > 0
-      ? activeTags
-      : activeTag
-      ? activeTag.split(',').map((t) => t.trim()).filter(Boolean)
-      : [];
-
-  if (effectiveTags.length > 0) {
-    result = result.filter((item) => {
+    // 4. Tags matching
+    if (effectiveTags.length > 0) {
       const p = item as {
         tags?: unknown[];
         labels?: unknown[];
@@ -376,15 +371,13 @@ export function sortFilterItems({
         p.keywords ||
         []) as Array<string | { name?: string }>;
       const itemTags = rawTags.map((t) =>
-        typeof t === 'string' ? t.toLowerCase() : t?.name?.toLowerCase() || ''
+        typeof t === 'string' ? t.toLowerCase() : t?.name?.toLowerCase() || '',
       );
-      return effectiveTags.every((t) => itemTags.includes(t.toLowerCase()));
-    });
-  }
+      if (!effectiveTags.every((t) => itemTags.includes(t))) return false;
+    }
 
-  // 1. File Status Filter (Has PDF / Missing PDF / Has Notes)
-  if (fileStatus && fileStatus !== 'all') {
-    result = result.filter((item) => {
+    // 5. File Status
+    if (fileStatus && fileStatus !== 'all') {
       const p = item as {
         fileUrl?: string;
         primaryFile?: { url?: string };
@@ -397,78 +390,63 @@ export function sortFilterItems({
         p.fileUrl ||
           p.primaryFile?.url ||
           p.hasPdf ||
-          (Array.isArray(p.attachments) && p.attachments.length > 0)
+          (Array.isArray(p.attachments) && p.attachments.length > 0),
       );
       const hasNotes = Boolean(
-        (Array.isArray(p.notesList) && p.notesList.length > 0) || p.notes
+        (Array.isArray(p.notesList) && p.notesList.length > 0) || p.notes,
       );
-      if (fileStatus === 'has-pdf') return hasFile;
-      if (fileStatus === 'missing-pdf') return !hasFile;
-      if (fileStatus === 'has-notes') return hasNotes;
-      return true;
-    });
-  }
-
-  // 2. Read Status Filter
-  if (readStatus && readStatus !== 'all') {
-    const targetStatuses = readStatus
-      .toLowerCase()
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    if (targetStatuses.length > 0) {
-      result = result.filter((item) => {
-        const p = item as {
-          readStatus?: string;
-          states?: Array<{ readStatus?: string }>;
-        };
-        const currentReadStatus = (
-          p.readStatus ||
-          p.states?.[0]?.readStatus ||
-          'unread'
-        ).toLowerCase();
-        return targetStatuses.includes(currentReadStatus);
-      });
+      if (fileStatus === 'has-pdf' && !hasFile) return false;
+      if (fileStatus === 'missing-pdf' && hasFile) return false;
+      if (fileStatus === 'has-notes' && !hasNotes) return false;
     }
-  }
 
-  // 3. Item Types Filter
-  if (itemTypes && itemTypes.length > 0) {
-    const lowerTypes = itemTypes.map((t) => t.toLowerCase());
-    result = result.filter((item) => {
+    // 6. Read Status
+    if (targetReadStatuses.length > 0) {
+      const p = item as {
+        readStatus?: string;
+        states?: Array<{ readStatus?: string }>;
+      };
+      const currentReadStatus = (
+        p.readStatus ||
+        p.states?.[0]?.readStatus ||
+        'unread'
+      ).toLowerCase();
+      if (!targetReadStatuses.includes(currentReadStatus)) return false;
+    }
+
+    // 7. Item Types
+    if (lowerTypes.length > 0) {
       const p = item as { type?: string; itemType?: string };
       const it = (item.itemType || p.type || '').toLowerCase();
-      return lowerTypes.includes(it);
+      if (!lowerTypes.includes(it)) return false;
+    }
+
+    // 8. Date / Year Range
+    const y =
+      typeof item.year === 'number'
+        ? item.year
+        : parseInt(String(item.year || 0), 10);
+    if (effectiveFromYear !== null && !isNaN(effectiveFromYear) && y < effectiveFromYear) {
+      return false;
+    }
+    if (effectiveToYear !== null && !isNaN(effectiveToYear) && y > effectiveToYear) {
+      return false;
+    }
+
+    return true;
+  });
+
+  let result = filtered;
+
+  if (activeFilter === 'recent-read') {
+    result = [...result].sort((a, b) => {
+      const timeA = new Date(a.accessedAt || a.createdAt || 0).getTime();
+      const timeB = new Date(b.accessedAt || b.createdAt || 0).getTime();
+      return timeB - timeA;
     });
   }
 
-  // 4. Date Range Filter
-  const effectiveFromYear =
-    fromYear ?? (startDate ? parseInt(startDate.split('-')[0], 10) : null);
-  const effectiveToYear =
-    toYear ?? (endDate ? parseInt(endDate.split('-')[0], 10) : null);
-
-  if (effectiveFromYear !== null && !isNaN(effectiveFromYear)) {
-    result = result.filter((item) => {
-      const y =
-        typeof item.year === 'number'
-          ? item.year
-          : parseInt(String(item.year || 0), 10);
-      return y >= effectiveFromYear;
-    });
-  }
-  if (effectiveToYear !== null && !isNaN(effectiveToYear)) {
-    result = result.filter((item) => {
-      const y =
-        typeof item.year === 'number'
-          ? item.year
-          : parseInt(String(item.year || 0), 10);
-      return y <= effectiveToYear;
-    });
-  }
-
-  // 5. Full-text / Search Query Match
+  // 9. Full-text / Search Query Match
   if (searchQuery && searchQuery.trim()) {
     result = LibraryFilterEngine.filterBySearch(result, searchQuery);
   }

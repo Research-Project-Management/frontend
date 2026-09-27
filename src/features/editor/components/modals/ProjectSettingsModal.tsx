@@ -18,6 +18,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { spellingService } from '../../services/spelling.service';
+import { ProjectReferencesTab } from './ProjectReferencesTab';
+import { ProjectGithubTab } from './ProjectGithubTab';
+import { GitHubIcon } from '@/shared/components/icons';
 
 import {
   Dialog,
@@ -49,6 +52,7 @@ type SettingsTab =
   | 'spelling'
   | 'compiler'
   | 'references'
+  | 'github'
   | 'appearance'
   | 'notifications';
 
@@ -118,8 +122,10 @@ function SettingRow({
 
 export default function ProjectSettingsModal() {
   const params = useParams<{ pageId?: string; projectId?: string }>();
+  const { currentPage } = usePageStore();
   const pageId = params?.pageId;
-  const projectId = params?.projectId;
+  const projectId = params?.projectId || params?.pageId || currentPage?.id;
+  const projectTitle = currentPage?.title || 'manuscript';
 
   const {
     settingsPanelOpen,
@@ -253,6 +259,7 @@ export default function ProjectSettingsModal() {
     { id: 'spelling' as const, label: 'Spelling and language', icon: SpellCheck },
     { id: 'compiler' as const, label: 'Compiler', icon: FileText },
     { id: 'references' as const, label: 'References', icon: BookOpen },
+    { id: 'github' as const, label: 'GitHub Sync', icon: GitHubIcon },
     { id: 'appearance' as const, label: 'Appearance', icon: Paintbrush },
     { id: 'notifications' as const, label: 'Project notifications', icon: Bell },
   ];
@@ -788,54 +795,15 @@ export default function ProjectSettingsModal() {
 
             {/* 4. REFERENCES TAB */}
             {activeTab === 'references' && (
-              <div className="space-y-1">
-                <SettingRow
-                  title="Mendeley"
-                  description="Link and synchronize your Mendeley reference library with this project"
-                >
-                  <button
-                    type="button"
-                    onClick={() => toast.info('Mendeley integration: connect your account in Account Settings.')}
-                    className="h-8 px-3 rounded-md text-xs font-medium border border-border hover:bg-muted transition-colors cursor-pointer"
-                  >
-                    Link Mendeley
-                  </button>
-                </SettingRow>
-
-                <SettingRow
-                  title="Zotero"
-                  description="Link and synchronize your Zotero reference library with this project"
-                >
-                  <button
-                    type="button"
-                    onClick={() => toast.info('Zotero integration: connect your account in Account Settings.')}
-                    className="h-8 px-3 rounded-md text-xs font-medium border border-border hover:bg-muted transition-colors cursor-pointer"
-                  >
-                    Link Zotero
-                  </button>
-                </SettingRow>
-
-                <SettingRow
-                  title="Default bibliography file"
-                  description="Primary .bib database file used for auto-completing citations"
-                >
-                  <Select defaultValue={bibFiles[0] || 'references.bib'}>
-                    <SelectTrigger className="w-44 h-8 text-xs font-medium cursor-pointer border-border bg-background">
-                      <SelectValue placeholder="Bib file" />
-                    </SelectTrigger>
-                    <SelectContent className="z-[9999]">
-                      {bibFiles.map((file) => (
-                        <SelectItem key={file} value={file} className="cursor-pointer text-xs">
-                          {file}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </SettingRow>
-              </div>
+              <ProjectReferencesTab projectId={projectId} bibFiles={bibFiles} />
             )}
 
-            {/* 5. APPEARANCE TAB */}
+            {/* 5. GITHUB SYNC TAB */}
+            {activeTab === 'github' && (
+              <ProjectGithubTab projectId={projectId} projectTitle={projectTitle} />
+            )}
+
+            {/* 6. APPEARANCE TAB */}
             {activeTab === 'appearance' && (
               <div className="space-y-1">
                 <SettingRow

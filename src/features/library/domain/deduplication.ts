@@ -3,7 +3,7 @@
  * 100% Pure TypeScript - 0% React, 0% DOM dependencies
  */
 
-import type { Item, DuplicateGroup } from '../types/library.types';
+import type { Item } from '../types/library.types';
 import { cleanDoi } from './identifiers';
 import { normalizeAuthors } from './creators';
 

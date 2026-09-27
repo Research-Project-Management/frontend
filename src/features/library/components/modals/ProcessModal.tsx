@@ -58,10 +58,14 @@ export default function ProcessModal({
   const items = data?.items || [];
   const isRunning = !state.isComplete && !state.error;
 
-  // Compute active item index: the first item that is not yet completed (SUCCEEDED or FAILED)
+  // Terminal statuses: both frontend conventions and backend IngestionStatus
+  const isTerminalStatus = (status: string) =>
+    ['SUCCEEDED', 'COMPLETED', 'READY', 'FAILED', 'FAILED_FINAL', 'FAILED_RETRYABLE', 'CANCELLED'].includes(status);
+
+  // Compute active item index: the first item that is not yet completed
   const activeIndex = state.isComplete
     ? -1
-    : items.findIndex((item) => item.status !== 'SUCCEEDED' && item.status !== 'FAILED');
+    : items.findIndex((item) => !isTerminalStatus(item.status));
 
   // ── Floating Minimized Pill ────────────────────────────────────────────────
   if (state.isMinimized && !state.isOpen) {
@@ -171,16 +175,15 @@ export default function ProcessModal({
               {/* Table Rows */}
               <div className="max-h-[240px] overflow-y-auto divide-y divide-border/30">
                 {items.map((item, idx) => {
-                  const isItemFailed = item.status === 'FAILED';
+                  const status = String(item.status);
+                  const isItemFailed = ['FAILED', 'FAILED_FINAL', 'FAILED_RETRYABLE'].includes(status);
                   const isItemSuccess =
-                    item.status === 'SUCCEEDED' ||
+                    ['SUCCEEDED', 'COMPLETED', 'READY'].includes(status) ||
                     (state.isComplete && !isItemFailed && !state.error);
                   const isItemProcessing =
                     !isItemSuccess &&
                     !isItemFailed &&
-                    ((item.status as string) === 'PROCESSING' ||
-                      (item.status as string) === 'UPLOADING' ||
-                      idx === activeIndex);
+                    (['PROCESSING', 'RUNNING', 'UPLOADING'].includes(status) || idx === activeIndex);
 
                   return (
                     <div

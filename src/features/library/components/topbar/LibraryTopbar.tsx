@@ -39,6 +39,7 @@ import {
   Map,
   Palette,
   Trash2,
+  Blocks,
 } from 'lucide-react';
 import { LibraryIcon } from '@/shared/components/icons';
 import { Button, Input } from '@/shared/components/ui';
@@ -488,6 +489,19 @@ export function LibraryTopbar({
                 <span className="text-foreground">Import from My Library</span>
               </DropdownMenuItem>
             )}
+
+            <DropdownMenuSeparator className="mx-1 my-1" />
+
+            {/* Group 6: External Integrations */}
+            <DropdownMenuItem
+              onClick={() => {
+                window.location.href = '/settings/integrations';
+              }}
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+            >
+              <Blocks className="size-4 text-primary shrink-0" strokeWidth={1.5} />
+              <span className="text-foreground">Zotero / Mendeley Sync...</span>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         ) : null}

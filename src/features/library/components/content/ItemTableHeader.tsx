@@ -118,8 +118,14 @@ export function ItemTableHeader({
 
         {/* Citation Key */}
         {columns.citationKey && (
-          <th className="px-3 h-[34px] py-0 align-middle font-medium text-foreground text-left bg-background border-b border-border">
-            Citation Key
+          <th
+            onClick={() => onSort('citationKey')}
+            className="px-3 h-[34px] py-0 align-middle font-medium cursor-pointer text-foreground select-none text-left bg-background border-b border-border"
+          >
+            <div className="flex items-center gap-1.5">
+              <span>Citation Key</span>
+              {renderSortIndicator('citationKey')}
+            </div>
           </th>
         )}
 

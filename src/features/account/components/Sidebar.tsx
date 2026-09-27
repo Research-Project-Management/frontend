@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui";
-import { User, SlidersHorizontal, Bell, Lock } from 'lucide-react';
+import { User, SlidersHorizontal, Blocks, Bell, Lock } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 interface SidebarProps {
   activeTab: string;
@@ -54,6 +54,12 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               label='Preferences'
               active={activeTab === 'preferences'}
               onClick={() => setTab('preferences')}
+            />
+            <SidebarItem
+              icon={<Blocks className='size-4 text-foreground shrink-0' />}
+              label='Integrations'
+              active={activeTab === 'integrations'}
+              onClick={() => setTab('integrations')}
             />
             <SidebarItem
               icon={<Bell className='size-4 text-foreground shrink-0' />}

@@ -180,10 +180,7 @@ export default function Sidebar() {
                 <img
                   src='/Chat.svg'
                   alt='Flux AI'
-                  className={cn(
-                    'size-4.5 shrink-0 rounded-full block object-contain transition-transform duration-300',
-                    isOpen ? 'scale-110' : 'group-hover:scale-110'
-                  )}
+                  className='size-4.5 shrink-0 rounded-full block object-contain'
                 />
               </button>
             </TooltipTrigger>

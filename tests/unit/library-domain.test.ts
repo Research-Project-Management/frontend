@@ -96,6 +96,21 @@ describe('Library Domain Layer — Pure Functional Logic', () => {
       expect(key).toBe('vaswani2017attention');
     });
 
+    it('should disambiguate citation keys with a, b, c suffixes when collisions exist', () => {
+      const item = {
+        title: 'Attention Is All You Need',
+        authors: ['Vaswani, Ashish'],
+        year: 2017,
+      };
+      const existing = new Set(['vaswani2017attention']);
+      const key2 = generateCitationKey(item, existing);
+      expect(key2).toBe('vaswani2017attentiona');
+
+      existing.add('vaswani2017attentiona');
+      const key3 = generateCitationKey(item, existing);
+      expect(key3).toBe('vaswani2017attentionb');
+    });
+
     it('should export standard BibTeX entry', () => {
       const item = {
         title: 'Deep Residual Learning',
@@ -279,6 +294,79 @@ describe('Library Domain Layer — Pure Functional Logic', () => {
       expect(summary.totalCollections).toBe(2); // 'col-1', 'col-2'
       expect(summary.totalFiles).toBe(2);
       expect(summary.totalNotes).toBe(3);
+    });
+  });
+
+  describe('Tree Structure & Cycle Guard (tree-helpers.ts)', () => {
+    it('should build a nested tree from a flat collection array', async () => {
+      const { buildTree } = await import('@/features/library/components/sidebar/tree-helpers');
+      const collections: any[] = [
+        { id: 'c1', name: 'Root 1', parentId: null },
+        { id: 'c2', name: 'Child 1.1', parentId: 'c1' },
+        { id: 'c3', name: 'Child 1.1.1', parentId: 'c2' },
+        { id: 'c4', name: 'Root 2', parentId: null },
+      ];
+
+      const tree = buildTree(collections);
+      expect(tree.length).toBe(2);
+      expect(tree[0].id).toBe('c1');
+      expect(tree[0].children.length).toBe(1);
+      expect(tree[0].children[0].id).toBe('c2');
+      expect(tree[0].children[0].children[0].id).toBe('c3');
+      expect(tree[1].id).toBe('c4');
+    });
+
+    it('should break circular parent cycles gracefully without stack overflow', async () => {
+      const { buildTree } = await import('@/features/library/components/sidebar/tree-helpers');
+      // Create a circular dependency: A -> B -> A and self-reference: C -> C
+      const collections: any[] = [
+        { id: 'cA', name: 'Cyclic A', parentId: 'cB' },
+        { id: 'cB', name: 'Cyclic B', parentId: 'cA' },
+        { id: 'cC', name: 'Self Cyclic C', parentId: 'cC' },
+      ];
+
+      const tree = buildTree(collections);
+      // All cyclic nodes must be safely converted to root nodes to prevent infinite recursion
+      expect(tree.length).toBeGreaterThanOrEqual(2);
+      // Ensure children do not reference their ancestor
+      const findCycle = (node: any, seen = new Set<string>()): boolean => {
+        if (seen.has(node.id)) return true;
+        seen.add(node.id);
+        return node.children.some((child: any) => findCycle(child, new Set(seen)));
+      };
+      expect(tree.some((root) => findCycle(root))).toBe(false);
+    });
+
+    it('should accurately compute valid move targets excluding self and all descendants', async () => {
+      const { getValidMoveTargets } = await import('@/features/library/components/sidebar/tree-helpers');
+      const collections: any[] = [
+        { id: 'root', name: 'Root', parentId: null },
+        { id: 'child', name: 'Child', parentId: 'root' },
+        { id: 'grandchild', name: 'Grandchild', parentId: 'child' },
+        { id: 'other', name: 'Other Root', parentId: null },
+      ];
+
+      const validForChild = getValidMoveTargets(collections, 'child');
+      const validIds = validForChild.map((c) => c.id);
+      expect(validIds).toContain('root');
+      expect(validIds).toContain('other');
+      expect(validIds).not.toContain('child');
+      expect(validIds).not.toContain('grandchild');
+    });
+
+    it('should filter collections preserving ancestor chain', async () => {
+      const { filterCollections } = await import('@/features/library/components/sidebar/tree-helpers');
+      const collections: any[] = [
+        { id: 'root', name: 'Physics Department', parentId: null },
+        { id: 'child', name: 'Quantum Optics Lab', parentId: 'root' },
+        { id: 'unrelated', name: 'Computer Science', parentId: null },
+      ];
+
+      const filtered = filterCollections(collections, 'Quantum');
+      const ids = filtered.map((c) => c.id);
+      expect(ids).toContain('child');
+      expect(ids).toContain('root'); // Parent preserved!
+      expect(ids).not.toContain('unrelated');
     });
   });
 });

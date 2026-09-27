@@ -11,6 +11,7 @@ import ProfileTab from '@/features/account/components/ProfileTab';
 import PreferencesTab from '@/features/account/components/PreferencesTab';
 import NotificationsTab from '@/features/account/components/NotificationsTab';
 import SecurityTab from '@/features/account/components/SecurityTab';
+import { IntegrationsHub } from '@/features/integrations/components/IntegrationsHub';
 
 interface AccountModalProps {
   isOpen: boolean;
@@ -34,6 +35,8 @@ export default function AccountModal({ isOpen, onClose, initialTab = 'profile' }
         return <ProfileTab />;
       case 'preferences':
         return <PreferencesTab />;
+      case 'integrations':
+        return <IntegrationsHub />;
       case 'notifications':
         return <NotificationsTab />;
       case 'security':

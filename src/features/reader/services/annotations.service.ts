@@ -194,9 +194,24 @@ export const AnnotationsService = {
     attachmentId: string,
     dto: BatchAnnotationsDTO,
   ): Promise<BatchAnnotationsResponse> => {
+    const normalizedUpserts = (dto.upserts || []).map((u) => {
+      const rawType = (u as any)?.type;
+      const resolvedType =
+        rawType === 'box' || rawType === 'area'
+          ? 'rect'
+          : rawType;
+      return {
+        ...u,
+        ...(resolvedType ? { type: resolvedType } : {}),
+      };
+    });
+    const payload = {
+      ...dto,
+      upserts: normalizedUpserts,
+    };
     const raw = await apiPut<BatchAnnotationsResponse>(
       `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/annotations/batch`,
-      dto,
+      payload,
     );
     return raw;
   },

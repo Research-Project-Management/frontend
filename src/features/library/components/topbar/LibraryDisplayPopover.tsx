@@ -37,21 +37,10 @@ export const COLUMN_ITEMS: Array<{ key: LibraryColumnKey; label: string }> = [
   { key: 'authors', label: 'Creator' },
   { key: 'year', label: 'Year' },
   { key: 'publication', label: 'Publication' },
-  { key: 'itemType', label: 'Item Type' },
-  { key: 'publisher', label: 'Publisher' },
-  { key: 'dateAdded', label: 'Date Added' },
-  { key: 'dateModified', label: 'Date Modified' },
-  { key: 'doi', label: 'DOI' },
   { key: 'citationKey', label: 'Citation Key' },
+  { key: 'itemType', label: 'Item Type' },
+  { key: 'doi', label: 'DOI' },
   { key: 'citations', label: 'Citations' },
-  { key: 'references', label: 'References' },
-  { key: 'pages', label: 'Pages' },
-  { key: 'volume', label: 'Volume' },
-  { key: 'issue', label: 'Issue' },
-  { key: 'edition', label: 'Edition' },
-  { key: 'language', label: 'Language' },
-  { key: 'extra', label: 'Extra' },
-  { key: 'collection', label: 'Collection' },
 ];
 
 const ORDER_BY_OPTIONS: Array<{ value: LibraryOrderBy; label: string }> = [
@@ -60,9 +49,8 @@ const ORDER_BY_OPTIONS: Array<{ value: LibraryOrderBy; label: string }> = [
   { value: 'year', label: 'Year' },
   { value: 'title', label: 'Title' },
   { value: 'authors', label: 'Creator' },
-  { value: 'itemType', label: 'Item Type' },
-  { value: 'citationCount', label: 'Citations' },
-  { value: 'lastReadAt', label: 'Last Read' },
+  { value: 'publicationTitle', label: 'Publication' },
+  { value: 'citationKey', label: 'Citation Key' },
 ];
 
 export function LibraryDisplayPopover({

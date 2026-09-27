@@ -459,22 +459,24 @@ export async function uploadLibraryFile(
   if (options.preferDirect !== false && !isDirectUploadCorsBlocked) {
     try {
       return await uploadLibraryFileDirect(scopeId, targetFile, options);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // U-1: Only treat genuine network/CORS failures as permanent session-level blocks.
       // HTTP 4xx/5xx errors come with a status and should bubble up to the caller, not
       // silently flip the flag and fall back to multipart.
+      const errorObj = err as { name?: string; status?: number; message?: string } | null;
       const isCorsOrNetworkError =
         err instanceof TypeError ||
-        err?.name === 'TypeError' ||
-        err?.status === 0 ||
-        err?.message?.toLowerCase().includes('cors') ||
-        err?.message?.toLowerCase().includes('network') ||
-        err?.message?.toLowerCase().includes('failed to fetch');
+        errorObj?.name === 'TypeError' ||
+        errorObj?.status === 0 ||
+        (typeof errorObj?.message === 'string' &&
+          (errorObj.message.toLowerCase().includes('cors') ||
+            errorObj.message.toLowerCase().includes('network') ||
+            errorObj.message.toLowerCase().includes('failed to fetch')));
 
       if (isCorsOrNetworkError) {
         isDirectUploadCorsBlocked = true;
         console.warn(
-          `Direct upload blocked by CORS/network error (${err?.message || err}). Falling back to multipart upload for this session.`,
+          `Direct upload blocked by CORS/network error (${errorObj?.message || String(err)}). Falling back to multipart upload for this session.`,
         );
       } else {
         // Server-side error (4xx/5xx) — do NOT set the flag, re-throw so the caller can handle it

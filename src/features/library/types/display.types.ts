@@ -1,32 +1,20 @@
-﻿export type LibraryColumnKey =
+export type LibraryColumnKey =
   | 'authors'
   | 'year'
   | 'publication'
-  | 'itemType'
-  | 'publisher'
-  | 'dateAdded'
-  | 'dateModified'
-  | 'doi'
   | 'citationKey'
-  | 'citations'
-  | 'references'
-  | 'pages'
-  | 'volume'
-  | 'issue'
-  | 'edition'
-  | 'language'
-  | 'extra'
-  | 'collection';
+  | 'itemType'
+  | 'doi'
+  | 'citations';
 
 export type LibraryOrderBy =
   | 'createdAt'
   | 'updatedAt'
   | 'year'
   | 'title'
+  | 'citationKey'
   | 'authors'
-  | 'itemType'
-  | 'citationCount'
-  | 'lastReadAt';
+  | 'publicationTitle';
 
 export interface LibraryDisplayOptions {
   columns: Record<LibraryColumnKey, boolean>;
@@ -40,23 +28,13 @@ export const DEFAULT_LIBRARY_DISPLAY_OPTIONS: LibraryDisplayOptions = {
     authors: true,
     year: true,
     publication: true,
-    itemType: true,
-    publisher: false,
-    dateAdded: false,
-    dateModified: false,
-    doi: true,
-    citationKey: false,
-    citations: true,
-    references: false,
-    pages: false,
-    volume: false,
-    issue: false,
-    edition: false,
-    language: false,
-    extra: false,
-    collection: false,
+    citationKey: true,
+    itemType: false,
+    doi: false,
+    citations: false,
   },
   orderBy: 'createdAt',
   orderDirection: 'desc',
   density: 'comfortable',
 };
+

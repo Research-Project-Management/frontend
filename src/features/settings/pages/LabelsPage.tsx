@@ -259,12 +259,12 @@ export default function LabelsPage() {
           {/* ── Toolbar ── */}
           <div className="flex items-center justify-between gap-4">
             <div className="relative w-full max-w-xs">
-              <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0" />
+              <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-foreground pointer-events-none shrink-0" strokeWidth={1.5} />
               <Input
                 placeholder="Search labels..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8 pl-8 text-12 rounded-md border-border bg-background shadow-2xs"
+                className="h-8 pl-8 text-13 rounded-md border-border bg-white dark:bg-card shadow-2xs hover:border-foreground/30 transition-colors"
               />
             </div>
 

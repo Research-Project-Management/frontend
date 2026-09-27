@@ -14,7 +14,10 @@ const STOPWORDS: ReadonlySet<string> = new Set([
  * Generates a standard BibTeX citation key.
  * Format: LastName + Year + FirstSignificantTitleWord (e.g. "vaswani2017attention").
  */
-export function generateCitationKey(paper?: Partial<Item> | null): string {
+export function generateCitationKey(
+  paper?: Partial<Item> | null,
+  existingKeys?: Set<string> | string[],
+): string {
   if (!paper) return 'refpaper';
   if (paper.citationKey && paper.citationKey.trim()) {
     return paper.citationKey.trim().replace(/\s+/g, '');
@@ -41,7 +44,23 @@ export function generateCitationKey(paper?: Partial<Item> | null): string {
     }
   }
 
-  return `${authorPart || 'ref'}${yearPart}${titlePart || 'paper'}`;
+  const baseKey = `${authorPart || 'ref'}${yearPart}${titlePart || 'paper'}`;
+  if (!existingKeys) return baseKey;
+
+  const keySet = existingKeys instanceof Set ? existingKeys : new Set(existingKeys);
+  if (!keySet.has(baseKey)) return baseKey;
+
+  // Better BibTeX disambiguation: append 'a', 'b', 'c', ...
+  const letters = 'abcdefghijklmnopqrstuvwxyz';
+  for (let i = 0; i < letters.length; i++) {
+    const candidate = `${baseKey}${letters[i]}`;
+    if (!keySet.has(candidate)) return candidate;
+  }
+  let counter = 2;
+  while (keySet.has(`${baseKey}_${counter}`)) {
+    counter++;
+  }
+  return `${baseKey}_${counter}`;
 }
 
 export const getPaperCitationKey = generateCitationKey;

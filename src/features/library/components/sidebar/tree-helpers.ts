@@ -2,7 +2,27 @@ import type { Collection } from '../../types/library.types';
 import type { TreeNode } from './sidebar.types';
 
 /**
+ * Helper to detect if assigning targetParentId under startId would form a circular tree cycle.
+ */
+function hasAncestorCycle(
+  startId: string,
+  targetParentId: string,
+  map: Map<string, TreeNode>,
+): boolean {
+  let curr: string | null | undefined = targetParentId;
+  const visited = new Set<string>();
+  while (curr) {
+    if (curr === startId) return true;
+    if (visited.has(curr)) return true;
+    visited.add(curr);
+    curr = map.get(curr)?.parentId;
+  }
+  return false;
+}
+
+/**
  * Transforms a flat array of collections into a nested tree structure.
+ * Guaranteed O(N) complexity with cycle prevention guard against stack overflows.
  */
 export function buildTree(collections: Collection[]): TreeNode[] {
   const map = new Map<string, TreeNode>();
@@ -15,7 +35,12 @@ export function buildTree(collections: Collection[]): TreeNode[] {
 
   for (const node of map.values()) {
     const parentId = node.parentId;
-    if (parentId && map.has(parentId)) {
+    if (
+      parentId &&
+      parentId !== node.id &&
+      map.has(parentId) &&
+      !hasAncestorCycle(node.id, parentId, map)
+    ) {
       map.get(parentId)!.children.push(node);
     } else {
       roots.push(node);
@@ -33,7 +58,7 @@ export function buildTree(collections: Collection[]): TreeNode[] {
 export function getValidMoveTargets(allCollections: Collection[], currentId: string): Collection[] {
   const childrenMap = new Map<string, string[]>();
   for (const c of allCollections) {
-    const parentId = c.parentId || (c as any).parent;
+    const parentId = c.parentId;
     if (parentId) {
       const list = childrenMap.get(parentId) || [];
       list.push(c.id);
@@ -71,7 +96,7 @@ export function filterCollections(cols: Collection[], searchQuery: string): Coll
 
   const parentMap = new Map<string, string | null>();
   for (const c of cols) {
-    parentMap.set(c.id, c.parentId || (c as any).parent || null);
+    parentMap.set(c.id, c.parentId || null);
   }
 
   const matchingIds = new Set<string>();

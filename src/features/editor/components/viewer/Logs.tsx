@@ -26,6 +26,7 @@ import {
 import {
   listAuxFiles,
   downloadAuxFileUrl,
+  downloadAllArtifactsZipUrl,
   type AuxFileItem,
 } from '@/features/editor/services/compiler.service';
 
@@ -101,8 +102,8 @@ export function parseLatexLog(raw: string): ParsedLog {
     }
 
     // Bad boxes: Overfull/Underfull \hbox or \vbox
-    if (/^(Overfull|Underfull)\\[hv]box/.test(line)) {
-      const lineRef = line.match(/lines? (\d+)/);
+    if (/^(Overfull|Underfull)\s*\\[hv]box/.test(line)) {
+      const lineRef = line.match(/lines?\s+(\d+)/);
       tryAdd(badBoxes, {
         message: line.trim(),
         line: lineRef ? parseInt(lineRef[1], 10) : undefined,
@@ -599,7 +600,15 @@ export default function Logs({
               <div className="space-y-2">
                 <div className="flex items-center justify-between pb-1 border-b border-border text-xs text-muted-foreground">
                   <span>Generated Auxiliary & Intermediates ({auxFiles.length} files)</span>
-                  <span className="text-11">Click download icon to save files locally</span>
+                  <a
+                    href={downloadAllArtifactsZipUrl(projectId || '')}
+                    download={`project-${projectId || 'artifacts'}-artifacts.zip`}
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    title="Download all generated files as a ZIP archive"
+                  >
+                    <Download className="size-3" />
+                    <span>Download All (.zip)</span>
+                  </a>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                   {auxFiles.map((file) => {

@@ -11,6 +11,12 @@ import {
 import { LibraryIcon, StorageIcon } from '@/shared/components/icons';
 import { cn } from "@/shared/lib/utils";
 import { useAiCompanionStore } from '@/features/ai/store';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/components/ui';
+import StickyDock from './StickyDock';
 
 const NAV_ITEMS_LEFT = [
   { label: 'Projects', icon: Layers, to: '/home' },
@@ -156,27 +162,35 @@ export default function Sidebar() {
           {ALL_NAV_ITEMS.map(renderNavLink)}
         </div>
 
-        {/* Desktop Chat AI Button at bottom of Left Rail */}
-        <div className='hidden md:flex w-full mt-auto flex-col items-center relative shrink-0 pt-2 border-t border-border/40'>
-          <button
-            type='button'
-            onClick={toggleOpen}
-            className={cn(
-              'group relative flex size-8 shrink-0 items-center justify-center rounded-md transition-colors duration-200 outline-none select-none cursor-pointer focus-visible:ring-2 focus-visible:ring-primary text-foreground hover:bg-sidebar-hover',
-              isOpen && 'bg-sidebar-accent text-primary'
-            )}
-            title='Ask Flux AI'
-            aria-label='Ask Flux AI'
-          >
-            <img
-              src='/Chat.svg'
-              alt='Flux AI'
-              className={cn(
-                'size-4.5 shrink-0 rounded-full block object-contain transition-transform duration-300',
-                isOpen ? 'scale-110' : 'group-hover:scale-110'
-              )}
-            />
-          </button>
+        {/* Desktop Tool Support Cluster at bottom of Left Rail: Sticky Dock + Chat AI */}
+        <div className='hidden md:flex w-full mt-auto flex-col items-center gap-2 relative shrink-0 pt-2 pb-1 border-t border-border/40'>
+          <StickyDock />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type='button'
+                onClick={toggleOpen}
+                className={cn(
+                  'group relative flex size-8 shrink-0 items-center justify-center rounded-md transition-colors duration-200 outline-none select-none cursor-pointer focus-visible:ring-2 focus-visible:ring-primary text-foreground hover:bg-sidebar-hover',
+                  isOpen && 'bg-sidebar-accent text-primary'
+                )}
+                aria-label='AI Assistant (Ctrl+J)'
+              >
+                <img
+                  src='/Chat.svg'
+                  alt='Flux AI'
+                  className={cn(
+                    'size-4.5 shrink-0 rounded-full block object-contain transition-transform duration-300',
+                    isOpen ? 'scale-110' : 'group-hover:scale-110'
+                  )}
+                />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side='right' sideOffset={10}>
+              AI Assistant (Ctrl+J)
+            </TooltipContent>
+          </Tooltip>
         </div>
       </nav>
     </LayoutGroup>

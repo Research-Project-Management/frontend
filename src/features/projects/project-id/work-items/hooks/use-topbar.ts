@@ -380,121 +380,178 @@ export function useTopbar({
       }
     }
     const list = Array.from(map.values()).sort((first, second) =>
-      (first.name || '').localeCompare(first.name || '', 'vi')
+      (first.name || '').localeCompare(second.name || '', 'vi')
     );
     if (hasUnassigned || list.length > 0) list.push({ id: '__unassigned__', name: 'Unassigned' });
     return list;
   }, [items, propUsers, members]);
 
-  // ── Comprehensive Filtering Engine ───────────────────────────────────────
+  // ── Optimized Single-Pass Filtering Engine ───────────────────────────────
   const filteredItems = useMemo(() => {
-    let result = Array.isArray(items) ? items : [];
+    const rawItems = Array.isArray(items) ? items : [];
+    if (rawItems.length === 0) return [];
+
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    // 1. State (Column) filter
-    if (filters.state.length > 0) {
-      result = result.filter((item) => item?.columnId && filters.state.includes(item.columnId));
-    }
+    // Pre-computed Sets and Maps for O(1) lookups
+    const hasStateFilter = filters.state.length > 0;
+    const stateSet = new Set(filters.state);
 
-    // 3. State Group filter
-    if (filters.state_group.length > 0) {
-      result = result.filter((item) => {
-        if (!item?.columnId) return false;
-        const column = columns.find((col) => resolveStateId(col) === item.columnId);
-        const group =
-          column?.group && (STATE_GROUPS as readonly string[]).includes(column.group)
-            ? column.group
-            : inferStateGroup(item.columnId, column?.title || '');
-        return filters.state_group.includes(group as StateGroup);
-      });
-    }
-
-    // 4. Priority filter
-    if (filters.priority.length > 0) {
-      result = result.filter((item) => filters.priority.includes(item.priority || 'none'));
-    }
-
-    // 5. Assignees filter
-    if (filters.assignees.length > 0) {
-      const hasUnassignedFilter =
-        filters.assignees.includes('__unassigned__') || filters.assignees.includes('unassigned');
-      const specificUserIds = filters.assignees.filter(
-        (id) => id !== '__unassigned__' && id !== 'unassigned',
-      );
-
-      result = result.filter((item) => {
-        const assigneeUserId = ItemHelpers.resolveAssigneeId(item);
-
-        if (!assigneeUserId) {
-          return hasUnassignedFilter;
+    const hasStateGroupFilter = filters.state_group.length > 0;
+    const stateGroupSet = new Set(filters.state_group);
+    const columnGroupMap = new Map<string, string>();
+    if (hasStateGroupFilter) {
+      for (const col of columns) {
+        const id = resolveStateId(col);
+        if (id) {
+          const group =
+            col?.group && (STATE_GROUPS as readonly string[]).includes(col.group)
+              ? col.group
+              : inferStateGroup(id, col?.title || '');
+          columnGroupMap.set(id, group);
         }
-        return specificUserIds.includes(assigneeUserId);
-      });
+      }
     }
 
-    // 6. Mentions filter
-    if (filters.mentions.length > 0) {
-      result = result.filter((item) => {
-        const text = `${item.title || ''} ${item.description || ''} ${item.content || ''}`.toLowerCase();
-        return filters.mentions.some((userId) => {
-          const user = assignees.find((assignee) => assignee.id === userId);
-          if (user?.name && text.includes(`@${user.name.toLowerCase()}`)) return true;
-          const assigneeUserId = ItemHelpers.resolveAssigneeId(item);
-          return assigneeUserId === userId;
-        });
-      });
-    }
+    const hasPriorityFilter = filters.priority.length > 0;
+    const prioritySet = new Set(filters.priority);
 
-    // 7. Created by filter
-    if (filters.created_by.length > 0) {
-      result = result.filter((item) => {
+    const hasAssigneeFilter = filters.assignees.length > 0;
+    const hasUnassignedFilter =
+      hasAssigneeFilter &&
+      (filters.assignees.includes('__unassigned__') || filters.assignees.includes('unassigned'));
+    const specificAssigneeSet = new Set(
+      filters.assignees.filter((id) => id !== '__unassigned__' && id !== 'unassigned')
+    );
+
+    const hasMentionsFilter = filters.mentions.length > 0;
+
+    const hasCreatedByFilter = filters.created_by.length > 0;
+    const createdBySet = new Set(filters.created_by);
+
+    const hasLabelsFilter = filters.labels.length > 0;
+    const labelSet = new Set(filters.labels);
+
+    const hasCycleFilter = filters.cycle.length > 0;
+    const hasNoCycle =
+      hasCycleFilter &&
+      (filters.cycle.includes('__no_cycle__') || filters.cycle.includes('no_cycle'));
+    const cycleSet = new Set(
+      filters.cycle.filter((id) => id !== '__no_cycle__' && id !== 'no_cycle')
+    );
+
+    const hasAttachFilter = filters.attach.length > 0;
+    const attachSet = new Set(filters.attach);
+
+    const activeWorkItemFilterIds = [
+      ...(filters.work_items || []),
+      ...((filters as any).sub_work_items || []),
+      ...((filters as any).item || []),
+      ...((filters as any).items || []),
+    ];
+    const hasWorkItemFilter = activeWorkItemFilterIds.length > 0;
+    const workItemSet = new Set(activeWorkItemFilterIds);
+
+    const hasParentFilter = filters.parent.length > 0;
+    const hasNoParent =
+      hasParentFilter &&
+      (filters.parent.includes('__none__') || filters.parent.includes('parent:none'));
+    const parentSet = new Set(
+      filters.parent.filter((id) => id !== '__none__' && id !== 'parent:none')
+    );
+
+    const hasDueDateFilter = filters.due_date.length > 0;
+    const hasStartDateFilter = filters.start_date.length > 0;
+    const hasCreatedAtFilter = filters.created_at.length > 0;
+    const hasUpdatedAtFilter = filters.updated_at.length > 0;
+
+    const hasSubscribersFilter = Boolean(filters.subscribers && filters.subscribers.length > 0);
+    const specificSubscriberSet = new Set(
+      (filters.subscribers || []).filter((id) => id !== '__me__')
+    );
+
+    // Single-pass filter with O(1) checks and early short-circuiting
+    const result = rawItems.filter((item) => {
+      if (!item) return false;
+
+      // 1. State (Column) filter
+      if (hasStateFilter && (!item.columnId || !stateSet.has(item.columnId))) {
+        return false;
+      }
+
+      // 2. State Group filter
+      if (hasStateGroupFilter) {
+        if (!item.columnId) return false;
+        let group = columnGroupMap.get(item.columnId);
+        if (!group) {
+          const col = columns.find((c) => resolveStateId(c) === item.columnId);
+          group =
+            col?.group && (STATE_GROUPS as readonly string[]).includes(col.group)
+              ? col.group
+              : inferStateGroup(item.columnId, col?.title || '');
+          columnGroupMap.set(item.columnId, group);
+        }
+        if (!stateGroupSet.has(group as StateGroup)) {
+          return false;
+        }
+      }
+
+      // 3. Priority filter
+      if (hasPriorityFilter && !prioritySet.has(item.priority || 'none')) {
+        return false;
+      }
+
+      // 4. Assignees filter
+      if (hasAssigneeFilter) {
+        const assigneeUserId = ItemHelpers.resolveAssigneeId(item);
+        if (!assigneeUserId) {
+          if (!hasUnassignedFilter) return false;
+        } else if (!specificAssigneeSet.has(assigneeUserId)) {
+          return false;
+        }
+      }
+
+      // 5. Created by filter
+      if (hasCreatedByFilter) {
         const author = item.authorId || (item as any).createdBy;
-        return author && filters.created_by.includes(author);
-      });
-    }
+        if (!author || !createdBySet.has(author)) {
+          return false;
+        }
+      }
 
-    // 8. Labels filter (supports both string[] and object[] labels)
-    if (filters.labels.length > 0) {
-      result = result.filter((item) => {
+      // 6. Labels filter
+      if (hasLabelsFilter) {
         if (!Array.isArray(item.labels) || item.labels.length === 0) return false;
-        return item.labels.some((labelItem: any) => {
-          if (typeof labelItem === 'string') {
-            return filters.labels.includes(labelItem);
-          }
+        const hasMatchingLabel = item.labels.some((labelItem: any) => {
+          if (typeof labelItem === 'string') return labelSet.has(labelItem);
           if (typeof labelItem === 'object' && labelItem !== null) {
             return (
-              (labelItem.id && filters.labels.includes(labelItem.id)) ||
-              (labelItem.name && filters.labels.includes(labelItem.name))
+              (labelItem.id && labelSet.has(labelItem.id)) ||
+              (labelItem.name && labelSet.has(labelItem.name))
             );
           }
           return false;
         });
-      });
-    }
+        if (!hasMatchingLabel) return false;
+      }
 
-    // 9. Cycle filter
-    if (filters.cycle.length > 0) {
-      const hasNoCycle =
-        filters.cycle.includes('__no_cycle__') || filters.cycle.includes('no_cycle');
-      const specificCycles = filters.cycle.filter(
-        (id) => id !== '__no_cycle__' && id !== 'no_cycle',
-      );
-
-      result = result.filter((item) => {
+      // 7. Cycle filter
+      if (hasCycleFilter) {
         const targetCycleId =
           (item as any).cycleId ||
           (typeof (item as any).cycle === 'object' && (item as any).cycle !== null
             ? (item as any).cycle?.id
             : (item as any).cycle);
-        if (!targetCycleId) return hasNoCycle;
-        return specificCycles.includes(targetCycleId);
-      });
-    }
+        if (!targetCycleId) {
+          if (!hasNoCycle) return false;
+        } else if (!cycleSet.has(targetCycleId)) {
+          return false;
+        }
+      }
 
-    // 10. Attach filter
-    if (filters.attach.length > 0) {
-      result = result.filter((item) => {
+      // 8. Attachments filter
+      if (hasAttachFilter) {
         const attachments = item.attachments;
         const hasPages = Array.isArray((attachments as any)?.pages) && (attachments as any).pages.length > 0;
         const hasPapers = Array.isArray((attachments as any)?.papers) && (attachments as any).papers.length > 0;
@@ -504,90 +561,80 @@ export function useTopbar({
         const hasLinks = Array.isArray((attachments as any)?.links) && (attachments as any).links.length > 0;
         const hasAny = hasPages || hasPapers || hasFiles || hasLinks;
 
-        return filters.attach.some((attFilter) => {
-          if (attFilter === 'has:attach' || attFilter === 'has_attachments') return hasAny;
-          if (attFilter === 'attach:pages' || attFilter === 'pages') return hasPages;
-          if (attFilter === 'attach:papers' || attFilter === 'papers') return hasPapers;
-          if (attFilter === 'attach:files' || attFilter === 'files') return hasFiles;
-          if (attFilter === 'attach:links' || attFilter === 'links') return hasLinks;
-          return false;
-        });
-      });
-    }
+        let matchAttach = false;
+        if (attachSet.has('has:attach') || attachSet.has('has_attachments')) matchAttach = matchAttach || hasAny;
+        if (attachSet.has('attach:pages') || attachSet.has('pages')) matchAttach = matchAttach || hasPages;
+        if (attachSet.has('attach:papers') || attachSet.has('papers')) matchAttach = matchAttach || hasPapers;
+        if (attachSet.has('attach:files') || attachSet.has('files')) matchAttach = matchAttach || hasFiles;
+        if (attachSet.has('attach:links') || attachSet.has('links')) matchAttach = matchAttach || hasLinks;
+        if (!matchAttach) return false;
+      }
 
-    // 11. Work items filter
-    const activeWorkItemFilterIds = [
-      ...(filters.work_items || []),
-    ];
-    if (activeWorkItemFilterIds.length > 0) {
-      result = result.filter(
-        (item) =>
-          activeWorkItemFilterIds.includes(item.id) ||
-          (item.identifier && activeWorkItemFilterIds.includes(item.identifier)),
-      );
-    }
+      // 9. Work items filter
+      if (hasWorkItemFilter) {
+        const matchesId = workItemSet.has(item.id);
+        const matchesIdentifier = item.identifier ? workItemSet.has(item.identifier) : false;
+        if (!matchesId && !matchesIdentifier) return false;
+      }
 
-    // 12. Parent filter
-    if (filters.parent.length > 0) {
-      const hasNone =
-        filters.parent.includes('__none__') || filters.parent.includes('parent:none');
-      const specificParents = filters.parent.filter(
-        (id) => id !== '__none__' && id !== 'parent:none',
-      );
-
-      result = result.filter((item) => {
+      // 10. Parent filter
+      if (hasParentFilter) {
         const rawParent =
           (item as any).parentWorkItemId ||
           (item as any).parentItemId ||
           item.parentItem?.id ||
           item.parentWorkItem?.id;
-        const parentId =
-          typeof rawParent === 'object' ? rawParent?.id : rawParent;
-        if (!parentId) return hasNone;
-        return specificParents.includes(parentId);
-      });
-    }
-
-    // 13. Due Date filter
-    if (filters.due_date.length > 0) {
-      result = result.filter((item) => {
-        if (!item.dueDate) return filters.due_date.includes('no_date');
-        const due = new Date(item.dueDate);
-        return filters.due_date.some((option) => {
-          if (option === 'all') return true;
-          if (option === 'overdue') return due < todayStart && !item.completed;
-          if (option === 'today') return due.toDateString() === now.toDateString();
-          if (option === 'this_week') return isSameWeek(due, now, { weekStartsOn: 1 });
-          if (option === 'this_month')
-            return due.getFullYear() === now.getFullYear() && due.getMonth() === now.getMonth();
+        const parentId = typeof rawParent === 'object' ? rawParent?.id : rawParent;
+        if (!parentId) {
+          if (!hasNoParent) return false;
+        } else if (!parentSet.has(parentId)) {
           return false;
-        });
-      });
-    }
+        }
+      }
 
-    // 14. Start Date filter
-    if (filters.start_date.length > 0) {
-      result = result.filter((item) => {
-        if (!item.startDate) return filters.start_date.includes('no_date');
-        const start = new Date(item.startDate);
-        return filters.start_date.some((option) => {
-          if (option === 'today') return start.toDateString() === now.toDateString();
-          if (option === 'this_week') return isSameWeek(start, now, { weekStartsOn: 1 });
-          if (option === 'this_month')
-            return (
-              start.getFullYear() === now.getFullYear() && start.getMonth() === now.getMonth()
-            );
-          return false;
-        });
-      });
-    }
+      // 11. Due Date filter
+      if (hasDueDateFilter) {
+        if (!item.dueDate) {
+          if (!filters.due_date.includes('no_date')) return false;
+        } else {
+          const due = new Date(item.dueDate);
+          const matched = filters.due_date.some((option) => {
+            if (option === 'all') return true;
+            if (option === 'overdue') return due < todayStart && !item.completed;
+            if (option === 'today') return due.toDateString() === now.toDateString();
+            if (option === 'this_week') return isSameWeek(due, now, { weekStartsOn: 1 });
+            if (option === 'this_month')
+              return due.getFullYear() === now.getFullYear() && due.getMonth() === now.getMonth();
+            return false;
+          });
+          if (!matched) return false;
+        }
+      }
 
-    // 15. Created At filter
-    if (filters.created_at.length > 0) {
-      result = result.filter((item) => {
+      // 12. Start Date filter
+      if (hasStartDateFilter) {
+        if (!item.startDate) {
+          if (!filters.start_date.includes('no_date')) return false;
+        } else {
+          const start = new Date(item.startDate);
+          const matched = filters.start_date.some((option) => {
+            if (option === 'today') return start.toDateString() === now.toDateString();
+            if (option === 'this_week') return isSameWeek(start, now, { weekStartsOn: 1 });
+            if (option === 'this_month')
+              return (
+                start.getFullYear() === now.getFullYear() && start.getMonth() === now.getMonth()
+              );
+            return false;
+          });
+          if (!matched) return false;
+        }
+      }
+
+      // 13. Created At filter
+      if (hasCreatedAtFilter) {
         if (!item.createdAt) return false;
         const created = new Date(item.createdAt);
-        return filters.created_at.some((option) => {
+        const matched = filters.created_at.some((option) => {
           const lower = option.toLowerCase();
           if (lower === 'today') return created.toDateString() === now.toDateString();
           if (lower === 'this_week') return isSameWeek(created, now, { weekStartsOn: 1 });
@@ -599,15 +646,14 @@ export function useTopbar({
           if (lower === 'this_year') return created.getFullYear() === now.getFullYear();
           return false;
         });
-      });
-    }
+        if (!matched) return false;
+      }
 
-    // 16. Updated At filter
-    if (filters.updated_at.length > 0) {
-      result = result.filter((item) => {
+      // 14. Updated At filter
+      if (hasUpdatedAtFilter) {
         if (!item.updatedAt) return false;
         const updated = new Date(item.updatedAt);
-        return filters.updated_at.some((option) => {
+        const matched = filters.updated_at.some((option) => {
           const lower = option.toLowerCase();
           if (lower === 'today') return updated.toDateString() === now.toDateString();
           if (lower === 'this_week') return isSameWeek(updated, now, { weekStartsOn: 1 });
@@ -619,27 +665,36 @@ export function useTopbar({
           if (lower === 'this_year') return updated.getFullYear() === now.getFullYear();
           return false;
         });
-      });
-    }
+        if (!matched) return false;
+      }
 
-    // 17. Subscribers filter
-    if (filters.subscribers && filters.subscribers.length > 0) {
-      const hasMe = filters.subscribers.includes('__me__');
-      const specificIds = filters.subscribers.filter((id) => id !== '__me__');
-      result = result.filter((item) => {
+      // 15. Mentions filter
+      if (hasMentionsFilter) {
+        const text = `${item.title || ''} ${item.description || ''} ${item.content || ''}`.toLowerCase();
+        const matched = filters.mentions.some((userId) => {
+          const user = assignees.find((assignee) => assignee.id === userId);
+          if (user?.name && text.includes(`@${user.name.toLowerCase()}`)) return true;
+          const assigneeUserId = ItemHelpers.resolveAssigneeId(item);
+          return assigneeUserId === userId;
+        });
+        if (!matched) return false;
+      }
+
+      // 16. Subscribers filter
+      if (hasSubscribersFilter) {
         const subs: string[] = Array.isArray((item as any).subscriberIds)
           ? (item as any).subscriberIds
           : [];
-        if (hasMe) {
-          // 'me' = current user — handled by ID match if user ID is in list
-        }
-        return specificIds.some((id) => subs.includes(id));
-      });
-    }
+        const matched = subs.some((id) => specificSubscriberSet.has(id));
+        if (!matched) return false;
+      }
 
-    // 17. Ordering (Sorting)
+      return true;
+    });
+
+    // 17. Ordering (In-place sort on the single newly allocated filtered array)
     const direction = displayOptions.orderDirection === 'desc' ? -1 : 1;
-    result = [...result].sort((first, second) => {
+    result.sort((first, second) => {
       if (displayOptions.orderBy === 'priority') {
         const weightA = PRIORITY_WEIGHT[first.priority || 'none'] ?? 0;
         const weightB = PRIORITY_WEIGHT[second.priority || 'none'] ?? 0;

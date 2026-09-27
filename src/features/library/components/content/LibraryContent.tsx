@@ -18,7 +18,13 @@ import { ItemTable } from './ItemTable';
 import LibraryEmptyState from './LibraryEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { BatchBar } from './BatchBar';
-import { useLibraryModalStore, useLibraryViewStore, useLibraryUIStore } from '../../store';
+import {
+  useLibraryModalStore,
+  useLibraryViewStore,
+  useLibraryUIStore,
+  useProcessModalStore,
+  cleanFilenameToTitle,
+} from '../../store';
 import { useQuickCopyShortcuts } from '../../hooks/use-quick-copy';
 import type { Item, Collection } from '../../types';
 
@@ -72,6 +78,7 @@ export function LibraryContent({
   const clearSelection = useLibraryViewStore((s) => s.clearSelection);
   const displayOptions = useLibraryUIStore((s) => s.displayOptions);
   const setDisplayOptions = useLibraryUIStore((s) => s.setDisplayOptions);
+  const processingItems = useProcessModalStore((s) => s.processingItems);
 
   const queryParams = useMemo(
     () => ({
@@ -105,6 +112,7 @@ export function LibraryContent({
     data,
     isLoading: isItemsLoading,
     isError: isItemsError,
+    error: itemsError,
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
@@ -130,6 +138,8 @@ export function LibraryContent({
 
   const isLoading = isSavedSearchView ? savedSearchQuery.isLoading : isItemsLoading;
   const isError = isSavedSearchView ? savedSearchQuery.isError : isItemsError;
+  const error = isSavedSearchView ? savedSearchQuery.error : itemsError;
+  const isTrash = view === 'trash';
 
   const items: Item[] = useMemo(() => {
     if (isSavedSearchView) {
@@ -139,26 +149,76 @@ export function LibraryContent({
     return data.pages.flatMap((page) => page.items);
   }, [isSavedSearchView, savedSearchQuery.data?.items, data?.pages]);
 
-  const totalCount = isSavedSearchView
-    ? (savedSearchQuery.data?.meta?.totalCount ?? items.length)
-    : (data?.pages?.[0]?.total ?? items.length);
+  // Construct provisional raw items from active background uploads
+  const provisionalItems: Item[] = useMemo(() => {
+    if (isTrash) return [];
+    if (isSavedSearchView) return [];
+
+    const targetScope = scopeId || 'user';
+    const activeProcessing = processingItems.filter((p) => {
+      const pScope = p.scopeId || 'user';
+      if (pScope !== targetScope) return false;
+      if (collectionId && p.collectionId && p.collectionId !== collectionId) return false;
+      return true;
+    });
+
+    if (activeProcessing.length === 0) return [];
+
+    const existingIds = new Set(items.map((i) => i.id));
+
+    return activeProcessing
+      .filter((p) => !p.itemId || !existingIds.has(p.itemId))
+      .map((p) => {
+        const title = p.extractedTitle || cleanFilenameToTitle(p.fileName);
+        return {
+          id: p.id,
+          title,
+          itemType: 'journalArticle',
+          authors: p.status === 'PROCESSING' ? ['Processing metadata...'] : ['Uploading raw file...'],
+          year: null,
+          hasFile: true,
+          attachmentCount: 1,
+          attachments: [
+            {
+              id: `att-${p.id}`,
+              filename: p.fileName,
+              size: p.fileSize,
+              mimeType: p.mimeType || 'application/pdf',
+              url: p.fileUrl || '',
+            },
+          ],
+          createdAt: p.createdAt,
+          dateAdded: p.createdAt,
+          _isProcessing: true,
+          _processingStatus: p.status,
+          _processingProgress: p.progress,
+          _processingError: p.error,
+        } as unknown as Item;
+      });
+  }, [isTrash, isSavedSearchView, processingItems, scopeId, collectionId, items]);
+
+  const displayedItems: Item[] = useMemo(() => {
+    if (provisionalItems.length === 0) return items;
+    return [...provisionalItems, ...items];
+  }, [provisionalItems, items]);
+
+  const totalCount =
+    (isSavedSearchView
+      ? (savedSearchQuery.data?.meta?.totalCount ?? items.length)
+      : (data?.pages?.[0]?.total ?? items.length)) + provisionalItems.length;
 
   const selectedItems: Item[] = useMemo(() => {
     if (selectedIds.size === 0) return [];
-    return items.filter((item) => selectedIds.has(item.id));
-  }, [items, selectedIds]);
-
-  const activeItemId = useLibraryUIStore((s) => s.activeItemId);
+    return displayedItems.filter((item) => selectedIds.has(item.id));
+  }, [displayedItems, selectedIds]);
 
   // Zotero 7 Quick Copy Shortcuts (Ctrl+Shift+C: Bibliography, Ctrl+Shift+A: In-text Citation)
   useQuickCopyShortcuts({
     scopeId,
-    items,
+    items: displayedItems,
     selectedIds,
-    activeItemId,
+    activeItemId: useLibraryUIStore.getState().activeItemId,
   });
-
-  const isTrash = view === 'trash';
 
   const handleBatchMove = (targetColId: string | null) => {
     const ids = Array.from(selectedIds);
@@ -228,11 +288,12 @@ export function LibraryContent({
       <PlaneErrorState
         title="Unable to load references"
         description="An issue occurred while loading the reference library. Other features remain unaffected."
+        error={error || new Error('Internal Server Error')}
       />
     );
   }
 
-  if (items.length === 0) {
+  if (displayedItems.length === 0) {
     const activeCollection = collectionId ? (collections as any[]).find((c) => c.id === collectionId) : undefined;
     return (
       <LibraryEmptyState
@@ -251,7 +312,7 @@ export function LibraryContent({
   return (
     <div className="h-full w-full relative flex flex-col overflow-hidden">
       <ItemTable
-        items={items}
+        items={displayedItems}
         totalCount={totalCount}
         hasNextPage={Boolean(isSavedSearchView ? false : hasNextPage)}
         isLoadingMore={isSavedSearchView ? false : isFetchingNextPage}

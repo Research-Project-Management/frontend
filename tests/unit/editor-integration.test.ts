@@ -35,7 +35,7 @@ describe('Editor & Document End-to-End Integration Tests', () => {
         () => {},
       );
 
-      expect(createdUrl).toContain('/api/pages/page-123/collaboration/stream');
+      expect(createdUrl).toContain('/docs/page-123/collaboration/stream');
       cleanup();
       globalThis.EventSource = origEventSource;
     });
@@ -61,7 +61,7 @@ describe('Editor & Document End-to-End Integration Tests', () => {
         () => {},
       );
 
-      expect(createdUrl).toContain('/api/projects/proj-456/pages/page-123/collaboration/stream');
+      expect(createdUrl).toContain('/projects/proj-456/docs/page-123/collaboration/stream');
       cleanup();
       globalThis.EventSource = origEventSource;
     });

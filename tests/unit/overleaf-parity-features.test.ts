@@ -11,7 +11,7 @@ describe('Overleaf Parity Features Suite', () => {
       editorTheme: 'auto',
       pdfSpreadView: false,
     });
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Feature 1: Deleted Files Recovery in File Tree', () => {

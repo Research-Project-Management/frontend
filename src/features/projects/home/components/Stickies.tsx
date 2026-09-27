@@ -56,7 +56,7 @@ export default function Stickies() {
                     onBlur={() => {
                       if (!searchQuery) setIsSearchExpanded(false);
                     }}
-                    className="h-8 w-[160px] sm:w-[200px] rounded-md border border-border bg-muted pl-8 pr-8 text-sm outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
+                    className="h-8 w-[160px] sm:w-[200px] rounded-md border border-border bg-muted pl-8 pr-8 text-sm outline-none placeholder:text-muted-foreground focus:border-border transition-all"
                   />
                   {searchQuery ? (
                     <button

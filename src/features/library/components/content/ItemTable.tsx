@@ -182,9 +182,14 @@ export const ItemTable = React.memo(function ItemTable({
 
   // Sort items client-side only when server-side sorting (onSortChange) is not active
   const sortedItems = useMemo(() => {
-    if (onSortChange || !sortColumn) return items;
+    const processing = items.filter((it: any) => it._isProcessing);
+    const regular = items.filter((it: any) => !it._isProcessing);
 
-    return [...items].sort((a, b) => {
+    if (onSortChange || !sortColumn) {
+      return [...processing, ...regular];
+    }
+
+    const sortedRegular = [...regular].sort((a, b) => {
       const recordA = a as unknown as Record<string, unknown>;
       const recordB = b as unknown as Record<string, unknown>;
       let valA: unknown = recordA[sortColumn];
@@ -213,7 +218,9 @@ export const ItemTable = React.memo(function ItemTable({
       if (Number(valA) > Number(valB)) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [items, sortColumn, sortDirection]);
+
+    return [...processing, ...sortedRegular];
+  }, [items, onSortChange, sortColumn, sortDirection]);
 
   // Select all handler
   const handleSelectAll = () => {

@@ -179,6 +179,8 @@ export interface CompileExecutionOptions {
   useCache: boolean;
   stopOnFirstError?: boolean;
   dirtyFiles: DirtyFileItem[];
+  source?: string;
+  files?: Record<string, string>;
   onPhaseChange?: (phase: "flushing" | "syncing" | "compiling") => void;
   onThumbnailGenerated?: (base64: string) => void;
 }
@@ -265,10 +267,27 @@ export const LatexCompilerEngine = {
     // 3. Compile
     onPhaseChange?.("compiling");
 
+    // Resolve source content from dirtyFiles, options, or active page
+    let sourceContent = opts.source;
+    const filesMap: Record<string, string> = { ...(opts.files || {}) };
+
+    for (const item of dirtyFiles) {
+      if (!sourceContent && (item.fileId === pageId || item.fileId === mainFile)) {
+        sourceContent = item.content;
+      }
+      filesMap[item.fileId] = item.content;
+    }
+
+    if (!sourceContent && dirtyFiles.length > 0) {
+      sourceContent = dirtyFiles[0].content;
+    }
+
     const payload: CompileLatexPayload = {
       project_id: projectId || undefined,
       page_id: pageId || undefined,
       main_file: mainFile,
+      source: sourceContent || undefined,
+      files: Object.keys(filesMap).length > 0 ? filesMap : undefined,
       engine,
       texLiveVersion: opts.texLiveVersion,
       draft,

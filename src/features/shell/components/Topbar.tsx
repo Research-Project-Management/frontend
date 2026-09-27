@@ -2,21 +2,12 @@
 
 import React, { useEffect } from 'react';
 import { Search } from 'lucide-react';
-import { cn } from "@/shared/lib/utils";
 import { useAiCompanionStore } from '@/features/ai/store';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/shared/components/ui';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import AccountDropdown from './AccountDropdown';
-import InboxPopover from '@/features/inbox/components/InboxPopover';
 
 export default function Topbar() {
   const pathname = usePathname();
-  const router = useRouter();
   const isAiRoute = pathname?.startsWith('/ai');
   const { toggleOpen } = useAiCompanionStore();
 
@@ -34,14 +25,6 @@ export default function Topbar() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [toggleOpen, isAiRoute]);
 
-  const handleAiClick = () => {
-    if (isAiRoute) {
-      router.push('/ai');
-    } else {
-      toggleOpen();
-    }
-  };
-
   return (
     <nav
       aria-label='App Header Navigation'
@@ -53,46 +36,22 @@ export default function Topbar() {
       </div>
 
       {/* Center: Search box mathematically centered on desktop, fluid on mobile */}
-      <div className='flex-1 max-w-[200px] sm:max-w-sm sm:absolute sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:px-4 pointer-events-none'>
+      <div className='flex-1 max-w-[220px] sm:max-w-[320px] md:max-w-[340px] sm:absolute sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:px-4 pointer-events-none'>
         <button
           type='button'
-          className='pointer-events-auto group flex h-8 w-full items-center gap-2 rounded-md border border-border bg-white dark:bg-card px-2.5 text-13 text-muted-foreground shadow-2xs transition-colors hover:border-foreground/30 hover:text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
+          onClick={() => window.dispatchEvent(new CustomEvent('open-quick-search'))}
+          className='pointer-events-auto group flex h-8 w-full items-center gap-2 rounded-md border border-border bg-white dark:bg-card px-2.5 text-13 text-foreground shadow-2xs transition-colors hover:border-foreground/30 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
+          aria-label='Search'
         >
-          <Search className='size-3.5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0' />
-          <span className='text-13 font-normal leading-none truncate'>Search...</span>
+          <Search className='size-3.5 text-foreground shrink-0' />
+          <span className='text-13 font-normal leading-none truncate text-foreground'>
+            Search...
+          </span>
         </button>
       </div>
 
-      {/* Right: Inbox Notification Bell + AI assistant button */}
-      <div className='flex items-center gap-2 shrink-0 relative z-10'>
-        <InboxPopover align='end' />
-
-        <TooltipProvider delayDuration={150}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type='button'
-                onClick={handleAiClick}
-                className='inline-flex h-8 items-center gap-2 rounded-md border border-border bg-white dark:bg-card px-2.5 text-13 font-medium text-foreground shadow-2xs cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none'
-                aria-label='AI assistant'
-              >
-                <img
-                  src='/Chat.svg'
-                  alt='AI assistant'
-                  className='size-4 shrink-0 rounded-full block object-contain'
-                />
-                <span className='tracking-tight leading-none'>AI assistant</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side='bottom' sideOffset={6} className='flex items-center gap-1.5'>
-              <span>AI assistant</span>
-              <kbd className='rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground'>
-                Ctrl+J
-              </kbd>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
+      {/* Right: Optical balance matching left rail width */}
+      <div className='flex w-8 sm:w-11 items-center justify-end shrink-0 relative z-10' />
     </nav>
   );
 }

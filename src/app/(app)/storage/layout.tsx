@@ -16,7 +16,7 @@ export default function Layout({ children }: { children?: React.ReactNode }) {
     const isPreviewOpen = usePreviewStore(s => !!s.selectedItem);
 
     return (
-        <div className="flex h-full w-full bg-background overflow-hidden relative">
+        <div className="flex h-full w-full bg-transparent overflow-hidden relative">
             <aside className="shrink-0 relative z-20">
                 <Sidebar />
             </aside>

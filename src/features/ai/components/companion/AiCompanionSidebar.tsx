@@ -125,13 +125,19 @@ export function AiCompanionSidebar() {
 
   // Derive topbar title: default 'Flux AI', switch to chat title if user has chatted or session exists
   const firstUserMessage = messages.find((m) => m.role === 'user')?.content;
+  const isGreeting =
+    firstUserMessage &&
+    /^(xin chào|chào bạn|chào|hello|hi|hey|alo)[!.,? ]*$/i.test(
+      firstUserMessage.trim()
+    );
   const chatTitle =
-    sessionTitle ||
-    (firstUserMessage
-      ? firstUserMessage.length > 36
-        ? `${firstUserMessage.slice(0, 36)}...`
-        : firstUserMessage
-      : '');
+    sessionTitle && sessionTitle !== 'New Chat'
+      ? sessionTitle
+      : !isGreeting && firstUserMessage
+        ? firstUserMessage.length > 36
+          ? `${firstUserMessage.slice(0, 36)}...`
+          : firstUserMessage
+        : sessionTitle || 'Flux AI';
   const displayTitle =
     (messages.length > 0 || sessionTitle) && chatTitle ? chatTitle : 'Flux AI';
 

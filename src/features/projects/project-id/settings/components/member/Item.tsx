@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ChevronDown, MoreHorizontal, Trash2 } from 'lucide-react';
+import { ChevronDown, Crown, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
@@ -11,8 +11,10 @@ interface ItemProps {
   member: ProjectMemberItem;
   canManage: boolean;
   isCurrentUser: boolean;
+  isOwner?: boolean;
   onUpdateRole: (role: string) => void;
   onRemove: () => void;
+  onTransferOwnership?: () => void;
 }
 
 function formatDate(dateStr?: string): string {
@@ -57,8 +59,10 @@ export function Item({
   member,
   canManage,
   isCurrentUser,
+  isOwner = false,
   onUpdateRole,
   onRemove,
+  onTransferOwnership,
 }: ItemProps) {
   const { user, role, joinedAt } = member;
   const displayName = getDisplayName(user);
@@ -112,11 +116,25 @@ export function Item({
                 <ChevronDown className="size-3 text-muted-foreground shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-40 p-1 rounded-md">
+            <DropdownMenuContent align="start" className="w-52 p-1 rounded-md">
               <DropdownMenuRadioGroup
                 value={role.toLowerCase()}
-                onValueChange={onUpdateRole}
+                onValueChange={(val) => {
+                  if (val === 'owner') {
+                    onTransferOwnership?.();
+                  } else {
+                    onUpdateRole(val);
+                  }
+                }}
               >
+                {isOwner && onTransferOwnership && (
+                  <DropdownMenuRadioItem
+                    value="owner"
+                    className="text-xs cursor-pointer text-amber-600 dark:text-amber-400 font-medium"
+                  >
+                    Owner (Chuyển quyền chủ sở hữu)
+                  </DropdownMenuRadioItem>
+                )}
                 <DropdownMenuRadioItem value="coordinator" className="text-xs cursor-pointer">
                   Coordinator (Điều phối viên)
                 </DropdownMenuRadioItem>
@@ -146,18 +164,28 @@ export function Item({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
+                aria-label="Member options"
                 className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 <MoreHorizontal className="size-4 shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-32 p-1 rounded-md">
+            <DropdownMenuContent align="end" className="w-44 p-1 rounded-md">
+              {isOwner && onTransferOwnership && (
+                <DropdownMenuItem
+                  onClick={onTransferOwnership}
+                  className="text-xs font-medium cursor-pointer rounded-md flex items-center gap-2 text-amber-600 dark:text-amber-400 focus:text-amber-600 focus:bg-amber-500/10"
+                >
+                  <Crown className="size-3.5 shrink-0" />
+                  <span>Transfer ownership</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onClick={onRemove}
-                className="text-xs font-medium cursor-pointer rounded-md flex items-center gap-2"
+                className="text-xs font-medium cursor-pointer rounded-md flex items-center gap-2 text-destructive focus:text-destructive focus:bg-destructive/10"
               >
-                <Trash2 className="size-3.5 text-muted-foreground shrink-0" />
-                <span>Remove</span>
+                <Trash2 className="size-3.5 shrink-0" />
+                <span>Remove member</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

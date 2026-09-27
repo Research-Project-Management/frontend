@@ -336,32 +336,34 @@ export default function StickyDock() {
               {/* Search Toggle (Search icon only, no filter icon) */}
               {isSearchOpen ? (
                 <div className="relative flex items-center animate-in fade-in duration-150">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
                   <input
                     type="text"
                     autoFocus
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setIsSearchOpen(false);
+                        setSearchQuery('');
+                      }
+                    }}
                     placeholder="Search stickies..."
-                    className="h-7 w-48 rounded-md border border-border bg-background pl-8 pr-6 text-12 text-foreground outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-primary shadow-xs"
+                    className="h-7 w-48 rounded-md border border-border bg-background pl-8 pr-7 text-12 text-foreground outline-none placeholder:text-muted-foreground focus:border-border transition-colors shadow-2xs"
                   />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  )}
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
-                      setIsSearchOpen(false);
-                      setSearchQuery('');
+                      if (searchQuery) {
+                        setSearchQuery('');
+                      } else {
+                        setIsSearchOpen(false);
+                      }
                     }}
-                    className="ml-1 p-1 text-muted-foreground hover:text-foreground rounded-md transition-colors"
-                    title="Close search"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 size-5 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer rounded transition-colors"
+                    title={searchQuery ? "Clear search" : "Close search"}
+                    aria-label={searchQuery ? "Clear search" : "Close search"}
                   >
                     <X className="size-3.5" />
                   </button>

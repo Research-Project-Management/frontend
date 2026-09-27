@@ -593,7 +593,7 @@ export function LibraryFilterPopover({
             placeholder="Search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 w-full pl-8 pr-7 text-11 bg-background border border-border rounded-md outline-none focus:outline-none focus:border-foreground/40 focus:ring-0 text-foreground placeholder:text-foreground placeholder:font-normal shadow-none"
+            className="h-7.5 w-full pl-8 pr-7 text-11 bg-background border border-border rounded-md outline-none focus:outline-none focus:border-foreground/40 focus:ring-0 text-foreground placeholder:text-foreground placeholder:font-normal shadow-none"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           />

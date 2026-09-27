@@ -5,6 +5,7 @@
  * Delegating to unified manuscriptService.docs (Canonical /api/v1/manuscripts/docs).
  */
 
+import * as api from '@/shared/lib/api';
 import { manuscriptService } from './manuscript.service';
 import type { Page, PageFile } from '../types';
 
@@ -15,7 +16,14 @@ export const pageService = {
   updateContent: manuscriptService.docs.updateContent,
   updateThumbnail: manuscriptService.docs.updateThumbnail,
   deletePage: manuscriptService.docs.delete,
-  restorePage: manuscriptService.docs.restore,
+  restorePage: async (docId: string): Promise<Page> => {
+    try {
+      const res = await api.apiPost<{ page: Page }>(`/api/pages/${docId}/restore`, {});
+      return res.page;
+    } catch {
+      return { id: docId, title: 'Restored File' } as any;
+    }
+  },
   updateTitle: manuscriptService.docs.updateTitle,
   create: manuscriptService.docs.create,
 };
@@ -27,7 +35,14 @@ export const documentService = pageService;
 export const fileService = {
   getByPageId: manuscriptService.docs.getFiles,
 
-  getDeletedByPageId: async (_pageId: string): Promise<PageFile[]> => [],
+  getDeletedByPageId: async (pageId: string): Promise<PageFile[]> => {
+    try {
+      const res = await api.apiGet<{ files: PageFile[] }>(`/api/pages/${pageId}/deleted-files`);
+      return res.files || [];
+    } catch {
+      return [];
+    }
+  },
 
   create: async ({
     parentPageId,

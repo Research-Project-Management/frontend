@@ -98,6 +98,7 @@ export default function MemberPage() {
     members,
     filteredMembers,
     currentUser,
+    isOwner,
     isOwnerOrAdmin,
     defaultAssigneeId,
     search,
@@ -107,6 +108,7 @@ export default function MemberPage() {
     isLoading,
     isError,
     isAdding,
+    isTransferringOwnership,
   } = state;
 
   const {
@@ -114,6 +116,7 @@ export default function MemberPage() {
     addMembers,
     updateRole,
     removeMember,
+    transferOwnership,
     setSearch,
     setRoleFilter,
     toggleSort,
@@ -121,6 +124,7 @@ export default function MemberPage() {
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [deletingMember, setDeletingMember] = useState<ProjectMemberItem | null>(null);
+  const [transferringMember, setTransferringMember] = useState<ProjectMemberItem | null>(null);
 
   const existingMemberIds = useMemo(() => {
     return new Set<string>(members.map((m: any) => m.userId));
@@ -130,6 +134,16 @@ export default function MemberPage() {
     if (!deletingMember) return;
     removeMember(deletingMember.userId);
     setDeletingMember(null);
+  };
+
+  const confirmTransfer = async () => {
+    if (!transferringMember) return;
+    try {
+      await transferOwnership(transferringMember.userId);
+      setTransferringMember(null);
+    } catch {
+      // Handled by toast in mutation
+    }
   };
 
   const handleImport = () => {
@@ -297,9 +311,11 @@ export default function MemberPage() {
                             key={member.userId}
                             member={member}
                             canManage={isOwnerOrAdmin}
+                            isOwner={isOwner}
                             isCurrentUser={isCurrentUser}
                             onUpdateRole={(newRole) => updateRole(member.userId, newRole)}
                             onRemove={() => setDeletingMember(member)}
+                            onTransferOwnership={() => setTransferringMember(member)}
                           />
                         );
                       })
@@ -330,6 +346,18 @@ export default function MemberPage() {
         description={`Are you sure you want to remove ${deletingMember?.user.name || 'this member'} from the project? They will lose access to all project resources.`}
         confirmText="Remove member"
         cancelText="Cancel"
+      />
+
+      {/* Transfer Ownership Confirmation Modal */}
+      <DeleteModal
+        isOpen={Boolean(transferringMember)}
+        onClose={() => setTransferringMember(null)}
+        onConfirm={confirmTransfer}
+        title="Transfer project ownership"
+        description={`Are you sure you want to transfer ownership of this project to ${transferringMember?.user.name || 'this member'}? You will no longer be the project owner and cannot undo this action.`}
+        confirmText="Transfer ownership"
+        cancelText="Cancel"
+        loading={isTransferringOwnership}
       />
     </div>
   );

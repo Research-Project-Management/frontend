@@ -20,11 +20,14 @@ import {
   highlightActiveLineGutter,
   highlightActiveLine,
   keymap,
+  rectangularSelection,
+  crosshairCursor,
 } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { foldGutter, foldKeymap, bracketMatching } from '@codemirror/language';
 import { searchKeymap } from '@codemirror/search';
 import { autocompletion, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
+import { linter, lintGutter, type Diagnostic } from '@codemirror/lint';
 import { vim, Vim } from '@replit/codemirror-vim';
 import { yCollab } from 'y-codemirror.next';
 import type * as Y from 'yjs';
@@ -37,6 +40,7 @@ import {
   lineHighlightField,
 } from '../../sub-features/code-editor/codemirror/latex-language';
 import { createLatexCompletionSource } from '../../sub-features/code-editor/codemirror/latex-autocomplete';
+import { runLatexLinter } from '../../utils/latex-linter.util';
 import {
   latexVisualPlugin,
   setMathEditCallback,
@@ -54,10 +58,66 @@ export interface UnifiedCodeMirrorEditorProps {
   isDarkTheme?: boolean;
   readOnly?: boolean;
   bibEntries?: any[];
+  projectFiles?: any[];
   onSyncTexReverse?: (line: number, col: number) => void;
   keybinding?: string;
   yText?: Y.Text | null;
   awareness?: any | null;
+}
+
+function getTypographyExtension(fontSize = 15, fontFamily = 'default', lineHeight = 1.6) {
+  const fontMap: Record<string, string> = {
+    default: 'var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)',
+    menlo: 'Menlo, Monaco, "Courier New", monospace',
+    consolas: 'Consolas, "Lucida Console", monospace',
+    fira: '"Fira Code", monospace',
+    'source-code': '"Source Code Pro", monospace',
+  };
+  const resolvedFont = fontMap[fontFamily] || fontMap.default;
+
+  return EditorView.theme({
+    '&': {
+      fontSize: `${fontSize}px`,
+    },
+    '.cm-scroller': {
+      fontFamily: resolvedFont,
+      lineHeight: `${lineHeight}`,
+    },
+  });
+}
+
+function createLatexLinterExtension() {
+  return [
+    lintGutter(),
+    linter((view) => {
+      const doc = view.state.doc;
+      const text = doc.toString();
+      const rawDiags = runLatexLinter(text);
+
+      const diagnostics: Diagnostic[] = [];
+
+      for (const d of rawDiags) {
+        const startLineNum = Math.min(Math.max(1, d.startLineNumber), doc.lines);
+        const endLineNum = Math.min(Math.max(1, d.endLineNumber), doc.lines);
+
+        const startLine = doc.line(startLineNum);
+        const endLine = doc.line(endLineNum);
+
+        const from = Math.min(startLine.from + Math.max(0, d.startColumn - 1), startLine.to);
+        const to = Math.min(endLine.from + Math.max(0, d.endColumn - 1), endLine.to);
+
+        diagnostics.push({
+          from: Math.min(from, to),
+          to: Math.max(from, to, from + 1),
+          severity: d.severity,
+          message: d.message,
+          source: 'LaTeX Code Check',
+        });
+      }
+
+      return diagnostics;
+    }),
+  ];
 }
 
 export default function UnifiedCodeMirrorEditor({
@@ -66,6 +126,7 @@ export default function UnifiedCodeMirrorEditor({
   isDarkTheme = false,
   readOnly = false,
   bibEntries = [],
+  projectFiles = [],
   onSyncTexReverse,
   keybinding,
   yText,
@@ -79,15 +140,31 @@ export default function UnifiedCodeMirrorEditor({
   const editorMode = useSettingsStore((s) => s.editorMode);
   const setEditorMode = useSettingsStore((s) => s.setEditorMode);
   const storeKeybinding = useSettingsStore((s) => s.keybinding);
+  const fontSize = useSettingsStore((s) => s.fontSize);
+  const fontFamily = useSettingsStore((s) => s.fontFamily);
+  const lineHeight = useSettingsStore((s) => s.lineHeight);
+  const wordWrap = useSettingsStore((s) => s.wordWrap);
+  const lineNumbersSetting = useSettingsStore((s) => s.lineNumbers);
+  const autoCloseBrackets = useSettingsStore((s) => s.autoCloseBrackets);
+  const autoComplete = useSettingsStore((s) => s.autoComplete);
+  const nonBlinkingCursor = useSettingsStore((s) => s.nonBlinkingCursor);
+  const linterEnabled = useSettingsStore((s) => s.linterEnabled);
 
   const [mathTrigger, setMathTrigger] = useState<MathPopoverTrigger | null>(null);
 
   // Compartments for dynamic reconfiguration without recreating editor
   const modeCompartmentRef = useRef(new Compartment());
   const themeCompartmentRef = useRef(new Compartment());
+  const typographyCompartmentRef = useRef(new Compartment());
   const readOnlyCompartmentRef = useRef(new Compartment());
   const keybindingCompartmentRef = useRef(new Compartment());
   const collabCompartmentRef = useRef(new Compartment());
+  const wordWrapCompartmentRef = useRef(new Compartment());
+  const lineNumbersCompartmentRef = useRef(new Compartment());
+  const bracketsCompartmentRef = useRef(new Compartment());
+  const autocompleteCompartmentRef = useRef(new Compartment());
+  const cursorBlinkCompartmentRef = useRef(new Compartment());
+  const linterCompartmentRef = useRef(new Compartment());
 
   // Listen for math widget clicks
   useEffect(() => {
@@ -113,13 +190,27 @@ export default function UnifiedCodeMirrorEditor({
     }
   }, []);
 
+  const bibEntriesRef = useRef(bibEntries);
+  useEffect(() => {
+    bibEntriesRef.current = bibEntries;
+  }, [bibEntries]);
+
+  const projectFilesRef = useRef(projectFiles);
+  useEffect(() => {
+    projectFilesRef.current = projectFiles;
+  }, [projectFiles]);
+
   // ── Mount CodeMirror 6 ───────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const bibKeys = bibEntries.map((b: any) => b.id || b.key || b.citationKey).filter(Boolean);
     const latexCompletion = autocompletion({
-      override: [createLatexCompletionSource(bibKeys)],
+      override: [
+        createLatexCompletionSource(
+          () => bibEntriesRef.current,
+          () => projectFilesRef.current || []
+        ),
+      ],
     });
 
     const isVisual = editorMode === 'visual';
@@ -132,9 +223,26 @@ export default function UnifiedCodeMirrorEditor({
         // Base extensions
         history(),
         bracketMatching(),
-        closeBrackets(),
         lineHighlightField,
-        EditorView.lineWrapping,
+        EditorState.allowMultipleSelections.of(true),
+        rectangularSelection(),
+        crosshairCursor(),
+
+        // Dynamic Settings Compartments
+        wordWrapCompartmentRef.current.of(wordWrap ? [EditorView.lineWrapping] : []),
+        lineNumbersCompartmentRef.current.of(
+          lineNumbersSetting && !isVisual ? [lineNumbers(), highlightActiveLineGutter()] : []
+        ),
+        bracketsCompartmentRef.current.of(autoCloseBrackets ? [closeBrackets()] : []),
+        autocompleteCompartmentRef.current.of(
+          autoComplete && !isVisual ? [latexCompletion] : []
+        ),
+        cursorBlinkCompartmentRef.current.of(
+          nonBlinkingCursor ? [EditorView.theme({ '.cm-cursor': { animation: 'none !important' } })] : []
+        ),
+        linterCompartmentRef.current.of(
+          linterEnabled && !isVisual ? createLatexLinterExtension() : []
+        ),
 
         // Update listener
         EditorView.updateListener.of((update) => {
@@ -163,6 +271,11 @@ export default function UnifiedCodeMirrorEditor({
           yText && awareness ? [yCollab(yText, awareness)] : []
         ),
 
+        // Typography compartment (Font size, family, line height)
+        typographyCompartmentRef.current.of(
+          getTypographyExtension(fontSize, fontFamily, lineHeight)
+        ),
+
         // Theme compartment
         themeCompartmentRef.current.of(getEditorTheme(isDarkTheme)),
 
@@ -174,12 +287,9 @@ export default function UnifiedCodeMirrorEditor({
           isVisual
             ? [latexVisualPlugin]
             : [
-                lineNumbers(),
-                highlightActiveLineGutter(),
                 highlightActiveLine(),
                 foldGutter(),
                 latexLanguage,
-                latexCompletion,
               ]
         ),
       ],
@@ -213,6 +323,17 @@ export default function UnifiedCodeMirrorEditor({
     });
   }, [isDarkTheme]);
 
+  // ── Dynamic Typography Switching (Font size, family, line height) ─────────
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: typographyCompartmentRef.current.reconfigure(
+        getTypographyExtension(fontSize, fontFamily, lineHeight)
+      ),
+    });
+  }, [fontSize, fontFamily, lineHeight]);
+
   // ── Dynamic ReadOnly Switching ────────────────────────────────────────────
   useEffect(() => {
     const view = viewRef.current;
@@ -238,37 +359,36 @@ export default function UnifiedCodeMirrorEditor({
     const view = viewRef.current;
     if (!view) return;
 
-    if (yText && yText.length > 0) {
-      const currentDoc = view.state.doc.toString();
-      const yContent = yText.toString();
-      if (currentDoc !== yContent) {
-        view.dispatch({
-          changes: { from: 0, to: currentDoc.length, insert: yContent },
-          effects: collabCompartmentRef.current.reconfigure(
-            awareness ? [yCollab(yText, awareness)] : []
-          ),
-        });
-        return;
-      }
+    if (!yText || !awareness) {
+      view.dispatch({
+        effects: collabCompartmentRef.current.reconfigure([]),
+      });
+      return;
     }
 
-    view.dispatch({
-      effects: collabCompartmentRef.current.reconfigure(
-        yText && awareness ? [yCollab(yText, awareness)] : []
-      ),
-    });
-  }, [yText, awareness]);
-
-  // Seed initial content into Yjs document if empty
-  useEffect(() => {
-    if (yText && yText.length === 0 && value && value.length > 0) {
+    // Seed yText if empty and we have a valid initial value
+    if (yText.length === 0 && value && value.length > 0) {
       yText.doc?.transact(() => {
         if (yText.length === 0) {
           yText.insert(0, value);
         }
       });
     }
-  }, [yText, value]);
+
+    const currentDoc = view.state.doc.toString();
+    const yContent = yText.toString();
+    if (yContent.length > 0 && currentDoc !== yContent) {
+      view.dispatch({
+        changes: { from: 0, to: currentDoc.length, insert: yContent },
+        effects: collabCompartmentRef.current.reconfigure([yCollab(yText, awareness)]),
+      });
+      return;
+    }
+
+    view.dispatch({
+      effects: collabCompartmentRef.current.reconfigure([yCollab(yText, awareness)]),
+    });
+  }, [yText, awareness]);
 
   // ── 0ms Instant Mode Toggle (Code <-> Visual) ─────────────────────────────
   useEffect(() => {
@@ -278,24 +398,106 @@ export default function UnifiedCodeMirrorEditor({
     const isVisual = editorMode === 'visual';
     const bibKeys = bibEntries.map((b: any) => b.id || b.key || b.citationKey).filter(Boolean);
     const latexCompletion = autocompletion({
-      override: [createLatexCompletionSource(bibKeys)],
+      override: [
+        createLatexCompletionSource(
+          bibKeys,
+          () => projectFilesRef.current || []
+        ),
+      ],
     });
 
     const modeExtensions = isVisual
       ? [latexVisualPlugin]
       : [
-          lineNumbers(),
-          highlightActiveLineGutter(),
           highlightActiveLine(),
           foldGutter(),
           latexLanguage,
-          latexCompletion,
         ];
 
     view.dispatch({
-      effects: modeCompartmentRef.current.reconfigure(modeExtensions),
+      effects: [
+        modeCompartmentRef.current.reconfigure(modeExtensions),
+        lineNumbersCompartmentRef.current.reconfigure(
+          lineNumbersSetting && !isVisual ? [lineNumbers(), highlightActiveLineGutter()] : []
+        ),
+        autocompleteCompartmentRef.current.reconfigure(
+          autoComplete && !isVisual ? [latexCompletion] : []
+        ),
+        linterCompartmentRef.current.reconfigure(
+          linterEnabled && !isVisual ? createLatexLinterExtension() : []
+        ),
+      ],
     });
-  }, [editorMode, bibEntries]);
+  }, [editorMode, bibEntries, lineNumbersSetting, autoComplete, linterEnabled]);
+
+  // ── Dynamic Word Wrap Switching ───────────────────────────────────────────
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: wordWrapCompartmentRef.current.reconfigure(wordWrap ? [EditorView.lineWrapping] : []),
+    });
+  }, [wordWrap]);
+
+  // ── Dynamic Line Numbers Switching ────────────────────────────────────────
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    const isVisual = editorMode === 'visual';
+    view.dispatch({
+      effects: lineNumbersCompartmentRef.current.reconfigure(
+        lineNumbersSetting && !isVisual ? [lineNumbers(), highlightActiveLineGutter()] : []
+      ),
+    });
+  }, [lineNumbersSetting, editorMode]);
+
+  // ── Dynamic Auto-close Brackets Switching ─────────────────────────────────
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: bracketsCompartmentRef.current.reconfigure(autoCloseBrackets ? [closeBrackets()] : []),
+    });
+  }, [autoCloseBrackets]);
+
+  // ── Dynamic Auto-complete Switching ───────────────────────────────────────
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    const isVisual = editorMode === 'visual';
+    const bibKeys = bibEntries.map((b: any) => b.id || b.key || b.citationKey).filter(Boolean);
+    const latexCompletion = autocompletion({
+      override: [createLatexCompletionSource(bibKeys, () => projectFilesRef.current || [])],
+    });
+    view.dispatch({
+      effects: autocompleteCompartmentRef.current.reconfigure(
+        autoComplete && !isVisual ? [latexCompletion] : []
+      ),
+    });
+  }, [autoComplete, editorMode, bibEntries]);
+
+  // ── Dynamic Non-blinking Cursor Switching ─────────────────────────────────
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: cursorBlinkCompartmentRef.current.reconfigure(
+        nonBlinkingCursor ? [EditorView.theme({ '.cm-cursor': { animation: 'none !important' } })] : []
+      ),
+    });
+  }, [nonBlinkingCursor]);
+
+  // ── Dynamic Code Check / Linter Switching ─────────────────────────────────
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    const isVisual = editorMode === 'visual';
+    view.dispatch({
+      effects: linterCompartmentRef.current.reconfigure(
+        linterEnabled && !isVisual ? createLatexLinterExtension() : []
+      ),
+    });
+  }, [linterEnabled, editorMode]);
 
   // ── Sync External Value (e.g. Page Switch or Remote Sync) ──────────────────
   useEffect(() => {
@@ -374,6 +576,8 @@ export default function UnifiedCodeMirrorEditor({
         onDoubleClick={handleDoubleClick}
         className={cn(
           'flex-1 w-full h-full overflow-hidden [&_.cm-editor]:h-full [&_.cm-scroller]:h-full',
+          '[&_.cm-ySelectionCaret]:border-l-2 [&_.cm-ySelectionCaret]:border-r-0 [&_.cm-ySelectionCaret]:transition-all',
+          '[&_.cm-ySelectionInfo]:font-sans [&_.cm-ySelectionInfo]:rounded-xs [&_.cm-ySelectionInfo]:px-1.5 [&_.cm-ySelectionInfo]:py-0.5 [&_.cm-ySelectionInfo]:text-[10px] [&_.cm-ySelectionInfo]:font-semibold [&_.cm-ySelectionInfo]:shadow-xs [&_.cm-ySelectionInfo]:tracking-normal',
           editorMode === 'visual' &&
             'max-w-4xl mx-auto w-full px-6 py-4 [&_.cm-content]:font-sans [&_.cm-content]:text-base'
         )}

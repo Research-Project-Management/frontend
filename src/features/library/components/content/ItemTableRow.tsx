@@ -6,7 +6,9 @@ import {
   Paperclip,
   StickyNote,
   ShieldAlert,
+  Loader2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Checkbox } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 import {
@@ -91,6 +93,10 @@ export const ItemTableRow = React.memo(function ItemTableRow({
     Boolean(item.isStarred) ||
     Boolean(typeof item.rating === 'number' && item.rating > 0);
 
+  const isProcessing = Boolean((item as any)._isProcessing);
+  const processingStatus = (item as any)._processingStatus as string | undefined;
+  const processingError = (item as any)._processingError as string | undefined;
+
   const isRetracted = Boolean(
     item.isRetracted ||
     (item as any).retractionStatus === 'retracted' ||
@@ -149,10 +155,11 @@ export const ItemTableRow = React.memo(function ItemTableRow({
       onDetachFromCollection={onDetachFromCollection ? () => onDetachFromCollection(item.id) : undefined}
     >
       <tr
-        draggable={true}
+        draggable={!isProcessing}
         aria-rowindex={index + 1}
         aria-selected={isSelected}
         onDragStart={(e) => {
+          if (isProcessing) return;
           // Defer reads: read snapshot only on drag event, avoiding re-renders during selection
           const currentSelectedIds = useLibraryUIStore.getState().selectedIds;
           const idsToDrag = currentSelectedIds.has(item.id)
@@ -167,6 +174,12 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         onClick={(e) => onRowClick(e, item, index)}
         onDoubleClick={() => {
           if (!isTrash) {
+            if (isProcessing) {
+              toast.info('Document is still processing metadata', {
+                description: 'Full paper details will be available shortly.',
+              });
+              return;
+            }
             router.push(`/library/papers/${item.id}${qParam}`);
           }
         }}
@@ -174,7 +187,9 @@ export const ItemTableRow = React.memo(function ItemTableRow({
           'cursor-pointer transition-colors duration-75 group select-none text-13 h-[34px]',
           isRowActive || isSelected
             ? 'bg-muted'
-            : 'hover:bg-muted/60',
+            : isProcessing
+              ? 'bg-primary/[0.03] hover:bg-muted/60'
+              : 'hover:bg-muted/60',
         )}
       >
         {/* Title with Checkbox & Status Indicators */}
@@ -216,6 +231,33 @@ export const ItemTableRow = React.memo(function ItemTableRow({
                 )}
               />
             </div>
+            {isProcessing && (
+              <span
+                title={
+                  processingError ||
+                  (processingStatus === 'UPLOADING'
+                    ? 'Uploading raw file...'
+                    : 'Extracting metadata...')
+                }
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-11 font-medium shrink-0',
+                  processingStatus === 'FAILED'
+                    ? 'bg-destructive/10 text-destructive border border-destructive/20'
+                    : 'bg-primary/10 text-primary border border-primary/20',
+                )}
+              >
+                {processingStatus !== 'FAILED' && (
+                  <Loader2 className="size-3 animate-spin shrink-0" />
+                )}
+                <span>
+                  {processingStatus === 'FAILED'
+                    ? 'Extraction failed'
+                    : processingStatus === 'UPLOADING'
+                      ? 'Uploading...'
+                      : 'Processing...'}
+                </span>
+              </span>
+            )}
             {isRetracted && (
               <span
                 title="This item has been retracted"
@@ -241,7 +283,10 @@ export const ItemTableRow = React.memo(function ItemTableRow({
               </span>
             )}
             <span
-              className="truncate text-13 text-foreground font-normal"
+              className={cn(
+                'truncate text-13 font-normal',
+                isProcessing && 'text-foreground font-medium',
+              )}
               title={cleanTitle}
             >
               {cleanTitle}
@@ -252,9 +297,17 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         {/* Authors */}
         {columns.authors !== false && (
           <td className="px-3 h-[34px] py-0 align-middle truncate text-13 text-foreground font-normal">
-            <span title={authorTooltip}>
-              {formatAcademicAuthors(item.authors)}
-            </span>
+            {isProcessing &&
+            (!item.authors ||
+              item.authors.length === 0 ||
+              item.authors[0] === 'Processing metadata...' ||
+              item.authors[0] === 'Uploading raw file...') ? (
+              <span className="text-muted-foreground text-12 italic">Extracting authors...</span>
+            ) : (
+              <span title={authorTooltip}>
+                {formatAcademicAuthors(item.authors)}
+              </span>
+            )}
           </td>
         )}
 
@@ -268,14 +321,18 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         {/* Publication Venue */}
         {columns.publication !== false && (
           <td className="px-3 h-[34px] py-0 align-middle truncate text-13 text-foreground font-normal">
-            <span title={cleanAcademicText(item.publicationTitle || (item as any).journal || (item as any).publisher || '')}>
-              {cleanAcademicText(
-                item.publicationTitle ||
-                (item as any).journal ||
-                (item as any).publisher ||
-                ''
-              ) || '—'}
-            </span>
+            {isProcessing && !item.publicationTitle ? (
+              <span className="text-muted-foreground text-12 italic">Recognizing venue...</span>
+            ) : (
+              <span title={cleanAcademicText(item.publicationTitle || (item as any).journal || (item as any).publisher || '')}>
+                {cleanAcademicText(
+                  item.publicationTitle ||
+                  (item as any).journal ||
+                  (item as any).publisher ||
+                  ''
+                ) || '—'}
+              </span>
+            )}
           </td>
         )}
 

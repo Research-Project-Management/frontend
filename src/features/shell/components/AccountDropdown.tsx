@@ -10,6 +10,7 @@ import {
   LogOut,
   Image as ImageIcon,
   Mail,
+  Bell,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -26,6 +27,7 @@ import { useUpload } from '@/shared/hooks/use-upload';
 import { CreateProjectModal } from '@/features/projects/shell/components/project/CreateProjectModal';
 import { ProjectInvitesModal } from '@/features/projects/invitation/components/ProjectInvitesModal';
 import { useMyProjectInvitations } from '@/features/projects/invitation/hooks/use-project-invitations';
+import { useInbox } from '@/features/inbox/hooks/use-inbox';
 import { toast } from 'sonner';
 
 interface AccountDropdownProps {
@@ -39,6 +41,7 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
   const { cover, setCover } = useUserCover();
   const { uploadFile, isUploading } = useUpload();
   const { data: invitations = [] } = useMyProjectInvitations();
+  const { unreadCount = 0 } = useInbox();
   const [mounted, setMounted] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isProjectInvitesOpen, setIsProjectInvitesOpen] = useState(false);
@@ -125,7 +128,7 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
       />
 
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center justify-center size-8 rounded-md transition-colors hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary data-[state=open]:bg-muted cursor-pointer">
+        <DropdownMenuTrigger className="relative flex items-center justify-center size-8 rounded-md transition-colors hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary data-[state=open]:bg-muted cursor-pointer">
           <Avatar className="size-7 rounded-full shrink-0 border border-border/60">
             {user.avatar ? (
               <AvatarImage
@@ -136,6 +139,9 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
             ) : null}
             <AvatarFallback className="text-11 font-semibold">{userInitials}</AvatarFallback>
           </Avatar>
+          {(unreadCount > 0 || invitations.length > 0) && (
+            <span className="absolute top-0.5 right-0.5 size-2 rounded-full bg-primary ring-2 ring-background" />
+          )}
         </DropdownMenuTrigger>
 
         <DropdownMenuContent
@@ -203,9 +209,14 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
                 className="cursor-pointer gap-2.5 px-3 py-2 text-foreground hover:bg-muted focus:bg-muted rounded-md transition-colors"
                 asChild
               >
-                <Link href="/inbox">
-                  <Mail className="size-4 text-muted-foreground shrink-0" />
+                <Link href="/inbox" className="flex items-center gap-2.5 w-full">
+                  <Bell className="size-4 text-muted-foreground shrink-0" />
                   <span className="text-sm font-medium">Inbox</span>
+                  {unreadCount > 0 && (
+                    <span className="ml-auto px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-10 font-semibold leading-none tabular-nums">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                 </Link>
               </DropdownMenuItem>
 

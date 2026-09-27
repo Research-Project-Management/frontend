@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Archive,
@@ -58,9 +59,22 @@ export type ArchiveTab = 'work-items' | 'projects' | 'cycles' | 'views' | 'pages
 export function ArchivePage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<ArchiveTab>('work-items');
+  const tabParam = searchParams.get('tab') as ArchiveTab | null;
+  const initialTab: ArchiveTab =
+    tabParam && ['work-items', 'projects', 'cycles', 'views', 'pages', 'trash'].includes(tabParam)
+      ? tabParam
+      : 'work-items';
+
+  const [activeTab, setActiveTab] = useState<ArchiveTab>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    if (tabParam && ['work-items', 'projects', 'cycles', 'views', 'pages', 'trash'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [deleteConfirmProject, setDeleteConfirmProject] = useState<Project | null>(null);

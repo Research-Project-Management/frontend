@@ -176,9 +176,10 @@ export const IngestionService = {
 
 export interface IngestionProgressItem {
   title: string;
-  status: 'SUCCEEDED' | 'DUPLICATE' | 'FAILED';
+  status: 'SUCCEEDED' | 'DUPLICATE' | 'FAILED' | 'PROCESSING' | 'UPLOADING' | 'PENDING';
   itemId?: string;
   error?: string;
+  itemName?: string;
 }
 
 export interface IngestionProgressResponse {

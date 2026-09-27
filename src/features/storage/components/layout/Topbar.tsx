@@ -67,7 +67,7 @@ export default function Topbar({
   return (
     <header
       className={cn(
-        'flex items-center justify-between border-b border-border bg-background/80 px-4 h-11 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none',
+        'flex items-center justify-between border-b border-border bg-transparent px-4 h-11 sticky top-0 z-10 shrink-0 select-none',
         className
       )}
       style={{ paddingLeft: 'max(1rem, var(--header-offset, 0px))' }}

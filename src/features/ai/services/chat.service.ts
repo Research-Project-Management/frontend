@@ -85,13 +85,13 @@ function parseSseDataChunk(
           return {};
         }
         if (typeof p.content === 'string') {
-          return { content: p.content };
+          return { content: p.content.includes('\\n') ? p.content.replace(/\\r\\n|\\n/g, '\n') : p.content };
         }
         if (typeof p.text === 'string') {
-          return { content: p.text };
+          return { content: p.text.includes('\\n') ? p.text.replace(/\\r\\n|\\n/g, '\n') : p.text };
         }
         if (typeof p.delta === 'string') {
-          return { content: p.delta };
+          return { content: p.delta.includes('\\n') ? p.delta.replace(/\\r\\n|\\n/g, '\n') : p.delta };
         }
       }
     } catch {
@@ -99,7 +99,12 @@ function parseSseDataChunk(
     }
   }
 
-  return { content: data };
+  const content =
+    typeof data === 'string' && data.includes('\\n')
+      ? data.replace(/\\r\\n|\\n/g, '\n')
+      : data;
+
+  return { content };
 }
 
 /**

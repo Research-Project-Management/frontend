@@ -376,7 +376,18 @@ export function ChatInput({
     saveWebSites(next);
   };
 
+  const isUploading = uploadingFiles.length > 0;
+
   const handleSend = useCallback(() => {
+    if (isUploading) {
+      const isIndexing = uploadingFiles.some((f) => f.stage === 'processing');
+      toast.info(
+        isIndexing
+          ? 'Tài liệu đang được lập chỉ mục vector, vui lòng đợi trong giây lát...'
+          : 'Tài liệu đang được tải lên, vui lòng đợi hoàn tất...'
+      );
+      return;
+    }
     if (!message.trim() || disabled) return;
     const finalProjectId = selectedProject === 'all' || !selectedProject ? undefined : selectedProject;
     onSend?.(
@@ -385,7 +396,7 @@ export function ChatInput({
       webSearch ? (webSites.length > 0 ? webSites : ['*']) : undefined,
     );
     setMessage('');
-  }, [message, disabled, selectedProject, onSend, webSearch, webSites]);
+  }, [message, disabled, isUploading, uploadingFiles, selectedProject, onSend, webSearch, webSites]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -517,23 +528,32 @@ export function ChatInput({
             {uploadingFiles.map((up) => {
               const isProcessing = up.stage === 'processing';
               return (
-                <div
-                  key={up.id}
-                  className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/70 bg-muted/40 max-w-[240px] shadow-2xs"
-                >
-                  <div className="size-7 rounded-md flex items-center justify-center shrink-0 border border-border/50 bg-background text-primary">
-                    <Loader2 className="size-3.5 animate-spin text-primary" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-11 font-medium text-foreground truncate">{up.name}</p>
-                    <div className="flex items-center gap-1.5 text-10 text-muted-foreground">
-                      <span className={isProcessing ? "text-primary font-medium" : ""}>
-                        {isProcessing ? 'Indexing vectors...' : `Uploading (${up.progress ?? 0}%)`}
-                      </span>
-                      {up.size ? <span>• {formatBytes(up.size)}</span> : null}
+                <Tooltip key={up.id}>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/70 bg-muted/40 max-w-[240px] shadow-2xs cursor-default">
+                      <div className="size-7 rounded-md flex items-center justify-center shrink-0 border border-border/50 bg-background text-primary">
+                        <Loader2 className="size-3.5 animate-spin text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-11 font-medium text-foreground truncate">{up.name}</p>
+                        <div className="flex items-center gap-1.5 text-10 text-muted-foreground">
+                          <span className={isProcessing ? "text-primary font-medium" : ""}>
+                            {isProcessing ? 'Indexing...' : `Uploading (${up.progress ?? 0}%)`}
+                          </span>
+                          {up.size ? <span>• {formatBytes(up.size)}</span> : null}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={4} className="max-w-xs text-11">
+                    <p className="font-medium truncate">{up.name}</p>
+                    <p className="text-10 text-muted-foreground">
+                      {isProcessing
+                        ? 'Đang trích xuất nội dung & lập chỉ mục vector...'
+                        : `Đang tải lên: ${up.progress}%`}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
               );
             })}
 
@@ -544,59 +564,78 @@ export function ChatInput({
               return (
                 <div
                   key={src.id}
-                  onClick={() => toggleSource(src.id)}
                   className={cn(
                     "group relative flex items-center gap-2.5 px-3 py-1.5 rounded-md border text-left cursor-pointer transition-all max-w-[240px] shadow-2xs select-none",
                     src.enabled
                       ? "bg-card hover:bg-muted/50 border-border"
                       : "bg-muted/30 border-border/40 opacity-55 hover:opacity-80"
                   )}
-                  title={`${src.name} (${src.enabled ? 'Enabled in AI context - click to disable' : 'Disabled - click to enable'})`}
                 >
-                  {/* File Icon Badge */}
-                  <div
-                    className={cn(
-                      "size-7 rounded-md flex items-center justify-center shrink-0 border",
-                      meta.iconColor
-                    )}
-                  >
-                    <IconComp className="size-3.5" />
-                  </div>
-
-                  {/* Details */}
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={cn(
-                        "text-11 font-medium truncate",
-                        src.enabled ? "text-foreground" : "text-muted-foreground line-through"
-                      )}
-                    >
-                      {src.name}
-                    </p>
-                    <div className="flex items-center gap-1.5 text-10 text-muted-foreground">
-                      <span>{meta.typeLabel}</span>
-                      {meta.sizeText && (
-                        <>
-                          <span>•</span>
-                          <span>{meta.sizeText}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
+                  {/* File Icon Badge & Details with Tooltip */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        onClick={() => toggleSource(src.id)}
+                        className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
+                      >
+                        <div
+                          className={cn(
+                            "size-7 rounded-md flex items-center justify-center shrink-0 border",
+                            meta.iconColor
+                          )}
+                        >
+                          <IconComp className="size-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className={cn(
+                              "text-11 font-medium truncate",
+                              src.enabled ? "text-foreground" : "text-muted-foreground line-through"
+                            )}
+                          >
+                            {src.name}
+                          </p>
+                          <div className="flex items-center gap-1.5 text-10 text-muted-foreground">
+                            <span>{meta.typeLabel}</span>
+                            {meta.sizeText && (
+                              <>
+                                <span>•</span>
+                                <span>{meta.sizeText}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={4} className="max-w-xs text-11">
+                      <p className="font-medium truncate">{src.name}</p>
+                      <p className="text-10 text-muted-foreground">
+                        {src.enabled
+                          ? 'Đang kích hoạt trong ngữ cảnh AI (nhấn để tắt)'
+                          : 'Đã tắt (nhấn để kích hoạt)'}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
 
                   {/* Remove X Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeSource(src.id);
-                    }}
-                    className="size-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0 ml-0.5 outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                    aria-label={`Remove ${src.name}`}
-                    title={`Remove ${src.name}`}
-                  >
-                    <X className="size-3" />
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeSource(src.id);
+                        }}
+                        className="size-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0 ml-0.5 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        aria-label={`Remove ${src.name}`}
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={4}>
+                      Gỡ tài liệu
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               );
             })}
@@ -759,16 +798,26 @@ export function ChatInput({
                 <button
                   type="button"
                   onClick={handleSend}
-                  disabled={!message.trim() && !disabled}
+                  disabled={(!message.trim() && !disabled) || isUploading}
                   className={cn(
-                    "size-8 rounded-full flex items-center justify-center p-0 transition-all shrink-0 cursor-pointer shadow-2xs select-none",
-                    disabled
-                      ? "bg-primary text-white hover:bg-primary-hover cursor-pointer"
-                      : "bg-primary text-white hover:bg-primary-hover active:scale-95 disabled:cursor-not-allowed"
+                    "size-8 rounded-full flex items-center justify-center p-0 transition-all shrink-0 shadow-2xs select-none",
+                    isUploading
+                      ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
+                      : disabled
+                        ? "bg-primary text-white hover:bg-primary-hover cursor-pointer"
+                        : "bg-primary text-white hover:bg-primary-hover active:scale-95 disabled:cursor-not-allowed"
                   )}
-                  aria-label={disabled ? "Stop generating" : "Send message"}
+                  aria-label={
+                    isUploading
+                      ? "Đang xử lý tài liệu..."
+                      : disabled
+                        ? "Stop generating"
+                        : "Send message"
+                  }
                 >
-                  {disabled ? (
+                  {isUploading ? (
+                    <Loader2 className="size-3.5 animate-spin text-primary" />
+                  ) : disabled ? (
                     <Square className="size-3 fill-current shrink-0" />
                   ) : (
                     <ArrowUp className="size-3.5 shrink-0 stroke-[2.5] translate-y-[1px]" />
@@ -776,7 +825,13 @@ export function ChatInput({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={4}>
-                {disabled ? "Stop generating" : "Send message"}
+                {isUploading
+                  ? uploadingFiles.some((f) => f.stage === 'processing')
+                    ? "Đang lập chỉ mục tài liệu, vui lòng đợi..."
+                    : "Đang tải lên tài liệu, vui lòng đợi..."
+                  : disabled
+                    ? "Stop generating"
+                    : "Send message"}
               </TooltipContent>
             </Tooltip>
           </div>

@@ -77,38 +77,42 @@ export default function AbstractSection({
         </div>
       )}
 
-      {/* Abstract Content: Seamless auto-resizing without size jump */}
-      <textarea
-        ref={textareaRef}
-        rows={2}
-        value={draft}
-        placeholder={canEdit ? "No abstract available. Click to add abstract..." : "No abstract available."}
-        aria-label="Paper abstract summary"
-        readOnly={!canEdit}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-            e.preventDefault();
-            commit();
-            textareaRef.current?.blur();
-          } else if (e.key === 'Escape') {
-            e.preventDefault();
-            setDraft(currentAbstract || '');
-            textareaRef.current?.blur();
-          }
-        }}
+      {/* Abstract Content: Bordered rounded box matching inspector styling */}
+      <div
         className={cn(
-          "w-full text-12 leading-normal text-foreground font-sans resize-none overflow-hidden outline-none break-words select-text rounded-md",
-          "px-1.5 py-1 border border-transparent bg-transparent transition-[border-color,background-color,box-shadow]",
-          canEdit && [
-            "cursor-pointer hover:bg-muted/40",
-            "focus:cursor-text focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary focus:hover:bg-background",
-          ],
-          !canEdit && "cursor-default",
-          !draft && "placeholder:italic placeholder:text-muted-foreground"
+          "rounded-md border border-border bg-background transition-colors shadow-2xs",
+          canEdit && "focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20"
         )}
-      />
+      >
+        <textarea
+          ref={textareaRef}
+          rows={2}
+          value={draft}
+          placeholder={canEdit ? "No abstract available. Click to add abstract..." : "No abstract available."}
+          aria-label="Paper abstract summary"
+          readOnly={!canEdit}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+              e.preventDefault();
+              commit();
+              textareaRef.current?.blur();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setDraft(currentAbstract || '');
+              textareaRef.current?.blur();
+            }
+          }}
+          className={cn(
+            "w-full text-12 leading-relaxed text-foreground font-sans resize-none overflow-hidden outline-none break-words select-text rounded-md",
+            "p-2.5 bg-transparent border-0 focus:outline-none focus:ring-0",
+            canEdit && "cursor-text",
+            !canEdit && "cursor-default",
+            !draft && "placeholder:italic placeholder:text-muted-foreground"
+          )}
+        />
+      </div>
     </div>
   );
 }

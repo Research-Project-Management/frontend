@@ -81,4 +81,5 @@ export type RequestOptions = Omit<RequestInit, 'method' | 'body'> & {
   silent?: boolean;
   skipAuth?: boolean;
   rawEnvelope?: boolean;
+  responseType?: 'json' | 'blob' | 'arrayBuffer' | 'text';
 };

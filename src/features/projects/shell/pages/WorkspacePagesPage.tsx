@@ -6,12 +6,11 @@ import { useQuery } from '@tanstack/react-query';
 import {
   FileText,
   Search,
-  BookOpen,
   Plus,
-  Clock,
   ChevronDown,
   Check,
   ExternalLink,
+  X,
 } from 'lucide-react';
 import {
   Button,
@@ -24,7 +23,8 @@ import {
 } from '@/shared/components/ui';
 import { useProjects } from '../hooks/use-project';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
-import type { Page } from '@/features/projects/project-id/pages/types/page.types';
+import { PagesEmptyState } from '@/features/projects/project-id/pages/components/layout/PagesEmptyState';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { cn } from '@/shared/lib/utils';
 
 export function WorkspacePagesPage() {
@@ -37,7 +37,12 @@ export function WorkspacePagesPage() {
   const targetProjectId = selectedProjectId || (activeProjects.length > 0 ? activeProjects[0].id : '');
 
   // Fetch pages for the targeted project
-  const { data: pages = [], isLoading: isPagesLoading } = useQuery({
+  const {
+    data: pages = [],
+    isLoading: isPagesLoading,
+    isError: isPagesError,
+    error: pagesError,
+  } = useQuery({
     queryKey: ['workspace-pages', targetProjectId],
     queryFn: () => (targetProjectId ? PageService.getProjectPages(targetProjectId) : Promise.resolve([])),
     enabled: Boolean(targetProjectId),
@@ -108,14 +113,26 @@ export function WorkspacePagesPage() {
           </DropdownMenu>
 
           <div className="relative flex items-center">
-            <Search className="absolute left-2.5 size-3.5 text-muted-foreground pointer-events-none" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
             <input
               type="text"
               placeholder="Search pages..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 w-44 md:w-56 pl-8 pr-3 text-xs rounded-md border border-border bg-background placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-8 w-44 md:w-56 pl-8 pr-7 text-xs rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground outline-none focus:border-border transition-colors shadow-2xs"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setSearchQuery('')}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 size-5 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer rounded transition-colors"
+                title="Clear search"
+                aria-label="Clear search"
+              >
+                <X className="size-3" />
+              </button>
+            )}
           </div>
 
           {targetProjectId && (
@@ -130,64 +147,74 @@ export function WorkspacePagesPage() {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-semibold text-muted-foreground tracking-normal">
-            Documents & Knowledge Pages
-          </h2>
-          <span className="text-11 text-muted-foreground font-mono">
-            {filteredPages.length} document{filteredPages.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-
-        {isPagesLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full rounded-lg" />
-            ))}
+      <div className="flex-1 overflow-y-auto flex flex-col p-6 md:p-8">
+        {isPagesError ? (
+          <PlaneErrorState
+            title="Unable to load workspace pages"
+            description="An issue occurred while loading documents for this project. Other workspaces remain safe."
+            error={pagesError || new Error('Internal Server Error')}
+          />
+        ) : isPagesLoading ? (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-semibold text-muted-foreground tracking-normal">
+                Documents & Knowledge Pages
+              </h2>
+            </div>
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-md" />
+              ))}
+            </div>
           </div>
         ) : filteredPages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center border border-dashed border-border rounded-lg bg-card/40">
-            <BookOpen className="size-10 text-muted-foreground/50 mb-2" />
-            <h3 className="text-sm font-semibold text-foreground">No documents yet</h3>
-            <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-              {searchQuery
-                ? `No pages match "${searchQuery}".`
-                : 'Create research wiki pages and documentation to organize team knowledge.'}
-            </p>
-          </div>
+          <PagesEmptyState
+            searchQuery={searchQuery}
+            onClearSearch={() => setSearchQuery('')}
+          />
         ) : (
-          <div className="divide-y divide-border border border-border rounded-lg bg-card overflow-hidden">
-            {filteredPages.map((page) => (
-              <div
-                key={page.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-muted/30 transition-colors gap-3"
-              >
-                <div className="min-w-0 flex items-start gap-3">
-                  <FileText className="size-4 text-primary shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <span className="text-xs font-semibold text-foreground truncate block">
-                      {page.title || 'Untitled Page'}
-                    </span>
-                    <div className="flex items-center gap-3 text-10 text-muted-foreground font-mono mt-1">
-                      {selectedProject && <span>Project: {selectedProject.name}</span>}
-                      {page.updatedAt && (
-                        <span>Updated: {new Date(page.updatedAt).toLocaleDateString()}</span>
-                      )}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-semibold text-muted-foreground tracking-normal">
+                Documents & Knowledge Pages
+              </h2>
+              <span className="text-11 text-muted-foreground font-mono">
+                {filteredPages.length} document{filteredPages.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+
+            <div className="divide-y divide-border border border-border rounded-md bg-card overflow-hidden">
+              {filteredPages.map((page) => (
+                <div
+                  key={page.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-muted/30 transition-colors gap-3"
+                >
+                  <div className="min-w-0 flex items-start gap-3">
+                    <FileText className="size-4 text-primary shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <span className="text-xs font-semibold text-foreground truncate block">
+                        {page.title || 'Untitled Page'}
+                      </span>
+                      <div className="flex items-center gap-3 text-10 text-muted-foreground font-mono mt-1">
+                        {selectedProject && <span>Project: {selectedProject.name}</span>}
+                        {page.updatedAt && (
+                          <span>Updated: {new Date(page.updatedAt).toLocaleDateString()}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                  <Button asChild size="sm" variant="ghost" className="h-7 text-xs px-2.5 gap-1.5 cursor-pointer text-foreground hover:bg-muted">
-                    <Link href={`/projects/${page.projectId || targetProjectId}/pages`}>
-                      <span>Open Doc</span>
-                      <ExternalLink className="size-3" />
-                    </Link>
-                  </Button>
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                    <Button asChild size="sm" variant="ghost" className="h-7 text-xs px-2.5 gap-1.5 cursor-pointer text-foreground hover:bg-muted">
+                      <Link href={`/projects/${page.projectId || targetProjectId}/pages`}>
+                        <span>Open Doc</span>
+                        <ExternalLink className="size-3" />
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
       </div>

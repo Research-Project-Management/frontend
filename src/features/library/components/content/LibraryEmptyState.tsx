@@ -47,43 +47,18 @@ interface EmptyStateConfig {
   showDropzone: boolean;
 }
 
-export function LibraryEmptyState({
+interface DefaultLibraryEmptyStateProps extends Omit<LibraryEmptyStateProps, 'activeFilter'> {
+  variant: EmptyStateVariant;
+}
+
+function DefaultLibraryEmptyState({
   search = '',
-  activeFilter = null,
-  collectionId,
   collectionName,
   canEdit = true,
-  onClearSearch,
   onDirectFilesUpload,
-  onAddLink,
-}: LibraryEmptyStateProps) {
-  const pathname = usePathname();
+  variant,
+}: DefaultLibraryEmptyStateProps) {
   const [isDragOver, setIsDragOver] = useState(false);
-
-  const isSearchActive = Boolean(search.trim());
-  const isRecent =
-    activeFilter === 'recent' ||
-    activeFilter === 'recently-read' ||
-    pathname?.includes('/recently-read');
-
-  // Recently Read has its own dedicated component
-  if (isRecent && !isSearchActive) {
-    return <RecentlyReadEmptyState />;
-  }
-
-  // Determine current context variant
-  const variant: EmptyStateVariant = (() => {
-    if (isSearchActive) return 'search';
-    if (isRecent) return 'recent';
-    if (activeFilter === 'trash' || activeFilter === 'bin') return 'trash';
-    if (activeFilter === 'starred' || activeFilter === 'favorites') return 'starred';
-    if (activeFilter === 'retracted') return 'retracted';
-    if (activeFilter === 'unfiled') return 'unfiled';
-    if (activeFilter === 'my-publications' || activeFilter === 'publications') return 'publications';
-    if (activeFilter === 'saved-search') return 'saved-search';
-    if (collectionId) return 'collection';
-    return 'default';
-  })();
 
   const getConfig = (): EmptyStateConfig => {
     switch (variant) {
@@ -204,17 +179,50 @@ export function LibraryEmptyState({
         <IllustrationComponent />
       </div>
 
-      {/* Title */}
-      <h3 className="text-16 font-semibold text-foreground mb-2 tracking-tight">
+      {/* Title (h2 ensures valid heading hierarchy after page h1) */}
+      <h2 className="text-16 font-semibold text-foreground mb-2 tracking-tight">
         {config.title}
-      </h3>
+      </h2>
 
       {/* Description */}
-      <p className="text-13 text-muted-foreground max-w-[420px] leading-relaxed font-normal">
+      <p className="text-13 text-foreground/80 dark:text-muted-foreground max-w-[420px] leading-relaxed font-normal">
         {config.description}
       </p>
     </div>
   );
+}
+
+export function LibraryEmptyState(props: LibraryEmptyStateProps) {
+  const pathname = usePathname();
+  const search = props.search || '';
+  const activeFilter = props.activeFilter || null;
+
+  const isSearchActive = Boolean(search.trim());
+  const isRecent =
+    activeFilter === 'recent' ||
+    activeFilter === 'recently-read' ||
+    pathname?.includes('/recently-read');
+
+  // Recently Read has its own dedicated component
+  if (isRecent && !isSearchActive) {
+    return <RecentlyReadEmptyState />;
+  }
+
+  // Determine current context variant
+  const variant: EmptyStateVariant = (() => {
+    if (isSearchActive) return 'search';
+    if (isRecent) return 'recent';
+    if (activeFilter === 'trash' || activeFilter === 'bin') return 'trash';
+    if (activeFilter === 'starred' || activeFilter === 'favorites') return 'starred';
+    if (activeFilter === 'retracted') return 'retracted';
+    if (activeFilter === 'unfiled') return 'unfiled';
+    if (activeFilter === 'my-publications' || activeFilter === 'publications') return 'publications';
+    if (activeFilter === 'saved-search') return 'saved-search';
+    if (props.collectionId) return 'collection';
+    return 'default';
+  })();
+
+  return <DefaultLibraryEmptyState {...props} variant={variant} />;
 }
 
 export default LibraryEmptyState;

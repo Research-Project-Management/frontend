@@ -11,6 +11,12 @@ function normalizeMarkdown(text: string): string {
     .replace(/\u200B/g, "")
     .replace(/\\+([*_`[\]()#>+\-.!|%])/g, "$1");
 
+  // Unescape literal \n if present (e.g. from SSE streaming or database serialization)
+  // Ensures paragraphs, bullet lists, and numbered lists render cleanly instead of printing raw \n
+  if (result.includes('\\n')) {
+    result = result.replace(/\\r\\n|\\n/g, '\n');
+  }
+
   // Convert inline HTML spans/font styling to bold markdown to prevent raw HTML leak
   result = result.replace(/<span\s+style="[^"]*">([\s\S]*?)<\/span>/gi, "**$1**");
   result = result.replace(/<font\s+color="[^"]*">([\s\S]*?)<\/font>/gi, "**$1**");

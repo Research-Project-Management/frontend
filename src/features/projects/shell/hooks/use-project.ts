@@ -54,6 +54,11 @@ export interface RemoveProjectMemberVariables {
   userId: string;
 }
 
+export interface TransferProjectOwnershipVariables {
+  projectId: string;
+  newOwnerId: string;
+}
+
 export interface ProjectMutationContext {
   previousProject?: unknown;
   previousOverview?: unknown;
@@ -254,10 +259,11 @@ export const useDeleteProject = () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.projectsHeader() });
       queryClient.invalidateQueries({ queryKey: projectKeys.header(variables.projectId) });
       queryClient.invalidateQueries({ queryKey: ['workspace'] });
-      toast.success('Project permanently deleted', { id: 'project-action' });
+      queryClient.invalidateQueries({ queryKey: trashProjectKeys.all() });
+      toast.success('Project moved to trash', { id: 'project-action' });
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete project', { id: 'project-error' });
+      toast.error(error.message || 'Failed to move project to trash', { id: 'project-error' });
     },
   });
 };
@@ -390,6 +396,24 @@ export const useRemoveProjectMember = () => {
         queryClient.invalidateQueries({ queryKey: projectKeys.members(variables.projectId) });
         queryClient.invalidateQueries({ queryKey: projectKeys.byId(variables.projectId) });
       }
+    },
+  });
+};
+
+export const useTransferProjectOwnership = () => {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, Error, TransferProjectOwnershipVariables>({
+    mutationFn: ({ projectId, newOwnerId }: TransferProjectOwnershipVariables) =>
+      ProjectService.transferOwnership(projectId, newOwnerId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.overview(variables.projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.members(variables.projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.byId(variables.projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.all() });
+      toast.success('Project ownership transferred successfully', { id: 'p-transfer-owner' });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to transfer project ownership', { id: 'p-transfer-owner-error' });
     },
   });
 };

@@ -21,6 +21,9 @@ import { toast } from 'sonner';
 import { Lock } from 'lucide-react';
 import { useTheme } from '@/shared/providers';
 import { cn } from '@/shared/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import { filesQuery } from '@/features/editor/hooks/use-core';
+import { useViewItems } from '@/features/library';
 
 // Subcomponents & internal seams
 import Format from './Format';
@@ -29,6 +32,7 @@ import { EditorModeSwitcher } from './subcomponents/EditorModeSwitcher';
 import { CollaboratorPresenceBar } from './subcomponents/CollaboratorPresenceBar';
 import { SyncStatusBadge } from './subcomponents/SyncStatusBadge';
 import { LatexDiagnosticsBadge } from './subcomponents/LatexDiagnosticsBadge';
+import { WordCountDialog } from './subcomponents/WordCountDialog';
 import type { SelFloating } from './subcomponents/EditorFloatingBar';
 import type { RenameDialogState } from './subcomponents/RenameSymbolDialog';
 import type { SuggestModalState } from './subcomponents/SuggestEditModal';
@@ -130,6 +134,16 @@ export default function Editor({ page }: EditorProps) {
     pageId: page.id,
     editorRef,
     monacoRef,
+    currentUserId: user?.id,
+    currentUser: user
+      ? {
+          id: user.id,
+          name: user.name || (user as any).email || 'Collaborator',
+          avatar: (user as any).avatar || (user as any).image,
+          color: (user as any).color,
+          role: user.role,
+        }
+      : undefined,
   });
 
   // Core editor state hooks
@@ -143,6 +157,7 @@ export default function Editor({ page }: EditorProps) {
   const [tableWizardOpen, setTableWizardOpen] = useState(false);
   const [figureWizardOpen, setFigureWizardOpen] = useState(false);
   const [symbolPaletteOpen, setSymbolPaletteOpen] = useState(false);
+  const [wordCountOpen, setWordCountOpen] = useState(false);
 
   const rootPageId = (page as any)?.parentPageId || page?.id || null;
 
@@ -162,10 +177,14 @@ export default function Editor({ page }: EditorProps) {
     const unsubSymbol = EditorEventBus.on('flux:open-symbol-palette', () => {
       setSymbolPaletteOpen(true);
     });
+    const unsubWordCount = EditorEventBus.on('flux:open-word-count', () => {
+      setWordCountOpen(true);
+    });
     return () => {
       unsubTable();
       unsubFigure();
       unsubSymbol();
+      unsubWordCount();
     };
   }, []);
 
@@ -232,6 +251,23 @@ export default function Editor({ page }: EditorProps) {
     setActiveSuggestionWidgetData(null);
   }, [setActiveSuggestionWidgetData]);
 
+  const rawProjectId = (page as any)?.projectId;
+  const projectScopeId =
+    typeof rawProjectId === 'string'
+      ? rawProjectId
+      : rawProjectId?.id || '';
+
+  const { data: pageFiles = [] } = useQuery({
+    ...filesQuery(rootPageId ?? ''),
+    enabled: !!rootPageId,
+  });
+
+  const { data: libraryData } = useViewItems(
+    projectScopeId || 'me',
+    'all',
+  );
+  const libraryItems = (libraryData as any)?.items ?? [];
+
   const {
     bibEntries,
     citationModalOpen,
@@ -239,7 +275,8 @@ export default function Editor({ page }: EditorProps) {
     handleInsertCitationSnippet,
   } = useEditorCitation({
     editorRef,
-    pageFiles: [],
+    pageFiles: pageFiles as any,
+    libraryItems,
   });
 
   // Local popup states
@@ -657,6 +694,7 @@ export default function Editor({ page }: EditorProps) {
             isDarkTheme={isDarkTheme}
             readOnly={isReadOnly}
             bibEntries={bibEntries}
+            projectFiles={pageFiles as any}
             keybinding={keybinding}
             yText={yText}
             awareness={awareness}
@@ -759,6 +797,13 @@ export default function Editor({ page }: EditorProps) {
         onChangeRenameName={handleChangeRenameName}
         onApplyRename={handleApplyRename}
         onCancelRename={handleCancelRename}
+      />
+
+      {/* Overleaf Word Count Dialog */}
+      <WordCountDialog
+        open={wordCountOpen}
+        onClose={() => setWordCountOpen(false)}
+        content={currentContent || ''}
       />
     </div>
   );

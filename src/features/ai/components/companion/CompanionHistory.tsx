@@ -114,27 +114,27 @@ export function CompanionHistory({
   return (
     <div className='flex flex-col h-full bg-background select-none overflow-hidden'>
       {/* ── Action Buttons Row: [ New chat ] [ Search ] ───────────────── */}
-      <div className='p-3 pb-2 flex items-center gap-2 shrink-0'>
+      <div className='p-3 pb-2 flex items-center gap-1.5 shrink-0'>
         {isSearchOpen ? (
           <>
             <button
               type='button'
               onClick={onNewChat}
-              className='size-9 shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground flex items-center justify-center cursor-pointer transition-colors shadow-2xs outline-none focus-visible:ring-1 focus-visible:ring-primary'
+              className='size-7.5 shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground flex items-center justify-center cursor-pointer transition-colors shadow-2xs outline-none focus-visible:ring-1 focus-visible:ring-primary'
               aria-label='New chat'
               title='New chat'
             >
-              <SquarePen className='size-4 text-foreground/80' />
+              <SquarePen className='size-3.5 text-foreground/80' />
             </button>
 
-            <div className='flex-1 relative flex items-center h-9 rounded-md border border-border bg-background focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 px-2.5 transition-all shadow-2xs'>
-              <Search className='size-4 text-foreground/70 shrink-0 mr-2' />
+            <div className='flex-1 relative flex items-center h-7.5 rounded-md border border-border bg-background focus-within:border-border px-2 transition-all shadow-2xs'>
+              <Search className='size-3.5 text-foreground/70 shrink-0 mr-1.5' />
               <input
                 type='text'
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder='Search'
-                className='flex-1 bg-transparent text-13 text-foreground placeholder:text-muted-foreground outline-none font-normal'
+                className='flex-1 bg-transparent text-12 text-foreground placeholder:text-muted-foreground outline-none font-normal'
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
@@ -149,10 +149,10 @@ export function CompanionHistory({
                   setIsSearchOpen(false);
                   setSearch('');
                 }}
-                className='size-5 flex items-center justify-center text-foreground/70 hover:text-foreground cursor-pointer rounded transition-colors ml-1'
+                className='size-4 flex items-center justify-center text-foreground/70 hover:text-foreground cursor-pointer rounded transition-colors ml-1'
                 aria-label='Close search'
               >
-                <X className='size-3.5' />
+                <X className='size-3' />
               </button>
             </div>
           </>
@@ -161,21 +161,21 @@ export function CompanionHistory({
             <button
               type='button'
               onClick={onNewChat}
-              className='flex-1 h-9 px-3 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground text-13 font-normal flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-2xs outline-none focus-visible:ring-1 focus-visible:ring-primary'
+              className='flex-1 h-7.5 px-2.5 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground text-12 font-normal flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-2xs outline-none focus-visible:ring-1 focus-visible:ring-primary'
               aria-label='New chat'
             >
-              <SquarePen className='size-4 text-foreground/80' />
+              <SquarePen className='size-3.5 text-foreground/80' />
               <span>New chat</span>
             </button>
 
             <button
               type='button'
               onClick={() => setIsSearchOpen(true)}
-              className='size-9 shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground/80 flex items-center justify-center cursor-pointer transition-colors shadow-2xs outline-none focus-visible:ring-1 focus-visible:ring-primary'
+              className='size-7.5 shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground/80 flex items-center justify-center cursor-pointer transition-colors shadow-2xs outline-none focus-visible:ring-1 focus-visible:ring-primary'
               title='Search chats'
               aria-label='Search chats'
             >
-              <Search className='size-4' />
+              <Search className='size-3.5' />
             </button>
           </>
         )}

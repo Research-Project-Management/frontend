@@ -90,18 +90,18 @@ export default function ProjectsLayout({ children }: { children?: React.ReactNod
 
       {/* Project Sidebar Panel */}
       <div
-        className={`fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto h-full overflow-hidden transition-all duration-300 ease-in-out bg-background ${isSidebarVisible
+        className={`fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto h-full overflow-hidden transition-all duration-300 ease-in-out bg-background lg:bg-transparent ${isSidebarVisible
             ? "w-60 border-r border-border shadow-2xl lg:shadow-none"
             : "w-0 border-r-0 pointer-events-none lg:pointer-events-auto"
           }`}
       >
-        <div className="h-full w-60 bg-background">
+        <div className="h-full w-60 bg-background lg:bg-transparent">
           <ProjectsSidebar onToggle={() => handleToggleSidebar(false)} />
         </div>
       </div>
 
       <div
-        className="flex-1 min-w-0 flex flex-col h-full bg-background relative"
+        className="flex-1 min-w-0 flex flex-col h-full bg-transparent relative"
         style={{ '--header-offset': !isSidebarVisible ? '46px' : '0px' } as React.CSSProperties}
       >
         {!isSidebarVisible && (

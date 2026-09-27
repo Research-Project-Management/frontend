@@ -377,6 +377,7 @@ export interface EditorEventMap {
   'flux:open-symbol-palette': undefined;
   'flux:focus-editor': undefined;
   'flux:toggle-sidebar': undefined;
+  'flux:open-word-count': undefined;
   'flux:synctex-forward': undefined;
   'flux:synctex-backward': undefined;
   'flux:new-file': undefined;

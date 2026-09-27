@@ -205,7 +205,7 @@ export function LibraryTopbar({
   return (
     <header
       className={cn(
-        'flex items-center justify-between border-b border-border bg-background px-3 sm:px-4 h-11 sticky top-0 z-10 shrink-0 select-none overflow-x-auto scrollbar-none min-w-0',
+        'flex items-center justify-between border-b border-border bg-transparent px-3 sm:px-4 h-11 sticky top-0 z-10 shrink-0 select-none overflow-x-auto scrollbar-none min-w-0',
         className
       )}
     >
@@ -494,31 +494,33 @@ export function LibraryTopbar({
 
         {children}
 
-        {/* Inspector Toggle Button - Hidden when panel is open */}
+        {/* Inspector Toggle Button with preceding divider line - Hidden when panel is open */}
         {showInspectorToggle && !isInspectorOpen && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onToggleInspector || toggleInspector}
-                className="size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0"
-                aria-label="Open inspector"
+          <div className="flex items-center gap-1 ml-0.5 -mr-1 sm:-mr-2">
+            <div className="h-4 w-px bg-border shrink-0" aria-hidden="true" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={onToggleInspector || toggleInspector}
+                  className="size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0"
+                  aria-label="Open inspector"
+                >
+                  <PanelRight className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                align="end"
+                sideOffset={6}
+                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
               >
-                <PanelRight className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent
-              side="bottom"
-              align="start"
-              sideOffset={6}
-              alignOffset={2}
-              className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
-            >
-              Expand panel
-            </TooltipContent>
-          </Tooltip>
+                Expand panel
+              </TooltipContent>
+            </Tooltip>
+          </div>
         )}
 
         {/* Hidden Direct File Input */}

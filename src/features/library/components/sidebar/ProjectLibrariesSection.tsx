@@ -173,7 +173,7 @@ export function ProjectLibrariesSection({
       {isProjectsExpanded && (
         <div className="flex flex-col gap-1 w-full">
           {projects.length === 0 ? (
-            <div className="pl-6 pr-2.5 py-1.5 text-11 text-muted-foreground italic select-none">
+            <div className="pl-6 pr-2.5 py-1.5 text-11 text-foreground/75 dark:text-muted-foreground italic select-none">
               No project libraries
             </div>
           ) : (

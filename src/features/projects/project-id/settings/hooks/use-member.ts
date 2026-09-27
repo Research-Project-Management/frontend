@@ -8,6 +8,7 @@ import {
   useUpdateProjectMemberRole,
   useRemoveProjectMember,
   useUpdateProject,
+  useTransferProjectOwnership,
 } from '@/features/projects/shell/hooks/use-project';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { getErrorMessage } from "@/shared/lib/utils";
@@ -38,6 +39,7 @@ export function useMembers(projectId: string) {
   const updateRoleMutation = useUpdateProjectMemberRole();
   const removeMutation = useRemoveProjectMember();
   const updateProjectMutation = useUpdateProject();
+  const transferOwnershipMutation = useTransferProjectOwnership();
 
   // Search & Filter state
   const [search, setSearch] = useState('');
@@ -130,6 +132,13 @@ export function useMembers(projectId: string) {
     [projectId, removeMutation],
   );
 
+  const transferOwnership = useCallback(
+    async (newOwnerId: string) => {
+      await transferOwnershipMutation.mutateAsync({ projectId, newOwnerId });
+    },
+    [projectId, transferOwnershipMutation],
+  );
+
   // Filter and sort members
   const filteredMembers = useMemo(() => {
     return filterAndSortProjectMembers(members, {
@@ -179,12 +188,14 @@ export function useMembers(projectId: string) {
       isAdding: addMutation.isPending,
       isUpdatingRole: updateRoleMutation.isPending,
       isRemoving: removeMutation.isPending,
+      isTransferringOwnership: transferOwnershipMutation.isPending,
     },
     actions: {
       setDefaultAssignee,
       addMembers,
       updateRole,
       removeMember,
+      transferOwnership,
       setSearch,
       setRoleFilter,
       toggleSort,

@@ -2,8 +2,6 @@
 
 import { memo, useState } from 'react';
 import {
-  Copy,
-  Check,
   ChevronDown,
   Brain,
   ExternalLink,
@@ -178,14 +176,7 @@ const MessageBubble = memo(function MessageBubble({
   actions?: AgentAction[];
   widgets?: ChatMessage['widgets'];
 }) {
-  const [copied, setCopied] = useState(false);
   const isUser = role === 'user';
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <div
@@ -222,18 +213,6 @@ const MessageBubble = memo(function MessageBubble({
                 </>
               );
             })()}
-          </div>
-        )}
-
-        {!isUser && !isStreaming && content && (
-          <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={handleCopy}
-              className="flex items-center gap-1 text-xs text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors cursor-pointer"
-            >
-              {copied ? <Check className="size-3 text-success shrink-0" /> : <Copy className="size-3 shrink-0" />}
-              {copied ? 'Copied' : 'Copy'}
-            </button>
           </div>
         )}
       </div>

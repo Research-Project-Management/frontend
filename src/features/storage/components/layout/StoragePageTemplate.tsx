@@ -89,7 +89,7 @@ export function StoragePageTemplate({
       <StorageViewContainer
         isLoading={isFilesLoading && !data}
         isError={isError}
-        error={error instanceof Error ? error : undefined}
+        error={error || new Error('Internal Server Error')}
         viewProps={viewProps}
         searchQuery={searchQuery}
         onClearSearch={() => setSearchQuery('')}

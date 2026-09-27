@@ -226,7 +226,12 @@ export async function rawFetch(
     ...(extraHeaders as Record<string, string>),
   };
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    const isRelative = !url.startsWith('http://') && !url.startsWith('https://');
+    const isSameOrigin = typeof window !== 'undefined' && url.startsWith(window.location.origin);
+    const isApiOrigin = url.startsWith(getEffectiveBaseUrl());
+    if (isRelative || isSameOrigin || isApiOrigin) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
   }
   if (idempotencyKey) {
     headers['Idempotency-Key'] = idempotencyKey;
@@ -445,6 +450,16 @@ export async function apiFetch<T>(
     }
 
     if (response.status === 204) return undefined as T;
+
+    if (options.responseType === 'blob') {
+      return (await response.blob()) as unknown as T;
+    }
+    if (options.responseType === 'arrayBuffer') {
+      return (await response.arrayBuffer()) as unknown as T;
+    }
+    if (options.responseType === 'text') {
+      return (await response.text()) as unknown as T;
+    }
 
     const json = await response.json();
 

@@ -14,8 +14,10 @@ import {
   ExternalLink,
   SpellCheck,
   Check,
+  Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { spellingService } from '../../services/spelling.service';
 
 import {
   Dialog,
@@ -140,6 +142,8 @@ export default function ProjectSettingsModal() {
     setFontSize,
     fontFamily,
     setFontFamily,
+    lineHeight,
+    setLineHeight,
     wordWrap,
     setWordWrap,
     lineNumbers,
@@ -196,6 +200,53 @@ export default function ProjectSettingsModal() {
       .map((f: any) => f.name);
     return filtered.length > 0 ? filtered : ['references.bib'];
   }, [projectFiles]);
+
+  const [newWordInput, setNewWordInput] = useState('');
+  const { data: userWords = [], refetch: refetchUserWords } = useQuery({
+    queryKey: ['spelling-user-dictionary'],
+    queryFn: () => spellingService.getUserDictionary(),
+    enabled: settingsPanelOpen && activeTab === 'spelling',
+  });
+
+  const { data: projectWords = [], refetch: refetchProjectWords } = useQuery({
+    queryKey: ['spelling-project-dictionary', projectId],
+    queryFn: () => (projectId ? spellingService.getProjectDictionary(projectId) : Promise.resolve([])),
+    enabled: settingsPanelOpen && activeTab === 'spelling' && !!projectId,
+  });
+
+  const handleAddWord = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newWordInput.trim().toLowerCase();
+    if (!trimmed) return;
+    try {
+      if (projectId) {
+        await spellingService.learnProjectWord(projectId, trimmed);
+        refetchProjectWords();
+      } else {
+        await spellingService.learnUserWord(trimmed);
+        refetchUserWords();
+      }
+      setNewWordInput('');
+      toast.success(`Added "${trimmed}" to dictionary`);
+    } catch {
+      toast.error('Failed to add word to dictionary');
+    }
+  };
+
+  const handleRemoveWord = async (word: string, isProject: boolean) => {
+    try {
+      if (isProject && projectId) {
+        await spellingService.unlearnProjectWord(projectId, word);
+        refetchProjectWords();
+      } else {
+        await spellingService.unlearnUserWord(word);
+        refetchUserWords();
+      }
+      toast.success(`Removed "${word}" from dictionary`);
+    } catch {
+      toast.error(`Failed to remove "${word}"`);
+    }
+  };
 
   const navTabs = [
     { id: 'editor' as const, label: 'Editor', icon: CodeIconBrackets },
@@ -416,6 +467,83 @@ export default function ProjectSettingsModal() {
                     onCheckedChange={setLineNumbers}
                   />
                 </SettingRow>
+
+                <SettingRow
+                  title="Font size"
+                  description="Adjust editor text size in pixels"
+                >
+                  <Select
+                    value={String(fontSize || 15)}
+                    onValueChange={(val) => setFontSize(Number(val))}
+                  >
+                    <SelectTrigger className="w-28 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                      <SelectValue placeholder="Font size" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[9999]">
+                      {[11, 12, 13, 14, 15, 16, 17, 18, 20, 22, 24].map((sz) => (
+                        <SelectItem key={sz} value={String(sz)} className="cursor-pointer text-xs">
+                          {sz}px
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </SettingRow>
+
+                <SettingRow
+                  title="Font family"
+                  description="Select typeface used in the editor"
+                >
+                  <Select
+                    value={fontFamily || 'default'}
+                    onValueChange={(val) => setFontFamily(val)}
+                  >
+                    <SelectTrigger className="w-40 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                      <SelectValue placeholder="Font family" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[9999]">
+                      <SelectItem value="default" className="cursor-pointer text-xs">
+                        Default Monospace
+                      </SelectItem>
+                      <SelectItem value="menlo" className="cursor-pointer text-xs">
+                        Menlo / Monaco
+                      </SelectItem>
+                      <SelectItem value="consolas" className="cursor-pointer text-xs">
+                        Consolas
+                      </SelectItem>
+                      <SelectItem value="fira" className="cursor-pointer text-xs">
+                        Fira Code
+                      </SelectItem>
+                      <SelectItem value="source-code" className="cursor-pointer text-xs">
+                        Source Code Pro
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </SettingRow>
+
+                <SettingRow
+                  title="Line height"
+                  description="Spacing between lines of text in the editor"
+                >
+                  <Select
+                    value={String(lineHeight || 1.6)}
+                    onValueChange={(val) => setLineHeight(Number(val))}
+                  >
+                    <SelectTrigger className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background">
+                      <SelectValue placeholder="Line height" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[9999]">
+                      <SelectItem value="1.3" className="cursor-pointer text-xs">
+                        Compact (1.3)
+                      </SelectItem>
+                      <SelectItem value="1.6" className="cursor-pointer text-xs">
+                        Normal (1.6)
+                      </SelectItem>
+                      <SelectItem value="1.9" className="cursor-pointer text-xs">
+                        Relaxed (1.9)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </SettingRow>
               </div>
             )}
 
@@ -465,6 +593,80 @@ export default function ProjectSettingsModal() {
                     </SelectContent>
                   </Select>
                 </SettingRow>
+
+                {/* ── Personal & Project Learned Words (Overleaf Parity) ── */}
+                <div className="pt-4 mt-3 border-t border-border/50">
+                  <h4 className="text-sm font-semibold text-foreground mb-1">
+                    Learned words
+                  </h4>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Words added to your personal and project custom dictionaries will not be flagged as spelling errors.
+                  </p>
+
+                  {/* Add word input form */}
+                  <form onSubmit={handleAddWord} className="flex items-center gap-2 mb-3">
+                    <input
+                      type="text"
+                      placeholder="Add a custom word..."
+                      value={newWordInput}
+                      onChange={(e) => setNewWordInput(e.target.value)}
+                      className="flex-1 h-8 px-2.5 text-xs rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!newWordInput.trim()}
+                      className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium inline-flex items-center gap-1 hover:bg-primary-hover disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Plus className="size-3.5 shrink-0" />
+                      <span>Add word</span>
+                    </button>
+                  </form>
+
+                  {/* Word Badges */}
+                  <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 border border-border/40 rounded-md bg-muted/20">
+                    {userWords.length === 0 && projectWords.length === 0 ? (
+                      <span className="text-xs text-muted-foreground/80 italic p-1">
+                        No learned words in your dictionary yet.
+                      </span>
+                    ) : (
+                      <>
+                        {userWords.map((word) => (
+                          <span
+                            key={`user-${word}`}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-background border border-border text-foreground shadow-2xs group"
+                          >
+                            <span>{word}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveWord(word, false)}
+                              title={`Remove "${word}" from dictionary`}
+                              className="size-3.5 rounded-full inline-flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                            >
+                              <X className="size-2.5" />
+                            </button>
+                          </span>
+                        ))}
+                        {projectWords.map((word) => (
+                          <span
+                            key={`proj-${word}`}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 border border-primary/20 text-primary shadow-2xs group"
+                            title="Project dictionary word"
+                          >
+                            <span>{word}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveWord(word, true)}
+                              title={`Remove "${word}" from project dictionary`}
+                              className="size-3.5 rounded-full inline-flex items-center justify-center text-primary/70 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                            >
+                              <X className="size-2.5" />
+                            </button>
+                          </span>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 

@@ -18,6 +18,8 @@ import {
   AlertCircle,
   RefreshCw,
   Tag,
+  Copy,
+  Trash2,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import { Button, Skeleton } from "@/shared/components/ui";
@@ -46,6 +48,8 @@ import { filterArchivedProjects } from '../utils/archive-page.util';
 import {
   useProjects,
   useArchiveProject,
+  useDuplicateProject,
+  useDeleteProject,
 } from '../hooks/use-project';
 import { useUserProjectLabels } from '../hooks/use-project-labels';
 import { useAuth } from '@/features/auth/hooks/use-auth';
@@ -108,6 +112,8 @@ export function ProjectsPage() {
   const { projects: rawProjects = [], isLoading, isError } = useProjects();
   const { labels: userLabels = [] } = useUserProjectLabels();
   const archiveProjectMutation = useArchiveProject();
+  const duplicateProjectMutation = useDuplicateProject();
+  const deleteProjectMutation = useDeleteProject();
 
   const handleSetViewMode = (mode: ViewMode) => {
     setViewMode(mode);
@@ -536,11 +542,35 @@ export function ProjectsPage() {
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            duplicateProjectMutation.mutate({ projectId });
+                          }}
+                          disabled={duplicateProjectMutation.isPending}
+                          className="cursor-pointer font-medium flex items-center gap-2"
+                        >
+                          <Copy className="size-3.5 shrink-0 text-muted-foreground" />
+                          <span>{duplicateProjectMutation.isPending ? 'Duplicating…' : 'Duplicate project'}</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           onClick={() => handleArchiveProject(projectId)}
                           className="cursor-pointer font-medium text-warning flex items-center gap-2"
                         >
                           <Archive className="size-3.5 shrink-0" />
                           <span>Archive project</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            deleteProjectMutation.mutate({ projectId });
+                          }}
+                          disabled={deleteProjectMutation.isPending}
+                          className="cursor-pointer font-medium text-destructive flex items-center gap-2"
+                        >
+                          <Trash2 className="size-3.5 shrink-0" />
+                          <span>{deleteProjectMutation.isPending ? 'Moving to trash…' : 'Move to trash'}</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

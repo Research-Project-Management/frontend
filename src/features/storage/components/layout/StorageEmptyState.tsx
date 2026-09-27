@@ -117,13 +117,13 @@ export function StorageEmptyState({
         <IllustrationComponent />
       </div>
 
-      {/* Title */}
-      <h3 className="text-16 font-semibold text-foreground mb-2 tracking-tight">
+      {/* Title (h2 ensures valid heading hierarchy after page h1) */}
+      <h2 className="text-16 font-semibold text-foreground mb-2 tracking-tight">
         {config.title}
-      </h3>
+      </h2>
 
       {/* Description */}
-      <p className="text-13 text-muted-foreground max-w-[420px] leading-relaxed font-normal">
+      <p className="text-13 text-foreground/80 dark:text-muted-foreground max-w-[420px] leading-relaxed font-normal">
         {config.description}
       </p>
     </div>

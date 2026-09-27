@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Home, PanelLeft, History, Check, Loader2, MessageSquareQuote } from 'lucide-react';
+import { Home, PanelLeft, History, Check, Loader2, MessageSquareQuote, Menu, Calculator } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import {
@@ -35,6 +35,7 @@ export default function Topbar() {
   const params = useParams<{ projectId?: string }>();
   const homeHref = params?.projectId ? `/projects/${params.projectId}` : '/projects';
   const {
+    toggleSettingsPanel,
     toggleHistory,
     isHistoryOpen,
     activeSidebarPanel,
@@ -128,6 +129,18 @@ export default function Topbar() {
           <PanelLeft className="size-4 shrink-0" />
         </button>
 
+        {/* Overleaf Signature Menu Button */}
+        <button
+          type="button"
+          onClick={toggleSettingsPanel}
+          title="Project Menu & Settings (Overleaf Parity)"
+          aria-label="Project Menu & Settings"
+          className="flex items-center gap-1.5 h-7.5 px-2.5 rounded-md bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs transition-colors shadow-2xs cursor-pointer select-none shrink-0 mr-0.5"
+        >
+          <Menu className="size-3.5 shrink-0" strokeWidth={2.2} />
+          <span>Menu</span>
+        </button>
+
         <TooltipProvider delayDuration={150}>
           {/* Single Logo button: click to go back to project, hover transforms to Home icon */}
           <Tooltip>
@@ -189,6 +202,18 @@ export default function Topbar() {
             </span>
           )}
         </div>
+
+        {/* Word Count (Overleaf Feature) */}
+        <button
+          type="button"
+          onClick={() => EditorEventBus.emit('flux:open-word-count')}
+          title="Document Word Count"
+          aria-label="Document Word Count"
+          className="flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer outline-none select-none"
+        >
+          <Calculator className="size-3.5 shrink-0" />
+          <span className="hidden md:inline">Word Count</span>
+        </button>
 
         <button
           type="button"

@@ -74,6 +74,25 @@ describe('Chat Service & Streaming Response Parser', () => {
     expect(yieldedChunks).not.toContain('[DONE]');
   });
 
+  it('should unescape literal \\n from SSE chunks into real newlines for markdown rendering', async () => {
+    const ssePayload = [
+      'data: Line 1\\n\\nLine 2\\n- Item 1\\n- Item 2\n\n',
+      'data: [DONE]\n\n',
+    ];
+
+    global.fetch = vi.fn().mockResolvedValue(createMockSseResponse(ssePayload));
+    const generator = streamChatResponse([
+      { role: 'user', content: 'Format list' },
+    ]);
+
+    const chunks: string[] = [];
+    for await (const chunk of generator) {
+      chunks.push(chunk);
+    }
+
+    expect(chunks).toEqual(['Line 1\n\nLine 2\n- Item 1\n- Item 2']);
+  });
+
   it('should throw an error when API returns non-200 status', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,

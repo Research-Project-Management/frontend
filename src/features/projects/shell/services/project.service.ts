@@ -111,6 +111,13 @@ export const updateProjectMemberRoleApi = (
 export const removeProjectMemberApi = (projectId: string, userId: string) =>
   apiDelete(`/api/projects/${projectId}/members/${userId}`);
 
+export const transferOwnershipApi = (projectId: string, newOwnerId: string) =>
+  apiPost<{
+    message: string;
+    previousOwner: any;
+    newOwner: any;
+  }>(`/api/projects/${projectId}/transfer-ownership`, { newOwnerId });
+
 // ── Project State API ─────────────────────────────────────────────────────────
 
 export interface ProjectCurrentStateResponse {
@@ -189,6 +196,7 @@ export const ProjectService = {
   addMember: addProjectMemberApi,
   updateMemberRole: updateProjectMemberRoleApi,
   removeMember: removeProjectMemberApi,
+  transferOwnership: transferOwnershipApi,
   // Project Dynamic States
   getStates: fetchProjectStates,
   getCurrentState: fetchProjectCurrentState,
@@ -209,6 +217,7 @@ export const restoreProject = restoreProjectApi;
 export const addProjectMember = addProjectMemberApi;
 export const updateProjectMemberRole = updateProjectMemberRoleApi;
 export const removeProjectMember = removeProjectMemberApi;
+export const transferOwnership = transferOwnershipApi;
 
 // ── Duplicate, Trash & Permanent Delete ────────────────────────────────────────
 

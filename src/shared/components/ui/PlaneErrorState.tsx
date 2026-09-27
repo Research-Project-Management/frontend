@@ -254,7 +254,7 @@ const illustrationStyles = `
 export interface PlaneErrorStateProps {
   title?: string;
   description?: string;
-  error?: Error & { digest?: string };
+  error?: Error | { message?: string; digest?: string; [key: string]: any } | string | null;
   reset?: () => void;
   homeHref?: string;
   homeLabel?: string;
@@ -280,6 +280,33 @@ export function PlaneErrorState({
 }: PlaneErrorStateProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
+  // Extract human-readable or technical error details robustly across Error, Axios, or API response objects
+  const errorMessage = (() => {
+    if (!error) return null;
+    if (typeof error === 'string' && error.trim()) return error;
+    if (typeof error === 'object') {
+      if ('message' in error && typeof error.message === 'string' && error.message.trim()) {
+        return error.message;
+      }
+      if ('response' in error && (error as any).response?.data?.message) {
+        return String((error as any).response.data.message);
+      }
+      if ('error' in error && typeof (error as any).error === 'string') {
+        return (error as any).error;
+      }
+      if ('statusText' in error && typeof (error as any).statusText === 'string') {
+        return (error as any).statusText;
+      }
+      try {
+        const json = JSON.stringify(error);
+        if (json && json !== '{}') return json;
+      } catch {}
+    }
+    return String(error);
+  })();
+
+  const errorDigest = error && typeof error === 'object' && 'digest' in error ? (error as any).digest : undefined;
+
   return (
     <div
       role="alert"
@@ -296,18 +323,18 @@ export function PlaneErrorState({
         <ErrorVerticalStackIllustration />
       </div>
 
-      {/* Title */}
-      <h3 className="text-16 font-semibold text-foreground mb-2 tracking-tight">
+      {/* Title (h2 ensures valid heading hierarchy after page h1) */}
+      <h2 className="text-16 font-semibold text-foreground mb-2 tracking-tight">
         {title}
-      </h3>
+      </h2>
 
-      {/* Description */}
-      <p className="text-13 text-muted-foreground max-w-[420px] leading-relaxed mb-4 font-normal">
+      {/* Description (high-contrast text meeting WCAG 4.5:1 ratio) */}
+      <p className="text-13 text-foreground/80 dark:text-muted-foreground max-w-[420px] leading-relaxed mb-4 font-normal">
         {description}
       </p>
 
       {/* Optional Technical Error Diagnostics (Polished Interactive Disclosure) */}
-      {error?.message && (
+      {errorMessage && (
         <div className="flex flex-col items-center max-w-lg w-full mt-1">
           <div
             role="button"
@@ -319,7 +346,7 @@ export function PlaneErrorState({
                 setIsDetailsOpen((prev) => !prev);
               }
             }}
-            className="inline-flex items-center gap-1.5 py-1 px-3 rounded-full border border-border/70 bg-muted/40 hover:bg-muted/80 hover:border-border text-11 text-muted-foreground hover:text-foreground font-mono transition-all duration-150 cursor-pointer select-none focus:outline-hidden focus:ring-1 focus:ring-primary/40"
+            className="inline-flex items-center gap-1.5 py-1 px-3 rounded-md border border-border/70 bg-muted/40 hover:bg-muted/80 hover:border-border text-11 text-foreground/85 dark:text-muted-foreground hover:text-foreground font-mono transition-all duration-150 cursor-pointer select-none focus:outline-hidden focus:ring-1 focus:ring-primary/40"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -330,31 +357,31 @@ export function PlaneErrorState({
               strokeLinecap="round"
               strokeLinejoin="round"
               className={cn(
-                'size-3 shrink-0 text-muted-foreground transition-transform duration-200',
+                'size-3 shrink-0 text-foreground/80 dark:text-muted-foreground transition-transform duration-200',
                 isDetailsOpen && 'rotate-180'
               )}
             >
               <path d="m6 9 6 6 6-6" />
             </svg>
             <span>Error details</span>
-            {error.digest && (
-              <span className="text-10 px-1.5 py-0.5 rounded bg-muted font-mono border border-border/70 text-muted-foreground">
-                #{error.digest.slice(0, 8)}
+            {errorDigest && (
+              <span className="text-10 px-1.5 py-0.5 rounded-md bg-muted font-mono border border-border/70 text-muted-foreground">
+                #{String(errorDigest).slice(0, 8)}
               </span>
             )}
           </div>
 
           {isDetailsOpen && (
-            <div className="mt-3 w-full overflow-hidden rounded-lg border border-border/80 bg-muted/40 backdrop-blur-xs text-left shadow-2xs animate-in fade-in-50 zoom-in-98 duration-150">
+            <div className="mt-3 w-full overflow-hidden rounded-md border border-border/80 bg-muted/40 backdrop-blur-xs text-left shadow-2xs animate-in fade-in-50 zoom-in-98 duration-150">
               <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/60 bg-muted/60 text-10 font-mono text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <span className="size-1.5 rounded-full bg-destructive/80" />
                   <span>Runtime Exception</span>
                 </div>
-                {error.digest && <span className="opacity-75">ID: {error.digest}</span>}
+                {errorDigest && <span className="opacity-75">ID: {String(errorDigest)}</span>}
               </div>
               <div className="p-3 text-11 font-mono text-muted-foreground overflow-x-auto max-h-36 leading-relaxed select-text font-normal whitespace-pre-wrap break-all">
-                {error.message}
+                {errorMessage}
               </div>
             </div>
           )}

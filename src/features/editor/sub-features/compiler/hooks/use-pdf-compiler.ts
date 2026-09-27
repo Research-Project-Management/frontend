@@ -77,6 +77,7 @@ export function usePdfCompiler({
         projectId: effectiveProjectId,
         pageId,
         mainFile: mainFile || 'main.tex',
+        source: currentVal || (currentPage as any)?.content,
         engine: engine || 'pdflatex',
         texLiveVersion,
         draft: compileMode === 'draft',

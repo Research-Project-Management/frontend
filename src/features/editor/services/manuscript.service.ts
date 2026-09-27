@@ -22,6 +22,7 @@
  * container with zero component-level changes.
  */
 
+import * as api from '@/shared/lib/api';
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete, getAuthToken, getEffectiveBaseUrl } from '@/shared/lib/api';
 import type { Page, PageFile, PageComment, PageSuggestion, SuggestionStatus, SuggestionType, PageVersion, ProjectEvent } from '../types';
 import type { DocumentExportFormat } from '../types/export.types';
@@ -56,6 +57,8 @@ export interface CompileLatexPayload {
   draft: boolean;
   use_cache: boolean;
   stop_on_first_error?: boolean;
+  timeout_ms?: number;
+  timeoutMs?: number;
   source?: string;
   files?: Record<string, string>;
   signal?: AbortSignal;
@@ -342,7 +345,12 @@ const docs = {
   },
 
   restore: async (docId: string): Promise<Page> => {
-    return { id: docId, title: 'Restored File' } as any;
+    try {
+      const res = await apiPost<{ page: Page }>(`/api/pages/${docId}/restore`, {});
+      return res.page;
+    } catch {
+      return { id: docId, title: 'Restored File' } as any;
+    }
   },
 
   getFiles: async (docId: string): Promise<PageFile[]> => {
@@ -475,7 +483,15 @@ const compiler = {
   },
 
   downloadAuxFileUrl: (projectId: string, filename: string): string => {
-    return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/artifacts/${encodeURIComponent(filename)}`;
+    const token = getAuthToken();
+    const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : '';
+    return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/artifacts/${encodeURIComponent(filename)}${tokenQuery}`;
+  },
+
+  downloadAllArtifactsZipUrl: (projectId: string): string => {
+    const token = getAuthToken();
+    const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : '';
+    return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/artifacts-zip${tokenQuery}`;
   },
 };
 
@@ -594,7 +610,7 @@ const suggestions = {
     status?: SuggestionStatus,
   ): Promise<PageSuggestion[]> => {
     const queryStr = status ? `?status=${status}` : '';
-    const data = await apiGet<{ suggestions: PageSuggestion[] }>(
+    const data = await api.apiGet<{ suggestions: PageSuggestion[] }>(
       `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions${queryStr}`,
     );
     return data.suggestions;
@@ -602,7 +618,7 @@ const suggestions = {
 
   createSuggestion: async (payload: CreateSuggestionPayload): Promise<PageSuggestion> => {
     const { pageId, ...body } = payload;
-    const data = await apiPost<{ suggestion: PageSuggestion }>(
+    const data = await api.apiPost<{ suggestion: PageSuggestion }>(
       `${MANUSCRIPTS_API_BASE}/docs/${pageId}/suggestions`,
       body,
     );
@@ -613,7 +629,7 @@ const suggestions = {
     docId: string,
     suggestionId: string,
   ): Promise<{ ok: boolean; suggestion: PageSuggestion; page: any }> => {
-    return await apiPost<{ ok: boolean; suggestion: PageSuggestion; page: any }>(
+    return await api.apiPost<{ ok: boolean; suggestion: PageSuggestion; page: any }>(
       `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/${suggestionId}/accept`,
       {},
     );
@@ -623,7 +639,7 @@ const suggestions = {
     docId: string,
     suggestionId: string,
   ): Promise<{ ok: boolean; suggestion: PageSuggestion }> => {
-    return await apiPost<{ ok: boolean; suggestion: PageSuggestion }>(
+    return await api.apiPost<{ ok: boolean; suggestion: PageSuggestion }>(
       `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/${suggestionId}/reject`,
       {},
     );
@@ -632,7 +648,7 @@ const suggestions = {
   acceptAllSuggestions: async (
     docId: string,
   ): Promise<{ ok: boolean; acceptedCount: number; page?: any }> => {
-    return await apiPost<{ ok: boolean; acceptedCount: number; page?: any }>(
+    return await api.apiPost<{ ok: boolean; acceptedCount: number; page?: any }>(
       `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/accept-all`,
       {},
     );
@@ -641,7 +657,7 @@ const suggestions = {
   rejectAllSuggestions: async (
     docId: string,
   ): Promise<{ ok: boolean; rejectedCount: number }> => {
-    return await apiPost<{ ok: boolean; rejectedCount: number }>(
+    return await api.apiPost<{ ok: boolean; rejectedCount: number }>(
       `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/reject-all`,
       {},
     );

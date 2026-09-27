@@ -116,6 +116,49 @@ export const PdfToolbar = React.memo(function PdfToolbar({
           onCompile={onCompile}
           onClearCacheAndCompile={onClearCacheAndCompile}
         />
+
+        {/* Overleaf Diagnostics Badge (immediately adjacent to Recompile) */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onToggleLog}
+              aria-label="Toggle compiler logs & diagnostics"
+              className={cn(
+                'h-7 px-2.5 flex items-center gap-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer border shadow-2xs select-none',
+                showLog
+                  ? 'bg-primary/10 border-primary/40 text-primary'
+                  : errorCount > 0
+                    ? 'bg-destructive/15 border-destructive/40 text-destructive hover:bg-destructive/25'
+                    : warningCount > 0
+                      ? 'bg-amber-500/15 border-amber-500/40 text-amber-700 dark:text-amber-400 hover:bg-amber-500/25'
+                      : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted',
+              )}
+            >
+              <FileText className="size-3.5 shrink-0" />
+              {errorCount > 0 ? (
+                <span className="flex items-center gap-1">
+                  <span>{errorCount}</span>
+                  <span className="text-10 font-bold uppercase">{errorCount === 1 ? 'error' : 'errors'}</span>
+                </span>
+              ) : warningCount > 0 ? (
+                <span className="flex items-center gap-1">
+                  <span>{warningCount}</span>
+                  <span className="text-10 font-bold uppercase">{warningCount === 1 ? 'warn' : 'warns'}</span>
+                </span>
+              ) : (
+                <span className="text-11 font-medium">Logs</span>
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            {errorCount > 0
+              ? `${errorCount} compilation error${errorCount > 1 ? 's' : ''}. Click to open diagnostics.`
+              : warningCount > 0
+                ? `${warningCount} warning${warningCount > 1 ? 's' : ''}. Click to open diagnostics.`
+                : 'Compiler logs & output files'}
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {/* 2. Center section: Page & Zoom navigation */}
@@ -232,38 +275,6 @@ export const PdfToolbar = React.memo(function PdfToolbar({
             </TooltipContent>
           </Tooltip>
         )}
-
-        {/* Logs button with error/warning counter */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={onToggleLog}
-              aria-label="Toggle compiler logs"
-              className={cn(
-                'h-7 px-2 flex items-center gap-1.5 rounded-sm text-xs transition-colors font-medium',
-                showLog
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted',
-              )}
-            >
-              <FileText className="size-3.5" />
-              <span>Logs</span>
-              {errorCount > 0 ? (
-                <span className="px-1.5 py-0.2 rounded-full text-10 font-bold bg-destructive text-destructive-foreground leading-none">
-                  {errorCount}
-                </span>
-              ) : warningCount > 0 ? (
-                <span className="px-1.5 py-0.2 rounded-full text-10 font-bold bg-amber-500 text-white leading-none">
-                  {warningCount}
-                </span>
-              ) : null}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            Logs and output files
-          </TooltipContent>
-        </Tooltip>
 
         {/* Export dropdown */}
         <PdfExportDropdown pdfUrl={pdfUrl} onDownloadPdf={onDownload} />

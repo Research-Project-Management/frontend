@@ -55,6 +55,7 @@ export interface DocumentSettingsState {
   spellCheckLanguage: string;
   texLiveVersion: string;
   fontFamily: string;
+  lineHeight: number;
   autoCloseBrackets: boolean;
   linterEnabled: boolean;
   autoComplete: boolean;
@@ -108,6 +109,7 @@ export interface DocumentSettingsState {
   setMainFile: (mainFile: string) => void;
   setFontSize: (fontSize: number) => void;
   setFontFamily: (fontFamily: string) => void;
+  setLineHeight: (lineHeight: number) => void;
   setWordWrap: (wordWrap: boolean) => void;
   setLineNumbers: (lineNumbers: boolean) => void;
   setEditorMode: (mode: 'code' | 'visual') => void;
@@ -161,6 +163,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       spellCheckLanguage: 'en_US',
       texLiveVersion: '2024',
       fontFamily: 'default',
+      lineHeight: 1.6,
       autoCloseBrackets: true,
       linterEnabled: true,
       autoComplete: true,
@@ -207,6 +210,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       setMainFile: (mainFile) => set({ mainFile }),
       setFontSize: (fontSize) => set({ fontSize }),
       setFontFamily: (fontFamily) => set({ fontFamily }),
+      setLineHeight: (lineHeight) => set({ lineHeight }),
       setWordWrap: (wordWrap) => set({ wordWrap }),
       setLineNumbers: (lineNumbers) => set({ lineNumbers }),
       setEditorMode: (editorMode) => set({ editorMode }),

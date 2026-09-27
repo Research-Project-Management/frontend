@@ -146,7 +146,7 @@ export function DuplicatesPage() {
   const setIsInspectorOpen = useLibraryViewStore((s) => s.setIsInspectorOpen);
 
   // Curation Queries & Mutations
-  const { data, isLoading, isError, refetch } = useDuplicateGroupsQuery(effectiveScopeId);
+  const { data, isLoading, isError, error, refetch } = useDuplicateGroupsQuery(effectiveScopeId);
   const mergeMutation = useMergeDuplicatesMutation(effectiveScopeId);
 
   // Local state
@@ -249,6 +249,7 @@ export function DuplicatesPage() {
             <PlaneErrorState
               title="Unable to load duplicates"
               description="An issue occurred while scanning for duplicate references in your library."
+              error={error || new Error('Internal Server Error')}
             />
           ) : activeGroups.length === 0 ? (
             <div className="flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200 bg-background">

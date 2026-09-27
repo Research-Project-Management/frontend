@@ -4,8 +4,6 @@ import React, { useState } from 'react';
 import {
   Brain,
   ChevronDown,
-  Copy,
-  Check,
   FileText,
   Sparkles,
   ExternalLink,
@@ -16,6 +14,11 @@ import {
   CornerDownRight,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/components/ui';
 import type { ChatMessage, SourceItem, AgentAction } from '../../types/chat.types';
 import { renderMarkdown } from '../../utils/render-markdown';
 import { ActionCardsGroup } from '../chat/action-card';
@@ -99,13 +102,6 @@ function MessageBubble({
   isLast: boolean;
 }) {
   const isUser = message.role === 'user';
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(message.content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
 
   const { thinking, answer, isThinkingOpen } = isUser
     ? { thinking: null, answer: message.content, isThinkingOpen: false }
@@ -138,33 +134,25 @@ function MessageBubble({
             {renderMarkdown(answer || message.content)}
           </div>
         )}
-
-        {/* Copy button on hover for assistant */}
-        {!isUser && (
-          <button
-            type='button'
-            onClick={handleCopy}
-            className='absolute top-2 right-2 p-1 rounded-md bg-background/80 border border-border opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity hover:bg-muted text-muted-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary'
-            title='Copy message'
-            aria-label='Copy message'
-          >
-            {copied ? <Check className='size-3 text-success' /> : <Copy className='size-3' />}
-          </button>
-        )}
       </div>
 
       {/* Sources Pill List */}
       {message.sources && message.sources.length > 0 && (
-        <div className='flex flex-wrap gap-1 mt-1 max-w-[92%]'>
+        <div className={cn('flex flex-wrap gap-1 mt-1 max-w-[92%]', isUser && 'justify-end')}>
           {message.sources.map((src, i) => (
-            <div
-              key={i}
-              className='flex items-center gap-1 px-2 py-0.5 rounded-md text-10 border border-border bg-muted/30 text-muted-foreground'
-              title={src.title}
-            >
-              <FileText className='size-2.5 shrink-0 text-primary' />
-              <span className='truncate max-w-[180px]'>{src.title}</span>
-            </div>
+            <Tooltip key={i}>
+              <TooltipTrigger asChild>
+                <div
+                  className='flex items-center gap-1 px-2 py-0.5 rounded-md text-10 border border-border bg-muted/30 text-muted-foreground cursor-default'
+                >
+                  <FileText className='size-2.5 shrink-0 text-primary' />
+                  <span className='truncate max-w-[180px]'>{src.title}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side='top' sideOffset={4} className='max-w-xs text-11'>
+                {src.title}
+              </TooltipContent>
+            </Tooltip>
           ))}
         </div>
       )}
@@ -227,7 +215,7 @@ export function CompanionMessages({
   return (
     <div
       ref={scrollContainerRef as any}
-      className='flex-1 overflow-y-auto min-h-0 p-3 space-y-3 select-text'
+      className='flex-1 overflow-y-auto min-h-0 pl-3 pr-1.5 py-3 space-y-3 select-text custom-scrollbar'
     >
       {isEmpty ? (
         <div className='flex flex-col justify-end h-full px-1 pb-1 select-none'>

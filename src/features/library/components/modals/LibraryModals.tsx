@@ -4,7 +4,12 @@ import React from 'react';
 import dynamic from 'next/dynamic';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useLibraryModalStore, useLibraryViewStore, useLibrarySidebarStore } from '../../store';
+import {
+  useLibraryModalStore,
+  useLibraryViewStore,
+  useLibrarySidebarStore,
+  useProcessModalStore,
+} from '../../store';
 import {
   useCreateCollectionMutation,
   useDeleteLibraryItemsMutation,
@@ -23,6 +28,7 @@ const ImportFromPersonalModal = dynamic(() => import('./ImportFromPersonalModal'
 const ConvertModal = dynamic(() => import('./ConvertModal'), { ssr: false });
 const MergeModal = dynamic(() => import('./MergeModal'), { ssr: false });
 const UploadFilesModal = dynamic(() => import('./UploadFilesModal'), { ssr: false });
+const ProcessModal = dynamic(() => import('./ProcessModal'), { ssr: false });
 
 /**
  * LibraryModals Container
@@ -36,8 +42,13 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
   const closeModal = useLibraryModalStore((s) => s.closeModal);
   const clearSelection = useLibraryViewStore((s) => s.clearSelection);
   const activeScope = useLibrarySidebarStore((s) => s.activeScope);
-
   const effectiveScope = scopeId || (activeScope.type === 'project' ? activeScope.id : 'user');
+
+  // Process Modal State & Handlers
+  const processModalState = useProcessModalStore((s) => s.state);
+  const closeProcessModal = useProcessModalStore((s) => s.closeModal);
+  const minimizeProcessModal = useProcessModalStore((s) => s.minimizeModal);
+  const restoreProcessModal = useProcessModalStore((s) => s.restoreModal);
 
   // Mutations
   const createCollectionMutation = useCreateCollectionMutation(effectiveScope);
@@ -238,6 +249,14 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           }}
         />
       )}
+
+      {/* Standalone Process / Metadata Retrieval Modal */}
+      <ProcessModal
+        state={processModalState}
+        onClose={closeProcessModal}
+        onMinimize={minimizeProcessModal}
+        onRestore={restoreProcessModal}
+      />
     </>
   );
 }

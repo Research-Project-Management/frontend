@@ -492,7 +492,7 @@ export default function RelatedSection({
             {/* Right Main Panel: Full Search + References List */}
             <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-background">
               {/* Full Width Search Bar */}
-              <div className="px-4 py-2 border-b border-border/60 bg-muted/10 flex items-center gap-2 shrink-0">
+              <div className="px-3.5 py-1.5 border-b border-border/60 bg-muted/10 flex items-center gap-2 shrink-0">
                 <div className="relative flex-1 flex items-center">
                   <Search
                     className="absolute left-2.5 size-3.5 text-muted-foreground pointer-events-none shrink-0"
@@ -503,7 +503,7 @@ export default function RelatedSection({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search by title, author, venue, year..."
-                    className="w-full pl-8 pr-7 text-12 bg-background text-foreground placeholder:text-muted-foreground rounded-md border-border h-8 shadow-2xs focus-visible:ring-1 focus-visible:ring-ring"
+                    className="w-full pl-8 pr-7 text-12 bg-background text-foreground placeholder:text-muted-foreground rounded-md border-border h-7.5 shadow-2xs focus-visible:ring-1 focus-visible:ring-ring"
                     autoFocus
                   />
                   {searchQuery && (

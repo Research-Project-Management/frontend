@@ -42,7 +42,7 @@ export function WorkspaceViewsPage() {
 
   // Fetch views for the targeted project or all active projects
   const { data: views = [], isLoading: isViewsLoading } = useQuery({
-    queryKey: ['workspace-views', selectedProjectId, activeProjects.map((p) => p.id).join(',')],
+    queryKey: ['workspace-views', selectedProjectId, isAllProjects, targetProjectId, activeProjects.map((p) => p.id).join(',')],
     queryFn: async () => {
       if (!isAllProjects && targetProjectId) {
         const p = activeProjects.find((proj) => proj.id === targetProjectId);

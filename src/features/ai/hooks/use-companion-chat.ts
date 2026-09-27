@@ -186,6 +186,17 @@ export function useCompanionChat() {
         // If a new session was created on the server, set it as active
         if (serverCreatedChatId) {
           setActiveChatId(serverCreatedChatId);
+          const newChatId = serverCreatedChatId;
+          setTimeout(async () => {
+            try {
+              const updated = await getChatSession(newChatId);
+              if (updated?.title && updated.title !== 'New Chat') {
+                setSessionTitle(updated.title);
+              }
+            } catch {
+              // ignore
+            }
+          }, 1800);
         }
       } catch (err: any) {
         if (err?.name === 'AbortError') return;

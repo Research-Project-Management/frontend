@@ -1,17 +1,14 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   UploadCloud,
   FileText,
-  CheckCircle2,
-  AlertCircle,
   X,
-  RefreshCw,
-  Loader2,
-  FileCode2,
+  Upload,
+  Folder,
 } from 'lucide-react';
 
 import {
@@ -21,7 +18,6 @@ import {
   DialogTitle,
   DialogDescription,
   Button,
-  Progress,
   Select,
   SelectTrigger,
   SelectValue,
@@ -29,25 +25,13 @@ import {
   SelectItem,
 } from '@/shared/components/ui';
 
-import {
-  useCollectionsQuery,
-  uploadLibraryFileMultipart,
-  IngestionService,
-  itemKeys,
-  invalidateCollections,
-} from '../../data';
-import { useLibrarySidebarStore } from '../../store';
+import { useCollectionsQuery } from '../../data';
+import { useLibrarySidebarStore, useProcessModalStore } from '../../store';
 import type { Collection } from '../../types';
 
-export interface QueuedUploadItem {
+export interface StagedUploadItem {
   id: string;
   file: File;
-  status: 'queued' | 'uploading' | 'extracting' | 'completed' | 'error';
-  progress: number;
-  error?: string;
-  extractedTitle?: string;
-  extractedAuthors?: string;
-  abortController?: AbortController;
 }
 
 export interface UploadFilesModalProps {
@@ -65,10 +49,28 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function getFileIcon(filename: string) {
+function getFileTypeBadge(filename: string) {
   const lower = filename.toLowerCase();
-  if (lower.endsWith('.bib') || lower.endsWith('.bibtex') || lower.endsWith('.ris')) {
-    return <FileCode2 className="size-4 text-muted-foreground shrink-0" strokeWidth={1.5} />;
+  if (lower.endsWith('.pdf')) {
+    return (
+      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 shrink-0">
+        PDF
+      </span>
+    );
+  }
+  if (lower.endsWith('.bib') || lower.endsWith('.bibtex')) {
+    return (
+      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 shrink-0">
+        BIB
+      </span>
+    );
+  }
+  if (lower.endsWith('.ris')) {
+    return (
+      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 shrink-0">
+        RIS
+      </span>
+    );
   }
   return <FileText className="size-4 text-muted-foreground shrink-0" strokeWidth={1.5} />;
 }
@@ -84,6 +86,7 @@ export default function UploadFilesModal({
   const queryClient = useQueryClient();
   const routeParams = useParams() as { collectionId?: string };
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const startBatchUpload = useProcessModalStore((s) => s.startBatchUpload);
 
   const { data: collections = [] } = useCollectionsQuery(scopeId);
 
@@ -94,17 +97,8 @@ export default function UploadFilesModal({
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>(() => {
     return defaultCollectionId || routeParams?.collectionId || '';
   });
-  const [items, setItems] = useState<QueuedUploadItem[]>([]);
+  const [items, setItems] = useState<StagedUploadItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [isProcessingBatch, setIsProcessingBatch] = useState(false);
-
-  const itemsRef = useRef(items);
-  itemsRef.current = items;
-
-  const selectedCollectionIdRef = useRef(selectedCollectionId);
-  selectedCollectionIdRef.current = selectedCollectionId;
-
-  const isProcessingRef = useRef(false);
 
   // Sync selected collection when modal opens or collections change
   useEffect(() => {
@@ -124,16 +118,14 @@ export default function UploadFilesModal({
 
     setItems((prev) => {
       const existingNames = new Set(prev.map((i) => i.file.name + i.file.size));
-      const newItems: QueuedUploadItem[] = [];
+      const newItems: StagedUploadItem[] = [];
 
       for (const file of fileArray) {
         const key = file.name + file.size;
         if (!existingNames.has(key)) {
           newItems.push({
-            id: `upload-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            id: `staged-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
             file,
-            status: 'queued',
-            progress: 0,
           });
           existingNames.add(key);
         }
@@ -149,6 +141,14 @@ export default function UploadFilesModal({
       addFilesToQueue(initialFiles);
     }
   }, [open, initialFiles, addFilesToQueue]);
+
+  // Reset items when modal closes
+  useEffect(() => {
+    if (!open) {
+      setItems([]);
+      setIsDragging(false);
+    }
+  }, [open]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -180,284 +180,64 @@ export default function UploadFilesModal({
   };
 
   const removeItem = (id: string) => {
-    setItems((prev) => {
-      const target = prev.find((item) => item.id === id);
-      if (target?.abortController) {
-        target.abortController.abort();
-      }
-      return prev.filter((item) => item.id !== id);
+    setItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const clearAll = () => {
+    setItems([]);
+  };
+
+  const totalBytes = useMemo(() => {
+    return items.reduce((acc, it) => acc + it.file.size, 0);
+  }, [items]);
+
+  // Submit staged files: close Upload modal & initiate background batch processing
+  const handleStartUpload = () => {
+    if (items.length === 0) return;
+    const filesToUpload = items.map((i) => i.file);
+    const targetCollection = selectedCollectionId || undefined;
+
+    // Close upload modal immediately and reset staging state
+    onOpenChange(false);
+    setItems([]);
+
+    // Trigger separate ProcessModal & background worker
+    void startBatchUpload(filesToUpload, {
+      scopeId,
+      collectionId: targetCollection,
+      queryClient,
+      onSuccess,
     });
   };
 
-  const clearCompleted = () => {
-    setItems((prev) => prev.filter((item) => item.status !== 'completed'));
-  };
-
-  // Upload a single file item with live progress and metadata extraction
-  const processSingleItem = useCallback(
-    async (item: QueuedUploadItem, targetCollection?: string): Promise<boolean> => {
-      const abortController = new AbortController();
-
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === item.id
-            ? { ...i, status: 'uploading', progress: 5, abortController, error: undefined }
-            : i
-        )
-      );
-
-      const file = item.file;
-      const lowerName = file.name.toLowerCase();
-      const effectiveCollection = targetCollection || undefined;
-
-      try {
-        if (lowerName.endsWith('.bib') || lowerName.endsWith('.bibtex')) {
-          setItems((prev) =>
-            prev.map((i) =>
-              i.id === item.id ? { ...i, status: 'extracting', progress: 50 } : i
-            )
-          );
-          const content = await file.text();
-          const res = await IngestionService.ingest(scopeId, {
-            source: 'bibtex',
-            content,
-            collectionId: effectiveCollection,
-          });
-
-          setItems((prev) =>
-            prev.map((i) =>
-              i.id === item.id
-                ? {
-                    ...i,
-                    status: 'completed',
-                    progress: 100,
-                    extractedTitle: (res?.data?.item as any)?.title || file.name,
-                  }
-                : i
-            )
-          );
-          return true;
-        }
-
-        if (lowerName.endsWith('.ris')) {
-          setItems((prev) =>
-            prev.map((i) =>
-              i.id === item.id ? { ...i, status: 'extracting', progress: 50 } : i
-            )
-          );
-          const content = await file.text();
-          const res = await IngestionService.ingest(scopeId, {
-            source: 'ris',
-            content,
-            collectionId: effectiveCollection,
-          });
-
-          setItems((prev) =>
-            prev.map((i) =>
-              i.id === item.id
-                ? {
-                    ...i,
-                    status: 'completed',
-                    progress: 100,
-                    extractedTitle: (res?.data?.item as any)?.title || file.name,
-                  }
-                : i
-            )
-          );
-          return true;
-        }
-
-        // Binary Document / PDF upload with live multipart progress
-        const uploadRes = await uploadLibraryFileMultipart(scopeId, file, {
-          signal: abortController.signal,
-          onProgress: (percent) => {
-            setItems((prev) =>
-              prev.map((i) =>
-                i.id === item.id
-                  ? {
-                      ...i,
-                      progress: Math.min(Math.max(percent, 5), 90),
-                    }
-                  : i
-              )
-            );
-          },
-        });
-
-        if (!uploadRes?.fileId) {
-          throw new Error('Upload succeeded without file identifier');
-        }
-
-        // Extraction stage
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === item.id
-              ? { ...i, status: 'extracting', progress: 95 }
-              : i
-          )
-        );
-
-        const ingestRes = await IngestionService.ingest(scopeId, {
-          source: 'pdf',
-          fileId: uploadRes.fileId,
-          filename: file.name,
-          collectionId: effectiveCollection,
-        });
-
-        const resItem = ingestRes?.data?.item as any;
-        const identifiedTitle =
-          resItem?.title ||
-          file.name.replace(/\.[^/.]+$/, '');
-        const authors =
-          resItem?.creators?.map((c: any) => c.fullName || `${c.lastName || ''} ${c.firstName || ''}`.trim()).filter(Boolean).join(', ') ||
-          resItem?.firstAuthor ||
-          undefined;
-
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === item.id
-              ? {
-                  ...i,
-                  status: 'completed',
-                  progress: 100,
-                  extractedTitle: identifiedTitle,
-                  extractedAuthors: authors,
-                }
-              : i
-          )
-        );
-        return true;
-      } catch (err: any) {
-        if (err.message === 'Upload aborted by user') {
-          return false;
-        }
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === item.id
-              ? {
-                  ...i,
-                  status: 'error',
-                  error: err?.message || 'Failed to process document',
-                }
-              : i
-          )
-        );
-        return false;
-      }
-    },
-    [scopeId]
-  );
-
-  // Auto-process queue
-  const triggerQueue = useCallback(async () => {
-    if (isProcessingRef.current) return;
-
-    const queuedItems = itemsRef.current.filter((i) => i.status === 'queued');
-    if (queuedItems.length === 0) return;
-
-    isProcessingRef.current = true;
-    setIsProcessingBatch(true);
-
-    const queue = [...queuedItems];
-    const concurrency = 2;
-    let successCount = 0;
-
-    const runWorker = async () => {
-      while (queue.length > 0) {
-        const nextItem = queue.shift();
-        if (!nextItem) break;
-        // Verify item hasn't been removed from queue
-        if (!itemsRef.current.some((i) => i.id === nextItem.id)) continue;
-        const ok = await processSingleItem(nextItem, selectedCollectionIdRef.current);
-        if (ok) successCount++;
-      }
-    };
-
-    const workers = Array.from(
-      { length: Math.min(concurrency, queue.length) },
-      () => runWorker()
-    );
-
-    await Promise.all(workers);
-
-    isProcessingRef.current = false;
-    setIsProcessingBatch(false);
-
-    // Invalidate queries so library table immediately displays new items
-    queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
-    queryClient.invalidateQueries({ queryKey: ['items', scopeId] });
-    if (selectedCollectionIdRef.current) {
-      queryClient.invalidateQueries({
-        queryKey: itemKeys.byCollection(scopeId, selectedCollectionIdRef.current),
-      });
-    }
-    invalidateCollections(queryClient, scopeId);
-
-    if (successCount > 0 && onSuccess) {
-      onSuccess();
-    }
-
-    // Check if more items arrived while batch was running
-    const remainingQueued = itemsRef.current.filter((i) => i.status === 'queued');
-    if (remainingQueued.length > 0) {
-      triggerQueue();
-    }
-  }, [processSingleItem, queryClient, scopeId, onSuccess]);
-
-  // Reactive trigger: automatically start whenever new items enter 'queued' state
-  useEffect(() => {
-    const hasQueued = items.some((i) => i.status === 'queued');
-    if (hasQueued && !isProcessingRef.current) {
-      triggerQueue();
-    }
-  }, [items, triggerQueue]);
-
-  const handleRetry = (item: QueuedUploadItem) => {
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === item.id
-          ? { ...i, status: 'queued', progress: 0, error: undefined }
-          : i
-      )
-    );
-  };
-
-  const completedCount = items.filter((i) => i.status === 'completed').length;
-  const errorCount = items.filter((i) => i.status === 'error').length;
-  const isUploading = items.some(
-    (i) => i.status === 'uploading' || i.status === 'extracting'
-  );
-
-  const canClose = !isUploading;
-
   return (
-    <Dialog open={open} onOpenChange={(v) => canClose && onOpenChange(v)}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-[580px] max-h-[85vh] flex flex-col p-6 overflow-hidden gap-4 rounded-xl border border-border bg-background shadow-raised-200"
-        onEscapeKeyDown={(e) => !canClose && e.preventDefault()}
-        onPointerDownOutside={(e) => !canClose && e.preventDefault()}
+        className="sm:max-w-[540px] max-h-[85vh] flex flex-col p-6 overflow-hidden gap-4 rounded-xl border border-border bg-background shadow-raised-200"
       >
-        <DialogHeader className="p-0 shrink-0">
+        <DialogHeader className="p-0 shrink-0 text-left">
           <DialogTitle className="text-15 font-semibold text-foreground tracking-tight">
-            Upload Files
+            Upload Documents
           </DialogTitle>
-          <DialogDescription className="sr-only">
-            Upload files to library
+          <DialogDescription className="text-12 text-muted-foreground mt-0.5">
+            Add papers or bibliographic files. Raw files appear in your library immediately while metadata is extracted.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3.5 min-h-0 flex-1 overflow-y-auto pr-0.5">
           {/* Target Collection Selector */}
-          <div className="flex items-center gap-2.5 text-12">
-            <span className="text-muted-foreground shrink-0 font-medium">Collection:</span>
+          <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border/70 bg-muted/20 text-12">
+            <div className="flex items-center gap-2 text-muted-foreground font-medium shrink-0">
+              <Folder className="size-3.5 text-foreground/70" />
+              <span>Target Collection:</span>
+            </div>
             <Select
               value={selectedCollectionId || 'root'}
               onValueChange={(val) => setSelectedCollectionId(val === 'root' ? '' : val)}
-              disabled={isUploading}
             >
               <SelectTrigger
                 aria-label="Collection"
-                className="h-8 text-12 text-foreground min-w-[180px] max-w-[260px] justify-between rounded-md border-border bg-background shadow-2xs hover:border-foreground/30"
+                className="h-7 text-12 text-foreground min-w-[160px] max-w-[240px] justify-between rounded-md border-border/80 bg-background shadow-2xs hover:border-foreground/30 cursor-pointer"
               >
                 <SelectValue placeholder={rootLibraryName} />
               </SelectTrigger>
@@ -480,12 +260,12 @@ export default function UploadFilesModal({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border border-dashed rounded-xl ${
-              items.length > 0 ? 'py-5 px-4' : 'py-9 px-6'
-            } text-center cursor-pointer transition-all ${
+            className={`border border-dashed rounded-xl transition-all text-center cursor-pointer select-none ${
+              items.length > 0 ? 'py-4 px-4' : 'py-7 px-6'
+            } ${
               isDragging
-                ? 'border-primary bg-primary/5'
-                : 'border-border hover:border-muted-foreground/50 hover:bg-muted/30'
+                ? 'border-primary bg-primary/5 ring-2 ring-primary/20 scale-[0.99]'
+                : 'border-border/80 hover:border-muted-foreground/60 hover:bg-muted/20'
             }`}
           >
             <input
@@ -498,155 +278,101 @@ export default function UploadFilesModal({
             />
             <div className="flex flex-col items-center justify-center gap-2">
               <UploadCloud
-                className={`${items.length > 0 ? 'size-5' : 'size-7'} text-muted-foreground/60 transition-all`}
+                className={`${items.length > 0 ? 'size-5' : 'size-6'} text-muted-foreground/70 transition-all`}
                 strokeWidth={1.5}
               />
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 <p className="text-13 font-medium text-foreground">
-                  Drop files or click to browse
+                  Drag and drop files here, or <span className="text-primary underline-offset-2 hover:underline">browse</span>
                 </p>
-                <p className="text-11 text-muted-foreground">
-                  PDF, BibTeX, or RIS (max 100MB)
-                </p>
+                <div className="flex items-center justify-center gap-1.5 pt-0.5">
+                  <span className="text-11 text-muted-foreground">Supported formats:</span>
+                  <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-red-500/10 text-red-600 dark:text-red-400">PDF</span>
+                  <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400">BibTeX</span>
+                  <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400">RIS</span>
+                  <span className="text-11 text-muted-foreground">• max 100MB</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* File Queue List */}
+          {/* Staged File List */}
           {items.length > 0 && (
-            <div className="space-y-1.5 pt-1">
-              <div className="flex items-center justify-between text-11 text-muted-foreground px-0.5">
+            <div className="space-y-1.5 pt-0.5">
+              <div className="flex items-center justify-between text-11 text-muted-foreground px-0.5 font-medium">
                 <span>
-                  {items.length} {items.length === 1 ? 'file' : 'files'}
-                  {completedCount > 0 && ` · ${completedCount} complete`}
-                  {errorCount > 0 && ` · ${errorCount} failed`}
+                  {items.length} {items.length === 1 ? 'file' : 'files'} selected • {formatFileSize(totalBytes)}
                 </span>
-                {completedCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={clearCompleted}
-                    className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                  >
-                    Clear completed
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                >
+                  Clear all
+                </button>
               </div>
 
-              <div className="rounded-lg border border-border bg-background overflow-hidden">
-                <div className="max-h-[220px] overflow-y-auto divide-y divide-border/60">
-                {items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-2.5 flex items-start gap-2.5 text-12 hover:bg-muted/20 transition-colors"
-                  >
-                    <div className="pt-0.5">{getFileIcon(item.file.name)}</div>
-
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-center justify-between gap-2">
+              <div className="rounded-lg border border-border bg-background overflow-hidden shadow-2xs">
+                <div className="max-h-[200px] overflow-y-auto divide-y divide-border/60">
+                  {items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-2.5 flex items-center justify-between gap-2.5 text-12 hover:bg-muted/20 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        {getFileTypeBadge(item.file.name)}
                         <span className="font-medium text-foreground truncate" title={item.file.name}>
                           {item.file.name}
                         </span>
-                        <span className="text-11 text-muted-foreground shrink-0 font-mono">
-                          {formatFileSize(item.file.size)}
-                        </span>
                       </div>
 
-                      {/* Status row */}
-                      {item.status === 'queued' && (
-                        <div className="flex items-center justify-between text-muted-foreground text-11">
-                          <span>Queued</span>
-                          <button
-                            type="button"
-                            onClick={() => removeItem(item.id)}
-                            className="text-muted-foreground hover:text-destructive p-0.5 rounded transition-colors"
-                            title="Remove"
-                          >
-                            <X className="size-3" />
-                          </button>
-                        </div>
-                      )}
-
-                      {item.status === 'uploading' && (
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-11 text-muted-foreground">
-                            <span className="flex items-center gap-1.5">
-                              <Loader2 className="size-3 animate-spin text-muted-foreground" />
-                              Uploading
-                            </span>
-                            <span className="font-mono">{item.progress}%</span>
-                          </div>
-                          <Progress value={item.progress} className="h-1" />
-                        </div>
-                      )}
-
-                      {item.status === 'extracting' && (
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-11 text-muted-foreground">
-                            <span className="flex items-center gap-1.5">
-                              <Loader2 className="size-3 animate-spin text-muted-foreground" />
-                              Processing
-                            </span>
-                          </div>
-                          <Progress value={95} className="h-1" />
-                        </div>
-                      )}
-
-                      {item.status === 'completed' && (
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-1.5 text-12 font-medium text-foreground">
-                            <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                            <span className="truncate">
-                              {item.extractedTitle || item.file.name}
-                            </span>
-                          </div>
-                          {item.extractedAuthors && (
-                            <p className="text-11 text-muted-foreground truncate pl-5">
-                              {item.extractedAuthors}
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {item.status === 'error' && (
-                        <div className="flex items-center justify-between gap-2 pt-0.5">
-                          <div className="flex items-center gap-1 text-destructive text-11">
-                            <AlertCircle className="size-3 shrink-0" />
-                            <span className="truncate">{item.error || 'Failed'}</span>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRetry(item)}
-                            className="h-5 text-11 px-1.5 gap-1 shrink-0 text-muted-foreground hover:text-foreground"
-                          >
-                            <RefreshCw className="size-2.5" />
-                            Retry
-                          </Button>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <span className="text-11 text-muted-foreground font-mono tabular-nums">
+                          {formatFileSize(item.file.size)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(item.id)}
+                          className="text-muted-foreground hover:text-destructive p-1 rounded hover:bg-muted transition-colors cursor-pointer"
+                          title="Remove file"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        {items.length > 0 && (
-          <div className="flex items-center justify-end pt-2 border-t border-border shrink-0">
-            <Button
-              type="button"
-              variant={isUploading ? "outline" : "default"}
-              size="sm"
-              disabled={isUploading}
-              onClick={() => onOpenChange(false)}
-              className="text-12 h-8 px-4"
-            >
-              {isUploading ? 'Uploading...' : 'Done'}
-            </Button>
-          </div>
-        )}
+        {/* Modal Actions */}
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-border shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            className="text-12 h-8 px-3.5 cursor-pointer"
+          >
+            Cancel
+          </Button>
+
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            disabled={items.length === 0}
+            onClick={handleStartUpload}
+            className="text-12 h-8 px-4 gap-1.5 cursor-pointer font-medium"
+          >
+            <Upload className="size-3.5" />
+            <span>
+              Upload{items.length > 0 ? ` ${items.length} ${items.length === 1 ? 'File' : 'Files'}` : ''}
+            </span>
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

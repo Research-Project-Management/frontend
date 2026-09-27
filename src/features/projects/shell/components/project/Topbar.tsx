@@ -11,6 +11,7 @@ import {
   Star,
   Upload,
   ChevronDown,
+  Trash2,
 } from 'lucide-react';
 import {
   Button,
@@ -54,7 +55,7 @@ export function Topbar({
 }: TopbarProps) {
   return (
     <header
-      className="flex items-center justify-between px-3 sm:px-4 h-11 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-20 shrink-0 select-none min-w-0 overflow-x-auto scrollbar-none"
+      className="flex items-center justify-between px-3 sm:px-4 h-11 border-b border-border bg-transparent sticky top-0 z-20 shrink-0 select-none min-w-0 overflow-x-auto scrollbar-none"
       style={{ paddingLeft: 'max(1rem, var(--header-offset, 0px))' }}
     >
       {/* Left: Icon, Title & Project Count */}
@@ -163,6 +164,20 @@ export function Topbar({
                 {archivedCount}
               </span>
             )}
+          </Link>
+        </Button>
+
+        {/* Quick Link to Trash */}
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted hidden md:inline-flex cursor-pointer shrink-0"
+          title="View trash"
+        >
+          <Link className="shrink-0" href="/archives?tab=trash">
+            <Trash2 className="size-3.5 text-foreground shrink-0" />
+            <span className="hidden sm:inline">Trash</span>
           </Link>
         </Button>
 

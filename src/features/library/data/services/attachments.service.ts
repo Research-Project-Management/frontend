@@ -145,7 +145,7 @@ export function getFileContentUrl(scopeId: string, fileId: string): string {
 }
 
 export async function fetchFileContent(scopeId: string, fileId: string): Promise<Blob> {
-  return apiGet<Blob>(getFileUrl(scopeId, fileId, 'content'));
+  return apiGet<Blob>(getFileUrl(scopeId, fileId, 'content'), { responseType: 'blob' });
 }
 
 export function getAttachmentContentUrl(scopeId: string, attachmentId: string): string {
@@ -153,7 +153,7 @@ export function getAttachmentContentUrl(scopeId: string, attachmentId: string): 
 }
 
 export async function fetchAttachmentContent(scopeId: string, attachmentId: string): Promise<Blob> {
-  return apiGet<Blob>(getAttachmentUrl(scopeId, attachmentId, 'content'));
+  return apiGet<Blob>(getAttachmentUrl(scopeId, attachmentId, 'content'), { responseType: 'blob' });
 }
 
 export async function uploadLibraryAttachment(

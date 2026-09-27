@@ -28,6 +28,7 @@ export const fetchWordCount = manuscriptService.compiler.wordCount;
 export const compilePreview = manuscriptService.compiler.preview;
 export const listAuxFiles = manuscriptService.compiler.listAuxFiles;
 export const downloadAuxFileUrl = manuscriptService.compiler.downloadAuxFileUrl;
+export const downloadAllArtifactsZipUrl = manuscriptService.compiler.downloadAllArtifactsZipUrl;
 
 export const compileService = {
   flushPageContent,
@@ -37,6 +38,7 @@ export const compileService = {
   fetchWordCount,
   listAuxFiles,
   downloadAuxFileUrl,
+  downloadAllArtifactsZipUrl,
 };
 
 export const DocumentCompileService = compileService;

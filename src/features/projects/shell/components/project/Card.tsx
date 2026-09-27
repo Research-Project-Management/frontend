@@ -14,13 +14,14 @@ import {
   Share2,
   Tag,
   Copy,
+  Trash2,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import { ProjectAvatar } from "@/shared/components/ui";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { useFavorites } from '../../hooks/use-favorites';
-import { useArchiveProject, useDuplicateProject } from '../../hooks/use-project';
+import { useArchiveProject, useDuplicateProject, useDeleteProject } from '../../hooks/use-project';
 import {
   getProjectKey,
   getBannerGradient,
@@ -44,7 +45,9 @@ export function Card({ project, onArchive, onManageTags }: CardProps) {
 
   const archiveProjectMutation = useArchiveProject();
   const duplicateProjectMutation = useDuplicateProject();
+  const deleteProjectMutation = useDeleteProject();
   const canArchive = project.permissions?.canArchive ?? (project.yourRole === 'owner');
+  const canDelete = project.permissions?.canDelete ?? (project.yourRole === 'owner');
 
   // Find lead from members or creator
   const leadMember = project.members?.find(
@@ -164,6 +167,20 @@ export function Card({ project, onArchive, onManageTags }: CardProps) {
                 >
                   <Archive className="size-3.5 shrink-0" />
                   <span>Archive project</span>
+                </DropdownMenuItem>
+              )}
+              {canDelete && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    deleteProjectMutation.mutate({ projectId });
+                  }}
+                  disabled={deleteProjectMutation.isPending}
+                  className="cursor-pointer font-medium text-destructive flex items-center gap-2"
+                >
+                  <Trash2 className="size-3.5 shrink-0" />
+                  <span>{deleteProjectMutation.isPending ? 'Moving to trash…' : 'Move to trash'}</span>
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>

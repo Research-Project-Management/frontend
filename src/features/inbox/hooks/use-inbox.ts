@@ -63,14 +63,12 @@ export function useInbox(initialCategory: InboxCategory = 'all'): UseInboxReturn
     }
   }, []);
 
-  // 1. Initial Load & Polling Fallback (every 45s)
+  // 1. Initial Load
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 45_000);
-    return () => clearInterval(interval);
   }, [fetchNotifications]);
 
-  // 2. Real-Time Socket.IO Synchronization (/notifications namespace)
+  // 2. Real-Time Socket.IO Synchronization with Smart Disconnect Fallback
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -91,10 +89,34 @@ export function useInbox(initialCategory: InboxCategory = 'all'): UseInboxReturn
     });
 
     socketRef.current = socket;
+    let fallbackInterval: NodeJS.Timeout | null = null;
+
+    const startFallback = () => {
+      if (!fallbackInterval) {
+        fallbackInterval = setInterval(fetchNotifications, 60_000);
+      }
+    };
+
+    const stopFallback = () => {
+      if (fallbackInterval) {
+        clearInterval(fallbackInterval);
+        fallbackInterval = null;
+      }
+    };
 
     socket.on('connect', () => {
-      // Re-fetch latest to ensure zero state drift on reconnect
+      // WebSocket is active: pause polling and sync latest state
+      stopFallback();
       fetchNotifications();
+    });
+
+    socket.on('disconnect', () => {
+      // Fallback to gentle polling only when socket is disconnected
+      startFallback();
+    });
+
+    socket.on('connect_error', () => {
+      startFallback();
     });
 
     // Handle new incoming notification
@@ -150,6 +172,7 @@ export function useInbox(initialCategory: InboxCategory = 'all'): UseInboxReturn
     });
 
     return () => {
+      stopFallback();
       socket.disconnect();
       socketRef.current = null;
     };
@@ -188,41 +211,37 @@ export function useInbox(initialCategory: InboxCategory = 'all'): UseInboxReturn
     await inboxService.deleteNotification(id);
   }, [notifications]);
 
-  // 6. Compute Total Counts per Category
-  const categoryCounts = useMemo(() => {
+  // 6 & 7. Single-Pass Computation for Category & Unread Counts
+  const { categoryCounts, unreadCategoryCounts } = useMemo(() => {
     let project = 0;
     let pages = 0;
+    let unreadAll = 0;
+    let unreadProject = 0;
+    let unreadPages = 0;
 
     for (const item of notifications) {
       const cat = getNotificationCategory(item);
       if (cat === 'project') project++;
       else if (cat === 'pages') pages++;
-    }
 
-    return {
-      all: notifications.length,
-      project,
-      pages,
-    };
-  }, [notifications]);
-
-  // 7. Compute Unread Counts per Category (for Tab badges)
-  const unreadCategoryCounts = useMemo(() => {
-    let project = 0;
-    let pages = 0;
-
-    for (const item of notifications) {
       if (!item.isRead) {
-        const cat = getNotificationCategory(item);
-        if (cat === 'project') project++;
-        else if (cat === 'pages') pages++;
+        unreadAll++;
+        if (cat === 'project') unreadProject++;
+        else if (cat === 'pages') unreadPages++;
       }
     }
 
     return {
-      all: notifications.filter((n) => !n.isRead).length,
-      project,
-      pages,
+      categoryCounts: {
+        all: notifications.length,
+        project,
+        pages,
+      },
+      unreadCategoryCounts: {
+        all: unreadAll,
+        project: unreadProject,
+        pages: unreadPages,
+      },
     };
   }, [notifications]);
 

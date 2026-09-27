@@ -3,12 +3,7 @@ import { suggestionService } from '@/features/editor/services/suggestion.service
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import type { PageSuggestion, SuggestionType, SuggestionStatus } from '@/features/editor/types';
 
-vi.mock('@/shared/lib/api', () => ({
-  apiGet: vi.fn(),
-  apiPost: vi.fn(),
-}));
-
-import { apiGet, apiPost } from '@/shared/lib/api';
+import * as api from '@/shared/lib/api';
 
 describe('Track Changes & Review System (Overleaf Parity)', () => {
   beforeEach(() => {
@@ -71,17 +66,21 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
 
   describe('1. Suggestion Service API Client', () => {
     it('should query suggestions with status filter', async () => {
-      (apiGet as any).mockResolvedValue({ suggestions: mockSuggestions.slice(0, 2) });
+      const apiGetSpy = vi.spyOn(api, 'apiGet').mockResolvedValueOnce({
+        suggestions: mockSuggestions.slice(0, 2),
+      } as any);
 
       const result = await suggestionService.getSuggestions('page-1', 'pending');
-      expect(apiGet).toHaveBeenCalledWith('/api/pages/page-1/suggestions?status=pending');
+      expect(apiGetSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions?status=pending');
       expect(result).toHaveLength(2);
       expect(result[0].status).toBe('pending');
     });
 
     it('should create suggestion payload correctly', async () => {
       const newSugg = mockSuggestions[0];
-      (apiPost as any).mockResolvedValue({ suggestion: newSugg });
+      const apiPostSpy = vi.spyOn(api, 'apiPost').mockResolvedValueOnce({
+        suggestion: newSugg,
+      } as any);
 
       const result = await suggestionService.createSuggestion({
         pageId: 'page-1',
@@ -92,7 +91,7 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
         description: 'Add amsmath for equations',
       });
 
-      expect(apiPost).toHaveBeenCalledWith('/api/pages/page-1/suggestions', {
+      expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions', {
         type: 'insert',
         suggestedText: '\\usepackage{amsmath}\n',
         fromLine: 2,
@@ -103,53 +102,53 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
     });
 
     it('should accept a suggestion and receive updated document content', async () => {
-      (apiPost as any).mockResolvedValue({
+      const apiPostSpy = vi.spyOn(api, 'apiPost').mockResolvedValueOnce({
         ok: true,
         suggestion: { ...mockSuggestions[1], status: 'accepted' },
         page: { id: 'page-1', content: 'Updated LaTeX document text' },
-      });
+      } as any);
 
       const res = await suggestionService.acceptSuggestion('page-1', 'sugg-2');
-      expect(apiPost).toHaveBeenCalledWith('/api/pages/page-1/suggestions/sugg-2/accept', {});
+      expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions/sugg-2/accept', {});
       expect(res.ok).toBe(true);
       expect(res.suggestion.status).toBe('accepted');
       expect(res.page.content).toBe('Updated LaTeX document text');
     });
 
     it('should reject a suggestion', async () => {
-      (apiPost as any).mockResolvedValue({
+      const apiPostSpy = vi.spyOn(api, 'apiPost').mockResolvedValueOnce({
         ok: true,
         suggestion: { ...mockSuggestions[1], status: 'rejected' },
-      });
+      } as any);
 
       const res = await suggestionService.rejectSuggestion('page-1', 'sugg-2');
-      expect(apiPost).toHaveBeenCalledWith('/api/pages/page-1/suggestions/sugg-2/reject', {});
+      expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions/sugg-2/reject', {});
       expect(res.ok).toBe(true);
       expect(res.suggestion.status).toBe('rejected');
     });
 
     it('should accept all pending suggestions and return accepted count & updated page', async () => {
-      (apiPost as any).mockResolvedValue({
+      const apiPostSpy = vi.spyOn(api, 'apiPost').mockResolvedValueOnce({
         ok: true,
         acceptedCount: 2,
         page: { id: 'page-1', content: 'Fully accepted document' },
-      });
+      } as any);
 
       const res = await suggestionService.acceptAllSuggestions('page-1');
-      expect(apiPost).toHaveBeenCalledWith('/api/pages/page-1/suggestions/accept-all', {});
+      expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions/accept-all', {});
       expect(res.ok).toBe(true);
       expect(res.acceptedCount).toBe(2);
       expect(res.page.content).toBe('Fully accepted document');
     });
 
     it('should reject all pending suggestions', async () => {
-      (apiPost as any).mockResolvedValue({
+      const apiPostSpy = vi.spyOn(api, 'apiPost').mockResolvedValueOnce({
         ok: true,
         rejectedCount: 2,
-      });
+      } as any);
 
       const res = await suggestionService.rejectAllSuggestions('page-1');
-      expect(apiPost).toHaveBeenCalledWith('/api/pages/page-1/suggestions/reject-all', {});
+      expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions/reject-all', {});
       expect(res.ok).toBe(true);
       expect(res.rejectedCount).toBe(2);
     });

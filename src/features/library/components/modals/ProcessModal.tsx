@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
+  X,
 } from 'lucide-react';
 import type { ProcessModalState } from '../../data';
 import { cn } from "@/shared/lib/utils";
@@ -21,6 +22,7 @@ interface ProcessModalProps {
   state: ProcessModalState;
   onClose: () => void;
   onMinimize?: () => void;
+  onRestore?: () => void;
   onViewLibrary?: () => void;
 }
 
@@ -47,6 +49,7 @@ export default function ProcessModal({
   state,
   onClose,
   onMinimize,
+  onRestore,
 }: ProcessModalProps) {
   const data = state.data;
   const total = data?.total || 1;
@@ -60,9 +63,57 @@ export default function ProcessModal({
     ? -1
     : items.findIndex((item) => item.status !== 'SUCCEEDED' && item.status !== 'FAILED');
 
+  // ── Floating Minimized Pill ────────────────────────────────────────────────
+  if (state.isMinimized && !state.isOpen) {
+    return (
+      <div
+        onClick={onRestore}
+        className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-background shadow-raised-200 cursor-pointer hover:bg-muted/80 transition-all text-12 font-medium text-foreground select-none"
+        title="Click to view details"
+      >
+        {state.isComplete ? (
+          <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+        ) : (
+          <RefreshCw className="size-3.5 text-primary animate-spin shrink-0" />
+        )}
+        <span>
+          {state.isComplete
+            ? 'Processing complete'
+            : `Processing (${percentage}%)`}
+        </span>
+        {state.isComplete && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+            className="size-4 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center ml-0.5 cursor-pointer"
+            title="Dismiss"
+          >
+            <X className="size-3" />
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (!state.isOpen) return null;
+
   // ── Main Process Modal ──────────────────────────────────────────────────────
   return (
-    <Dialog open={state.isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={state.isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          if (isRunning && onMinimize) {
+            onMinimize();
+          } else {
+            onClose();
+          }
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-[560px] p-2.5 sm:p-3 rounded-lg border border-border bg-background shadow-raised-200 font-sans gap-0 overflow-hidden [&>[data-slot=dialog-close]]:top-2 sm:[&>[data-slot=dialog-close]]:top-2.5 [&>[data-slot=dialog-close]]:right-2 sm:[&>[data-slot=dialog-close]]:right-2.5">
         {/* Modal Header: line removed and reduced margin */}
         <div className="pb-2.5 bg-background flex items-center justify-between">
@@ -160,13 +211,13 @@ export default function ProcessModal({
                         {isItemSuccess ? (
                           <span
                             className="truncate block text-foreground font-normal text-12"
-                            title={item.title}
+                            title={(item as any).itemName || item.title}
                           >
-                            {item.title}
+                            {(item as any).itemName || item.title}
                           </span>
                         ) : isItemProcessing ? (
                           <span className="text-foreground text-12 font-normal">
-                            {(item.status as string) === 'UPLOADING' ? 'Uploading...' : 'Processing...'}
+                            {(item.status as string) === 'UPLOADING' ? 'Uploading...' : 'Extracting metadata...'}
                           </span>
                         ) : isItemFailed ? (
                           <span

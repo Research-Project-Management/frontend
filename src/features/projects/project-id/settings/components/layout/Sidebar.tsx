@@ -10,12 +10,9 @@ import {
   LayoutGrid,
   Sparkles,
   Tag,
-  Layers,
   CircleDot,
-  SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react';
-import { CycleIcon } from "@/shared/components/ui";
 import { useProjectDetails, useProjects } from '@/features/projects/shell/hooks/use-project';
 import { cn } from "@/shared/lib/utils";
 import { ScrollArea } from "@/shared/components/ui";
@@ -63,10 +60,8 @@ export default function Sidebar() {
     {
       title: 'Workflow & Data',
       items: [
-        { id: 'cycles', label: 'Cycles', icon: CycleIcon, to: `${base}/cycles` },
         { id: 'states', label: 'States', icon: CircleDot, to: `${base}/states` },
         { id: 'labels', label: 'Labels', icon: Tag, to: `${base}/labels` },
-        { id: 'views', label: 'Views', icon: SlidersHorizontal, to: `${base}/views` },
       ],
     },
   ];

@@ -13,7 +13,7 @@ export function useModules(projectId: string) {
 
   const project = (projectData as any)?.project || projectData;
   const DEFAULT_MODULES = useMemo(
-    () => ['work-items', 'cycles', 'views', 'pages'],
+    () => ['work-items', 'pages'],
     [],
   );
 
@@ -37,13 +37,7 @@ export function useModules(projectId: string) {
   // Sync local state when server data arrives / changes
   useEffect(() => {
     if (serverModules.length > 0) {
-      // Backwards compatibility: if project has legacy modules, default cycles and views to active
-      const hasCyclesOrViews = serverModules.includes('cycles') || serverModules.includes('views');
-      if (!hasCyclesOrViews && serverModules.includes('work-items')) {
-        setActive([...serverModules, 'cycles', 'views']);
-      } else {
-        setActive(serverModules);
-      }
+      setActive(serverModules);
     }
   }, [serverModulesKey, serverModules]);
 

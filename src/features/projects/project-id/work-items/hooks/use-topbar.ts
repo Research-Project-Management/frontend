@@ -902,11 +902,10 @@ export function useTopbar({
   );
 
   const selectCycle = useCallback(
-    (selectedCycleId: string) => {
-      router.push(`/projects/${projectId}/cycles/${selectedCycleId}`);
+    (_selectedCycleId: string) => {
       setCycleSearch('');
     },
-    [router, projectId],
+    [],
   );
 
   const state = {

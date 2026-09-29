@@ -18,16 +18,10 @@ export interface WorkItemTemplateRecord {
 }
 
 export const TemplateService = {
-  getTemplates: async (projectId: string): Promise<WorkItemTemplateRecord[]> => {
-    const res = await apiGet<{ data?: WorkItemTemplateRecord[]; templates?: WorkItemTemplateRecord[] } | WorkItemTemplateRecord[]>(
-      `/api/work-items/projects/${projectId}/templates`,
-    );
-    if (Array.isArray(res)) return res;
-    return res.data || res.templates || [];
-  },
+  getTemplates: async (_projectId: string): Promise<WorkItemTemplateRecord[]> => [],
 
-  getTemplate: (projectId: string, templateId: string) =>
-    apiGet<WorkItemTemplateRecord>(`/api/work-items/projects/${projectId}/templates/${templateId}`),
+  getTemplate: async (_projectId: string, _templateId: string): Promise<WorkItemTemplateRecord> =>
+    null as any,
 
   createTemplate: (
     projectId: string,

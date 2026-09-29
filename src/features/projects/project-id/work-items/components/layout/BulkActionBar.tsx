@@ -283,45 +283,6 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Cycle Selector */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={isUpdating}
-              className="h-7 text-12 font-medium text-foreground hover:bg-muted flex items-center gap-1.5 px-2 rounded-md cursor-pointer shrink-0"
-            >
-              <CycleIcon className="size-3.5 text-foreground shrink-0" />
-              <span>Cycle</span>
-              <ChevronDown className="size-3 text-foreground shrink-0" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" className="w-52 p-1 rounded-md border-border bg-popover max-h-56 overflow-y-auto">
-            <DropdownMenuItem
-              onClick={() => onUpdateCycle(null)}
-              className="text-12 cursor-pointer py-1.5 rounded-md text-foreground"
-            >
-              Remove from cycle
-            </DropdownMenuItem>
-            {cycles.length > 0 && <DropdownMenuSeparator />}
-            {cycles.map((c) => (
-              <DropdownMenuItem
-                key={c.id}
-                onClick={() => onUpdateCycle(c.id)}
-                className="text-12 cursor-pointer flex items-center justify-between py-1.5 rounded-md"
-              >
-                <span className="truncate">{c.name}</span>
-                {c.status === 'active' && (
-                  <span className="text-10 font-semibold text-emerald-500 bg-emerald-500/10 px-1 rounded-md">
-                    Active
-                  </span>
-                )}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
         {/* Label Selector */}
         {labels && labels.length > 0 && onAddLabel && (
           <DropdownMenu>

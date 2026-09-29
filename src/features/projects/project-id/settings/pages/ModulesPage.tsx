@@ -3,8 +3,8 @@
 import React from 'react';
 import { useParams } from 'next/navigation';
 import { Skeleton } from "@/shared/components/ui";
-import { FileText, SlidersHorizontal, LayoutGrid } from 'lucide-react';
-import { WorkItemsIcon, CycleIcon } from "@/shared/components/ui";
+import { FileText, LayoutGrid } from 'lucide-react';
+import { WorkItemsIcon } from "@/shared/components/ui";
 import TopBar from '../components/layout/TopBar';
 import { Item } from '../components/module/Item';
 import { useModules } from '../hooks/use-module';
@@ -14,8 +14,6 @@ import type { ModuleDef } from '../types/module.types';
 
 const MODULES: ModuleDef[] = [
   { id: 'work-items', label: 'Work items',  desc: 'Research activities, milestones and work item tracking', icon: WorkItemsIcon, locked: true },
-  { id: 'cycles',     label: 'Cycles',      desc: 'Sprint planning, iterations and time-boxed development cycles', icon: CycleIcon },
-  { id: 'views',      label: 'Views',       desc: 'Customized filter perspectives, sorts, and layouts for work items', icon: SlidersHorizontal },
   { id: 'pages',      label: 'Pages',       desc: 'Collaborative documents, notes and manuscripts', icon: FileText },
 ];
 

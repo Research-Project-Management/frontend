@@ -111,7 +111,7 @@ export const ProjectSchema = z.object({
   favoritedBy: z.array(z.string()).optional(),
   isPrivate: z.boolean().default(false).optional(),
   timezone: z.string().nullish().transform((v) => v ?? undefined),
-  modules: z.array(z.string()).default(['work-items', 'cycles', 'views', 'pages']),
+  modules: z.array(z.string()).default(['overview', 'work-items', 'pages']),
   leadId: z.string().nullish().transform((v) => v ?? undefined),
   lead: ProjectMemberUserSchema.nullish().transform((v) => v ?? undefined),
   createdBy: ProjectMemberUserSchema.nullish().transform((v) => v ?? undefined),

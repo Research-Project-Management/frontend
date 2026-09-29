@@ -196,7 +196,7 @@ export function CreateModal({
     return [];
   }, [isDifferentProject, remoteItemsData, availableItems]);
 
-  const isCyclesEnabled = true;
+  const isCyclesEnabled = false;
 
   const { uploadFile } = useUpload();
   const { data: rawLabels } = useLabelsQuery(currentProjectId, 'work-item');

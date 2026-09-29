@@ -51,22 +51,18 @@ import { CreateModal } from '@/features/projects/project-id/work-items/component
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ProjectModuleKey = 'overview' | 'work-items' | 'views' | 'pages' | 'cycles';
+type ProjectModuleKey = 'overview' | 'work-items' | 'pages';
 
 const MODULE_ORDER: ProjectModuleKey[] = [
   'overview',
   'work-items',
-  'views',
   'pages',
-  'cycles',
 ];
 
 const modulesConfig: Record<ProjectModuleKey, { label: string; icon: React.ComponentType<any>; path: string }> = {
   'overview': { label: 'Overview', icon: Compass, path: 'overview' },
   'work-items': { label: 'Work items', icon: WorkItemsIcon, path: 'work-items' },
-  'views': { label: 'Views', icon: Layers, path: 'views' },
   'pages': { label: 'Pages', icon: FileText, path: 'pages' },
-  'cycles': { label: 'Cycles', icon: CycleIcon, path: 'cycles' },
 };
 
 type NavItem = {
@@ -154,20 +150,6 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         icon: Briefcase,
         to: '/projects',
         canHide: false,
-      },
-      {
-        id: 'views',
-        label: 'Views',
-        icon: Layers,
-        to: '/projects/views',
-        canHide: true,
-      },
-      {
-        id: 'cycles',
-        label: 'Cycles',
-        icon: CycleIcon,
-        to: '/projects/cycles',
-        canHide: true,
       },
       {
         id: 'pages',
@@ -406,13 +388,13 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           </div>
         </div>
 
-        {/* Project Submodules: strictly work-items, views, pages, cycles */}
+        {/* Project Submodules: strictly overview, work-items, pages */}
         <CollapsibleContent className="overflow-hidden flex flex-col gap-1 mt-1">
           {(() => {
             const rawModules: string[] =
               projectModules && projectModules.length > 0
                 ? projectModules.map((m: string) => String(m).toLowerCase().replace(/_/g, '-'))
-                : ['work-items', 'views', 'pages', 'cycles'];
+                : ['overview', 'work-items', 'pages'];
             const activeSet = new Set(rawModules);
 
             // Strictly filter by MODULE_ORDER, ensuring overview and work-items are always present as core navigation

@@ -99,7 +99,6 @@ import {
 
 import { Activities, type ActivityEntry } from "./Activities";
 import { Attachments, type ItemAttachment, type AttachCenterData } from "./Attachments";
-import { Updates } from "./WorkItemUpdates";
 import {
   MemberPopover,
   LabelPopover,
@@ -1631,23 +1630,6 @@ export function DetailModal({
 
                     {showProjectStructure && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-2">
-                        {/* Cycle Selector */}
-                        <div className="flex items-center justify-between text-xs py-1">
-                          <span className="text-muted-foreground">Cycle</span>
-                          <CyclePopover
-                            open={openCyclePopover}
-                            onOpenChange={setOpenCyclePopover}
-                            cycleId={cycleId}
-                            setCycleId={(cId) => {
-                              setCycleId(cId);
-                              safeSave({ ...currentPayload, cycleId: cId || undefined });
-                            }}
-                            cycles={allCycles}
-                            actionBtnClass={actionBtnClass}
-                            isReadOnly={isReadOnly}
-                          />
-                        </div>
-
                         {/* Module Info */}
                         <div className="flex items-center justify-between text-xs py-1">
                           <span className="text-muted-foreground">Modules</span>
@@ -1866,15 +1848,6 @@ export function DetailModal({
               onDetachLink={handleDetachLink}
               isReadOnly={isReadOnly}
             />
-
-            {/* Progress Briefings / Status Updates Section */}
-            {workItemId && (
-              <Updates
-                workItemId={workItemId}
-                projectId={currentProjectId}
-                isReadOnly={isReadOnly}
-              />
-            )}
 
             {/* Activity & Comments Timeline with Filter Tabs */}
             <div className="pt-4 border-t border-border">

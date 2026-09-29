@@ -83,7 +83,6 @@ export type TablePropertyKey =
   | 'assignees'
   | 'dueDate'
   | 'labels'
-  | 'cycle'
   | 'startDate'
   | 'createdOn'
   | 'createdBy'
@@ -140,7 +139,6 @@ export const TABLE_PROPERTIES: TablePropertyConfig[] = [
   { key: 'assignees', label: 'Assignees', icon: Users, defaultVisible: true, minWidth: 140 },
   { key: 'dueDate', label: 'Due date', icon: Calendar, defaultVisible: true, minWidth: 125 },
   { key: 'labels', label: 'Labels', icon: Tag, defaultVisible: true, minWidth: 140 },
-  { key: 'cycle', label: 'Cycle', icon: CycleIcon, defaultVisible: false, minWidth: 130 },
   { key: 'startDate', label: 'Start date', icon: CalendarClock, defaultVisible: false, minWidth: 125 },
   { key: 'createdOn', label: 'Created on', icon: Calendar, defaultVisible: false, minWidth: 125 },
   { key: 'createdBy', label: 'Created by', icon: User, defaultVisible: false, minWidth: 130 },
@@ -156,7 +154,6 @@ export const DEFAULT_VISIBLE_PROPERTIES: Record<TablePropertyKey, boolean> = {
   assignees: true,
   dueDate: true,
   labels: true,
-  cycle: false,
   startDate: false,
   createdOn: false,
   createdBy: false,
@@ -173,7 +170,6 @@ export const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   assignees: 140,
   dueDate: 125,
   labels: 140,
-  cycle: 130,
   startDate: 125,
   createdOn: 125,
   createdBy: 130,
@@ -1063,39 +1059,6 @@ export function TableRowItem({
                 </div>
               )}
 
-              {/* CYCLE CELL */}
-              {p.key === 'cycle' && (
-                <div className="relative w-full">
-                  <button
-                    type="button"
-                    onClick={() => !isReadOnly && setCycleOpen(true)}
-                    disabled={isReadOnly}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-muted/80 transition-colors w-full text-left truncate cursor-pointer"
-                  >
-                    {item.cycleId ? (
-                      <>
-                        <CycleIcon className="size-3.5 text-foreground shrink-0" />
-                        <span className="truncate">
-                          {cycles.find((c) => c.id === item.cycleId)?.name || 'Cycle'}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-foreground hover:text-foreground">-</span>
-                    )}
-                  </button>
-
-                  <CyclePopover
-                    open={cycleOpen}
-                    onOpenChange={setCycleOpen}
-                    cycleId={item.cycleId || null}
-                    setCycleId={(cid) => onUpdateCard?.({ id: item.id, cycleId: cid || undefined })}
-                    cycles={cycles}
-                    actionBtnClass="hidden"
-                    isReadOnly={isReadOnly}
-                  />
-                </div>
-              )}
-
               {/* START DATE CELL */}
               {p.key === 'startDate' && (
                 <div className="relative w-full">
@@ -1384,7 +1347,6 @@ export function TableView({
         ? { dueDate: Boolean(p.dueDate ?? p.due_date) }
         : {}),
       ...(p.labels !== undefined ? { labels: Boolean(p.labels) } : {}),
-      ...(p.cycle !== undefined ? { cycle: Boolean(p.cycle) } : {}),
       ...((p.startDate ?? p.start_date) !== undefined
         ? { startDate: Boolean(p.startDate ?? p.start_date) }
         : {}),
@@ -1426,7 +1388,6 @@ export function TableView({
         assignees: 'assignee',
         dueDate: 'due_date',
         labels: 'labels',
-        cycle: 'cycle',
         startDate: 'start_date',
         createdOn: 'created_on',
         createdBy: 'created_by',

@@ -394,44 +394,6 @@ export function ArchivePage() {
 
           <button
             type="button"
-            onClick={() => { setActiveTab('cycles'); setSelectedItemIds(new Set()); }}
-            className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors',
-              activeTab === 'cycles'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <CycleIcon className="size-3.5 shrink-0" />
-            <span>Cycles</span>
-            {archivedCycles.length > 0 && (
-              <span className="text-10 font-mono px-1.5 py-0.2 rounded-full bg-muted text-foreground border border-border">
-                {archivedCycles.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => { setActiveTab('views'); setSelectedItemIds(new Set()); }}
-            className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors',
-              activeTab === 'views'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Layers className="size-3.5 shrink-0" />
-            <span>Views</span>
-            {archivedViews.length > 0 && (
-              <span className="text-10 font-mono px-1.5 py-0.2 rounded-full bg-muted text-foreground border border-border">
-                {archivedViews.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
             onClick={() => { setActiveTab('pages'); setSelectedItemIds(new Set()); }}
             className={cn(
               'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors',

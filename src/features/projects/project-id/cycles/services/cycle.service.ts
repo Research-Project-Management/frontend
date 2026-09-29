@@ -2,11 +2,9 @@ import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
 import type { Cycle, CreateCycleInput, UpdateCycleInput } from "../types/cycle.types";
 
 export const CycleService = {
-  getProjectCycles: (projectId: string) =>
-    apiGet<{ cycles: Cycle[] }>(`/api/projects/${projectId}/cycles`),
+  getProjectCycles: async (_projectId: string): Promise<{ cycles: Cycle[] }> => ({ cycles: [] }),
 
-  getCycle: (cycleId: string) =>
-    apiGet<{ cycle: Cycle }>(`/api/cycles/${cycleId}`),
+  getCycle: async (_cycleId: string): Promise<{ cycle: Cycle }> => ({ cycle: null as any }),
 
   create: ({ projectId, ...data }: { projectId: string } & Partial<CreateCycleInput>) =>
     apiPost<{ cycle?: Cycle }>(`/api/projects/${projectId}/cycles`, data),

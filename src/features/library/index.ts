@@ -35,7 +35,6 @@ export {
   useViewItems,
   useCollections,
   useAttachments,
-  useAttachmentRevisions,
   useRenameAttachment,
   useNotes,
   useRelations,

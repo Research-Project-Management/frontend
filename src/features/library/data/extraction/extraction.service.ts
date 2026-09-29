@@ -1,18 +1,13 @@
 import { apiGet, apiPost, apiPatch, apiDelete, getEffectiveBaseUrl } from "@/shared/lib/api";
 import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from "@/shared/lib/token-storage";
-import type { AttachmentDto, AttachmentRevisionDto } from "../../types/library.types";
+import type { AttachmentDto } from "../../types/library.types";
 import { isProjectScope } from '../../domain';
 import { AnnotationsService } from '@/features/reader/services/annotations.service';
 
-export type { AttachmentDto, AttachmentRevisionDto };
+export type { AttachmentDto };
 export { AnnotationsService };
 
-export interface AddRevisionDto {
-  fileId: string;
-  filename?: string;
-  comment?: string;
-}
 
 export interface RenameAttachmentInput {
   filename?: string;
@@ -81,27 +76,7 @@ export async function getAttachment(
   return (response as any).attachment ?? response;
 }
 
-export async function getAttachmentRevisions(
-  scopeId: string,
-  attachmentId: string,
-): Promise<AttachmentRevisionDto[]> {
-  const response = await apiGet<{ revisions: AttachmentRevisionDto[] }>(
-    getAttachmentUrl(scopeId, attachmentId, 'revisions'),
-  );
-  return response.revisions || [];
-}
 
-export async function addRevision(
-  scopeId: string,
-  attachmentId: string,
-  dto: AddRevisionDto,
-): Promise<AttachmentRevisionDto> {
-  const response = await apiPost<{ revision: AttachmentRevisionDto }>(
-    getAttachmentUrl(scopeId, attachmentId, 'revisions'),
-    dto,
-  );
-  return (response as any).revision ?? response;
-}
 
 export async function deleteAttachment(
   scopeId: string,
@@ -226,8 +201,6 @@ export async function reExtractAttachment(
 export const AttachmentsService = {
   getAttachments,
   getAttachment,
-  getAttachmentRevisions,
-  addRevision,
   deleteAttachment,
   createAttachment,
   renameAttachment,
@@ -247,7 +220,6 @@ export const AttachmentsService = {
   // Ergonomic aliases
   list: getAttachments,
   get: getAttachment,
-  revisions: getAttachmentRevisions,
   delete: deleteAttachment,
   rename: renameAttachment,
   batchRename: batchRenameAttachments,

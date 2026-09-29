@@ -1,4 +1,4 @@
-﻿/**
+/**
  * index.ts
  *
  * Canonical barrel export for all Work Item React Query hooks.
@@ -17,5 +17,4 @@ export * from './use-realtime';
 export * from './use-relation';
 export * from './use-template';
 export * from './use-topbar';
-export * from './use-update';
 export * from './use-view';

@@ -34,7 +34,6 @@ import { getPaperFileUrl } from '../../domain';
 import { usePdf } from '@/features/reader/hooks/use-pdf';
 import {
   useAttachments,
-  useAttachmentRevisions,
   useRenameAttachment,
   downloadAnnotatedPdf,
   uploadLibraryAttachment,
@@ -197,54 +196,6 @@ const PdfPagePreview = dynamic(
   }
 );
 
-function AttachmentRevisions({
-  scopeId,
-  projectId,
-  attachmentId,
-}: {
-  scopeId?: string;
-  projectId?: string;
-  workspaceId?: string;
-  attachmentId: string;
-}) {
-  const effectiveScope = scopeId || projectId || 'user';
-  const { data: revisionsData, isLoading } = useAttachmentRevisions(effectiveScope, attachmentId);
-  const revisions = Array.isArray(revisionsData) ? revisionsData : [];
-
-  if (isLoading) {
-    return (
-      <div className="p-2 text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-        <Loader2 className="size-3 animate-spin text-foreground shrink-0" />
-        <span>Loading history...</span>
-      </div>
-    );
-  }
-
-  if (!revisions || revisions.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="p-2 space-y-1 text-xs">
-      <div className="text-11 font-medium text-muted-foreground px-1">
-        Revision History
-      </div>
-      <div className="space-y-1 max-h-32 overflow-y-auto">
-        {revisions.map((rev: any) => (
-          <div
-            key={rev.id || rev.version}
-            className="flex items-center justify-between p-1 rounded-md hover:bg-muted text-xs"
-          >
-            <span className="font-mono text-11">v{rev.version}</span>
-            <span className="text-muted-foreground text-10">
-              {rev.createdAt ? new Date(rev.createdAt).toLocaleDateString() : ''}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 interface AttachmentsSectionProps {
   paper: Item;
@@ -745,15 +696,6 @@ export default function AttachmentsSection({
                         <FolderSync className="size-3.5 text-foreground shrink-0" />
                         <span>Rename File from Parent Metadata</span>
                       </DropdownMenuItem>
-                    )}
-                    {rawScopeId && att.id && !isLink && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <AttachmentRevisions
-                          scopeId={rawScopeId}
-                          attachmentId={att.id}
-                        />
-                      </>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>

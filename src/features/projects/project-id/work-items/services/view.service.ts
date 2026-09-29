@@ -12,16 +12,10 @@ export interface SavedViewRecord {
 }
 
 export const ViewService = {
-  getViews: async (projectId: string): Promise<SavedViewRecord[]> => {
-    const res = await apiGet<{ data?: SavedViewRecord[]; views?: SavedViewRecord[] } | SavedViewRecord[]>(
-      `/api/projects/${projectId}/views`,
-    );
-    if (Array.isArray(res)) return res;
-    return res.data || res.views || [];
-  },
+  getViews: async (_projectId: string): Promise<SavedViewRecord[]> => [],
 
-  createView: (
-    projectId: string,
+  createView: async (
+    _projectId: string,
     data: {
       name: string;
       description?: string;
@@ -30,10 +24,16 @@ export const ViewService = {
       displayProperties?: Record<string, unknown>;
       access?: 'public' | 'private';
     },
-  ) => apiPost<SavedViewRecord>(`/api/projects/${projectId}/views`, data),
+  ): Promise<SavedViewRecord> => ({
+    id: 'local-view',
+    name: data.name,
+    description: data.description,
+    layout: data.layout || 'list',
+    access: data.access || 'private',
+  }),
 
-  updateView: (
-    projectId: string,
+  updateView: async (
+    _projectId: string,
     viewId: string,
     data: Partial<{
       name: string;
@@ -43,22 +43,26 @@ export const ViewService = {
       displayProperties?: Record<string, unknown>;
       access?: 'public' | 'private';
     }>,
-  ) => apiPatch<SavedViewRecord>(`/api/projects/${projectId}/views/${viewId}`, data),
+  ): Promise<SavedViewRecord> => ({
+    id: viewId,
+    name: data.name || 'View',
+    layout: data.layout || 'list',
+    access: data.access || 'private',
+  }),
 
-  deleteView: (projectId: string, viewId: string) =>
-    apiDelete<{ message: string }>(`/api/projects/${projectId}/views/${viewId}`),
+  deleteView: async (_projectId: string, _viewId: string): Promise<{ message: string }> => ({
+    message: 'ok',
+  }),
 
-  favorite: (projectId: string, viewId: string) =>
-    apiPost<{ message: string }>(`/api/projects/${projectId}/views/${viewId}/favorite`),
+  favorite: async (_projectId: string, _viewId: string): Promise<{ message: string }> => ({
+    message: 'ok',
+  }),
 
-  unfavorite: (projectId: string, viewId: string) =>
-    apiDelete<{ message: string }>(`/api/projects/${projectId}/views/${viewId}/favorite`),
+  unfavorite: async (_projectId: string, _viewId: string): Promise<{ message: string }> => ({
+    message: 'ok',
+  }),
 
-  getFavoriteViews: (projectId: string) =>
-    apiGet<string[]>(`/api/projects/${projectId}/user-favorite-views`),
+  getFavoriteViews: async (_projectId: string): Promise<string[]> => [],
 
-  getViewWorkItems: (projectId: string, viewId: string) =>
-    apiGet<any[] | { data?: any[]; workItems?: any[] }>(
-      `/api/projects/${projectId}/views/${viewId}/work-items`,
-    ),
+  getViewWorkItems: async (_projectId: string, _viewId: string): Promise<any[]> => [],
 };

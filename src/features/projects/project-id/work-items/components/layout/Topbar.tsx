@@ -158,9 +158,7 @@ export function Topbar({
   const HeaderIcon = icon || PropIcon || WorkItemsIcon;
 
   const handleAdd = onAddItem || (() => {});
-  const handleAddExisting = onAddExistingItem;
-  const effectiveModules = propProjectModules || project?.modules || ['work-items', 'cycles', 'views', 'pages'];
-  const isCyclesEnabled = effectiveModules.includes('cycles');
+  const effectiveModules = propProjectModules || project?.modules || ['work-items', 'pages'];
 
   const handleToggleCol = useCallback((colId: string) => {
     if (onToggleColumn) {
@@ -227,15 +225,6 @@ export function Topbar({
         moduleIcon={HeaderIcon}
         count={count}
       >
-        {/* Cycle Context Selector (if in cycle mode and cycles module enabled) */}
-        {isCyclesEnabled && cycleId && currentCycle && cycles.length > 0 && (
-          <>
-            <ChevronRight className="size-3.5 text-muted-foreground/40 shrink-0 mx-0.5" strokeWidth={1.75} />
-            <span className="text-13 font-medium text-foreground truncate max-w-[100px] sm:max-w-[120px]">
-              {currentCycle.name}
-            </span>
-          </>
-        )}
 
         {showArchived && (
           <>
@@ -308,8 +297,6 @@ export function Topbar({
             dueDateFilter={dueDateFilter}
             onDueDateFilterChange={onDueDateFilterChange || (() => {})}
             cycles={cycles}
-            selectedCycleId={cycleId}
-            onCycleSelect={onCycleSelect}
             totalActiveFilters={
               propFilters
                 ? (propFilters.state.length +
@@ -319,7 +306,7 @@ export function Topbar({
                   propFilters.mentions.length +
                   propFilters.created_by.length +
                   propFilters.labels.length +
-                  propFilters.cycle.length +
+                  (propFilters.subscribers?.length ?? 0) +
                   propFilters.attach.length +
                   propFilters.work_items.length +
                   propFilters.parent.length +
@@ -361,11 +348,11 @@ export function Topbar({
         {/* Primary Actions (+ Add Work Item & + Add Existing) */}
         {!isReadOnly && (
           <div className="flex items-center gap-1.5 shrink-0">
-            {cycleId && handleAddExisting && (
+            {cycleId && onAddExistingItem && (
               <Button
                 type="button"
                 size="sm"
-                onClick={handleAddExisting}
+                onClick={onAddExistingItem}
                 className="h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shadow-2xs shrink-0"
               >
                 <span>Add existing</span>

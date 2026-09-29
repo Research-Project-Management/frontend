@@ -13,8 +13,6 @@ import type { ItemAttachment } from '../../types/library.types';
 export const attachmentKeys = {
   byItem: (scopeId?: string, itemId?: string) =>
     ['attachments', scopeId || 'user', itemId || 'none'] as const,
-  revisions: (scopeId?: string, attachmentId?: string) =>
-    ['attachments', scopeId || 'user', 'revisions', attachmentId || 'none'] as const,
 };
 
 // ── useAttachments ────────────────────────────────────────────────────────────
@@ -136,13 +134,6 @@ export function useAttachments(
 }
 
 // ── useAttachmentRevisions ────────────────────────────────────────────────────
-export function useAttachmentRevisions(scopeId?: string, attachmentId?: string) {
-  return useQuery({
-    queryKey: attachmentKeys.revisions(scopeId, attachmentId),
-    queryFn: () => AttachmentsService.getAttachmentRevisions(scopeId || '', attachmentId || ''),
-    enabled: Boolean(attachmentId),
-  });
-}
 
 // ── useRenameAttachment ───────────────────────────────────────────────────────
 export function useRenameAttachment(scopeId?: string) {

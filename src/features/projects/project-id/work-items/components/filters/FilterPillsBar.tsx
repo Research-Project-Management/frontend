@@ -28,8 +28,8 @@ import {
   type Column,
   Item,
   Priority,
-  type DueDateFilterOption,
   type Cycle,
+  type DueDateFilterOption,
   type Filters,
   PRIORITY_CONFIG,
   STATE_GROUP_CONFIG,
@@ -41,7 +41,6 @@ import {
   TextLinesIcon,
   ItemsIcon,
   ParentBranchIcon,
-  CycleContrastIcon,
   PriorityUrgentIcon,
   PriorityHighIcon,
   PriorityMediumIcon,
@@ -145,7 +144,7 @@ export function FilterPillsBar({
   const activeMentions = filters ? filters.mentions : [];
   const activeCreatedBy = filters ? filters.created_by : [];
   const activeLabels = filters ? filters.labels : [];
-  const activeCycles = filters ? filters.cycle : [];
+  const activeSubscribers = filters ? filters.subscribers : [];
   const activeAttach = filters ? filters.attach : [];
   const activeItems = filters ? [...((filters as any).items || []), ...(filters.work_items || [])] : [];
   const activeParents = filters ? filters.parent : [];
@@ -388,23 +387,23 @@ export function FilterPillsBar({
           );
         })}
 
-        {/* 9. Cycle Pills */}
-        {activeCycles.map((cId) => {
-          const isNoCycle = cId === '__no_cycle__';
-          const cycle = cycles.find((c) => c.id === cId);
-          const name = isNoCycle ? 'No cycle' : cycle?.name || 'Cycle';
+        {/* 9. Subscribers Pills */}
+        {activeSubscribers.map((userId) => {
+          const user = assignees.find((u) => u.id === userId);
+          const name = user?.name || 'Subscriber';
+
           return (
             <span
-              key={`cycle-${cId}`}
+              key={`sub-${userId}`}
               className="inline-flex items-center gap-1.5 px-2 py-0.5 h-7 rounded-md bg-background border border-border text-12 text-foreground shadow-2xs shrink-0 select-none"
             >
-              <CycleContrastIcon className="size-3 text-foreground shrink-0" />
-              <span className="truncate max-w-44 font-medium">{name}</span>
+              <User className="size-3 text-foreground shrink-0" />
+              <span className="truncate max-w-40 font-medium">{name}</span>
               <button
                 type="button"
-                onClick={() => onRemoveFilter?.('cycle', cId)}
+                onClick={() => onRemoveFilter?.('subscribers', userId)}
                 className="text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
-                aria-label={`Remove ${name} filter`}
+                aria-label={`Remove subscriber ${name} filter`}
               >
                 <X className="size-3 shrink-0" />
               </button>

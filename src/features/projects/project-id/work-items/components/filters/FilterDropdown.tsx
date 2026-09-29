@@ -21,7 +21,6 @@ import {
   Link2,
   Layers,
 } from 'lucide-react';
-import { CycleIcon } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -81,9 +80,6 @@ export {
   StateDoneIcon,
   StateCancelledIcon,
 };
-
-/** Cycle Icon matching sidebar */
-export const CycleContrastIcon = CycleIcon;
 
 // ── Submenu State Icons ─────────────────────────────────────────────────────
 
@@ -214,7 +210,6 @@ const FILTER_ITEMS: FilterItemConfig[] = [
   { id: 'priority', label: 'Priority', icon: PrioritySignalBarsIcon },
   { id: 'mentions', label: 'Mentions', icon: AtSign },
   { id: 'label', label: 'Label', icon: Tag },
-  { id: 'cycle', label: 'Cycle', icon: CycleIcon },
   { id: 'attach', label: 'Attachment type', icon: Paperclip },
   { id: 'start-date', label: 'Start date', icon: CalendarClock },
   { id: 'due-date', label: 'Due date', icon: Calendar },
@@ -923,71 +918,6 @@ export function FilterDropdown({
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         )}
-
-        {/* 11. Cycle (Submenu with Search) */}
-        {filteredItems.some((i) => i.id === 'cycle') && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="flex items-center gap-2 px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted">
-              <CycleIcon className="size-4 shrink-0 text-foreground" />
-              <span>Cycle</span>
-              {(filters?.cycle.length ?? (selectedCycleId ? 1 : 0)) > 0 && (
-                <span className="size-1.5 rounded-full bg-primary shrink-0 ml-auto mr-1" />
-              )}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-56 overflow-y-auto">
-              <SubmenuSearchBar
-                value={getSubSearch('cycle')}
-                onChange={(v) => setSubSearchVal('cycle', v)}
-                placeholder="Search..."
-              />
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  handleToggle('cycle', '__no_cycle__');
-                }}
-                className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <CycleIcon className="size-3.5 shrink-0 opacity-40 text-foreground" />
-                  <span>No cycle</span>
-                </div>
-                {isItemActive('cycle', '__no_cycle__') && (
-                  <Check className="size-3.5 text-primary shrink-0" />
-                )}
-              </DropdownMenuItem>
-              {cycles.length === 0 ? (
-                <div className="px-3 py-2 text-12 text-muted-foreground text-center">No cycles</div>
-              ) : (
-                cycles
-                  .filter((c) => {
-                    const q = getSubSearch('cycle').toLowerCase().trim();
-                    if (!q) return true;
-                    return c.name.toLowerCase().includes(q);
-                  })
-                  .map((c) => {
-                    const isSelected = isItemActive('cycle', c.id);
-                    return (
-                      <DropdownMenuItem
-                        key={c.id}
-                        onSelect={(e) => {
-                          e.preventDefault();
-                          handleToggle('cycle', c.id);
-                        }}
-                        className="flex items-center justify-between px-2 py-1.5 text-12 rounded-md cursor-pointer text-foreground hover:bg-muted focus:bg-muted"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <CycleIcon className="size-3.5 shrink-0 text-foreground" />
-                          <span className="truncate">{c.name}</span>
-                        </div>
-                        {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
-                      </DropdownMenuItem>
-                    );
-                  })
-              )}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-        )}
-
         {/* 12. Attach (replacing Module, Submenu with Search) */}
         {filteredItems.some((i) => i.id === 'attach') && (
           <DropdownMenuSub>

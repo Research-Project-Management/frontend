@@ -10,7 +10,6 @@ export * from './attachment.service';
 export * from './comment.service';
 export * from './relation.service';
 export * from './template.service';
-export * from './update.service';
 export * from './archive.service';
 export * from './cycle.service';
 export * from './history.service';

@@ -369,6 +369,7 @@ export interface EditorEventMap {
   'flux:toggle-ai-panel': undefined;
   'flux:trigger-compile': { forceSync?: boolean; draft?: boolean } | undefined;
   'flux:compile-started': undefined;
+  'flux:compile-progress': { status?: string; logs?: string[] };
   'flux:compile-finished': { success: boolean };
   'flux:insert-citation': { bibKey: string };
   'flux:open-citation-picker': undefined;

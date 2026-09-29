@@ -89,9 +89,12 @@ export default function NotesSection({
     if (normalizedExistingNotes.length > 0) {
       return normalizedExistingNotes;
     }
+    return [];
+  }, [canonicalNotes, paper.notes]);
 
-    // If no notes exist yet, surface author or arXiv comment from extra metadata as an initial imported note (Zotero convention)
-    const potentialCommentText =
+  // Extract author or arXiv comment from extra metadata (Zotero convention: kept in Extra)
+  const potentialCommentText = useMemo(() => {
+    const rawComment =
       (paper.extraFields?.comment as string) ||
       (typeof paper.extra === 'string'
         ? (() => {
@@ -117,36 +120,40 @@ export default function NotesSection({
           })()
         : null);
 
-    if (typeof potentialCommentText === 'string' && potentialCommentText.trim()) {
-      const cleanComment = potentialCommentText.trim();
+    if (typeof rawComment === 'string' && rawComment.trim()) {
+      const cleanComment = rawComment.trim();
       if (
         cleanComment &&
         !/^(\.{2,}|…|[-_—\s]+|null|undefined|none|n\/?a)$/i.test(cleanComment) &&
         /[a-zA-Z0-9\u00C0-\u024F\u1EA0-\u1EF9]/.test(cleanComment)
       ) {
-        const stripped = cleanComment.replace(/^comments?:\s*/i, '').trim();
-        const formattedContent = stripped.toLowerCase().startsWith('comment:')
-          ? stripped
-          : `Comment: ${stripped}`;
-        return [
-          {
-            id: `imported-comment-${paper.id}`,
-            content: formattedContent,
-            createdAt: paper.createdAt || new Date().toISOString(),
-          },
-        ];
+        return cleanComment.replace(/^comments?:\s*/i, '').trim();
       }
     }
+    return null;
+  }, [paper.extraFields, paper.extra]);
 
-    return [];
-  }, [
-    canonicalNotes,
-    paper.notes,
-    paper.extraFields,
-    paper.extra,
-    paper.id,
-    paper.createdAt,
-  ]);
+  const hasCommentInNotes = useMemo(() => {
+    if (!potentialCommentText) return false;
+    const lower = potentialCommentText.toLowerCase();
+    return notes.some((n) => n.content.toLowerCase().includes(lower));
+  }, [notes, potentialCommentText]);
+
+  const handleConvertCommentToNote = async () => {
+    if (!potentialCommentText) return;
+    const formattedContent = potentialCommentText.toLowerCase().startsWith('comment:')
+      ? potentialCommentText
+      : `Comment: ${potentialCommentText}`;
+    try {
+      await createNote({ itemId: paper.id, contentMd: formattedContent });
+    } catch (caughtError) {
+      if (onAddNote) {
+        onAddNote(formattedContent);
+      } else {
+        console.error('Failed to convert comment to note', caughtError);
+      }
+    }
+  };
 
   const handleSaveNewNote = async () => {
     const trimmedContent = newNoteContent.trim();
@@ -187,16 +194,7 @@ export default function NotesSection({
         if (onUpdateNote) onUpdateNote(noteId, trimmedContent);
       }
     } else {
-      // This is a synthetic imported note — only create a real note for known synthetic ids
-      if (noteId.startsWith('imported-comment-')) {
-        try {
-          await createNote({ itemId: paper.id, contentMd: trimmedContent });
-          // The synthetic note will disappear naturally once the real note is created
-        } catch (caughtError) {
-          if (onAddNote) onAddNote(trimmedContent);
-        }
-      }
-      // Do not create a new note for unknown note IDs (silent no-op)
+      if (onUpdateNote) onUpdateNote(noteId, trimmedContent);
     }
     setEditingNoteId(null);
     setEditingContent('');
@@ -260,6 +258,31 @@ export default function NotesSection({
             <span>Shift + Enter for new line</span>
             <span>Enter to save · Esc to cancel</span>
           </div>
+        </div>
+      )}
+
+      {/* Optional Publication Comment Promotion (Zotero Extra / Comments) */}
+      {potentialCommentText && !hasCommentInNotes && canEdit && (
+        <div className="flex items-center justify-between gap-2 p-2 bg-muted/40 rounded-md border border-border/50 text-xs mb-1.5">
+          <div className="space-y-0.5 min-w-0 flex-1">
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider block">
+              Publication Comment
+            </span>
+            <p className="text-11 text-foreground/80 line-clamp-1 italic select-text">
+              &ldquo;{potentialCommentText}&rdquo;
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleConvertCommentToNote}
+            className="h-6 text-[10px] shrink-0 font-normal px-2 gap-1 cursor-pointer"
+            title="Convert publication comment to a research note"
+          >
+            <Plus className="size-3" />
+            <span>Add as Note</span>
+          </Button>
         </div>
       )}
 
@@ -327,7 +350,7 @@ export default function NotesSection({
                 <div className="size-4 shrink-0 flex items-center justify-center">
                   <NoteIcon className="size-3.5 text-foreground shrink-0" />
                 </div>
-                <span className="text-xs font-normal text-foreground tracking-tight select-text break-words leading-snug" title={n.content}>
+                <span className="text-xs font-normal text-foreground tracking-tight select-text break-words leading-snug line-clamp-2" title={n.content}>
                   {n.content}
                 </span>
               </div>

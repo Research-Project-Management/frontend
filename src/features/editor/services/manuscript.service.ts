@@ -26,6 +26,121 @@ import * as api from '@/shared/lib/api';
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete, getAuthToken, getEffectiveBaseUrl } from '@/shared/lib/api';
 import type { Page, PageFile, PageComment, PageSuggestion, SuggestionStatus, SuggestionType, PageVersion, ProjectEvent } from '../types';
 import type { DocumentExportFormat } from '../types/export.types';
+import { spellingService } from './spelling.service';
+
+export interface DiagnosticItemDto {
+  file: string;
+  line: number;
+  column?: number;
+  severity: 'error' | 'warning' | 'info';
+  message: string;
+  context?: string;
+  code?: string;
+  explanation?: {
+    code: string;
+    title: string;
+    summary: string;
+    latexSnippet?: string;
+  };
+  quickFix?: {
+    description: string;
+    replacementText: string;
+  };
+}
+
+export interface DiagnosticReportDto {
+  items: DiagnosticItemDto[];
+  errorCount: number;
+  warningCount: number;
+  badboxCount: number;
+  isSuccess: boolean;
+  rawLog?: string;
+}
+
+export interface AutoFixResultDto {
+  isFixed: boolean;
+  fixedSource: string;
+  appliedFixes: Array<{
+    line: number;
+    rule: string;
+    description: string;
+  }>;
+}
+
+export interface ErrorExplanationDto {
+  code: string;
+  title: string;
+  summary?: string;
+  explanation?: string;
+  commonCauses?: string[];
+  suggestedFix?: string;
+  exampleSnippet?: string;
+  documentationUrl?: string;
+  latexSnippet?: string;
+}
+
+export interface LinkedFileDto {
+  id: string;
+  projectId: string;
+  name: string;
+  providerType: 'URL' | 'ZOTERO' | 'MENDELEY' | 'DROPBOX' | 'GITHUB';
+  url?: string;
+  collectionId?: string;
+  targetBibFile?: string;
+  status: 'SYNCED' | 'SYNCING' | 'FAILED' | 'PENDING';
+  lastSyncedAt?: string;
+  errorMessage?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateLinkedFilePayload {
+  name: string;
+  providerType?: 'URL' | 'ZOTERO' | 'MENDELEY' | 'DROPBOX' | 'GITHUB';
+  provider?: 'url' | 'zotero' | 'mendeley';
+  url?: string;
+  collectionId?: string;
+  targetBibFile?: string;
+  parentFolderId?: string;
+  autoRefresh?: boolean;
+}
+
+export interface BibEntryDto {
+  key: string;
+  type: string;
+  title?: string;
+  author?: string;
+  year?: string;
+  journal?: string;
+  doi?: string;
+  rawBibtex?: string;
+}
+
+export interface CitationValidationDto {
+  isValid: boolean;
+  duplicateKeys: string[];
+  missingFieldWarnings: Array<{ key: string; missingFields: string[] }>;
+  totalEntries: number;
+}
+
+export interface TemplateSummaryDto {
+  id: string;
+  name: string;
+  category: string;
+  publisher?: string;
+  description?: string;
+  badge?: string;
+}
+
+export interface FileMetadataDto {
+  id: string;
+  projectId: string;
+  filename: string;
+  sizeBytes: number;
+  hash: string;
+  mimeType: string;
+  createdAt: string;
+}
 
 // ─── Base URL Configuration ──────────────────────────────────────────────────
 
@@ -259,6 +374,19 @@ export interface CollaborationEvent {
   timestamp: number;
 }
 
+const createFallbackPage = (props: Partial<Page> & { id: string }): Page => ({
+  title: 'main.tex',
+  content: '',
+  status: 'draft',
+  projectId: '',
+  author: { id: 'fallback', name: 'User' },
+  views: 0,
+  lastAccessedAt: new Date().toISOString(),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  ...props,
+});
+
 // ─── 1. DOCS CLIENT ─────────────────────────────────────────────────────────
 
 const docs = {
@@ -267,14 +395,12 @@ const docs = {
       const res = await apiGet<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`);
       return res.page;
     } catch {
-      return {
+      return createFallbackPage({
         id: docId,
         title: 'main.tex',
         content: '',
         status: 'published',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as any;
+      });
     }
   },
 
@@ -283,7 +409,7 @@ const docs = {
       const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`, { content });
       return res.page;
     } catch {
-      return { id: docId, content } as any;
+      return createFallbackPage({ id: docId, content });
     }
   },
 
@@ -294,7 +420,7 @@ const docs = {
       });
       return res.page;
     } catch {
-      return { id: docId } as any;
+      return createFallbackPage({ id: docId });
     }
   },
 
@@ -303,7 +429,7 @@ const docs = {
       const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`, { title });
       return res.page;
     } catch {
-      return { id: docId, title } as any;
+      return createFallbackPage({ id: docId, title });
     }
   },
 
@@ -326,13 +452,13 @@ const docs = {
       });
       return res.page;
     } catch {
-      return {
+      return createFallbackPage({
         id: `page-${Date.now()}`,
         projectId,
         title,
         content: content || '',
-        status,
-      } as any;
+        status: status as Page['status'],
+      });
     }
   },
 
@@ -349,7 +475,16 @@ const docs = {
       const res = await apiPost<{ page: Page }>(`/api/pages/${docId}/restore`, {});
       return res.page;
     } catch {
-      return { id: docId, title: 'Restored File' } as any;
+      return createFallbackPage({ id: docId, title: 'Restored File' });
+    }
+  },
+
+  duplicate: async (docId: string): Promise<Page> => {
+    try {
+      const res = await apiPost<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}/duplicate`, {});
+      return res.page;
+    } catch {
+      return createFallbackPage({ id: `copy-${docId}`, title: 'Copied Document' });
     }
   },
 
@@ -666,6 +801,15 @@ const suggestions = {
 
 // ─── 6. HISTORY & SNAPSHOTS CLIENT ──────────────────────────────────────────
 
+const createFallbackVersion = (props: Partial<PageVersion> & { id: string }): PageVersion => ({
+  title: 'Snapshot',
+  label: 'Manual Snapshot',
+  fileName: 'main.tex',
+  savedBy: { id: 'fallback', name: 'User' },
+  createdAt: new Date().toISOString(),
+  ...props,
+});
+
 const history = {
   getByDocId: async (docId: string): Promise<PageVersion[]> => {
     try {
@@ -700,13 +844,12 @@ const history = {
       );
       return res.version;
     } catch {
-      return {
+      return createFallbackVersion({
         id: `v-${Date.now()}`,
-        pageId: payload.pageId,
         label: payload.label || 'Manual Snapshot',
+        fileName: payload.fileName || 'main.tex',
         content: payload.content || '',
-        createdAt: new Date().toISOString(),
-      } as any;
+      });
     }
   },
 
@@ -731,12 +874,11 @@ const history = {
       );
       return res.version;
     } catch {
-      return {
+      return createFallbackVersion({
         id: versionId,
-        pageId: docId,
         label,
-        createdAt: new Date().toISOString(),
-      } as any;
+        title: title || 'Snapshot',
+      });
     }
   },
 
@@ -936,15 +1078,127 @@ const structure = {
   },
 
   moveNode: async (projectId: string, nodeId: string, dto: any) => {
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}/move`, dto);
+    return await apiPatch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}/move`, dto);
   },
 
   renameNode: async (projectId: string, nodeId: string, dto: any) => {
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}/rename`, dto);
+    return await apiPatch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}/rename`, dto);
   },
 
   deleteNode: async (projectId: string, nodeId: string) => {
     return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}`);
+  },
+};
+
+// ─── 11. DIAGNOSTICS & LINTER CLIENT ────────────────────────────────────────
+
+const diagnostics = {
+  parseLog: async (logText: string, engine = 'pdflatex'): Promise<DiagnosticReportDto> => {
+    return await apiPost<DiagnosticReportDto>(`${MANUSCRIPTS_API_BASE}/diagnostics/parse-log`, { logText, engine });
+  },
+
+  lint: async (source: string, filename = 'main.tex'): Promise<DiagnosticReportDto> => {
+    return await apiPost<DiagnosticReportDto>(`${MANUSCRIPTS_API_BASE}/diagnostics/lint`, { source, filename });
+  },
+
+  lintProject: async (projectId: string): Promise<DiagnosticReportDto> => {
+    return await apiPost<DiagnosticReportDto>(`${MANUSCRIPTS_API_BASE}/diagnostics/${projectId}/lint`, {});
+  },
+
+  autoFix: async (source: string): Promise<AutoFixResultDto> => {
+    return await apiPost<AutoFixResultDto>(`${MANUSCRIPTS_API_BASE}/diagnostics/autofix`, { source });
+  },
+
+  getExplanation: async (code: string): Promise<ErrorExplanationDto> => {
+    return await apiGet<ErrorExplanationDto>(`${MANUSCRIPTS_API_BASE}/diagnostics/explain/${encodeURIComponent(code)}`);
+  },
+
+  getRules: async (): Promise<ErrorExplanationDto[]> => {
+    return await apiGet<ErrorExplanationDto[]>(`${MANUSCRIPTS_API_BASE}/diagnostics/rules`);
+  },
+};
+
+// ─── 12. LINKED FILES CLIENT ────────────────────────────────────────────────
+
+const linkedFiles = {
+  list: async (projectId: string): Promise<LinkedFileDto[]> => {
+    return await apiGet<LinkedFileDto[]>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/linked-files`);
+  },
+
+  create: async (projectId: string, payload: CreateLinkedFilePayload): Promise<LinkedFileDto> => {
+    const body = {
+      ...payload,
+      provider: payload.provider || (payload.providerType ? payload.providerType.toLowerCase() : 'url'),
+    };
+    return await apiPost<LinkedFileDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/linked-files`, body);
+  },
+
+  refresh: async (projectId: string, fileId: string): Promise<LinkedFileDto> => {
+    return await apiPost<LinkedFileDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/linked-files/${fileId}/refresh`, {});
+  },
+
+  delete: async (projectId: string, fileId: string, deleteNode = false): Promise<void> => {
+    return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/linked-files/${fileId}?deleteNode=${deleteNode}`);
+  },
+
+  refreshAll: async (projectId?: string): Promise<{ refreshedCount: number }> => {
+    return await apiPost<{ refreshedCount: number }>(`${MANUSCRIPTS_API_BASE}/linked-files/refresh-all`, { projectId });
+  },
+};
+
+// ─── 13. CITATIONS & BIBLIOGRAPHY CLIENT ────────────────────────────────────
+
+const citations = {
+  search: async (projectId: string, query = '', limit = 20): Promise<BibEntryDto[]> => {
+    return await apiGet<BibEntryDto[]>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/search?query=${encodeURIComponent(query)}&limit=${limit}`,
+    );
+  },
+
+  resolve: async (projectId: string, identifier: string): Promise<{ success: boolean; entry: BibEntryDto }> => {
+    return await apiPost<{ success: boolean; entry: BibEntryDto }>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/resolve`,
+      { identifier },
+    );
+  },
+
+  validate: async (projectId: string): Promise<CitationValidationDto> => {
+    return await apiGet<CitationValidationDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/validate`);
+  },
+
+  syncLibrary: async (
+    projectId: string,
+    dto: { provider: string; collectionId: string; collectionName?: string; targetBibFile?: string },
+  ) => {
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/sync-library`, dto);
+  },
+};
+
+// ─── 14. TEMPLATES & GALLERY CLIENT ─────────────────────────────────────────
+
+const templates = {
+  list: async (): Promise<TemplateSummaryDto[]> => {
+    return await apiGet<TemplateSummaryDto[]>(`${MANUSCRIPTS_API_BASE}/templates`);
+  },
+
+  getById: async (id: string): Promise<any> => {
+    return await apiGet<any>(`${MANUSCRIPTS_API_BASE}/templates/${id}`);
+  },
+
+  scaffold: async (projectId: string, templateId: string): Promise<{ success: boolean }> => {
+    return await apiPost<{ success: boolean }>(`${MANUSCRIPTS_API_BASE}/templates/scaffold`, { projectId, templateId });
+  },
+};
+
+// ─── 15. FILESTORE BINARY ASSETS CLIENT ─────────────────────────────────────
+
+const filestore = {
+  getStreamUrl: (projectId: string, fileId: string): string => {
+    return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/files/${fileId}`;
+  },
+
+  delete: async (projectId: string, fileId: string): Promise<void> => {
+    return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/files/${fileId}`);
   },
 };
 
@@ -961,6 +1215,12 @@ export const manuscriptService = {
   export: exportDocs,
   collaboration,
   structure,
+  diagnostics,
+  linkedFiles,
+  citations,
+  templates,
+  filestore,
+  spelling: spellingService,
 };
 
 export default manuscriptService;

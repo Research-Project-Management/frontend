@@ -253,7 +253,7 @@ export const ItemTable = React.memo(function ItemTable({
 
   // Checkbox toggle handler: explicit user choice with Shift + Click range support
   const handleToggleSelect = useCallback(
-    (id: string, e: React.MouseEvent, index: number) => {
+    (id: string, e: React.MouseEvent | React.KeyboardEvent, index: number) => {
       if (e.shiftKey && lastSelectedIndexRef.current !== null) {
         const currentSelectedIds = useLibraryUIStore.getState().selectedIds;
         const start = Math.min(lastSelectedIndexRef.current, index);
@@ -421,7 +421,7 @@ export const ItemTable = React.memo(function ItemTable({
   ]);
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden select-none">
+    <div className="flex flex-col h-full w-full overflow-hidden">
       {/* Scrollable Data Table Container */}
       <div
         tabIndex={0}

@@ -245,6 +245,16 @@ export const itemSchema = z.object({
   readStatus: z.enum(['unread', 'reading', 'completed']).optional().default('unread'),
   version: z.number().optional().default(1),
   provenance: provenanceSchema.nullish(),
+
+  // Transient / Optimistic UI attributes
+  _isProcessing: z.boolean().optional(),
+  _processingStatus: z.string().optional(),
+  _processingError: z.string().optional(),
+
+  // Legacy field fallbacks
+  key: z.string().optional(),
+  retractionStatus: z.string().optional(),
+  is_retracted: z.boolean().optional(),
 });
 
 // ── Mutation & Response Schemas ─────────────────────────────────────────────

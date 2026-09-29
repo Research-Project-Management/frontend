@@ -52,6 +52,9 @@ export {
   downloadAnnotatedPdf,
   uploadLibraryFile,
   fetchPdfBlob,
+  libraryService,
+  LibraryService,
+  LIBRARY_API_BASE,
 } from './data';
 
 // Schemas & Types

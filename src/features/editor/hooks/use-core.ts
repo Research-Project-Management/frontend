@@ -168,8 +168,11 @@ export function useActiveDocument() {
 
   const tabsStore = useTabsStore();
   const { openTab, setActive } = tabsStore;
-
-  const effectiveProjectId = projectId || (parentPage as any)?.projectId || null;
+  const parentProjectId =
+    typeof parentPage?.projectId === 'object'
+      ? parentPage?.projectId?.id
+      : parentPage?.projectId;
+  const effectiveProjectId = projectId || parentProjectId || null;
 
   useEffect(() => {
     if (effectiveProjectId && typeof setProjectId === 'function') setProjectId(effectiveProjectId);
@@ -186,7 +189,13 @@ export function useActiveDocument() {
     if (!parentPage) return;
 
     if (!fileId) {
-      const mainFile = childFiles.find((f) => f.id === (parentPage as any).mainFileId);
+      const mainId =
+        typeof parentPage.mainFile === 'string'
+          ? parentPage.mainFile
+          : (parentPage.mainFile as Page | undefined)?.id;
+      const mainFile = childFiles.find(
+        (f) => f.id === mainId || f.id === (parentPage as { mainFileId?: string }).mainFileId
+      );
       const targetPage = mainFile || parentPage;
 
       setCurrentPage?.(targetPage);
@@ -252,7 +261,7 @@ export function useActiveDocument() {
   const activeTabId =
     (pageId ? tabsStore.getActive(pageId) : null) ||
     (projectId ? tabsStore.getActive(projectId) : null);
-  const selectedAsset = usePageStore((s) => (s as any).selectedAsset);
+  const selectedAsset = usePageStore((s) => s.selectedAsset);
   const isAssetTab = activeTabId?.startsWith('asset:') || false;
   const activePage = fileId ? activeFile : parentPage;
   const displayPage = isAssetTab ? null : activePage;
@@ -276,21 +285,22 @@ export function useActiveDocument() {
 // ── 4. Page Actions Hook ─────────────────────────────────────────────────────
 
 export function usePageActions() {
-  const { isLocked } = useSettingsStore() as any;
+  const { isLocked } = useSettingsStore();
   const setCurrentPage = usePageStore((s) => s.setCurrentPage);
   const queryClient = useQueryClient();
 
   const updateContentMutation = useMutation({
     mutationFn: async ({ pageId, content }: { pageId: string; content: string }) => {
       if (isLocked) throw new Error('Tài liệu đang bị khóa');
-      setCurrentPage((prev: any) => (prev ? { ...prev, content } : prev));
+      setCurrentPage((prev: Page | null) => (prev ? { ...prev, content } : prev));
       return await manuscriptService.docs.updateContent(pageId, content);
     },
     onSuccess: (updated, variables) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Không thể lưu nội dung');
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Không thể lưu nội dung';
+      toast.error(msg);
     },
   });
 
@@ -301,17 +311,18 @@ export function usePageActions() {
   });
 
   const updateTitleMutation = useMutation({
-    mutationFn: async ({ pageId, title }: { pageId: string; title: string }) => {
+    mutationFn: async ({ pageId, title, oldTitle }: { pageId: string; title: string; oldTitle?: string }) => {
       if (isLocked) throw new Error('Tài liệu đang bị khóa');
-      setCurrentPage((prev: any) => (prev ? { ...prev, title } : prev));
-      return await manuscriptService.docs.updateTitle(pageId, title);
+      setCurrentPage((prev: Page | null) => (prev ? { ...prev, title } : prev));
+      return await manuscriptService.docs.updateTitle(pageId, title, oldTitle);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });
       toast.success('Đã đổi tên tài liệu');
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Không thể đổi tên tài liệu');
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Không thể đổi tên tài liệu';
+      toast.error(msg);
     },
   });
 
@@ -324,8 +335,9 @@ export function usePageActions() {
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
       toast.success('Đã xóa trang');
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Không thể xóa trang');
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Không thể xóa trang';
+      toast.error(msg);
     },
   });
 
@@ -340,19 +352,35 @@ export function usePageActions() {
     },
   });
 
+  const duplicatePageMutation = useMutation({
+    mutationFn: async (pageId: string) => {
+      if (isLocked) throw new Error('Tài liệu đang bị khóa');
+      return await manuscriptService.docs.duplicate(pageId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      toast.success('Đã nhân bản trang');
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Không thể nhân bản trang';
+      toast.error(msg);
+    },
+  });
+
   return {
-    updateContent: updateContentMutation as any,
-    updateThumbnail: updateThumbnailMutation as any,
-    updateTitle: updateTitleMutation as any,
-    deletePage: deletePageMutation as any,
-    restorePage: restorePageMutation as any,
+    updateContent: updateContentMutation,
+    updateThumbnail: updateThumbnailMutation,
+    updateTitle: updateTitleMutation,
+    deletePage: deletePageMutation,
+    restorePage: restorePageMutation,
+    duplicatePage: duplicatePageMutation,
   };
 }
 
 // ── 5. File Actions Hook ─────────────────────────────────────────────────────
 
 export function useFileActions() {
-  const { isLocked } = useSettingsStore() as any;
+  const { isLocked } = useSettingsStore();
   const queryClient = useQueryClient();
 
   const createFileMutation = useMutation({
@@ -364,8 +392,9 @@ export function useFileActions() {
       queryClient.invalidateQueries({ queryKey: pageKeys.files(variables.parentPageId) });
       toast.success(`Đã tạo tệp "${newFile.title}"`);
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Không thể tạo tệp');
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Không thể tạo tệp';
+      toast.error(msg);
     },
   });
 
@@ -378,13 +407,14 @@ export function useFileActions() {
       queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });
       toast.success('Đã đặt làm tệp chính');
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Không thể đặt làm tệp chính');
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Không thể đặt làm tệp chính';
+      toast.error(msg);
     },
   });
 
   return {
-    createFile: createFileMutation as any,
-    setMainFile: setMainFileMutation as any,
+    createFile: createFileMutation,
+    setMainFile: setMainFileMutation,
   };
 }

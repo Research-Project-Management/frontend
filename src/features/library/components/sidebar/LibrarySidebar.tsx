@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui"
 import {
   useCollections,
   useItems,
+  useLibraryCountsQuery,
   useDuplicateGroups,
   useRetraction,
   useSavedSearches,
@@ -106,24 +107,12 @@ export function LibrarySidebar() {
     deleteSavedSearch,
     isCreating: isCreatingSavedSearch,
   } = useSavedSearches(effectiveScopeId);
-  const { data: allItems, actions: itemActions } = useItems(effectiveScopeId);
+  const { actions: itemActions } = useItems({ scopeId: effectiveScopeId, enabled: false });
+  const { data: countsData } = useLibraryCountsQuery(effectiveScopeId);
   const { data: duplicateData } = useDuplicateGroups(effectiveScopeId);
 
-  const unfiledCount = useMemo(
-    () => (allItems ?? []).filter((item) => !item.collectionId && !item.deletedAt).length,
-    [allItems],
-  );
-  const starredCount = useMemo(
-    () =>
-      (allItems ?? []).filter(
-        (item) =>
-          !item.deletedAt &&
-          ((typeof item.rating === 'number' && item.rating > 0) ||
-            Boolean((item as any).isStarred) ||
-            Boolean((item as any).states?.[0]?.rating > 0)),
-      ).length,
-    [allItems],
-  );
+  const unfiledCount = countsData?.unfiled ?? 0;
+  const starredCount = countsData?.starred ?? 0;
   const duplicateCount = useMemo(() => {
     const data = duplicateData as any;
     return data?.groups?.length || data?.duplicateGroups?.length || 0;

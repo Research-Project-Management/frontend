@@ -44,6 +44,7 @@ export const attachmentSchema = z.object({
   id: z.string().optional().default(''),
   itemId: z.string().optional(),
   fileId: z.string().nullable().optional(),
+  title: z.string().optional(),
   filename: z.string().optional().default(''),
   url: z.string().optional().default(''),
   fileHash: z.string().nullable().optional(),
@@ -69,6 +70,7 @@ export const addRevisionSchema = z.object({
 
 export const createAttachmentSchema = z.object({
   fileId: z.string().optional(),
+  title: z.string().optional(),
   filename: z.string().optional().default(''),
   url: z.string().optional(),
   mimeType: z.string().optional(),
@@ -78,6 +80,7 @@ export const createAttachmentSchema = z.object({
 });
 
 export const updateAttachmentSchema = z.object({
+  title: z.string().optional(),
   filename: z.string().optional(),
   linkMode: linkModeSchema.optional(),
   attachmentType: attachmentTypeSchema.optional(),

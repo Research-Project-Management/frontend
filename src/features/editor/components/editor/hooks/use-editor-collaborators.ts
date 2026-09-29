@@ -25,8 +25,6 @@ import * as Y from 'yjs';
 export interface UseEditorCollaboratorsOptions {
   projectId: string;
   pageId: string;
-  editorRef?: React.MutableRefObject<any>;
-  monacoRef?: React.MutableRefObject<any>;
   currentUserId?: string;
   currentUser?: CollaboratorUser | null;
 }
@@ -34,8 +32,6 @@ export interface UseEditorCollaboratorsOptions {
 export function useEditorCollaborators({
   projectId,
   pageId,
-  editorRef: _editorRef,
-  monacoRef: _monacoRef,
   currentUserId,
   currentUser,
 }: UseEditorCollaboratorsOptions) {
@@ -135,12 +131,6 @@ export function useEditorCollaborators({
     };
   }, [projectId, pageId, currentUserId, currentUser?.id, currentUser?.name]);
 
-  const bindMonacoCursorListeners = useCallback(() => {
-    return {
-      dispose: () => {},
-    };
-  }, []);
-
   const sendCursor = useCallback(
     (row: number, col: number, selection?: any) => {
       providerRef.current?.sendCursor(row, col, selection);
@@ -152,7 +142,6 @@ export function useEditorCollaborators({
     activeCollaborators: collaborators,
     isDocumentLocked,
     lockedBy,
-    bindMonacoCursorListeners,
     sendCursor,
     connectionStatus,
     isSynced,

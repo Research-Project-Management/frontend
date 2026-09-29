@@ -226,12 +226,12 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                   </a>
                   <Badge
                     variant="outline"
-                    className="font-mono text-[10px] px-1.5 py-0 h-4 bg-primary/10 text-primary border-primary/20"
+                    className="font-mono text-10 px-1.5 py-0 h-4 bg-primary/10 text-primary border-primary/20"
                   >
                     {linkedRepo.branch || 'main'}
                   </Badge>
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
+                <p className="text-11 text-muted-foreground mt-0.5">
                   {linkedRepo.lastSyncedAt
                     ? `Last synced: ${new Date(linkedRepo.lastSyncedAt).toLocaleString()}`
                     : 'Not synced yet'}
@@ -257,7 +257,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                   <Upload className="size-3.5 text-primary" />
                   <span>Push to GitHub</span>
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1">
+                <p className="text-11 text-muted-foreground mt-1">
                   Commit and push all current project files and figures to branch{' '}
                   <code className="text-foreground">{linkedRepo.branch || 'main'}</code>.
                 </p>
@@ -292,7 +292,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                   <Download className="size-3.5 text-emerald-500" />
                   <span>Pull from GitHub</span>
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1">
+                <p className="text-11 text-muted-foreground mt-1">
                   Pull latest files and figures from GitHub into this project. Local changes will be updated with remote commits.
                 </p>
               </div>

@@ -34,6 +34,8 @@ function FilterCheckbox({ checked }: { checked: boolean }) {
   return (
     <Checkbox
       checked={checked}
+      tabIndex={-1}
+      aria-hidden="true"
       className="size-3.5 border-border data-[state=checked]:border-primary pointer-events-none shrink-0"
     />
   );
@@ -177,7 +179,7 @@ export function LibraryFilterPopover({
   const queryClient = useQueryClient();
 
   const scopeId = propScopeId || propProjectId || workspaceId || 'user';
-  const { data: allItemsFromHook } = useItems({ scopeId });
+  const { data: allItemsFromHook } = useItems({ scopeId, enabled: !items });
   const [isOpen, setIsOpen] = useState(false);
 
   // Search input query at the very top of popover
@@ -561,20 +563,26 @@ export function LibraryFilterPopover({
             <PopoverTrigger asChild>
               <Button
                 type="button"
-                size="icon"
+                size={activeCount > 0 ? "sm" : "icon"}
                 className={cn(
-                  "size-8 rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors shrink-0 shadow-2xs select-none",
+                  "rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors shrink-0 shadow-2xs select-none inline-flex items-center",
+                  activeCount > 0 ? "h-8 px-2.5 gap-1.5 border-primary/50 text-primary" : "size-8",
                   isOpen && "bg-muted",
                   className
                 )}
-                aria-label="Filter"
+                aria-label={activeCount > 0 ? `Filter (${activeCount} active)` : "Filter"}
               >
-                <FilterFunnelIcon className="size-4 text-foreground shrink-0" />
+                <FilterFunnelIcon className={cn("size-4 shrink-0", activeCount > 0 ? "text-primary" : "text-foreground")} />
+                {activeCount > 0 && (
+                  <span className="text-11 font-medium font-mono tabular-nums leading-none">
+                    {activeCount}
+                  </span>
+                )}
               </Button>
             </PopoverTrigger>
           </TooltipTrigger>
           <TooltipContent side="bottom" sideOffset={6} className="text-12">
-            Filter
+            {activeCount > 0 ? `Filter (${activeCount} active)` : 'Filter'}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -648,23 +656,38 @@ export function LibraryFilterPopover({
               {typesOpen && (
                 <div className="pt-1 select-none">
                   <div className="max-h-36 overflow-y-auto space-y-0.5 no-scrollbar">
-                    {matchingTypeItems.map((t) => (
-                      <label
-                        key={t.id}
-                        onClick={() => handleTypeToggle(t.id)}
-                        className="flex items-center justify-between gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted transition-colors"
-                      >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <FilterCheckbox checked={itemTypes.some((it) => it.toLowerCase() === t.id.toLowerCase())} />
-                          <span className="font-normal leading-none truncate">{t.label}</span>
+                    {matchingTypeItems.map((t) => {
+                      const isChecked = itemTypes.some((it) => it.toLowerCase() === t.id.toLowerCase());
+                      return (
+                        <div
+                          key={t.id}
+                          role="checkbox"
+                          tabIndex={0}
+                          aria-checked={isChecked}
+                          onClick={() => handleTypeToggle(t.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === ' ' || e.key === 'Enter') {
+                              e.preventDefault();
+                              handleTypeToggle(t.id);
+                            }
+                          }}
+                          className={cn(
+                            "flex items-center justify-between gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                            isChecked && "bg-muted font-medium"
+                          )}
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <FilterCheckbox checked={isChecked} />
+                            <span className="font-normal leading-none truncate">{t.label}</span>
+                          </div>
+                          {typeof t.count === 'number' && t.count > 0 && (
+                            <span className="text-11 text-muted-foreground tabular-nums shrink-0">
+                              {t.count}
+                            </span>
+                          )}
                         </div>
-                        {typeof t.count === 'number' && t.count > 0 && (
-                          <span className="text-11 text-muted-foreground tabular-nums shrink-0">
-                            {t.count}
-                          </span>
-                        )}
-                      </label>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -698,11 +721,20 @@ export function LibraryFilterPopover({
                         (t) => t.toLowerCase() === tag.name.toLowerCase()
                       );
                       return (
-                        <label
+                        <div
                           key={tag.id}
+                          role="checkbox"
+                          tabIndex={0}
+                          aria-checked={isSelected}
                           onClick={() => handleTagToggle(tag.name)}
+                          onKeyDown={(e) => {
+                            if (e.key === ' ' || e.key === 'Enter') {
+                              e.preventDefault();
+                              handleTagToggle(tag.name);
+                            }
+                          }}
                           className={cn(
-                            "flex items-start gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none transition-colors",
+                            "flex items-start gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
                             isSelected ? "bg-muted font-medium" : "hover:bg-muted font-normal"
                           )}
                         >
@@ -712,7 +744,7 @@ export function LibraryFilterPopover({
                           <span className="flex-1 min-w-0 break-words whitespace-normal leading-snug tracking-tight text-12">
                             {tag.name}
                           </span>
-                        </label>
+                        </div>
                       );
                     })}
                   </div>
@@ -742,16 +774,31 @@ export function LibraryFilterPopover({
 
               {filesOpen && (
                 <div className="space-y-0.5 pt-1 select-none">
-                  {matchingFileItems.map((item) => (
-                    <label
-                      key={item.id}
-                      onClick={() => handleFileStatusToggle(item.id)}
-                      className="flex items-center gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted transition-colors"
-                    >
-                      <FilterCheckbox checked={fileStatus === item.id} />
-                      <span className="font-normal leading-none">{item.label}</span>
-                    </label>
-                  ))}
+                  {matchingFileItems.map((item) => {
+                    const isChecked = fileStatus === item.id;
+                    return (
+                      <div
+                        key={item.id}
+                        role="checkbox"
+                        tabIndex={0}
+                        aria-checked={isChecked}
+                        onClick={() => handleFileStatusToggle(item.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === ' ' || e.key === 'Enter') {
+                            e.preventDefault();
+                            handleFileStatusToggle(item.id);
+                          }
+                        }}
+                        className={cn(
+                          "flex items-center gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                          isChecked && "bg-muted font-medium"
+                        )}
+                      >
+                        <FilterCheckbox checked={isChecked} />
+                        <span className="font-normal leading-none">{item.label}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -778,16 +825,31 @@ export function LibraryFilterPopover({
 
               {readingOpen && (
                 <div className="space-y-0.5 pt-1 select-none">
-                  {matchingReadingItems.map((item) => (
-                    <label
-                      key={item.id}
-                      onClick={() => handleReadStatusToggle(item.id)}
-                      className="flex items-center gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted transition-colors"
-                    >
-                      <FilterCheckbox checked={readStatuses.includes(item.id)} />
-                      <span className="font-normal leading-none">{item.label}</span>
-                    </label>
-                  ))}
+                  {matchingReadingItems.map((item) => {
+                    const isChecked = readStatuses.includes(item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        role="checkbox"
+                        tabIndex={0}
+                        aria-checked={isChecked}
+                        onClick={() => handleReadStatusToggle(item.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === ' ' || e.key === 'Enter') {
+                            e.preventDefault();
+                            handleReadStatusToggle(item.id);
+                          }
+                        }}
+                        className={cn(
+                          "flex items-center gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                          isChecked && "bg-muted font-medium"
+                        )}
+                      >
+                        <FilterCheckbox checked={isChecked} />
+                        <span className="font-normal leading-none">{item.label}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -810,16 +872,17 @@ export function LibraryFilterPopover({
                 </div>
                 <div className="flex items-center gap-1.5">
                   {hasDateFilter && (
-                    <span
+                    <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleClearDate();
                       }}
-                      className="text-11 text-foreground underline cursor-pointer px-1 py-0.5 rounded-md"
+                      className="text-11 text-foreground underline cursor-pointer px-1 py-0.5 rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       title="Clear date filter"
                     >
                       Clear
-                    </span>
+                    </button>
                   )}
                   {yearOpen ? (
                     <ChevronUp className="size-3.5 text-foreground shrink-0" />

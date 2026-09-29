@@ -20,6 +20,7 @@ export type SidebarPanelName =
 
 export type EditorCommand =
   | { type: 'editor:jump-to-line'; line: number; highlight?: 'error' | 'synctex' }
+  | { type: 'editor:set-content'; content: string }
   | { type: 'editor:insert-text'; text: string }
   | { type: 'editor:wrap-selection'; prefix: string; suffix: string; placeholder?: string }
   | { type: 'editor:format'; format: LatexFormatType }

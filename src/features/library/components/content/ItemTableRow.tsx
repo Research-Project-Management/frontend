@@ -29,7 +29,7 @@ export interface ItemTableRowProps {
   isTrash?: boolean;
   collections?: any[];
   onRowClick: (e: React.MouseEvent, item: Item, index: number) => void;
-  onToggleSelect?: (id: string, e: React.MouseEvent, index: number) => void;
+  onToggleSelect?: (id: string, e: React.MouseEvent | React.KeyboardEvent, index: number) => void;
   onToggleStar?: (item: Item, isStarred: boolean) => void;
   onDelete?: (id: string) => void;
   onRestore?: (id: string) => void;
@@ -82,7 +82,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
     if (!item.authors) return '';
     if (Array.isArray(item.authors)) {
       return item.authors
-        .map((a: any) => (typeof a === 'string' ? cleanAcademicText(a) : a?.name || ''))
+        .map((a: string | { name?: string }) => (typeof a === 'string' ? cleanAcademicText(a) : a?.name || ''))
         .filter(Boolean)
         .join(', ');
     }
@@ -93,14 +93,14 @@ export const ItemTableRow = React.memo(function ItemTableRow({
     Boolean(item.isStarred) ||
     Boolean(typeof item.rating === 'number' && item.rating > 0);
 
-  const isProcessing = Boolean((item as any)._isProcessing);
-  const processingStatus = (item as any)._processingStatus as string | undefined;
-  const processingError = (item as any)._processingError as string | undefined;
+  const isProcessing = Boolean(item._isProcessing);
+  const processingStatus = item._processingStatus;
+  const processingError = item._processingError;
 
   const isRetracted = Boolean(
     item.isRetracted ||
-    (item as any).retractionStatus === 'retracted' ||
-    (item as any).is_retracted
+    item.retractionStatus === 'retracted' ||
+    item.is_retracted
   );
   const hasAttachment = Boolean(
     item.hasFile ||
@@ -184,7 +184,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
           }
         }}
         className={cn(
-          'cursor-pointer transition-colors duration-75 group select-none text-13 h-[34px]',
+          'cursor-pointer transition-colors duration-75 group text-13 h-8',
           isRowActive || isSelected
             ? 'bg-muted'
             : isProcessing
@@ -193,7 +193,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         )}
       >
         {/* Title with Checkbox & Status Indicators */}
-        <td className="px-3 h-[34px] py-0 align-middle min-w-0">
+        <td className="px-3 h-8 py-0 align-middle min-w-0">
           <div className="flex items-center gap-2 min-w-0 h-full">
             <div
               role="checkbox"
@@ -205,7 +205,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
                   e.preventDefault();
                   e.stopPropagation();
                   if (onToggleSelect) {
-                    onToggleSelect(item.id, e as any, index);
+                    onToggleSelect(item.id, e, index);
                   } else {
                     toggleSelect(item.id);
                   }
@@ -219,7 +219,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
                   toggleSelect(item.id);
                 }
               }}
-              className="flex items-center justify-center shrink-0 cursor-pointer rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex items-center justify-center shrink-0 cursor-pointer rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Checkbox
                 checked={isSelected}
@@ -227,7 +227,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
                 aria-hidden="true"
                 className={cn(
                   'size-3.5 border-border data-[state=checked]:border-primary transition-opacity duration-150 pointer-events-none',
-                  !isSelected && 'opacity-0 group-hover:opacity-100',
+                  !isSelected && 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100',
                 )}
               />
             </div>
@@ -296,7 +296,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
 
         {/* Authors */}
         {columns.authors !== false && (
-          <td className="px-3 h-[34px] py-0 align-middle truncate text-13 text-foreground font-normal">
+          <td className="px-3 h-8 py-0 align-middle truncate text-13 text-foreground font-normal">
             {isProcessing &&
             (!item.authors ||
               item.authors.length === 0 ||
@@ -313,22 +313,22 @@ export const ItemTableRow = React.memo(function ItemTableRow({
 
         {/* Year */}
         {columns.year !== false && (
-          <td className="px-2 h-[34px] py-0 align-middle text-center text-13 font-mono tabular-nums text-foreground font-normal">
+          <td className="px-2 h-8 py-0 align-middle text-center text-13 font-mono tabular-nums text-foreground font-normal">
             {item.year || '—'}
           </td>
         )}
 
         {/* Publication Venue */}
         {columns.publication !== false && (
-          <td className="px-3 h-[34px] py-0 align-middle truncate text-13 text-foreground font-normal">
+          <td className="px-3 h-8 py-0 align-middle truncate text-13 text-foreground font-normal">
             {isProcessing && !item.publicationTitle ? (
               <span className="text-muted-foreground text-12 italic">Recognizing venue...</span>
             ) : (
-              <span title={cleanAcademicText(item.publicationTitle || (item as any).journal || (item as any).publisher || '')}>
+              <span title={cleanAcademicText(item.publicationTitle || item.journal || item.publisher || '')}>
                 {cleanAcademicText(
                   item.publicationTitle ||
-                  (item as any).journal ||
-                  (item as any).publisher ||
+                  item.journal ||
+                  item.publisher ||
                   ''
                 ) || '—'}
               </span>
@@ -338,14 +338,14 @@ export const ItemTableRow = React.memo(function ItemTableRow({
 
         {/* Item Type Label */}
         {columns.itemType && (
-          <td className="px-3 h-[34px] py-0 align-middle truncate text-13 capitalize text-foreground font-normal">
+          <td className="px-3 h-8 py-0 align-middle truncate text-13 capitalize text-foreground font-normal">
             {item.itemType || '—'}
           </td>
         )}
 
         {/* DOI */}
         {columns.doi && (
-          <td className="px-3 h-[34px] py-0 align-middle truncate text-13 font-mono tabular-nums text-foreground font-normal">
+          <td className="px-3 h-8 py-0 align-middle truncate text-13 font-mono tabular-nums text-foreground font-normal">
             {item.doi ? (
               <a
                 href={`https://doi.org/${item.doi}`}
@@ -364,21 +364,21 @@ export const ItemTableRow = React.memo(function ItemTableRow({
 
         {/* Citation Key */}
         {columns.citationKey && (
-          <td className="px-3 h-[34px] py-0 align-middle truncate text-13 font-mono text-foreground font-normal">
-            {item.citationKey || (item as any).key || '—'}
+          <td className="px-3 h-8 py-0 align-middle truncate text-13 font-mono text-foreground font-normal">
+            {item.citationKey || item.key || '—'}
           </td>
         )}
 
         {/* Citations Count */}
         {columns.citations && (
-          <td className="px-2 h-[34px] py-0 align-middle text-center text-13 font-mono tabular-nums text-foreground font-normal">
-            {(item as any).citationCount ?? '—'}
+          <td className="px-2 h-8 py-0 align-middle text-center text-13 font-mono tabular-nums text-foreground font-normal">
+            {item.citationCount ?? '—'}
           </td>
         )}
 
         {/* Trash deletedAt */}
         {isTrash && (
-          <td className="px-3 h-[34px] py-0 align-middle text-13 font-mono tabular-nums text-foreground font-normal">
+          <td className="px-3 h-8 py-0 align-middle text-13 font-mono tabular-nums text-foreground font-normal">
             {item.deletedAt
               ? new Date(item.deletedAt).toLocaleDateString()
               : '—'}

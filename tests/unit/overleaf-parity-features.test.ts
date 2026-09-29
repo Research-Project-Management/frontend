@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useSettingsStore } from '@/features/editor/store/settings.store';
-import { MONACO_THEMES } from '@/features/editor/components/editor/monaco-themes';
+import { EDITOR_THEMES, MONACO_THEMES, type EditorThemeDefinition } from '@/features/editor/components/editor/editor-themes';
 import { pageKeys } from '@/features/editor/hooks/use-core';
 import { fileService, pageService } from '@/features/editor/services/core.service';
 import * as api from '@/shared/lib/api';
@@ -58,7 +58,7 @@ describe('Overleaf Parity Features Suite', () => {
 
   describe('Feature 2: Editor Themes Collection', () => {
     it('defines comprehensive Overleaf themes in MONACO_THEMES', () => {
-      const themeIds = MONACO_THEMES.map((t) => t.id);
+      const themeIds = (MONACO_THEMES as EditorThemeDefinition[]).map((t) => t.id);
       expect(themeIds).toContain('auto');
       expect(themeIds).toContain('latex-light');
       expect(themeIds).toContain('latex-dark');

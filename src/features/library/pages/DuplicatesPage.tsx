@@ -52,14 +52,14 @@ function InlineDiffView({ items }: { items: Item[] }) {
           {diff.conflictCount > 0 ? (
             <Badge
               variant="outline"
-              className="text-10 h-4 px-1.5 border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 font-normal"
+              className="text-10 h-4 px-1.5 border-warning/30 text-warning bg-warning/10 font-normal"
             >
               {diff.conflictCount} conflict(s)
             </Badge>
           ) : (
             <Badge
               variant="outline"
-              className="text-10 h-4 px-1.5 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 font-normal"
+              className="text-10 h-4 px-1.5 border-success/30 text-success bg-success/10 font-normal"
             >
               Identical
             </Badge>
@@ -90,7 +90,7 @@ function InlineDiffView({ items }: { items: Item[] }) {
                   className={cn(
                     'transition-colors',
                     field.hasConflict
-                      ? 'bg-amber-500/[0.04] hover:bg-amber-500/[0.07]'
+                      ? 'bg-warning/[0.06] hover:bg-warning/[0.10]'
                       : 'hover:bg-muted/30',
                   )}
                 >
@@ -98,7 +98,7 @@ function InlineDiffView({ items }: { items: Item[] }) {
                     <div className="space-y-0.5">
                       <span>{field.label}</span>
                       {field.hasConflict ? (
-                        <span className="block text-9 text-amber-600 dark:text-amber-400 font-mono">
+                        <span className="block text-9 text-warning font-mono">
                           conflict
                         </span>
                       ) : (
@@ -451,7 +451,7 @@ export function DuplicatesPage() {
 
       {/* Zone 4: Inspector Panel (Zotero 7 Merge Inspector when duplicates selected) */}
       {selectedGroupItems.length >= 2 ? (
-        <div className="w-80 lg:w-96 xl:w-[420px] h-full shrink-0 flex flex-col overflow-hidden border-l border-border bg-background">
+        <div className="hidden md:flex w-80 lg:w-96 xl:w-[420px] h-full shrink-0 flex-col overflow-hidden border-l border-border bg-background">
           <DuplicateMergeInspector
             items={selectedGroupItems}
             scopeId={effectiveScopeId}

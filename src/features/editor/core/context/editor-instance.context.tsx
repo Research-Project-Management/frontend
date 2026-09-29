@@ -39,6 +39,9 @@ export function EditorInstanceProvider({ children }: { children: React.ReactNode
       editorCommandBus.subscribe('editor:jump-to-line', (cmd) => {
         engine.jumpToLine(cmd.line, cmd.highlight);
       }),
+      editorCommandBus.subscribe('editor:set-content', (cmd) => {
+        engine.setContent(cmd.content);
+      }),
       editorCommandBus.subscribe('editor:format', (cmd) => {
         engine.format(cmd.format);
       }),

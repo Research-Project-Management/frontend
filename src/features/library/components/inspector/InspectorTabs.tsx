@@ -49,14 +49,14 @@ export function InspectorTabs({
   className,
 }: InspectorTabsProps) {
   const tabs: TabItem[] = [
-    { id: 'info', label: 'Details', icon: Info },
-    { id: 'abstract', label: 'Abstract', icon: AlignLeft },
-    { id: 'files', label: 'Attachments', icon: Paperclip, badge: attachmentCount },
-    { id: 'notes', label: 'Notes', icon: StickyNote, badge: noteCount },
-    { id: 'collections', label: 'Collections', icon: FolderTree },
-    { id: 'tags', label: 'Tags', icon: Tag },
-    { id: 'relations', label: 'Related', icon: Network },
-    { id: 'cite', label: 'Citation', icon: Quote },
+    { id: 'info', label: 'Details (Level 8 - 8 bars)', icon: Info },
+    { id: 'abstract', label: 'Abstract (Level 7 - 7 bars)', icon: AlignLeft },
+    { id: 'files', label: 'Attachments (Level 6 - 6 bars)', icon: Paperclip, badge: attachmentCount },
+    { id: 'notes', label: 'Notes (Level 5 - 5 bars)', icon: StickyNote, badge: noteCount },
+    { id: 'collections', label: 'Collections (Level 4 - 4 bars)', icon: FolderTree },
+    { id: 'tags', label: 'Tags (Level 3 - 3 bars)', icon: Tag },
+    { id: 'relations', label: 'Related (Level 2 - 2 bars)', icon: Network },
+    { id: 'cite', label: 'Citation (Level 1 - 1 bar)', icon: Quote },
   ];
 
   return (
@@ -90,6 +90,7 @@ export function InspectorTabs({
       <div className="flex flex-col items-center gap-1 w-full pt-1.5 px-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
+          const isActive = isInspectorOpen && activeTab === tab.id;
 
           return (
             <Tooltip key={tab.id}>
@@ -102,13 +103,16 @@ export function InspectorTabs({
                     }
                     onTabChange(tab.id);
                   }}
-                  className="relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer text-foreground hover:bg-muted"
+                  className={cn(
+                    'relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer text-foreground',
+                    isActive
+                      ? 'bg-muted font-medium shadow-2xs'
+                      : 'hover:bg-muted/60',
+                  )}
                   aria-label={tab.label}
+                  aria-current={isActive ? 'true' : undefined}
                 >
                   <Icon className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-                  {tab.badge !== undefined && tab.badge > 0 && (
-                    <span className="absolute top-1 right-1 size-1.5 rounded-full bg-foreground" />
-                  )}
                 </button>
               </TooltipTrigger>
               <TooltipContent

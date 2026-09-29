@@ -14,9 +14,13 @@
  */
 
 import * as Y from 'yjs';
+import * as syncProtocol from 'y-protocols/sync';
+import * as encoding from 'lib0/encoding';
+import * as decoding from 'lib0/decoding';
 import { Awareness, removeAwarenessStates } from 'y-protocols/awareness';
 import { io, type Socket } from 'socket.io-client';
 import { getEffectiveBaseUrl, getAuthToken } from '@/shared/lib/api';
+import { EditorEventBus } from '../utils/editor.util';
 import type { CollaborationPresence } from '../services/collaboration.service';
 
 export interface CollaboratorUser {
@@ -125,6 +129,7 @@ export class YjsSocketIOProvider {
     }
 
     this.setupLocalAwarenessListener();
+    this.setupLocalDocListener();
 
     if (typeof window !== 'undefined' && projectId && pageId) {
       this.connect();
@@ -197,8 +202,8 @@ export class YjsSocketIOProvider {
           if (res?.success && Array.isArray(res.docPresence)) {
             this.handleInitialDocPresence(res.docPresence);
           }
-          this.isSynced = true;
-          this.options.onSynced?.();
+          // Initiate Binary CRDT Yjs Handshake with server
+          this.initiateYjsSync();
         },
       );
     });
@@ -226,6 +231,36 @@ export class YjsSocketIOProvider {
       }
     });
 
+    // Binary Yjs sync-update from server / remote collaborators
+    this.socket.on('doc:sync-update', (payload: { projectId: string; docId: string; data: any }) => {
+      if (this.destroyed) return;
+      if (payload.projectId !== this.projectId || payload.docId !== this.pageId) return;
+      if (!payload.data) return;
+
+      try {
+        const rawData =
+          payload.data instanceof Uint8Array
+            ? payload.data
+            : new Uint8Array(payload.data);
+
+        const decoder = decoding.createDecoder(rawData);
+        syncProtocol.readSyncMessage(decoder, encoding.createEncoder(), this.doc, 'socket.io');
+      } catch (err) {
+        try {
+          const raw = payload.data instanceof Uint8Array ? payload.data : new Uint8Array(payload.data);
+          Y.applyUpdate(this.doc, raw, 'socket.io');
+        } catch (applyErr) {
+          console.warn('[YjsSocketIOProvider] Error applying incoming sync-update:', applyErr);
+        }
+      }
+    });
+
+    // Real-time LaTeX compilation streaming
+    this.socket.on('compile:progress', (data: any) => {
+      if (this.destroyed) return;
+      EditorEventBus.emit('flux:compile-progress', data);
+    });
+
     // Remote cursor update from peer
     this.socket.on('doc:cursor', (data: any) => {
       if (this.destroyed) return;
@@ -250,6 +285,73 @@ export class YjsSocketIOProvider {
       if (this.destroyed) return;
       this.handleUserLeft(data);
     });
+
+    // Real-time project file-tree mutation (create, rename, move, delete)
+    this.socket.on('fileTree:update', (data: any) => {
+      if (this.destroyed) return;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flux:filetree-updated', { detail: data }));
+      }
+    });
+
+    // Real-time document content update from collaborator
+    this.socket.on('doc:content-updated', (data: any) => {
+      if (this.destroyed) return;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flux:doc-content-updated', { detail: data }));
+      }
+    });
+  }
+
+  private setupLocalDocListener(): void {
+    this.doc.on('update', (update: Uint8Array, origin: any) => {
+      if (origin === 'socket.io' || this.destroyed) return;
+      if (!this.socket || !this.socket.connected) return;
+
+      const encoder = encoding.createEncoder();
+      syncProtocol.writeUpdate(encoder, update);
+      const syncMessage = encoding.toUint8Array(encoder);
+
+      this.socket.emit('doc:sync-update', {
+        projectId: this.projectId,
+        docId: this.pageId,
+        data: syncMessage,
+      });
+    });
+  }
+
+  private initiateYjsSync(): void {
+    if (!this.socket || !this.socket.connected || this.destroyed) return;
+
+    // Send binary sync-step-1 with local state vector
+    const encoder = encoding.createEncoder();
+    syncProtocol.writeSyncStep1(encoder, this.doc);
+    const step1Payload = encoding.toUint8Array(encoder);
+
+    this.socket.emit(
+      'doc:sync-step-1',
+      {
+        projectId: this.projectId,
+        docId: this.pageId,
+        data: step1Payload,
+      },
+      (res?: { success?: boolean; data?: any; error?: string }) => {
+        if (res?.success && res.data) {
+          try {
+            const rawData =
+              res.data instanceof Uint8Array
+                ? res.data
+                : new Uint8Array(res.data);
+            const decoder = decoding.createDecoder(rawData);
+            syncProtocol.readSyncMessage(decoder, encoding.createEncoder(), this.doc, 'socket.io');
+          } catch (err) {
+            console.warn('[YjsSocketIOProvider] Error processing sync-step-2 from server:', err);
+          }
+        }
+        this.isSynced = true;
+        this.options.onSynced?.();
+      },
+    );
   }
 
   private handleInitialDocPresence(docPresence: any[]): void {

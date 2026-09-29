@@ -57,22 +57,34 @@ export function useEditorStorage(pageId?: string | null, parentId?: string | nul
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       toast.success(`Đã tải lên "${newItem.filename}"`);
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Không thể tải tệp lên');
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Không thể tải tệp lên';
+      toast.error(msg);
     },
   });
 
   const createFolderMutation = useMutation({
-    mutationFn: async ({ name, parentId: targetParentId }: { name: string; parentId?: string | null }): Promise<any> => {
-      const targetId = pageId || effectiveProjectId;
+    mutationFn: async ({
+      name,
+      parentId: targetParentId,
+      projectId: targetProjectId,
+      pageId: targetPageId,
+    }: {
+      name: string;
+      parentId?: string | null;
+      projectId?: string;
+      pageId?: string;
+    }): Promise<any> => {
+      const targetId = targetPageId || targetProjectId || pageId || effectiveProjectId;
       return await StorageService.createPageFolder(targetId, name, targetParentId ?? parentId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       toast.success('Đã tạo thư mục');
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Không thể tạo thư mục');
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Không thể tạo thư mục';
+      toast.error(msg);
     },
   });
 
@@ -86,8 +98,9 @@ export function useEditorStorage(pageId?: string | null, parentId?: string | nul
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       toast.success('Đã đổi tên');
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Không thể đổi tên');
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Không thể đổi tên';
+      toast.error(msg);
     },
   });
 
@@ -99,8 +112,9 @@ export function useEditorStorage(pageId?: string | null, parentId?: string | nul
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       toast.success('Đã xóa tệp');
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Không thể xóa tệp');
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Không thể xóa tệp';
+      toast.error(msg);
     },
   });
 
@@ -114,8 +128,9 @@ export function useEditorStorage(pageId?: string | null, parentId?: string | nul
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       toast.success('Đã di chuyển');
     },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Không thể di chuyển');
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Không thể di chuyển';
+      toast.error(msg);
     },
   });
 
@@ -124,15 +139,15 @@ export function useEditorStorage(pageId?: string | null, parentId?: string | nul
     files: items,
     isLoading,
     refetch,
-    uploadFile: uploadFileMutation as any,
-    createFolder: createFolderMutation as any,
-    renameFile: renameMutation as any,
-    deleteFile: deleteMutation as any,
-    moveItem: moveMutation as any,
-    uploadFileMutation: uploadFileMutation as any,
-    createFolderMutation: createFolderMutation as any,
-    renameMutation: renameMutation as any,
-    deleteMutation: deleteMutation as any,
-    moveMutation: moveMutation as any,
+    uploadFile: uploadFileMutation,
+    createFolder: createFolderMutation,
+    renameFile: renameMutation,
+    deleteFile: deleteMutation,
+    moveItem: moveMutation,
+    uploadFileMutation,
+    createFolderMutation,
+    renameMutation,
+    deleteMutation,
+    moveMutation,
   };
 }

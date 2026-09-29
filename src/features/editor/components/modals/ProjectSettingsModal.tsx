@@ -42,7 +42,7 @@ import {
   type KeybindingMode,
   type EditorTheme,
 } from '@/features/editor/store';
-import { MONACO_THEMES } from '../editor/monaco-themes';
+import { EDITOR_THEMES } from '../editor/editor-themes';
 import { useTheme } from '@/shared/providers';
 import { filesQuery } from '@/features/editor/hooks/use-core';
 import { useQuery } from '@tanstack/react-query';
@@ -818,7 +818,7 @@ export default function ProjectSettingsModal() {
                       <SelectValue placeholder="Theme" />
                     </SelectTrigger>
                     <SelectContent className="z-[9999]">
-                      {MONACO_THEMES.map((t) => (
+                      {EDITOR_THEMES.map((t) => (
                         <SelectItem key={t.id} value={t.id} className="cursor-pointer text-xs">
                           {t.name}
                         </SelectItem>

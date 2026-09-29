@@ -88,7 +88,7 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
       <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-md border border-border bg-card gap-3 shadow-none">
         <div>
           <h4 className="text-xs font-semibold text-foreground">Target Bibliography File</h4>
-          <p className="text-[11px] text-muted-foreground">The .bib file where synced references will be written</p>
+          <p className="text-11 text-muted-foreground">The .bib file where synced references will be written</p>
         </div>
         <Select value={targetBibFile} onValueChange={setTargetBibFile}>
           <SelectTrigger className="w-48 h-8 text-xs font-medium cursor-pointer border-border bg-background">
@@ -113,7 +113,7 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
             </div>
             <div>
               <h4 className="text-xs font-semibold text-foreground">Zotero Integration</h4>
-              <p className="text-[11px] text-muted-foreground">Sync your personal or group Zotero collections</p>
+              <p className="text-11 text-muted-foreground">Sync your personal or group Zotero collections</p>
             </div>
           </div>
 
@@ -136,7 +136,7 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
         {isZoteroConnected ? (
           <div className="pt-2 border-t border-border/50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="flex-1">
-              <label className="text-[11px] text-muted-foreground block mb-1">
+              <label className="text-11 text-muted-foreground block mb-1">
                 Select Zotero Collection:
               </label>
               <Select
@@ -198,7 +198,7 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
             </div>
             <div>
               <h4 className="text-xs font-semibold text-foreground">Mendeley Integration</h4>
-              <p className="text-[11px] text-muted-foreground">Link your Elsevier Mendeley reference library</p>
+              <p className="text-11 text-muted-foreground">Link your Elsevier Mendeley reference library</p>
             </div>
           </div>
 
@@ -221,7 +221,7 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
         {isMendeleyConnected ? (
           <div className="pt-2 border-t border-border/50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="flex-1">
-              <label className="text-[11px] text-muted-foreground block mb-1">
+              <label className="text-11 text-muted-foreground block mb-1">
                 Select Mendeley Folder:
               </label>
               <Select

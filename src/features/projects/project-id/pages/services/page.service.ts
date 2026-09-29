@@ -33,6 +33,16 @@ export const PageService = {
 
   delete: (pageId: string) => apiDelete<void>(`${MANUSCRIPTS_API_BASE}/docs/${pageId}`),
 
+  duplicate: async (pageId: string) => {
+    const res = await apiPost<{
+      page: Page;
+      mainFile?: { id: string; [key: string]: unknown } | string | null;
+      rootPageId?: string;
+      mainFileId?: string | null;
+    }>(`${MANUSCRIPTS_API_BASE}/docs/${pageId}/duplicate`, {});
+    return res;
+  },
+
   updateTitle: async (pageId: string, title: string, _oldTitle?: string) => {
     const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${pageId}`, { title });
     return res.page;

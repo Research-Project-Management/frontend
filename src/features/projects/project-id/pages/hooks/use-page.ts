@@ -42,6 +42,15 @@ export const usePageActions = () => {
     onError: (error: Error) => toast.error(error.message || 'Failed to delete page', { id: 'project-page-action' }),
   });
 
+  const duplicatePage = useMutation({
+    mutationFn: (pageId: string) => PageService.duplicate(pageId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      toast.success('Page duplicated', { id: 'project-page-action' });
+    },
+    onError: (error: Error) => toast.error(error.message || 'Failed to duplicate page', { id: 'project-page-action' }),
+  });
+
   const updateTitle = useMutation({
     mutationFn: ({ pageId, title, oldTitle }: { pageId: string; title: string; oldTitle?: string }) =>
       PageService.updateTitle(pageId, title, oldTitle),
@@ -55,5 +64,5 @@ export const usePageActions = () => {
     onError: (error: Error) => toast.error(error.message || 'Failed to update title', { id: 'project-page-action' }),
   });
 
-  return { createPage, deletePage, updateTitle };
+  return { createPage, deletePage, duplicatePage, updateTitle };
 };

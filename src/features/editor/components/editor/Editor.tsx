@@ -120,7 +120,12 @@ export default function Editor({ page }: EditorProps) {
   const [suggestions, setSuggestions] = useState<PageSuggestion[]>([]);
 
   // Realtime collaboration & remote cursor tracking (clean presentation state)
-  const effectiveProjectId = (page as any)?.projectId || '';
+  const rawProjId = 'projectId' in page ? page.projectId : undefined;
+  const effectiveProjectId =
+    typeof rawProjId === 'string'
+      ? rawProjId
+      : rawProjId?.id || '';
+  const userExtra = user as (typeof user & { email?: string; avatar?: string; image?: string; color?: string }) | null;
   const {
     activeCollaborators,
     isDocumentLocked,
@@ -132,15 +137,13 @@ export default function Editor({ page }: EditorProps) {
   } = useEditorCollaborators({
     projectId: effectiveProjectId,
     pageId: page.id,
-    editorRef,
-    monacoRef,
     currentUserId: user?.id,
     currentUser: user
       ? {
           id: user.id,
-          name: user.name || (user as any).email || 'Collaborator',
-          avatar: (user as any).avatar || (user as any).image,
-          color: (user as any).color,
+          name: user.name || userExtra?.email || 'Collaborator',
+          avatar: userExtra?.avatar || userExtra?.image,
+          color: userExtra?.color,
           role: user.role,
         }
       : undefined,
@@ -159,7 +162,7 @@ export default function Editor({ page }: EditorProps) {
   const [symbolPaletteOpen, setSymbolPaletteOpen] = useState(false);
   const [wordCountOpen, setWordCountOpen] = useState(false);
 
-  const rootPageId = (page as any)?.parentPageId || page?.id || null;
+  const rootPageId = ('parentPageId' in page ? (page as { parentPageId?: string }).parentPageId : undefined) || page?.id || null;
 
   const handleInsertWizardSnippet = useCallback((snippet: string) => {
     if (engine) {
@@ -251,11 +254,7 @@ export default function Editor({ page }: EditorProps) {
     setActiveSuggestionWidgetData(null);
   }, [setActiveSuggestionWidgetData]);
 
-  const rawProjectId = (page as any)?.projectId;
-  const projectScopeId =
-    typeof rawProjectId === 'string'
-      ? rawProjectId
-      : rawProjectId?.id || '';
+  const projectScopeId = effectiveProjectId;
 
   const { data: pageFiles = [] } = useQuery({
     ...filesQuery(rootPageId ?? ''),
@@ -266,7 +265,7 @@ export default function Editor({ page }: EditorProps) {
     projectScopeId || 'me',
     'all',
   );
-  const libraryItems = (libraryData as any)?.items ?? [];
+  const libraryItems = (libraryData as { items?: unknown[] })?.items ?? [];
 
   const {
     bibEntries,
@@ -275,7 +274,7 @@ export default function Editor({ page }: EditorProps) {
     handleInsertCitationSnippet,
   } = useEditorCitation({
     editorRef,
-    pageFiles: pageFiles as any,
+    pageFiles,
     libraryItems,
   });
 
@@ -326,7 +325,7 @@ export default function Editor({ page }: EditorProps) {
         };
         editor.executeEdits('overleaf-ai-assist', [
           {
-            range: insertRange as any,
+            range: insertRange,
             text: '\n\n' + newText,
             forceMoveMarkers: true,
           },
@@ -504,23 +503,33 @@ export default function Editor({ page }: EditorProps) {
 
   const handleSuggestionSubmit = useCallback(async () => {
     if (!suggestModal) return;
+    const userEmail = (user as { email?: string })?.email || '';
     const newSug: PageSuggestion = {
       id: `sug-${Date.now()}`,
       pageId: page.id,
+      authorId: user?.id || 'local',
+      author: {
+        id: user?.id || 'local',
+        name: user?.name || 'Collaborator',
+        email: userEmail,
+      },
       type: suggestModal.type,
       originalText: suggestModal.originalText,
       suggestedText: suggestModal.type === 'delete' ? '' : suggestModal.suggestedText,
       fromLine: suggestModal.fromLine,
+      fromColumn: 0,
       toLine: suggestModal.toLine,
+      toColumn: 0,
       description: suggestModal.description || undefined,
       status: 'pending',
       createdAt: new Date().toISOString(),
-    } as any;
+      updatedAt: new Date().toISOString(),
+    };
     setSuggestions((prev) => [...prev, newSug]);
     setSuggestModal(null);
     EditorEventBus.emit('flux:open-panel', 'Review');
     toast.success('Suggestion recorded');
-  }, [page.id, suggestModal]);
+  }, [page.id, suggestModal, user]);
 
   const handleCloseSuggestionWidget = useCallback(() => {
     setActiveSuggestionWidgetData(null);
@@ -554,7 +563,8 @@ export default function Editor({ page }: EditorProps) {
     setSuggestModal(null);
   }, []);
 
-  const isReadOnly = Boolean((page as any).isLocked || isDocumentLocked);
+  const isPageLocked = 'isLocked' in page ? Boolean((page as { isLocked?: boolean }).isLocked) : false;
+  const isReadOnly = Boolean(isPageLocked || isDocumentLocked);
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
@@ -694,7 +704,7 @@ export default function Editor({ page }: EditorProps) {
             isDarkTheme={isDarkTheme}
             readOnly={isReadOnly}
             bibEntries={bibEntries}
-            projectFiles={pageFiles as any}
+            projectFiles={pageFiles}
             keybinding={keybinding}
             yText={yText}
             awareness={awareness}

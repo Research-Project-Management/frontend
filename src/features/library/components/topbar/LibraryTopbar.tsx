@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
 import {
   FolderOpen,
@@ -160,6 +160,7 @@ export function LibraryTopbar({
   const effectiveOnDisplayOptionsChange =
     propOnDisplayOptionsChange ?? setStoreDisplayOptions;
 
+  const router = useRouter();
   const params = useParams() as { collectionId?: string };
 
   const effectiveScopeId =
@@ -235,49 +236,41 @@ export function LibraryTopbar({
                   {idx > 0 && (
                     <ChevronRight className="size-3.5 text-muted-foreground shrink-0" />
                   )}
-                  <div
-                    role={!isLast && onNavigateCrumb ? 'button' : undefined}
-                    tabIndex={!isLast && onNavigateCrumb ? 0 : undefined}
-                    className={cn(
-                      'flex items-center gap-2 min-w-0',
-                      !isLast && onNavigateCrumb
-                        ? 'cursor-pointer hover:underline focus-visible:outline-none rounded-sm'
-                        : ''
-                    )}
-                    onClick={() => {
-                      if (!isLast && onNavigateCrumb) {
-                        onNavigateCrumb(crumb.id);
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (
-                        !isLast &&
-                        onNavigateCrumb &&
-                        (e.key === 'Enter' || e.key === ' ')
-                      ) {
-                        e.preventDefault();
-                        onNavigateCrumb(crumb.id);
-                      }
-                    }}
-                  >
-                    <FolderOpen
-                      className={cn(
-                        'size-4 shrink-0 transition-colors',
-                        isLast ? 'text-foreground' : 'text-muted-foreground'
-                      )}
-                    />
-                    <span
-                      className={cn(
-                        'text-13 tracking-tight transition-colors truncate max-w-[120px] sm:max-w-[200px]',
-                        !isLast
-                          ? 'text-muted-foreground font-normal'
-                          : 'text-foreground font-medium'
-                      )}
-                      title={crumb.name}
+                  {!isLast && onNavigateCrumb ? (
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 min-w-0 cursor-pointer hover:underline outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-xs py-0.5 text-left"
+                      onClick={() => onNavigateCrumb(crumb.id)}
                     >
-                      {crumb.name}
-                    </span>
-                  </div>
+                      <FolderOpen className="size-4 shrink-0 transition-colors text-muted-foreground" />
+                      <span
+                        className="text-13 tracking-tight transition-colors truncate max-w-[120px] sm:max-w-[200px] text-muted-foreground font-normal"
+                        title={crumb.name}
+                      >
+                        {crumb.name}
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FolderOpen
+                        className={cn(
+                          'size-4 shrink-0 transition-colors',
+                          isLast ? 'text-foreground' : 'text-muted-foreground'
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          'text-13 tracking-tight transition-colors truncate max-w-[120px] sm:max-w-[200px]',
+                          isLast
+                            ? 'text-foreground font-medium'
+                            : 'text-muted-foreground font-normal'
+                        )}
+                        title={crumb.name}
+                      >
+                        {crumb.name}
+                      </span>
+                    </div>
+                  )}
                 </React.Fragment>
               );
             })}
@@ -495,7 +488,7 @@ export function LibraryTopbar({
             {/* Group 6: External Integrations */}
             <DropdownMenuItem
               onClick={() => {
-                window.location.href = '/settings/integrations';
+                router.push('/settings/integrations');
               }}
               className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >

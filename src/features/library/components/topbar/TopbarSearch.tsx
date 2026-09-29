@@ -105,10 +105,10 @@ export function TopbarSearch({
       tabIndex={active ? -1 : 0}
       aria-label={placeholder}
       className={cn(
-        'relative flex items-center transition-all duration-300 ease-in-out h-7.5 rounded-md overflow-hidden group focus-visible:ring-1 focus-visible:ring-ring select-none',
+        'relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-md overflow-hidden group focus-visible:ring-1 focus-visible:ring-ring select-none',
         active
           ? 'w-40 sm:w-52 border border-border bg-white dark:bg-card shadow-2xs hover:border-foreground/30'
-          : 'w-7.5 hover:bg-muted cursor-pointer',
+          : 'w-8 hover:bg-muted cursor-pointer',
         className
       )}
       onClick={expand}
@@ -147,7 +147,7 @@ export function TopbarSearch({
           }
         }}
         className={cn(
-          'h-full text-12 font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-foreground placeholder:font-normal transition-opacity duration-200 pl-7 pr-6 text-foreground',
+          'h-full text-12 font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground placeholder:font-normal transition-opacity duration-200 pl-7 pr-6 text-foreground',
           active ? 'opacity-100' : 'opacity-0 pointer-events-none'
         )}
       />
@@ -156,10 +156,10 @@ export function TopbarSearch({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={handleClear}
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-md"
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring"
           aria-label="Clear search"
         >
-          <X className="size-3 shrink-0 text-foreground" />
+          <X className="size-3 shrink-0" />
         </button>
       )}
     </div>

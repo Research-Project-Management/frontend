@@ -69,9 +69,22 @@ export function useInspectorResize() {
     };
   }, [isDragging, setInspectorWidth]);
 
+  const setWidth = useCallback(
+    (nextWidth: number) => {
+      setInspectorWidth(Math.min(Math.max(nextWidth, 300), 640));
+    },
+    [setInspectorWidth],
+  );
+
+  const resetWidth = useCallback(() => {
+    setInspectorWidth(360);
+  }, [setInspectorWidth]);
+
   return {
     width: inspectorWidth,
     isDragging,
     handleMouseDown,
+    setWidth,
+    resetWidth,
   };
 }

@@ -5,4 +5,3 @@
  */
 
 export * from './components/CompileButton';
-export * from './components/CompileErrorBanner';

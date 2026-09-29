@@ -68,7 +68,9 @@ export interface DocumentSettingsState {
   showEditorTabs: boolean;
   showEquationPreview: boolean;
   pdfSpreadView: boolean;
+  isLocked: boolean;
 
+  setIsLocked: (isLocked: boolean) => void;
   setAutoComplete: (autoComplete: boolean) => void;
   setNonBlinkingCursor: (nonBlinkingCursor: boolean) => void;
   setPreviewEditorTabs: (previewEditorTabs: boolean) => void;
@@ -144,6 +146,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       layout: 'split',
       editorTheme: 'auto',
       pdfSpreadView: false,
+      isLocked: false,
       keybinding: 'standard',
       sidebarWidth: 320,
       editorFlex: 0.5,
@@ -239,6 +242,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       setNonBlinkingCursor: (nonBlinkingCursor) => set({ nonBlinkingCursor }),
       setPreviewEditorTabs: (previewEditorTabs) => set({ previewEditorTabs }),
       setPdfViewer: (pdfViewer) => set({ pdfViewer }),
+      setIsLocked: (isLocked) => set({ isLocked }),
       setNotifyComments: (notifyComments) => set({ notifyComments }),
       setNotifyUpdates: (notifyUpdates) => set({ notifyUpdates }),
     }),
@@ -246,7 +250,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       name: 'flux-editor-settings',
       partialize: (state) => {
         // Don't persist transient UI state or auto-compile (always on by default)
-        const { settingsPanelOpen, autoCompile, isHistoryOpen, isTemplateModalOpen, activeSidebarPanel, ...rest } = state;
+        const { settingsPanelOpen, autoCompile, isHistoryOpen, isTemplateModalOpen, activeSidebarPanel, isLocked, ...rest } = state;
         return rest;
       },
     },

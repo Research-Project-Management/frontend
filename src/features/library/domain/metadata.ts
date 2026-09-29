@@ -13,27 +13,61 @@ import {
 } from './categories';
 
 const SCIENTIFIC_ACRONYMS = new Set([
-  'AI', 'ML', 'NLP', 'CV', 'CNN', 'RNN', 'LSTM', 'GAN', 'BERT', 'LLM', 'COCO',
-  'YOLO', 'RESNET', 'VGG', 'SVM', 'RL', 'API', 'GPU', 'CPU', 'TPU', 'DNA', 'RNA', 'SGD', 'ADAM',
+  'AI', 'ML', 'NLP', 'CV', 'CNN', 'RNN', 'LSTM', 'GAN', 'BERT', 'LLM', 'LLMS', 'COCO',
+  'YOLO', 'RESNET', 'VGG', 'SVM', 'RL', 'API', 'APIS', 'GPU', 'GPUS', 'CPU', 'CPUS',
+  'TPU', 'TPUS', 'DNA', 'RNA', 'SGD', 'ADAM', 'RMSPROP', 'FTS', 'RAG', 'OCR', 'DOI',
+  'URL', 'PDF', 'HTML', 'XML', 'JSON', 'DB', 'SQL', 'NOSQL', 'HCI', 'IOT', 'FPGA',
+  'ASIC', 'VAE', 'MCMC', 'ODE', 'PDE', 'SOTA', 'BLEU', 'ROUGE', 'TF-IDF', 'GLUE',
+  'SUPERGLUE', 'COVID', 'COVID-19', 'SARS', 'COV', 'CRISPR', 'MRI', 'FMRI', 'CT',
+  'EEG', 'ECG', 'PET', 'GNN', 'DQN', 'PPO', 'DDPG', 'A3C', 'CLIP', 'VIT', 'DINO',
+  'LLAMA', 'MAMBA', 'MOE', 'LORA', 'QLORA', 'PEFT', 'RLHF', 'DPO', 'KTO', 'SVD',
+  'PCA', 'UMAP', 'AGI',
+  'TCP', 'IP', 'TCP/IP', 'I/O', 'OS',
 ]);
 
 export const NOISE_TAG_WORDS = new Set([
-  'undefined', 'null', 'n/a', 'na', 'none', 'unknown', 'nil', 'empty', 'void',
-  'sample', 'test', 'draft', 'untitled', 'etc', 'etc.', 'various', 'others',
-  'and others', 'et al', 'et al.', 'et-al', 'introduction', 'conclusion',
-  'conclusions', 'background', 'paper', 'article', 'study', 'approach',
-  'method', 'methods', 'methodology', 'result', 'results', 'discussion',
-  'overview', 'experiment', 'experiments', 'experimental', 'analysis',
+  // Placeholders / Empty / Null indicators
+  'undefined', 'null', 'n/a', 'na', 'n.a.', 'not available', 'not applicable',
+  'none', 'unknown', 'nil', 'empty', 'void', 'sample', 'test', 'draft', 'untitled',
+  'etc', 'etc.', 'various', 'others', 'and others', 'et al', 'et al.', 'et-al',
+
+  // Document sections & structural headers
+  'introduction', 'conclusion', 'conclusions', 'background', 'paper', 'article',
+  'study', 'approach', 'method', 'methods', 'methodology', 'result', 'results',
+  'discussion', 'overview', 'experiment', 'experiments', 'experimental', 'analysis',
   'abstract', 'summary', 'contents', 'table of contents', 'references',
   'bibliography', 'appendix', 'acknowledgments', 'acknowledgements',
+
+  // Metadata field headers & taxonomy labels
   'keywords', 'keyword', 'index terms', 'key words', 'subject', 'subjects',
-  'topics', 'topic', 'category', 'categories', 'all rights reserved',
-  'copyright', 'open access', 'creative commons', 'springer', 'elsevier',
-  'ieee', 'acm', 'wiley', 'nature', 'science', 'proceedings', 'conference',
-  'journal', 'volume', 'issue', 'page', 'pages', 'pp', 'no', 'vol', 'pdf',
-  'full text', 'available online', 'downloaded', 'preprint', 'manuscript',
-  'author', 'authors', 'editor', 'editors',
+  'topics', 'topic', 'category', 'categories', 'classification', 'descriptor', 'descriptors',
+
+  // Publisher, copyright, repository noise
+  'all rights reserved', 'copyright', 'open access', 'creative commons', 'springer',
+  'elsevier', 'ieee', 'acm', 'wiley', 'nature', 'science', 'proceedings', 'conference',
+  'symposium', 'workshop', 'journal', 'volume', 'issue', 'page', 'pages', 'pp', 'no',
+  'vol', 'pdf', 'full text', 'full-text', 'fulltext', 'available online', 'downloaded',
+  'downloaded from', 'download', 'preprint', 'manuscript', 'author', 'authors',
+  'editor', 'editors', 'peer reviewed', 'peer-reviewed', 'original article',
+  'research article', 'review article', 'short communication', 'case report', 'editorial',
+  'erratum', 'corrigendum', 'author index', 'subject index', 'toc', 'in press',
+  'online first', 'accepted manuscript', 'author manuscript', 'version of record',
+  'unassigned', 'uncategorized', 'miscellaneous', 'misc', 'general', 'default',
+  'book review', 'letter to editor', 'announcement', 'preface', 'foreword',
 ]);
+
+/** Strips LaTeX macros, font commands, and escaped symbols common in BibTeX keywords */
+export function stripLatexMarkup(str: string): string {
+  return str
+    .replace(/\\([&%$#_{}])/g, '$1')
+    .replace(
+      /\\(?:textbf|textit|textsf|texttt|textsc|emph|text|mathrm|mathbf|mathit)\s*\{([^}]+)\}/gi,
+      '$1',
+    )
+    .replace(/\\(?:bf|it|em|rm|sf|tt|large|Large|small|tiny)\b\s*/gi, '')
+    .replace(/[{}]/g, '')
+    .trim();
+}
 
 export function cleanSingleFrontendTag(raw: string): string | null {
   if (!raw || typeof raw !== 'string') return null;
@@ -44,12 +78,18 @@ export function cleanSingleFrontendTag(raw: string): string | null {
     .replace(/\uFFFD/g, '')
     .trim();
 
-  str = str.replace(/<[^>]+>/g, '').replace(/[{}]/g, '').trim();
+  // 0. Strip LaTeX markup and XML/HTML tags
+  str = stripLatexMarkup(str);
+  str = str.replace(/<[^>]+>/g, '').trim();
+  if (!str) return null;
+
+  // 1. Strip Wikipedia disambiguation
   str = str.replace(/(?<=[\w\d])\s+\([^)]*\)$/g, '').trim();
 
+  // 2. Strip prefixes and boundary punctuation
   str = str
     .replace(
-      /^(?:tags?|keywords?|index terms?|categor(?:y|ies)|subject(?: areas?)?|topics?|terms?|arxiv)[:—\-\s]+/i,
+      /^(?:tags?|keywords?|index terms?|categor(?:y|ies)|subject(?: areas?)?|topics?|terms?|classification|descriptors?|field(?: of study)?)[:—\-\s]+/i,
       ''
     )
     .replace(/^[#"''`([{<•·*—\-\s]+/, '')
@@ -60,28 +100,67 @@ export function cleanSingleFrontendTag(raw: string): string | null {
 
   if (!str) return null;
 
+  // 3. Direct arXiv category mapping
   const lower = str.toLowerCase();
   if (ARXIV_CATEGORY_MAP[lower]) return ARXIV_CATEGORY_MAP[lower];
   const withDot = lower.replace(/[-_]/g, '.');
   if (ARXIV_CATEGORY_MAP[withDot]) return ARXIV_CATEGORY_MAP[withDot];
 
-  if (NOISE_TAG_WORDS.has(lower)) return null;
-  if (str.length < 2 || str.length > 60) return null;
-  if (!/[a-zA-Z0-9\u00C0-\u024F\u1EA0-\u1EF9]/.test(str)) return null;
-  if (/^\d+$/.test(str)) return null;
-  if (/^(?:p|pp|vol|no|v|issue)\.?\s*\d+(?:[-–—]\d+)?$/i.test(str)) return null;
-  if (/^\d{1,4}[-–—]\d{1,4}$/.test(str)) return null;
+  // 4. Reject metadata identifiers & web links
   if (
+    /^(?:doi[:\s/]|https?:\/\/(?:dx\.)?doi\.org\/)/i.test(str) ||
+    /^10\.\d{4,9}\//i.test(str) ||
+    /(?:^|\s)10\.\d{4,9}\/[^\s]+/i.test(str) ||
+    /^(?:pmid|pmcid|isbn|issn|arxiv|corpusid|hdl|urn|bibcode)[:\s/]/i.test(str) ||
     /^https?:\/\//i.test(str) ||
+    /^ftp:\/\//i.test(str) ||
     /^www\./i.test(str) ||
     /@/.test(str) ||
-    /^10\.\d{4,9}\//i.test(str)
+    /\.(?:com|org|net|edu|gov|io|ai|dev|de|uk|fr|cn)\b/i.test(str)
+  ) {
+    return null;
+  }
+
+  // 5. Direct noise blacklist check
+  if (NOISE_TAG_WORDS.has(lower)) return null;
+
+  // 6. Sanity & garbage checks:
+  if (str.length < 2 || str.length > 60) return null;
+  if (!/[a-zA-Z0-9\u00C0-\u024F\u1EA0-\u1EF9]/.test(str)) return null;
+  if (/^[\p{P}\p{S}\s]+$/u.test(str)) return null;
+  if (/^\d+$/.test(str)) return null;
+  if (/^\d{1,4}[-–—/]\d{1,4}$/.test(str)) return null;
+  if (/^\d{4}[-/.](?:0?[1-9]|1[0-2])[-/.](?:0?[1-9]|[12]\d|3[01])$/.test(str)) return null;
+  if (/^(?:0?[1-9]|[12]\d|3[01])[-/.](?:0?[1-9]|1[0-2])[-/.]\d{4}$/.test(str)) return null;
+  if (
+    /^(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{2,4}$/i.test(
+      str
+    )
+  ) {
+    return null;
+  }
+  if (
+    /^(?:p|pp|page|pages|vol|volume|no|number|v|issue)\.?\s*\d+(?:\s*[-–—]\s*\d+)?$/i.test(
+      str
+    )
+  ) {
+    return null;
+  }
+  if (/^vol(?:ume)?\.?\s*\d+[\s,]+(?:no|issue|number)\.?\s*\d+$/i.test(str)) {
+    return null;
+  }
+  if (
+    !SCIENTIFIC_ACRONYMS.has(str.toUpperCase()) &&
+    /^(?:i{1,3}|iv|vi{0,3}|ix|x{1,3}|xi{1,3}|xiv|xvi{0,3}|xix|xx{0,2})$/i.test(
+      str
+    )
   ) {
     return null;
   }
   if (/^(\.{2,}|…)+$/.test(str)) return null;
   if (NOISE_TAG_WORDS.has(str.toLowerCase())) return null;
 
+  // 7. Format with proper Title Case & Acronyms
   const formatted = str
     .split(/\s+/)
     .filter(Boolean)
@@ -90,6 +169,8 @@ export function cleanSingleFrontendTag(raw: string): string | null {
       if (SCIENTIFIC_ACRONYMS.has(upper)) return upper;
       if (word === '-') return '-';
       if (word.includes('-')) {
+        const wordUpper = word.toUpperCase();
+        if (SCIENTIFIC_ACRONYMS.has(wordUpper)) return wordUpper;
         return word
           .split('-')
           .map((part) => {
@@ -98,6 +179,18 @@ export function cleanSingleFrontendTag(raw: string): string | null {
             return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
           })
           .join('-');
+      }
+      if (word.includes('/')) {
+        const wordUpper = word.toUpperCase();
+        if (SCIENTIFIC_ACRONYMS.has(wordUpper)) return wordUpper;
+        return word
+          .split('/')
+          .map((part) => {
+            const partUpper = part.toUpperCase();
+            if (SCIENTIFIC_ACRONYMS.has(partUpper)) return partUpper;
+            return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+          })
+          .join('/');
       }
       const lowerWord = word.toLowerCase();
       if (['and', 'or', 'of', 'in', 'on', 'for', 'with', 'at', 'by'].includes(lowerWord)) {
@@ -109,7 +202,11 @@ export function cleanSingleFrontendTag(raw: string): string | null {
 
   let result = formatted.charAt(0).toUpperCase() + formatted.slice(1);
   result = result.replace(/(?:\.{2,}|…|[.,;:—\-\s])+$/, '').trim();
-  return result.length >= 2 ? result : null;
+
+  if (result.length < 2) return null;
+  if (NOISE_TAG_WORDS.has(result.toLowerCase())) return null;
+
+  return result;
 }
 
 export function normalizeTags(
@@ -117,6 +214,21 @@ export function normalizeTags(
   maxTags?: number
 ): string[] {
   if (!paper) return [];
+
+  const metadataObj =
+    typeof (paper as any).metadata === 'object' && (paper as any).metadata !== null
+      ? (paper as any).metadata
+      : typeof (paper as any).metadata === 'string' &&
+          (paper as any).metadata.trim().startsWith('{')
+        ? (() => {
+            try {
+              return JSON.parse((paper as any).metadata);
+            } catch {
+              return {};
+            }
+          })()
+        : {};
+
   const raw: unknown[] = [
     ...(Array.isArray(paper.tags) ? paper.tags : []),
     ...(Array.isArray(paper.labels) ? paper.labels : []),
@@ -124,7 +236,11 @@ export function normalizeTags(
     ...(Array.isArray(paper.itemTags)
       ? paper.itemTags.map((it) => it?.tag?.name ?? '')
       : []),
+    ...(Array.isArray(metadataObj.tags) ? metadataObj.tags : []),
+    ...(Array.isArray(metadataObj.keywords) ? metadataObj.keywords : []),
+    ...(Array.isArray(metadataObj.labels) ? metadataObj.labels : []),
   ];
+
   const seen = new Set<string>();
   const result: string[] = [];
   for (const t of raw) {
@@ -139,7 +255,7 @@ export function normalizeTags(
                 : '')
           : '';
     if (!s) continue;
-    const parts = s.split(/[,;\n\r|•·]/).map((p: string) => p.trim()).filter(Boolean);
+    const parts = s.split(/[,;\n\r|•·]|\s+[/]\s+/).map((p: string) => p.trim()).filter(Boolean);
     for (const part of parts) {
       const cleaned = cleanSingleFrontendTag(part);
       if (cleaned) {
@@ -156,6 +272,7 @@ export function normalizeTags(
 
 export interface NormalizedNote {
   id: string;
+  title?: string;
   content: string;
   contentMd?: string;
   contentJson?: unknown;
@@ -165,15 +282,17 @@ export interface NormalizedNote {
 }
 
 export function normalizeNotes(
-  notes?: Array<string | Note | { id?: string; content?: string; note?: string }> | null
+  notes?: Array<string | Note | { id?: string; title?: string; content?: string; note?: string }> | null
 ): NormalizedNote[] {
   if (!Array.isArray(notes)) return [];
 
   return notes.map((note, index) => {
     if (typeof note === 'string') {
       const contentHash = note.trim().slice(0, 32).replace(/[^a-z0-9]/gi, '').toLowerCase() || index.toString();
+      const firstLine = note.trim().split(/\r?\n/).find((l) => l.trim().length > 0)?.trim() || 'Untitled Note';
       return {
         id: `local-${contentHash}`,
+        title: firstLine.slice(0, 80),
         content: note,
         createdAt: new Date().toISOString(),
       };
@@ -190,8 +309,21 @@ export function normalizeNotes(
       ? rawContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
       : rawContent;
 
+    const firstLine =
+      cleanPreview
+        .split(/\r?\n/)
+        .find((l: string) => l.trim().length > 0)
+        ?.replace(/^#+\s*/, '')
+        .replace(/^>\s*/, '')
+        .trim() || '';
+
+    const title =
+      noteObj.title ||
+      (firstLine ? (firstLine.length > 80 ? `${firstLine.slice(0, 77)}...` : firstLine) : 'Untitled Note');
+
     return {
       id: note.id || `note-${index}`,
+      title,
       content: cleanPreview,
       contentMd: noteObj.contentMd || (noteObj.note ? cleanPreview : rawContent),
       contentJson: noteObj.contentJson,

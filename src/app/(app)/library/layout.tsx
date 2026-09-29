@@ -15,14 +15,14 @@ export default function LibraryLayout({
 
   if (isReader) {
     return (
-      <main className="flex-1 min-h-0 relative flex flex-col overflow-hidden select-none">
+      <main className="flex-1 min-h-0 relative flex flex-col overflow-hidden">
         {children}
       </main>
     );
   }
 
   return (
-    <div className="flex h-full w-full overflow-hidden relative select-none">
+    <div className="flex h-full w-full overflow-hidden relative">
       {isOpen && <Sidebar />}
       <main className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden relative">
         {children}

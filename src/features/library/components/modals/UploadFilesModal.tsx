@@ -53,21 +53,21 @@ function getFileTypeBadge(filename: string) {
   const lower = filename.toLowerCase();
   if (lower.endsWith('.pdf')) {
     return (
-      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 shrink-0">
+      <span className="px-1.5 py-0.5 rounded text-10 font-semibold bg-destructive/10 text-destructive border border-destructive/20 shrink-0">
         PDF
       </span>
     );
   }
   if (lower.endsWith('.bib') || lower.endsWith('.bibtex')) {
     return (
-      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 shrink-0">
+      <span className="px-1.5 py-0.5 rounded text-10 font-semibold bg-primary/10 text-primary border border-primary/20 shrink-0">
         BIB
       </span>
     );
   }
   if (lower.endsWith('.ris')) {
     return (
-      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 shrink-0">
+      <span className="px-1.5 py-0.5 rounded text-10 font-semibold bg-muted text-foreground border border-border shrink-0">
         RIS
       </span>
     );
@@ -213,7 +213,7 @@ export default function UploadFilesModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-[540px] max-h-[85vh] flex flex-col p-6 overflow-hidden gap-4 rounded-xl border border-border bg-background shadow-raised-200"
+        className="sm:max-w-[540px] max-h-[85vh] flex flex-col p-6 overflow-hidden gap-4 rounded-lg border border-border bg-background shadow-raised-200"
       >
         <DialogHeader className="p-0 shrink-0 text-left">
           <DialogTitle className="text-15 font-semibold text-foreground tracking-tight">
@@ -260,7 +260,7 @@ export default function UploadFilesModal({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border border-dashed rounded-xl transition-all text-center cursor-pointer select-none ${
+            className={`border border-dashed rounded-lg transition-all text-center cursor-pointer select-none ${
               items.length > 0 ? 'py-4 px-4' : 'py-7 px-6'
             } ${
               isDragging
@@ -287,9 +287,9 @@ export default function UploadFilesModal({
                 </p>
                 <div className="flex items-center justify-center gap-1.5 pt-0.5">
                   <span className="text-11 text-muted-foreground">Supported formats:</span>
-                  <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-red-500/10 text-red-600 dark:text-red-400">PDF</span>
-                  <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400">BibTeX</span>
-                  <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400">RIS</span>
+                  <span className="px-1.5 py-0.5 rounded text-10 font-medium bg-destructive/10 text-destructive">PDF</span>
+                  <span className="px-1.5 py-0.5 rounded text-10 font-medium bg-primary/10 text-primary">BibTeX</span>
+                  <span className="px-1.5 py-0.5 rounded text-10 font-medium bg-muted text-foreground">RIS</span>
                   <span className="text-11 text-muted-foreground">• max 100MB</span>
                 </div>
               </div>
@@ -333,7 +333,7 @@ export default function UploadFilesModal({
                         <button
                           type="button"
                           onClick={() => removeItem(item.id)}
-                          className="text-muted-foreground hover:text-destructive p-1 rounded hover:bg-muted transition-colors cursor-pointer"
+                          className="text-muted-foreground hover:text-destructive p-1 rounded hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring"
                           title="Remove file"
                         >
                           <X className="size-3.5" />

@@ -8,6 +8,8 @@ export const libraryKeys = {
   // Items
   items: (scopeId?: string, params?: Record<string, any>) =>
     [...libraryKeys.all, 'items', scopeId || 'user', params ?? {}] as const,
+  counts: (scopeId?: string) =>
+    [...libraryKeys.all, 'counts', scopeId || 'user'] as const,
   item: (scopeId?: string, itemId?: string) =>
     [...libraryKeys.all, 'item', scopeId || 'user', itemId || 'none'] as const,
   itemState: (scopeId?: string, itemId?: string) =>
@@ -80,4 +82,5 @@ export const itemKeys = {
   trash: (scopeId?: string) => libraryKeys.items(scopeId, { view: 'trash' }),
   state: (scopeId?: string, itemId?: string) => libraryKeys.itemState(scopeId, itemId),
   types: (scopeId?: string) => libraryKeys.itemTypes(scopeId),
+  counts: (scopeId?: string) => libraryKeys.counts(scopeId),
 };

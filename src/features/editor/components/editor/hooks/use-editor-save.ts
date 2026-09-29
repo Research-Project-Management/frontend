@@ -69,6 +69,51 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
     }
   }, [debouncedPayload, clearDirty, setCurrentPage]);
 
+  // Listen for real-time document content updates from collaborating peers
+  useEffect(() => {
+    const handleRemoteUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const detail = customEvent.detail;
+      if (!detail || detail.docId !== page.id) return;
+
+      const currentPage = pageRef.current;
+      const currentSavedText = extractStringContent(currentPage.content);
+      const isLocallyDirty = latestPayloadRef.current.text !== currentSavedText;
+
+      // If local user has no unsaved keystrokes, update safely to collaborator's version
+      if (!isLocallyDirty && typeof detail.content === 'string') {
+        if (typeof setCurrentPage === 'function') {
+          setCurrentPage({
+            ...currentPage,
+            content: detail.content,
+          });
+        }
+        setContentPayload({
+          pageId: page.id,
+          text: detail.content,
+        });
+      } else if (isLocallyDirty && detail.content && detail.content !== latestPayloadRef.current.text) {
+        // Broadcast non-destructive collision alert so user can choose to merge or overwrite
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('flux:document-conflict', {
+              detail: {
+                docId: page.id,
+                remoteContent: detail.content,
+                localContent: latestPayloadRef.current.text,
+              },
+            }),
+          );
+        }
+      }
+    };
+
+    window.addEventListener('flux:doc-content-updated', handleRemoteUpdate);
+    return () => {
+      window.removeEventListener('flux:doc-content-updated', handleRemoteUpdate);
+    };
+  }, [page.id, setCurrentPage]);
+
   // Auto-Compile on Typing with 2.5s Idle Debounce
   const AUTO_COMPILE_IDLE_DELAY = 2500;
   const debouncedAutoCompileText = useDebounce(contentPayload.text, AUTO_COMPILE_IDLE_DELAY);

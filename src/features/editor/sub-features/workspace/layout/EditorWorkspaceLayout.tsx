@@ -235,10 +235,11 @@ export function EditorWorkspaceLayout() {
     setIsDraggingSplitter(true);
 
     const rect = container.getBoundingClientRect();
-    const available = rect.width - sidebarWidthRef.current - 4;
+    const currentSidebarWidth = isSidebarCollapsed ? 44 : sidebarWidthRef.current;
+    const available = rect.width - currentSidebarWidth - 4;
 
     const onMove = (ev: MouseEvent) => {
-      const mouseX = ev.clientX - rect.left - sidebarWidthRef.current - 2;
+      const mouseX = ev.clientX - rect.left - currentSidebarWidth - 2;
       const newFlex = Math.min(Math.max(mouseX / available, MIN_EDITOR_FLEX), MAX_EDITOR_FLEX);
       editorFlexRef.current = newFlex;
       setLocalEditorFlex(newFlex);
@@ -257,7 +258,7 @@ export function EditorWorkspaceLayout() {
     document.addEventListener('mouseup', onUp);
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
-  }, [MIN_EDITOR_FLEX, MAX_EDITOR_FLEX, setEditorFlex]);
+  }, [MIN_EDITOR_FLEX, MAX_EDITOR_FLEX, setEditorFlex, isSidebarCollapsed]);
 
   const handleEditorViewerTouchResize = useCallback((e: React.TouchEvent) => {
     const container = containerRef.current;
@@ -267,12 +268,13 @@ export function EditorWorkspaceLayout() {
     setIsDraggingSplitter(true);
 
     const rect = container.getBoundingClientRect();
-    const available = rect.width - sidebarWidthRef.current - 4;
+    const currentSidebarWidth = isSidebarCollapsed ? 44 : sidebarWidthRef.current;
+    const available = rect.width - currentSidebarWidth - 4;
 
     const onTouchMove = (ev: TouchEvent) => {
       const currentTouch = ev.touches[0];
       if (!currentTouch) return;
-      const touchX = currentTouch.clientX - rect.left - sidebarWidthRef.current - 2;
+      const touchX = currentTouch.clientX - rect.left - currentSidebarWidth - 2;
       const newFlex = Math.min(Math.max(touchX / available, MIN_EDITOR_FLEX), MAX_EDITOR_FLEX);
       editorFlexRef.current = newFlex;
       setLocalEditorFlex(newFlex);
@@ -287,7 +289,7 @@ export function EditorWorkspaceLayout() {
 
     document.addEventListener('touchmove', onTouchMove, { passive: true });
     document.addEventListener('touchend', onTouchEnd);
-  }, [MIN_EDITOR_FLEX, MAX_EDITOR_FLEX, setEditorFlex]);
+  }, [MIN_EDITOR_FLEX, MAX_EDITOR_FLEX, setEditorFlex, isSidebarCollapsed]);
 
   const handleSplitterReset = useCallback(() => {
     editorFlexRef.current = 0.5;

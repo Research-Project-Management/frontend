@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import type { Item } from '@/features/library/types/library.types';
 import { formatAndSanitizeExtraMetadata } from '../../../domain';
 import { InlineTextarea } from './InlineTextarea';
-import { useItemMetadataSourcesQuery } from '../../../data/queries/items.queries';
+import { useItemMetadataSourcesQuery } from '../../../data';
 
 export interface ExtraAuditFieldsProps {
   paper: Item;

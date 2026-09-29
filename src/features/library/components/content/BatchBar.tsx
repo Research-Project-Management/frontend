@@ -248,7 +248,7 @@ export function BatchBar({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 10 }}
         transition={{ duration: 0.15, ease: 'easeOut' }}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-md select-none shadow-raised-200"
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-md select-none shadow-raised-200 max-w-[calc(100vw-2rem)] overflow-x-auto scrollbar-none"
       >
         {/* Selection Count */}
         <div className="flex items-center gap-1.5 pr-2.5 border-r border-border">
@@ -542,8 +542,9 @@ export function BatchBar({
         <Tooltip delayDuration={250}>
           <TooltipTrigger asChild>
             <button
+              type="button"
               onClick={onClearSelection}
-              className="flex size-6 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer ml-0.5"
+              className="flex size-6 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer ml-0.5 outline-none focus-visible:ring-1 focus-visible:ring-ring"
               aria-label="Clear selection"
             >
               <X className="size-3.5 text-foreground shrink-0" />

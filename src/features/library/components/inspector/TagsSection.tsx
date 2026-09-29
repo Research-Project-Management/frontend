@@ -129,18 +129,14 @@ export default function TagsSection({
 
   const handleAddTag = () => {
     const trimmed = newTag.trim();
-    const cleaned = cleanSingleFrontendTag(trimmed) || trimmed;
+    const cleaned = cleanSingleFrontendTag(trimmed);
     if (cleaned && !tags.includes(cleaned)) {
       const updated = [...tags, cleaned];
       saveTags(updated);
-      setNewTag('');
-      setIsAdding(false);
-      onCancelAdding?.();
-    } else {
-      setIsAdding(false);
-      setNewTag('');
-      onCancelAdding?.();
     }
+    setNewTag('');
+    setIsAdding(false);
+    onCancelAdding?.();
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
@@ -149,7 +145,7 @@ export default function TagsSection({
   };
 
   const handleCommitEdit = (oldTag: string, updatedTag: string) => {
-    const cleaned = cleanSingleFrontendTag(updatedTag) || updatedTag.trim();
+    const cleaned = cleanSingleFrontendTag(updatedTag);
     if (!cleaned) {
       handleRemoveTag(oldTag);
       return;

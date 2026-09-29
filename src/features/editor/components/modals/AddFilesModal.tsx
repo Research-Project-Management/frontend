@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   X,
   FileText,
@@ -30,11 +30,13 @@ import {
   SelectValue,
 } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
-import { useFileActions } from '@/features/editor/hooks/use-core';
+import { useFileActions, pageKeys } from '@/features/editor/hooks/use-core';
 import { useEditorStorage } from '@/features/editor/hooks/use-storage';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
 import { pageService } from '@/features/editor/services/core.service';
+import { manuscriptService } from '@/features/editor/services/manuscript.service';
+import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { formatItemToBibtex } from '@/features/editor/utils/citation.util';
 import { useViewItems, type Item } from '@/features/library';
 
@@ -116,6 +118,7 @@ export default function AddFilesModal({
 
   const { createFile } = useFileActions();
   const { uploadFile } = useEditorStorage(parentPageId, undefined);
+  const queryClient = useQueryClient();
 
   // ── 1. New File State ─────────────────────────────────────────────────────
   const [newFileName, setNewFileName] = useState('');
@@ -293,45 +296,69 @@ export default function AddFilesModal({
     }
 
     setIsFetchingUrl(true);
+    const effectiveProjectId = projectId || parentPageId;
+
     try {
-      const response = await fetch(rawUrl);
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
-      }
+      // 1. Primary path: Use backend Linked Files service (SSRF-protected, automated fetching & persistence)
+      try {
+        await manuscriptService.linkedFiles.create(effectiveProjectId, {
+          name: targetName,
+          url: rawUrl,
+          providerType: 'URL',
+          provider: 'url',
+        });
+        toast.success(`Linked and imported ${targetName} from URL`);
+        queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
+        queryClient.invalidateQueries({ queryKey: ['storage-files', parentPageId] });
+        EditorEventBus.emit('flux:upload-file');
+        onOpenChange(false);
+        return;
+      } catch (backendErr: any) {
+        console.warn('Backend linked-file create failed, falling back to direct browser fetch:', backendErr);
+        // 2. Fallback path: Direct browser fetch if backend route is unavailable
+        const response = await fetch(rawUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+        }
 
-      const contentType = response.headers.get('content-type') || '';
-      const isText =
-        contentType.includes('text/') ||
-        contentType.includes('json') ||
-        contentType.includes('javascript') ||
-        /\.(tex|bib|sty|cls|dtx|ltx|txt|md|csv|tsv|json)$/i.test(targetName);
+        const contentType = response.headers.get('content-type') || '';
+        const isText =
+          contentType.includes('text/') ||
+          contentType.includes('json') ||
+          contentType.includes('javascript') ||
+          /\.(tex|bib|sty|cls|dtx|ltx|txt|md|csv|tsv|json)$/i.test(targetName);
 
-      if (isText) {
-        const textContent = await response.text();
-        const created = await createFile.mutateAsync({
-          parentPageId,
-          title: targetName,
-          content: textContent,
-        });
-        toast.success(`Imported ${targetName} from URL`);
-        setSearchParams({ file: created.id });
-      } else {
-        const blob = await response.blob();
-        const file = new File([blob], targetName, {
-          type: blob.type || 'application/octet-stream',
-        });
-        await uploadFile.mutateAsync({
-          file,
-          projectId,
-          pageId: parentPageId,
-        });
-        toast.success(`Imported asset ${targetName} from URL`);
+        if (isText) {
+          const textContent = await response.text();
+          const created = await createFile.mutateAsync({
+            parentPageId,
+            title: targetName,
+            content: textContent,
+          });
+          toast.success(`Imported ${targetName} from URL`);
+          setSearchParams({ file: created.id });
+        } else {
+          const blob = await response.blob();
+          const file = new File([blob], targetName, {
+            type: blob.type || 'application/octet-stream',
+          });
+          await uploadFile.mutateAsync({
+            file,
+            projectId: effectiveProjectId,
+            pageId: parentPageId,
+          });
+          toast.success(`Imported asset ${targetName} from URL`);
+        }
+        queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
+        queryClient.invalidateQueries({ queryKey: ['storage-files', parentPageId] });
+        EditorEventBus.emit('flux:upload-file');
+        onOpenChange(false);
       }
-      onOpenChange(false);
     } catch (err: any) {
       console.error('External URL fetch error:', err);
       toast.error(
-        'Could not fetch file directly. If this domain blocks cross-origin requests (CORS), please download the file to your computer and upload it via the Upload tab.',
+        err?.message ||
+          'Could not fetch file directly. If this domain blocks cross-origin requests (CORS), please download the file to your computer and upload it via the Upload tab.',
       );
     } finally {
       setIsFetchingUrl(false);

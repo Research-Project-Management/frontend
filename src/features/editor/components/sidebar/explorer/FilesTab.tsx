@@ -254,6 +254,23 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
   const queryClient = useQueryClient();
 
+  // Listen for real-time WebSocket file-tree mutations from collaborating peers
+  useEffect(() => {
+    const handleFileTreeUpdated = () => {
+      if (parentPageId) {
+        queryClient.invalidateQueries({ queryKey: filesQuery(parentPageId).queryKey });
+        if (pageId) {
+          queryClient.invalidateQueries({ queryKey: deletedFilesQuery(pageId).queryKey });
+        }
+      }
+    };
+
+    window.addEventListener('flux:filetree-updated', handleFileTreeUpdated);
+    return () => {
+      window.removeEventListener('flux:filetree-updated', handleFileTreeUpdated);
+    };
+  }, [queryClient, parentPageId, pageId]);
+
   const handleOpenPreview = useCallback(
     (item: StorageItem) => {
       const asset: AssetInfo = {

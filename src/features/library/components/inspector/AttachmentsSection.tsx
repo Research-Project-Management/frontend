@@ -546,12 +546,19 @@ export default function AttachmentsSection({
               <div className="size-4 shrink-0 flex items-center justify-center">
                 <FileText className="size-4 text-foreground shrink-0" />
               </div>
-              <span
-                className="text-xs font-medium text-foreground break-all leading-snug"
-                title={paper.filename || ((paper as any)?.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
-              >
-                {paper.filename || ((paper as any)?.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
-              </span>
+              <div className="min-w-0 flex-1">
+                <p
+                  className="text-xs font-medium text-foreground break-all leading-snug"
+                  title={primaryAttachment?.title || paper.filename || ((paper as any)?.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
+                >
+                  {primaryAttachment?.title || paper.filename || ((paper as any)?.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
+                </p>
+                {primaryAttachment?.title && paper.filename && primaryAttachment.title !== paper.filename && (
+                  <p className="text-10 text-muted-foreground truncate" title={paper.filename}>
+                    {paper.filename}
+                  </p>
+                )}
+              </div>
             </div>
 
             <DropdownMenu>
@@ -656,10 +663,15 @@ export default function AttachmentsSection({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-foreground break-all leading-snug" title={att.filename || att.name}>
-                    {att.filename || att.name}
+                  <p className="text-xs font-medium text-foreground break-all leading-snug" title={att.title || att.filename || att.name}>
+                    {att.title || att.filename || att.name}
                   </p>
-                  <p className="text-10 text-muted-foreground flex items-center gap-1.5">
+                  <p className="text-10 text-muted-foreground flex items-center gap-1.5 truncate">
+                    {att.title && (att.filename || att.name) && att.title !== (att.filename || att.name) && (
+                      <span className="truncate max-w-[140px]" title={att.filename || att.name}>
+                        {att.filename || att.name} •
+                      </span>
+                    )}
                     {isSnapshot && (
                       <span className="text-foreground font-medium">Snapshot •</span>
                     )}

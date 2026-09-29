@@ -12,7 +12,6 @@
  */
 
 export * from './use-core';
-export * from './use-compiler';
 export * from './use-comment';
 export * from './use-suggestion';
 export * from './use-history';

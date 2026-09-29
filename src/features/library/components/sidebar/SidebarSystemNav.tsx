@@ -89,7 +89,7 @@ export function SidebarSystemNav({
                     }}
                     title="Delete saved search"
                     aria-label={`Delete ${ss.name}`}
-                    className="absolute right-2 opacity-0 group-hover/item:opacity-100 hover:text-destructive text-muted-foreground cursor-pointer transition-opacity p-1 rounded z-20"
+                    className="absolute right-2 opacity-0 group-hover/item:opacity-100 focus:opacity-100 focus-visible:opacity-100 hover:text-destructive text-muted-foreground cursor-pointer transition-opacity p-1 rounded outline-none focus-visible:ring-1 focus-visible:ring-ring z-20"
                   >
                     <Trash2 className="size-3 shrink-0" strokeWidth={1.5} />
                   </button>

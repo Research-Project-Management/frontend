@@ -134,7 +134,6 @@ export function Topbar({
   onDisplayOpenChange,
   onOpenAnalytics,
   onAddItem,
-  onAddExistingItem,
   isLoading = false,
   isReadOnly = false,
   className,

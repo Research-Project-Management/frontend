@@ -95,9 +95,8 @@ export function Switcher({
 
     // Smart route replacement to preserve current module
     if (pathname && currentProjectId && pathname.includes(`/projects/${currentProjectId}`)) {
-      // If inside a specific sub-item that won't exist in the new project (like cycles/[id] or pages/[id]), normalize to parent module
+      // If inside a specific sub-item that won't exist in the new project (like pages/[id]), normalize to parent module
       const normalizedPath = pathname
-        .replace(new RegExp(`/projects/${currentProjectId}/cycles/[^/]+`), `/projects/${currentProjectId}/cycles`)
         .replace(new RegExp(`/projects/${currentProjectId}/pages/[^/]+`), `/projects/${currentProjectId}/pages`);
 
       const targetPath = normalizedPath.replace(

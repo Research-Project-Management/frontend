@@ -13,12 +13,12 @@ export interface ViewTemplatePreset {
 
 export const RECOMMENDED_VIEW_TEMPLATES: ViewTemplatePreset[] = [
   {
-    id: 'active-cycle',
-    name: 'Active Sprint',
-    description: 'All uncompleted work items in the active sprint cycle',
+    id: 'active-work',
+    name: 'Active Work',
+    description: 'All uncompleted work items currently in progress or planned',
     layout: 'board',
     access: 'public',
-    badge: 'Sprint',
+    badge: 'Active',
     badgeColor: 'bg-primary/10 text-primary border-primary/20',
     filters: {
       state_group: ['unstarted', 'started'],
@@ -40,7 +40,7 @@ export const RECOMMENDED_VIEW_TEMPLATES: ViewTemplatePreset[] = [
   {
     id: 'my-tasks',
     name: 'Assigned to Me',
-    description: 'Items directly assigned to your account across all cycles',
+    description: 'Items directly assigned to your account',
     layout: 'table',
     access: 'private',
     badge: 'Personal',

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const labelTypeEnum = z.enum(["project", "work-item", "cycle", "paper"]);
+export const labelTypeEnum = z.enum(["project", "work-item", "paper"]);
 export type LabelType = z.infer<typeof labelTypeEnum>;
 
 // ── Create Project Label DTO Schema (Matches CreateProjectLabelDto) ──────────

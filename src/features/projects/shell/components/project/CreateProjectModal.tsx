@@ -91,12 +91,6 @@ const PROJECT_MODULE_OPTIONS: ProjectModuleOption[] = [
     defaultOn: true,
   },
   {
-    id: 'cycles',
-    title: 'Enable cycles',
-    desc: 'Timebox work per project and adjust the time period as needed. One cycle can be 2 weeks, the next 1 week.',
-    defaultOn: true,
-  },
-  {
     id: 'views',
     title: 'Enable views',
     desc: 'Customized filter perspectives, sorts, and layouts for work items.',

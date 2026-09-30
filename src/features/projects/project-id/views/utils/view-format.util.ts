@@ -47,14 +47,7 @@ export function extractFilterBadges(filters?: Record<string, any>): FilterBadgeI
     });
   }
 
-  // Cycles
-  if (Array.isArray(filters.cycle) && filters.cycle.length > 0) {
-    badges.push({
-      label: 'Cycle',
-      value: `${filters.cycle.length} cycles`,
-      color: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20',
-    });
-  }
+
 
   // Labels
   if (Array.isArray(filters.labels) && filters.labels.length > 0) {

@@ -14,5 +14,5 @@ export default function CycleDetailPage({ params }: Props) {
   const currentCycle = cyclesData?.cycles.find((c: any) => c.id === cycleId);
   const isReadOnly = currentCycle ? deriveStatus(currentCycle) === 'completed' : false;
 
-  return <WorkItemPage cycleId={cycleId} isReadOnly={isReadOnly} />;
+  return <WorkItemPage isReadOnly={isReadOnly} />;
 }

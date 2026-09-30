@@ -19,7 +19,6 @@ import {
   Square,
   AlertCircle,
 } from 'lucide-react';
-import { CycleIcon } from '@/shared/components/icons';
 import { Button } from "@/shared/components/ui";
 import { Skeleton } from "@/shared/components/ui";
 import {
@@ -44,17 +43,15 @@ import { ArchiveCard } from '../components/archived/ArchiveCard';
 import { DeletePermanentModal } from '../components/archived/DeletePermanentModal';
 import { ArchivedEmptyState } from '../components/archived/ArchivedEmptyState';
 import { ArchiveService } from '@/features/projects/project-id/work-items/services/archive.service';
-import { CycleService } from '@/features/projects/project-id/cycles/services/cycle.service';
 import { ViewService } from '@/features/projects/project-id/views/services/view.service';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
 import type { Project } from '../types/project.types';
 import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
-import type { Cycle } from '@/features/projects/project-id/cycles/types/cycle.types';
 import type { WorkItemViewItem } from '@/features/projects/project-id/views/types/view.types';
 import type { Page } from '@/features/projects/project-id/pages/types/page.types';
 import { cn } from '@/shared/lib/utils';
 
-export type ArchiveTab = 'work-items' | 'projects' | 'cycles' | 'views' | 'pages' | 'trash';
+export type ArchiveTab = 'work-items' | 'projects' | 'views' | 'pages' | 'trash';
 
 export function ArchivePage() {
   const { user } = useAuth();
@@ -63,7 +60,7 @@ export function ArchivePage() {
 
   const tabParam = searchParams.get('tab') as ArchiveTab | null;
   const initialTab: ArchiveTab =
-    tabParam && ['work-items', 'projects', 'cycles', 'views', 'pages', 'trash'].includes(tabParam)
+    tabParam && ['work-items', 'projects', 'views', 'pages', 'trash'].includes(tabParam)
       ? tabParam
       : 'work-items';
 
@@ -71,7 +68,7 @@ export function ArchivePage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    if (tabParam && ['work-items', 'projects', 'cycles', 'views', 'pages', 'trash'].includes(tabParam)) {
+    if (tabParam && ['work-items', 'projects', 'views', 'pages', 'trash'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [tabParam]);
@@ -83,7 +80,7 @@ export function ArchivePage() {
   const { projects: rawProjects = [], isLoading: isProjectsLoading } = useProjects();
   const activeProjects = useMemo(() => rawProjects.filter((p) => !p.isArchived), [rawProjects]);
 
-  // Target project context for work items/cycles/views/pages
+  // Target project context for work items/views/pages
   const currentProjectId = selectedProjectId || (activeProjects.length > 0 ? activeProjects[0].id : '');
 
   // 2. Archived Projects logic
@@ -163,30 +160,7 @@ export function ArchivePage() {
     onError: (err: Error) => toast.error(err.message || 'Failed to bulk restore'),
   });
 
-  // 4. Archived Cycles logic
-  const {
-    data: cyclesData,
-    isLoading: isCyclesLoading,
-  } = useQuery({
-    queryKey: ['archived-cycles', currentProjectId],
-    queryFn: async () => {
-      if (!currentProjectId) return [] as Cycle[];
-      const res = await CycleService.getProjectCycles(currentProjectId);
-      return (res?.cycles || []).filter(
-        (c) => c.status === 'completed' || c.status === 'cancelled' || (c as any).isArchived
-      );
-    },
-    enabled: Boolean(currentProjectId),
-  });
-
-  const archivedCycles: Cycle[] = cyclesData || [];
-  const filteredArchivedCycles = useMemo(() => {
-    if (!searchQuery.trim()) return archivedCycles;
-    const q = searchQuery.toLowerCase();
-    return archivedCycles.filter((c) => c.name?.toLowerCase().includes(q));
-  }, [archivedCycles, searchQuery]);
-
-  // 5. Archived Views logic
+  // 4. Archived Views logic
   const {
     data: viewsData,
     isLoading: isViewsLoading,
@@ -283,17 +257,15 @@ export function ArchivePage() {
               ? 'Archived Work Items'
               : activeTab === 'projects'
                 ? 'Archived Projects'
-                : activeTab === 'cycles'
-                  ? 'Archived Cycles'
-                  : activeTab === 'views'
-                    ? 'Archived Views'
-                    : 'Archived Pages'}
+                : activeTab === 'views'
+                  ? 'Archived Views'
+                  : 'Archived Pages'}
           </span>
         </div>
 
         {/* Project Selector & Search */}
         <div className="flex items-center gap-2.5 shrink-0">
-          {/* Project selector dropdown (for work items, cycles, views, pages) */}
+          {/* Project selector dropdown (for work items, views, pages) */}
           {activeTab !== 'projects' && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -606,74 +578,7 @@ export function ArchivePage() {
           </div>
         )}
 
-        {/* 3. CYCLES TAB */}
-        {activeTab === 'cycles' && (
-          <div className="space-y-4">
-            {isCyclesLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-14 w-full rounded-md" />
-                ))}
-              </div>
-            ) : filteredArchivedCycles.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 text-center select-none">
-                <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                  <CycleIcon className="size-6 text-muted-foreground/60" />
-                </div>
-                <h3 className="text-sm font-semibold text-foreground">No archived cycles</h3>
-                <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                  {currentProject
-                    ? `No completed or archived cycles found for ${currentProject.name}.`
-                    : 'Select a project to inspect past sprints.'}
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border border border-border rounded-lg bg-card overflow-hidden">
-                {filteredArchivedCycles.map((cycle) => (
-                  <div
-                    key={cycle.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-muted/30 transition-colors gap-3"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-foreground truncate">{cycle.name}</span>
-                        <span className="text-10 font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase">
-                          {cycle.status}
-                        </span>
-                      </div>
-                      {cycle.description && (
-                        <p className="text-11 text-muted-foreground truncate mt-0.5">{cycle.description}</p>
-                      )}
-                      <div className="flex items-center gap-4 text-10 text-muted-foreground mt-1.5 font-mono">
-                        {cycle.startDate && (
-                          <span>Started: {new Date(cycle.startDate).toLocaleDateString()}</span>
-                        )}
-                        {cycle.endDate && (
-                          <span>Ended: {new Date(cycle.endDate).toLocaleDateString()}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs px-2.5 cursor-pointer"
-                      >
-                        <Link href={`/projects/${cycle.projectId || currentProjectId}/cycles/${cycle.id}`}>
-                          <span>View Details</span>
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 4. VIEWS TAB */}
+        {/* 3. VIEWS TAB */}
         {activeTab === 'views' && (
           <div className="space-y-4">
             {isViewsLoading ? (

@@ -11,7 +11,6 @@ import type {
   Item,
   Column,
   Project,
-  Cycle,
   Priority,
   StateGroup,
   DisplayOptions,
@@ -62,8 +61,6 @@ export interface UseTopbarOptions {
   members?: ProjectMember[];
   selectedAssigneeIds?: string[];
   onAssigneeFilterChange?: (userIds: string[]) => void;
-  cycleId?: string;
-  cycles?: Cycle[];
   initialFilters?: Partial<Filters>;
 }
 
@@ -78,8 +75,6 @@ export function useTopbar({
   members,
   selectedAssigneeIds: propUserIds,
   onAssigneeFilterChange: propOnUserFilterChange,
-  cycleId,
-  cycles = [],
   initialFilters,
 }: UseTopbarOptions = {}) {
   const items = propItems || propWorkItems || [];
@@ -329,7 +324,6 @@ export function useTopbar({
 
   // ── Dropdown Search States ────────────────────────────────────────────────
   const [projSearch, setProjSearch] = useState('');
-  const [cycleSearch, setCycleSearch] = useState('');
 
   // ── Assignees List with Unassigned Option ─────────────────────────────────
   const assignees = useMemo(() => {
@@ -433,14 +427,6 @@ export function useTopbar({
     const hasLabelsFilter = filters.labels.length > 0;
     const labelSet = new Set(filters.labels);
 
-    const hasCycleFilter = filters.cycle.length > 0;
-    const hasNoCycle =
-      hasCycleFilter &&
-      (filters.cycle.includes('__no_cycle__') || filters.cycle.includes('no_cycle'));
-    const cycleSet = new Set(
-      filters.cycle.filter((id) => id !== '__no_cycle__' && id !== 'no_cycle')
-    );
-
     const hasAttachFilter = filters.attach.length > 0;
     const attachSet = new Set(filters.attach);
 
@@ -536,21 +522,7 @@ export function useTopbar({
         if (!hasMatchingLabel) return false;
       }
 
-      // 7. Cycle filter
-      if (hasCycleFilter) {
-        const targetCycleId =
-          (item as any).cycleId ||
-          (typeof (item as any).cycle === 'object' && (item as any).cycle !== null
-            ? (item as any).cycle?.id
-            : (item as any).cycle);
-        if (!targetCycleId) {
-          if (!hasNoCycle) return false;
-        } else if (!cycleSet.has(targetCycleId)) {
-          return false;
-        }
-      }
-
-      // 8. Attachments filter
+      // 7. Attachments filter
       if (hasAttachFilter) {
         const attachments = item.attachments;
         const hasPages = Array.isArray((attachments as any)?.pages) && (attachments as any).pages.length > 0;
@@ -733,20 +705,13 @@ export function useTopbar({
     return result;
   }, [items, filters, columns, assignees, displayOptions]);
 
-  // ── Projects & Cycles Search ──────────────────────────────────────────────
+  // ── Projects Search ───────────────────────────────────────────────────────
   const filteredProjects = useMemo(() => {
     if (!Array.isArray(projects)) return [];
     return (projects as Project[]).filter((project) =>
       (project?.name || '').toLowerCase().includes((projSearch || '').toLowerCase()),
     );
   }, [projects, projSearch]);
-
-  const filteredCycles = useMemo(() => {
-    if (!Array.isArray(cycles)) return [];
-    return cycles.filter((cycle: Cycle) =>
-      (cycle?.name || '').toLowerCase().includes((cycleSearch || '').toLowerCase()),
-    );
-  }, [cycles, cycleSearch]);
 
   const activeCols = useMemo(() => {
     if (!Array.isArray(columns)) return [];
@@ -758,7 +723,7 @@ export function useTopbar({
     return assignees.filter((assignee) => filters.assignees.includes(assignee.id));
   }, [assignees, filters.assignees]);
 
-  // Total active filter counts across all 16 criteria
+  // Total active filter counts across all criteria
   const totalFilters = useMemo(() => {
     return (
       filters.state.length +
@@ -768,7 +733,6 @@ export function useTopbar({
       filters.mentions.length +
       filters.created_by.length +
       filters.labels.length +
-      filters.cycle.length +
       filters.attach.length +
       (filters.work_items?.length ?? 0) +
       filters.parent.length +
@@ -901,13 +865,6 @@ export function useTopbar({
     [projectId, router],
   );
 
-  const selectCycle = useCallback(
-    (_selectedCycleId: string) => {
-      setCycleSearch('');
-    },
-    [],
-  );
-
   const state = {
     viewMode: mode,
     filters,
@@ -923,17 +880,14 @@ export function useTopbar({
     totalActiveFilters: totalFilters,
     hasActiveFilters: totalFilters > 0,
     projectSearch: projSearch,
-    cycleSearch,
     filterOpen,
     displayOpen,
     analyticsOpen,
     displayOptions,
     filteredProjects,
-    filteredCycles,
     currentModule: 'work-items',
     workspaceId,
     projectId,
-    cycleId,
     savedViews,
     activeViewId,
   };
@@ -964,9 +918,7 @@ export function useTopbar({
     setDisplayOptions,
     updateDisplayProperty,
     setProjectSearch: setProjSearch,
-    setCycleSearch,
     handleProjectClick: selectProject,
-    handleCycleSelect: selectCycle,
     selectSavedView,
     saveCurrentView: saveCurrentViewMutation.mutateAsync,
     isSavingCurrentView: saveCurrentViewMutation.isPending,

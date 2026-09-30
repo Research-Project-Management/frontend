@@ -30,6 +30,7 @@ import {
   ChevronDown,
   Paperclip,
   Link2,
+  CheckSquare,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import { Button, Checkbox } from "@/shared/components/ui";
@@ -45,10 +46,8 @@ import {
   PriorityPopover,
   SingleDatePopover,
   MemberPopover,
-  CyclePopover,
   LabelPopover,
   AvatarStack,
-  CycleHalfIcon,
 } from '../modals/Popovers';
 import { ItemHelpers, resolveColumnId, getItemBucketKey } from '../../utils/work-item.utils';
 import {
@@ -149,13 +148,11 @@ export interface CardProps {
   currentUserId?: string | null;
   currentUserAvatar?: string;
   members?: any[];
-  cycles?: any[];
   onEdit?: (card: Item) => void;
   onDuplicate?: (card: Item) => void;
   onDelete?: (card: Item) => void;
   onJoin?: (card: Item) => void;
   onLeave?: (card: Item) => void;
-  onRemoveFromCycle?: (card: Item) => void;
   onMoveCard?: (cardId: string, newColumnId: string) => void;
   onUpdateItem?: (cardId: string, data: any) => void;
   isReadOnly?: boolean;
@@ -173,13 +170,11 @@ export function CardUI({
   currentUserId,
   currentUserAvatar,
   members = [],
-  cycles = [],
   onEdit,
   onDuplicate,
   onDelete,
   onJoin,
   onLeave,
-  onRemoveFromCycle,
   onMoveCard,
   onUpdateItem,
   isReadOnly = false,
@@ -191,7 +186,6 @@ export function CardUI({
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [dueDateOpen, setDueDateOpen] = useState(false);
   const [memberOpen, setMemberOpen] = useState(false);
-  const [cycleOpen, setCycleOpen] = useState(false);
   const [labelOpen, setLabelOpen] = useState(false);
 
   const resolvedAssignees = useMemo(() => {
@@ -208,7 +202,6 @@ export function CardUI({
     onDelete,
     onJoin,
     onLeave,
-    onRemoveFromCycle,
     isReadOnly,
   });
 
@@ -223,7 +216,6 @@ export function CardUI({
     remove,
     join,
     leave,
-    removeFromCycle,
     edit,
   } = actions;
 
@@ -262,13 +254,6 @@ export function CardUI({
   const formattedStartDate = formatDateDisplay(card.startDate);
   const formattedDueDate = formatDateDisplay(card.dueDate);
   const isOverdue = dates.isOverdue;
-
-  // Matched Cycle
-  const matchedCycle = useMemo(() => {
-    if (!card.cycleId) return null;
-    return (cycles || []).find((c: any) => c.id === card.cycleId) || (typeof card.cycle === 'object' ? card.cycle : null);
-  }, [card.cycleId, card.cycle, cycles]);
-  const cycleName = matchedCycle?.name || (typeof card.cycle === 'string' ? card.cycle : null);
 
   // Modules resolution
   const modulesList = Array.isArray((card as any).modules) ? (card as any).modules : [];
@@ -404,12 +389,6 @@ export function CardUI({
                       Join card
                     </>
                   )}
-                </DropdownMenuItem>
-              )}
-              {onRemoveFromCycle && card.cycleId && (
-                <DropdownMenuItem onClick={removeFromCycle} className="rounded-md cursor-pointer">
-                  <RotateCcw className="mr-2 size-3.5 shrink-0 text-foreground" />
-                  Remove from cycle
                 </DropdownMenuItem>
               )}
               {onDelete && (
@@ -603,15 +582,14 @@ export function CardUI({
 
       </div>
 
-      {/* Row 4: Secondary Badges (Modules, Cycle, Labels, Subitems, Attachments, Links) */}
+      {/* Row 4: Secondary Badges (Modules, Labels, Subitems, Attachments, Links) */}
       {(() => {
-        const showCycle = Boolean(displayOptions?.properties?.cycle) && Boolean(cycleName);
         const showLabels = displayOptions?.properties?.labels !== false && labels.length > 0;
         const showSubItems = Boolean(displayOptions?.properties?.childWorkItemCount ?? displayOptions?.properties?.subItemCount) && childWorkItemTotal > 0;
         const showAttach = Boolean(displayOptions?.properties?.attachmentCount ?? displayOptions?.properties?.attach) && attachmentsCount > 0;
         const showLinks = Boolean(displayOptions?.properties?.link) && linksCount > 0;
 
-        if (!hasModules && !showCycle && !showLabels && !showSubItems && !showAttach && !showLinks) {
+        if (!hasModules && !showLabels && !showSubItems && !showAttach && !showLinks) {
           return null;
         }
 
@@ -629,21 +607,6 @@ export function CardUI({
               >
                 <ModuleGridIcon className="size-3.5 shrink-0" />
                 <span className="truncate max-w-[130px]">{moduleText}</span>
-              </div>
-            )}
-
-            {/* Cycle Badge */}
-            {showCycle && (
-              <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                <CyclePopover
-                  open={cycleOpen}
-                  onOpenChange={setCycleOpen}
-                  cycleId={card.cycleId || ''}
-                  setCycleId={(cId) => onUpdateItem?.(card.id, { cycleId: cId || null })}
-                  cycles={cycles}
-                  isReadOnly={isReadOnly}
-                  actionBtnClass="h-6 px-2 text-11 font-normal rounded-md border border-border/70 bg-muted/20 hover:bg-muted/60 text-foreground flex items-center gap-1.5 transition-colors cursor-pointer"
-                />
               </div>
             )}
 
@@ -689,7 +652,7 @@ export function CardUI({
                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-11 text-foreground border border-border/70 bg-muted/20 shrink-0"
                 title={`${childWorkItemDone}/${childWorkItemTotal} sub-items`}
               >
-                <CycleHalfIcon className="size-3 shrink-0" />
+                <CheckSquare className="size-3 shrink-0" />
                 <span className="tabular-nums font-mono">{childWorkItemDone}/{childWorkItemTotal}</span>
               </div>
             )}
@@ -764,7 +727,6 @@ export interface ColumnProps extends BaseWorkItemViewProps, Partial<WorkItemCard
   subGroupBy?: string;
   labelMap?: Map<string, ItemCardLabel>;
   onAddCard?: (columnId: string, title?: string, swimlaneData?: { subGroupBy?: string; laneId?: string }) => void;
-  cycleId?: string;
   onUpdateItem?: (itemId: string, data: any) => void;
 }
 
@@ -778,7 +740,6 @@ export function Column({
   currentUserId,
   currentUserAvatar,
   members = [],
-  cycles = [],
   droppableId,
   laneId,
   subGroupBy,
@@ -788,10 +749,8 @@ export function Column({
   onDuplicateCard,
   onJoinCard,
   onLeaveCard,
-  onRemoveFromCycle,
   onMoveCard,
   onUpdateItem,
-  cycleId,
   isReadOnly = false,
   selectedIds = [],
   onToggleSelect,
@@ -1003,13 +962,11 @@ export function Column({
               currentUserId={currentUserId}
               currentUserAvatar={currentUserAvatar}
               members={members}
-              cycles={cycles}
               onEdit={onEditCard}
               onDuplicate={onDuplicateCard}
               onDelete={onDeleteCard}
               onJoin={onJoinCard}
               onLeave={onLeaveCard}
-              onRemoveFromCycle={onRemoveFromCycle}
               onMoveCard={onMoveCard}
               onUpdateItem={onUpdateItem}
               isReadOnly={isReadOnly}
@@ -1046,7 +1003,6 @@ export interface BoardViewProps extends BaseWorkItemViewProps, Partial<WorkItemC
   onMoveCard?: (itemId: string, newColumnId: string, laneData?: { subGroupBy?: string; laneId?: string }) => void;
   onReorderCard?: (itemId: string, newColumnId: string, rank: number) => void;
   onUpdateItem?: (itemId: string, data: any) => void;
-  cycleId?: string;
 }
 
 export type BoardProps = BoardViewProps;
@@ -1068,18 +1024,15 @@ export function BoardView({
   currentUserId,
   currentUserAvatar,
   members = [],
-  cycles = [],
   onAddCard,
   onEditCard,
   onDeleteCard,
   onDuplicateCard,
   onJoinCard,
   onLeaveCard,
-  onRemoveFromCycle,
   onMoveCard,
   onReorderCard,
   onUpdateItem,
-  cycleId,
   isReadOnly = false,
   selectedIds = [],
   onToggleSelect,
@@ -1087,7 +1040,7 @@ export function BoardView({
   const items = propItems;
   const itemsByColumnId = propItemsByColumnId;
   const subGroupBy = displayOptions?.subGroupBy || 'none';
-  const VALID_SWIMLANE_OPTIONS = ['priority', 'assignee', 'cycle', 'labels'] as const;
+  const VALID_SWIMLANE_OPTIONS = ['priority', 'assignee', 'labels'] as const;
   const isSwimlanesActive = Boolean(
     subGroupBy &&
     subGroupBy !== 'none' &&
@@ -1139,22 +1092,6 @@ export function BoardView({
           icon: <User className="size-3.5 text-foreground shrink-0" />,
         },
       ];
-    } else if (subGroupBy === 'cycle') {
-      const cycleLanes: SwimlaneDef[] = (cycles || []).map((c: any) => ({
-        id: c.id,
-        title: c.name,
-        color: '#3b82f6',
-        icon: <RotateCcw className="size-3.5 text-primary shrink-0" />,
-      }));
-      defs = [
-        ...cycleLanes,
-        {
-          id: '__no_cycle__',
-          title: 'No Cycle',
-          color: '#9ca3af',
-          icon: <RotateCcw className="size-3.5 text-foreground shrink-0" />,
-        },
-      ];
     } else if (subGroupBy === 'labels') {
       const allLabels = new Set<string>();
       items.forEach((t: Item) => {
@@ -1200,8 +1137,6 @@ export function BoardView({
           itemLaneId = (t.priority || 'none').toLowerCase();
         } else if (subGroupBy === 'assignee') {
           itemLaneId = ItemHelpers.resolveAssigneeId(t) || '__unassigned__';
-        } else if (subGroupBy === 'cycle') {
-          itemLaneId = t.cycleId || '__no_cycle__';
         } else if (subGroupBy === 'labels') {
           itemLaneId = (t.labels && t.labels.length > 0) ? t.labels[0] : '__no_label__';
         }
@@ -1235,7 +1170,7 @@ export function BoardView({
     }
 
     return result;
-  }, [isSwimlanesActive, subGroupBy, members, cycles, columns, items, labelMap, displayOptions?.showEmptyGroups, displayOptions?.groupBy]);
+  }, [isSwimlanesActive, subGroupBy, members, columns, items, labelMap, displayOptions?.showEmptyGroups, displayOptions?.groupBy]);
 
   const { state: kanbanState, actions: kanbanActions } = useKanban({
     items,
@@ -1360,17 +1295,14 @@ export function BoardView({
                             currentUserId={currentUserId}
                             currentUserAvatar={currentUserAvatar}
                             members={members}
-                            cycles={cycles}
                             onAddCard={onAddCard}
                             onEditCard={onEditCard}
                             onDeleteCard={onDeleteCard}
                             onDuplicateCard={onDuplicateCard}
                             onJoinCard={onJoinCard}
                             onLeaveCard={onLeaveCard}
-                            onRemoveFromCycle={onRemoveFromCycle}
                             onMoveCard={onMoveCard}
                             onUpdateItem={onUpdateItem}
-                            cycleId={cycleId}
                             isReadOnly={isReadOnly}
                             selectedIds={selectedIds}
                             onToggleSelect={onToggleSelect}
@@ -1400,17 +1332,14 @@ export function BoardView({
                   currentUserId={currentUserId}
                   currentUserAvatar={currentUserAvatar}
                   members={members}
-                  cycles={cycles}
                   onAddCard={onAddCard}
                   onEditCard={onEditCard}
                   onDeleteCard={onDeleteCard}
                   onDuplicateCard={onDuplicateCard}
                   onJoinCard={onJoinCard}
                   onLeaveCard={onLeaveCard}
-                  onRemoveFromCycle={onRemoveFromCycle}
                   onMoveCard={onMoveCard}
                   onUpdateItem={onUpdateItem}
-                  cycleId={cycleId}
                   isReadOnly={isReadOnly}
                   selectedIds={selectedIds}
                   onToggleSelect={onToggleSelect}
@@ -1434,7 +1363,6 @@ export function BoardView({
                     currentUserId={currentUserId}
                     currentUserAvatar={currentUserAvatar}
                     members={members}
-                    cycles={cycles}
                     isReadOnly={isReadOnly}
                     isDragging={false}
                   />

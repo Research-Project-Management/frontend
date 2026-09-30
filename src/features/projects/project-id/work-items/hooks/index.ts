@@ -9,7 +9,6 @@ export * from './use-archive';
 export * from './use-assignment';
 export * from './use-attachment';
 export * from './use-comment';
-export * from './use-cycle';
 export * from './use-history';
 export * from './use-label';
 export * from './use-property';

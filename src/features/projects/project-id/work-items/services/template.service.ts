@@ -10,7 +10,6 @@ export interface WorkItemTemplateRecord {
   content?: string | null;
   priority?: string | null;
   labels?: string[];
-  defaultCycleId?: string | null;
   defaultColumnId?: string | null;
   isShared?: boolean;
   createdAt: string;
@@ -32,7 +31,6 @@ export const TemplateService = {
       content?: string;
       priority?: string;
       labels?: string[];
-      defaultCycleId?: string;
       defaultColumnId?: string;
       isShared?: boolean;
     },
@@ -49,7 +47,6 @@ export const TemplateService = {
       content?: string;
       priority?: string;
       labels?: string[];
-      defaultCycleId?: string;
       defaultColumnId?: string;
       isShared?: boolean;
     }>,

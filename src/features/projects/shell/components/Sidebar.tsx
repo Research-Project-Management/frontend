@@ -40,7 +40,6 @@ import {
   AddWorkItemIcon,
   DraftsIcon,
   WorkItemsIcon,
-  CycleIcon,
   StickiesIcon,
 } from '@/shared/components/icons';
 import { useProjects } from '../hooks/use-project';
@@ -779,7 +778,6 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           columns={activeProjectState.columns}
           members={activeProjectState.members}
           project={activeProjectState.project}
-          cycles={activeProjectState.cycles}
           onSubmit={async (formData: any) => {
             const targetProjId = (formData as any).projectId || activeProjectId;
             if (!targetProjId) {

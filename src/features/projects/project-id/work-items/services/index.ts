@@ -11,7 +11,6 @@ export * from './comment.service';
 export * from './relation.service';
 export * from './template.service';
 export * from './archive.service';
-export * from './cycle.service';
 export * from './history.service';
 export * from './label.service';
 export * from './property.service';

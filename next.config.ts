@@ -223,32 +223,7 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  async rewrites() {
-    const rawBackendUrl =
-      process.env.INTERNAL_API_URL ||
-      process.env.NEXT_PUBLIC_API_URL ||
-      'http://127.0.0.1:3000';
-    const backendUrl =
-      rawBackendUrl.trim().replace(/\/+$/, '') || 'http://127.0.0.1:3000';
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${backendUrl}/api/:path*`,
-      },
-      {
-        source: '/auth/:path*',
-        destination: `${backendUrl}/auth/:path*`,
-      },
-      {
-        source: '/health/:path*',
-        destination: `${backendUrl}/health/:path*`,
-      },
-      {
-        source: '/notifications/:path*',
-        destination: `${backendUrl}/notifications/:path*`,
-      },
-    ];
-  },
+  // Reverse proxy rewrites removed: Frontend communicates directly with backend via NEXT_PUBLIC_API_URL and CORS.
 };
 
 export default nextConfig;

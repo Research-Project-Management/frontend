@@ -34,7 +34,6 @@ import type {
   AttachPaperItem,
   AttachFileItem,
   AttachLinkItem,
-  Cycle,
 } from '../../types/work-item.types';
 import {
   resolveColumnId,
@@ -45,7 +44,6 @@ import {
   DEFAULT_STATES,
 } from '../../utils/work-item.utils';
 import { useLabelsQuery } from '../../hooks/use-label';
-import { useCycles } from '../../hooks/use-cycle';
 import {
   useTemplatesQuery,
   useCreateTemplateMutation,
@@ -71,7 +69,6 @@ import {
   LabelPopover,
   PriorityPopover,
   SingleDatePopover,
-  CyclePopover,
   ParentItemPopover,
   AttachPaperclipIcon,
   ProjectSelectorPopover,
@@ -83,7 +80,6 @@ export interface CreateModalProps {
   columns: Column[];
   members?: ProjectMember[];
   initialData?: Partial<Item>;
-  cycleId?: string;
   project?: {
     id?: string;
     name?: string;
@@ -92,7 +88,6 @@ export interface CreateModalProps {
     icon?: string | null;
     modules?: string[];
   } | null;
-  cycles?: Cycle[];
   availableItems?: Item[];
   onSubmit: (data: ItemMutationInput & { createMore?: boolean }) => Promise<void> | void;
   isSubmitting?: boolean;
@@ -115,9 +110,7 @@ export function CreateModal({
   columns = [],
   members = [],
   initialData,
-  cycleId,
   project,
-  cycles = [],
   availableItems = [],
   onSubmit,
   isSubmitting = false,
@@ -144,7 +137,6 @@ export function CreateModal({
   const isDifferentProject = Boolean(selectedProjectId && selectedProjectId !== (project?.id || routeProjectId));
 
   const { data: remoteStates } = useProjectStates(currentProjectId);
-  const { data: remoteCyclesData } = useCycles(currentProjectId);
   const { data: remoteDetails } = useProjectDetails(currentProjectId);
   const { data: remoteItemsData } = useProjectItems(currentProjectId);
 
@@ -172,19 +164,6 @@ export function CreateModal({
     return [];
   }, [isDifferentProject, remoteDetails, members]);
 
-  const effectiveCycles = useMemo<Cycle[]>(() => {
-    if (isDifferentProject && remoteCyclesData) {
-      if (Array.isArray(remoteCyclesData)) return remoteCyclesData as Cycle[];
-      return ((remoteCyclesData as any).cycles || []) as Cycle[];
-    }
-    if (cycles && cycles.length > 0) return cycles;
-    if (remoteCyclesData) {
-      if (Array.isArray(remoteCyclesData)) return remoteCyclesData as Cycle[];
-      return ((remoteCyclesData as any).cycles || []) as Cycle[];
-    }
-    return [];
-  }, [isDifferentProject, remoteCyclesData, cycles]);
-
   const effectiveAvailableItems = useMemo<Item[]>(() => {
     if (isDifferentProject && remoteItemsData) {
       return (remoteItemsData as any).items || (remoteItemsData as any).workItems || [];
@@ -195,8 +174,6 @@ export function CreateModal({
     }
     return [];
   }, [isDifferentProject, remoteItemsData, availableItems]);
-
-  const isCyclesEnabled = false;
 
   const { uploadFile } = useUpload();
   const { data: rawLabels } = useLabelsQuery(currentProjectId, 'work-item');
@@ -219,13 +196,11 @@ export function CreateModal({
   // React Hook Form Integration (Skills: react-hook-form, formcfg-default-values, sub-usewatch-over-watch)
   const workItemForm = useItemForm({
     defaultColumnId,
-    defaultCycleId: cycleId || null,
     initialValues: {
       columnId: initialData?.columnId || defaultColumnId,
       priority: (initialData?.priority as Priority) || 'none',
       dueDate: initialData?.dueDate || '',
       startDate: initialData?.startDate || '',
-      cycleId: initialData?.cycleId || cycleId || null,
       parentId: initialData?.parentId || initialData?.parentWorkItemId || null,
       parentWorkItemId: initialData?.parentWorkItemId || initialData?.parentId || null,
       labels: initialData?.labels ? ItemHelpers.uniqueLabels(initialData.labels) : [],
@@ -245,7 +220,6 @@ export function CreateModal({
     setPriority,
     setDueDate,
     setStartDate,
-    setCycleId,
     setParentId,
     setLabels,
     setAssignees,
@@ -260,7 +234,6 @@ export function CreateModal({
   const priority = useWatch({ control, name: 'priority' }) ?? 'none';
   const dueDate = useWatch({ control, name: 'dueDate' }) ?? '';
   const startDate = useWatch({ control, name: 'startDate' }) ?? '';
-  const selectedCycleId = useWatch({ control, name: 'cycleId' }) ?? (cycleId || null);
   const parentId = (useWatch({ control, name: 'parentId' as any }) as string | null) ?? null;
   const watchedLabels = useWatch({ control, name: 'labels' });
   const labels = watchedLabels ?? DEFAULT_EMPTY_ARRAY;
@@ -293,7 +266,6 @@ export function CreateModal({
   const [openLabelPopover, setOpenLabelPopover] = useState(false);
   const [openStartDatePopover, setOpenStartDatePopover] = useState(false);
   const [openDueDatePopover, setOpenDueDatePopover] = useState(false);
-  const [openCyclePopover, setOpenCyclePopover] = useState(false);
   const [openParentPopover, setOpenParentPopover] = useState(false);
   const [openTemplatesPopover, setOpenTemplatesPopover] = useState(false);
 
@@ -306,7 +278,6 @@ export function CreateModal({
     if (tmpl.content || tmpl.description) setValue('description', tmpl.content || tmpl.description, { shouldDirty: true });
     if (tmpl.priority) setPriority(tmpl.priority);
     if (tmpl.defaultColumnId) setColumnId(tmpl.defaultColumnId);
-    if (tmpl.defaultCycleId) setCycleId(tmpl.defaultCycleId);
     if (tmpl.labels && Array.isArray(tmpl.labels)) setLabels(tmpl.labels);
     setOpenTemplatesPopover(false);
   };
@@ -390,7 +361,6 @@ export function CreateModal({
         initialData.priority ||
         initialData.dueDate ||
         initialData.startDate ||
-        initialData.cycleId ||
         initialData.assigneeId ||
         ((initialData as any).assigneeIds && (initialData as any).assigneeIds.length > 0) ||
         (initialData.title && initialData.title.trim()) ||
@@ -420,7 +390,6 @@ export function CreateModal({
         priority: (initialData?.priority as Priority) || 'none',
         dueDate: initialData?.dueDate || '',
         startDate: initialData?.startDate || '',
-        cycleId: initialData?.cycleId || cycleId || null,
         parentId: initialData?.parentId || initialData?.parentWorkItemId || null,
         parentWorkItemId: initialData?.parentWorkItemId || initialData?.parentId || null,
         labels: initialData?.labels ? ItemHelpers.uniqueLabels(initialData.labels) : [],
@@ -433,7 +402,7 @@ export function CreateModal({
 
     // Default clean state
     resetToDefaults();
-  }, [open, initialData, defaultColumnId, cycleId, normalizeAttachments, restoreFromDraft, resetToDefaults]);
+  }, [open, initialData, defaultColumnId, normalizeAttachments, restoreFromDraft, resetToDefaults]);
 
   const handleAttachPage = (page: { pageId: string; title: string }) => {
     setAttachments((prev) => ({
@@ -578,7 +547,6 @@ export function CreateModal({
       labels: formData.labels,
       assigneeId: formData.assigneeIds[0] ?? formData.assigneeId ?? null,
       assigneeIds: formData.assigneeIds,
-      cycleId: formData.cycleId || null,
       parentId: formData.parentId || formData.parentWorkItemId || null,
       parentWorkItemId: formData.parentWorkItemId || formData.parentId || null,
       attachments: {
@@ -644,7 +612,6 @@ export function CreateModal({
                 projects={projects}
                 onSelectProject={(proj) => {
                   setSelectedProjectId(proj.id);
-                  setCycleId(null);
                   setParentId(null);
                   setAssignees([]);
                 }}
@@ -766,18 +733,6 @@ export function CreateModal({
               onOpenChange={setOpenDueDatePopover}
               actionBtnClass={pillBtnClass}
             />
-
-            {/* 7. Cycle (conditional on project.modules) */}
-            {isCyclesEnabled && (
-              <CyclePopover
-                open={openCyclePopover}
-                onOpenChange={setOpenCyclePopover}
-                cycleId={selectedCycleId}
-                setCycleId={setCycleId}
-                cycles={effectiveCycles}
-                actionBtnClass={pillBtnClass}
-              />
-            )}
 
             {/* 8. Attach (replaces Modules) */}
             <Button

@@ -12,6 +12,7 @@ import {
   FolderMinus,
   Trash2,
   RotateCcw,
+  BookMarked,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, copyToClipboard } from '@/shared/lib/utils';
@@ -26,7 +27,7 @@ import {
   ContextMenuSubContent,
   ContextMenuSubTrigger,
 } from '@/shared/components/ui';
-import { CitationService } from '../../data';
+import { CitationService, ItemsService } from '../../data';
 import { useLibraryUIStore } from '../../store';
 import type { Item, Collection } from '../../types';
 
@@ -41,6 +42,8 @@ export interface ItemContextMenuProps {
   onPurge?: () => void;
   onMoveToCollection?: (collectionId: string) => void;
   onDetachFromCollection?: () => void;
+  /** scopeId needed to call setMyPublication (project id or 'user') */
+  scopeId?: string;
 }
 
 export function ItemContextMenu({
@@ -54,6 +57,7 @@ export function ItemContextMenu({
   onPurge,
   onMoveToCollection,
   onDetachFromCollection,
+  scopeId,
 }: ItemContextMenuProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -103,6 +107,19 @@ export function ItemContextMenu({
     }
   };
 
+  const isMyPublication = Boolean((item as any).isMyPublication);
+
+  const handleToggleMyPublication = async () => {
+    try {
+      await ItemsService.setMyPublication(scopeId || 'user', item.id, !isMyPublication);
+      toast.success(
+        isMyPublication ? 'Removed from My Publications' : 'Added to My Publications',
+      );
+    } catch (err: any) {
+      toast.error('Failed to update My Publications', { description: err?.message });
+    }
+  };
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
@@ -142,6 +159,19 @@ export function ItemContextMenu({
                 {isStarred ? 'Remove from Starred' : 'Add to Starred'}
               </ContextMenuItem>
             )}
+
+            <ContextMenuItem
+              onClick={handleToggleMyPublication}
+              className="gap-2 text-13 cursor-pointer"
+            >
+              <BookMarked
+                className={cn(
+                  'h-3.5 w-3.5 text-foreground',
+                  isMyPublication && 'fill-current',
+                )}
+              />
+              {isMyPublication ? 'Remove from My Publications' : 'Add to My Publications'}
+            </ContextMenuItem>
 
             <ContextMenuItem
               onClick={handleCopyBibliography}

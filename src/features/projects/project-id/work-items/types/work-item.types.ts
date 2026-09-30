@@ -5,7 +5,6 @@ import {
   relationSchema,
   stateGroupSchema,
   userMinimalSchema,
-  cycleMinimalSchema,
   parentItemMinimalSchema,
   subItemSchema,
   attachPageSchema,
@@ -39,7 +38,6 @@ export type ItemId = string & Brand<'ItemId'>;
 export type WorkItemId = ItemId;
 export type ColumnId = string & Brand<'ColumnId'>;
 export type ProjectId = string & Brand<'ProjectId'>;
-export type CycleId = string & Brand<'CycleId'>;
 
 // ── 2. Domain Types Inferred from Zod Schemas ───────────────────────────────
 
@@ -68,7 +66,6 @@ export type ItemAttachments = Attachments;
 export type WorkItemAttachments = Attachments;
 
 export type UserMinimal = z.infer<typeof userMinimalSchema>;
-export type CycleMinimal = z.infer<typeof cycleMinimalSchema>;
 export type ParentItemMinimal = z.infer<typeof parentItemMinimalSchema>;
 export type ParentWorkItemMinimal = ParentItemMinimal;
 
@@ -129,27 +126,6 @@ export type Filters = z.infer<typeof filtersSchema>;
 export type WorkItemFilters = Filters;
 
 // ── 3. Domain Entities ───────────────────────────────────────────────────────
-
-export type CycleMilestone = {
-  id: string;
-  title: string;
-  dueDate?: string;
-  completed: boolean;
-};
-
-export type Cycle = {
-  id: string;
-  name: string;
-  description?: string;
-  startDate?: string;
-  endDate?: string;
-  status?: "upcoming" | "active" | "completed" | "archived";
-  projectId?: string;
-  milestones?: CycleMilestone[];
-  progress?: number;
-  createdAt?: string;
-  updatedAt?: string;
-};
 
 export type ProjectMember = {
   id?: string;
@@ -218,7 +194,6 @@ export type ProjectItemsData = {
   columns: Column[];
   states?: Column[];
   projectName?: string;
-  cycles?: Cycle[];
 };
 export type ProjectWorkItemsData = ProjectItemsData;
 
@@ -228,7 +203,6 @@ export interface WorkItemCardHandlers {
   onDuplicateCard: (card: any) => void;
   onJoinCard: (card: any) => void;
   onLeaveCard: (card: any) => void;
-  onRemoveFromCycle?: (card: any) => void;
   onMoveCard: (workItemId: string, newColumnId: string, laneData?: any) => void;
   onUpdateCard?: (card: any) => void;
   onUpdateItem?: (id: string, data: any) => void;
@@ -242,7 +216,6 @@ export interface BaseWorkItemViewProps {
   currentUserAvatar?: string;
   isReadOnly?: boolean;
   members?: ProjectMember[] | any[];
-  cycles?: Cycle[];
   selectedIds?: string[];
   onToggleSelect?: (id: string) => void;
   onSelectAll?: (ids: string[]) => void;
@@ -259,9 +232,7 @@ export type ModalState =
   | { mode: "idle" }
   | { mode: "create"; columnId?: string; title?: string }
   | { mode: "edit"; item: Item; workItem?: Item }
-  | { mode: "delete"; item: Item; workItem?: Item }
-  | { mode: "transfer"; item: Item; workItem?: Item }
-  | { mode: "add-existing" };
+  | { mode: "delete"; item: Item; workItem?: Item };
 export type ItemModalState = ModalState;
 export type WorkItemModalState = ModalState;
 
@@ -313,7 +284,7 @@ export const STATE_GROUP_CONFIG: Record<
   unstarted: {
     label: "To Do",
     defaultColor: "#525866",
-    description: "Prioritized items ready for the active cycle",
+    description: "Prioritized items ready to be worked on",
   },
   started: {
     label: "In Progress",
@@ -353,7 +324,7 @@ export const DEFAULT_STATES: State[] = [
     accentColor: "#525866",
     sequence: 2000,
     isDefault: false,
-    description: "Items ready to be worked on in the current cycle",
+    description: "Items ready to be worked on",
   },
   {
     id: "in_progress",
@@ -417,13 +388,11 @@ export type DisplayPropertyKey =
   | 'attachment'
   | 'link'
   | 'dependencies'
-  | 'attach'
-  | 'cycle';
+  | 'attach';
 
 export type GroupByOption =
   | 'state'
   | 'priority'
-  | 'cycle'
   | 'attach'
   | 'labels'
   | 'assignee'
@@ -432,7 +401,6 @@ export type GroupByOption =
 
 export type SubGroupByOption =
   | 'priority'
-  | 'cycle'
   | 'attach'
   | 'labels'
   | 'assignee'
@@ -479,7 +447,6 @@ export const DEFAULT_DISPLAY_OPTIONS: DisplayOptions = {
     link: false,
     dependencies: true,
     attach: false,
-    cycle: false,
   },
   groupBy: 'state',
   subGroupBy: 'none',
@@ -501,7 +468,6 @@ export const DEFAULT_FILTERS: Filters = {
   mentions: [],
   created_by: [],
   labels: [],
-  cycle: [],
   attach: [],
   items: [],
   work_items: [],

@@ -28,7 +28,6 @@ import {
   type Column,
   Item,
   Priority,
-  type Cycle,
   type DueDateFilterOption,
   type Filters,
   PRIORITY_CONFIG,
@@ -51,7 +50,6 @@ import {
 export interface FilterPillsBarProps {
   columns: Column[];
   assignees: AssigneeFilterOption[];
-  cycles?: Cycle[];
   items?: Item[];
   totalFiltersCount: number;
   onClearAll: () => void;
@@ -94,7 +92,6 @@ const DUE_DATE_QUICK_OPTIONS: Array<{ id: string; label: string }> = [
 export function FilterPillsBar({
   columns,
   assignees,
-  cycles = [],
   items = [],
   totalFiltersCount,
   onClearAll,

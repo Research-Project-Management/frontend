@@ -5,7 +5,6 @@ import {
   Plus,
   User,
   Copy,
-  RotateCcw,
   Trash2,
   UserMinus,
   UserPlus,
@@ -60,7 +59,6 @@ import {
   PriorityPopover,
   MemberPopover,
   SingleDatePopover,
-  CyclePopover,
   LabelPopover,
   AvatarStack,
 } from '../modals/Popovers';
@@ -70,7 +68,6 @@ import type {
   Column,
   Priority,
   DisplayOptions,
-  Cycle,
   BaseWorkItemViewProps,
   WorkItemCardHandlers,
 } from '../../types/work-item.types';
@@ -162,13 +159,11 @@ export interface ItemRowProps {
   onDuplicateCard: (item: Item) => void;
   onJoinCard: (item: Item) => void;
   onLeaveCard: (item: Item) => void;
-  onRemoveFromCycle?: (item: Item) => void;
   onDeleteCard: (item: Item) => void;
   onMoveCard: (itemId: string, targetColumnId: string) => void;
   onUpdateItem?: (id: string, data: any) => void;
   displayOptions?: DisplayOptions;
   members?: any[];
-  cycles?: Cycle[];
   currentUserId?: string | null;
   currentUserAvatar?: string;
   isDragging?: boolean;
@@ -188,13 +183,11 @@ export const ItemRow = ({
   onDuplicateCard,
   onJoinCard,
   onLeaveCard,
-  onRemoveFromCycle,
   onDeleteCard,
   onMoveCard,
   onUpdateItem,
   displayOptions,
   members = [],
-  cycles = [],
   currentUserId,
   isDragging = false,
   isReadOnly = false,
@@ -206,7 +199,6 @@ export const ItemRow = ({
   const [assigneeOpen, setAssigneeOpen] = useState(false);
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
-  const [cycleOpen, setCycleOpen] = useState(false);
   const [labelOpen, setLabelOpen] = useState(false);
 
   // Property visibility flags from displayOptions
@@ -218,7 +210,6 @@ export const ItemRow = ({
   const showDueDate = propsConfig?.dueDate !== false;
   const showAssignee = propsConfig?.assignee !== false;
   const showAttach = propsConfig?.attach !== false;
-  const showCycle = Boolean(propsConfig?.cycle);
   const showLabels = propsConfig?.labels !== false;
   const showSubIssues = Boolean(propsConfig?.childWorkItemCount ?? propsConfig?.subItemCount);
   const showLinks = Boolean(propsConfig?.link);
@@ -293,23 +284,6 @@ export const ItemRow = ({
     if (attachItems.length === 1) return attachItems[0].title;
     return `${attachItems.length} modules`;
   }, [attachItems]);
-
-  // Cycle resolving
-  const cycleName = useMemo(() => {
-    if (!item.cycle) return null;
-    if (typeof item.cycle === 'object' && item.cycle !== null) {
-      return (item.cycle as { name?: string }).name || null;
-    }
-    if (typeof item.cycle === 'string') return item.cycle;
-    return null;
-  }, [item.cycle]);
-
-  const itemCycleId = useMemo(() => {
-    if (typeof item.cycle === 'object' && item.cycle !== null) {
-      return (item.cycle as any).id || null;
-    }
-    return item.cycleId || null;
-  }, [item.cycle, item.cycleId]);
 
   // Labels resolving
   const labelsList = useMemo(() => {
@@ -673,24 +647,6 @@ export const ItemRow = ({
           </button>
         )}
 
-        {/* 7. Cycle Pill (Visible on large viewports) */}
-        {showCycle && (
-          <div className="shrink-0 hidden lg:flex">
-            <CyclePopover
-              open={cycleOpen}
-              onOpenChange={setCycleOpen}
-              cycleId={itemCycleId}
-              setCycleId={(id) => onUpdateItem?.(item.id, { cycleId: id })}
-              cycles={cycles}
-              isReadOnly={isReadOnly}
-              actionBtnClass={cn(
-                cycleName
-                  ? 'h-6 px-2.5 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground shadow-none max-w-[130px] truncate'
-                  : 'size-6 p-0 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 [&>span]:hidden',
-              )}
-            />
-          </div>
-        )}
 
         {/* 8. Labels Pill (Visible on medium+ viewports) */}
         {showLabels && (
@@ -779,15 +735,6 @@ export const ItemRow = ({
                 </DropdownMenuItem>
               )}
 
-              {onRemoveFromCycle && item.cycle && (
-                <DropdownMenuItem
-                  onClick={() => onRemoveFromCycle(item)}
-                  className="cursor-pointer gap-2 py-1.5 rounded-md"
-                >
-                  <RotateCcw className="size-3.5 text-foreground shrink-0" />
-                  <span>Remove from cycle</span>
-                </DropdownMenuItem>
-              )}
 
               <DropdownMenuSeparator />
 
@@ -1143,13 +1090,11 @@ interface ListViewGroupProps {
   onDuplicateCard: (item: Item) => void;
   onJoinCard: (item: Item) => void;
   onLeaveCard: (item: Item) => void;
-  onRemoveFromCycle?: (item: Item) => void;
   onDeleteCard: (item: Item) => void;
   onMoveCard: (itemId: string, targetColumnId: string) => void;
   onUpdateItem?: (itemId: string, data: any) => void;
   displayOptions?: DisplayOptions;
   members?: any[];
-  cycles?: Cycle[];
   currentUserId?: string | null;
   currentUserAvatar?: string;
   selectedIds?: string[];
@@ -1177,13 +1122,11 @@ const ListViewGroup = ({
   onDuplicateCard,
   onJoinCard,
   onLeaveCard,
-  onRemoveFromCycle,
   onDeleteCard,
   onMoveCard,
   onUpdateItem,
   displayOptions,
   members = [],
-  cycles = [],
   currentUserId,
   currentUserAvatar,
   selectedIds = [],
@@ -1337,13 +1280,11 @@ const ListViewGroup = ({
                   onDuplicateCard={onDuplicateCard}
                   onJoinCard={onJoinCard}
                   onLeaveCard={onLeaveCard}
-                  onRemoveFromCycle={onRemoveFromCycle}
                   onDeleteCard={onDeleteCard}
                   onMoveCard={onMoveCard}
                   onUpdateItem={onUpdateItem}
                   displayOptions={displayOptions}
                   members={members}
-                  cycles={cycles}
                   currentUserId={currentUserId}
                   currentUserAvatar={currentUserAvatar}
                   isReadOnly={isReadOnly}
@@ -1430,7 +1371,6 @@ export interface ListViewProps extends BaseWorkItemViewProps, WorkItemCardHandle
   onToggleSelect?: (id: string) => void;
   onSelectAll?: ((ids?: string[]) => void) | (() => void);
   members?: any[];
-  cycles?: Cycle[];
 }
 
 export function ListView({
@@ -1445,7 +1385,6 @@ export function ListView({
   onDuplicateCard,
   onJoinCard,
   onLeaveCard,
-  onRemoveFromCycle,
   onMoveCard,
   onUpdateItem,
   isReadOnly = false,
@@ -1454,7 +1393,6 @@ export function ListView({
   onSelectAll,
   displayOptions,
   members = [],
-  cycles = [],
 }: ListViewProps) {
   // Groups with items are expanded by default (matching Plane.so behavior)
   const itemsByColumnId = propItemsByColumnId || new Map();
@@ -1744,13 +1682,11 @@ export function ListView({
               onDuplicateCard={onDuplicateCard}
               onJoinCard={onJoinCard}
               onLeaveCard={onLeaveCard}
-              onRemoveFromCycle={onRemoveFromCycle}
               onDeleteCard={onDeleteCard}
               onMoveCard={onMoveCard}
               onUpdateItem={onUpdateItem}
               displayOptions={displayOptions}
               members={members}
-              cycles={cycles}
               currentUserId={currentUserId}
               currentUserAvatar={currentUserAvatar}
               selectedIds={selectedIds}
@@ -1786,7 +1722,6 @@ export function ListView({
                 onMoveCard={() => {}}
                 displayOptions={displayOptions}
                 members={members}
-                cycles={cycles}
                 isDragging={true}
               />
             </div>

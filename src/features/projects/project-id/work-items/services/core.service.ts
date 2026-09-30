@@ -10,12 +10,10 @@ import type {
 } from "../types/work-item.types";
 
 export const CoreService = {
-  getProjectItems: (projectId: string, cycleId?: string) =>
-    apiGet<ProjectItemsData>(
-      `/api/projects/${projectId}/work-items${cycleId ? `?cycleId=${cycleId}` : ""}`,
-    ),
-  getProjectWorkItems: (projectId: string, cycleId?: string) =>
-    CoreService.getProjectItems(projectId, cycleId),
+  getProjectItems: (projectId: string) =>
+    apiGet<ProjectItemsData>(`/api/projects/${projectId}/work-items`),
+  getProjectWorkItems: (projectId: string) =>
+    CoreService.getProjectItems(projectId),
 
   getItems: async () => {
     const response = await apiGet<{ data?: Item[]; workItems?: Item[] } | Item[]>(

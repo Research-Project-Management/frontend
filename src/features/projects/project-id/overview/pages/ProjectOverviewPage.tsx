@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation';
 import { useProjectOverview } from '../hooks/use-project-overview';
 import { ProjectHeaderCard } from '../components/ProjectHeaderCard';
 import { WorkItemProgressCard } from '../components/WorkItemProgressCard';
-import { ActiveCycleCard } from '../components/ActiveCycleCard';
 import { RecentActivityList } from '../components/RecentActivityList';
 import { ProjectPropertiesSidebar } from '../components/ProjectPropertiesSidebar';
 import { ProjectStatusCard } from '../components/ProjectStatusCard';
@@ -75,7 +74,7 @@ export function ProjectOverviewPage() {
     );
   }
 
-  const { project, metrics, activeCycle, recentActivities, currentUpdate } = data;
+  const { project, metrics, recentActivities, currentUpdate } = data;
 
   return (
     <div className="flex-1 flex min-h-0 flex-col h-full bg-background overflow-hidden">
@@ -105,8 +104,6 @@ export function ProjectOverviewPage() {
             />
 
             <WorkItemProgressCard projectId={project.id} metrics={metrics} />
-
-            <ActiveCycleCard projectId={project.id} activeCycle={activeCycle} />
 
             <RecentActivityList activities={recentActivities} />
           </div>

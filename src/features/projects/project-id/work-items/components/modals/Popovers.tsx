@@ -41,7 +41,6 @@ import { ItemHelpers, resolveColumnId } from '../../utils/work-item.utils';
 import { useLabelsQuery } from '../../hooks/use-label';
 import type {
   Priority,
-  Cycle,
   Item,
   Column,
   Label,
@@ -117,26 +116,6 @@ export function LabelTagIcon({ className }: { className?: string }) {
 export function DateCalendarIcon({ className }: { className?: string }) {
   return <CalendarDays className={cn("size-3.5 shrink-0 text-foreground", className)} />;
 }
-
-export function CycleHalfIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="none"
-      className={cn("size-3.5 shrink-0 text-foreground", className)}
-    >
-      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3" />
-      <path
-        d="M8 3.8a4.2 4.2 0 0 1 0 8.4V3.8z"
-        fill="currentColor"
-        stroke="currentColor"
-        strokeWidth="0.5"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-export const CycleIcon = CycleHalfIcon;
 
 export function AttachPaperclipIcon({ className }: { className?: string }) {
   return <Paperclip className={cn("size-3.5 shrink-0 text-foreground", className)} />;
@@ -1159,129 +1138,6 @@ export function SingleDatePopover({
     </Popover>
   );
 }
-
-// ── 8. Cycle Popover ─────────────────────────────────────────────────────────
-
-export interface CyclePopoverProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  cycleId?: string | null;
-  setCycleId: (cycleId: string | null) => void;
-  cycles?: Cycle[];
-  actionBtnClass?: string;
-  isReadOnly?: boolean;
-}
-
-export const CyclePopover: React.FC<CyclePopoverProps> = ({
-  open,
-  onOpenChange,
-  cycleId,
-  setCycleId,
-  cycles = [],
-  actionBtnClass,
-  isReadOnly = false,
-}) => {
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const selectedCycle = useMemo(() => {
-    if (!cycleId) return null;
-    return cycles.find((c) => c.id === cycleId) || null;
-  }, [cycleId, cycles]);
-
-  const filteredCycles = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return cycles;
-    return cycles.filter((c) => (c.name || '').toLowerCase().includes(q));
-  }, [cycles, searchQuery]);
-
-  return (
-    <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild disabled={isReadOnly}>
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(
-            'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
-            actionBtnClass,
-            open && 'bg-muted border-border',
-            selectedCycle && 'font-medium'
-          )}
-        >
-          <CycleHalfIcon className={selectedCycle ? "text-emerald-500" : undefined} />
-          <span className="truncate max-w-[110px]">
-            {selectedCycle ? selectedCycle.name : 'Cycle'}
-          </span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        side="bottom"
-        sideOffset={6}
-        className="w-52 p-1.5 rounded-md border border-border flex flex-col z-100 bg-popover max-h-64"
-      >
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1 shadow-2xs">
-          <Search className="size-3.5 text-foreground shrink-0" />
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search cycles..."
-            className="w-full bg-transparent text-xs outline-none placeholder:text-foreground/70 text-foreground"
-            autoFocus
-          />
-        </div>
-        <div className="space-y-0.5 overflow-y-auto max-h-48">
-          {/* No cycle option */}
-          <button
-            type="button"
-            onClick={() => {
-              setCycleId(null);
-              onOpenChange(false);
-            }}
-            className={cn(
-              'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors hover:bg-muted cursor-pointer text-left',
-              !cycleId && 'bg-muted text-foreground font-medium'
-            )}
-          >
-            <div className="flex items-center gap-2">
-              <CycleHalfIcon />
-              <span>No cycle</span>
-            </div>
-            {!cycleId && <Check className="size-4 shrink-0 text-foreground" />}
-          </button>
-
-          {filteredCycles.map((c) => {
-            const isSelected = cycleId === c.id;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => {
-                  setCycleId(c.id);
-                  onOpenChange(false);
-                }}
-                className={cn(
-                  'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs transition-colors hover:bg-muted cursor-pointer text-left',
-                  isSelected && 'bg-muted text-foreground font-medium'
-                )}
-              >
-                <div className="flex items-center gap-2 truncate">
-                  <CycleHalfIcon />
-                  <span className="truncate">{c.name}</span>
-                  {c.status === 'active' && (
-                    <span className="text-10 px-1 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-normal">
-                      Active
-                    </span>
-                  )}
-                </div>
-                {isSelected && <Check className="size-4 shrink-0 text-foreground" />}
-              </button>
-            );
-          })}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-};
 
 // ── 9. Parent Item Popover ───────────────────────────────────────────────────
 

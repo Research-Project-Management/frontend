@@ -32,7 +32,6 @@ export const useCreateTemplateMutation = () => {
         content?: string;
         priority?: string;
         labels?: string[];
-        defaultCycleId?: string;
         defaultColumnId?: string;
         isShared?: boolean;
       };

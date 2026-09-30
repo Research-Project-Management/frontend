@@ -50,17 +50,6 @@ export interface WorkItemMetrics {
   completionPercentage: number;
 }
 
-export interface ActiveCycleSummary {
-  id: string;
-  name: string;
-  startDate: string | null;
-  endDate: string | null;
-  daysRemaining: number | null;
-  totalIssues: number;
-  completedIssues: number;
-  completionPercentage: number;
-}
-
 export interface RecentActivity {
   id: string;
   verb: string;
@@ -78,7 +67,6 @@ export interface RecentActivity {
 export interface ProjectOverviewData {
   project: ProjectMetadata;
   metrics: WorkItemMetrics;
-  activeCycle: ActiveCycleSummary | null;
   recentActivities: RecentActivity[];
   currentUpdate: ProjectStatusUpdate | null;
 }

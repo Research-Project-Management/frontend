@@ -63,7 +63,6 @@ import { createPortal } from 'react-dom';
 
 interface CalendarCardProps {
   card: Item;
-  onRemoveFromCycle?: (card: Item) => void;
   isReadOnly?: boolean;
 }
 
@@ -120,7 +119,6 @@ type CalendarViewProps = {
   onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
   onOpenCardDetail: (item: Item) => void;
   onAssignExistingItems?: (ids: string[], dueDate: string, quiet?: boolean, startDate?: string | null) => void;
-  onRemoveFromCycle?: (item: Item) => void;
   isAddingCard?: boolean;
   isReadOnly?: boolean;
 };
@@ -167,7 +165,6 @@ export function CalendarView({
   onAddCard,
   onOpenCardDetail,
   onAssignExistingItems: propOnAssignExistingItems,
-  onRemoveFromCycle,
   isAddingCard,
   isReadOnly,
 }: CalendarViewProps) {
@@ -538,7 +535,6 @@ export function CalendarView({
                             isContinuedFromPrev={isContinuedFromPrev}
                             isContinuedToNext={isContinuedToNext}
                             onOpenCardDetail={onOpenCardDetail}
-                            onRemoveFromCycle={onRemoveFromCycle}
                             isReadOnly={isReadOnly}
                           />
                         )
@@ -584,7 +580,6 @@ export function CalendarView({
                           onSetQuickAddTitle={setQuickAddTitle}
                           onQuickAddSubmit={handleQuickAddSubmit}
                           onCloseQuickAdd={handleCloseQuickAdd}
-                          onRemoveFromCycle={onRemoveFromCycle}
                           isAddingCard={isAddingCard}
                           columns={columns}
                           isReadOnly={isReadOnly}
@@ -791,7 +786,6 @@ const CalendarDayCell = memo(({
   onSetAddItemMenuDateKey,
   onAddWorkItem,
   onAddExistingWorkItem,
-  onRemoveFromCycle,
   onSetQuickAddTitle,
   onQuickAddSubmit,
   onCloseQuickAdd,
@@ -847,7 +841,6 @@ const CalendarDayCell = memo(({
               key={item.id}
               item={item}
               onOpenCardDetail={onOpenCardDetail}
-              onRemoveFromCycle={onRemoveFromCycle}
               isReadOnly={isReadOnly}
             />
           ))}
@@ -958,7 +951,6 @@ interface CalendarSpanningBarProps {
   isContinuedFromPrev: boolean;
   isContinuedToNext: boolean;
   onOpenCardDetail: (item: Item) => void;
-  onRemoveFromCycle?: (item: Item) => void;
   isReadOnly?: boolean;
 }
 
@@ -969,7 +961,6 @@ const CalendarSpanningBar = memo(function CalendarSpanningBar({
   isContinuedFromPrev,
   isContinuedToNext,
   onOpenCardDetail,
-  onRemoveFromCycle,
   isReadOnly,
 }: CalendarSpanningBarProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -1057,7 +1048,7 @@ const CalendarSpanningBar = memo(function CalendarSpanningBar({
           onOpenAutoFocus={(e: Event) => e.preventDefault()}
         >
           <div className="pointer-events-none">
-            <CalendarCard card={item} onRemoveFromCycle={onRemoveFromCycle} isReadOnly={isReadOnly} />
+            <CalendarCard card={item} isReadOnly={isReadOnly} />
           </div>
         </PopoverContent>
       </Popover>
@@ -1068,12 +1059,10 @@ const CalendarSpanningBar = memo(function CalendarSpanningBar({
 const CalendarItem = memo(({
   item,
   onOpenCardDetail,
-  onRemoveFromCycle,
   isReadOnly,
 }: {
   item: Item;
   onOpenCardDetail: (item: Item) => void;
-  onRemoveFromCycle?: (item: Item) => void;
   isReadOnly?: boolean;
 }) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -1144,7 +1133,7 @@ const CalendarItem = memo(({
           onOpenAutoFocus={(e: Event) => e.preventDefault()}
         >
           <div className="pointer-events-none">
-            <CalendarCard card={item} onRemoveFromCycle={onRemoveFromCycle} isReadOnly={isReadOnly} />
+            <CalendarCard card={item} isReadOnly={isReadOnly} />
           </div>
         </PopoverContent>
       </Popover>

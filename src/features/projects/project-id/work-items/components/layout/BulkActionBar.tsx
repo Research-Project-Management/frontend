@@ -19,7 +19,6 @@ import {
   Tag,
 } from 'lucide-react';
 import { Button } from "@/shared/components/ui";
-import { CycleIcon } from "@/shared/components/icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,7 +40,6 @@ import type {
   Column,
   Priority,
   ProjectMember,
-  Cycle,
 } from '../../types/work-item.types';
 import { PRIORITY_CONFIG } from '../../types/work-item.types';
 import { addDays, format, endOfWeek } from 'date-fns';
@@ -59,14 +57,12 @@ export interface BulkActionBarProps {
   totalCount: number;
   columns: Column[];
   members: ProjectMember[];
-  cycles: Cycle[];
   labels?: Array<{ id: string; name: string; color?: string }>;
   onClearSelection: () => void;
   onUpdateState: (columnId: string) => void;
   onUpdatePriority: (priority: Priority) => void;
   onUpdateAssignee: (assigneeId: string | null) => void;
   onUpdateDueDate: (dueDate: string | null) => void;
-  onUpdateCycle: (cycleId: string | null) => void;
   onAddLabel?: (labelId: string) => void;
   onRemoveLabel?: (labelId: string) => void;
   onClearLabels?: () => void;
@@ -81,14 +77,12 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
   selectedIds = [],
   columns,
   members,
-  cycles,
   labels = [],
   onClearSelection,
   onUpdateState,
   onUpdatePriority,
   onUpdateAssignee,
   onUpdateDueDate,
-  onUpdateCycle,
   onAddLabel,
   onRemoveLabel,
   onClearLabels,

@@ -40,11 +40,6 @@ export const userMinimalSchema = z.object({
   avatar: z.string().nullable().optional(),
 });
 
-export const cycleMinimalSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-});
-
 export const parentItemMinimalSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -187,8 +182,6 @@ export const itemSchema = z.object({
   assigneeIds: z.array(z.string()).default([]),
   assignees: z.array(userMinimalSchema).default([]),
   subscriberIds: z.array(z.string()).default([]),
-  cycleId: z.string().nullable().optional(),
-  cycle: z.union([cycleMinimalSchema, z.string()]).nullable().optional(),
   parentId: z.string().nullable().optional(),
   parentItemId: z.string().nullable().optional(),
   parentWorkItemId: z.string().nullable().optional(),
@@ -238,7 +231,6 @@ export const filtersSchema = z.object({
   mentions: z.array(z.string()).default([]),
   created_by: z.array(z.string()).default([]),
   labels: z.array(z.string()).default([]),
-  cycle: z.array(z.string()).default([]),
   attach: z.array(z.string()).default([]),
   items: z.array(z.string()).default([]),
   work_items: z.array(z.string()).default([]),
@@ -250,7 +242,6 @@ export const filtersSchema = z.object({
   subscribers: z.array(z.string()).default([]),
   columnId: z.union([z.string(), z.array(z.string())]).optional(),
   assigneeId: z.union([z.string(), z.array(z.string())]).optional(),
-  cycleId: z.string().optional(),
   dueDateRange: z
     .object({
       from: z.string().optional(),

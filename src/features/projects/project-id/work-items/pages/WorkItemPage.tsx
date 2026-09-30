@@ -34,14 +34,6 @@ const DeleteModal = dynamic(
   () => import("../components/modals/DeleteModal").then((m) => m.DeleteModal),
   { ssr: false }
 );
-const TransferModal = dynamic(
-  () => import("../components/modals/TransferModal").then((m) => m.TransferModal),
-  { ssr: false }
-);
-const AddExistingModal = dynamic(
-  () => import("../components/modals/AddExistingModal").then((m) => m.AddExistingModal),
-  { ssr: false }
-);
 import { BulkActionBar } from "../components/layout/BulkActionBar";
 import { AnalyticsDrawer } from "../components/analytics/AnalyticsDrawer";
 import {
@@ -79,7 +71,6 @@ import {
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import {
   Plus,
-  ArrowRightLeft,
   Archive,
   SlidersHorizontal,
 } from "lucide-react";
@@ -89,17 +80,13 @@ export type ModalState =
   | { type: 'idle' }
   | { type: 'create'; initialData?: Partial<Item> }
   | { type: 'detail'; card: Item; item?: Item }
-  | { type: 'delete'; item: Item }
-  | { type: 'add-existing' }
-  | { type: 'transfer' };
+  | { type: 'delete'; item: Item };
 
 export interface WorkItemPageProps {
-  cycleId?: string;
   isReadOnly?: boolean;
 }
 export type PageProps = WorkItemPageProps;
 export function WorkItemPage({
-  cycleId: propCycleId,
   isReadOnly: propIsReadOnly,
 }: WorkItemPageProps = {}) {
   const router = useRouter();
@@ -108,19 +95,16 @@ export function WorkItemPage({
   const params = useParams() as {
     workspaceId?: string;
     projectId?: string;
-    cycleId?: string;
     viewId?: string;
   };
   const workspaceId = params.workspaceId || "";
   const projectId = params.projectId || "";
-  const cycleId = propCycleId ?? params.cycleId;
   const rawViewId = params.viewId || searchParams?.get('viewId');
   const isReadOnly = propIsReadOnly ?? false;
 
   // ── 1. Data Domain Layer (useProject) ─────────────────────────────────
   const { state: projectState, actions: projectActions } = useProject({
     projectId,
-    cycleId,
   });
 
   useRealtimeWorkItems({ projectId, enabled: Boolean(projectId) });
@@ -130,8 +114,6 @@ export function WorkItemPage({
     columns,
     project,
     members,
-    cycles,
-    currentCycle,
     labels,
     labelMap,
     isLoading,
@@ -214,20 +196,6 @@ export function WorkItemPage({
       workItemIds: selectedIds,
       ids: selectedIds,
       data: { dueDate },
-      projectId,
-    }, {
-      onSuccess: () => {
-        handleClearSelection();
-      }
-    });
-  }, [selectedIds, projectId, bulkUpdateMutation, handleClearSelection]);
-
-  const handleBulkUpdateCycle = useCallback((newCycleId: string | null) => {
-    if (selectedIds.length === 0) return;
-    bulkUpdateMutation.mutate({
-      workItemIds: selectedIds,
-      ids: selectedIds,
-      data: { cycleId: newCycleId },
       projectId,
     }, {
       onSuccess: () => {
@@ -322,8 +290,6 @@ export function WorkItemPage({
     items: displayItems,
     columns,
     members,
-    cycles,
-    cycleId,
   });
 
   const {
@@ -359,7 +325,6 @@ export function WorkItemPage({
     clearAllFilters,
     toggleFilterItem,
     removeFilterItem,
-    handleCycleSelect,
     setDisplayOptions,
     updateDisplayProperty,
     setDisplayOpen,
@@ -386,16 +351,12 @@ export function WorkItemPage({
   }, [rawViewId, savedViews, selectSavedView]);
 
   // ── 3. Dynamic GroupBy Adapter (Plane.so matching architecture) ──────────
-  // If groupBy is 'cycle' but project has no cycles or is in a cycle view, fallback to 'state'
   const effectiveGroupBy = useMemo(() => {
     const gb = displayOptions.groupBy;
-    if (gb === 'cycle' && (cycles.length === 0 || Boolean(cycleId))) {
-      return 'state';
-    }
-    return gb && ['state', 'priority', 'assignee', 'cycle', 'labels', 'none', 'createdBy'].includes(gb)
+    return gb && ['state', 'priority', 'assignee', 'labels', 'none', 'createdBy'].includes(gb)
       ? gb
       : 'state';
-  }, [displayOptions.groupBy, cycles.length, cycleId]);
+  }, [displayOptions.groupBy]);
 
   const activeColumns = useMemo<Column[]>(() => {
     const groupBy = effectiveGroupBy;
@@ -426,22 +387,6 @@ export function WorkItemPage({
       return [
         ...memberCols,
         { id: '__unassigned__', name: 'Unassigned', title: 'Unassigned', color: '#9ca3af', accentColor: '#9ca3af', group: 'backlog', sequence: 999, isDefault: false },
-      ];
-    }
-    if (groupBy === 'cycle') {
-      const cycleCols: Column[] = (cycles || []).map((c, idx) => ({
-        id: c.id,
-        name: c.name,
-        title: c.name,
-        color: '#3b82f6',
-        accentColor: '#3b82f6',
-        group: 'started',
-        sequence: idx,
-        isDefault: false,
-      }));
-      return [
-        ...cycleCols,
-        { id: '__no_cycle__', name: 'No Cycle', title: 'No Cycle', color: '#9ca3af', accentColor: '#9ca3af', group: 'backlog', sequence: 999, isDefault: false },
       ];
     }
     if (groupBy === 'labels') {
@@ -491,7 +436,7 @@ export function WorkItemPage({
       ];
     }
     return columns;
-  }, [effectiveGroupBy, columns, members, cycles, labels]);
+  }, [effectiveGroupBy, columns, members, labels]);
 
   // ── 4. Kanban Column Mapping ──────────────────────────────────────────────
   const itemsByColumnId = useMemo(() => {
@@ -545,7 +490,6 @@ export function WorkItemPage({
         initialData: {
           columnId: defaultColumnId,
           title: '',
-          cycleId,
           assigneeId: null,
         },
       });
@@ -576,7 +520,7 @@ export function WorkItemPage({
       window.removeEventListener('open-new-work-item-modal', handleOpenModal);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [columns, cycleId, searchParams, pathname, router]);
+  }, [columns, searchParams, pathname, router]);
 
   // ── Handlers & Actions ────────────────────────────────────────────────────
 
@@ -601,7 +545,6 @@ export function WorkItemPage({
     let targetColumnId = columnId;
     let targetPriority: Priority = 'none';
     let targetAssigneeId: string | null = null;
-    let targetCycleId: string | undefined = cycleId;
 
     if (effectiveGroupBy === 'priority') {
       targetColumnId = defaultColumnId;
@@ -609,9 +552,6 @@ export function WorkItemPage({
     } else if (effectiveGroupBy === 'assignee') {
       targetColumnId = defaultColumnId;
       targetAssigneeId = columnId === '__unassigned__' ? null : columnId;
-    } else if (effectiveGroupBy === 'cycle') {
-      targetColumnId = defaultColumnId;
-      targetCycleId = columnId === '__no_cycle__' ? undefined : columnId;
     }
 
     if (swimlaneData?.subGroupBy && swimlaneData?.laneId) {
@@ -619,8 +559,6 @@ export function WorkItemPage({
         targetPriority = (swimlaneData.laneId === 'none' ? 'none' : swimlaneData.laneId) as Priority;
       } else if (swimlaneData.subGroupBy === 'assignee') {
         targetAssigneeId = swimlaneData.laneId === '__unassigned__' ? null : swimlaneData.laneId;
-      } else if (swimlaneData.subGroupBy === 'cycle') {
-        targetCycleId = swimlaneData.laneId === '__no_cycle__' ? undefined : swimlaneData.laneId;
       }
     }
 
@@ -631,7 +569,6 @@ export function WorkItemPage({
         columnId: targetColumnId,
         title: quickTitle,
         dueDate,
-        cycleId: targetCycleId,
         assigneeId: targetAssigneeId,
         priority: targetPriority,
       });
@@ -644,7 +581,6 @@ export function WorkItemPage({
         columnId: targetColumnId,
         title: title?.trim() || "",
         dueDate,
-        cycleId: targetCycleId,
         assigneeId: targetAssigneeId,
         priority: targetPriority,
       },
@@ -680,15 +616,6 @@ export function WorkItemPage({
       });
       return;
     }
-    if (effectiveGroupBy === 'cycle') {
-      projectActions.updateWorkItem({
-        workItemId,
-        id: workItemId,
-        projectId,
-        cycleId: newColumnId === '__no_cycle__' ? null : newColumnId,
-      });
-      return;
-    }
     if (effectiveGroupBy === 'labels') {
       projectActions.updateWorkItem({
         workItemId,
@@ -708,8 +635,6 @@ export function WorkItemPage({
         updatePayload.priority = (laneData.laneId === 'none' ? 'none' : laneData.laneId) as Priority;
       } else if (laneData.subGroupBy === 'assignee') {
         updatePayload.assigneeId = laneData.laneId === '__unassigned__' ? null : laneData.laneId;
-      } else if (laneData.subGroupBy === 'cycle') {
-        updatePayload.cycleId = laneData.laneId === '__no_cycle__' ? null : laneData.laneId;
       } else if (laneData.subGroupBy === 'labels') {
         updatePayload.labels = laneData.laneId === '__no_label__' ? [] : [laneData.laneId];
       }
@@ -753,15 +678,6 @@ export function WorkItemPage({
       });
       return;
     }
-    if (effectiveGroupBy === 'cycle') {
-      projectActions.updateWorkItem({
-        workItemId,
-        id: workItemId,
-        projectId,
-        cycleId: newColumnId === '__no_cycle__' ? null : newColumnId,
-      });
-      return;
-    }
     if (effectiveGroupBy === 'labels') {
       projectActions.updateWorkItem({
         workItemId,
@@ -796,7 +712,6 @@ export function WorkItemPage({
       ...restData,
       columnId: formData.columnId || defaultColumnId,
       title: formData.title.trim(),
-      cycleId: formData.cycleId !== undefined ? formData.cycleId : cycleId,
       projectId,
     };
 
@@ -827,7 +742,6 @@ export function WorkItemPage({
     const payload = {
       ...formData,
       title: formData.title.trim(),
-      cycleId: formData.cycleId !== undefined ? formData.cycleId : cycleId,
       projectId,
       id: modal.card.id,
       workItemId: modal.card.id,
@@ -884,10 +798,6 @@ export function WorkItemPage({
     });
   };
 
-  const handleRemoveFromCycle = (card: Item, callback?: () => void) => {
-    projectActions.removeFromCycle(card.id, callback);
-  };
-
   const handleAssignExistingItemsToDate = (
     itemIds: string[],
     dueDate: string,
@@ -904,8 +814,7 @@ export function WorkItemPage({
     [projectActions, projectId],
   );
 
-  const isCycleEmpty = cycleId && displayItems.length === 0 && !isLoading && !showArchived;
-  const isProjectEmpty = !cycleId && displayItems.length === 0 && !isLoading && !showArchived;
+  const isProjectEmpty = displayItems.length === 0 && !isLoading && !showArchived;
   const isArchivedEmpty = showArchived && displayItems.length === 0 && !isLoading;
 
   if (isLoading) {
@@ -944,10 +853,6 @@ export function WorkItemPage({
         title={showArchived ? "Archived items" : "Work Items"}
         Icon={showArchived ? Archive : WorkItemsIcon}
         count={displayItems.length}
-        cycleId={cycleId}
-        currentCycle={currentCycle}
-        cycles={cycles}
-        onCycleSelect={handleCycleSelect}
         viewMode={viewMode}
         onViewChange={setViewMode}
         columns={columns}
@@ -975,7 +880,6 @@ export function WorkItemPage({
         onDisplayOpenChange={setDisplayOpen}
         onOpenAnalytics={() => setAnalyticsOpen(true)}
         onAddItem={() => setModal({ type: 'create' })}
-        onAddExistingItem={cycleId ? () => setModal({ type: 'add-existing' }) : undefined}
         isLoading={isLoading}
         isReadOnly={isReadOnly}
       />
@@ -986,7 +890,7 @@ export function WorkItemPage({
           <div className="flex items-center gap-2">
             <Archive className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
             <span>
-              <strong>Archived Mode:</strong> You are viewing archived work items. They are excluded from active boards and cycles.
+              <strong>Archived Mode:</strong> You are viewing archived work items. They are excluded from active boards and views.
             </span>
           </div>
           <Button
@@ -1046,7 +950,6 @@ export function WorkItemPage({
         onToggleFilter={toggleFilterItem}
         onRemoveFilter={removeFilterItem}
         items={allItems}
-        cycles={cycles}
       />
 
       {/* Main View Area */}
@@ -1060,7 +963,7 @@ export function WorkItemPage({
               No archived work items
             </h3>
             <p className="text-sm text-muted-foreground max-w-sm mb-6">
-              When work items are archived, they will appear here safely stored away from active cycles and views.
+              When work items are archived, they will appear here safely stored away from active views.
             </p>
             <Button
               variant="outline"
@@ -1070,40 +973,6 @@ export function WorkItemPage({
             >
               <span>Back to active items</span>
             </Button>
-          </div>
-        ) : isCycleEmpty ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center mb-4">
-              <WorkItemsIcon className="w-8 h-8 text-foreground shrink-0" />
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-1">
-              No work items in this cycle
-            </h3>
-            <p className="text-sm text-muted-foreground max-w-sm mb-6">
-              Get started by creating a new work item or adding existing work items from your project backlog.
-            </p>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setModal({ type: 'add-existing' })}
-                className="gap-2 rounded-md h-8 px-3 text-13 font-medium bg-background border border-border text-foreground hover:bg-muted shadow-2xs cursor-pointer"
-              >
-                <ArrowRightLeft className="size-4 shrink-0" />
-                <span>Add Existing Work Items</span>
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => {
-                  const firstCol = columns[0];
-                  handleOpenAddDialog(firstCol ? resolveStateId(firstCol) : "");
-                }}
-                className="gap-2 rounded-md h-8 px-4 text-13 font-medium bg-primary text-primary-foreground hover:bg-primary-hover shadow-none cursor-pointer"
-              >
-                <Plus className="size-4 shrink-0" />
-                <span>Create Work Item</span>
-              </Button>
-            </div>
           </div>
         ) : isProjectEmpty && viewMode !== 'calendar' ? (
           <EmptyState
@@ -1129,7 +998,6 @@ export function WorkItemPage({
                 onDuplicateCard={handleDuplicateCard}
                 onJoinCard={handleJoinCard}
                 onLeaveCard={handleLeaveCard}
-                onRemoveFromCycle={handleRemoveFromCycle}
                 onMoveCard={handleMoveCard}
                 onUpdateItem={handleQuickUpdateItem}
                 isReadOnly={isReadOnly}
@@ -1138,7 +1006,6 @@ export function WorkItemPage({
                 onSelectAll={handleSelectAll}
                 displayOptions={displayOptions}
                 members={members}
-                cycles={cycles}
               />
             )}
             {viewMode === 'calendar' && (
@@ -1150,7 +1017,6 @@ export function WorkItemPage({
                 onAddCard={handleOpenAddDialog}
                 onOpenCardDetail={handleOpenEditDialog}
                 onAssignExistingItems={handleAssignExistingItemsToDate}
-                onRemoveFromCycle={cycleId ? handleRemoveFromCycle : undefined}
                 isReadOnly={isReadOnly}
               />
             )}
@@ -1166,14 +1032,12 @@ export function WorkItemPage({
                 projectId={projectId}
                 workspaceId={workspaceId}
                 members={members}
-                cycles={cycles}
                 onAddCard={handleOpenAddDialog}
                 onEditCard={handleOpenEditDialog}
                 onDeleteCard={handleDeleteCard}
                 onDuplicateCard={handleDuplicateCard}
                 onJoinCard={handleJoinCard}
                 onLeaveCard={handleLeaveCard}
-                onRemoveFromCycle={handleRemoveFromCycle}
                 onMoveCard={handleMoveCard}
                 onUpdateCard={(item) => handleQuickUpdateItem(item.id, item)}
                 selectedIds={selectedIds}
@@ -1192,14 +1056,12 @@ export function WorkItemPage({
                 projectId={projectId}
                 workspaceId={workspaceId}
                 members={members}
-                cycles={cycles}
                 onAddCard={handleOpenAddDialog}
                 onEditCard={handleOpenEditDialog}
                 onDeleteCard={handleDeleteCard}
                 onDuplicateCard={handleDuplicateCard}
                 onJoinCard={handleJoinCard}
                 onLeaveCard={handleLeaveCard}
-                onRemoveFromCycle={handleRemoveFromCycle}
                 onMoveCard={handleMoveCard}
                 onUpdateCard={(item) => handleQuickUpdateItem(item.id, item)}
                 isReadOnly={isReadOnly}
@@ -1215,17 +1077,14 @@ export function WorkItemPage({
                 currentUserId={currentUser?.id}
                 currentUserAvatar={currentUser?.avatar ?? undefined}
                 members={members}
-                cycles={cycles}
                 onAddCard={handleOpenAddDialog}
                 onEditCard={handleOpenEditDialog}
                 onDeleteCard={handleDeleteCard}
                 onDuplicateCard={handleDuplicateCard}
                 onJoinCard={handleJoinCard}
                 onLeaveCard={handleLeaveCard}
-                onRemoveFromCycle={handleRemoveFromCycle}
                 onMoveCard={handleMoveCard}
                 onReorderCard={handleReorderCard}
-                cycleId={cycleId}
                 isReadOnly={isReadOnly}
                 displayOptions={displayOptions}
                 selectedIds={selectedIds}
@@ -1258,9 +1117,7 @@ export function WorkItemPage({
           columns={columns}
           members={members}
           initialData={modal.initialData}
-          cycleId={cycleId}
           project={project || undefined}
-          cycles={cycles}
           availableItems={allItems}
           onSubmit={handleCreateItem}
           isSubmitting={projectState.isSaving}
@@ -1278,19 +1135,11 @@ export function WorkItemPage({
           columns={columns}
           project={project}
           members={members}
-          cycles={cycles}
           availableItems={allItems}
           onSave={handleSaveCard}
           onDelete={handleDeleteCard}
           onDuplicate={
             modal.card.id ? () => handleDuplicateCard(modal.card) : undefined
-          }
-          onRemoveFromCycle={
-            cycleId && modal.card.id
-              ? () => {
-                  handleRemoveFromCycle(modal.card, closeModal);
-                }
-              : undefined
           }
           isReadOnly={isReadOnly}
         />
@@ -1302,14 +1151,12 @@ export function WorkItemPage({
         totalCount={displayItems.length}
         columns={columns}
         members={members}
-        cycles={cycles}
         labels={labels}
         onClearSelection={handleClearSelection}
         onUpdateState={handleBulkUpdateState}
         onUpdatePriority={handleBulkUpdatePriority}
         onUpdateAssignee={handleBulkUpdateAssignee}
         onUpdateDueDate={handleBulkUpdateDueDate}
-        onUpdateCycle={handleBulkUpdateCycle}
         onAddLabel={handleBulkAddLabel}
         onRemoveLabel={handleBulkRemoveLabel}
         onClearLabels={handleBulkClearLabels}
@@ -1334,36 +1181,6 @@ export function WorkItemPage({
           onConfirm={handleItemDeleteConfirm}
           isDeleting={projectState.status.isDeleting}
         />
-      )}
-
-      {/* Cycle Modals */}
-      {cycleId && (
-        <>
-          {modal.type === 'add-existing' && (
-            <AddExistingModal
-              open={true}
-              onOpenChange={(open: boolean) => (open ? setModal({ type: 'add-existing' }) : closeModal())}
-              projectId={projectId}
-              currentCycleId={cycleId}
-              columns={columns}
-              members={members}
-            />
-          )}
-
-          {modal.type === 'transfer' && (
-            <TransferModal
-              open={true}
-              onOpenChange={(open: boolean) => (open ? setModal({ type: 'transfer' }) : closeModal())}
-              projectId={projectId}
-              sourceCycleId={cycleId}
-              sourceCycleName={currentCycle?.name || "Current Cycle"}
-              items={allItems}
-              availableCycles={cycles}
-              columns={columns}
-              members={members}
-            />
-          )}
-        </>
       )}
 
       {/* Save Current View Dialog */}

@@ -251,8 +251,6 @@ export function useKanban({
               targetLaneId = (overItem.priority || 'none').toLowerCase();
             } else if (subGroupBy === 'assignee') {
               targetLaneId = ItemHelpers.resolveAssigneeId(overItem) || '__unassigned__';
-            } else if (subGroupBy === 'cycle') {
-              targetLaneId = overItem.cycleId || '__no_cycle__';
             } else if (subGroupBy === 'labels') {
               targetLaneId = (overItem.labels && overItem.labels.length > 0) ? overItem.labels[0] : '__no_label__';
             }
@@ -319,7 +317,6 @@ export interface UseCardOptions {
   onDelete?: (card: Item) => void;
   onJoin?: (card: Item) => void;
   onLeave?: (card: Item) => void;
-  onRemoveFromCycle?: (card: Item) => void;
   isReadOnly?: boolean;
 }
 
@@ -333,7 +330,6 @@ export function useCard({
   onDelete,
   onJoin,
   onLeave,
-  onRemoveFromCycle,
   isReadOnly = false,
 }: UseCardOptions) {
   const [showLabels, setShowLabels] = useState(false);
@@ -487,7 +483,6 @@ export function useCard({
     delete: useCallback(() => onDelete?.(card), [onDelete, card]),
     join: useCallback(() => onJoin?.(card), [onJoin, card]),
     leave: useCallback(() => onLeave?.(card), [onLeave, card]),
-    removeFromCycle: useCallback(() => onRemoveFromCycle?.(card), [onRemoveFromCycle, card]),
   };
 
   return { state, actions };

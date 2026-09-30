@@ -40,7 +40,6 @@ import type {
   Priority,
   StateGroup,
   DueDateFilterOption,
-  Cycle,
   Filters,
   ProjectMember,
 } from '../../types/work-item.types';
@@ -183,9 +182,6 @@ export interface FilterDropdownProps {
   onTogglePriority?: (priority: Priority) => void;
   dueDateFilter?: DueDateFilterOption;
   onDueDateFilterChange?: (option: DueDateFilterOption) => void;
-  cycles?: Cycle[];
-  selectedCycleId?: string;
-  onCycleSelect?: (cycleId: string) => void;
   totalActiveFilters: number;
   onClearAll: () => void;
   // Unified Filter State
@@ -231,9 +227,6 @@ export function FilterDropdown({
   onTogglePriority,
   dueDateFilter,
   onDueDateFilterChange,
-  cycles = [],
-  selectedCycleId,
-  onCycleSelect,
   totalActiveFilters,
   onClearAll,
   filters,
@@ -292,7 +285,6 @@ export function FilterDropdown({
       if (key === 'assignees' && onToggleAssignee) onToggleAssignee(item);
       if (key === 'priority' && onTogglePriority) onTogglePriority(item);
       if (key === 'due_date' && onDueDateFilterChange) onDueDateFilterChange(item);
-      if (key === 'cycle' && onCycleSelect) onCycleSelect(item);
     }
   };
 
@@ -305,7 +297,6 @@ export function FilterDropdown({
     if (key === 'assignees') return selectedAssigneeIds.includes(item);
     if (key === 'priority') return selectedPriorities.includes(item);
     if (key === 'due_date') return dueDateFilter === item;
-    if (key === 'cycle') return selectedCycleId === item;
     return false;
   };
 

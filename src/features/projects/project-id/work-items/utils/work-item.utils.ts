@@ -398,10 +398,6 @@ export function getItemBucketKey(item: Item, groupBy?: string): string {
   if (groupBy === 'assignee') {
     return ItemHelpers.resolveAssigneeId(item) || '__unassigned__';
   }
-  if (groupBy === 'cycle') {
-    const cId = item.cycleId || (typeof item.cycle === 'object' ? (item.cycle as any)?.id : null);
-    return cId || '__no_cycle__';
-  }
   if (groupBy === 'labels') {
     const itemLabels = Array.isArray(item.labels) ? item.labels : [];
     if (itemLabels.length === 0) return '__no_label__';

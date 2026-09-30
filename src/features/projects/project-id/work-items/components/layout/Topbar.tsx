@@ -17,7 +17,6 @@ import {
 import type {
   Item,
   Column,
-  Cycle,
   Priority,
   DisplayOptions,
   DueDateFilterOption,
@@ -53,15 +52,7 @@ export interface TopbarProps {
   icon?: React.ComponentType<{ className?: string }>;
   Icon?: React.ComponentType<{ className?: string }>;
   count?: number;
-  // Cycle support
-  cycleId?: string;
-  currentCycle?: {
-    id: string;
-    name: string;
-  };
   items?: Item[];
-  cycles?: Cycle[];
-  onCycleSelect?: (cycleId: string) => void;
   // View controls
   viewMode: ViewMode;
   onViewChange: (mode: ViewMode) => void;
@@ -94,7 +85,6 @@ export interface TopbarProps {
   onOpenAnalytics?: () => void;
   // Actions
   onAddItem?: () => void;
-  onAddExistingItem?: () => void;
   showArchived?: boolean;
   onToggleArchived?: () => void;
   isLoading?: boolean;
@@ -116,12 +106,7 @@ export function Topbar({
   icon,
   Icon: PropIcon,
   count,
-  cycleId,
-  currentCycle,
-  cycles = [],
   items = [],
-
-  onCycleSelect,
   viewMode,
   onViewChange,
   columns,
@@ -296,7 +281,6 @@ export function Topbar({
             onTogglePriority={onTogglePriority || ((p) => propOnToggleFilter?.('priority', p))}
             dueDateFilter={dueDateFilter}
             onDueDateFilterChange={onDueDateFilterChange || (() => {})}
-            cycles={cycles}
             totalActiveFilters={
               propFilters
                 ? (propFilters.state.length +
@@ -345,19 +329,9 @@ export function Topbar({
           </Button>
         </TooltipProvider>
 
-        {/* Primary Actions (+ Add Work Item & + Add Existing) */}
+        {/* Primary Action (+ Add Work Item) */}
         {!isReadOnly && (
           <div className="flex items-center gap-1.5 shrink-0">
-            {cycleId && onAddExistingItem && (
-              <Button
-                type="button"
-                size="sm"
-                onClick={onAddExistingItem}
-                className="h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shadow-2xs shrink-0"
-              >
-                <span>Add existing</span>
-              </Button>
-            )}
 
             <Button
               type="button"

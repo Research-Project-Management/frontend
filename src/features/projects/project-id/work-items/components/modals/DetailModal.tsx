@@ -58,7 +58,6 @@ import type {
   AttachPaperItem,
   AttachFileItem,
   AttachLinkItem,
-  Cycle,
 } from '../../types/work-item.types';
 import {
   resolveColumnId,
@@ -84,7 +83,6 @@ import {
 } from "../../hooks/use-work-item";
 import { useActivityLogs } from "../../hooks/use-history";
 import { useLabelsQuery } from "../../hooks/use-label";
-import { useCycles } from "../../hooks/use-cycle";
 import { useUploadFilesWithToast, useWorkItemAttachments } from "../../hooks/use-attachment";
 import {
   useAddRelationMutation,
@@ -104,7 +102,6 @@ import {
   LabelPopover,
   DatePopover,
   PriorityPopover,
-  CyclePopover,
   ParentItemPopover,
 } from "./Popovers";
 import { Relations } from "./Relations";
@@ -175,11 +172,9 @@ export type DetailModalProps = {
   project?: Project;
   members?: ProjectMember[];
   availableItems?: Item[];
-  cycles?: Cycle[];
   onSave: (data: ItemMutationInput) => void;
   onDelete?: () => void;
   onDuplicate?: () => void;
-  onRemoveFromCycle?: () => void;
   isReadOnly?: boolean;
 };
 
@@ -192,11 +187,9 @@ export function DetailModal({
   project,
   members = [],
   availableItems: propAvailableItems,
-  cycles: propCycles,
   onSave,
   onDelete,
   onDuplicate,
-  onRemoveFromCycle,
   isReadOnly = false,
 }: DetailModalProps) {
   const card = propItem || propCard;
@@ -209,22 +202,12 @@ export function DetailModal({
   const { notifySubItemAdded } = useSubItemNotification();
   const uploadFilesWithToast = useUploadFilesWithToast();
   const { data: rawLabels } = useLabelsQuery(currentProjectId, 'work-item');
-  const { data: remoteCyclesData } = useCycles(currentProjectId || "");
 
   const projectLabels = useMemo(() => {
     if (Array.isArray(rawLabels)) return rawLabels;
     if (Array.isArray((rawLabels as any)?.labels)) return (rawLabels as any).labels;
     return [];
   }, [rawLabels]);
-
-  const allCycles = useMemo<Cycle[]>(() => {
-    if (propCycles && propCycles.length > 0) return propCycles;
-    if (Array.isArray(remoteCyclesData)) return remoteCyclesData as Cycle[];
-    if ((remoteCyclesData as any)?.cycles && Array.isArray((remoteCyclesData as any).cycles)) {
-      return (remoteCyclesData as any).cycles;
-    }
-    return [];
-  }, [propCycles, remoteCyclesData]);
 
   const firstColumnId = resolveStateId(columns[0]);
 
@@ -247,7 +230,6 @@ export function DetailModal({
   const [labels, setLabels] = useState<string[]>([]);
   const [assigneeId, setAssigneeId] = useState<string | null>(null);
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
-  const [cycleId, setCycleId] = useState<string | null>(card?.cycleId || null);
   const [parentId, setParentId] = useState<string | null>(card?.parentId || null);
   const [moduleId, setModuleId] = useState<string | null>((card as any)?.moduleId || null);
   const [commentText, setCommentText] = useState("");
@@ -271,7 +253,6 @@ export function DetailModal({
   const [openMemberPopover, setOpenMemberPopover] = useState(false);
   const [openLabelPopover, setOpenLabelPopover] = useState(false);
   const [openDatePopover, setOpenDatePopover] = useState(false);
-  const [openCyclePopover, setOpenCyclePopover] = useState(false);
   const [openParentPopover, setOpenParentPopover] = useState(false);
   const [openAttachmentPopover, setOpenAttachmentPopover] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -387,7 +368,6 @@ export function DetailModal({
           openMemberPopover ||
           openLabelPopover ||
           openDatePopover ||
-          openCyclePopover ||
           openParentPopover ||
           openAttachmentPopover
         ) {
@@ -404,7 +384,6 @@ export function DetailModal({
     openMemberPopover,
     openLabelPopover,
     openDatePopover,
-    openCyclePopover,
     openParentPopover,
     openAttachmentPopover,
     onOpenChange,
@@ -423,7 +402,6 @@ export function DetailModal({
       setLabels(ItemHelpers.uniqueLabels(card.labels));
       setDueDate(card.dueDate || "");
       setStartDate(card.startDate || "");
-      setCycleId(card.cycleId || null);
       setParentId(card.parentId || null);
       setModuleId((card as any)?.moduleId || null);
       setSubItems(
@@ -459,7 +437,6 @@ export function DetailModal({
       setStartDate("");
       setAssigneeId(null);
       setAssigneeIds([]);
-      setCycleId(null);
       setParentId(null);
       setModuleId(null);
       setSubItems([]);
@@ -491,7 +468,6 @@ export function DetailModal({
       labels: ItemHelpers.uniqueLabels(card?.labels),
       assigneeId: initialAssigneeIds[0] ?? null,
       assigneeIds: initialAssigneeIds,
-      cycleId: card?.cycleId || null,
       parentId: card?.parentId || null,
       completed: card?.completed || false,
       attachments: normalizeAttachments(card?.attachments),
@@ -530,7 +506,6 @@ export function DetailModal({
       assigneeIds,
       completed,
       attachments,
-      cycleId: cycleId || undefined,
       parentId: parentId || undefined,
     };
   }, [
@@ -546,7 +521,6 @@ export function DetailModal({
     assigneeIds,
     completed,
     attachments,
-    cycleId,
     parentId,
   ]);
 
@@ -1209,12 +1183,6 @@ export function DetailModal({
                       <UserPlus className="mr-2 size-3.5 shrink-0 text-foreground" />
                     )}
                     <span>{isCurrentUserAssignee ? "Leave work item" : "Join work item"}</span>
-                  </DropdownMenuItem>
-                )}
-                {onRemoveFromCycle && (
-                  <DropdownMenuItem onClick={onRemoveFromCycle} className="rounded-md py-1.5 text-xs text-foreground cursor-pointer">
-                    <RotateCcw className="mr-2 size-3.5 shrink-0 text-foreground" />
-                    <span>Remove from cycle</span>
                   </DropdownMenuItem>
                 )}
                 {!isReadOnly && onDelete && (

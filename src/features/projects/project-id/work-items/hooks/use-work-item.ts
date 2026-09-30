@@ -17,7 +17,6 @@ import type {
   Column,
   Project,
   ProjectMember,
-  Cycle,
   Priority,
   CreateItemInput,
   UpdateItemInput,
@@ -39,7 +38,6 @@ import {
   prioritySchema,
 } from '../schemas/work-item.schema';
 import type { AttachCenterData } from '../components/modals/Attachments';
-import { useCycles } from './use-cycle';
 import { useLabelsQuery } from './use-label';
 import { StateService } from '@/features/projects/project-id/settings/services/state.service';
 
@@ -59,8 +57,7 @@ export const useProjectStates = (projectId: string) =>
 
 export const itemKeys = {
   all: ['work-items'] as const,
-  project: (projectId: string, cycleId?: string) => ['work-items', projectId, cycleId] as const,
-  cycles: (projectId: string) => ['cycles', projectId] as const,
+  project: (projectId: string) => ['work-items', projectId] as const,
   comments: (id: string) => ['work-item-comments', id] as const,
   activity: (id: string) => ['work-item-activity', id] as const,
   labels: (scope: string, type?: string, projectId?: string) => ['labels', scope, type, projectId] as const,
@@ -70,10 +67,10 @@ export const workItemKeys = itemKeys;
 
 // ── Queries ─────────────────────────────────────────────────────────────────
 
-export const useProjectItems = (projectId: string, cycleId?: string) =>
+export const useProjectItems = (projectId: string) =>
   useQuery({
-    queryKey: itemKeys.project(projectId, cycleId),
-    queryFn: () => CoreService.getProjectItems(projectId, cycleId),
+    queryKey: itemKeys.project(projectId),
+    queryFn: () => CoreService.getProjectItems(projectId),
     enabled: Boolean(projectId),
     staleTime: 30_000,
   });
@@ -174,7 +171,6 @@ export const useUpdateItem = () => {
                 ...(data.assigneeId !== undefined && { assigneeId: data.assigneeId }),
                 ...(formattedDueDate !== undefined && { dueDate: formattedDueDate }),
                 ...(formattedStartDate !== undefined && { startDate: formattedStartDate }),
-                ...(data.cycleId !== undefined && { cycleId: data.cycleId }),
               };
             }
             return item;
@@ -532,14 +528,12 @@ export const useCopyWorkItemText = useCopyItemText;
 
 export interface UseProjectOptions {
   projectId: string;
-  cycleId?: string;
 }
 
-export function useProject({ projectId, cycleId }: UseProjectOptions) {
-  const itemsQ = useProjectItems(projectId, cycleId);
+export function useProject({ projectId }: UseProjectOptions) {
+  const itemsQ = useProjectItems(projectId);
   const detailsQ = useProjectDetails(projectId);
   const statesQ = useProjectStates(projectId);
-  const cyclesQ = useCycles(projectId);
   const labelsQ = useLabelsQuery(projectId, 'work_item');
 
   const createMut = useCreateItem();
@@ -568,15 +562,6 @@ export function useProject({ projectId, cycleId }: UseProjectOptions) {
     return [...DEFAULT_STATES];
   }, [statesQ.data, itemsQ.data, projectColumns]);
   const members = useMemo(() => (project?.members ?? []) as ProjectMember[], [project?.members]);
-  const cycles = useMemo(() => {
-    if (!cyclesQ.data) return [] as Cycle[];
-    if (Array.isArray(cyclesQ.data)) return cyclesQ.data as Cycle[];
-    return (cyclesQ.data.cycles ?? []) as Cycle[];
-  }, [cyclesQ.data]);
-  const currentCycle = useMemo(
-    () => (cycleId ? cycles.find((cycle) => cycle.id === cycleId) : undefined),
-    [cycles, cycleId],
-  );
   const labels = useMemo(() => (labelsQ.data ?? []) as Label[], [labelsQ.data]);
 
   const labelMap = useMemo(() => {
@@ -595,8 +580,6 @@ export function useProject({ projectId, cycleId }: UseProjectOptions) {
     columns,
     project,
     members,
-    cycles,
-    currentCycle,
     labels,
     labelMap,
     status: {
@@ -728,20 +711,6 @@ export function useProject({ projectId, cycleId }: UseProjectOptions) {
     [bulkMutAsync, projectId],
   );
 
-  const removeFromCycleAction = useCallback(
-    (targetId: string, callback?: () => void) => {
-      updateMutAsync({ id: targetId, workItemId: targetId, projectId, cycleId: null })
-        .then(() => {
-          toast.success('Work item removed from cycle', { id: 'work-item-action' });
-          callback?.();
-        })
-        .catch((err: any) => {
-          toast.error(err?.message || 'Failed to remove work item from cycle', { id: 'work-item-action' });
-        });
-    },
-    [updateMutAsync, projectId]
-  );
-
   const actions = {
     create: createAction,
     update: updateAction,
@@ -772,8 +741,6 @@ export function useProject({ projectId, cycleId }: UseProjectOptions) {
     reorderWorkItem: reorderAction,
     createSubWorkItem: createSubItemAction,
 
-    removeFromCycle: removeFromCycleAction,
-
     assignItemsToDate: assignItemsToDateAction,
     assignWorkItemsToDate: assignItemsToDateAction,
 
@@ -798,7 +765,6 @@ export const createWorkItemFormSchema = z.object({
   priority: prioritySchema,
   dueDate: z.string(),
   startDate: z.string(),
-  cycleId: z.string().nullable(),
   parentId: z.string().nullable().optional(),
   parentItemId: z.string().nullable().optional(),
   parentWorkItemId: z.string().nullable().optional(),
@@ -816,14 +782,13 @@ export type CreateItemFormData = CreateWorkItemFormData;
 
 export interface UseWorkItemFormOptions {
   defaultColumnId?: string;
-  defaultCycleId?: string | null;
   initialValues?: Partial<CreateWorkItemFormData>;
 }
 
 export type UseItemFormOptions = UseWorkItemFormOptions;
 
 export function useWorkItemForm(options: UseWorkItemFormOptions = {}) {
-  const { defaultColumnId = 'backlog', defaultCycleId = null, initialValues } = options;
+  const { defaultColumnId = 'backlog', initialValues } = options;
 
   const defaultValues: CreateWorkItemFormData = useMemo(
     () => ({
@@ -833,7 +798,6 @@ export function useWorkItemForm(options: UseWorkItemFormOptions = {}) {
       priority: (initialValues?.priority as Priority) ?? 'none',
       dueDate: initialValues?.dueDate ?? '',
       startDate: initialValues?.startDate ?? '',
-      cycleId: initialValues?.cycleId ?? defaultCycleId,
       parentId: initialValues?.parentId ?? initialValues?.parentItemId ?? initialValues?.parentWorkItemId ?? null,
       parentWorkItemId: initialValues?.parentWorkItemId ?? initialValues?.parentItemId ?? initialValues?.parentId ?? null,
       parentItemId: initialValues?.parentItemId ?? initialValues?.parentId ?? initialValues?.parentWorkItemId ?? null,
@@ -848,7 +812,7 @@ export function useWorkItemForm(options: UseWorkItemFormOptions = {}) {
       },
       createMore: initialValues?.createMore ?? false,
     }),
-    [defaultColumnId, defaultCycleId, initialValues]
+    [defaultColumnId, initialValues]
   );
 
   const form = useForm<CreateWorkItemFormData>({
@@ -877,11 +841,6 @@ export function useWorkItemForm(options: UseWorkItemFormOptions = {}) {
 
   const setStartDate = useCallback(
     (date: string) => setValue('startDate', date, { shouldDirty: true }),
-    [setValue]
-  );
-
-  const setCycleId = useCallback(
-    (cId: string | null) => setValue('cycleId', cId, { shouldDirty: true }),
     [setValue]
   );
 
@@ -938,7 +897,6 @@ export function useWorkItemForm(options: UseWorkItemFormOptions = {}) {
         priority: (draft.priority as Priority) ?? 'none',
         dueDate: draft.dueDate ?? '',
         startDate: draft.startDate ?? '',
-        cycleId: draft.cycleId ?? defaultCycleId,
         parentId: parent,
         parentWorkItemId: parent,
         parentItemId: parent,
@@ -953,7 +911,7 @@ export function useWorkItemForm(options: UseWorkItemFormOptions = {}) {
         createMore: false,
       });
     },
-    [reset, defaultColumnId, defaultCycleId]
+    [reset, defaultColumnId]
   );
 
   return {
@@ -973,7 +931,6 @@ export function useWorkItemForm(options: UseWorkItemFormOptions = {}) {
     setPriority,
     setDueDate,
     setStartDate,
-    setCycleId,
     setParentId,
     setParentWorkItemId: setParentId,
     setParentItemId: setParentId,

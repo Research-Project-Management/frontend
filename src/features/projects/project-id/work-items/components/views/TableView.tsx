@@ -17,7 +17,6 @@ import {
   FileText,
   SlidersHorizontal,
   Search,
-  RotateCcw,
   MoreHorizontal,
   Pencil,
   Copy,
@@ -53,21 +52,18 @@ import {
   MediumPriorityBoxIcon,
   LowPriorityBoxIcon,
   NonePriorityBoxIcon,
-  CycleIcon,
 } from '@/shared/components/icons';
 import { ItemHelpers, resolveColumnId } from '../../utils/work-item.utils';
 import {
   MemberPopover,
   SingleDatePopover,
   PriorityPopover,
-  CyclePopover,
   LabelPopover,
   AvatarStack,
 } from '../modals/Popovers';
 import type {
   Item,
   Column as ColumnType,
-  Cycle,
   ProjectMember,
   Priority,
   DisplayOptions,
@@ -118,7 +114,6 @@ export interface TableViewProps extends BaseWorkItemViewProps, WorkItemCardHandl
   projectStates?: ColumnType[];
   projectId?: string;
   workspaceId?: string;
-  cycles?: Cycle[];
   members?: ProjectMember[];
   selectedIds?: string[];
   onToggleSelect?: (id: string) => void;
@@ -569,7 +564,6 @@ export function TableRowItem({
   onDuplicateCard,
   onUpdateCard,
   members = [],
-  cycles = [],
   projectId = '',
   workspaceId = '',
   isReadOnly = false,
@@ -586,7 +580,6 @@ export function TableRowItem({
   onDuplicateCard: (item: Item) => void;
   onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
   members?: ProjectMember[];
-  cycles?: Cycle[];
   projectId?: string;
   workspaceId?: string;
   isReadOnly?: boolean;
@@ -662,7 +655,6 @@ export function TableRowItem({
   const [dueDateOpen, setDueDateOpen] = useState(false);
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [labelOpen, setLabelOpen] = useState(false);
-  const [cycleOpen, setCycleOpen] = useState(false);
 
   // Active properties list
   const activeProperties = useMemo(
@@ -1298,7 +1290,6 @@ export function TableView({
   displayOptions,
   projectId = '',
   workspaceId = '',
-  cycles = [],
   members = [],
   onAddCard,
   onEditCard,
@@ -1705,7 +1696,6 @@ export function TableView({
                             onDuplicateCard={onDuplicateCard}
                             onUpdateCard={onUpdateCard}
                             members={members}
-                            cycles={cycles}
                             projectId={projectId}
                             workspaceId={workspaceId}
                             isReadOnly={isReadOnly}
@@ -1744,7 +1734,6 @@ export function TableView({
                   onDuplicateCard={onDuplicateCard}
                   onUpdateCard={onUpdateCard}
                   members={members}
-                  cycles={cycles}
                   projectId={projectId}
                   workspaceId={workspaceId}
                   isReadOnly={isReadOnly}

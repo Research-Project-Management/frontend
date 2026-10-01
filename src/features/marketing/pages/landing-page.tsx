@@ -18,7 +18,8 @@ import {
 
 import Navbar from '../components/navbar';
 import Footer from '../components/footer';
-import { hasAuthToken } from '@/shared/lib/token-storage';
+import { hasAuthToken, getAuthToken } from '@/shared/lib/token-storage';
+import { isTokenValid } from '@/shared/utils/auth-token.util';
 
 // ─── Animation variants ────────────────────────────────────────────────────────
 
@@ -103,7 +104,7 @@ export default function LandingPage() {
     setMounted(true);
   }, []);
 
-  const isAuthenticated = mounted && Boolean(user || (typeof window !== 'undefined' && hasAuthToken()));
+  const isAuthenticated = mounted && Boolean(user || (typeof window !== 'undefined' && hasAuthToken() && isTokenValid(getAuthToken())));
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -125,7 +126,7 @@ export default function LandingPage() {
               variants={makeFadeDelayed(0)}
               initial='hidden'
               animate='visible'
-              className='inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground'
+              className='inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-11 font-medium tracking-wide text-muted-foreground'
             >
               <span className='w-1.5 h-1.5 rounded-full bg-primary/60' aria-hidden='true' />
               Beta
@@ -162,7 +163,7 @@ export default function LandingPage() {
               className='flex flex-col sm:flex-row gap-3 justify-center pt-2'
             >
               <Link
-                href={isAuthenticated ? '/home' : '/login'}
+                href={isAuthenticated ? '/home' : '/register'}
                 className='group flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer shrink-0'
               >
                 Start for free
@@ -170,7 +171,7 @@ export default function LandingPage() {
               </Link>
               <Link
                 href={isAuthenticated ? '/home' : '/login'}
-                className='flex h-9 items-center justify-center rounded-md border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer shrink-0'
+                className='flex h-9 items-center justify-center rounded-md border border-border bg-background shadow-2xs px-5 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer shrink-0'
               >
                 Sign in
               </Link>
@@ -198,6 +199,7 @@ export default function LandingPage() {
 
       {/* ── Features ── */}
       <section
+        id='features'
         ref={featuresReveal.ref}
         className='flux-section border-t border-border'
         aria-labelledby='features-heading'
@@ -222,7 +224,7 @@ export default function LandingPage() {
             variants={staggerContainer}
             initial='hidden'
             animate={featuresReveal.isInView ? 'visible' : 'hidden'}
-            className='grid overflow-hidden rounded-lg border border-border bg-border md:grid-cols-2 lg:grid-cols-3'
+            className='grid gap-px overflow-hidden rounded-lg border border-border bg-border md:grid-cols-2 lg:grid-cols-3'
           >
             <FeatureCard
               icon={<FileText className='w-5 h-5 shrink-0' aria-hidden='true' />}
@@ -260,6 +262,7 @@ export default function LandingPage() {
 
       {/* ── How it works ── */}
       <section
+        id='how-it-works'
         ref={stepsReveal.ref}
         className='flux-section border-t border-border bg-secondary/40'
         aria-labelledby='how-heading'
@@ -353,7 +356,7 @@ export default function LandingPage() {
             </p>
             <div className='flex flex-col sm:flex-row gap-3 justify-center pt-2'>
               <Link
-                href={isAuthenticated ? '/home' : '/login'}
+                href={isAuthenticated ? '/home' : '/register'}
                 className='group flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer shrink-0'
               >
                 Get started
@@ -363,7 +366,7 @@ export default function LandingPage() {
                 href='https://github.com/Research-Project-TDTU'
                 target='_blank'
                 rel='noopener noreferrer'
-                className='flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
+                className='flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-background shadow-2xs px-5 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer shrink-0'
               >
                 View on GitHub
                 <ArrowUpRight className='size-3.5 shrink-0' aria-hidden='true' />
@@ -392,13 +395,13 @@ function FeatureCard({
   return (
     <motion.div
       variants={cardVariant}
-      className='group space-y-3 bg-card p-6 transition-colors hover:bg-muted lg:p-8'
+      className='group space-y-3 bg-card p-6 transition-colors hover:bg-muted/80 lg:p-8'
     >
       <div className='inline-flex text-muted-foreground transition-transform duration-300 ease-out group-hover:scale-110 origin-left'>
         {icon}
       </div>
-      <h3 className='text-base font-semibold'>{title}</h3>
-      <p className='text-base text-muted-foreground leading-relaxed'>
+      <h3 className='text-base font-semibold text-foreground'>{title}</h3>
+      <p className='text-sm text-muted-foreground leading-relaxed'>
         {description}
       </p>
     </motion.div>

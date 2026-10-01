@@ -14,9 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from "@/shared/components/ui";
 import { Badge } from "@/shared/components/ui";
-import { Separator } from "@/shared/components/ui";
-import { copyToClipboard } from "@/shared/lib/utils";
-import { toast } from 'sonner';
+import { useReaderClipboard } from '../../hooks/use-reader-feedback';
 import { cleanDoi as sanitizeDoi, normalizeAuthors } from '../../utils/reader.util';
 import type { ReaderDocument } from '../../types/reader.types';
 
@@ -25,6 +23,7 @@ interface DocInfoPanelProps {
 }
 
 export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
+  const { copy } = useReaderClipboard();
   const [copiedDoi, setCopiedDoi] = useState(false);
   const [copiedTitle, setCopiedTitle] = useState(false);
   const [isAbstractExpanded, setIsAbstractExpanded] = useState(false);
@@ -35,9 +34,8 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
 
   const handleCopyDoi = async () => {
     if (!cleanDoi) return;
-    const ok = await copyToClipboard(cleanDoi);
+    const ok = await copy(cleanDoi, 'DOI');
     if (ok) {
-      toast.success('DOI copied to clipboard', { id: 'reader-clipboard' });
       setCopiedDoi(true);
       setTimeout(() => setCopiedDoi(false), 2000);
     }
@@ -45,9 +43,8 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
 
   const handleCopyTitle = async () => {
     if (!paper.title) return;
-    const ok = await copyToClipboard(paper.title);
+    const ok = await copy(paper.title, 'Title');
     if (ok) {
-      toast.success('Title copied to clipboard', { id: 'reader-clipboard' });
       setCopiedTitle(true);
       setTimeout(() => setCopiedTitle(false), 2000);
     }

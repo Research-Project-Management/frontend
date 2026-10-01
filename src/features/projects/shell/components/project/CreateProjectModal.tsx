@@ -309,9 +309,6 @@ export function CreateProjectModal({
           }
           setStep(2);
         },
-        onError: (err: any) => {
-          toast.error(err?.message || 'Failed to create project');
-        },
       }
     );
   };

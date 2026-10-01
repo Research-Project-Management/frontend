@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Copy, Check, ChevronDown, Download, ShieldAlert, ExternalLink, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from "@/shared/lib/utils";
@@ -17,48 +17,33 @@ import {
   TooltipContent,
   TooltipProvider,
 } from "@/shared/components/ui";
-import { useCslCitation } from '../../data';
+import { useCslCitation, useCitationStyles } from '../../data';
 import type { Item, CslStyle } from '../../types/library.types';
-import { getPaperCitationKey, cleanDoi } from '../../domain';
+import { getPaperCitationKey, getCleanStyleLabel } from '../../domain';
+export { getCleanStyleLabel };
 import CslStyleSearchModal from '../modals/CslStyleSearchModal';
+import DOMPurify from 'dompurify';
 
 export interface CiteSectionProps {
   paper: Item;
   scopeId?: string;
   projectId?: string;
-  workspaceId?: string;
   hideHeader?: boolean;
 }
 
-export type CitationFormat =
-  | 'apa'
-  | 'ieee'
-  | 'mla'
-  | 'bibtex'
-  | 'chicago'
-  | 'harvard'
-  | 'nature'
-  | 'vancouver'
-  | 'ris'
-  | (string & {});
+export type CitationFormat = string;
 
-export const DEFAULT_FORMATS: Array<{ id: CitationFormat; label: string }> = [
-  { id: 'apa', label: 'APA' },
+// Standard fallback constants for backward compatibility
+export const DEFAULT_FORMATS = [
+  { id: 'apa-7th', label: 'APA' },
   { id: 'ieee', label: 'IEEE' },
-  { id: 'mla', label: 'MLA' },
+  { id: 'mla-9th', label: 'MLA' },
   { id: 'bibtex', label: 'BibTeX' },
-  { id: 'chicago', label: 'Chicago' },
-  { id: 'harvard', label: 'Harvard' },
-  { id: 'nature', label: 'Nature' },
-  { id: 'vancouver', label: 'Vancouver' },
-  { id: 'ris', label: 'RIS' },
 ];
-
 export const ALL_FORMATS = DEFAULT_FORMATS;
-
-// Fallback exports for backward compatibility
-export const PRIMARY_FORMATS = DEFAULT_FORMATS.slice(0, 4);
-export const MORE_FORMATS = DEFAULT_FORMATS.slice(4);
+export const PRIMARY_FORMATS = DEFAULT_FORMATS;
+export const MORE_FORMATS = DEFAULT_FORMATS;
+export const MORE_POPULAR_STYLES = DEFAULT_FORMATS;
 
 /** Robust clipboard copy — tries modern Clipboard API, falls back to execCommand */
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -110,11 +95,9 @@ function downloadFile(filename: string, content: string, mimeType = 'text/plain;
       URL.revokeObjectURL(url);
     }, 150);
   } catch {
-    toast.error('Could not download file', { id: 'library-clipboard' });
+    toast.error('Could not download file', { id: 'library-download' });
   }
 }
-
-import DOMPurify from 'dompurify';
 
 /**
  * Robust CSL HTML sanitizer powered by DOMPurify.
@@ -124,73 +107,78 @@ import DOMPurify from 'dompurify';
  */
 function sanitizeCslHtml(html?: string): string {
   if (!html) return '';
-  if (typeof window === 'undefined') return '';
+  if (typeof window === 'undefined') return html;
 
-  const purify = typeof DOMPurify.sanitize === 'function'
-    ? DOMPurify
-    : typeof DOMPurify === 'function'
-      ? (DOMPurify as unknown as (win: Window) => typeof DOMPurify)(window)
-      : null;
+  try {
+    const rawDOMPurify = (DOMPurify as any)?.default || DOMPurify;
+    const purify = typeof rawDOMPurify?.sanitize === 'function'
+      ? rawDOMPurify
+      : typeof rawDOMPurify === 'function'
+        ? rawDOMPurify(window)
+        : (typeof (window as any)?.DOMPurify?.sanitize === 'function' ? (window as any).DOMPurify : null);
 
-  if (!purify || typeof purify.sanitize !== 'function') return '';
+    if (purify && typeof purify.sanitize === 'function') {
+      const sanitized = purify.sanitize(html, {
+        ALLOWED_TAGS: ['i', 'b', 'em', 'strong', 'span', 'a', 'div', 'p', 'sub', 'sup'],
+        ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
+      });
+      if (sanitized) return sanitized;
+    }
+  } catch {
+    // If sanitization fails, return original html/text rather than blanking out citation
+  }
 
-  return purify.sanitize(html, {
-    ALLOWED_TAGS: ['i', 'b', 'em', 'strong', 'span', 'a', 'div', 'p', 'sub', 'sup'],
-    ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
-  });
+  return html;
 }
 
-export default function CiteSection({ paper, scopeId, projectId, workspaceId }: CiteSectionProps) {
-  const [activeFormat, setActiveFormat] = useState<CitationFormat>('apa');
+
+export default function CiteSection({ paper, scopeId, projectId }: CiteSectionProps) {
+  const [activeFormat, setActiveFormat] = useState<CitationFormat>('apa-7th');
   const [copied, setCopied] = useState(false);
   const [copiedInText, setCopiedInText] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [searchedStyle, setSearchedStyle] = useState<{ id: string; label: string } | null>(null);
 
-  // Recently selected/installed custom styles
-  const [customFormats, setCustomFormats] = useState<Array<{ id: CitationFormat; label: string }>>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const stored = localStorage.getItem('flux_custom_citation_formats');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch {
-      // ignore
+  const activeScopeId = scopeId || projectId || (paper as any)?.projectId || 'user';
+
+  // 1. Backend CSL style registry is the single source of truth for styles
+  const { data: serverStyles = [] } = useCitationStyles(activeScopeId);
+
+  const primaryStyles = useMemo(() => {
+    if (serverStyles && serverStyles.length > 0) {
+      const primaries = serverStyles.filter((s) => s.isPrimary);
+      return primaries.length > 0 ? primaries : serverStyles.slice(0, 4);
     }
-    return [];
-  });
+    return [
+      { id: 'apa-7th', name: 'American Psychological Association 7th edition', shortTitle: 'APA' },
+      { id: 'ieee', name: 'IEEE', shortTitle: 'IEEE' },
+      { id: 'mla-9th', name: 'Modern Language Association 9th edition', shortTitle: 'MLA' },
+      { id: 'bibtex', name: 'BibTeX', shortTitle: 'BibTeX' },
+    ];
+  }, [serverStyles]);
 
-  const allFormats = useMemo(() => {
-    return [...DEFAULT_FORMATS, ...customFormats];
-  }, [customFormats]);
+  const dropdownStyles = useMemo(() => {
+    if (serverStyles && serverStyles.length > 0) {
+      const secondaries = serverStyles.filter((s) => !s.isPrimary);
+      return secondaries.length > 0 ? secondaries : serverStyles.slice(4);
+    }
+    return [
+      { id: 'chicago', name: 'Chicago Manual of Style (Author-Date)', shortTitle: 'Chicago' },
+      { id: 'harvard', name: 'Harvard Reference Format 1 (Author-Date)', shortTitle: 'Harvard' },
+      { id: 'nature', name: 'Nature', shortTitle: 'Nature' },
+      { id: 'vancouver', name: 'Vancouver', shortTitle: 'Vancouver' },
+      { id: 'ris', name: 'Research Information Systems (RIS)', shortTitle: 'RIS' },
+    ];
+  }, [serverStyles]);
 
   const handleSelectSearchedStyle = useCallback((style: { id: string; label: string }) => {
-    const inDefault = DEFAULT_FORMATS.some((f) => f.id === style.id);
-    if (!inDefault) {
-      setCustomFormats((prev) => {
-        const filtered = prev.filter((f) => f.id !== style.id);
-        const updated = [{ id: style.id, label: style.label }, ...filtered].slice(0, 10);
-        try {
-          localStorage.setItem('flux_custom_citation_formats', JSON.stringify(updated));
-        } catch {
-          // ignore
-        }
-        return updated;
-      });
-    }
+    setSearchedStyle(style);
     setActiveFormat(style.id);
   }, []);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const measureRef = useRef<HTMLDivElement>(null);
-  const [visibleCount, setVisibleCount] = useState<number>(4);
-
-  const activeScopeId = scopeId || projectId || (paper as any)?.projectId || workspaceId || 'user';
   const isExportFormat = activeFormat === 'bibtex' || activeFormat === 'ris';
 
-  // All citation formats are rendered by the backend CSL engine.
-  // This component is a thin display/copy layer with no client-side formatting.
+  // 2. Backend CSL engine is the single source of truth for formatted output
   const currentCslStyle = activeFormat as CslStyle;
 
   const { data: cslData, isLoading } = useCslCitation(
@@ -204,72 +192,38 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
     return (rawCiteKey || 'ref').replace(/[^a-zA-Z0-9_-]/g, '');
   }, [rawCiteKey]);
 
-  const rawDoi = String(paper?.doi || '').trim();
-  const doi = useMemo(() => (rawDoi ? cleanDoi(rawDoi) : ''), [rawDoi]);
-  void doi; // retained for potential future use in download filename
+  // Top 3 primary anchors from backend (APA, IEEE, MLA)
+  const top3Styles = primaryStyles.slice(0, 3);
+  const isTop3Selected = top3Styles.some(
+    (s) => s.id === activeFormat || (s.id.startsWith('apa') && activeFormat.startsWith('apa')) || (s.id.startsWith('mla') && activeFormat.startsWith('mla')),
+  );
 
-  const updateOverflow = useCallback(() => {
-    const container = containerRef.current;
-    const measure = measureRef.current;
-    if (!container || !measure) return;
+  // Slot 4: Either the active style (if non-core style) or the 4th primary style (BibTeX)
+  const defaultSlot4 = primaryStyles[3] || { id: 'bibtex', name: 'BibTeX', shortTitle: 'BibTeX' };
+  const slot4Id = isTop3Selected ? defaultSlot4.id : activeFormat;
+  const slot4Label = useMemo(() => {
+    if (isTop3Selected) return defaultSlot4.shortTitle || defaultSlot4.name;
+    if (searchedStyle?.id === activeFormat) return searchedStyle.label;
+    const found = serverStyles.find((s) => s.id === activeFormat);
+    return found?.shortTitle || found?.name || getCleanStyleLabel(activeFormat);
+  }, [isTop3Selected, defaultSlot4, searchedStyle, activeFormat, serverStyles]);
 
-    const availableWidth = container.clientWidth - 8;
-    if (availableWidth <= 0) return;
+  const barItems = [
+    ...top3Styles.map((s) => ({
+      id: s.id,
+      label: s.shortTitle || s.name,
+      isSelected: activeFormat === s.id || (s.id.startsWith('apa') && activeFormat.startsWith('apa')) || (s.id.startsWith('mla') && activeFormat.startsWith('mla')),
+    })),
+    {
+      id: slot4Id,
+      label: slot4Label,
+      isSelected: !isTop3Selected,
+    },
+  ];
 
-    const children = Array.from(measure.children) as HTMLElement[];
-    if (children.length < allFormats.length + 1) return;
-
-    const itemWidths = children.slice(0, allFormats.length).map((el) => el.offsetWidth);
-    const moreBtnEl = children[allFormats.length];
-    const moreBtnWidth = moreBtnEl ? moreBtnEl.offsetWidth : 60;
-    const gap = 4;
-
-    let totalAllWidth = 0;
-    for (let i = 0; i < itemWidths.length; i++) {
-      totalAllWidth += itemWidths[i] + (i > 0 ? gap : 0);
-    }
-
-    if (totalAllWidth <= availableWidth) {
-      setVisibleCount(allFormats.length);
-      return;
-    }
-
-    let accumulatedWidth = 0;
-    let count = 0;
-
-    for (let i = 0; i < itemWidths.length; i++) {
-      const nextWidth = accumulatedWidth + itemWidths[i] + (i > 0 ? gap : 0);
-      const widthWithMore = nextWidth + gap + moreBtnWidth;
-
-      if (widthWithMore <= availableWidth) {
-        accumulatedWidth = nextWidth;
-        count++;
-      } else {
-        break;
-      }
-    }
-
-    setVisibleCount(Math.max(1, count));
-  }, [allFormats.length]);
-
-  useEffect(() => {
-    updateOverflow();
-
-    const container = containerRef.current;
-    if (!container) return;
-
-    const observer = new ResizeObserver(() => {
-      updateOverflow();
-    });
-
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [updateOverflow]);
-
-  const primaryFormats = useMemo(() => allFormats.slice(0, visibleCount), [allFormats, visibleCount]);
-  const moreFormats = useMemo(() => allFormats.slice(visibleCount), [allFormats, visibleCount]);
-  const isMoreFormatActive = moreFormats.some((f) => f.id === activeFormat);
-  const activeMoreFormat = moreFormats.find((f) => f.id === activeFormat);
+  const rawHtml = cslData?.bibliographyHtml || cslData?.html || cslData?.bibliography || '';
+  const sanitizedHtml = useMemo(() => sanitizeCslHtml(rawHtml), [rawHtml]);
+  const inTextPreview = cslData?.inText || '';
 
   const getContentToCopy = useCallback(() => {
     return cslData?.bibliography || '';
@@ -277,6 +231,7 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
 
   const handleCopy = useCallback(async () => {
     const text = getContentToCopy();
+    if (!text) return;
     const success = await copyToClipboard(text);
     if (success) {
       setCopied(true);
@@ -288,7 +243,7 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
   }, [getContentToCopy]);
 
   const handleCopyInText = useCallback(async () => {
-    const text = cslData?.inText || '';
+    const text = inTextPreview;
     if (!text) return;
     const success = await copyToClipboard(text);
     if (success) {
@@ -298,52 +253,24 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
     } else {
       toast.error('Failed to copy', { id: 'library-clipboard' });
     }
-  }, [cslData?.inText]);
+  }, [inTextPreview]);
 
   const handleDownload = useCallback(() => {
-    const ext = activeFormat === 'bibtex' ? 'bib' : activeFormat === 'ris' ? 'ris' : 'txt';
     const content = getContentToCopy();
+    if (!content) return;
+    const ext = activeFormat === 'bibtex' ? 'bib' : activeFormat === 'ris' ? 'ris' : 'txt';
     const filename = `${citeKey || 'reference'}.${ext}`;
     downloadFile(filename, content);
-    toast.success(`Exported ${filename}`, { id: 'library-clipboard' });
+    toast.success(`Exported ${filename}`, { id: 'library-export' });
   }, [citeKey, activeFormat, getContentToCopy]);
-
-  const rawHtml =
-    cslData?.bibliographyHtml ||
-    cslData?.html ||
-    cslData?.bibliography ||
-    '';
-
-  const sanitizedHtml = useMemo(() => sanitizeCslHtml(rawHtml), [rawHtml]);
-  const inTextPreview = cslData?.inText || '';
 
   return (
     <>
-      {/* Hidden strip to measure exact DOM pixel widths for responsive overflow */}
-      <div
-        ref={measureRef}
-        aria-hidden="true"
-        className="absolute -top-[9999px] left-0 flex items-center gap-1 text-xs opacity-0 pointer-events-none select-none invisible"
-      >
-        {allFormats.map((fmt) => (
-          <span
-            key={fmt.id}
-            className="h-6 px-2 text-xs rounded font-medium inline-block shrink-0"
-          >
-            {fmt.label}
-          </span>
-        ))}
-        <span className="h-6 px-2 text-xs rounded font-medium inline-flex items-center gap-1 shrink-0">
-          <span>More</span>
-          <ChevronDown className="size-3 shrink-0" />
-        </span>
-      </div>
-
       <div className="flex flex-col gap-2 min-w-0 font-sans select-none">
 
       {/* ⚠️ Citation Guard: Retraction Notice (Zotero Style) */}
       {(paper.isRetracted || (paper as any).retractionStatus === 'retracted') && (
-        <div className="p-2.5 rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-xs flex items-start gap-2.5 select-none shrink-0 animate-in fade-in duration-200">
+        <div className="p-2 rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-xs flex items-start gap-2 select-none shrink-0 animate-in fade-in duration-200">
           <ShieldAlert className="size-4 text-destructive shrink-0 mt-0.5" strokeWidth={1.5} />
           <div className="flex-1 space-y-1 min-w-0">
             <span className="font-semibold text-destructive block text-12">
@@ -367,53 +294,43 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
         </div>
       )}
 
-      {/* Dynamic Adaptive Format Selection Bar */}
-      <div
-        ref={containerRef}
-        className="relative flex items-center gap-1 text-xs w-full overflow-hidden shrink-0"
-      >
-        {primaryFormats.map((fmt) => {
-          const isSelected = activeFormat === fmt.id;
-          return (
-            <button
-              key={fmt.id}
-              type="button"
-              onClick={() => setActiveFormat(fmt.id)}
-              className={cn(
-                'h-6 px-2 text-xs rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none font-medium shrink-0',
-                isSelected
-                  ? 'bg-muted text-foreground font-semibold'
-                  : 'text-foreground hover:bg-muted',
-              )}
-            >
-              {fmt.label}
-            </button>
-          );
-        })}
+      {/* 4 Standard/Active Slots + 1 Fixed "More ▾" Button */}
+      <div className="flex items-center gap-1 text-xs w-full overflow-hidden shrink-0 select-none">
+        {barItems.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setActiveFormat(item.id)}
+            className={cn(
+              'h-6 px-2 text-xs rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium shrink-0 transition-colors',
+              item.isSelected
+                ? 'bg-muted text-foreground font-semibold'
+                : 'text-foreground hover:bg-muted',
+            )}
+          >
+            {item.label}
+          </button>
+        ))}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
               className={cn(
-                'h-6 px-2 text-xs rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none font-medium inline-flex items-center gap-1 shrink-0',
-                isMoreFormatActive
-                  ? 'bg-muted text-foreground font-semibold'
-                  : 'text-foreground hover:bg-muted',
+                'h-6 px-2 text-xs rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium inline-flex items-center gap-1 shrink-0 transition-colors',
+                'text-foreground hover:bg-muted',
               )}
             >
-              <span className="truncate max-w-[80px]">
-                {activeMoreFormat ? activeMoreFormat.label : 'More'}
-              </span>
+              <span>More</span>
               <ChevronDown className="size-3 text-foreground shrink-0" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
             sideOffset={4}
-            className="w-56 p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200 text-xs z-50 max-h-72 overflow-y-auto"
+            className="w-52 p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200 text-xs z-50 max-h-72 overflow-y-auto"
           >
-            {moreFormats.map((fmt) => {
+            {dropdownStyles.map((fmt) => {
               const isSelected = activeFormat === fmt.id;
               return (
                 <DropdownMenuItem
@@ -422,20 +339,17 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
                   onClick={() => setActiveFormat(fmt.id)}
                   className={cn(
                     'h-7.5 px-2 text-xs cursor-pointer rounded-md hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary flex items-center justify-between',
-                    isSelected
-                      ? 'font-medium text-foreground bg-muted'
-                      : 'text-foreground',
+                    isSelected ? 'font-medium text-foreground bg-muted' : 'text-foreground',
                   )}
                 >
-                  <span className="truncate pr-2">{fmt.label}</span>
-                  {isSelected && (
-                    <Check className="size-3 text-foreground shrink-0" />
-                  )}
+                  <span className="truncate pr-2">{fmt.shortTitle || fmt.name}</span>
+                  {isSelected && <Check className="size-3 text-foreground shrink-0" />}
                 </DropdownMenuItem>
               );
             })}
 
-            {moreFormats.length > 0 && <DropdownMenuSeparator className="my-1 bg-border" />}
+
+            <DropdownMenuSeparator className="my-1 bg-border" />
 
             <DropdownMenuItem
               onSelect={() => setIsSearchModalOpen(true)}
@@ -443,7 +357,7 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
               className="h-7.5 px-2 text-xs cursor-pointer rounded-md hover:bg-muted text-foreground font-medium flex items-center gap-1.5"
             >
               <Search className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
-              <span>Search 10,000+ Styles...</span>
+              <span>Search more styles...</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -452,10 +366,13 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
 
       {/* In-Text Citation Preview Row (Academic styles only) */}
       {!isExportFormat && inTextPreview && (
-        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-md border border-border bg-transparent text-xs">
+        <div
+          tabIndex={0}
+          className="flex items-center justify-between px-2 py-0.5 rounded-md border border-border bg-transparent hover:border-border/80 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors text-12 cursor-text"
+        >
           <div className="flex items-center gap-1.5 min-w-0 pr-2">
-            <span className="text-muted-foreground text-11 shrink-0 font-medium">In-text</span>
-            <span className="font-mono text-11 text-foreground break-words leading-snug select-text">
+            <span className="text-muted-foreground text-12 shrink-0 font-medium">In-text:</span>
+            <span className="font-mono text-12 text-foreground break-words leading-snug select-text">
               {inTextPreview}
             </span>
           </div>
@@ -475,7 +392,7 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
                   )}
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={4} className="text-xs px-2 py-1">
+              <TooltipContent side="top" sideOffset={4} className="text-12 px-2 py-1">
                 Copy in-text citation
               </TooltipContent>
             </Tooltip>
@@ -484,11 +401,14 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
       )}
 
       {/* Citation Box with Hover-Only Action Icons & Full Width Text */}
-      <div className="group relative rounded-md border border-border p-2.5 bg-transparent min-h-[80px] max-h-56 overflow-y-auto text-xs leading-relaxed select-text font-sans">
+      <div
+        tabIndex={0}
+        className="group relative rounded-md border border-border bg-transparent p-2 min-h-[50px] max-h-56 overflow-y-auto text-12 leading-relaxed select-text font-sans hover:border-border/80 focus:border-primary focus:ring-1 focus:ring-primary focus-within:border-primary focus-within:ring-1 focus-within:ring-primary focus:outline-none transition-colors cursor-text"
+      >
         <TooltipProvider delayDuration={700}>
           <div
             className={cn(
-              'absolute top-2 right-2 flex items-center gap-1.5 z-10 select-none transition-opacity duration-150',
+              'absolute top-1.5 right-1.5 flex items-center gap-1 z-10 select-none transition-opacity duration-150',
               copied
                 ? 'opacity-100'
                 : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto',
@@ -499,13 +419,14 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
                 <button
                   type="button"
                   onClick={handleDownload}
-                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
+                  disabled={!getContentToCopy()}
+                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                   aria-label="Download citation"
                 >
                   <Download className="size-3.5 text-foreground shrink-0" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={4} className="text-xs px-2 py-1">
+              <TooltipContent side="top" sideOffset={4} className="text-12 px-2 py-1">
                 Download citation
               </TooltipContent>
             </Tooltip>
@@ -515,7 +436,8 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
+                  disabled={!getContentToCopy()}
+                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                   aria-label="Copy citation"
                 >
                   {copied ? (
@@ -525,7 +447,7 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
                   )}
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={4} className="text-xs px-2 py-1">
+              <TooltipContent side="top" sideOffset={4} className="text-12 px-2 py-1">
                 Copy citation
               </TooltipContent>
             </Tooltip>
@@ -533,25 +455,42 @@ export default function CiteSection({ paper, scopeId, projectId, workspaceId }: 
         </TooltipProvider>
 
         <div>
-          {activeFormat === 'bibtex' || activeFormat === 'ris' ? (
-            <pre className="font-mono text-xs text-foreground whitespace-pre select-text overflow-x-auto leading-relaxed">
+          {isLoading && !cslData ? (
+            <div className="space-y-1.5 py-1 select-none">
+              <div className="h-3.5 bg-muted/60 rounded animate-pulse w-full" />
+              <div className="h-3.5 bg-muted/60 rounded animate-pulse w-4/5" />
+              <div className="h-3.5 bg-muted/60 rounded animate-pulse w-2/3" />
+            </div>
+          ) : isExportFormat ? (
+            <pre className="font-mono text-12 text-foreground whitespace-pre select-text overflow-x-auto leading-relaxed">
               {cslData?.bibliography || ''}
             </pre>
-          ) : (
-            <div>
-              {isLoading && !sanitizedHtml ? (
-                <div className="space-y-1.5 py-1">
-                  <div className="h-3 bg-muted rounded-md animate-pulse w-full" />
-                  <div className="h-3 bg-muted rounded-md animate-pulse w-5/6" />
-                </div>
-              ) : (
-                <div
-                  className="text-foreground leading-relaxed font-sans text-xs break-words select-text [&_i]:italic [&_b]:font-medium [&_a]:underline [&_a]:text-foreground"
-                  dangerouslySetInnerHTML={{
-                    __html: sanitizedHtml,
-                  }}
-                />
+          ) : sanitizedHtml ? (
+            <div
+              className={cn(
+                'text-foreground leading-relaxed font-sans text-12 break-words select-text',
+                // CSL container formatting
+                '[&_.csl-bib-body]:space-y-1.5',
+                // Numeric citation style alignment ([1], [2], 1., etc.)
+                '[&_.csl-entry]:leading-relaxed',
+                '[&_.csl-entry:has(.csl-left-margin)]:flex [&_.csl-entry:has(.csl-left-margin)]:items-baseline [&_.csl-entry:has(.csl-left-margin)]:gap-2',
+                '[&_.csl-left-margin]:shrink-0 [&_.csl-left-margin]:min-w-[1.75rem] [&_.csl-left-margin]:tabular-nums [&_.csl-left-margin]:font-medium [&_.csl-left-margin]:text-foreground',
+                '[&_.csl-right-inline]:flex-1 [&_.csl-right-inline]:min-w-0',
+                // Fallback inline styling for left-margin/right-inline if :has is not triggered
+                '[&:not(:has(.csl-left-margin))_.csl-left-margin]:inline-block [&:not(:has(.csl-left-margin))_.csl-left-margin]:mr-1.5',
+                '[&:not(:has(.csl-left-margin))_.csl-right-inline]:inline',
+                '[&_.csl-indent]:pl-4',
+                // Semantic HTML elements from Citation.js
+                '[&_i]:italic [&_b]:font-medium [&_strong]:font-medium [&_em]:italic',
+                '[&_a]:underline [&_a]:text-foreground [&_a]:break-all hover:[&_a]:text-primary',
               )}
+              dangerouslySetInnerHTML={{
+                __html: sanitizedHtml,
+              }}
+            />
+          ) : (
+            <div className="text-muted-foreground text-xs italic select-none py-1">
+              Citation data unavailable.
             </div>
           )}
         </div>

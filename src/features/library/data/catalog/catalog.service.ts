@@ -460,6 +460,7 @@ export const ItemsService = {
   getItemTypes: (_scopeId?: string) =>
     apiGet<any>(
       `/api/v1/library/item-types`,
+      { rawEnvelope: true },
     ),
 
   getItemType: (_scopeId: string, itemType: string) =>
@@ -929,6 +930,8 @@ export const StateService = {
       isStarred?: boolean;
       readStatus?: 'unread' | 'reading' | 'completed';
       rating?: number;
+      currentPage?: number;
+      scrollPosition?: Record<string, unknown> | Array<unknown> | null;
     },
   ): Promise<ItemStateData> => {
     if (!itemId) throw new Error('itemId is required');

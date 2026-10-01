@@ -142,7 +142,7 @@ export default function Sidebar() {
               aria-label='Ask Flux AI'
               title='Ask Flux AI'
               className={cn(
-                'relative flex size-10 shrink-0 -translate-y-4 items-center justify-center rounded-full bg-background border border-border/80 shadow-md transition-all duration-200 cursor-pointer outline-none hover:scale-105 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary select-none overflow-hidden z-20',
+                'relative flex size-10 shrink-0 -translate-y-4 items-center justify-center rounded-full bg-background border border-border/80 shadow-md transition-[transform,border-color,box-shadow] duration-200 cursor-pointer outline-none hover:scale-105 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary select-none overflow-hidden z-20',
                 isOpen && 'border-foreground/30 shadow-lg'
               )}
             >

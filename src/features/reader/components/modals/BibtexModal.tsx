@@ -2,13 +2,12 @@
 
 import React, { useState } from 'react';
 import { Check, Copy, Download, FileJson, FileText } from 'lucide-react';
-import { useCopyToClipboard } from "@/shared/hooks";
-import { toast } from 'sonner';
+import { useReaderClipboard, useReaderFileDownload } from '../../hooks/use-reader-feedback';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/components/ui";
 import { Button } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { generateCitationKey } from '../../utils/reader.util';
-import { ExportService } from '@/features/library';
+import { readerService } from '../../data/reader.service';
 import type { ReaderDocument } from '../../types/reader.types';
 
 export interface PaperBibtexDialogProps {
@@ -25,7 +24,8 @@ export default function PaperBibtexDialog({
   const [format, setFormat] = useState<'bibtex' | 'ris'>('bibtex');
   const [remoteContent, setRemoteContent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { copy, isCopied } = useCopyToClipboard();
+  const { copy, isCopied } = useReaderClipboard();
+  const { download } = useReaderFileDownload();
 
   React.useEffect(() => {
     if (!open || !paper?.id) {
@@ -35,7 +35,7 @@ export default function PaperBibtexDialog({
     }
     let cancelled = false;
     setIsLoading(true);
-    ExportService.exportLibrary(paper.projectId, {
+    readerService.citations.exportLibrary(paper.projectId, {
       format,
       itemIds: [paper.id],
     })
@@ -61,29 +61,14 @@ export default function PaperBibtexDialog({
 
   const handleCopy = async () => {
     if (!contentString || isLoading) return;
-    const ok = await copy(contentString);
-    if (ok) {
-      toast.success(`${format === 'bibtex' ? 'BibTeX' : 'RIS'} copied to clipboard`, { id: 'reader-clipboard' });
-    }
+    await copy(contentString, format === 'bibtex' ? 'BibTeX' : 'RIS');
   };
 
   const handleDownload = () => {
-    if (!contentString || isLoading) {
-      toast.error('No citation content available to download', { id: 'reader-clipboard' });
-      return;
-    }
+    if (!contentString || isLoading) return;
     const ext = format === 'bibtex' ? 'bib' : 'ris';
     const mime = format === 'bibtex' ? 'application/x-bibtex' : 'application/x-research-info-systems';
-    const blob = new Blob([contentString], { type: `${mime};charset=utf-8` });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${citationKey || 'citation'}.${ext}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success(`Downloaded .${ext} file`, { id: 'reader-clipboard' });
+    download(`${citationKey || 'citation'}.${ext}`, contentString, `${mime};charset=utf-8`);
   };
 
   return (
@@ -149,8 +134,7 @@ export default function PaperBibtexDialog({
             <button
               type="button"
               onClick={async () => {
-                await copy(`@${citationKey}`);
-                toast.success(`Copied @${citationKey}`, { id: 'reader-clipboard' });
+                await copy(`@${citationKey}`, `@${citationKey}`);
               }}
               title="Copy Citation Key"
               className="text-foreground hover:bg-muted p-1 rounded-sm cursor-pointer transition-colors"

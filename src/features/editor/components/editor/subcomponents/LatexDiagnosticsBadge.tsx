@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  CheckCircle2,
   AlertCircle,
   AlertTriangle,
   X,
@@ -132,43 +131,37 @@ export function LatexDiagnosticsBadge() {
     }
   };
 
+  if (totalIssues === 0) {
+    return null;
+  }
+
   return (
     <div className="relative inline-flex items-center select-none" ref={popoverRef}>
-      {totalIssues === 0 ? (
-        <div
-          className="flex items-center gap-1 h-6 px-1.5 rounded-md text-11 font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 shrink-0"
-          title="LaTeX Syntax OK: No issues detected in current file"
-        >
-          <CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" />
-          <span className="hidden xl:inline">Syntax OK</span>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => {
-            setIsOpen(!isOpen);
-            setSelectedExplanation(null);
-          }}
-          className={cn(
-            'flex items-center gap-1.5 h-6 px-2 rounded-md text-11 font-semibold transition-all cursor-pointer shadow-2xs',
-            errorCount > 0
-              ? 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-700 dark:text-rose-300 border border-rose-500/30'
-              : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30',
-          )}
-          title="Click to view syntax issues and jump to lines"
-        >
-          {errorCount > 0 ? (
-            <AlertCircle className="size-3 text-rose-600 dark:text-rose-400 shrink-0" />
-          ) : (
-            <AlertTriangle className="size-3 text-amber-600 dark:text-amber-400 shrink-0" />
-          )}
-          <span>
-            {errorCount > 0 && `${errorCount} error${errorCount > 1 ? 's' : ''}`}
-            {errorCount > 0 && warningCount > 0 && ', '}
-            {warningCount > 0 && `${warningCount} warning${warningCount > 1 ? 's' : ''}`}
-          </span>
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => {
+          setIsOpen(!isOpen);
+          setSelectedExplanation(null);
+        }}
+        className={cn(
+          'flex items-center gap-1.5 h-6 px-2 rounded-md text-11 font-semibold transition-all cursor-pointer shadow-2xs',
+          errorCount > 0
+            ? 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-700 dark:text-rose-300 border border-rose-500/30'
+            : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30',
+        )}
+        title={`Syntax issues (${totalIssues})`}
+      >
+        {errorCount > 0 ? (
+          <AlertCircle className="size-3 text-rose-600 dark:text-rose-400 shrink-0" />
+        ) : (
+          <AlertTriangle className="size-3 text-amber-600 dark:text-amber-400 shrink-0" />
+        )}
+        <span>
+          {errorCount > 0 && `${errorCount} error${errorCount > 1 ? 's' : ''}`}
+          {errorCount > 0 && warningCount > 0 && ', '}
+          {warningCount > 0 && `${warningCount} warning${warningCount > 1 ? 's' : ''}`}
+        </span>
+      </button>
 
       {/* Diagnostics Problems Popover */}
       {isOpen && totalIssues > 0 && (
@@ -177,15 +170,15 @@ export function LatexDiagnosticsBadge() {
           <div className="px-3 py-2 border-b border-border bg-background flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 text-xs font-semibold min-w-0">
               <AlertCircle className="size-3.5 text-rose-500 shrink-0" />
-              <span className="truncate">LaTeX Diagnostics ({totalIssues})</span>
+              <span className="truncate">Diagnostics ({totalIssues})</span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 disabled={isAutoFixing}
                 onClick={handleAutoFix}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-10 font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
-                title="Automatically repair smart quotes, unescaped characters, and unclosed environments"
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-11 font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
+                title="Auto-fix syntax"
               >
                 {isAutoFixing ? (
                   <Loader2 className="size-3 animate-spin" />

@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ExternalLink, Loader2, ShieldAlert } from 'lucide-react';
+import { ExternalLink, Loader2, ShieldAlert, Check } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { Item } from '@/features/library/types/library.types';
-import { SchemaItemTypeDefinition } from '../../../types';
+import { SchemaItemTypeDefinition, ALL_ITEM_TYPES_FLAT } from '../../../types';
+import { cleanPaperTitle } from '../../../domain';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,8 +57,14 @@ export function GeneralFields({
   const [targetConversionType, setTargetConversionType] = useState<string>('');
   const [isCheckingType, setIsCheckingType] = useState(false);
 
+  const effectiveItemTypes =
+    selectableItemTypes && selectableItemTypes.length > 0
+      ? selectableItemTypes
+      : ALL_ITEM_TYPES_FLAT;
+
   const handleTitleChange = (val: string) => {
-    onUpdatePaper?.({ title: val || undefined });
+    const cleaned = cleanPaperTitle(val);
+    onUpdatePaper?.({ title: cleaned || val || undefined });
   };
 
   return (
@@ -96,28 +103,29 @@ export function GeneralFields({
       )}
 
       {/* Item Type Selector */}
-      <div className="grid grid-cols-[76px_1fr] gap-1.5 items-center py-0.5">
+      <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5">
         <span
-          className="text-muted-foreground text-right font-normal select-none pr-1.5 text-12 leading-tight break-words"
+          className="text-muted-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate"
           id="label-item-type"
+          title="Item Type"
         >
           Item Type
         </span>
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0 w-full">
           {canEdit ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="w-full min-h-7 h-auto text-left px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary data-[state=open]:border-primary data-[state=open]:bg-muted text-12 leading-normal font-normal text-foreground bg-transparent cursor-pointer outline-none select-none flex items-center justify-between"
+                  className="w-full h-7 text-left px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary data-[state=open]:border-primary data-[state=open]:bg-muted text-12 leading-normal font-normal text-foreground bg-transparent cursor-pointer outline-none select-none flex items-center justify-between"
                   aria-label="Item Type"
                 >
-                  <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0 truncate">
                     {isCheckingType ? (
                       <Loader2 className="size-3 animate-spin text-foreground shrink-0" />
                     ) : null}
-                    <span className="break-words leading-snug">
-                      {selectableItemTypes.find((t) => t.value === currentItemType)?.label ||
+                    <span className="truncate whitespace-nowrap">
+                      {effectiveItemTypes.find((t) => t.value === currentItemType)?.label ||
                         typeDefinition.label ||
                         currentItemType}
                     </span>
@@ -126,9 +134,11 @@ export function GeneralFields({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="start"
-                className="max-h-[420px] min-w-[250px] overflow-y-auto p-1.5 rounded-md shadow-raised-200 border border-border bg-popover text-popover-foreground space-y-0.5"
+                sideOffset={4}
+                collisionPadding={8}
+                className="max-h-[360px] w-60 min-w-[200px] overflow-y-auto p-1 rounded-md shadow-raised-200 border border-border bg-popover text-popover-foreground space-y-0.5 z-50 thin-scrollbar"
               >
-                {selectableItemTypes.map((t) => {
+                {effectiveItemTypes.map((t) => {
                   const isSelected = t.value === currentItemType;
                   return (
                     <DropdownMenuItem
@@ -142,7 +152,7 @@ export function GeneralFields({
                             targetType: t.value,
                             retainUnmappedInExtra: true,
                           });
-                          if (!prev.hasLoss) {
+                          if (!prev?.hasLoss) {
                             // Lossless: convert immediately without dialog and without notification
                             const result = await convertAsync({
                               itemId: paper.id,
@@ -160,29 +170,34 @@ export function GeneralFields({
                             setIsConversionDialogOpen(true);
                           }
                         } catch {
-                          // Errors are already surfaced by useConversion hook via toast
+                          // Fallback to direct itemType update so changing type is never blocked
+                          try {
+                            onUpdatePaper?.({ itemType: t.value });
+                          } catch {
+                            // ignore
+                          }
                         } finally {
                           setIsCheckingType(false);
                         }
                       }}
                       className={cn(
-                        'flex items-center gap-2.5 h-7 px-2.5 text-xs font-normal rounded-md cursor-pointer text-foreground hover:bg-muted',
+                        'flex items-center justify-between h-7.5 px-2.5 text-xs font-normal rounded-md cursor-pointer text-foreground hover:bg-muted select-none transition-colors',
                         isSelected && 'bg-muted text-foreground font-medium',
                       )}
                     >
-                      <span className="w-2.5 text-center text-xs font-normal text-foreground shrink-0 select-none">
-                        {isSelected ? '•' : ''}
-                      </span>
-                      <span className="break-words leading-snug text-foreground">{t.label}</span>
+                      <span className="truncate pr-2">{t.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                      )}
                     </DropdownMenuItem>
                   );
                 })}
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div className="w-full min-h-7 h-auto text-left px-2 py-1 text-12 leading-normal font-normal text-foreground flex items-center select-text font-sans">
-              <span className="break-words leading-snug">
-                {selectableItemTypes.find((t) => t.value === currentItemType)?.label ||
+            <div className="w-full h-7 text-left px-2 py-1 text-12 leading-normal font-normal text-foreground flex items-center select-text font-sans truncate">
+              <span className="truncate whitespace-nowrap">
+                {effectiveItemTypes.find((t) => t.value === currentItemType)?.label ||
                   typeDefinition.label ||
                   currentItemType}
               </span>
@@ -192,15 +207,16 @@ export function GeneralFields({
       </div>
 
       {/* Title */}
-      <div className="grid grid-cols-[76px_1fr] gap-1.5 items-start py-0.5">
+      <div className="grid grid-cols-[84px_1fr] gap-2 items-start py-0.5">
         <span
-          className="text-muted-foreground text-right font-normal select-none pr-1.5 pt-1 text-12 leading-normal whitespace-nowrap"
+          className="text-muted-foreground text-right font-normal select-none pr-1 pt-1 text-12 leading-normal whitespace-nowrap truncate"
           id="label-title"
+          title="Title"
         >
           Title
         </span>
         <InlineTextarea
-          value={cleanValue(paper.title)}
+          value={cleanPaperTitle(cleanValue(paper.title))}
           ariaLabel="Item Title"
           onSave={handleTitleChange}
           className="font-normal text-foreground text-12 leading-normal"

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Blocks } from 'lucide-react';
 import { useIntegrations } from '../hooks/use-integrations';
 import { IntegrationCard } from './IntegrationCard';
@@ -9,7 +10,15 @@ import { TopBar } from '@/features/settings/components/layout/TopBar';
 import { Skeleton } from '@/shared/components/ui';
 
 export function IntegrationsHub() {
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const providerParam = searchParams.get('provider');
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(providerParam);
+
+  useEffect(() => {
+    if (providerParam) {
+      setSelectedProvider(providerParam);
+    }
+  }, [providerParam]);
 
   const {
     integrations,

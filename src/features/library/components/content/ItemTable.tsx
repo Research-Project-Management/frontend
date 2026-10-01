@@ -308,7 +308,19 @@ export const ItemTable = React.memo(function ItemTable({
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
       const currentSelectedIds = useLibraryUIStore.getState().selectedIds;
-      const ids = currentSelectedIds.size > 0 ? Array.from(currentSelectedIds) : (activeItemId ? [activeItemId] : []);
+      const rawIds = currentSelectedIds.size > 0 ? Array.from(currentSelectedIds) : (activeItemId ? [activeItemId] : []);
+      const processingIds = new Set(
+        items
+          .filter((it: any) => it._isProcessing || it.id.startsWith('temp-') || it.id.startsWith('provisional-'))
+          .map((it) => it.id),
+      );
+      const hasProcessing = rawIds.some((id) => processingIds.has(id));
+      if (hasProcessing) {
+        toast.warning('Cannot delete or remove items that are currently uploading or processing', {
+          id: 'library-item-guard',
+        });
+      }
+      const ids = rawIds.filter((id) => !processingIds.has(id));
       if (ids.length > 0) {
         if (isTrash) {
           if (window.confirm(`Permanently delete ${ids.length} selected item(s)? This action cannot be undone.`)) {
@@ -333,6 +345,7 @@ export const ItemTable = React.memo(function ItemTable({
 
   const handleToggleStar = useCallback(
     (item: Item, isStarred: boolean) => {
+      if ((item as any)._isProcessing) return;
       toggleStarMutation.mutate({
         id: item.id,
         isStarred: !isStarred,
@@ -343,9 +356,16 @@ export const ItemTable = React.memo(function ItemTable({
 
   const handleDelete = useCallback(
     (id: string) => {
+      const targetItem = items.find((it) => it.id === id);
+      if ((targetItem as any)?._isProcessing) {
+        toast.warning('Cannot delete an item that is currently uploading or processing', {
+          id: 'library-item-guard',
+        });
+        return;
+      }
       deleteMutation.mutate([id]);
     },
-    [deleteMutation],
+    [deleteMutation, items],
   );
 
   const handleRestore = useCallback(
@@ -361,13 +381,20 @@ export const ItemTable = React.memo(function ItemTable({
 
   const handlePurge = useCallback(
     (id: string) => {
+      const targetItem = items.find((it) => it.id === id);
+      if ((targetItem as any)?._isProcessing) {
+        toast.warning('Cannot delete an item that is currently uploading or processing', {
+          id: 'library-item-guard',
+        });
+        return;
+      }
       if (onPermanentDeleteItems) {
         onPermanentDeleteItems([id]);
       } else {
         purgeMutation.mutate([id]);
       }
     },
-    [onPermanentDeleteItems, purgeMutation],
+    [onPermanentDeleteItems, purgeMutation, items],
   );
 
   const columns =

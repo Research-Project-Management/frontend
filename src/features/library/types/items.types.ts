@@ -83,7 +83,6 @@ export const collectionRelationSchema = z.object({
   icon: z.string().optional(),
   projectId: z.string().optional(),
   userId: z.string().optional(),
-  workspaceId: z.string().optional(),
 });
 
 export const itemTagRelationSchema = z.object({
@@ -226,7 +225,6 @@ export const itemSchema = z.object({
   ragAttempts: z.number().optional().default(0),
   identifiers: z.array(identifierSchema).optional().default([]),
   rating: z.number().optional().default(0),
-  workspaceId: z.string().optional().default(''),
   collectionId: z.string().nullish(),
   uploadedBy: userSchema.optional(),
   user: userSchema.optional(),

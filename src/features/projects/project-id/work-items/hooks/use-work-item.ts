@@ -79,7 +79,7 @@ export const useProjectWorkItems = useProjectItems;
 export const useWorkItem = useProjectItems;
 export const useItems = useProjectItems;
 
-export const useAllItems = (_workspaceId?: string) =>
+export const useAllItems = () =>
   useQuery({
     queryKey: itemKeys.all,
     queryFn: () => CoreService.getItems(),
@@ -96,9 +96,9 @@ export const useProjectDetails = (projectId: string) =>
     staleTime: 60_000,
   });
 
-export const useWorkspaceProjects = (workspaceId?: string) =>
+export const useWorkspaceProjects = () =>
   useQuery({
-    queryKey: projectKeys.all(workspaceId || 'all'),
+    queryKey: projectKeys.all('all'),
     queryFn: async () => {
       const res = await fetchUserProjects('all');
       if (Array.isArray(res)) return res;

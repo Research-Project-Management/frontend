@@ -158,7 +158,7 @@ export function AiCompanionSidebar() {
           // Mobile: slide-over sheet drawer
           "fixed inset-y-0 right-0 z-50 w-full sm:max-w-md shadow-2xl border-l border-border animate-in slide-in-from-right duration-200",
           // Desktop: in-flow resizable column
-          "md:static md:inset-auto md:z-auto md:order-3 md:h-full md:shrink-0 md:rounded-md md:border md:border-border md:shadow-none md:transition-[width] md:duration-75"
+          "md:static md:inset-auto md:z-auto md:order-3 md:h-full md:shrink-0 md:rounded-md md:border md:border-border md:shadow-none"
         )}
       >
         {/* Resizer handle on left border (desktop only) */}

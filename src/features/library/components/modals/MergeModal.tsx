@@ -28,6 +28,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import type { Item } from '../../types/items.types';
+import { formatAcademicAuthors } from '../../utils/academic-text';
 import { ItemService } from '../../data';
 import {
   inspectItemDifferences,
@@ -42,7 +43,6 @@ export interface MergeModalProps {
   duplicates: Item[];
   scopeId?: string;
   projectId?: string;
-  workspaceId?: string;
   onMerge: (
     masterPaper: Item,
     mergedFields: Partial<Item>,
@@ -59,7 +59,6 @@ export function MergeModal({
   duplicates = [],
   scopeId,
   projectId,
-  workspaceId,
   onMerge,
   onDismissDuplicate,
 }: MergeModalProps) {
@@ -104,7 +103,7 @@ export function MergeModal({
     let isMounted = true;
     setIsLoadingFull(true);
 
-    const effectiveScope = scopeId || projectId || workspaceId || 'user';
+    const effectiveScope = scopeId || projectId || 'user';
     Promise.all(
       duplicates.map(async (dup) => {
         try {
@@ -129,7 +128,7 @@ export function MergeModal({
     return () => {
       isMounted = false;
     };
-  }, [open, duplicates, scopeId, projectId, workspaceId]);
+  }, [open, duplicates, scopeId, projectId]);
 
   // Master paper reference
   const masterPaper = useMemo(
@@ -305,15 +304,17 @@ export function MergeModal({
             <div className={`grid gap-2.5 ${items.length === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-3'}`}>
               {items.map((item, idx) => {
                 const isMaster = item.id === selectedMasterId;
-                const authorList = Array.isArray(item.authors)
-                  ? item.authors.join(', ')
-                  : 'Unknown Authors';
+                const authorList = formatAcademicAuthors(
+                  item.authors && item.authors.length > 0
+                    ? item.authors
+                    : (item as any).creators,
+                );
 
                 return (
                   <div
                     key={item.id}
                     onClick={() => handleSelectMaster(item.id)}
-                    className={`relative p-3 rounded-md border transition-all cursor-pointer select-none flex flex-col justify-between gap-2 ${
+                    className={`relative p-3 rounded-md border transition-colors cursor-pointer select-none flex flex-col justify-between gap-2 ${
                       isMaster
                         ? 'border-primary/70 bg-primary/5 ring-1 ring-primary/20 shadow-2xs'
                         : 'border-border bg-background hover:bg-muted/40 hover:border-border'
@@ -474,7 +475,7 @@ export function MergeModal({
                               className="px-3.5 py-2.5 align-top cursor-pointer select-none"
                             >
                               <div
-                                className={`p-2 rounded-md border text-12 transition-all flex flex-col justify-between gap-1.5 min-h-[44px] ${
+                                className={`p-2 rounded-md border text-12 transition-colors flex flex-col justify-between gap-1.5 min-h-[44px] ${
                                   isSelected
                                     ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/20 shadow-2xs'
                                     : 'border-border/60 bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground'

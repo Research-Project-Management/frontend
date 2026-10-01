@@ -22,21 +22,25 @@ const nextConfig: NextConfig = {
 
   turbopack: {
     resolveAlias: {
-      'pdfjs-dist': 'pdfjs-dist/build/pdf.min.mjs',
+      'pdfjs-dist': 'pdfjs-dist/legacy/build/pdf.mjs',
     },
   },
 
-  webpack: (config, { isServer, dev }) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      'pdfjs-dist$': 'pdfjs-dist/build/pdf.min.mjs',
-    };
-
+  webpack: (config, { isServer }) => {
     if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'pdfjs-dist$': 'pdfjs-dist/build/pdf.min.mjs',
+      };
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
         path: false,
+      };
+    } else {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'pdfjs-dist$': 'pdfjs-dist/legacy/build/pdf.mjs',
       };
     }
 
@@ -83,11 +87,7 @@ const nextConfig: NextConfig = {
       '@radix-ui/react-toggle-group',
       'cmdk',
       'sonner',
-      '@codemirror/view',
-      '@codemirror/state',
-      '@codemirror/commands',
       'react-markdown',
-      'yjs',
     ],
   },
 
@@ -223,7 +223,30 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // Reverse proxy rewrites removed: Frontend communicates directly with backend via NEXT_PUBLIC_API_URL and CORS.
+  async rewrites() {
+    const backendUrl =
+      process.env.INTERNAL_API_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      'http://127.0.0.1:3000';
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
+      },
+      {
+        source: '/socket.io/:path*',
+        destination: `${backendUrl}/socket.io/:path*`,
+      },
+      {
+        source: '/notifications',
+        destination: `${backendUrl}/notifications`,
+      },
+      {
+        source: '/notifications/:path*',
+        destination: `${backendUrl}/notifications/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

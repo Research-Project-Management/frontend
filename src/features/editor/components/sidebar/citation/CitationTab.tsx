@@ -3,25 +3,20 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
-  BookMarked,
   Search as SearchIcon,
   Copy,
   Check,
   Plus,
   AlertCircle,
   X,
-  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useQuery } from '@tanstack/react-query';
 import { Input } from "@/shared/components/ui";
 import { Badge } from "@/shared/components/ui";
 import { usePageStore } from '@/features/editor/store';
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
-import { useFileActions, filesQuery } from '@/features/editor/hooks/use-core';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useEditorCitations } from '@/features/editor/hooks/use-citation';
-import { formatItemToBibtex } from '@/features/editor/utils/citation.util';
 import { generateCitationKey, type Item } from '@/features/library';
 
 interface CitationTabProps {
@@ -32,13 +27,6 @@ export default function CitationTab({ onClose }: CitationTabProps) {
   const params = useParams<{ projectId?: string }>();
   const { currentPage } = usePageStore();
   const { engine, getContent } = useEditorInstance();
-  const rootPageId = currentPage?.id || params?.projectId;
-  const { data: pageFiles = [] } = useQuery({
-    ...filesQuery(rootPageId ?? ''),
-    enabled: !!rootPageId,
-  });
-  const { createFile } = useFileActions();
-  const [isSyncingBib, setIsSyncingBib] = useState(false);
   const projectId = params?.projectId || (typeof currentPage?.projectId === 'string' ? currentPage.projectId : currentPage?.projectId?.id);
 
   const [content, setContent] = useState<string>('');
@@ -104,38 +92,6 @@ export default function CitationTab({ onClose }: CitationTabProps) {
     toast.success(`Inserted \\cite{${key}}`);
   };
 
-  const handleSyncToBibtex = async () => {
-    const itemsToExport = citedItems.length > 0 ? citedItems : libraryItems;
-    if (itemsToExport.length === 0) {
-      toast.error('No citations found in document or workspace library');
-      return;
-    }
-
-    setIsSyncingBib(true);
-    const bibEntries = itemsToExport.map((item: Item) => formatItemToBibtex(item)).join('\n\n');
-    const rootPageId = currentPage?.id;
-
-    try {
-      const existingBib = pageFiles.find((f: any) => f.title === 'references.bib');
-      if (!existingBib && rootPageId) {
-        await createFile.mutateAsync({
-          parentPageId: rootPageId,
-          title: 'references.bib',
-          content: bibEntries,
-        });
-        toast.success(`Created references.bib with ${itemsToExport.length} citation(s)`);
-      } else {
-        await navigator.clipboard.writeText(bibEntries);
-        toast.success(`Copied BibTeX for ${itemsToExport.length} citation(s) to clipboard`);
-      }
-    } catch {
-      await navigator.clipboard.writeText(bibEntries);
-      toast.success(`Copied BibTeX for ${itemsToExport.length} citation(s) to clipboard`);
-    } finally {
-      setIsSyncingBib(false);
-    }
-  };
-
   const openPickerModal = () => {
     EditorEventBus.emit('flux:open-citation-picker');
   };
@@ -144,21 +100,8 @@ export default function CitationTab({ onClose }: CitationTabProps) {
     <div className="h-full flex flex-col bg-background text-foreground select-none">
       {/* Tab Header */}
       <div className="h-11 px-3 border-b border-border flex items-center justify-between shrink-0 bg-background">
-        <div className="flex items-center gap-2">
-          <BookMarked className="size-4 text-primary shrink-0" />
-          <span className="text-xs font-semibold text-foreground">Citations</span>
-        </div>
+        <span className="text-xs font-semibold text-foreground">Citations</span>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={handleSyncToBibtex}
-            disabled={isSyncingBib}
-            className="h-7 px-2 flex items-center gap-1 rounded-sm text-11 font-medium text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
-            title="Sync all citations to references.bib"
-          >
-            <Download className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span className="hidden sm:inline">Sync .bib</span>
-          </button>
           <button
             type="button"
             onClick={openPickerModal}
@@ -181,7 +124,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto divide-y divide-border">
+      <div className="flex-1 overflow-y-auto">
         {/* Section 1: Cited in Document */}
         <div className="p-3 space-y-2.5">
           <div className="flex items-center justify-between">
@@ -276,13 +219,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
         </div>
 
         {/* Section 2: Workspace Library Browser */}
-        <div className="p-3 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-11 font-medium text-muted-foreground">
-              Workspace Library ({libraryItems.length})
-            </span>
-          </div>
-
+        <div className="px-3 pb-3 space-y-2.5">
           <div className="relative">
             <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none shrink-0" />
             <Input

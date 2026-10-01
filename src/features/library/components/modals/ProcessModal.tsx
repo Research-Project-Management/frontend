@@ -72,7 +72,7 @@ export default function ProcessModal({
     return (
       <div
         onClick={onRestore}
-        className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-background shadow-raised-200 cursor-pointer hover:bg-muted/80 transition-all text-12 font-medium text-foreground select-none"
+        className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-background shadow-raised-200 cursor-pointer hover:bg-muted/80 transition-colors text-12 font-medium text-foreground select-none"
         title="Click to view details"
       >
         {state.isComplete ? (
@@ -148,10 +148,10 @@ export default function ProcessModal({
             <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
               <div
                 className={cn(
-                  'h-full transition-all duration-300 rounded-full',
+                  'h-full w-full origin-left transition-transform duration-300 ease-out rounded-full',
                   state.error ? 'bg-destructive' : 'bg-primary',
                 )}
-                style={{ width: `${percentage}%` }}
+                style={{ transform: `scaleX(${percentage / 100})` }}
               />
             </div>
           </div>

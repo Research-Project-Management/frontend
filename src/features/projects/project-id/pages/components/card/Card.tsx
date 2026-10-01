@@ -6,10 +6,9 @@ import { formatDate } from "@/shared/lib/utils";
 
 interface CardProps {
   page: Page;
-  workspaceId: string;
 }
 
-export function Card({ page, workspaceId }: CardProps) {
+export function Card({ page }: CardProps) {
   const projId = typeof page.projectId === 'object' && page.projectId !== null && 'id' in page.projectId
     ? (page.projectId.id as string)
     : (page.projectId as string);

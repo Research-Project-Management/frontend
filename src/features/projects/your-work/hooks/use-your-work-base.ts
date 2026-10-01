@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
@@ -18,8 +17,7 @@ import {
   type ProjectMap,
 } from '../utils/your-work.util';
 
-export function useYourWork() {
-  const { workspaceId } = useParams() as { workspaceId: string };
+export function useYourWork(projectId?: string) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { projects = [], isLoading: isLoadingProjects } = useProjects();
@@ -32,9 +30,9 @@ export function useYourWork() {
     isRefetching,
     refetch,
   } = useQuery({
-    queryKey: ['your-work', workspaceId || 'me'],
+    queryKey: ['your-work', projectId || 'me'],
     queryFn: async ({ signal }) => {
-      const res = await getYourWork(workspaceId, signal);
+      const res = await getYourWork(projectId, signal);
       const unwrapped = (res as any)?.data ?? res;
       const parsed = yourWorkSummaryResponseSchema.safeParse(unwrapped);
       return parsed.success ? parsed.data : unwrapped;
@@ -169,11 +167,10 @@ export function useYourWork() {
   );
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['your-work', workspaceId] });
+    queryClient.invalidateQueries({ queryKey: ['your-work'] });
   };
 
   return {
-    workspaceId,
     currentUserId,
     assigned,
     created,

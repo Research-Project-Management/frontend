@@ -70,17 +70,17 @@ export default function AbstractSection({
   }, [draft, paper, onUpdatePaper]);
 
   return (
-    <div className="space-y-1 text-xs min-w-0 font-sans">
+    <div className="space-y-1 text-xs min-w-0">
       {!hideHeader && (
         <div className="flex items-center justify-between px-1 pb-0.5">
           <span className="font-sans font-medium text-foreground text-12">Abstract</span>
         </div>
       )}
 
-      {/* Abstract Content: Bordered rounded box matching inspector styling */}
+      {/* Abstract Content: Flat border without card shadow, scholarly serif font */}
       <div
         className={cn(
-          "rounded-md border border-border bg-background transition-colors shadow-2xs",
+          "rounded-md border border-border/80 bg-background/50 transition-colors",
           canEdit && "focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20"
         )}
       >
@@ -88,7 +88,7 @@ export default function AbstractSection({
           ref={textareaRef}
           rows={2}
           value={draft}
-          placeholder={canEdit ? "No abstract available. Click to add abstract..." : "No abstract available."}
+          placeholder={canEdit ? "Add abstract..." : "No abstract"}
           aria-label="Paper abstract summary"
           readOnly={!canEdit}
           onChange={(e) => setDraft(e.target.value)}
@@ -105,11 +105,11 @@ export default function AbstractSection({
             }
           }}
           className={cn(
-            "w-full text-12 leading-relaxed text-foreground font-sans resize-none overflow-hidden outline-none break-words select-text rounded-md",
-            "p-2.5 bg-transparent border-0 focus:outline-none focus:ring-0",
+            "w-full text-13 leading-relaxed text-foreground/90 font-serif resize-none overflow-hidden outline-none break-words select-text rounded-md",
+            "p-2 bg-transparent border-0 focus:outline-none focus:ring-0",
             canEdit && "cursor-text",
             !canEdit && "cursor-default",
-            !draft && "placeholder:italic placeholder:text-muted-foreground"
+            !draft && "placeholder:font-sans placeholder:text-12 placeholder:text-muted-foreground/60"
           )}
         />
       </div>

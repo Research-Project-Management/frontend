@@ -12,11 +12,13 @@ import {
   useLibrarySidebarStore,
   useLibraryModalStore,
   useLibraryUIStore,
+  useProcessModalStore,
 } from '../store';
 import {
   useCollectionsQuery,
   useSavedSearches,
   useBatchPurgeItemsMutation,
+  useTrash,
   ItemService,
   itemKeys,
   invalidateCollections,
@@ -72,6 +74,7 @@ export function ModernLibraryPage({
   const setActiveItem = useLibraryUIStore((s) => s.setActiveItem);
   const selectOnly = useLibraryUIStore((s) => s.selectOnly);
   const setIsInspectorOpen = useLibraryUIStore((s) => s.setIsInspectorOpen);
+  const startBatchUpload = useProcessModalStore((s) => s.startBatchUpload);
 
   const effectiveScopeId =
     propScopeId ||
@@ -124,18 +127,52 @@ export function ModernLibraryPage({
     }
   };
 
-  // Direct files upload handler (opens the interactive UploadFilesModal)
+  // Direct files upload handler: skips confirmation modal if previously uploaded
   const handleDirectFilesUpload = async (files: File[]) => {
     if (!files || files.length === 0) return;
+    const hasUploadedBefore =
+      typeof window !== 'undefined' &&
+      localStorage.getItem('flux_has_uploaded_before') === 'true';
+
+    if (hasUploadedBefore) {
+      void startBatchUpload(files, {
+        scopeId: effectiveScopeId,
+        collectionId: effectiveCollectionId,
+        queryClient,
+        onSuccess: () => {
+          invalidateCollections(queryClient, effectiveScopeId);
+          void queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
+        },
+      });
+      return;
+    }
+
     openModal('UPLOAD_FILES', {
       collectionId: effectiveCollectionId,
       initialFiles: files,
     });
   };
 
-  // Direct folder upload handler
+  // Direct folder upload handler: skips confirmation modal if previously uploaded
   const handleDirectFolderUpload = async (files: File[], folderName: string) => {
     if (!files || files.length === 0) return;
+    const hasUploadedBefore =
+      typeof window !== 'undefined' &&
+      localStorage.getItem('flux_has_uploaded_before') === 'true';
+
+    if (hasUploadedBefore) {
+      void startBatchUpload(files, {
+        scopeId: effectiveScopeId,
+        collectionId: effectiveCollectionId,
+        queryClient,
+        onSuccess: () => {
+          invalidateCollections(queryClient, effectiveScopeId);
+          void queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
+        },
+      });
+      return;
+    }
+
     openModal('UPLOAD_FILES', {
       collectionId: effectiveCollectionId,
       initialFiles: files,
@@ -182,7 +219,7 @@ export function ModernLibraryPage({
   };
 
   const isTrash = view === 'trash';
-  const purgeMutation = useBatchPurgeItemsMutation(effectiveScopeId);
+  const { state: trashState, actions: trashActions } = useTrash(effectiveScopeId);
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
 
   const handleEmptyTrash = async () => {
@@ -194,26 +231,16 @@ export function ModernLibraryPage({
       return;
     }
 
-    const toastId = toast.loading('Emptying trash...', { id: 'empty-trash' });
+    if (trashState.trashItems.length === 0) {
+      toast.info('Trash is already empty', { id: 'empty-trash' });
+      return;
+    }
+
     try {
-      const trashData = await ItemService.getAll(effectiveScopeId, { view: 'trash', limit: 500 });
-      const ids = (trashData?.items || []).map((it) => it.id);
-      if (ids.length === 0) {
-        toast.info('Trash is already empty', { id: toastId });
-        return;
-      }
-      await purgeMutation.mutateAsync(ids);
+      await trashActions.emptyTrash();
       clearSelection();
-      toast.success('Trash emptied', {
-        description: `Permanently deleted ${ids.length} item(s).`,
-        id: toastId,
-      });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Could not empty trash.';
-      toast.error('Failed to empty trash', {
-        description: message,
-        id: toastId,
-      });
+      console.error('Failed to empty trash:', err);
     }
   };
 

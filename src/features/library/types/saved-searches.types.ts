@@ -69,7 +69,6 @@ export const savedSearchSchema = z.object({
   lastEvaluatedAt: z.string().datetime().nullable().optional(),
   scopeId: z.string().optional(),
   projectId: z.string().nullable().optional(),
-  workspaceId: z.string().optional(),
   userId: z.string(),
   creator: z
     .object({

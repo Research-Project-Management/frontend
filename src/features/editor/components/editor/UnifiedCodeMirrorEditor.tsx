@@ -25,7 +25,7 @@ import {
 } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { foldGutter, foldKeymap, bracketMatching } from '@codemirror/language';
-import { searchKeymap } from '@codemirror/search';
+import { search, searchKeymap } from '@codemirror/search';
 import { autocompletion, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { linter, lintGutter, type Diagnostic } from '@codemirror/lint';
 import { vim, Vim } from '@replit/codemirror-vim';
@@ -224,6 +224,7 @@ export default function UnifiedCodeMirrorEditor({
         history(),
         bracketMatching(),
         lineHighlightField,
+        search({ top: false }),
         EditorState.allowMultipleSelections.of(true),
         rectangularSelection(),
         crosshairCursor(),

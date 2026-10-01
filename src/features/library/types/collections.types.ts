@@ -10,7 +10,6 @@ export const collectionSchema = z.object({
   scopeId: z.string().optional().default(''),
   projectId: z.string().nullable().optional(),
   userId: z.string().optional(),
-  workspaceId: z.string().optional().default(''),
   parentId: z.string().nullable().optional(),
   createdBy: userSchema.optional(),
   itemCount: z.number().optional().default(0),

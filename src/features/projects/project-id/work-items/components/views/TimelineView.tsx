@@ -63,7 +63,6 @@ export interface TimelineViewProps extends BaseWorkItemViewProps, WorkItemCardHa
   items?: Item[];
   columns: ColumnType[];
   projectId?: string;
-  workspaceId?: string;
   onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
   onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
 }

@@ -60,7 +60,7 @@ import {
   historyService,
   type VersionDiffResponse,
 } from '@/features/editor/services/history.service';
-import { exportVersionAsZip } from '@/features/editor/utils/export-zip.util';
+import { useProjectExport } from '@/features/editor/hooks/use-export';
 import type { PageVersion, PageEvent } from '@/features/editor/types';
 import { toast } from 'sonner';
 
@@ -128,6 +128,7 @@ export default function HistoryView() {
 
   const { restoreToEvent } = useHistoryActions();
   const { restoreVersion, updateLabel } = useVersionActions();
+  const { exportVersionZip } = useProjectExport();
 
   // Selected revision state
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -232,22 +233,27 @@ export default function HistoryView() {
     updateContent: updateContentMutation,
     restorePage: restorePageMutation,
   } = usePageActions();
-  const handleRestoreScrubPoint = async () => {
+  const handleRestoreScrubPoint = () => {
     if (scrubContent === undefined) return;
-    try {
-      if (targetPageId) {
-        await updateContentMutation.mutateAsync({
+    if (targetPageId) {
+      updateContentMutation.mutate(
+        {
           pageId: targetPageId,
           content: scrubContent,
-        });
-      }
-      engine?.setContent(scrubContent);
-      toast.success(
-        `Document restored to ${new Date(scrubTimestamp).toLocaleTimeString()} successfully!`,
+        },
+        {
+          onSuccess: () => {
+            engine?.setContent(scrubContent);
+            toast.success(
+              `Document restored to ${new Date(scrubTimestamp).toLocaleTimeString()} successfully!`,
+            );
+            setIsHistoryOpen(false);
+          },
+        },
       );
+    } else {
+      engine?.setContent(scrubContent);
       setIsHistoryOpen(false);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to restore document at this point');
     }
   };
 
@@ -429,32 +435,30 @@ export default function HistoryView() {
   }, [deletedFiles, activeFileId]);
 
   // Handle Restore Single File (Overleaf Parity)
-  const handleRestoreFile = async (targetId?: string) => {
+  const handleRestoreFile = (targetId?: string) => {
     const fileId = targetId || activeFileId;
-    if (!fileId) return;
+    if (!fileId || previewContent === undefined) return;
 
     const fileObj =
       pageFiles.find((f) => f.id === fileId) ||
       deletedFiles.find((f: any) => f.id === fileId);
     const fileName = fileObj?.title || activeFileName;
 
-    try {
-      if (previewContent !== undefined) {
-        await updateContentMutation.mutateAsync({
-          pageId: fileId,
-          content: previewContent,
-        });
-
-        if (fileId === activeFilePage?.id) {
-          engine?.setContent(previewContent);
-        }
-
-        toast.success(`Restored "${fileName}" to this revision successfully!`);
-        setIsHistoryOpen(false);
-      }
-    } catch (err: any) {
-      toast.error(err?.message || `Failed to restore ${fileName}`);
-    }
+    updateContentMutation.mutate(
+      {
+        pageId: fileId,
+        content: previewContent,
+      },
+      {
+        onSuccess: () => {
+          if (fileId === activeFilePage?.id) {
+            engine?.setContent(previewContent);
+          }
+          toast.success(`Restored "${fileName}" to this revision successfully!`);
+          setIsHistoryOpen(false);
+        },
+      },
+    );
   };
 
   // Handle Restore Deleted File back to Project (Overleaf Parity)
@@ -462,28 +466,24 @@ export default function HistoryView() {
     const fileId = targetId || activeFileId;
     if (!fileId) return;
 
-    const fileObj = deletedFiles.find((f: any) => f.id === fileId);
-    const fileName = fileObj?.title || activeFileName;
-
     try {
       await restorePageMutation.mutateAsync(fileId);
-      if (previewContent !== undefined && previewContent !== fileObj?.content) {
+      if (previewContent !== undefined) {
         await updateContentMutation.mutateAsync({
           pageId: fileId,
           content: previewContent,
         });
       }
-      toast.success(`Restored "${fileName}" back to project!`);
-    } catch (err: any) {
-      toast.error(err?.message || `Failed to restore ${fileName}`);
+    } catch {
+      // Error already notified by mutation hook
     }
   };
 
   // Handle Download Version as ZIP (Overleaf Parity)
-  const handleDownloadVersionZip = async (item?: any) => {
+  const handleDownloadVersionZip = (item?: any) => {
     const rev = item || activeRevision;
     if (!rev) return;
-    await exportVersionAsZip({
+    exportVersionZip({
       parentPageId: rootPageId,
       versionId: rev.id,
       revisionDate: rev.date,
@@ -502,10 +502,9 @@ export default function HistoryView() {
           eventId: activeRevision.id,
         });
       }
-      toast.success('Restored project to revision successfully!');
       setIsHistoryOpen(false);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to restore revision');
+    } catch {
+      // Error already notified by mutation hook
     }
   };
 
@@ -520,9 +519,8 @@ export default function HistoryView() {
         rootPageId,
       });
       setLabelModalOpen(false);
-      toast.success(labelText.trim() ? 'Version labeled successfully' : 'Label removed');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to update label');
+    } catch {
+      // Error already notified by mutation hook
     }
   };
 

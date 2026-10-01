@@ -13,17 +13,17 @@ import {
   ShieldAlert,
   ExternalLink,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { Button } from "@/shared/components/ui";
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useReader } from '../hooks/use-reader';
 import { useReaderStore } from '../store/reader.store';
-import { useLibrarySidebarStore, AttachmentsService } from '@/features/library';
+import { useReaderUIStore } from '../store/reader-ui.store';
+import { readerService } from '../data/reader.service';
+import { useOcrExtraction } from '../data/reader.queries';
+import { ReaderInspector } from '../components/inspector';
 import Topbar from '../components/Topbar';
 import MenuBar from '../components/MenuBar';
 import ReaderToolbar from '../components/ReaderToolbar';
 import Sidebar from '../components/Sidebar';
-import Panel from '../components/Panel';
 import BibtexModal from '../components/modals/BibtexModal';
 import Systembar from '../components/Systembar';
 import DocumentNavDrawer from '../components/viewer/DocumentNavDrawer';
@@ -60,7 +60,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const { state, actions } = useReader(paperId, onBack);
   const {
     scopeId,
-    workspaceId,
+    projectId,
     isLoadingPapers,
     paper,
     paperUrl,
@@ -105,7 +105,20 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     handleBatchDelete,
     handleBatchAddToNote,
     deleteAnnotation,
+    updateAnnotation,
   } = actions;
+
+  // Zotero-standard URL citation jumping: ?page=X&annotation=Y
+  useEffect(() => {
+    const pageParam = searchParams.get('page');
+    const annParam = searchParams.get('annotation') || undefined;
+    if (pageParam) {
+      const p = parseInt(pageParam, 10);
+      if (!isNaN(p) && p >= 1) {
+        actions.handleNavigateToAnnotation(p, annParam);
+      }
+    }
+  }, [searchParams, actions]);
 
   // Zotero 7 Multi-Tab Store
   const {
@@ -120,8 +133,8 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     setActiveTool,
   } = useReaderStore();
 
-  // Library Sidebar / Inspector Store (Unified between Library and Reader)
-  const { isInspectorOpen, setIsInspectorOpen, activeScope } = useLibrarySidebarStore();
+  // Reader Inspector UI Store
+  const { isInspectorOpen, setIsInspectorOpen, activeScope } = useReaderUIStore();
 
   // In-Document Search & Academic Entities Drawer
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(Boolean(initialSearchQuery));
@@ -218,31 +231,17 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     setThemeMode((m) => (m === 'normal' ? 'sepia' : m === 'sepia' ? 'dark' : 'normal'));
   };
 
-  const handleExtractAllAnnotationsToNote = () => {
-    if (!annotations || annotations.length === 0) {
-      toast.info('No annotations in this document to extract', { id: 'reader-extract-notes' });
-      return;
-    }
-    const quotes = annotations
-      .slice()
-      .sort((a, b) => (a.pageIndex ?? 0) - (b.pageIndex ?? 0))
-      .map((a) => {
-        const typeLabel =
-          a.type === 'note'
-            ? '📝 Note'
-            : a.type === 'rect'
-            ? '📐 Figure / Equation'
-            : '💡 Highlight';
-        const quotePart = a.quoteText ? `> "${a.quoteText}"\n\n` : '';
-        const commentPart = a.comment ? `**Comment**: ${a.comment}\n\n` : '';
-        return `### ${typeLabel} (Page ${(a.pageIndex ?? 0) + 1})\n\n${quotePart}${commentPart}`;
-      })
-      .join('---\n\n');
+  const { triggerOcr } = useOcrExtraction(scopeId);
 
-    setPendingNoteText(quotes);
-    setActivePanel('notes');
-    setIsInspectorOpen(true);
-    toast.success(`Extracted ${annotations.length} annotations to Note draft`, { id: 'reader-extract-notes' });
+  const handleExtractAllAnnotationsToNote = async () => {
+    if (!paper?.id) return;
+    try {
+      await actions.extractNotes(paper.id);
+      setActivePanel('notes');
+      setIsInspectorOpen(true);
+    } catch {
+      // Handled in hook toast
+    }
   };
 
   // Zotero 7 behavior: If tool is not locked and is not 'select', revert back to 'select' after creating annotation
@@ -253,11 +252,13 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       colorHex?: string,
       rects?: AnnotationRect[],
       type?: 'highlight' | 'underline' | 'note' | 'text' | 'rect' | 'area',
+      comment?: string,
     ) => {
-      await handleAnnotate(text, pageNum, colorHex, rects, type);
+      const res = await handleAnnotate(text, pageNum, colorHex, rects, type, comment);
       if (!isToolLocked && activeTool !== 'select') {
         setActiveTool('select');
       }
+      return res;
     },
     [handleAnnotate, isToolLocked, activeTool, setActiveTool]
   );
@@ -283,18 +284,13 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     : 'none') as 'pending' | 'processing' | 'ready' | 'completed' | 'none';
 
   const handleTriggerOcr = useCallback(async () => {
-    if (!effectiveAttachmentId) {
-      toast.error('No attachment available to run OCR');
-      return;
-    }
+    if (!effectiveAttachmentId) return;
     try {
-      toast.info('Submitting OCR re-extraction job...', { id: 'reader-ocr-trigger' });
-      await AttachmentsService.reExtract(scopeId || workspaceId, effectiveAttachmentId);
-      toast.success('OCR job queued successfully', { id: 'reader-ocr-trigger' });
-    } catch (err: any) {
-      toast.error(`Failed to trigger OCR: ${err?.message || 'Unknown error'}`, { id: 'reader-ocr-trigger' });
+      await triggerOcr(effectiveAttachmentId);
+    } catch {
+      // Handled by useOcrExtraction hook toast
     }
-  }, [effectiveAttachmentId, scopeId, workspaceId]);
+  }, [effectiveAttachmentId, triggerOcr]);
 
   return (
     <div className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background ${isResizingPanel ? 'select-none' : ''}`}>
@@ -401,7 +397,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           onJumpToPage={handleNavigateToPageWithHistory}
           fulltext={fulltext}
           paper={paper}
-          workspaceId={workspaceId}
+          scopeId={scopeId}
           attachmentId={effectiveAttachmentId}
           pdfBlobUrl={pdfBlobUrl}
           selectedIds={selectedAnnotationIds}
@@ -450,6 +446,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 onAnnotate={handleAnnotateWithLock}
                 annotations={annotations}
                 onDeleteAnnotation={(ann) => deleteAnnotation && deleteAnnotation(ann.id, ann.version)}
+                onUpdateAnnotation={(id, version, dto) => updateAnnotation && updateAnnotation(id, version, dto)}
                 fulltext={fulltext}
                 isLoadingFulltext={isLoadingFulltext}
                 targetPage={targetPage}
@@ -485,6 +482,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                     onAnnotate={handleAnnotateWithLock}
                     annotations={annotations}
                     onDeleteAnnotation={(ann) => deleteAnnotation && deleteAnnotation(ann.id, ann.version)}
+                    onUpdateAnnotation={(id, version, dto) => updateAnnotation && updateAnnotation(id, version, dto)}
                     fulltext={fulltext}
                     isLoadingFulltext={isLoadingFulltext}
                     targetPage={targetPage}
@@ -516,6 +514,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                     onAnnotate={handleAnnotateWithLock}
                     annotations={annotations}
                     onDeleteAnnotation={(ann) => deleteAnnotation && deleteAnnotation(ann.id, ann.version)}
+                    onUpdateAnnotation={(id, version, dto) => updateAnnotation && updateAnnotation(id, version, dto)}
                     fulltext={fulltext}
                     isLoadingFulltext={isLoadingFulltext}
                     targetPage={null}
@@ -564,10 +563,12 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
         {/* 5. UNIFIED INSPECTOR PANEL */}
         {!isReadingMode && (
-          <Panel
+          <ReaderInspector
             paper={paper as any}
             item={paper as any}
-            workspaceId={workspaceId}
+            scopeId={scopeId}
+            projectId={projectId}
+            canEdit={true}
             onClose={() => setIsInspectorOpen(false)}
             onNavigateToAnnotation={handleNavigateToPageWithHistory}
             pendingNoteText={pendingNoteText}

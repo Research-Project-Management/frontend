@@ -13,6 +13,23 @@ export function ZoteroIcon({ className = 'size-6' }: IconProps) {
   );
 }
 
+export function ZoteroLineIcon({ className = 'size-4' }: IconProps) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect width="18" height="18" x="3" y="3" rx="4" />
+      <path d="M7.5 8.5h9l-9 7h9" />
+    </svg>
+  );
+}
+
 export function MendeleyIcon({ className = 'size-6' }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none">
@@ -21,6 +38,26 @@ export function MendeleyIcon({ className = 'size-6' }: IconProps) {
       <circle cx="7" cy="14.5" r="2.4" fill="#FFFFFF" />
       <circle cx="17" cy="14.5" r="2.4" fill="#FFFFFF" />
       <path d="M9 13.5h6v2H9z" fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+export function MendeleyLineIcon({ className = 'size-4' }: IconProps) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect width="18" height="18" x="3" y="3" rx="4" />
+      <circle cx="12" cy="8.5" r="1.8" />
+      <circle cx="8" cy="14.5" r="1.5" />
+      <circle cx="16" cy="14.5" r="1.5" />
+      <path d="M10.8 9.8l-2 3.6M13.2 9.8l2 3.6M9.5 14.5h5" />
     </svg>
   );
 }

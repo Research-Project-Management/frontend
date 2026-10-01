@@ -8,7 +8,6 @@ import { formatDate } from '@/shared/lib/utils';
 
 interface ListViewProps {
   pages: Page[];
-  workspaceId: string;
 }
 
 export function ListView({ pages }: ListViewProps) {

@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import {
   GitBranch,
   GitCommit,
@@ -16,7 +14,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useIntegrations } from '@/features/integrations/hooks/use-integrations';
-import { integrationService } from '@/features/integrations/services/integration.service';
+import { useGithubSync } from '../../hooks/use-github-sync';
 import { GitHubIcon } from '@/shared/components/icons';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -42,24 +40,6 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
   const isGithubConnected =
     githubIntegration?.status === 'connected' && !githubIntegration.needsReconnect;
 
-  // 1. Fetch Project Link status
-  const {
-    data: linkData,
-    isLoading: isLoadingLink,
-    refetch: refetchLink,
-  } = useQuery({
-    queryKey: ['github-link', projectId],
-    queryFn: () => (projectId ? integrationService.getProjectGithubLink(projectId) : null),
-    enabled: Boolean(projectId && isGithubConnected),
-  });
-
-  // 2. Fetch User Repositories (for linking)
-  const { data: userRepos = [], isLoading: isLoadingRepos } = useQuery({
-    queryKey: ['github-user-repos'],
-    queryFn: () => integrationService.listGithubRepos(),
-    enabled: Boolean(isGithubConnected && (!linkData?.link || !linkData)),
-  });
-
   // Local states
   const [selectedRepo, setSelectedRepo] = useState<string>('');
   const [targetBranch, setTargetBranch] = useState<string>('main');
@@ -74,91 +54,21 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
   const [newRepoPrivate, setNewRepoPrivate] = useState<boolean>(true);
   const [showChangeRepo, setShowChangeRepo] = useState<boolean>(false);
 
-  // Link Mutation
-  const linkMutation = useMutation({
-    mutationFn: async (payload: { repoFullName: string; branch: string }) => {
-      if (!projectId) throw new Error('Project ID is required');
-      return await integrationService.linkProjectGithub({
-        projectId,
-        repoFullName: payload.repoFullName,
-        branch: payload.branch,
-      });
-    },
-    onSuccess: (data) => {
-      toast.success(`Successfully linked project to ${data.repoFullName}`);
-      setShowChangeRepo(false);
-      refetchLink();
-      queryClient.invalidateQueries({ queryKey: ['github-link', projectId] });
-    },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to link GitHub repository');
-    },
-  });
-
-  // Create & Link Mutation
-  const createAndLinkMutation = useMutation({
-    mutationFn: async () => {
-      if (!projectId) throw new Error('Project ID is required');
-      const created = await integrationService.createGithubRepo({
-        name: newRepoName,
-        private: newRepoPrivate,
-        description: `LaTeX manuscript: ${projectTitle || 'Research Project'}`,
-      });
-      return await integrationService.linkProjectGithub({
-        projectId,
-        repoFullName: created.fullName,
-        branch: created.defaultBranch || 'main',
-      });
-    },
-    onSuccess: (data) => {
-      toast.success(`Created & linked repository ${data.repoFullName}!`);
-      setIsCreatingNew(false);
-      refetchLink();
-      queryClient.invalidateQueries({ queryKey: ['github-link', projectId] });
-    },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to create GitHub repository');
-    },
-  });
-
-  // Push Mutation
-  const pushMutation = useMutation({
-    mutationFn: async () => {
-      if (!projectId) throw new Error('Project ID is required');
-      return await integrationService.pushProjectGithub({
-        projectId,
-        commitMessage: commitMessage.trim() || 'Update manuscript from Flux',
-        branch: targetBranch,
-      });
-    },
-    onSuccess: (data) => {
-      toast.success(`Pushed ${data.fileCount} files to GitHub (${data.commitSha.slice(0, 7)})!`);
-      refetchLink();
-    },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to push to GitHub');
-    },
-  });
-
-  // Pull Mutation
-  const pullMutation = useMutation({
-    mutationFn: async () => {
-      if (!projectId) throw new Error('Project ID is required');
-      return await integrationService.pullProjectGithub({
-        projectId,
-        branch: targetBranch,
-      });
-    },
-    onSuccess: (data) => {
-      toast.success(`Pulled ${data.filesImported} files from GitHub!`);
-      refetchLink();
-      // Invalidate project files and structure to reflect new contents
-      queryClient.invalidateQueries({ queryKey: ['files', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['manuscript-nodes', projectId] });
-    },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to pull from GitHub');
-    },
+  const {
+    linkData,
+    isLoadingLink,
+    refetchLink,
+    repos: userRepos,
+    isLoadingRepos,
+    linkMutation,
+    createAndLinkMutation,
+    pushMutation,
+    pullMutation,
+  } = useGithubSync({
+    projectId,
+    projectTitle,
+    onLinkSuccess: () => setShowChangeRepo(false),
+    onCreateSuccess: () => setIsCreatingNew(false),
   });
 
   if (!isGithubConnected) {
@@ -272,7 +182,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
               </div>
               <Button
                 size="sm"
-                onClick={() => pushMutation.mutate()}
+                onClick={() => pushMutation.mutate({ commitMessage, branch: targetBranch })}
                 disabled={pushMutation.isPending}
                 className="gap-2 w-full h-8 text-xs cursor-pointer"
               >
@@ -305,7 +215,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                       'Are you sure you want to pull from GitHub? This will update project files with remote changes.',
                     )
                   ) {
-                    pullMutation.mutate();
+                    pullMutation.mutate({ branch: targetBranch });
                   }
                 }}
                 disabled={pullMutation.isPending}
@@ -433,7 +343,13 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                 )}
                 <Button
                   size="sm"
-                  onClick={() => createAndLinkMutation.mutate()}
+                  onClick={() =>
+                    createAndLinkMutation.mutate({
+                      name: newRepoName.trim(),
+                      isPrivate: newRepoPrivate,
+                      defaultBranch: 'main',
+                    })
+                  }
                   disabled={!newRepoName.trim() || createAndLinkMutation.isPending}
                   className="h-8 text-xs gap-1.5 cursor-pointer"
                 >

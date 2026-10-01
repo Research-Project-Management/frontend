@@ -105,7 +105,7 @@ export function TopbarSearch({
       tabIndex={active ? -1 : 0}
       aria-label={placeholder}
       className={cn(
-        'relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-md overflow-hidden group focus-visible:ring-1 focus-visible:ring-ring select-none',
+        'relative flex items-center transition-colors duration-150 h-8 rounded-md overflow-hidden group focus-visible:ring-1 focus-visible:ring-ring select-none',
         active
           ? 'w-40 sm:w-52 border border-border bg-white dark:bg-card shadow-2xs hover:border-foreground/30'
           : 'w-8 hover:bg-muted cursor-pointer',
@@ -122,7 +122,7 @@ export function TopbarSearch({
       <Search
         strokeWidth={1.5}
         className={cn(
-          'absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 shrink-0 text-foreground',
+          'absolute top-1/2 -translate-y-1/2 size-3.5 transition-colors duration-150 z-10 shrink-0 text-foreground',
           active
             ? 'left-2 translate-x-0'
             : 'left-1/2 -translate-x-1/2'

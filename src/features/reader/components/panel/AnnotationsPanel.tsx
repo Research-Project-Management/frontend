@@ -33,7 +33,7 @@ import type { ReaderDocument, ReaderAnnotation, AnnotationFormData } from '../..
 
 export interface AnnotationsPanelProps {
   paper: ReaderDocument;
-  workspaceId: string;
+  scopeId?: string;
   attachmentId?: string;
   onNavigateToPage?: (pageNumber: number, annotationId?: string) => void;
   onAddToNote?: (text: string, pageNumber?: number) => void;
@@ -142,7 +142,7 @@ function AnnotationEditForm({
 
 export function AnnotationsPanel({
   paper,
-  workspaceId,
+  scopeId,
   attachmentId,
   onNavigateToPage,
   onAddToNote,
@@ -162,7 +162,7 @@ export function AnnotationsPanel({
     isUpdating,
     isExtracting,
     isImporting,
-  } = useAnnotations(workspaceId, effectiveAttachmentId);
+  } = useAnnotations(scopeId, effectiveAttachmentId);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedColor, setSelectedColor] = useState<string>('all');

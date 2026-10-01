@@ -28,10 +28,10 @@ export default function RawLogModal({
     try {
       await navigator.clipboard.writeText(logs);
       setCopied(true);
-      toast.success('Đã sao chép toàn bộ nhật ký biên dịch');
+      toast.success('Compilation log copied to clipboard');
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error('Không thể sao chép nhật ký');
+      toast.error('Failed to copy compilation log');
     }
   };
 

@@ -3,7 +3,7 @@
 import React from 'react';
 import type { ConnectionStatus } from '@/features/editor/collaboration/yjs-socket-provider';
 import { cn } from '@/shared/lib/utils';
-import { Check, CloudOff, Loader2, Lock } from 'lucide-react';
+import { CloudOff, Loader2, Lock } from 'lucide-react';
 import {
   Tooltip,
   TooltipTrigger,
@@ -35,11 +35,11 @@ export const SyncStatusBadge = React.memo(function SyncStatusBadge({
             )}
           >
             <Lock className="size-3 shrink-0" />
-            <span>Read Only</span>
+            <span>Read only</span>
           </div>
         </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs max-w-xs">
-          You have view-only permissions. Collaborative editing is disabled.
+        <TooltipContent side="bottom" className="text-xs">
+          Read only (Editing disabled)
         </TooltipContent>
       </Tooltip>
     );
@@ -47,27 +47,7 @@ export const SyncStatusBadge = React.memo(function SyncStatusBadge({
 
   if (connectionStatus === 'connected') {
     if (isSynced) {
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div
-              className={cn(
-                'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium',
-                'bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 select-none cursor-default',
-                className,
-              )}
-            >
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-              </span>
-              <span className="hidden sm:inline">Saved</span>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            All changes saved & synced (Overleaf Realtime Engine)
-          </TooltipContent>
-        </Tooltip>
-      );
+      return null;
     }
 
     return (
@@ -85,7 +65,7 @@ export const SyncStatusBadge = React.memo(function SyncStatusBadge({
           </div>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">
-          Syncing changes with collaborators...
+          Syncing (Realtime)
         </TooltipContent>
       </Tooltip>
     );
@@ -107,7 +87,7 @@ export const SyncStatusBadge = React.memo(function SyncStatusBadge({
           </div>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">
-          Connecting to realtime collaboration server...
+          Connecting (Realtime)
         </TooltipContent>
       </Tooltip>
     );
@@ -125,11 +105,11 @@ export const SyncStatusBadge = React.memo(function SyncStatusBadge({
           )}
         >
           <CloudOff className="size-3.5 shrink-0" />
-          <span className="hidden 2xl:inline text-11">Auto-save</span>
+          <span className="hidden 2xl:inline text-11">Offline</span>
         </div>
       </TooltipTrigger>
-      <TooltipContent side="bottom" className="text-xs max-w-xs">
-        Realtime engine disconnected. Edits are auto-saved via HTTP fallback.
+      <TooltipContent side="bottom" className="text-xs">
+        Offline (HTTP fallback)
       </TooltipContent>
     </Tooltip>
   );

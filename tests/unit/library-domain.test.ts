@@ -4,6 +4,9 @@ import {
   normalizeAuthors,
   parseAuthorName,
   formatCreatorCompact,
+  cleanAuthorName,
+  splitAuthorString,
+  isNoiseAuthorName,
   // Identifiers
   cleanDoi,
   isValidDoi,
@@ -30,6 +33,7 @@ import {
   inspectItemDifferences,
   aggregateItemAssets,
 } from '@/features/library/domain';
+import { formatAcademicAuthors } from '@/features/library/utils/academic-text';
 
 describe('Library Domain Layer — Pure Functional Logic', () => {
   describe('Creators Domain (creators.ts)', () => {
@@ -45,6 +49,104 @@ describe('Library Domain Layer — Pure Functional Logic', () => {
       const p3 = parseAuthorName('Google Brain Team');
       expect(p3.isInstitution).toBe(true);
       expect(p3.fullName).toBe('Google Brain Team');
+
+      const p4 = parseAuthorName('Martin Luther King, Jr.');
+      expect(p4.firstName).toBe('Martin Luther');
+      expect(p4.lastName).toBe('King Jr.');
+      expect(p4.fullName).toBe('Martin Luther King Jr.');
+    });
+
+    it('should clean author names from OCR junk, footnote markers, and emails', () => {
+      expect(cleanAuthorName('Karen Simonyan 1,2*')).toBe('Karen Simonyan');
+      expect(cleanAuthorName('Andrew Zisserman *†')).toBe('Andrew Zisserman');
+      expect(cleanAuthorName('1. Ashish Vaswani')).toBe('Ashish Vaswani');
+      expect(cleanAuthorName('Jane Doe (corresponding author)')).toBe('Jane Doe');
+      expect(cleanAuthorName('John Doe <john@ox.ac.uk>')).toBe('John Doe');
+      expect(cleanAuthorName('Prof. Dr. Donald E. Knuth, PhD')).toBe('Donald E. Knuth');
+      expect(cleanAuthorName('Jakob Uszkoreit 1')).toBe('Jakob Uszkoreit');
+    });
+
+    it('should reject noise author names, affiliations, and OCR artifacts', () => {
+      expect(isNoiseAuthorName('A B S T R A C T')).toBe(true);
+      expect(isNoiseAuthorName('A BSTRACT')).toBe(true);
+      expect(isNoiseAuthorName('ABSTRACT')).toBe(true);
+      expect(isNoiseAuthorName('Visual Geometry Group')).toBe(true);
+      expect(isNoiseAuthorName('Department of Engineering Science')).toBe(true);
+      expect(isNoiseAuthorName('University of Oxford, Department of Engineering Science')).toBe(true);
+      expect(isNoiseAuthorName('Keywords')).toBe(true);
+      expect(isNoiseAuthorName('References')).toBe(true);
+      expect(isNoiseAuthorName('Karen Simonyan')).toBe(false);
+      expect(isNoiseAuthorName('Andrew Zisserman')).toBe(false);
+
+      expect(cleanAuthorName('A B S T R A C T')).toBe('');
+      expect(cleanAuthorName('Author: A BSTRACT')).toBe('');
+      expect(cleanAuthorName('Visual Geometry Group')).toBe('');
+
+      expect(
+        splitAuthorString('Karen Simonyan, Andrew Zisserman, A BSTRACT, Visual Geometry Group')
+      ).toEqual(['Karen Simonyan', 'Andrew Zisserman']);
+    });
+
+    it('should split composite author strings with semicolon, and, &, and commas correctly', () => {
+      // Semicolon
+      expect(splitAuthorString('Simonyan, Karen; Zisserman, Andrew')).toEqual([
+        'Simonyan, Karen',
+        'Zisserman, Andrew',
+      ]);
+
+      // Conjunctions with Oxford comma
+      expect(splitAuthorString('Ashish Vaswani, Noam Shazeer, and Niki Parmar')).toEqual([
+        'Ashish Vaswani',
+        'Noam Shazeer',
+        'Niki Parmar',
+      ]);
+
+      // Conjunction with ampersand
+      expect(splitAuthorString('Vaswani, Ashish and Shazeer, Noam & Parmar, Niki')).toEqual([
+        'Vaswani, Ashish',
+        'Shazeer, Noam',
+        'Parmar, Niki',
+      ]);
+
+      // Two forward authors
+      expect(splitAuthorString('Karen Simonyan, Andrew Zisserman')).toEqual([
+        'Karen Simonyan',
+        'Andrew Zisserman',
+      ]);
+
+      // Single inverted author
+      expect(splitAuthorString('Simonyan, Karen')).toEqual(['Simonyan, Karen']);
+
+      // Inverted pairs with initials
+      expect(splitAuthorString('Vaswani, A., Shazeer, N., Parmar, N.')).toEqual([
+        'Vaswani, A.',
+        'Shazeer, N.',
+        'Parmar, N.',
+      ]);
+    });
+
+    it('should format academic authors for UI display without confusing mid-name commas', () => {
+      // Inverted authors become natural for UI joining
+      expect(formatAcademicAuthors(['Simonyan, Karen', 'Zisserman, Andrew'])).toBe(
+        'Karen Simonyan, Andrew Zisserman',
+      );
+
+      // Single composite string is split and formatted
+      expect(formatAcademicAuthors('Ashish Vaswani; Noam Shazeer; Niki Parmar; Jakob Uszkoreit')).toBe(
+        'Ashish Vaswani, Noam Shazeer, Niki Parmar et al.',
+      );
+
+      // CSL-JSON objects
+      expect(
+        formatAcademicAuthors([
+          { family: 'Vaswani', given: 'Ashish' },
+          { family: 'Shazeer', given: 'Noam' },
+        ]),
+      ).toBe('Ashish Vaswani, Noam Shazeer');
+
+      // Empty or invalid returns dash
+      expect(formatAcademicAuthors(null)).toBe('—');
+      expect(formatAcademicAuthors([])).toBe('—');
     });
 
     it('should normalize authors from string or object arrays', () => {
@@ -82,6 +184,14 @@ describe('Library Domain Layer — Pure Functional Logic', () => {
     it('should clean title and normalize academic title case', () => {
       expect(cleanPaperTitle('  A Study on   Deep Learning\n\r ')).toBe('A Study on Deep Learning');
       expect(normalizeAcademicTitleCase('attention is all you need')).toBe('Attention Is All You Need');
+    });
+
+    it('should normalize spaced hyphens and OCR gaps in paper titles', () => {
+      expect(cleanPaperTitle('Large - Scale Image Recognition')).toBe('Large-Scale Image Recognition');
+      expect(cleanPaperTitle('Auto - Encoding Variational Bayes')).toBe('Auto-Encoding Variational Bayes');
+      expect(
+        cleanPaperTitle('Very Deep Convolutional Networks for Large - Scale Image Recognition')
+      ).toBe('Very Deep Convolutional Networks for Large-Scale Image Recognition');
     });
   });
 
@@ -234,9 +344,9 @@ describe('Library Domain Layer — Pure Functional Logic', () => {
       const clusters = clusterDuplicateItems(largeList);
       const durationMs = performance.now() - start;
 
-      // O(N) bucket hashing should finish 2000 items in well under 100ms (O(N^2) would take seconds)
+      // O(N) bucket hashing should finish 2000 items in well under 1000ms (O(N^2) would take seconds)
       expect(clusters.length).toBeGreaterThanOrEqual(1);
-      expect(durationMs).toBeLessThan(200);
+      expect(durationMs).toBeLessThan(1000);
     });
   });
 

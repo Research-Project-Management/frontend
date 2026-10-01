@@ -5,7 +5,6 @@ export const noteSchema = z.object({
   scopeId: z.string().optional(),
   projectId: z.string().nullable().optional(),
   userId: z.string().nullable().optional(),
-  workspaceId: z.string().optional(),
   itemId: z.string().nullable().optional(),
   title: z.string().optional().default('Untitled Note'),
   contentJson: z.record(z.string(), z.unknown()).nullable().optional(),

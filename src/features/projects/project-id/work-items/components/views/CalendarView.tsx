@@ -114,7 +114,6 @@ function CalendarCard({ card }: CalendarCardProps) {
 type CalendarViewProps = {
   items?: Item[];
   columns: Column[];
-  workspaceId?: string;
   projectId: string;
   onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
   onOpenCardDetail: (item: Item) => void;
@@ -160,7 +159,6 @@ function createCalendarDueDate(dateKey: string) {
 export function CalendarView({
   items: propItems = [],
   columns,
-  workspaceId,
   projectId,
   onAddCard,
   onOpenCardDetail,

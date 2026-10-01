@@ -152,7 +152,7 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
   if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-center h-9 bg-muted/40 border-b border-border select-none">
+    <div className="flex items-center h-9 bg-muted/40 select-none">
       {/* ── File tabs ── */}
       <LayoutGroup id={`tab-bar-${rootPageId}`}>
         <div

@@ -1,4 +1,11 @@
-import { apiGet, apiPatch, apiPost } from "@/shared/lib/api";
+/**
+ * state.service.ts
+ *
+ * Facade delegating to readerService.state (features/reader/data/reader.service.ts)
+ * 100% self-contained within features/reader with no dependencies on features/library.
+ */
+
+import { readerService } from '../data/reader.service';
 import type { DocumentReadingState } from '../types/reader.types';
 
 export type ItemStateData = DocumentReadingState;
@@ -10,30 +17,20 @@ export interface UpdateReadingStatePayload {
   scrollPosition?: Record<string, unknown> | Array<unknown> | null;
 }
 
-/**
- * StateService communicating with backend StateController (/api/v1/library/items/:itemId/state)
- */
 export const StateService = {
-  getState: (_scopeId: string | undefined, itemId: string) =>
-    apiGet<ItemStateData>(
-      `/api/v1/library/items/${encodeURIComponent(itemId)}/state`,
-    ),
+  getState: (scopeId: string | undefined, itemId: string) =>
+    readerService.state.getState(scopeId, itemId),
 
   updateState: (
-    _scopeId: string | undefined,
+    scopeId: string | undefined,
     itemId: string,
     data: UpdateReadingStatePayload,
   ) =>
-    apiPatch<ItemStateData>(
-      `/api/v1/library/items/${encodeURIComponent(itemId)}/state`,
-      data,
-    ),
+    readerService.state.updateState(scopeId, itemId, data),
 
-  markAsRead: (_scopeId: string | undefined, itemId: string) =>
-    apiPost<ItemStateData>(
-      `/api/v1/library/items/${encodeURIComponent(itemId)}/state/read`,
-      {},
-    ),
+  markAsRead: (scopeId: string | undefined, itemId: string) =>
+    readerService.state.markAsRead(scopeId, itemId),
 };
 
 export const ReadingService = StateService;
+export default StateService;

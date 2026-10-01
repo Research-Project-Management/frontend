@@ -144,7 +144,6 @@ export const IngestionRunSnapshotDataSchema = z
   .object({
     id: z.string().nullable().optional(),
     runId: z.string().nullable().optional(),
-    workspaceId: z.string().nullable().optional(),
     scopeId: z.string().nullable().optional(),
     projectId: z.string().nullable().optional(),
     userId: z.string().nullable().optional(),
@@ -219,7 +218,6 @@ export interface IngestItemDTO {
   scopeId?: string;
   projectId?: string;
   userId?: string;
-  workspaceId?: string;
   fileId?: string | null;
   storageFileId?: string | null;
   collectionId?: string | null;

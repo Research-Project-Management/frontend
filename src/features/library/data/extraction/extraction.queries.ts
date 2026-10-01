@@ -21,12 +21,12 @@ export const attachmentKeys = {
  * Backed by GET /items/:itemId/attachments, POST /items/:itemId/attachments, DELETE /attachments/:id
  */
 export function useAttachments(
-  scopeIdOrOptions?: string | { scopeId?: string; workspaceId?: string; projectId?: string },
+  scopeIdOrOptions?: string | { scopeId?: string; projectId?: string },
   itemId?: string,
 ) {
   const scopeId = typeof scopeIdOrOptions === 'string'
     ? scopeIdOrOptions
-    : (scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId || scopeIdOrOptions?.workspaceId || 'user');
+    : (scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId || 'user');
 
   const queryClient = useQueryClient();
 

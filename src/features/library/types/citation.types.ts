@@ -17,6 +17,14 @@ export const cslStyleMetadataSchema = z.object({
 
 export type CslStyleMetadata = z.infer<typeof cslStyleMetadataSchema>;
 
+export interface StyleSummary {
+  id: string;
+  name: string;
+  shortTitle?: string;
+  category?: string;
+  isPrimary?: boolean;
+}
+
 export const formattedCitationSchema = z.object({
   style: cslStyleSchema.optional(),
   styleId: z.string().optional(),

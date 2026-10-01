@@ -196,7 +196,6 @@ export interface IngestionProgressResponse {
   scopeId?: string;
   projectId?: string;
   userId?: string;
-  workspaceId?: string;
   status: string;
   total: number;
   processed: number;

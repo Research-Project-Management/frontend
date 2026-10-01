@@ -100,10 +100,9 @@ export default function FigureWizardModal({
         }
         const uploadedName = fileList[0].name;
         handleSelectImage(uploadedName);
-        toast.success(`Uploaded ${uploadedName}`);
       }
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to upload image');
+    } catch {
+      // Error already toasted by uploadFile mutation hook
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }

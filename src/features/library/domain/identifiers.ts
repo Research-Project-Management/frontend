@@ -282,8 +282,8 @@ export function cleanPaperTitle(title?: string | null): string {
   // Fix PDF small-caps drop-cap gaps (e.g. "V ERY" -> "VERY", "D EEP" -> "DEEP")
   s = s.replace(/\b([A-Z])\s+([A-Z]{2,})\b/g, '$1$2');
 
-  // Fix spaced hyphens (e.g. "Auto - Encoding" -> "Auto-Encoding")
-  s = s.replace(/\b([A-Za-z0-9]+)\s+-\s+([A-Za-z0-9]+)\b/g, '$1-$2');
+  // Fix spaced hyphens (e.g. "Auto - Encoding" -> "Auto-Encoding", "Large - Scale" -> "Large-Scale")
+  s = s.replace(/\b([A-Za-z0-9]+)\s+[-–—]\s+([A-Za-z0-9]+)\b/g, '$1-$2');
 
   // Fix single letter uppercase gaps: "B Y" -> "BY"
   s = s.replace(/\b([B-HJ-Z])\s+([A-Z])\b/g, '$1$2');

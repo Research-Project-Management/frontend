@@ -19,9 +19,7 @@ import {
 
 // ── Types & Context Interfaces ────────────────────────────────────────────────
 
-export interface CreateProjectVariables extends CreateProjectInput {
-  workspaceId?: string;
-}
+export interface CreateProjectVariables extends CreateProjectInput {}
 
 export interface UpdateProjectVariables extends Partial<UpdateProjectInput> {
   projectId: string;
@@ -447,7 +445,7 @@ export interface UseProjectsReturn {
   refetch: () => Promise<any>;
 }
 
-export function useProjects(_workspaceIdOrOptions?: string | { isArchived?: boolean }): UseProjectsReturn {
+export function useProjects(options?: { isArchived?: boolean }): UseProjectsReturn {
   const query = useQuery({
     queryKey: projectKeys.all(),
     queryFn: ({ signal }: { signal?: AbortSignal }) => fetchUserProjects('all', signal),

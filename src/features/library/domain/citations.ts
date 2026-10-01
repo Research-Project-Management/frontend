@@ -106,3 +106,24 @@ export function toBibTeXEntry(item: Partial<Item>): string {
 
   return `@${entryType}{${citeKey},\n${fieldLines}\n}`;
 }
+
+/**
+ * Normalizes full academic journal or style names into clean, compact
+ * toolbar button labels (<= 14 characters) that will not break container layout.
+ */
+export function getCleanStyleLabel(id: string, fullTitle?: string): string {
+  if (fullTitle) {
+    const clean = fullTitle.replace(/\s*\([^)]*\)/g, '').trim();
+    if (clean.length <= 14) return clean;
+    const firstWord = clean.split(/\s+/)[0];
+    if (firstWord && firstWord.length <= 14) return firstWord;
+  }
+  const s = id.toLowerCase().trim();
+  if (s.startsWith('apa')) return 'APA';
+  if (s.startsWith('mla')) return 'MLA';
+  if (s === 'ieee') return 'IEEE';
+  if (s === 'bibtex') return 'BibTeX';
+  if (s === 'ris') return 'RIS';
+  const cleanId = id.toUpperCase();
+  return cleanId.length <= 10 ? cleanId : id.slice(0, 10);
+}

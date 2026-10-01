@@ -1,5 +1,4 @@
 import JSZip from 'jszip';
-import { toast } from 'sonner';
 import { fileService, documentService } from '../services/core.service';
 import { versionService } from '../services/history.service';
 import { StorageService } from '../services/storage.service';
@@ -61,14 +60,7 @@ async function bundleAndDownloadZip({
   currentContent,
   activeFileId,
   isArxiv = false,
-}: BundleZipOptions): Promise<void> {
-  const label = isArxiv ? 'arXiv submission bundle (.zip)' : 'ZIP';
-  const toastId = toast.loading(
-    isArxiv
-      ? 'Packaging arXiv submission bundle (.zip)...'
-      : 'Packaging project files into ZIP...',
-  );
-
+}: BundleZipOptions): Promise<string> {
   try {
     const zip = new JSZip();
 
@@ -190,20 +182,10 @@ async function bundleAndDownloadZip({
     document.body.removeChild(link);
     URL.revokeObjectURL(downloadUrl);
 
-    toast.success(
-      isArxiv
-        ? `Exported ${filename} successfully for arXiv!`
-        : `Exported ${filename} successfully!`,
-      { id: toastId },
-    );
+    return filename;
   } catch (error) {
-    console.error(`[export-zip] Error generating ${label}:`, error);
-    toast.error(
-      isArxiv
-        ? 'Failed to create arXiv submission ZIP.'
-        : 'Failed to create project ZIP archive.',
-      { id: toastId },
-    );
+    console.error('[export-zip] Error generating ZIP:', error);
+    throw error;
   }
 }
 
@@ -211,7 +193,7 @@ async function bundleAndDownloadZip({
  * Packages all LaTeX files, auxiliary documents, and media assets belonging to the project
  * into a single compressed .zip file and initiates a client-side download.
  */
-export async function exportProjectAsZip(options: ExportZipOptions): Promise<void> {
+export async function exportProjectAsZip(options: ExportZipOptions): Promise<string> {
   return bundleAndDownloadZip({ ...options, isArxiv: false });
 }
 
@@ -222,7 +204,7 @@ export async function exportProjectAsZip(options: ExportZipOptions): Promise<voi
  *  - Mounts valid figure/asset files
  *  - Emits an arxiv-<title>.zip package ready for direct upload
  */
-export async function exportArxivSubmissionZip(options: ExportZipOptions): Promise<void> {
+export async function exportArxivSubmissionZip(options: ExportZipOptions): Promise<string> {
   return bundleAndDownloadZip({ ...options, isArxiv: true });
 }
 
@@ -244,9 +226,7 @@ export async function exportVersionAsZip({
   revisionDate,
   revisionLabel,
   projectTitle,
-}: ExportVersionZipOptions): Promise<void> {
-  const toastId = toast.loading('Packaging historical snapshot into ZIP...');
-
+}: ExportVersionZipOptions): Promise<string> {
   try {
     const zip = new JSZip();
 
@@ -397,10 +377,10 @@ export async function exportVersionAsZip({
     document.body.removeChild(link);
     URL.revokeObjectURL(downloadUrl);
 
-    toast.success(`Exported ${filename} successfully!`, { id: toastId });
+    return filename;
   } catch (error) {
     console.error('[export-zip] Error generating version ZIP:', error);
-    toast.error('Failed to create version ZIP archive.', { id: toastId });
+    throw error;
   }
 }
 

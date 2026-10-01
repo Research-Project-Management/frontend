@@ -15,7 +15,7 @@ export interface SidebarProps {
   onJumpToPage: (page: number, annotationId?: string) => void;
   fulltext?: DocumentFulltext | null;
   paper?: ReaderDocument | null;
-  workspaceId?: string;
+  scopeId?: string;
   attachmentId?: string;
   pdfBlobUrl?: string | null;
   selectedIds?: Set<string>;
@@ -32,7 +32,7 @@ export function Sidebar({
   onJumpToPage,
   fulltext,
   paper,
-  workspaceId,
+  scopeId,
   attachmentId,
   pdfBlobUrl,
   selectedIds,
@@ -188,7 +188,7 @@ export function Sidebar({
           paper ? (
             <AnnotationsPanel
               paper={paper}
-              workspaceId={workspaceId || 'me'}
+              scopeId={scopeId || 'user'}
               attachmentId={attachmentId}
               onNavigateToPage={onJumpToPage}
               selectedIds={selectedIds}

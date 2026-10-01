@@ -74,12 +74,12 @@ export function useLibraryCountsQuery(scopeId?: string) {
 }
 export const useLibraryCounts = useLibraryCountsQuery;
 
-export type UseCollectionsScopeInput = string | { scopeId?: string; workspaceId?: string; projectId?: string };
+export type UseCollectionsScopeInput = string | { scopeId?: string; projectId?: string };
 
 export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
   const scopeId = typeof scopeIdOrOptions === 'string'
     ? scopeIdOrOptions
-    : (scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId || scopeIdOrOptions?.workspaceId || 'user');
+    : (scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId || 'user');
 
   const queryClient = useQueryClient();
 
@@ -360,7 +360,6 @@ export function useViewItems(
 export interface UseItemsOptions {
   projectId?: string;
   scopeId?: string;
-  workspaceId?: string;
   collectionId?: string;
   paperId?: string;
   itemId?: string;
@@ -369,8 +368,8 @@ export interface UseItemsOptions {
 
 export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
   const options = typeof optionsOrScope === 'string' ? { scopeId: optionsOrScope } : optionsOrScope;
-  const { scopeId, projectId, workspaceId, collectionId, paperId, itemId } = options;
-  const targetScope = scopeId || projectId || workspaceId || 'user';
+  const { scopeId, projectId, collectionId, paperId, itemId } = options;
+  const targetScope = scopeId || projectId || 'user';
   const activeItemId = itemId || paperId || '';
   const queryClient = useQueryClient();
 
@@ -611,10 +610,10 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
   };
 }
 
-export function useItemTypes(scopeIdOrOptions?: string | { scopeId?: string; workspaceId?: string; projectId?: string }) {
+export function useItemTypes(scopeIdOrOptions?: string | { scopeId?: string; projectId?: string }) {
   const sid = typeof scopeIdOrOptions === 'string'
     ? scopeIdOrOptions
-    : (scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId || scopeIdOrOptions?.workspaceId || 'user');
+    : (scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId || 'user');
 
   const { data, isLoading } = useQuery({
     queryKey: itemKeys.types(sid),
@@ -633,7 +632,11 @@ export function useItemTypes(scopeIdOrOptions?: string | { scopeId?: string; wor
     updateLibrarySchemaRegistry(data as unknown as Parameters<typeof updateLibrarySchemaRegistry>[0]);
   }
 
-  const types = (data as ItemTypesResponse | undefined)?.itemTypes || (data as ItemTypesResponse | undefined)?.data || [];
+  const types = Array.isArray(data)
+    ? data
+    : ((data as ItemTypesResponse | undefined)?.itemTypes ||
+        (data as ItemTypesResponse | undefined)?.data ||
+        []);
 
   return {
     state: { types, isLoading },
@@ -775,6 +778,8 @@ export function useTrash(scopeId?: string) {
         id: 'trash-mutation-toast',
       });
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
+      queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
+      invalidateCollections(queryClient, effectiveScope);
     },
     onError: (err: any) => {
       toast.error('Failed to empty trash', {
@@ -1622,12 +1627,12 @@ export const relationKeys = {
 };
 
 export function useRelations(
-  scopeIdOrOptions?: string | { scopeId?: string; workspaceId?: string; projectId?: string },
+  scopeIdOrOptions?: string | { scopeId?: string; projectId?: string },
   itemId?: string,
 ) {
   const scopeId = typeof scopeIdOrOptions === 'string'
     ? scopeIdOrOptions
-    : (scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId || scopeIdOrOptions?.workspaceId || 'global');
+    : (scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId || 'global');
 
   const queryClient = useQueryClient();
   const effectiveItemId = itemId || '';
@@ -1668,12 +1673,13 @@ export function useRelations(
         });
       }
       const count = targets.length;
-      toast.success(count > 1 ? `Linked ${count} items` : 'Item linked', {
-        id: 'relation-mutation',
-      });
+      toast.success(
+        count > 1 ? `Successfully linked ${count} references` : 'Reference linked',
+        { id: 'relation-mutation' },
+      );
     },
     onError: (err: any) => {
-      toast.error('Failed to link items', {
+      toast.error('Failed to link references', {
         description: err?.message || 'Please try again.',
         id: 'relation-mutation',
       });
@@ -1692,10 +1698,10 @@ export function useRelations(
           queryKey: relationKeys.all(scopeId, variables.targetItemId),
         });
       }
-      toast.success('Item unlinked', { id: 'relation-mutation' });
+      toast.success('Reference unlinked', { id: 'relation-mutation' });
     },
     onError: (err: any) => {
-      toast.error('Failed to unlink items', {
+      toast.error('Failed to unlink reference', {
         description: err?.message || 'Please try again.',
         id: 'relation-mutation',
       });

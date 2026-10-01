@@ -22,6 +22,7 @@ import dynamic from 'next/dynamic';
 import { LibraryTopbar } from '../components/topbar';
 import { LibraryInspector, DuplicateMergeInspector } from '../components/inspector';
 import { LibraryModals } from '../components/modals';
+import { formatAcademicAuthors } from '../utils/academic-text';
 
 const MergeModal = dynamic(() => import('../components/modals/MergeModal'), { ssr: false });
 import { ContentSkeleton } from '../components/content/ContentSkeleton';
@@ -201,7 +202,7 @@ export function DuplicatesPage() {
   const handleOpenMerge = (group: DuplicateGroup) => {
     const items = (group.papers || group.items || []) as Item[];
     if (items.length < 2) {
-      toast.info('This group has only one item');
+      toast.info('This group has only one item', { id: 'duplicate-group-action' });
       return;
     }
     setMergeCluster(items);
@@ -224,7 +225,7 @@ export function DuplicatesPage() {
 
   const handleDismissGroup = (groupKey: string) => {
     setDismissedGroupKeys((prev) => new Set([...Array.from(prev), groupKey]));
-    toast.success('Dismissed duplicate group');
+    toast.success('Dismissed duplicate group', { id: 'duplicate-group-action' });
   };
 
   const isPersonalScope = activeScope.type === 'personal';
@@ -297,7 +298,7 @@ export function DuplicatesPage() {
                       key={groupKey}
                       onClick={() => setSelectedGroupKey(groupKey)}
                       className={cn(
-                        'rounded-md border bg-card overflow-hidden shadow-2xs transition-all cursor-pointer',
+                        'rounded-md border bg-card overflow-hidden shadow-2xs transition-colors cursor-pointer',
                         isSelectedGroup
                           ? 'border-primary/80 ring-1 ring-primary/30 shadow-xs'
                           : 'border-border hover:border-foreground/30',
@@ -371,11 +372,12 @@ export function DuplicatesPage() {
                       <div className="divide-y divide-border/40">
                         {items.map((item, itemIdx) => {
                           const isSelected = activeItemId === item.id;
-                          const authorStr = Array.isArray(item.authors)
-                            ? item.authors.join(', ')
-                            : typeof item.authors === 'string'
+                          const authorFormatted = formatAcademicAuthors(
+                            item.authors && item.authors.length > 0
                               ? item.authors
-                              : '';
+                              : (item as any).creators,
+                          );
+                          const authorStr = authorFormatted !== '—' ? authorFormatted : '';
 
                           return (
                             <div

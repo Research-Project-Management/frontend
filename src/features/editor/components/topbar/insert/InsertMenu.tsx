@@ -42,22 +42,22 @@ export default function InsertMenu() {
 
         {/* Symbol Palette */}
         <MenubarItem onClick={() => EditorEventBus.emit('flux:open-symbol-palette')}>
-          Symbol (LaTeX Palette)
+          Symbol palette
         </MenubarItem>
 
-        {/* Figure Wizard */}
+        {/* Figure */}
         <MenubarItem onClick={() => EditorEventBus.emit('flux:open-figure-wizard')}>
-          Figure (Image Wizard)
+          Figure (Image)
         </MenubarItem>
 
-        {/* Table Wizard */}
+        {/* Table */}
         <MenubarItem onClick={() => EditorEventBus.emit('flux:open-table-wizard')}>
-          Table (Wizard & Excel Import)
+          Table (Excel / Wizard)
         </MenubarItem>
 
-        {/* Citation / Reference Search */}
+        {/* Citation */}
         <MenubarItem onClick={() => EditorEventBus.emit('flux:open-citation-picker')} className="flex items-center justify-between gap-2">
-          <span>Citation / Reference Search</span>
+          <span>Citation</span>
           <span className="text-10 font-mono text-muted-foreground">Ctrl+Shift+K</span>
         </MenubarItem>
 
@@ -68,7 +68,7 @@ export default function InsertMenu() {
 
         {/* Cross reference */}
         <MenubarItem onClick={() => insertSnippet('\\ref{fig:figure}')}>
-          Cross reference
+          Cross-reference
         </MenubarItem>
       </MenubarContent>
     </MenubarMenu>

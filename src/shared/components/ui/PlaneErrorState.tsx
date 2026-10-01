@@ -346,7 +346,7 @@ export function PlaneErrorState({
                 setIsDetailsOpen((prev) => !prev);
               }
             }}
-            className="inline-flex items-center gap-1.5 py-1 px-3 rounded-md border border-border/70 bg-muted/40 hover:bg-muted/80 hover:border-border text-11 text-foreground/85 dark:text-muted-foreground hover:text-foreground font-mono transition-all duration-150 cursor-pointer select-none focus:outline-hidden focus:ring-1 focus:ring-primary/40"
+            className="inline-flex items-center gap-1.5 py-1 px-3 rounded-md border border-border/70 bg-muted/40 hover:bg-muted/80 hover:border-border text-11 text-foreground/85 dark:text-muted-foreground hover:text-foreground font-mono transition-colors duration-150 cursor-pointer select-none focus:outline-hidden focus:ring-1 focus:ring-primary/40"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

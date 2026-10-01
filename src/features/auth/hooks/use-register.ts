@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 
 import { useAuth } from './use-auth';
 import { registerUser } from '../services/auth.service';
+import { authKeys } from '../constants/auth.keys';
 import { registerSchema, type RegisterSchema } from '../schemas/auth.schema';
 import { env } from '@/config/env';
 import type { RegisterPayload } from '../types/auth.types';
@@ -20,6 +21,7 @@ import { getSafeRedirectUrl } from '@/shared/utils/auth-token.util';
  */
 export const useRegister = () => {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user, isLoading: isAuthLoading } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -32,19 +34,25 @@ export const useRegister = () => {
 
   const registerMutation = useMutation({
     mutationFn: (payload: RegisterPayload) => registerUser(payload),
-    onSuccess: () => {
-      toast.success('Account created! Please log in.');
+    onSuccess: (data) => {
+      const registeredUser = data?.user || (data as any);
+      if (registeredUser) {
+        queryClient.setQueryData(authKeys.session(), registeredUser);
+      }
+
+      toast.success(
+        registeredUser?.name
+          ? `Account created! Welcome to Flux, ${registeredUser.name}!`
+          : 'Account created! Welcome to Flux!'
+      );
+
       const params =
         typeof window !== 'undefined'
           ? new URLSearchParams(window.location.search)
           : null;
       const rawRedirect = params?.get('redirect');
-      const safeRedirect = rawRedirect ? getSafeRedirectUrl(rawRedirect, '') : '';
-      if (safeRedirect) {
-        router.push(`/login?redirect=${encodeURIComponent(safeRedirect)}`);
-      } else {
-        router.push('/login');
-      }
+      const safeRedirect = getSafeRedirectUrl(rawRedirect, '/home');
+      router.push(safeRedirect);
     },
     onError: (err: unknown) => {
       const message =
@@ -65,6 +73,13 @@ export const useRegister = () => {
   }, [isAuthLoading, user, router]);
 
   const handleOAuthLogin = (provider: 'google' | 'github') => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get('redirect');
+      if (redirect) {
+        sessionStorage.setItem('flux_oauth_redirect', redirect);
+      }
+    }
     window.location.href = `${env.NEXT_PUBLIC_API_URL}/auth/${provider}`;
   };
 

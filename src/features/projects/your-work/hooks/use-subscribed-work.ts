@@ -12,7 +12,6 @@ export function useSubscribedWork() {
 
   return {
     state: {
-      workspaceId: source.workspaceId,
       allWorkItems: source.allWorkItems,
       subscribedWorkItems,
       count: subscribedWorkItems.length,

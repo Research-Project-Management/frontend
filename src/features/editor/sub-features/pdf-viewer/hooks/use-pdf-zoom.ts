@@ -107,8 +107,8 @@ export function usePdfZoom({
     };
   }, [fittedScale, handleZoomIn, handleZoomOut]);
 
-  const showZoomGroup = containerWidth >= 480;
-  const showUtilityGroup = containerWidth >= 380;
+  const showZoomGroup = containerWidth >= 500;
+  const showUtilityGroup = containerWidth >= 720;
 
   return {
     scale,

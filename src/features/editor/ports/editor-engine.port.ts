@@ -90,6 +90,38 @@ export interface IEditorEngine {
   /** Subscribes to cursor position updates */
   onCursorChange(handler: (line: number, col: number) => void): () => void;
 
+  /** Sets the search and replace query */
+  setSearchQuery?(spec: {
+    search: string;
+    replace?: string;
+    caseSensitive?: boolean;
+    regexp?: boolean;
+    wholeWord?: boolean;
+  }): void;
+
+  /** Navigates to the next search match */
+  findNext?(): boolean;
+
+  /** Navigates to the previous search match */
+  findPrevious?(): boolean;
+
+  /** Replaces the currently selected match */
+  replaceNext?(): boolean;
+
+  /** Replaces all occurrences matching query */
+  replaceAll?(): boolean;
+
+  /** Clears search highlights and query */
+  clearSearch?(): void;
+
+  /** Counts total matches and current index for active query */
+  getSearchMatchesCount?(spec: {
+    search: string;
+    caseSensitive?: boolean;
+    regexp?: boolean;
+    wholeWord?: boolean;
+  }): { current: number; total: number };
+
   /** Cleanup handler invoked when engine unmounts */
   onDestroy(): void;
 }

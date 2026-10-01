@@ -7,6 +7,8 @@
  * Filters common OCR artifact tokens that mistakenly get tagged as author names.
  */
 
+import { normalizeAuthors, parseCreatorName } from '../domain/creators';
+
 export const JUNK_AUTHOR_PATTERNS = [
   /^\s*a\s*b\s*s\s*t\s*r\s*a\s*c\s*t\b/i,
   /^\s*i\s*n\s*t\s*r\s*o\s*d\s*u\s*c\s*t\s*i\s*o\s*n\b/i,
@@ -23,6 +25,9 @@ export const JUNK_AUTHOR_PATTERNS = [
   /^\s*table\s+\d+/i,
   /^\s*figure\s+\d+/i,
   /^\s*fig\.\s*\d+/i,
+  /^\s*vol\.\s*\d+/i,
+  /^\s*no\.\s*\d+/i,
+  /^\s*pp\.\s*\d+/i,
   /^\s*page\s+\d+/i,
 ];
 
@@ -40,38 +45,34 @@ export function cleanAcademicText(text?: string | null): string {
 
 /**
  * Formats authors array or string into clean academic citation format.
- * - Filters OCR junk (e.g. "Image Segmentation")
- * - Cleans broken hyphens
+ * - Extracts authors from strings, arrays, or creator objects (including CSL-JSON)
+ * - Splits composite author strings (; and & commas)
+ * - Converts inverted "LastName, FirstName" to natural "FirstName LastName" for legible commas
+ * - Filters OCR junk and footnote markers
  * - If 1-3 authors: joins with commas
- * - If 4+ authors: shows first 3 + "et al."
+ * - If 4+ authors: shows first 3 + "et al." (or custom maxAuthors)
  */
-export function formatAcademicAuthors(authors: any): string {
+export function formatAcademicAuthors(authors: any, maxAuthors = 3): string {
   if (!authors) return '—';
 
-  if (Array.isArray(authors)) {
-    if (authors.length === 0) return '—';
-    const cleaned = authors
-      .map((a) => {
-        if (!a) return '';
-        if (typeof a === 'string') return cleanAcademicText(a);
-        if (typeof a === 'object') {
-          if (a.firstName && a.lastName) {
-            return cleanAcademicText(`${a.firstName} ${a.lastName}`);
-          }
-          if (a.name) return cleanAcademicText(a.name);
-        }
-        return cleanAcademicText(String(a));
-      })
-      .filter((a) => a && !JUNK_AUTHOR_PATTERNS.some((pat) => pat.test(a)));
+  const rawList = normalizeAuthors(authors);
+  if (!rawList || rawList.length === 0) return '—';
 
-    if (cleaned.length === 0) return '—';
-    if (cleaned.length <= 3) return cleaned.join(', ');
-    return `${cleaned.slice(0, 3).join(', ')} et al.`;
-  }
+  const cleaned = rawList
+    .map((name) => {
+      const clean = cleanAcademicText(name);
+      if (!clean) return '';
+      if (JUNK_AUTHOR_PATTERNS.some((pat) => pat.test(clean))) return '';
+      // Format "LastName, FirstName" to "FirstName LastName" for display readability
+      if (clean.includes(',')) {
+        const parsed = parseCreatorName(clean);
+        return parsed.fullName || clean;
+      }
+      return clean;
+    })
+    .filter((a) => a && a.length >= 2 && !JUNK_AUTHOR_PATTERNS.some((pat) => pat.test(a)));
 
-  const str = cleanAcademicText(String(authors));
-  if (!str || JUNK_AUTHOR_PATTERNS.some((pat) => pat.test(str))) {
-    return '—';
-  }
-  return str;
+  if (cleaned.length === 0) return '—';
+  if (cleaned.length <= maxAuthors) return cleaned.join(', ');
+  return `${cleaned.slice(0, maxAuthors).join(', ')} et al.`;
 }

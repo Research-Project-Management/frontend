@@ -8,7 +8,17 @@
 import { EditorView } from '@codemirror/view';
 import { EditorSelection, StateEffect } from '@codemirror/state';
 import { undo, redo, selectAll, indentMore, indentLess } from '@codemirror/commands';
-import { openSearchPanel } from '@codemirror/search';
+import {
+  openSearchPanel,
+  closeSearchPanel,
+  searchPanelOpen,
+  SearchQuery,
+  setSearchQuery,
+  findNext,
+  findPrevious,
+  replaceNext,
+  replaceAll,
+} from '@codemirror/search';
 import type {
   IEditorEngine,
   EditorSelectionRange,
@@ -209,12 +219,94 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
     };
   }
 
+  getView(): EditorView {
+    return this.view;
+  }
+
   selectAll(): void {
     selectAll(this.view);
   }
 
   openFind(): void {
     openSearchPanel(this.view);
+  }
+
+  setSearchQuery(spec: {
+    search: string;
+    replace?: string;
+    caseSensitive?: boolean;
+    regexp?: boolean;
+    wholeWord?: boolean;
+  }): void {
+    if (!this.view.state) return;
+    const query = new SearchQuery({
+      search: spec.search,
+      replace: spec.replace || '',
+      caseSensitive: Boolean(spec.caseSensitive),
+      regexp: Boolean(spec.regexp),
+      wholeWord: Boolean(spec.wholeWord),
+    });
+    this.view.dispatch({
+      effects: setSearchQuery.of(query),
+    });
+  }
+
+  findNext(): boolean {
+    return findNext(this.view);
+  }
+
+  findPrevious(): boolean {
+    return findPrevious(this.view);
+  }
+
+  replaceNext(): boolean {
+    return replaceNext(this.view);
+  }
+
+  replaceAll(): boolean {
+    return replaceAll(this.view);
+  }
+
+  clearSearch(): void {
+    if (!this.view.state) return;
+    this.view.dispatch({
+      effects: setSearchQuery.of(new SearchQuery({ search: '' })),
+    });
+  }
+
+  getSearchMatchesCount(spec: {
+    search: string;
+    caseSensitive?: boolean;
+    regexp?: boolean;
+    wholeWord?: boolean;
+  }): { current: number; total: number } {
+    if (!spec.search || !this.view.state) return { current: 0, total: 0 };
+    try {
+      const query = new SearchQuery({
+        search: spec.search,
+        caseSensitive: Boolean(spec.caseSensitive),
+        regexp: Boolean(spec.regexp),
+        wholeWord: Boolean(spec.wholeWord),
+      });
+      if (!query.valid) return { current: 0, total: 0 };
+
+      let total = 0;
+      let current = 0;
+      const cursor = query.getCursor(this.view.state.doc);
+      const selFrom = this.view.state.selection.main.from;
+
+      let item = cursor.next();
+      while (!item.done) {
+        total++;
+        if (item.value.from <= selFrom) {
+          current = total;
+        }
+        item = cursor.next();
+      }
+      return { current: current || (total > 0 ? 1 : 0), total };
+    } catch {
+      return { current: 0, total: 0 };
+    }
   }
 
   indent(): void {

@@ -31,7 +31,7 @@ import {
   DropdownMenuSeparator,
 } from "@/shared/components/ui";
 import { getPaperFileUrl } from '../../domain';
-import { usePdf } from '@/features/reader/hooks/use-pdf';
+import { usePdf } from '../../hooks/use-pdf';
 import {
   useAttachments,
   useRenameAttachment,
@@ -201,7 +201,6 @@ interface AttachmentsSectionProps {
   paper: Item;
   scopeId?: string;
   projectId?: string;
-  workspaceId?: string;
   onAddAttachment?: () => void;
   isUploading?: boolean;
   hideHeader?: boolean;
@@ -215,7 +214,6 @@ export default function AttachmentsSection({
   paper,
   scopeId,
   projectId,
-  workspaceId,
   hideHeader = false,
   canEdit = true,
   onRegisterAdd,
@@ -266,9 +264,8 @@ export default function AttachmentsSection({
         linkMode: 'imported_file',
         attachmentType: 'supplementary',
       });
-      toast.success('File attached successfully');
     } catch (err: any) {
-      toast.error('Failed to attach file', { description: err?.message });
+      console.error('Failed to attach file:', err);
     } finally {
       setIsUploadingFile(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -293,9 +290,8 @@ export default function AttachmentsSection({
         linkMode: 'linked_url',
         attachmentType: 'other',
       });
-      toast.success('Web link attached successfully');
     } catch (err: any) {
-      toast.error('Failed to attach link', { description: err?.message });
+      console.error('Failed to attach link:', err);
     }
   };
 
@@ -434,7 +430,7 @@ export default function AttachmentsSection({
         className="hidden"
         onChange={handleFileSelect}
       />
-      <div className="flex flex-col gap-2.5 text-xs font-sans select-none w-full">
+      <div className="flex flex-col gap-2 text-xs font-sans select-none w-full">
         {!hideHeader && (
         <div className="flex items-center justify-between pb-1">
           <h3 className="text-12 font-medium text-foreground">
@@ -488,12 +484,12 @@ export default function AttachmentsSection({
       ) : null}
 
       {/* Attachments List */}
-      <div className="flex flex-col gap-[5px] w-full">
+      <div className="flex flex-col gap-1.5 w-full">
 
         {/* Primary PDF Row */}
         {paperUrl ? (
-          <div className="flex items-center justify-between px-[8px] py-[5px] min-h-[34px] rounded-md hover:bg-muted border border-border">
-            <div className="flex items-center gap-[8px] min-w-0 flex-1 mr-2">
+          <div className="flex items-center justify-between px-2 py-1 min-h-[28px] rounded-md hover:bg-muted border border-border">
+            <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
               <div className="size-4 shrink-0 flex items-center justify-center">
                 <FileText className="size-4 text-foreground shrink-0" />
               </div>
@@ -587,10 +583,10 @@ export default function AttachmentsSection({
           return (
             <div
               key={att.id}
-              className="flex items-center justify-between px-[8px] py-[5px] min-h-[34px] rounded-md hover:bg-muted border border-border transition-colors"
+              className="flex items-center justify-between px-2 py-1 min-h-[28px] rounded-md hover:bg-muted border border-border transition-colors"
             >
               <div
-                className={`flex items-center gap-[8px] min-w-0 flex-1 mr-2 ${isSnapshot || isLink ? 'cursor-pointer' : ''}`}
+                className={`flex items-center gap-2 min-w-0 flex-1 mr-2 ${isSnapshot || isLink ? 'cursor-pointer' : ''}`}
                 onClick={
                   isSnapshot
                     ? () =>

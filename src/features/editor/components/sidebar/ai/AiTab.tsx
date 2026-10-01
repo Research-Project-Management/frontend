@@ -179,7 +179,7 @@ export default function AiTab({ onClose }: AiTabProps) {
     }
     engine.insertText(text);
     engine.focus();
-    toast.success('Đã chèn mã vào tài liệu');
+    toast.success('Inserted code into document');
   };
 
   // Editor Actions: Replace current selection
@@ -190,7 +190,7 @@ export default function AiTab({ onClose }: AiTabProps) {
     }
     engine.insertText(text);
     engine.focus();
-    toast.success('Đã thay thế đoạn văn bản bằng mã AI');
+    toast.success('Replaced selection with AI code');
   };
 
   // Copy code snippet
@@ -199,9 +199,9 @@ export default function AiTab({ onClose }: AiTabProps) {
       await navigator.clipboard.writeText(code);
       setCopiedIndex(id);
       setTimeout(() => setCopiedIndex(null), 2000);
-      toast.success('Đã sao chép vào clipboard');
+      toast.success('Copied to clipboard');
     } catch {
-      toast.error('Không thể sao chép');
+      toast.error('Failed to copy to clipboard');
     }
   };
 
@@ -269,12 +269,12 @@ export default function AiTab({ onClose }: AiTabProps) {
       setSelectionContext(null);
     } catch (err: any) {
       if (err.name !== 'AbortError') {
-        toast.error(err.message || 'Lỗi gửi tin nhắn đến AI');
+        toast.error(err.message || 'Failed to send message to AI');
         setMessages((prev) => [
           ...prev,
           {
             role: 'assistant',
-            content: `⚠️ **Đã xảy ra lỗi:** ${err.message || 'Không thể kết nối đến máy chủ AI.'}`,
+            content: `⚠️ **An error occurred:** ${err.message || 'Could not connect to the AI server.'}`,
           },
         ]);
       }
@@ -297,7 +297,7 @@ export default function AiTab({ onClose }: AiTabProps) {
     setMessages([]);
     setStreamingMessage('');
     setSelectionContext(null);
-    toast.success('Đã làm mới cuộc trò chuyện');
+    toast.success('Conversation history cleared');
   };
 
   // Custom markdown code renderer with interactive Editor bridge buttons

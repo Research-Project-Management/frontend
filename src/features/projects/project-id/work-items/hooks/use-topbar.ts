@@ -79,7 +79,6 @@ export function useTopbar({
 }: UseTopbarOptions = {}) {
   const items = propItems || propWorkItems || [];
   const { projectId } = useParams() as { projectId: string };
-  const workspaceId = projectId;
   const router = useRouter();
   const pathname = usePathname();
   const { projects = [] } = useProjects();
@@ -886,7 +885,6 @@ export function useTopbar({
     displayOptions,
     filteredProjects,
     currentModule: 'work-items',
-    workspaceId,
     projectId,
     savedViews,
     activeViewId,

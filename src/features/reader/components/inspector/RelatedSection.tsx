@@ -1,0 +1,608 @@
+'use client';
+
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import {
+  FileText,
+  X,
+  ExternalLink,
+  Loader2,
+  Search,
+  Plus,
+  Folder,
+  Library,
+  ArrowRight,
+} from 'lucide-react';
+import {
+  useRelations,
+  useViewItems,
+  useCollections,
+} from '../../data';
+import { useReaderViewStore } from '../../store/reader-ui.store';
+import type { Item, RelatedItem } from '../../types/reader.types';
+import { cleanAcademicText, formatAcademicAuthors } from '../../utils/reader.util';
+import {
+  Button,
+  Checkbox,
+  Input,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from '@/shared/components/ui';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/shared/components/ui';
+import { cn } from '@/shared/lib/utils';
+
+interface VenueBearingItem {
+  journal?: string;
+  publicationTitle?: string;
+  publisher?: string;
+  arxivId?: string;
+}
+
+/**
+ * Extracts publication venue, journal, or arXiv ID.
+ */
+function getPublicationVenue(item?: VenueBearingItem | null): string {
+  if (!item) return '';
+  const venue = item.journal || item.publicationTitle || item.publisher;
+  if (venue) return cleanAcademicText(venue);
+  if (item.arxivId) return `arXiv:${cleanAcademicText(item.arxivId)}`;
+  return '';
+}
+
+interface RelatedSectionProps {
+  paper: Item;
+  scopeId?: string;
+  projectId?: string;
+  onSelectPaper?: (paperId: string) => void;
+  hideHeader?: boolean;
+  forceAdding?: boolean;
+  isAddOpen?: boolean;
+  onAddOpenChange?: (open: boolean) => void;
+  canEdit?: boolean;
+}
+
+export default function RelatedSection({
+  paper,
+  scopeId,
+  projectId,
+  onSelectPaper,
+  hideHeader = false,
+  forceAdding = false,
+  isAddOpen,
+  onAddOpenChange,
+  canEdit = true,
+}: RelatedSectionProps) {
+  const activeScopeId =
+    scopeId ||
+    projectId ||
+    paper.projectId ||
+    'user';
+
+  const { relatedItems, isLoading, link, unlink, isLinking } = useRelations(
+    activeScopeId,
+    paper.id || '',
+  );
+  const { data: allItemsRes } = useViewItems(activeScopeId, 'all');
+  const collectionsState = useCollections(activeScopeId);
+  const collections = collectionsState?.state?.collections || [];
+
+  const [internalAddOpen, setInternalAddOpen] = useState(false);
+  const isModalOpen = isAddOpen !== undefined ? isAddOpen : internalAddOpen;
+  const setModalOpen = onAddOpenChange || setInternalAddOpen;
+
+  useEffect(() => {
+    if (forceAdding && canEdit) {
+      setModalOpen(true);
+    }
+  }, [forceAdding, canEdit, setModalOpen]);
+
+  // Modal State
+  const [selectedTargetIds, setSelectedTargetIds] = useState<Set<string>>(new Set());
+  const [selectedCollectionFilter, setSelectedCollectionFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const relatedList: RelatedItem[] = relatedItems;
+
+  const selectOnly = useReaderViewStore((s) => s.selectOnly);
+  const handlePaperClick = useCallback(
+    (targetId: string) => {
+      if (onSelectPaper) {
+        onSelectPaper(targetId);
+      } else {
+        selectOnly(targetId);
+      }
+    },
+    [onSelectPaper, selectOnly],
+  );
+
+
+  // Filter available items for linking (excluding current paper & already linked papers)
+  const availableItems = useMemo(() => {
+    const all = allItemsRes?.items || [];
+    const linkedIdSet = new Set(relatedList.map((r) => r.id));
+
+    return all.filter((targetItem: Item) => {
+      if (!targetItem?.id || targetItem.id === paper.id) return false;
+      if (linkedIdSet.has(targetItem.id)) return false;
+
+      // Filter by Collection if selected in left sidebar
+      if (selectedCollectionFilter && selectedCollectionFilter !== 'all') {
+        const itemColIds = targetItem.collectionIds || [];
+        const itemCols = targetItem.collections || [];
+        const singleColId = targetItem.collectionId;
+
+        const inColIds = itemColIds.includes(selectedCollectionFilter);
+        const inColObjs = itemCols.some(
+          (c) => c.id === selectedCollectionFilter,
+        );
+        const inSingle = singleColId === selectedCollectionFilter;
+
+        if (!inColIds && !inColObjs && !inSingle) return false;
+      }
+
+      // Filter by search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const cleanTitle = cleanAcademicText(targetItem.title).toLowerCase();
+        const rawTitle = (targetItem.title || '').toLowerCase();
+        const authorMatch = (targetItem.authors || []).some((a: string) =>
+          a.toLowerCase().includes(q),
+        );
+        const yearMatch = String(targetItem.year || '').includes(q);
+        const venueMatch = getPublicationVenue(targetItem).toLowerCase().includes(q);
+
+        if (!cleanTitle.includes(q) && !rawTitle.includes(q) && !authorMatch && !yearMatch && !venueMatch) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [allItemsRes?.items, relatedList, paper.id, selectedCollectionFilter, searchQuery]);
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedTargetIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+
+  const isSubmittingRef = useRef(false);
+  const unlinkingRef = useRef<Set<string>>(new Set());
+
+  const handleLinkConfirm = useCallback(async () => {
+    if (selectedTargetIds.size === 0 || isLinking || isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    const targets = Array.from(selectedTargetIds);
+
+    try {
+      await link({
+        targetItemIds: targets,
+        relationType: 'related',
+      });
+
+      setSelectedTargetIds(new Set());
+      setSearchQuery('');
+      setSelectedCollectionFilter('all');
+      setModalOpen(false);
+    } catch (err) {
+      console.error('Failed to link items:', err);
+    } finally {
+      isSubmittingRef.current = false;
+    }
+  }, [selectedTargetIds, isLinking, link, setModalOpen]);
+
+  const handleUnlink = async (targetItemId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (unlinkingRef.current.has(targetItemId)) return;
+    unlinkingRef.current.add(targetItemId);
+    try {
+      await unlink({ targetItemId });
+    } catch (err) {
+      console.error('Failed to unlink item:', err);
+    } finally {
+      unlinkingRef.current.delete(targetItemId);
+    }
+  };
+
+  // Keyboard shortcut listener inside the modal
+  const handleDialogKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && selectedTargetIds.size > 0 && !isLinking) {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'TEXTAREA') return;
+      e.preventDefault();
+      handleLinkConfirm();
+    }
+  };
+
+  // No empty state rendered when there are no related items
+  if (!isLoading && relatedList.length === 0 && !isModalOpen) {
+    return null;
+  }
+
+  const currentPaperCleanTitle = cleanAcademicText(paper.title) || 'Current Reference';
+
+  return (
+    <div className="flex flex-col gap-2 text-12 min-w-0">
+      {/* Header bar */}
+      {!hideHeader && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-12 font-medium text-foreground">
+            Related
+          </h3>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              title="Add related item"
+              aria-label="Add related item"
+            >
+              <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Loading state */}
+      {isLoading && (
+        <div className="p-3 text-center text-muted-foreground flex items-center justify-center gap-2">
+          <Loader2 className="size-3.5 animate-spin shrink-0" strokeWidth={1.5} />
+          <span className="text-11">Loading related items...</span>
+        </div>
+      )}
+
+      {/* Relations list in Inspector */}
+      {!isLoading && relatedList.length > 0 && (
+        <TooltipProvider delayDuration={300}>
+          <div className="flex flex-col gap-2">
+            {relatedList.map((item) => {
+              const cleanTitle = cleanAcademicText(item.title) || 'Untitled Item';
+              const authorsStr = formatAcademicAuthors(item.authors || (item as any).creators, 2);
+              const cleanAuthors = authorsStr !== '—' ? authorsStr : '';
+              const venue = getPublicationVenue(item as unknown as VenueBearingItem);
+
+              return (
+                <div
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handlePaperClick(item.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handlePaperClick(item.id);
+                    }
+                  }}
+                  className="group relative flex items-start gap-2 p-2 rounded-md border border-border/70 bg-card hover:bg-muted/50 hover:border-border transition-all cursor-pointer select-none"
+                  title={cleanTitle}
+                >
+                  {/* Left document icon */}
+                  <div className="size-6 rounded bg-muted/60 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 flex items-center justify-center shrink-0 mt-0.5 transition-colors">
+                    <FileText className="size-3.5" strokeWidth={1.5} />
+                  </div>
+
+                  {/* Main reference info */}
+                  <div className="min-w-0 flex-1 pr-1">
+                    <p className="font-medium text-12 text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
+                      {cleanTitle}
+                    </p>
+                    {(cleanAuthors || venue || item.year) && (
+                      <p className="text-11 text-muted-foreground mt-0.5 leading-normal line-clamp-1">
+                        {[cleanAuthors, venue, item.year].filter(Boolean).join(' • ')}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Top-right action controls */}
+                  <div
+                    className="flex items-center gap-0.5 shrink-0 -mt-0.5"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Open in library */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => handlePaperClick(item.id)}
+                          className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                          aria-label="Open paper in library"
+                        >
+                          <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" strokeWidth={1.5} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={4} className="text-11">
+                        Open in library
+                      </TooltipContent>
+                    </Tooltip>
+
+                    {/* Open DOI */}
+                    {item.doi && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <a
+                            href={`https://doi.org/${encodeURIComponent(item.doi)}`}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                            aria-label={`Open DOI: ${item.doi}`}
+                          >
+                            <ExternalLink className="size-3.5" strokeWidth={1.5} />
+                          </a>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={4} className="text-11">
+                          DOI: {item.doi}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+
+                    {/* Unlink */}
+                    {canEdit && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={(e) => handleUnlink(item.id, e)}
+                            className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-60 group-hover:opacity-100 cursor-pointer"
+                            aria-label="Unlink item"
+                          >
+                            <X className="size-3.5" strokeWidth={1.5} />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={4} className="text-11">
+                          Unlink reference
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </TooltipProvider>
+      )}
+
+      {/* Two-Column Master-Detail "Add Related Items" Dialog */}
+      <Dialog open={isModalOpen} onOpenChange={setModalOpen}>
+        <DialogContent
+          onKeyDown={handleDialogKeyDown}
+          className="sm:max-w-[780px] w-[95vw] bg-background text-foreground p-0 gap-0 border border-border rounded-xl shadow-raised-200 overflow-hidden flex flex-col h-[580px] max-h-[85vh]"
+        >
+          {/* Header */}
+          <DialogHeader className="px-5 py-3 border-b border-border bg-background space-y-0.5 shrink-0">
+            <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
+              Add Related References
+            </DialogTitle>
+            <DialogDescription className="text-11 text-muted-foreground leading-normal flex items-center gap-1.5 min-w-0">
+              <span className="shrink-0">Linking with:</span>
+              <span
+                className="font-medium text-foreground truncate max-w-[500px]"
+                title={currentPaperCleanTitle}
+              >
+                &ldquo;{currentPaperCleanTitle}&rdquo;
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Body: Left Sidebar (Collections) + Right Main Panel (References) */}
+          <div className="flex-1 flex min-h-0 overflow-hidden">
+            {/* Left Sidebar: Collections */}
+            <div className="w-48 sm:w-52 shrink-0 border-r border-border bg-background flex flex-col min-h-0 select-none">
+              <div className="px-3 pt-3 pb-1.5 text-11 font-semibold text-muted-foreground uppercase tracking-wider">
+                Collections
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5 thin-scrollbar">
+                {/* All Items Option */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedCollectionFilter('all')}
+                  className={cn(
+                    'w-full text-left px-2.5 py-1.5 rounded-md text-12 flex items-center gap-2 cursor-pointer transition-colors select-none',
+                    selectedCollectionFilter === 'all'
+                      ? 'bg-secondary text-secondary-foreground font-medium'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/40',
+                  )}
+                >
+                  <Library className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+                  <span className="truncate">All Items</span>
+                </button>
+
+                {/* Individual Collections */}
+                {collections.map((col: any) => {
+                  const isSelected = selectedCollectionFilter === col.id;
+
+                  return (
+                    <button
+                      key={col.id}
+                      type="button"
+                      onClick={() => setSelectedCollectionFilter(col.id)}
+                      className={cn(
+                        'w-full text-left px-2.5 py-1.5 rounded-md text-12 flex items-center gap-2 cursor-pointer transition-colors select-none',
+                        isSelected
+                          ? 'bg-secondary text-secondary-foreground font-medium'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/40',
+                      )}
+                      title={col.name}
+                    >
+                      <Folder
+                        className="size-3.5 shrink-0"
+                        style={{ color: col.color || 'var(--muted-foreground)' }}
+                        strokeWidth={1.5}
+                      />
+                      <span className="truncate">{col.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right Main Panel: Full Search + References List */}
+            <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-background">
+              {/* Clean Search Bar */}
+              <div className="p-2.5 border-b border-border bg-background flex items-center gap-2 shrink-0">
+                <div className="relative flex-1 flex items-center">
+                  <Search
+                    className="absolute left-2.5 size-3.5 text-muted-foreground pointer-events-none shrink-0"
+                    strokeWidth={1.5}
+                  />
+                  <Input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by title, author, venue, year..."
+                    className="w-full pl-8 pr-7 text-12 bg-muted/20 hover:bg-muted/30 focus:bg-background text-foreground placeholder:text-muted-foreground rounded-md border-border h-8 shadow-none focus-visible:ring-1 focus-visible:ring-ring transition-colors"
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 p-0.5 rounded text-muted-foreground hover:text-foreground cursor-pointer"
+                      title="Clear search"
+                    >
+                      <X className="size-3" strokeWidth={1.5} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+
+              {/* Scrollable References List */}
+              <div className="flex-1 overflow-y-auto px-2.5 py-2 min-h-0 thin-scrollbar space-y-0.5">
+                {availableItems.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground space-y-2 text-center px-4">
+                    <div className="size-9 rounded-full bg-muted flex items-center justify-center">
+                      <FileText className="size-4 text-muted-foreground" strokeWidth={1.5} />
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-12 font-medium text-foreground">No references available</p>
+                      <p className="text-12 text-muted-foreground max-w-[280px]">
+                        {searchQuery || selectedCollectionFilter !== 'all'
+                          ? 'No items match your search in this collection.'
+                          : 'All available items in this collection are already linked.'}
+                      </p>
+                    </div>
+                    {(searchQuery || selectedCollectionFilter !== 'all') && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setSelectedCollectionFilter('all');
+                        }}
+                        className="h-7 text-12 mt-1"
+                      >
+                        Reset filters
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  availableItems.map((targetItem: Item) => {
+                    const isChecked = selectedTargetIds.has(targetItem.id);
+                    const cleanTitle = cleanAcademicText(targetItem.title) || 'Untitled Reference';
+
+                    return (
+                      <div
+                        key={targetItem.id}
+                        onClick={() => handleToggleSelect(targetItem.id)}
+                        className={cn(
+                          'w-full text-left px-2.5 py-1.5 rounded-md text-13 flex items-center gap-2.5 cursor-pointer transition-colors duration-150 select-none group',
+                          isChecked
+                            ? 'bg-accent/40 text-foreground ring-1 ring-border'
+                            : 'text-foreground hover:bg-muted/40',
+                        )}
+                      >
+                        {/* Checkbox with click propagation stop */}
+                        <div
+                          className="shrink-0 flex items-center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={() => handleToggleSelect(targetItem.id)}
+                            className="size-4 rounded border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                            aria-label={`Select ${cleanTitle}`}
+                          />
+                        </div>
+
+                        {/* Title only */}
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className={cn(
+                              'text-13 leading-normal line-clamp-1 break-words',
+                              isChecked ? 'text-foreground font-semibold' : 'text-foreground font-medium',
+                            )}
+                            title={cleanTitle}
+                          >
+                            {cleanTitle}
+                          </p>
+                        </div>
+
+                        {/* Right: Year in black/foreground text */}
+                        {targetItem.year ? (
+                          <div className="shrink-0 pl-3">
+                            <span className="font-mono text-12 text-foreground font-medium tabular-nums">
+                              {targetItem.year}
+                            </span>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Actions across full modal width */}
+          <div className="px-5 py-3 border-t border-border bg-background flex items-center justify-end gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-3 text-12 text-foreground hover:bg-muted cursor-pointer rounded-md border-border/80"
+              onClick={() => {
+                setModalOpen(false);
+                setSelectedTargetIds(new Set());
+                setSearchQuery('');
+                setSelectedCollectionFilter('all');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant="default"
+              disabled={selectedTargetIds.size === 0 || isLinking}
+              onClick={handleLinkConfirm}
+              className="h-8 px-4 text-12 cursor-pointer font-medium rounded-md shadow-2xs flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
+            >
+              {isLinking && <Loader2 className="size-3.5 animate-spin shrink-0" strokeWidth={1.5} />}
+              <span>
+                {isLinking
+                  ? 'Linking...'
+                  : selectedTargetIds.size > 1
+                  ? 'Link Items'
+                  : 'Link Item'}
+              </span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

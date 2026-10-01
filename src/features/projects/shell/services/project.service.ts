@@ -50,8 +50,7 @@ export const fetchUserProjects = (
     { signal },
   );
 
-export const fetchProjectsByWorkspaceId = (
-  _workspaceIdOrUrl?: string,
+export const fetchProjects = (
   signal?: AbortSignal,
 ) =>
   fetchUserProjects('all', signal);
@@ -184,7 +183,7 @@ export const fetchDefaultStatesTemplate = () =>
 // ── Structured Project Service Object ─────────────────────────────────────────
 
 export const ProjectService = {
-  getAll: fetchProjectsByWorkspaceId,
+  getAll: fetchProjects,
   getById: fetchProject,
   create: createProjectApi,
   update: updateProjectApi,

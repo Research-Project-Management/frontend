@@ -48,7 +48,7 @@ export interface DocumentSettingsState {
   editorMode: 'code' | 'visual';
   reviewMode: boolean;
   trackChangesViewMode: TrackChangesViewMode;
-  activeSidebarPanel: 'Files' | 'Outline' | 'Search' | 'Citations' | 'Review' | 'AI' | null;
+  activeSidebarPanel: 'Files' | 'Search' | 'Citations' | 'Review' | 'AI' | null;
   isHistoryOpen: boolean;
   isTemplateModalOpen: boolean;
   spellCheck: boolean;
@@ -93,17 +93,16 @@ export interface DocumentSettingsState {
   setActiveSidebarPanel: (
     panel:
       | 'Files'
-      | 'Outline'
       | 'Search'
       | 'Citations'
       | 'Review'
       | 'AI'
       | null
       | ((
-          prev: 'Files' | 'Outline' | 'Search' | 'Citations' | 'Review' | 'AI' | null,
-        ) => 'Files' | 'Outline' | 'Search' | 'Citations' | 'Review' | 'AI' | null),
+          prev: 'Files' | 'Search' | 'Citations' | 'Review' | 'AI' | null,
+        ) => 'Files' | 'Search' | 'Citations' | 'Review' | 'AI' | null),
   ) => void;
-  toggleSidebarPanel: (panel: 'Files' | 'Outline' | 'Search' | 'Citations' | 'Review' | 'AI') => void;
+  toggleSidebarPanel: (panel: 'Files' | 'Search' | 'Citations' | 'Review' | 'AI') => void;
   setIsHistoryOpen: (open: boolean) => void;
   toggleHistory: () => void;
   setIsTemplateModalOpen: (open: boolean) => void;

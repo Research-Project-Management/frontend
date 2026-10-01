@@ -34,7 +34,6 @@ export interface BatchBarProps {
   isTrash?: boolean;
   scopeId?: string;
   projectId?: string;
-  workspaceId?: string;
 }
 
 export type PaperBatchBarProps = BatchBarProps;
@@ -53,11 +52,10 @@ export function BatchBar({
   isTrash = false,
   scopeId: propsScopeId,
   projectId: propsProjectId,
-  workspaceId: propsWorkspaceId,
 }: BatchBarProps) {
-  const params = useParams() as { projectId?: string; workspaceId?: string };
+  const params = useParams() as { projectId?: string };
   const effectiveScopeId =
-    propsScopeId || propsProjectId || propsWorkspaceId || params?.projectId || 'user';
+    propsScopeId || propsProjectId || params?.projectId || 'user';
 
   const copyWithToast = async (text: string, label: string = 'Copied to clipboard') => {
     if (!text || !text.trim()) {
@@ -87,6 +85,15 @@ export function BatchBar({
 
   // Support both selectedItems and deprecated selectedPapers prop
   const resolvedItems = selectedItems || selectedPapers || [];
+
+  const isAllProcessingSelected =
+    resolvedItems.length > 0 &&
+    resolvedItems.every(
+      (item) =>
+        Boolean((item as any)._isProcessing) ||
+        item.id.startsWith('temp-') ||
+        item.id.startsWith('provisional-'),
+    );
 
   const retractedSelected = resolvedItems.filter(
     (i) =>
@@ -279,6 +286,7 @@ export function BatchBar({
                   <Button
                     variant="ghost"
                     size="sm"
+                    disabled={isAllProcessingSelected}
                     className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none"
                   >
                     <FolderInput className="size-3.5 text-foreground shrink-0" />
@@ -287,7 +295,7 @@ export function BatchBar({
                 </DropdownMenuTrigger>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-                Move to collection
+                {isAllProcessingSelected ? 'Cannot move files while uploading or processing' : 'Move to collection'}
               </TooltipContent>
             </Tooltip>
             <DropdownMenuContent
@@ -324,6 +332,7 @@ export function BatchBar({
               <Button
                 variant="ghost"
                 size="sm"
+                disabled={isAllProcessingSelected}
                 onClick={onBatchMerge}
                 className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
               >
@@ -332,7 +341,7 @@ export function BatchBar({
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-              Merge items
+              {isAllProcessingSelected ? 'Cannot merge files while uploading or processing' : 'Merge items'}
             </TooltipContent>
           </Tooltip>
         )}
@@ -466,6 +475,7 @@ export function BatchBar({
                   <Button
                     variant="ghost"
                     size="sm"
+                    disabled={isAllProcessingSelected}
                     onClick={onBatchRestore}
                     className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
                   >
@@ -474,7 +484,7 @@ export function BatchBar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-                  Restore
+                  {isAllProcessingSelected ? 'Cannot restore files while uploading or processing' : 'Restore'}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -484,6 +494,7 @@ export function BatchBar({
                   <Button
                     variant="ghost"
                     size="sm"
+                    disabled={isAllProcessingSelected}
                     onClick={onBatchDelete}
                     className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
                   >
@@ -492,7 +503,7 @@ export function BatchBar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-                  Delete permanently
+                  {isAllProcessingSelected ? 'Cannot delete files while uploading or processing' : 'Delete permanently'}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -505,6 +516,7 @@ export function BatchBar({
                   <Button
                     variant="ghost"
                     size="sm"
+                    disabled={isAllProcessingSelected}
                     onClick={onBatchDetach}
                     className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
                   >
@@ -513,7 +525,7 @@ export function BatchBar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-                  Remove from collection (keep in library)
+                  {isAllProcessingSelected ? 'Cannot remove files while uploading or processing' : 'Remove from collection (keep in library)'}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -523,6 +535,7 @@ export function BatchBar({
                   <Button
                     variant="ghost"
                     size="sm"
+                    disabled={isAllProcessingSelected}
                     onClick={onBatchDelete}
                     className="h-7 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center"
                   >
@@ -531,7 +544,7 @@ export function BatchBar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
-                  Move to trash
+                  {isAllProcessingSelected ? 'Cannot delete files while uploading or processing' : 'Move to trash'}
                 </TooltipContent>
               </Tooltip>
             )}

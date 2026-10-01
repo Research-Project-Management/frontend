@@ -74,9 +74,8 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
     return (
       <Tooltip>
         <TooltipTrigger asChild>{triggerButton}</TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs max-w-xs">
-          Your account role is Reviewer. Direct source modifications are disabled;
-          all edits are proposed as track-change suggestions.
+        <TooltipContent side="bottom" className="text-xs">
+          Reviewer role (Suggestions only)
         </TooltipContent>
       </Tooltip>
     );
@@ -100,7 +99,7 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
               {!reviewMode && <Check className="size-3 shrink-0 text-primary" />}
             </div>
             <p className="text-11 text-muted-foreground font-normal leading-tight mt-0.5">
-              Edit document directly in real-time
+              Direct edits
             </p>
           </div>
         </DropdownMenuItem>
@@ -125,7 +124,7 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
               )}
             </div>
             <p className="text-11 text-muted-foreground font-normal leading-tight mt-0.5">
-              Edits become proposed suggestions (Track Changes)
+              Track changes (Suggestions)
             </p>
           </div>
         </DropdownMenuItem>
@@ -143,7 +142,7 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
                 trackChangesViewMode === 'changes' && 'bg-accent font-medium text-accent-foreground',
               )}
             >
-              <span>View Changes (Diff)</span>
+              <span>Changes (Diff)</span>
               {trackChangesViewMode === 'changes' && <Check className="size-3 shrink-0 text-primary" />}
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -153,7 +152,7 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
                 trackChangesViewMode === 'clean' && 'bg-accent font-medium text-accent-foreground',
               )}
             >
-              <span>View Clean (Preview)</span>
+              <span>Clean (Preview)</span>
               {trackChangesViewMode === 'clean' && <Check className="size-3 shrink-0 text-primary" />}
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -163,7 +162,7 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
                 trackChangesViewMode === 'original' && 'bg-accent font-medium text-accent-foreground',
               )}
             >
-              <span>View Original</span>
+              <span>Original</span>
               {trackChangesViewMode === 'original' && <Check className="size-3 shrink-0 text-primary" />}
             </DropdownMenuItem>
           </>

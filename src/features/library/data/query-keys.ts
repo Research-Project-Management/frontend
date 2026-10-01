@@ -29,9 +29,11 @@ export const libraryKeys = {
   tags: (scopeId?: string) =>
     [...libraryKeys.all, 'tags', scopeId || 'user'] as const,
 
-  // Attachments
+  // Attachments & Annotations
   attachments: (scopeId?: string, itemId?: string) =>
     [...libraryKeys.all, 'attachments', scopeId || 'user', itemId || 'none'] as const,
+  annotations: (scopeId?: string, attachmentId?: string) =>
+    [...libraryKeys.all, 'annotations', scopeId || 'user', attachmentId || 'none'] as const,
 
   // Notes
   notes: (scopeId?: string, itemId?: string) =>
@@ -83,4 +85,10 @@ export const itemKeys = {
   state: (scopeId?: string, itemId?: string) => libraryKeys.itemState(scopeId, itemId),
   types: (scopeId?: string) => libraryKeys.itemTypes(scopeId),
   counts: (scopeId?: string) => libraryKeys.counts(scopeId),
+};
+
+export const annotationKeys = {
+  all: (scopeId?: string) => ['library', 'annotations', scopeId || 'user'] as const,
+  byAttachment: (scopeId?: string, attachmentId?: string) =>
+    libraryKeys.annotations(scopeId, attachmentId),
 };

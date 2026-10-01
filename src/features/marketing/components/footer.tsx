@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-const GithubIcon = ({ className, 'aria-hidden': ariaHidden }: { className?: string, 'aria-hidden'?: boolean | 'true' | 'false' }) => (
+const GithubIcon = ({ className, 'aria-hidden': ariaHidden }: { className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
@@ -20,28 +20,28 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className='border-t border-border' aria-label='Site footer'>
+    <footer className='border-t border-border bg-background' aria-label='Site footer'>
       <div className='flux-container py-12'>
         <div className='grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-10 lg:gap-12'>
 
           {/* Brand */}
-          <div className='col-span-2 md:col-span-1 space-y-4'>
+          <div className='col-span-2 md:col-span-1 space-y-3'>
             <Link
               href='/'
-              className='inline-flex items-center gap-2 min-h-11 shrink-0'
+              className='inline-flex items-center gap-2 shrink-0'
               aria-label='Flux home'
             >
-              <img src='/Flux.svg' className='h-8 w-auto object-contain' alt='' aria-hidden='true' />
+              <img src='/Flux.svg' className='size-6 shrink-0 object-contain' alt='' aria-hidden='true' />
               <span className='font-semibold text-lg tracking-tight'>Flux</span>
             </Link>
-            <p className='text-base text-muted-foreground leading-relaxed'>
-              The collaborative research workspace for modern teams.
+            <p className='text-sm text-muted-foreground leading-relaxed max-w-xs'>
+              The collaborative research workbench engineered for modern academic teams.
             </p>
             <a
               href='https://github.com/Research-Project-TDTU'
               target='_blank'
               rel='noopener noreferrer'
-              className='inline-flex items-center gap-1.5 min-h-11 -mx-2 px-2 text-base text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm'
+              className='inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm'
               aria-label='View Flux on GitHub (opens in new tab)'
             >
               <GithubIcon className='size-4' aria-hidden='true' />
@@ -51,44 +51,45 @@ export default function Footer() {
 
           {/* Product */}
           <nav aria-label='Product links'>
-            <h3 className='text-sm font-semibold text-muted-foreground mb-4'>
+            <h3 className='text-sm font-semibold text-foreground mb-3'>
               Product
             </h3>
             <ul className='space-y-1'>
-              <FooterLink href='/' label='Features' />
-              <FooterLink href='/' label='Changelog' />
-              <FooterLink href='/docs' label='Documentation' />
+              <FooterLink href='/#features' label='Features' />
+              <FooterLink href='/#how-it-works' label='How it works' />
+              <FooterLink href='https://github.com/Research-Project-TDTU' label='Documentation' isExternal />
+              <FooterLink href='https://github.com/Research-Project-TDTU/flux/releases' label='Changelog' isExternal />
             </ul>
           </nav>
 
-          {/* Company */}
-          <nav aria-label='Company links'>
-            <h3 className='text-sm font-semibold text-muted-foreground mb-4'>
-              Company
+          {/* Team / Community */}
+          <nav aria-label='Community links'>
+            <h3 className='text-sm font-semibold text-foreground mb-3'>
+              Community
             </h3>
             <ul className='space-y-1'>
-              <FooterLink href='/' label='About' />
-              <FooterLink href='/' label='Blog' />
-              <FooterLink href='/' label='Contact' />
+              <FooterLink href='https://github.com/Research-Project-TDTU' label='GitHub Organization' isExternal />
+              <FooterLink href='https://github.com/Research-Project-TDTU/flux/issues' label='Report an issue' isExternal />
+              <FooterLink href='mailto:support@flux.ac.uk' label='Contact team' isExternal />
             </ul>
           </nav>
 
           {/* Legal */}
           <nav aria-label='Legal links'>
-            <h3 className='text-sm font-semibold text-muted-foreground mb-4'>
+            <h3 className='text-sm font-semibold text-foreground mb-3'>
               Legal
             </h3>
             <ul className='space-y-1'>
-              <FooterLink href='/' label='Privacy' />
-              <FooterLink href='/' label='Terms' />
+              <FooterLink href='/#privacy' label='Privacy Policy' />
+              <FooterLink href='/#terms' label='Terms of Service' />
             </ul>
           </nav>
         </div>
 
         {/* Bottom */}
-        <div className='mt-12 pt-6 border-t border-border'>
-          <p className='text-sm text-muted-foreground text-center'>
-            © {currentYear} Flux · TDTU Research Project Team
+        <div className='mt-12 pt-6 border-t border-border flex items-center justify-center text-center'>
+          <p className='text-13 text-muted-foreground'>
+            © {currentYear} Flux · TDTU Research Project Team. All rights reserved.
           </p>
         </div>
       </div>
@@ -96,12 +97,35 @@ export default function Footer() {
   );
 }
 
-function FooterLink({ href, label }: { href: string; label: string }) {
+function FooterLink({
+  href,
+  label,
+  isExternal,
+}: {
+  href: string;
+  label: string;
+  isExternal?: boolean;
+}) {
+  if (isExternal) {
+    return (
+      <li>
+        <a
+          href={href}
+          target='_blank'
+          rel='noopener noreferrer'
+          className='inline-flex items-center py-1 text-13 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm'
+        >
+          {label}
+        </a>
+      </li>
+    );
+  }
+
   return (
     <li>
       <Link
         href={href}
-        className='inline-flex items-center min-h-11 -mx-2 px-2 text-base text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm shrink-0'
+        className='inline-flex items-center py-1 text-13 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm'
       >
         {label}
       </Link>

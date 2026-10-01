@@ -136,7 +136,7 @@ export const CitationService = {
   ) => {
     const projectQuery = isProjectScope(scopeId) ? `&projectId=${encodeURIComponent(scopeId!)}` : '';
     return apiGet<FormattedCitation>(
-      `/api/v1/library/citation/item/${encodeURIComponent(itemId)}?style=${encodeURIComponent(style)}&index=${index}${projectQuery}`,
+      `/api/v1/library/citation/items/${encodeURIComponent(itemId)}/citation?style=${encodeURIComponent(style)}&index=${index}${projectQuery}`,
     );
   },
 
@@ -145,7 +145,7 @@ export const CitationService = {
    */
   getStyles: (scopeId?: string) => {
     const projectQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
-    return apiGet<string[]>(
+    return apiGet<import('../../types/library.types').StyleSummary[]>(
       `/api/v1/library/citation/styles${projectQuery}`,
     );
   },

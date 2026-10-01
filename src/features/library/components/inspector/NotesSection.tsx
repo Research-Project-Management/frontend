@@ -12,7 +12,6 @@ export interface NotesSectionProps {
   paper: Paper;
   scopeId?: string;
   projectId?: string;
-  workspaceId?: string;
   onUpdatePaper?: (data: Partial<Paper>) => void;
   onAddNote?: (content: string) => void;
   onDeleteNote?: (noteId: string, noteContent?: string) => void;
@@ -22,6 +21,9 @@ export interface NotesSectionProps {
   forceAdding?: boolean;
   onCancelAdding?: () => void;
   canEdit?: boolean;
+  pendingText?: string;
+  onClearPendingText?: () => void;
+  onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void;
 }
 
 export function NoteIcon({ className = 'size-3.5' }: { className?: string }) {
@@ -37,7 +39,6 @@ export default function NotesSection({
   paper,
   scopeId,
   projectId,
-  workspaceId,
   onAddNote,
   onDeleteNote,
   onRequestDelete,
@@ -46,6 +47,9 @@ export default function NotesSection({
   forceAdding = false,
   onCancelAdding,
   canEdit = true,
+  pendingText,
+  onClearPendingText,
+  onNavigateToAnnotation,
 }: NotesSectionProps) {
   const paperId = paper.id;
   const activeScopeId = scopeId || projectId || (paper as any)?.projectId || 'user';
@@ -56,6 +60,14 @@ export default function NotesSection({
       setIsAdding(true);
     }
   }, [forceAdding, canEdit]);
+
+  useEffect(() => {
+    if (pendingText && canEdit) {
+      setIsAdding(true);
+      setNewNoteContent((prev) => (prev ? `${prev}\n\n${pendingText}` : pendingText));
+      onClearPendingText?.();
+    }
+  }, [pendingText, canEdit, onClearPendingText]);
 
   const [newNoteContent, setNewNoteContent] = useState('');
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
@@ -210,7 +222,7 @@ export default function NotesSection({
   }
 
   return (
-    <div className="space-y-1 min-w-0 font-sans">
+    <div className="flex flex-col gap-2 min-w-0 font-sans">
       {!hideHeader && (
         <div className="flex items-center justify-between pb-1">
           <h3 className="text-12 font-medium text-foreground">
@@ -232,7 +244,7 @@ export default function NotesSection({
 
       {/* Add New Note Box */}
       {isAdding && (
-        <div className="space-y-1.5 p-2.5 bg-background rounded-md border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-colors text-xs mb-1.5 shadow-2xs">
+        <div className="space-y-1 p-2 bg-background rounded-md border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-colors text-xs">
           <Textarea
             autoFocus
             placeholder="Write a note..."
@@ -263,7 +275,7 @@ export default function NotesSection({
 
       {/* Optional Publication Comment Promotion (Zotero Extra / Comments) */}
       {potentialCommentText && !hasCommentInNotes && canEdit && (
-        <div className="flex items-center justify-between gap-2 p-2 bg-muted/40 rounded-md border border-border/50 text-xs mb-1.5">
+        <div className="flex items-center justify-between gap-2 p-2 bg-muted/40 rounded-md border border-border/50 text-xs">
           <div className="space-y-0.5 min-w-0 flex-1">
             <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider block">
               Publication Comment
@@ -288,7 +300,7 @@ export default function NotesSection({
 
       {/* Flat Notes List */}
       {notes.length === 0 && !isAdding ? (
-        <div className="py-2.5 px-3 text-center text-11 text-muted-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
+        <div className="py-2 px-2.5 text-center text-11 text-muted-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
           <span>No notes for this reference.</span>
           {canEdit && (
             <Button
@@ -304,13 +316,13 @@ export default function NotesSection({
           )}
         </div>
       ) : (
-        <div className="space-y-[5px] min-w-0">
+        <div className="flex flex-col gap-1.5 min-w-0">
         {notes.map((n) => {
           const isEditing = editingNoteId === n.id;
 
           if (isEditing) {
             return (
-              <div key={n.id} className="space-y-[5px] p-[8px] bg-background rounded-md border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-colors text-xs shadow-2xs">
+              <div key={n.id} className="space-y-1 p-2 bg-background rounded-md border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-colors text-xs">
                 <Textarea
                   autoFocus
                   value={editingContent}
@@ -329,7 +341,7 @@ export default function NotesSection({
                   rows={2}
                   className="text-xs resize-none w-full max-h-36 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-muted-foreground"
                 />
-                <div className="flex items-center justify-between text-10 font-normal text-muted-foreground select-none pt-[5px] border-t border-border font-mono">
+                <div className="flex items-center justify-between text-10 font-normal text-muted-foreground select-none pt-1 border-t border-border font-mono">
                   <span>Shift + Enter for new line</span>
                   <span>Enter to save · Esc to cancel</span>
                 </div>
@@ -342,17 +354,37 @@ export default function NotesSection({
               key={n.id}
               onClick={canEdit ? () => handleStartEdit(n) : undefined}
               className={cn(
-                "group/note flex items-center justify-between gap-[8px] px-[8px] py-[5px] min-h-[34px] rounded-md text-xs select-none min-w-0",
+                "group/note flex items-center justify-between gap-2 px-2 py-1 min-h-[28px] rounded-md text-xs select-none min-w-0",
                 canEdit ? "hover:bg-muted cursor-pointer" : "cursor-default"
               )}
             >
-              <div className="flex items-center gap-[8px] min-w-0 flex-1">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
                 <div className="size-4 shrink-0 flex items-center justify-center">
                   <NoteIcon className="size-3.5 text-foreground shrink-0" />
                 </div>
                 <span className="text-xs font-normal text-foreground tracking-tight select-text break-words leading-snug line-clamp-2" title={n.content}>
                   {n.content}
                 </span>
+                {onNavigateToAnnotation && (() => {
+                  const pageMatch = n.content.match(/(?:p\.|page)\s*(\d+)/i);
+                  if (pageMatch) {
+                    const pageNum = parseInt(pageMatch[1], 10);
+                    return (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onNavigateToAnnotation(pageNum);
+                        }}
+                        className="text-10 font-medium text-primary hover:underline px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 shrink-0 cursor-pointer"
+                        title={`Jump to page ${pageNum}`}
+                      >
+                        p. {pageNum}
+                      </button>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* Minus circle button on hover */}

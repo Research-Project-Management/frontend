@@ -4,14 +4,13 @@ import { Card } from '../card/Card';
 
 interface GridViewProps {
   pages: Page[];
-  workspaceId: string;
 }
 
-export function GridView({ pages, workspaceId }: GridViewProps) {
+export function GridView({ pages }: GridViewProps) {
   return (
     <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
       {pages.map((page) => (
-        <Card key={page.id} page={page} workspaceId={workspaceId} />
+        <Card key={page.id} page={page} />
       ))}
     </div>
   );

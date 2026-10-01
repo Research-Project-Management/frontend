@@ -113,7 +113,6 @@ export interface TableViewProps extends BaseWorkItemViewProps, WorkItemCardHandl
   columns: ColumnType[];
   projectStates?: ColumnType[];
   projectId?: string;
-  workspaceId?: string;
   members?: ProjectMember[];
   selectedIds?: string[];
   onToggleSelect?: (id: string) => void;
@@ -565,7 +564,6 @@ export function TableRowItem({
   onUpdateCard,
   members = [],
   projectId = '',
-  workspaceId = '',
   isReadOnly = false,
 }: {
   item: Item;
@@ -581,7 +579,6 @@ export function TableRowItem({
   onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
   members?: ProjectMember[];
   projectId?: string;
-  workspaceId?: string;
   isReadOnly?: boolean;
 }) {
   const copyItemText = useCopyItemText();
@@ -1289,7 +1286,6 @@ export function TableView({
   projectStates,
   displayOptions,
   projectId = '',
-  workspaceId = '',
   members = [],
   onAddCard,
   onEditCard,
@@ -1697,7 +1693,6 @@ export function TableView({
                             onUpdateCard={onUpdateCard}
                             members={members}
                             projectId={projectId}
-                            workspaceId={workspaceId}
                             isReadOnly={isReadOnly}
                           />
                         ))}
@@ -1735,7 +1730,6 @@ export function TableView({
                   onUpdateCard={onUpdateCard}
                   members={members}
                   projectId={projectId}
-                  workspaceId={workspaceId}
                   isReadOnly={isReadOnly}
                 />
               ))}

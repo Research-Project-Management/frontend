@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { UploadCloud } from 'lucide-react';
 import {
   useInfiniteLibraryItemsQuery,
   useCollectionsQuery,
@@ -250,44 +252,116 @@ export function LibraryContent({
     activeItemId: useLibraryUIStore.getState().activeItemId,
   });
 
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      if (!canEdit || isTrash || !onDirectFilesUpload) return;
+      if (e.dataTransfer.types.includes('Files')) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragOver(true);
+      }
+    },
+    [canEdit, isTrash, onDirectFilesUpload],
+  );
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      if (!canEdit || isTrash || !onDirectFilesUpload) return;
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragOver(false);
+        const files = Array.from(e.dataTransfer.files);
+        onDirectFilesUpload(files);
+      }
+    },
+    [canEdit, isTrash, onDirectFilesUpload],
+  );
+
   const handleBatchMove = (targetColId: string | null) => {
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
-    batchMoveItems(ids, targetColId);
+    const processingIds = new Set(
+      selectedItems
+        .filter((item: any) => item._isProcessing || item.id.startsWith('temp-') || item.id.startsWith('provisional-'))
+        .map((item) => item.id),
+    );
+    const movableIds = Array.from(selectedIds).filter((id) => !processingIds.has(id));
+    if (processingIds.size > 0) {
+      toast.warning('Cannot move files that are currently uploading or processing', {
+        id: 'library-item-guard',
+      });
+    }
+    if (movableIds.length === 0) return;
+    batchMoveItems(movableIds, targetColId);
     clearSelection();
   };
 
   const handleBatchDelete = () => {
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
+    const processingIds = new Set(
+      selectedItems
+        .filter((item: any) => item._isProcessing || item.id.startsWith('temp-') || item.id.startsWith('provisional-'))
+        .map((item) => item.id),
+    );
+    const deletableIds = Array.from(selectedIds).filter((id) => !processingIds.has(id));
+    if (processingIds.size > 0) {
+      toast.warning('Cannot delete files that are currently uploading or processing', {
+        id: 'library-item-guard',
+      });
+    }
+    if (deletableIds.length === 0) return;
     if (isTrash) {
       if (
         window.confirm(
-          `Are you sure you want to permanently delete ${ids.length} item(s)? This action cannot be undone.`,
+          `Are you sure you want to permanently delete ${deletableIds.length} item(s)? This action cannot be undone.`,
         )
       ) {
-        purgeMutation.mutate(ids);
+        purgeMutation.mutate(deletableIds);
         clearSelection();
       }
       return;
     }
-    openModal('DELETE_ITEMS', { itemIds: ids });
+    openModal('DELETE_ITEMS', { itemIds: deletableIds });
   };
 
   const handleDetachItem = useCallback(
     (itemId: string) => {
       if (!collectionId) return;
+      const targetItem = displayedItems.find((it) => it.id === itemId);
+      if ((targetItem as any)?._isProcessing) {
+        toast.warning('Cannot remove files that are currently uploading or processing', {
+          id: 'library-item-guard',
+        });
+        return;
+      }
       detachMutation.mutate({ collectionId, itemId });
     },
-    [collectionId, detachMutation],
+    [collectionId, detachMutation, displayedItems],
   );
 
   const handleBatchDetach = useCallback(() => {
-    const ids = Array.from(selectedIds);
-    if (!collectionId || ids.length === 0) return;
-    batchDetachMutation.mutate({ collectionId, itemIds: ids });
+    const processingIds = new Set(
+      selectedItems
+        .filter((item: any) => item._isProcessing || item.id.startsWith('temp-') || item.id.startsWith('provisional-'))
+        .map((item) => item.id),
+    );
+    const detachableIds = Array.from(selectedIds).filter((id) => !processingIds.has(id));
+    if (processingIds.size > 0) {
+      toast.warning('Cannot remove files that are currently uploading or processing', {
+        id: 'library-item-guard',
+      });
+    }
+    if (!collectionId || detachableIds.length === 0) return;
+    batchDetachMutation.mutate({ collectionId, itemIds: detachableIds });
     clearSelection();
-  }, [collectionId, selectedIds, batchDetachMutation, clearSelection]);
+  }, [collectionId, selectedIds, selectedItems, batchDetachMutation, clearSelection]);
 
   const handleBatchRestore = () => {
     const ids = Array.from(selectedIds);
@@ -340,7 +414,20 @@ export function LibraryContent({
   }
 
   return (
-    <div className="h-full w-full relative flex flex-col overflow-hidden">
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className="h-full w-full relative flex flex-col overflow-hidden"
+    >
+      {isDragOver && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/85 backdrop-blur-sm border-2 border-dashed border-primary pointer-events-none animate-in fade-in-50 duration-150">
+          <UploadCloud className="size-10 text-primary animate-bounce mb-2" strokeWidth={1.5} />
+          <p className="text-14 font-semibold text-foreground">Drop files to upload</p>
+          <p className="text-12 text-muted-foreground">PDF, BibTeX, RIS will be uploaded directly</p>
+        </div>
+      )}
+
       <ItemTable
         items={displayedItems}
         totalCount={totalCount}

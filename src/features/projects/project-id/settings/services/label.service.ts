@@ -75,9 +75,9 @@ export const LabelService = {
     );
   },
 
-  // ── 2. Legacy Workspace-Level Methods (Preserved for Backward Compatibility) ──
+  // ── 2. Legacy Methods (Preserved for Backward Compatibility) ──
 
-  list: async (_workspaceId?: string, type?: LabelType, projectId?: string): Promise<Label[]> => {
+  list: async (type?: LabelType, projectId?: string): Promise<Label[]> => {
     if (projectId) {
       return LabelService.getProjectLabels(projectId);
     }
@@ -91,7 +91,7 @@ export const LabelService = {
     return data.labels ?? [];
   },
 
-  create: async (_workspaceId: string, input: CreateLabelInput & { projectId?: string }): Promise<Label> => {
+  create: async (input: CreateLabelInput & { projectId?: string }): Promise<Label> => {
     if (input.projectId) {
       return LabelService.createProjectLabel(input.projectId, input as CreateProjectLabelInput);
     }

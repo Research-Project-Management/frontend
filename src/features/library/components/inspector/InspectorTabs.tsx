@@ -49,14 +49,14 @@ export function InspectorTabs({
   className,
 }: InspectorTabsProps) {
   const tabs: TabItem[] = [
-    { id: 'info', label: 'Details (Level 8 - 8 bars)', icon: Info },
-    { id: 'abstract', label: 'Abstract (Level 7 - 7 bars)', icon: AlignLeft },
-    { id: 'files', label: 'Attachments (Level 6 - 6 bars)', icon: Paperclip, badge: attachmentCount },
-    { id: 'notes', label: 'Notes (Level 5 - 5 bars)', icon: StickyNote, badge: noteCount },
-    { id: 'collections', label: 'Collections (Level 4 - 4 bars)', icon: FolderTree },
-    { id: 'tags', label: 'Tags (Level 3 - 3 bars)', icon: Tag },
-    { id: 'relations', label: 'Related (Level 2 - 2 bars)', icon: Network },
-    { id: 'cite', label: 'Citation (Level 1 - 1 bar)', icon: Quote },
+    { id: 'info', label: 'Details', icon: Info },
+    { id: 'abstract', label: 'Abstract', icon: AlignLeft },
+    { id: 'files', label: 'Attachments', icon: Paperclip, badge: attachmentCount },
+    { id: 'notes', label: 'Notes', icon: StickyNote, badge: noteCount },
+    { id: 'collections', label: 'Collections', icon: FolderTree },
+    { id: 'tags', label: 'Tags', icon: Tag },
+    { id: 'relations', label: 'Related', icon: Network },
+    { id: 'cite', label: 'Citation', icon: Quote },
   ];
 
   return (
@@ -80,7 +80,7 @@ export function InspectorTabs({
               <PanelRight className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="left" sideOffset={6} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-xs">
+          <TooltipContent side="left" sideOffset={6} className="text-12 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-xs">
             {isInspectorOpen ? 'Collapse inspector' : 'Expand inspector'}
           </TooltipContent>
         </Tooltip>
@@ -106,7 +106,7 @@ export function InspectorTabs({
                   className={cn(
                     'relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer text-foreground',
                     isActive
-                      ? 'bg-muted font-medium shadow-2xs'
+                      ? 'bg-muted font-medium'
                       : 'hover:bg-muted/60',
                   )}
                   aria-label={tab.label}
@@ -118,7 +118,7 @@ export function InspectorTabs({
               <TooltipContent
                 side="left"
                 sideOffset={6}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground"
+                className="text-12 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground"
               >
                 {tab.label}
                 {tab.badge !== undefined && tab.badge > 0 ? ` (${tab.badge})` : ''}

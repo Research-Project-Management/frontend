@@ -18,8 +18,7 @@ import { useCopilotChat } from '../../hooks/use-copilot';
 import { chatMessageFormSchema } from '../../schemas/reader.schema';
 import type { CopilotCitation, QuickPrompt, ChatMessageFormData } from '../../types/reader.types';
 import { cn } from "@/shared/lib/utils";
-import { copyToClipboard } from "@/shared/lib/utils";
-import { toast } from 'sonner';
+import { useReaderClipboard } from '../../hooks/use-reader-feedback';
 
 const DEFAULT_QUICK_PROMPTS: QuickPrompt[] = [
   {
@@ -105,6 +104,7 @@ export default function ChatPanel({
     paperId,
     onNavigateToPage,
   });
+  const { copy } = useReaderClipboard();
 
   useEffect(() => {
     const handleClear = () => clearMessages();
@@ -155,10 +155,7 @@ export default function ChatPanel({
     if (onSaveAsNote) {
       onSaveAsNote(content);
     } else {
-      const ok = await copyToClipboard(content);
-      if (ok) {
-        toast.success('Copied insight to clipboard', { id: 'reader-clipboard' });
-      }
+      await copy(content, 'insight');
     }
   };
 
@@ -255,8 +252,7 @@ export default function ChatPanel({
                       <button
                         type="button"
                         onClick={async () => {
-                          const ok = await copyToClipboard(msg.content);
-                          if (ok) toast.success('Copied response to clipboard', { id: 'reader-clipboard' });
+                          await copy(msg.content, 'response');
                         }}
                         className="inline-flex items-center gap-1 text-11 text-foreground hover:bg-muted px-1.5 py-0.5 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none rounded-md transition-colors cursor-pointer"
                         title="Copy text"

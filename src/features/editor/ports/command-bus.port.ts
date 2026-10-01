@@ -27,6 +27,7 @@ export type EditorCommand =
   | { type: 'editor:undo' }
   | { type: 'editor:redo' }
   | { type: 'editor:focus' }
+  | { type: 'editor:find'; open?: boolean }
   | { type: 'compiler:trigger'; forceSync?: boolean; draft?: boolean }
   | { type: 'viewer:goto-page'; page: number }
   | { type: 'viewer:jump-to-line'; line: number }

@@ -9,6 +9,9 @@ import {
   Copy,
   Check,
   Highlighter,
+  Underline,
+  Type,
+  Scan,
   Quote,
   Search,
   ChevronLeft,
@@ -29,6 +32,17 @@ import { formatInTextCitation } from '../../utils/reader.util';
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import { copyToClipboard, cn } from "@/shared/lib/utils";
+
+export const ZOTERO_COLORS = [
+  { id: 'yellow', label: 'Yellow', hex: '#ffd400' },
+  { id: 'red', label: 'Red', hex: '#ff6666' },
+  { id: 'green', label: 'Green', hex: '#5fb236' },
+  { id: 'blue', label: 'Blue', hex: '#2ea8e5' },
+  { id: 'purple', label: 'Purple', hex: '#a28ae5' },
+  { id: 'magenta', label: 'Magenta', hex: '#e56eee' },
+  { id: 'orange', label: 'Orange', hex: '#f19837' },
+  { id: 'gray', label: 'Gray', hex: '#aaaaaa' },
+] as const;
 
 // Configure worker matching exact react-pdf bundled pdfjs-dist version
 if (typeof window !== 'undefined' && pdfjs && typeof pdfjs === 'object' && 'GlobalWorkerOptions' in pdfjs && pdfjs.GlobalWorkerOptions) {
@@ -71,7 +85,7 @@ interface ViewerProps {
   error: string | null;
   onRetry?: () => void;
   onAskAi: (selectedText: string) => void;
-  onAddToNote?: (selectedText: string, pageNumber?: number) => void;
+  onAddToNote?: (selectedText: string, pageNumber?: number, annotationId?: string) => void;
   onAnnotate?: (
     selectedText: string,
     pageNumber: number,
@@ -79,7 +93,13 @@ interface ViewerProps {
     rects?: AnnotationRect[],
     // Zotero 7 annotation types: highlight, underline, note, text, rect/area (no 'strike')
     type?: 'highlight' | 'underline' | 'note' | 'text' | 'rect' | 'area',
+    comment?: string,
   ) => void;
+  onUpdateAnnotation?: (
+    annotationId: string,
+    expectedVersion: number | undefined,
+    dto: { color?: string; comment?: string; tags?: string[] },
+  ) => Promise<any>;
   annotations?: ReaderAnnotation[];
   onDeleteAnnotation?: (annotation: ReaderAnnotation) => void;
   fulltext?: DocumentFulltext | null;
@@ -109,6 +129,7 @@ export default function Viewer({
   onAskAi,
   onAddToNote,
   onAnnotate,
+  onUpdateAnnotation,
   annotations = [],
   onDeleteAnnotation,
   fulltext,
@@ -159,6 +180,18 @@ export default function Viewer({
     top: number;
     left: number;
     ann: ReaderAnnotation;
+  } | null>(null);
+
+  // Quick edit card state
+  const [tooltipComment, setTooltipComment] = useState<string>('');
+  const [isSavingComment, setIsSavingComment] = useState<boolean>(false);
+
+  // Inline floating text tool state (Zotero 7 parity)
+  const [inlineTextInput, setInlineTextInput] = useState<{
+    pageNum: number;
+    normX: number;
+    normY: number;
+    text: string;
   } | null>(null);
 
   // Area Selection (Scan Tool) State for marquee dragging
@@ -449,30 +482,119 @@ export default function Viewer({
     }
   };
 
-  // Floating text tool placement on page click
+  // Tool click handler on PDF page (Text and Sticky Note placement - Zotero 7 parity)
   const handlePageClick = (e: React.MouseEvent<HTMLDivElement>, pageNum: number) => {
-    if (activeTool !== 'text') return;
-    const pageEl = e.currentTarget;
-    const rect = pageEl.getBoundingClientRect();
-    const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-    const promptText = window.prompt('Enter floating text annotation:');
-    if (promptText && promptText.trim()) {
-      const annotationRect: AnnotationRect = {
+    // 1. Text tool -> Open inline input editor
+    if (activeTool === 'text') {
+      const pageEl = e.currentTarget;
+      const rect = pageEl.getBoundingClientRect();
+      const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+      setInlineTextInput({
+        pageNum,
+        normX,
+        normY,
+        text: '',
+      });
+      return;
+    }
+
+    // 2. Sticky Note tool -> Place sticky note pin on canvas at (normX, normY)
+    if (activeTool === 'note') {
+      const pageEl = e.currentTarget;
+      const rect = pageEl.getBoundingClientRect();
+      const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+      const noteRect: AnnotationRect = {
         x1: normX,
         y1: normY,
-        x2: Math.min(1, normX + 0.25),
-        y2: Math.min(1, normY + 0.04),
-        width: 0.25,
-        height: 0.04,
+        x2: Math.min(1, normX + 0.03),
+        y2: Math.min(1, normY + 0.03),
+        width: 0.03,
+        height: 0.03,
       };
       onAnnotate?.(
-        promptText.trim(),
+        '',
         pageNum,
         activeColor || '#ffd400',
-        [annotationRect],
-        'text',
+        [noteRect],
+        'note',
       );
+      return;
+    }
+  };
+
+  const handleSaveInlineText = () => {
+    if (!inlineTextInput || !inlineTextInput.text.trim()) {
+      setInlineTextInput(null);
+      return;
+    }
+    const text = inlineTextInput.text.trim();
+    const annotationRect: AnnotationRect = {
+      x1: inlineTextInput.normX,
+      y1: inlineTextInput.normY,
+      x2: Math.min(1, inlineTextInput.normX + 0.25),
+      y2: Math.min(1, inlineTextInput.normY + 0.04),
+      width: 0.25,
+      height: 0.04,
+    };
+    onAnnotate?.(
+      text,
+      inlineTextInput.pageNum,
+      activeColor || '#ffd400',
+      [annotationRect],
+      'text',
+    );
+    setInlineTextInput(null);
+  };
+
+  const openAnnotationCard = (ann: ReaderAnnotation, el: HTMLElement) => {
+    const target = el.getBoundingClientRect();
+    const container = scrollContainerRef.current?.getBoundingClientRect();
+    const top = target.bottom - (container?.top || 0) + (scrollContainerRef.current?.scrollTop || 0) + 6;
+    const left = Math.max(10, Math.min((container?.width || 800) - 340, target.left - (container?.left || 0) + (scrollContainerRef.current?.scrollLeft || 0)));
+
+    setActiveHighlightTooltip({
+      id: ann.id,
+      quote: ann.quoteText,
+      comment: ann.comment,
+      color: ann.color || '#ffd400',
+      top,
+      left,
+      ann,
+    });
+    setTooltipComment(ann.comment || '');
+  };
+
+  const handleCardColorChange = async (colorHex: string) => {
+    if (!activeHighlightTooltip) return;
+    const targetAnn = activeHighlightTooltip.ann;
+    setActiveHighlightTooltip((prev) => (prev ? { ...prev, color: colorHex } : null));
+    if (onUpdateAnnotation) {
+      await onUpdateAnnotation(
+        targetAnn.id,
+        targetAnn.version,
+        { color: colorHex }
+      );
+    }
+  };
+
+  const handleCardCommentSave = async () => {
+    if (!activeHighlightTooltip) return;
+    const targetAnn = activeHighlightTooltip.ann;
+    if (targetAnn.comment === tooltipComment.trim()) return;
+    setIsSavingComment(true);
+    try {
+      if (onUpdateAnnotation) {
+        await onUpdateAnnotation(
+          targetAnn.id,
+          targetAnn.version,
+          { comment: tooltipComment.trim() }
+        );
+      }
+      setActiveHighlightTooltip((prev) => (prev ? { ...prev, comment: tooltipComment.trim() } : null));
+    } finally {
+      setIsSavingComment(false);
     }
   };
 
@@ -799,7 +921,7 @@ export default function Viewer({
                     "bg-card border border-border rounded-md overflow-hidden transition-all shadow-xs relative shrink-0",
                     themeMode === 'dark' && "invert-[0.9] hue-rotate-180 contrast-90 brightness-95",
                     themeMode === 'sepia' && "sepia-[0.3] contrast-95 brightness-95",
-                    activeTool === 'area' && "cursor-crosshair select-none",
+                    (activeTool === 'area' || activeTool === 'note') && "cursor-crosshair select-none",
                     activeTool === 'text' && "cursor-text"
                   )}
                 >
@@ -812,6 +934,51 @@ export default function Viewer({
                     loading={<DocumentPageSkeleton width={effectivePageWidth} />}
                     customTextRenderer={customTextRenderer}
                   />
+
+                  {/* INLINE TEXT TOOL INPUT (Zotero 7 parity) */}
+                  {inlineTextInput && inlineTextInput.pageNum === pageNum && (
+                    <div
+                      className="absolute z-40 bg-background/95 backdrop-blur-xs border border-border shadow-md rounded-md p-1.5 flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-100"
+                      style={{
+                        left: `${inlineTextInput.normX * 100}%`,
+                        top: `${inlineTextInput.normY * 100}%`,
+                        transform: 'translate(0, -50%)',
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="Type text annotation..."
+                        value={inlineTextInput.text}
+                        onChange={(e) => setInlineTextInput({ ...inlineTextInput, text: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleSaveInlineText();
+                          } else if (e.key === 'Escape') {
+                            setInlineTextInput(null);
+                          }
+                        }}
+                        className="text-12 px-2 py-1 rounded border border-border/60 bg-muted/30 text-foreground w-56 font-sans focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveInlineText}
+                        className="size-6 rounded text-primary hover:bg-primary/10 flex items-center justify-center cursor-pointer transition-colors"
+                        title="Save text (Enter)"
+                      >
+                        <Check className="size-3.5" strokeWidth={2} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setInlineTextInput(null)}
+                        className="size-6 rounded text-muted-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors"
+                        title="Cancel (Esc)"
+                      >
+                        <X className="size-3.5" strokeWidth={2} />
+                      </button>
+                    </div>
+                  )}
 
                   {/* ACTIVE AREA SELECTION MARQUEE */}
                   {areaSelection?.active && areaSelection.pageNum === pageNum && (
@@ -837,8 +1004,43 @@ export default function Viewer({
                         const isUnderline = ann.type === 'underline';
                         const isRect = ann.type === 'rect' || ann.type === 'image' || ann.type === 'area';
                         const isText = ann.type === 'text';
+                        const isNote = ann.type === 'note';
                         const isPulsing = pulsingAnnotationId === ann.id;
 
+                        // 1. Sticky Note Pin (Zotero 7 official)
+                        if (isNote && rects.length > 0) {
+                          const r = rects[0];
+                          return (
+                            <div
+                              key={ann.id}
+                              id={`annotation-${ann.id}`}
+                              data-annotation-id={ann.id}
+                              className={cn(
+                                "absolute pointer-events-auto cursor-pointer z-20 group transition-transform hover:scale-125 focus-visible:outline-none",
+                                isPulsing && "ring-4 ring-primary ring-offset-2 animate-pulse scale-125"
+                              )}
+                              style={{
+                                left: `${r.x1 * 100}%`,
+                                top: `${r.y1 * 100}%`,
+                                transform: 'translate(-50%, -50%)',
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openAnnotationCard(ann, e.currentTarget);
+                              }}
+                            >
+                              <div
+                                className="size-5 rounded shadow-sm flex items-center justify-center border border-black/15 transition-all hover:shadow-md"
+                                style={{ backgroundColor: colorHex }}
+                                title={ann.comment || 'Sticky Note'}
+                              >
+                                <StickyNote className="size-3 text-white fill-white/20 drop-shadow-xs" strokeWidth={2} />
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // 2. Floating Text Annotation
                         if (isText && rects.length > 0) {
                           const r = rects[0];
                           return (
@@ -858,15 +1060,7 @@ export default function Viewer({
                               }}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const target = e.currentTarget.getBoundingClientRect();
-                                const container = scrollContainerRef.current?.getBoundingClientRect();
-                                const top = target.bottom - (container?.top || 0) + (scrollContainerRef.current?.scrollTop || 0) + 4;
-                                const left = Math.max(10, target.left - (container?.left || 0) + (scrollContainerRef.current?.scrollLeft || 0));
-                                setActiveHighlightTooltip(
-                                  activeHighlightTooltip?.id === ann.id
-                                    ? null
-                                    : { id: ann.id, quote: ann.quoteText, comment: ann.comment, color: colorHex, top, left, ann },
-                                );
+                                openAnnotationCard(ann, e.currentTarget);
                               }}
                             >
                               <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: colorHex }} />
@@ -877,6 +1071,7 @@ export default function Viewer({
                           );
                         }
 
+                        // 3. Highlight / Underline / Rect (Area) Overlays
                         if (rects.length > 0) {
                           return rects.map((r, rIdx) => (
                             <div
@@ -902,19 +1097,10 @@ export default function Viewer({
                               }}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const target = e.currentTarget.getBoundingClientRect();
-                                const container = scrollContainerRef.current?.getBoundingClientRect();
-                                const top = target.bottom - (container?.top || 0) + (scrollContainerRef.current?.scrollTop || 0) + 4;
-                                const left = Math.max(10, target.left - (container?.left || 0) + (scrollContainerRef.current?.scrollLeft || 0));
-                                setActiveHighlightTooltip(
-                                  activeHighlightTooltip?.id === ann.id
-                                    ? null
-                                    : { id: ann.id, quote: ann.quoteText, comment: ann.comment, color: colorHex, top, left, ann },
-                                );
+                                openAnnotationCard(ann, e.currentTarget);
                               }}
                             >
                               {isRect && (
-
                                 <span
                                   className="absolute -top-3.5 left-0 px-1 py-0.2 text-9 font-mono uppercase rounded text-white font-semibold pointer-events-none tracking-wide"
                                   style={{ backgroundColor: colorHex }}
@@ -939,15 +1125,7 @@ export default function Viewer({
                             style={{ borderColor: colorHex }}
                             onClick={(e) => {
                               e.stopPropagation();
-                              const target = e.currentTarget.getBoundingClientRect();
-                              const container = scrollContainerRef.current?.getBoundingClientRect();
-                              const top = target.bottom - (container?.top || 0) + (scrollContainerRef.current?.scrollTop || 0) + 4;
-                              const left = Math.max(10, target.left - (container?.left || 0) + (scrollContainerRef.current?.scrollLeft || 0));
-                              setActiveHighlightTooltip(
-                                activeHighlightTooltip?.id === ann.id
-                                  ? null
-                                  : { id: ann.id, quote: ann.quoteText, comment: ann.comment, color: colorHex, top, left, ann },
-                              );
+                              openAnnotationCard(ann, e.currentTarget);
                             }}
                           >
                             <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: colorHex }} />
@@ -992,20 +1170,36 @@ export default function Viewer({
           </Document>
         )}
 
-        {/* Highlight Tooltip Popover */}
+        {/* Zotero 7 Official Quick Edit Card */}
         {activeHighlightTooltip && (
           <div
-            className="absolute z-40 rounded-md border border-border bg-background p-2.5 shadow-2xs text-12 select-none max-w-xs animate-in fade-in zoom-in-95 duration-100 font-sans"
+            className="absolute z-40 rounded-md border border-border bg-background p-2.5 shadow-md text-12 select-none w-72 max-w-[90vw] animate-in fade-in zoom-in-95 duration-100 font-sans"
             style={{
               top: `${activeHighlightTooltip.top}px`,
               left: `${activeHighlightTooltip.left}px`,
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-1 mb-1.5">
+            {/* 1. Header: Type Badge, Page, & Action Buttons */}
+            <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-1.5 mb-2">
               <div className="flex items-center gap-1.5">
-                <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: activeHighlightTooltip.color }} />
-                <span className="text-11 font-medium text-foreground">Highlight</span>
+                <span
+                  className="size-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: activeHighlightTooltip.color }}
+                />
+                <span className="text-11 font-semibold text-foreground">
+                  {(() => {
+                    const t = activeHighlightTooltip.ann.type || 'highlight';
+                    if (t === 'note') return 'Sticky Note';
+                    if (t === 'underline') return 'Underline';
+                    if (t === 'rect' || t === 'area' || t === 'image') return 'Area';
+                    if (t === 'text') return 'Text';
+                    return 'Highlight';
+                  })()}
+                </span>
+                <span className="text-10 text-muted-foreground font-mono">
+                  p. {activeHighlightTooltip.ann.pageNumber || (activeHighlightTooltip.ann.pageIndex !== undefined ? activeHighlightTooltip.ann.pageIndex + 1 : visiblePage)}
+                </span>
               </div>
               <div className="flex items-center gap-0.5">
                 {onAddToNote && (
@@ -1013,12 +1207,13 @@ export default function Viewer({
                     type="button"
                     onClick={() => {
                       onAddToNote(
-                        activeHighlightTooltip.quote || activeHighlightTooltip.comment || '',
+                        activeHighlightTooltip.quote || tooltipComment || activeHighlightTooltip.comment || '',
                         activeHighlightTooltip.ann.pageNumber || visiblePage,
+                        activeHighlightTooltip.ann.id,
                       );
                       setActiveHighlightTooltip(null);
                     }}
-                    className="size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
+                    className="size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors"
                     title="Add to Note"
                   >
                     <StickyNote className="size-3 shrink-0" strokeWidth={1.5} />
@@ -1031,8 +1226,8 @@ export default function Viewer({
                       onDeleteAnnotation(activeHighlightTooltip.ann);
                       setActiveHighlightTooltip(null);
                     }}
-                    className="size-5 rounded-md text-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer"
-                    title="Delete highlight"
+                    className="size-5 rounded-md text-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer transition-colors"
+                    title="Delete annotation"
                   >
                     <Trash2 className="size-3 shrink-0" strokeWidth={1.5} />
                   </button>
@@ -1040,25 +1235,86 @@ export default function Viewer({
                 <button
                   type="button"
                   onClick={() => setActiveHighlightTooltip(null)}
-                  className="size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
+                  className="size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors"
                   title="Close"
                 >
                   <X className="size-3 shrink-0" strokeWidth={1.5} />
                 </button>
               </div>
             </div>
+
+            {/* 2. Zotero 8-Color Palette Picker */}
+            <div className="flex items-center justify-between gap-1 pb-2 border-b border-border/40">
+              <span className="text-10 font-medium text-muted-foreground">Color:</span>
+              <div className="flex items-center gap-1">
+                {ZOTERO_COLORS.map((c) => {
+                  const isSelected = (activeHighlightTooltip.color || '#ffd400').toLowerCase() === c.hex.toLowerCase();
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      aria-label={`Change to ${c.label}`}
+                      title={c.label}
+                      onClick={() => handleCardColorChange(c.hex)}
+                      className={cn(
+                        "size-3.5 rounded-full border border-border/80 hover:scale-125 transition-transform cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                        isSelected && "ring-2 ring-primary ring-offset-1 scale-110"
+                      )}
+                      style={{ backgroundColor: c.hex }}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 3. Quote Block (if exists) */}
             {activeHighlightTooltip.quote && (
               <p
-                className="text-11 leading-snug text-foreground italic border-l-2 pl-1.5 mb-1 select-text"
+                className="text-11 leading-snug text-foreground/90 italic border-l-2 pl-2 my-2 select-text line-clamp-4"
                 style={{ borderColor: activeHighlightTooltip.color }}
               >
                 &ldquo;{activeHighlightTooltip.quote}&rdquo;
               </p>
             )}
-            {activeHighlightTooltip.comment && (
-              <p className="text-11 text-foreground leading-relaxed pl-1.5 select-text">
-                {activeHighlightTooltip.comment}
-              </p>
+
+            {/* 4. Editable Comment / Note Section (Zotero 7 inline edit) */}
+            <div className="space-y-1 mt-2">
+              <div className="flex items-center justify-between text-10 text-muted-foreground font-medium">
+                <span>Comment</span>
+                {isSavingComment && (
+                  <span className="text-primary flex items-center gap-0.5 text-10">
+                    <Loader2 className="size-2.5 animate-spin" /> Saving...
+                  </span>
+                )}
+              </div>
+              <textarea
+                rows={2}
+                placeholder="Add comment or thought..."
+                value={tooltipComment}
+                onChange={(e) => setTooltipComment(e.target.value)}
+                onBlur={handleCardCommentSave}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    handleCardCommentSave();
+                  }
+                }}
+                className="w-full text-11 p-1.5 rounded border border-border/70 bg-muted/20 text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary font-sans leading-relaxed"
+              />
+            </div>
+
+            {/* 5. Tags (if available) */}
+            {activeHighlightTooltip.ann.tags && activeHighlightTooltip.ann.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2 pt-1 border-t border-border/40">
+                {activeHighlightTooltip.ann.tags.map((t, tIdx) => (
+                  <span
+                    key={tIdx}
+                    className="text-10 font-mono px-1 py-0.2 rounded bg-muted/50 text-foreground/80 border border-border/50"
+                  >
+                    #{t}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         )}

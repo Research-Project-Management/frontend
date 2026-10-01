@@ -205,7 +205,7 @@ export default function Viewer() {
   // If detached, show placeholder with toolbar controls
   if (isViewerPoppedOut) {
     return (
-      <div className="h-full flex flex-col bg-background border-l border-border select-none relative overflow-hidden">
+      <div className="h-full flex flex-col bg-background select-none relative overflow-hidden">
         <Toolbar
           compileStatus={compileStatus}
           engine={engine}
@@ -243,6 +243,8 @@ export default function Viewer() {
           onToggleInvertColors={handleToggleInvertColors}
           onSetScale={handleSetScale}
           onOpenPresentationMode={() => setIsPresentationOpen(true)}
+          errorCount={parsedLog?.errors.length ?? 0}
+          warningCount={parsedLog?.warnings.length ?? 0}
         />
         <DetachedViewerPlaceholder
           compileStatus={compileStatus}
@@ -263,7 +265,7 @@ export default function Viewer() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-background border-l border-border select-none relative overflow-hidden">
+    <div className="h-full flex flex-col bg-background select-none relative overflow-hidden">
       <Toolbar
         compileStatus={compileStatus}
         engine={engine}
@@ -303,6 +305,8 @@ export default function Viewer() {
         isSpreadView={pdfSpreadView}
         onToggleSpreadView={togglePdfSpreadView}
         onOpenPresentationMode={() => setIsPresentationOpen(true)}
+        errorCount={parsedLog?.errors.length ?? 0}
+        warningCount={parsedLog?.warnings.length ?? 0}
       />
 
       <a ref={downloadRef} className="hidden" aria-hidden="true" />

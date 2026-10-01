@@ -16,7 +16,7 @@ import {
 import { uploadGenericFile } from '@/features/storage/services/file.service';
 import { projectGeneralSchema, type ProjectGeneralFormValues } from '../schemas/general.schema';
 
-export function useGeneral(projectId: string, workspaceId?: string) {
+export function useGeneral(projectId: string) {
   const router = useRouter();
   const { data: projectData, isLoading, isError } = useProjectDetails(projectId);
   const updateMutation = useUpdateProject();
@@ -137,7 +137,7 @@ export function useGeneral(projectId: string, workspaceId?: string) {
     async (file: File) => {
       try {
         setIsUploading(true);
-        const url = await uploadGenericFile(file, workspaceId);
+        const url = await uploadGenericFile(file, projectId);
         setValue('cover', url, { shouldDirty: true });
         toast.success('Cover uploaded', { id: 'settings-general' });
       } catch (err: unknown) {
@@ -146,7 +146,7 @@ export function useGeneral(projectId: string, workspaceId?: string) {
         setIsUploading(false);
       }
     },
-    [workspaceId, setValue]
+    [projectId, setValue]
   );
 
   const isArchived = Boolean(

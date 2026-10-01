@@ -55,10 +55,10 @@ export function useEditorStorage(pageId?: string | null, parentId?: string | nul
     },
     onSuccess: (newItem) => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      toast.success(`Đã tải lên "${newItem.filename}"`);
+      toast.success(`Uploaded "${newItem.filename}"`);
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Không thể tải tệp lên';
+      const msg = err instanceof Error ? err.message : 'Failed to upload file';
       toast.error(msg);
     },
   });
@@ -80,10 +80,10 @@ export function useEditorStorage(pageId?: string | null, parentId?: string | nul
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      toast.success('Đã tạo thư mục');
+      toast.success('Folder created');
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Không thể tạo thư mục';
+      const msg = err instanceof Error ? err.message : 'Failed to create folder';
       toast.error(msg);
     },
   });
@@ -96,10 +96,10 @@ export function useEditorStorage(pageId?: string | null, parentId?: string | nul
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      toast.success('Đã đổi tên');
+      toast.success('Renamed successfully');
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Không thể đổi tên';
+      const msg = err instanceof Error ? err.message : 'Failed to rename item';
       toast.error(msg);
     },
   });
@@ -110,10 +110,10 @@ export function useEditorStorage(pageId?: string | null, parentId?: string | nul
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      toast.success('Đã xóa tệp');
+      toast.success('File deleted');
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Không thể xóa tệp';
+      const msg = err instanceof Error ? err.message : 'Failed to delete file';
       toast.error(msg);
     },
   });
@@ -126,10 +126,10 @@ export function useEditorStorage(pageId?: string | null, parentId?: string | nul
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      toast.success('Đã di chuyển');
+      toast.success('Moved successfully');
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Không thể di chuyển';
+      const msg = err instanceof Error ? err.message : 'Failed to move item';
       toast.error(msg);
     },
   });

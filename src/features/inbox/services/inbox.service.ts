@@ -19,7 +19,7 @@ export const inboxService = {
    */
   getNotifications: async (params?: QueryNotificationsParams): Promise<NotificationItem[]> => {
     try {
-      const data = await apiGet<NotificationItem[]>('/notifications', {
+      const data = await apiGet<NotificationItem[]>('/api/notifications', {
         params: {
           isRead: params?.isRead !== undefined ? String(params.isRead) : undefined,
           type: params?.type,
@@ -38,7 +38,7 @@ export const inboxService = {
    */
   getUnreadCount: async (): Promise<number> => {
     try {
-      const res = await apiGet<{ count: number }>('/notifications/unread-count');
+      const res = await apiGet<{ count: number }>('/api/notifications/unread-count');
       return res?.count ?? 0;
     } catch {
       return 0;
@@ -50,7 +50,7 @@ export const inboxService = {
    */
   markAsRead: async (id: string): Promise<boolean> => {
     try {
-      await apiPatch(`/notifications/${id}/read`);
+      await apiPatch(`/api/notifications/${id}/read`);
       return true;
     } catch {
       return false;
@@ -62,7 +62,7 @@ export const inboxService = {
    */
   markAllAsRead: async (): Promise<number> => {
     try {
-      const res = await apiPatch<{ count: number }>('/notifications/read-all');
+      const res = await apiPatch<{ count: number }>('/api/notifications/read-all');
       return res?.count ?? 0;
     } catch {
       return 0;
@@ -74,7 +74,7 @@ export const inboxService = {
    */
   deleteNotification: async (id: string): Promise<boolean> => {
     try {
-      await apiDelete(`/notifications/${id}`);
+      await apiDelete(`/api/notifications/${id}`);
       return true;
     } catch {
       return false;
@@ -86,12 +86,12 @@ export const inboxService = {
    */
   acceptInvitation: async (tokenOrId: string): Promise<{ success: boolean; projectId?: string }> => {
     try {
-      const res = await apiPost<{ projectId?: string }>(`/projects/invitations/accept/${tokenOrId}`, {});
+      const res = await apiPost<{ projectId?: string }>(`/api/projects/invitations/${tokenOrId}/accept`, {});
       return { success: true, projectId: res?.projectId };
     } catch {
       // Fallback join by code if needed
       try {
-        const res = await apiPost<{ projectId?: string }>('/projects/join', { code: tokenOrId });
+        const res = await apiPost<{ projectId?: string }>('/api/projects/join', { code: tokenOrId });
         return { success: true, projectId: res?.projectId };
       } catch {
         return { success: false };
@@ -104,7 +104,7 @@ export const inboxService = {
    */
   declineInvitation: async (invitationId: string): Promise<boolean> => {
     try {
-      await apiPost(`/projects/invitations/${invitationId}/decline`, {});
+      await apiPost(`/api/projects/invitations/${invitationId}/decline`, {});
       return true;
     } catch {
       return false;

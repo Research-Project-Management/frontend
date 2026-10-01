@@ -153,6 +153,7 @@ export interface ReaderState {
   selectionContext: string | null;
 }
 
+export type Item = ReaderDocument;
 export type Collection = ReaderCollection;
 export type Note = ReaderNote;
 export type PdfAnnotation = ReaderAnnotation;
@@ -160,3 +161,116 @@ export type CopilotCitation = ReaderAiCitation;
 export type CopilotMessage = ReaderAiMessage;
 export type QuickPrompt = ReaderQuickPrompt;
 export type CopilotPaperContext = ReaderPaperContext;
+export type ItemAttachment = DocumentAttachment;
+export type CreatorCredit = DocumentCreator & {
+  order?: number;
+  fieldMode?: number;
+  isInstitution?: boolean;
+};
+
+export type InspectorSectionId =
+  | 'info'
+  | 'abstract'
+  | 'notes'
+  | 'attachments'
+  | 'files'
+  | 'tags'
+  | 'collections'
+  | 'cite'
+  | 'relations';
+
+export interface TagWithCount {
+  id: string;
+  name: string;
+  count?: number;
+  color?: string | null;
+}
+
+export interface RelatedItem {
+  id: string;
+  title: string;
+  year?: number | null;
+  authors?: string[];
+  itemType?: string;
+  predicate?: string;
+  direction?: 'outgoing' | 'incoming' | 'both';
+  citationKey?: string;
+  doi?: string | null;
+}
+
+export interface CslStyle {
+  id: string;
+  title: string;
+  shortTitle?: string;
+  updated?: string;
+  dependent?: boolean;
+}
+
+export interface CslStyleMetadata {
+  id: string;
+  title: string;
+  shortTitle?: string;
+  summary?: string;
+}
+
+export interface ItemFieldDefinition {
+  field: string;
+  label: string;
+  type?: string;
+  required?: boolean;
+}
+
+export type SchemaFieldDefinition = ItemFieldDefinition;
+
+export interface SchemaItemTypeDefinition {
+  itemType: string;
+  label: string;
+  fields?: ItemFieldDefinition[];
+  creatorTypes?: Array<{ creatorType: string; label: string; primary?: boolean }>;
+}
+
+export interface DroppedField {
+  field: string;
+  label: string;
+  value: unknown;
+}
+
+export interface FieldMappingChange {
+  fromField: string;
+  toField: string;
+  value: unknown;
+  rule: 'direct' | 'base-semantic' | 'special-rule';
+}
+
+export interface CreatorRoleChange {
+  creator: Record<string, unknown>;
+  fromRole: string;
+  toRole: string;
+  reason: 'preserved' | 'primary-fallback' | 'secondary-fallback';
+}
+
+export interface TypeConversionPreview {
+  sourceType: string;
+  targetType: string;
+  preservedFields: string[];
+  mappedFields: FieldMappingChange[];
+  droppedFields: DroppedField[];
+  creatorChanges: CreatorRoleChange[];
+  projectedItem: Record<string, any>;
+  unmappedRetained: Record<string, any>;
+  hasLoss: boolean;
+}
+
+export interface ItemMetadataSourceItem {
+  id: string;
+  sourceProvider: string;
+  fetchedAt: string;
+  doi?: string;
+  rawPayload?: Record<string, unknown>;
+}
+
+export interface ItemMetadataSourcesResponse {
+  sources: ItemMetadataSourceItem[];
+}
+
+

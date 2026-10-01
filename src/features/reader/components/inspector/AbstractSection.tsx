@@ -1,0 +1,118 @@
+'use client';
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import type { Item } from '../../types/reader.types';
+
+import { cn } from "@/shared/lib/utils";
+
+interface AbstractSectionProps {
+  paper: Item;
+  onUpdatePaper?: (data: Partial<Item>) => void;
+  hideHeader?: boolean;
+  canEdit?: boolean;
+}
+
+function getAbstractValue(p: Item): string {
+  const item = p as Item & {
+    abstractNote?: string;
+  };
+  return item.abstract || item.abstractNote || '';
+}
+
+export default function AbstractSection({
+  paper,
+  onUpdatePaper,
+  hideHeader = false,
+  canEdit = true,
+}: AbstractSectionProps) {
+  const currentAbstract = getAbstractValue(paper);
+  const [draft, setDraft] = useState(currentAbstract);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // On paper change, initialize draft directly from backend canonical abstract
+  useEffect(() => {
+    setDraft(currentAbstract || '');
+  }, [currentAbstract]);
+
+  // Auto-resize textarea to fit content naturally without jump
+  const adjustHeight = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(48, el.scrollHeight)}px`;
+  }, []);
+
+  useEffect(() => {
+    adjustHeight();
+  }, [draft, adjustHeight]);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      adjustHeight();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [adjustHeight]);
+
+  const commit = useCallback(() => {
+    const trimmed = draft.trim();
+    const existing = getAbstractValue(paper).trim();
+    if (trimmed !== existing) {
+      if (onUpdatePaper) {
+        onUpdatePaper({
+          abstract: trimmed || undefined,
+          abstractNote: trimmed || undefined,
+        } as unknown as Partial<Item>);
+      }
+    }
+  }, [draft, paper, onUpdatePaper]);
+
+  return (
+    <div className="space-y-1 text-xs min-w-0">
+      {!hideHeader && (
+        <div className="flex items-center justify-between px-1 pb-0.5">
+          <span className="font-sans font-medium text-foreground text-12">Abstract</span>
+        </div>
+      )}
+
+      {/* Abstract Content: Flat border without card shadow, scholarly serif font */}
+      <div
+        className={cn(
+          "rounded-md border border-border/80 bg-background/50 transition-colors",
+          canEdit && "focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20"
+        )}
+      >
+        <textarea
+          ref={textareaRef}
+          rows={2}
+          value={draft}
+          placeholder={canEdit ? "Add abstract..." : "No abstract"}
+          aria-label="Paper abstract summary"
+          readOnly={!canEdit}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+              e.preventDefault();
+              commit();
+              textareaRef.current?.blur();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setDraft(currentAbstract || '');
+              textareaRef.current?.blur();
+            }
+          }}
+          className={cn(
+            "w-full text-13 leading-relaxed text-foreground/90 font-serif resize-none overflow-hidden outline-none break-words select-text rounded-md",
+            "p-2 bg-transparent border-0 focus:outline-none focus:ring-0",
+            canEdit && "cursor-text",
+            !canEdit && "cursor-default",
+            !draft && "placeholder:font-sans placeholder:text-12 placeholder:text-muted-foreground/60"
+          )}
+        />
+      </div>
+    </div>
+  );
+}

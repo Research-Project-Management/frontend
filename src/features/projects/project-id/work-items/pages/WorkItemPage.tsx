@@ -93,11 +93,9 @@ export function WorkItemPage({
   const { user: currentUser } = useAuth();
   const searchParams = useSearchParams();
   const params = useParams() as {
-    workspaceId?: string;
     projectId?: string;
     viewId?: string;
   };
-  const workspaceId = params.workspaceId || "";
   const projectId = params.projectId || "";
   const rawViewId = params.viewId || searchParams?.get('viewId');
   const isReadOnly = propIsReadOnly ?? false;
@@ -1012,7 +1010,6 @@ export function WorkItemPage({
               <CalendarView
                 items={activeFilteredItems}
                 columns={columns}
-                workspaceId={workspaceId}
                 projectId={projectId}
                 onAddCard={handleOpenAddDialog}
                 onOpenCardDetail={handleOpenEditDialog}
@@ -1030,7 +1027,6 @@ export function WorkItemPage({
                 currentUserId={currentUser?.id}
                 currentUserAvatar={currentUser?.avatar ?? undefined}
                 projectId={projectId}
-                workspaceId={workspaceId}
                 members={members}
                 onAddCard={handleOpenAddDialog}
                 onEditCard={handleOpenEditDialog}
@@ -1054,7 +1050,6 @@ export function WorkItemPage({
                 currentUserId={currentUser?.id}
                 currentUserAvatar={currentUser?.avatar ?? undefined}
                 projectId={projectId}
-                workspaceId={workspaceId}
                 members={members}
                 onAddCard={handleOpenAddDialog}
                 onEditCard={handleOpenEditDialog}

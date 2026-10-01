@@ -13,7 +13,6 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { AlertCircle, FileText, Loader2, Play } from 'lucide-react';
 import { LatexCompilerEngine, type SyncTeXMap } from '@/features/editor/utils/viewer.util';
 import { useIntersectionObserver } from "@/shared/hooks";
-import { toast } from 'sonner';
 import { logger } from "@/shared/lib/utils";
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -326,7 +325,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
       {!pdfUrl ? (
         /* Empty State */
         <div className="flex flex-col items-center justify-center h-full w-full select-none">
-          <div className="flex flex-col items-center justify-center text-center max-w-sm rounded-lg border border-border bg-card p-6 shadow-2xs gap-4">
+          <div className="flex flex-col items-center justify-center text-center max-w-sm p-6 gap-4">
             <div className="size-10 rounded-md bg-muted flex items-center justify-center text-foreground">
               <FileText className="size-5" />
             </div>
@@ -359,7 +358,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
                   <Play className="size-4 shrink-0" />
                 )}
                 {compileStatus === 'flushing'
-                  ? 'Saving…'
+                  ? 'Preparing…'
                   : compileStatus === 'syncing'
                     ? 'Syncing…'
                     : compileStatus === 'compiling'
@@ -376,7 +375,6 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
           onLoadSuccess={handleDocumentLoadSuccess}
           onLoadError={(error) => {
             logger.warn('[Surface] Document load error', { error });
-            toast.error('Could not render PDF. Check compilation log.');
           }}
           loading={
             <div className="flex items-center justify-center h-full">

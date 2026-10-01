@@ -7,11 +7,10 @@ import { toast } from "sonner";
 import {
   Search as SearchIcon,
   X,
-  FileText,
   ChevronDown,
   ChevronRight,
-  Replace,
   FileCode2,
+  Loader2,
 } from "lucide-react";
 import { Input } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
@@ -43,14 +42,16 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   const searchParams = useSearchParams();
   const params = useParams<{ projectId?: string; pageId?: string }>();
 
-  const { currentPage, activeFilePage } = usePageStore();
+  const { currentPage, activeFilePage, projectId: storeProjectId } = usePageStore();
   const { engine, getContent } = useEditorInstance();
   const openTab = useTabsStore((s) => s.openTab);
 
   const rootPageId = params?.pageId || params?.projectId || currentPage?.id || "";
+  const rootProjectId = params?.projectId || storeProjectId || currentPage?.projectId || params?.pageId || currentPage?.id || "";
   const activeFileId = searchParams.get("file") ?? activeFilePage?.id ?? currentPage?.id;
 
   const [query, setQuery] = useState("");
+  const [instantQuery, setInstantQuery] = useState<string | null>(null);
   const [replaceText, setReplaceText] = useState("");
   const [showReplace, setShowReplace] = useState(false);
   const [caseSensitive, setCaseSensitive] = useState(false);
@@ -62,6 +63,12 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(query, 250);
+  const effectiveQuery = instantQuery !== null ? instantQuery : debouncedQuery;
+
+  const handleSearch = useCallback(() => {
+    setInstantQuery(query);
+    searchInputRef.current?.focus();
+  }, [query]);
 
   // Auto-focus input on mount
   useEffect(() => {
@@ -88,7 +95,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
     enabled: !!rootPageId,
   });
 
-  // Assemble full searchable files list
+  // Assemble full searchable files list for client buffer sync
   const searchableFiles = useMemo(() => {
     const activeContent = getContent() || activeFilePage?.content || currentPage?.content || "";
 
@@ -114,11 +121,56 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
     });
   }, [projectFiles, activeFileId, getContent, activeFilePage?.content, currentPage?.id, currentPage?.title, currentPage?.content]);
 
-  // Execute project-wide search
-  const fileResults = useMemo<FileSearchResult[]>(() => {
-    if (!debouncedQuery.trim()) return [];
+  // ─── BACKEND SEARCH QUERY ──────────────────────────────────────────────────
+  const {
+    data: backendSearchData,
+    isLoading: isSearching,
+    isFetching,
+    error: searchError,
+  } = useQuery({
+    queryKey: [
+      "project-document-search",
+      rootProjectId,
+      effectiveQuery,
+      caseSensitive,
+      wholeWord,
+      useRegex,
+    ],
+    queryFn: async () => {
+      if (!effectiveQuery.trim() || !rootProjectId) {
+        return null;
+      }
+      return documentSearchService.search(rootProjectId, effectiveQuery, {
+        caseSensitive,
+        wholeWord,
+        useRegex,
+      });
+    },
+    enabled: !!effectiveQuery.trim() && !!rootProjectId,
+    staleTime: 5000,
+  });
 
-    let pattern = debouncedQuery;
+  // Execute project-wide search: backend with client buffer fallback
+  const fileResults = useMemo<FileSearchResult[]>(() => {
+    if (!effectiveQuery.trim()) return [];
+
+    // Prioritize backend response
+    if (backendSearchData && Array.isArray(backendSearchData.results)) {
+      return backendSearchData.results.map((file) => ({
+        fileId: file.fileId,
+        fileName: file.fileName,
+        isCurrent: file.fileId === activeFileId,
+        matches: file.matches.map((m) => ({
+          line: m.line,
+          text: m.text,
+          matchStart: m.matchStart,
+          matchEnd: m.matchEnd,
+        })),
+      }));
+    }
+
+    // Fallback to client buffer (e.g. while initial backend query is fetching or before save)
+    let pattern = effectiveQuery;
     if (!useRegex) pattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     if (wholeWord) pattern = `\\b${pattern}\\b`;
     const flags = caseSensitive ? "g" : "gi";
@@ -163,7 +215,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
     }
 
     return results;
-  }, [debouncedQuery, caseSensitive, wholeWord, useRegex, searchableFiles]);
+  }, [effectiveQuery, backendSearchData, activeFileId, useRegex, wholeWord, caseSensitive, searchableFiles]);
 
   const totalMatches = useMemo(
     () => fileResults.reduce((acc, f) => acc + f.matches.length, 0),
@@ -206,9 +258,9 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
 
   // Replace in active file
   const handleReplaceAllCurrentFile = () => {
-    if (!engine || !debouncedQuery) return;
+    if (!engine || !effectiveQuery) return;
     const content = engine.getContent();
-    let pattern = debouncedQuery;
+    let pattern = effectiveQuery;
     if (!useRegex) pattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     if (wholeWord) pattern = `\\b${pattern}\\b`;
     const flags = caseSensitive ? "g" : "gi";
@@ -230,12 +282,12 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
 
   // Replace across all files in project via backend atomic API
   const handleReplaceAllEverywhere = async () => {
-    if (!debouncedQuery || !rootPageId) return;
+    if (!effectiveQuery || !rootProjectId) return;
     setIsReplacingAll(true);
     try {
       const res = await documentSearchService.batchReplace(
-        rootPageId,
-        debouncedQuery,
+        rootProjectId,
+        effectiveQuery,
         replaceText,
         {
           caseSensitive,
@@ -246,6 +298,9 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
       toast.success(
         `Replaced ${res.totalOccurrencesReplaced} occurrence(s) across ${res.totalFilesAffected} file(s)`,
       );
+      await queryClient.invalidateQueries({
+        queryKey: ["project-document-search"],
+      });
       await queryClient.invalidateQueries({
         queryKey: filesQuery(rootPageId).queryKey,
       });
@@ -263,83 +318,140 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground select-none">
       {/* Header */}
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-background">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="truncate text-xs font-semibold text-muted-foreground tracking-normal">
-            Project Search
-          </span>
-        </div>
-        <div className="flex shrink-0 items-center gap-0.5">
+      <div className="flex h-10 shrink-0 items-center justify-between px-3 bg-background">
+        <span className="truncate text-xs font-semibold text-foreground tracking-normal">
+          Search
+        </span>
+        {onClose && (
           <button
             type="button"
-            title="Toggle replace in current file"
-            aria-label="Toggle replace"
-            aria-expanded={showReplace}
-            onClick={() => setShowReplace(!showReplace)}
-            className={cn(
-              "flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer",
-              showReplace && "bg-primary/15 text-primary",
-            )}
+            title="Close search"
+            aria-label="Close search"
+            onClick={onClose}
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors hover:bg-muted cursor-pointer"
           >
-            <Replace className="size-3.5 shrink-0" />
+            <X className="size-3.5 shrink-0" />
           </button>
-          {onClose && (
-            <button
-              type="button"
-              title="Close search"
-              aria-label="Close search"
-              onClick={onClose}
-              className="flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer"
-            >
-              <X className="size-3.5 shrink-0" />
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Search Input Controls */}
-      <div className="border-b border-border px-3 py-3 space-y-2 bg-muted/20">
-        <div className="relative">
-          <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0 pointer-events-none" />
-          <Input
-            ref={searchInputRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search across all files… (Ctrl+Shift+F)"
-            className="pl-8 pr-8 h-8 text-xs bg-background"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => setQuery("")}
-              aria-label="Clear search"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground outline-none cursor-pointer"
-            >
-              <X className="size-3.5 shrink-0" />
-            </button>
-          )}
+      <div className="border-b border-border px-3 pb-3 pt-1 space-y-2 bg-background select-none">
+        {/* Row 1: Search Input + Green Capsule Search Button */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 min-w-0">
+            <Input
+              ref={searchInputRef}
+              value={query}
+              onChange={(e) => {
+                setInstantQuery(null);
+                setQuery(e.target.value);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSearch();
+                }
+              }}
+              placeholder="Search all project files..."
+              className="h-8 px-3 text-xs bg-background border-border/80 focus-visible:ring-1 focus-visible:ring-primary rounded-md w-full placeholder:text-muted-foreground"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  setInstantQuery("");
+                  searchInputRef.current?.focus();
+                }}
+                aria-label="Clear search"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground outline-none cursor-pointer"
+              >
+                <X className="size-3.5 shrink-0" />
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSearch}
+            disabled={isFetching}
+            className="h-8 px-3.5 rounded-full bg-[#138a42] hover:bg-[#117a3a] active:bg-[#0e6630] disabled:opacity-85 text-white text-xs font-semibold cursor-pointer shrink-0 transition-colors shadow-2xs flex items-center justify-center gap-1.5"
+          >
+            {isFetching && <Loader2 className="size-3 animate-spin shrink-0" />}
+            <span>Search</span>
+          </button>
+        </div>
+
+        {/* Row 2: Search Options (Aa, [.*], W) */}
+        <div className="flex items-center gap-2 pt-0.5">
+          <button
+            type="button"
+            onClick={() => setCaseSensitive(!caseSensitive)}
+            title="Match Case"
+            aria-label="Match Case"
+            aria-pressed={caseSensitive}
+            className={cn(
+              "size-7 rounded-full text-xs font-medium transition-colors flex items-center justify-center cursor-pointer select-none",
+              caseSensitive
+                ? "bg-muted text-foreground dark:bg-[#283548] dark:text-white font-semibold shadow-2xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium",
+            )}
+          >
+            Aa
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setUseRegex(!useRegex)}
+            title="Regular Expression"
+            aria-label="Regular Expression"
+            aria-pressed={useRegex}
+            className={cn(
+              "size-7 rounded-full text-xs font-mono transition-colors flex items-center justify-center cursor-pointer select-none",
+              useRegex
+                ? "bg-muted text-foreground dark:bg-[#283548] dark:text-white font-semibold shadow-2xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium",
+            )}
+          >
+            [.*]
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setWholeWord(!wholeWord)}
+            title="Whole Word"
+            aria-label="Whole Word"
+            aria-pressed={wholeWord}
+            className={cn(
+              "size-7 rounded-full text-xs font-semibold transition-colors flex items-center justify-center cursor-pointer select-none",
+              wholeWord
+                ? "bg-muted text-foreground dark:bg-[#283548] dark:text-white font-semibold shadow-2xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium",
+            )}
+          >
+            W
+          </button>
         </div>
 
         {/* Replace Input */}
         {showReplace && (
-          <div className="space-y-1.5 animate-in fade-in duration-150">
+          <div className="space-y-1.5 pt-2 border-t border-border/50 animate-in fade-in duration-150">
             <div className="relative">
-              <Replace className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0 pointer-events-none" />
               <Input
                 value={replaceText}
                 onChange={(e) => setReplaceText(e.target.value)}
                 placeholder="Replace with…"
-                className="pl-8 h-8 text-xs bg-background"
+                className="h-8 px-3 text-xs bg-background border-border/80 rounded-md w-full"
               />
             </div>
             <div className="flex items-center justify-end gap-1.5">
               <button
                 type="button"
                 onClick={handleReplaceAllCurrentFile}
-                disabled={!debouncedQuery}
+                disabled={!effectiveQuery}
                 aria-label="Replace in active file"
-                className="h-7 rounded-md bg-muted px-2 text-11 font-medium text-foreground transition-colors hover:bg-muted/80 disabled:opacity-50 cursor-pointer"
+                className="h-7 rounded-md bg-muted px-2.5 text-11 font-medium text-foreground transition-colors hover:bg-muted/80 disabled:opacity-50 cursor-pointer"
                 title="Replace all matches in current active file"
               >
                 In Current File
@@ -347,7 +459,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
               <button
                 type="button"
                 onClick={handleReplaceAllEverywhere}
-                disabled={!debouncedQuery || isReplacingAll}
+                disabled={!effectiveQuery || isReplacingAll}
                 aria-label="Replace all in project"
                 className="h-7 rounded-md bg-primary px-2.5 text-11 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer shadow-2xs"
                 title="Replace all matches across all project files"
@@ -357,61 +469,11 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             </div>
           </div>
         )}
-
-        {/* Search Options (Aa, Ab, .*) */}
-        <div className="flex items-center justify-between pt-0.5">
-          <div className="flex gap-1">
-            {[
-              {
-                key: "case",
-                label: "Aa",
-                title: "Match Case (Case Sensitive)",
-                state: caseSensitive,
-                setState: setCaseSensitive,
-              },
-              {
-                key: "word",
-                label: "Ab",
-                title: "Match Whole Word",
-                state: wholeWord,
-                setState: setWholeWord,
-              },
-              {
-                key: "regex",
-                label: ".*",
-                title: "Use Regular Expression",
-                state: useRegex,
-                setState: setUseRegex,
-              },
-            ].map((opt) => (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => opt.setState(!opt.state)}
-                title={opt.title}
-                aria-label={opt.title}
-                aria-pressed={opt.state}
-                className={cn(
-                  "h-6 min-w-6 px-1.5 rounded-sm text-11 font-mono transition-colors outline-none cursor-pointer flex items-center justify-center border",
-                  opt.state
-                    ? "bg-primary text-primary-foreground border-primary font-semibold shadow-2xs"
-                    : "bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted",
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
-          <span className="text-10 text-muted-foreground font-mono">
-            {projectFiles.length > 0 ? `${projectFiles.length} files` : "1 file"}
-          </span>
-        </div>
       </div>
 
       {/* Results List */}
       <div className="flex-1 overflow-y-auto">
-        {debouncedQuery ? (
+        {effectiveQuery ? (
           <>
             <div
               role="status"
@@ -419,8 +481,15 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
               className="border-b border-border px-3 py-1.5 text-11 font-medium text-muted-foreground bg-muted/10 flex items-center justify-between"
             >
               <span>
-                {totalMatches} result{totalMatches !== 1 ? "s" : ""} in {fileResults.length} file{fileResults.length !== 1 ? "s" : ""}
+                {isFetching
+                  ? "Searching project files..."
+                  : `${totalMatches} result${totalMatches !== 1 ? "s" : ""} in ${fileResults.length} file${fileResults.length !== 1 ? "s" : ""}`}
               </span>
+              {backendSearchData?.truncated && (
+                <span className="text-amber-600 dark:text-amber-400 text-10 font-medium">
+                  Capped at 1,000
+                </span>
+              )}
             </div>
 
             {fileResults.length > 0 ? (
@@ -495,22 +564,14 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             ) : (
               <div className="flex h-40 flex-col items-center justify-center gap-1.5 text-center text-muted-foreground px-4">
                 <SearchIcon className="size-6 opacity-30 shrink-0" />
-                <p className="text-xs font-medium">No results found</p>
+                <p className="text-xs font-medium">No results found for &ldquo;{effectiveQuery}&rdquo;</p>
                 <p className="text-11 text-muted-foreground/80">
                   No matching text found across project files.
                 </p>
               </div>
             )}
           </>
-        ) : (
-          <div className="flex h-64 flex-col items-center justify-center gap-2 px-5 text-center text-muted-foreground">
-            <SearchIcon className="size-8 opacity-25 shrink-0" />
-            <p className="text-xs font-medium text-foreground/75">Project-wide Search</p>
-            <p className="text-11 text-muted-foreground/80 max-w-[200px]">
-              Search text across all LaTeX, BibTeX, and project files. Press <kbd className="px-1 py-0.5 rounded-sm bg-muted border border-border font-mono text-10">Ctrl+Shift+F</kbd> anytime.
-            </p>
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

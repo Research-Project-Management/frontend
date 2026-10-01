@@ -147,7 +147,6 @@ export type Project = {
   avatar?: string | null;
   color?: string | null;
   status?: string;
-  workspaceId?: string;
   members?: ProjectMember[];
   emoji?: string | null;
   icon?: string | null;

@@ -1,15 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Library, Folder, X, Plus, FolderPlus } from 'lucide-react';
+import { Library, Folder, X, Plus } from 'lucide-react';
 import { useItems, useCollections } from '../../data';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from '@/shared/components/ui';
 import { useLibraryModalStore } from '../../store';
 import type { Item, Collection } from '../../types/library.types';
 
@@ -17,7 +10,6 @@ interface CollectionsSectionProps {
   paper: Item;
   scopeId?: string;
   projectId?: string;
-  workspaceId?: string;
   onCreateCollection?: () => void;
   hideHeader?: boolean;
   canEdit?: boolean;
@@ -27,7 +19,6 @@ export default function CollectionsSection({
   paper,
   scopeId,
   projectId,
-  workspaceId,
   onCreateCollection,
   hideHeader = false,
   canEdit = true,
@@ -84,24 +75,7 @@ export default function CollectionsSection({
     });
   }, [itemCollectionIds, collections, paper.collections]);
 
-  const unassignedCollections = React.useMemo(() => {
-    if (!collections || collections.length === 0) return [];
-    return collections.filter((c: Collection) => !itemCollectionIds.includes(c.id));
-  }, [collections, itemCollectionIds]);
 
-  const handleAddToCollection = (targetColId: string) => {
-    if (!paper.id) return;
-    const newIds = Array.from(new Set([...itemCollectionIds, targetColId]));
-    updatePaper(
-      paper.id,
-      {
-        collectionIds: newIds,
-        collectionId: newIds[0] || null,
-        expectedVersion: paper.version,
-      },
-      { expectedVersion: paper.version },
-    );
-  };
 
   const handleRemoveFromCollection = (targetColId: string) => {
     if (!paper.id) return;
@@ -118,143 +92,54 @@ export default function CollectionsSection({
   };
 
   return (
-    <div className="space-y-[5px] select-none font-sans">
+    <div className="flex flex-col gap-0.5 select-none font-sans">
       {!hideHeader && (
         <div className="flex items-center justify-between pb-1">
           <h3 className="text-12 font-medium text-foreground">
             Libraries and Collections
           </h3>
           {canEdit && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
-                  title="Add to collection"
-                  aria-label="Add to collection"
-                >
-                  <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5 text-xs font-sans">
-                <DropdownMenuItem
-                  onClick={() => {
-                    if (onCreateCollection) {
-                      onCreateCollection();
-                    } else {
-                      openModal('CREATE_COLLECTION');
-                    }
-                  }}
-                  className="flex items-center gap-2 h-7 px-2 cursor-pointer text-foreground hover:bg-muted rounded-md"
-                >
-                  <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                  <span className="font-medium">New Collection...</span>
-                </DropdownMenuItem>
-
-                {unassignedCollections.length > 0 ? (
-                  <>
-                    <DropdownMenuSeparator className="my-1" />
-                    <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
-                      Add to collection
-                    </div>
-                    {unassignedCollections.map((col: Collection) => (
-                      <DropdownMenuItem
-                        key={col.id}
-                        onClick={() => handleAddToCollection(col.id)}
-                        className="flex items-center gap-2 h-7 px-2 cursor-pointer text-foreground hover:bg-muted rounded-md"
-                      >
-                        <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                        <span className="truncate">{col.name}</span>
-                      </DropdownMenuItem>
-                    ))}
-                  </>
-                ) : collections.length > 0 ? (
-                  <div className="px-2 py-1 text-[11px] text-muted-foreground italic">
-                    All collections assigned
-                  </div>
-                ) : null}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <button
+              type="button"
+              onClick={() => {
+                if (onCreateCollection) {
+                  onCreateCollection();
+                } else {
+                  openModal('CREATE_COLLECTION');
+                }
+              }}
+              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              title="New Collection"
+              aria-label="New Collection"
+            >
+              <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+            </button>
           )}
         </div>
       )}
 
       {/* Primary Library Row (Root) */}
-      <div className="flex items-center justify-between gap-[8px] py-[5px] px-[8px] text-13 rounded-md hover:bg-muted transition-colors group">
-        <div className="flex items-center gap-[8px] min-w-0 flex-1">
-          <div className="size-4 shrink-0 flex items-center justify-center">
-            <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-          </div>
-          <span className="font-medium text-13 text-foreground tracking-tight break-words">My Library</span>
+      <div className="flex items-center gap-2 py-0.5 px-1.5 text-13 rounded-md hover:bg-muted transition-colors group">
+        <div className="size-4 shrink-0 flex items-center justify-center">
+          <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
         </div>
-        {canEdit && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="invisible group-hover:visible size-5 flex items-center justify-center rounded hover:bg-muted-foreground/10 text-muted-foreground hover:text-foreground cursor-pointer transition-colors shrink-0 mr-1"
-                title="Add to collection"
-                aria-label="Add to collection"
-              >
-                <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5 text-xs font-sans">
-              <DropdownMenuItem
-                onClick={() => {
-                  if (onCreateCollection) {
-                    onCreateCollection();
-                  } else {
-                    openModal('CREATE_COLLECTION');
-                  }
-                }}
-                className="flex items-center gap-2 h-7 px-2 cursor-pointer text-foreground hover:bg-muted rounded-md"
-              >
-                <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                <span className="font-medium">New Collection...</span>
-              </DropdownMenuItem>
-
-              {unassignedCollections.length > 0 ? (
-                <>
-                  <DropdownMenuSeparator className="my-1" />
-                  <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
-                    Add to collection
-                  </div>
-                  {unassignedCollections.map((col: Collection) => (
-                    <DropdownMenuItem
-                      key={col.id}
-                      onClick={() => handleAddToCollection(col.id)}
-                      className="flex items-center gap-2 h-7 px-2 cursor-pointer text-foreground hover:bg-muted rounded-md"
-                    >
-                      <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                      <span className="truncate">{col.name}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </>
-              ) : collections.length > 0 ? (
-                <div className="px-2 py-1 text-[11px] text-muted-foreground italic">
-                  All collections assigned
-                </div>
-              ) : null}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        <span className="font-medium text-13 text-foreground tracking-tight break-words">My Library</span>
       </div>
 
       {/* Collection Tree Rows */}
       {assignedCollections.map(({ id: colId, path }) => {
         return (
-          <div key={colId} className="space-y-[5px]">
+          <div key={colId} className="flex flex-col gap-0.5">
             {path.map((col, idx) => {
               const isLeaf = idx === path.length - 1;
-              const indentPx = 8 + (idx + 1) * 13;
+              const indentPx = 6 + (idx + 1) * 12;
               return (
                 <div
                   key={`${colId}-${col.id}-${idx}`}
                   style={{ paddingLeft: `${indentPx}px` }}
-                  className="flex items-center justify-between gap-[5px] py-[5px] pr-[8px] text-13 rounded-md hover:bg-muted transition-colors group"
+                  className="flex items-center justify-between gap-1.5 py-0.5 pr-1.5 text-13 rounded-md hover:bg-muted transition-colors group"
                 >
-                  <div className="flex items-center gap-[8px] min-w-0 flex-1">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     <div className="size-4 shrink-0 flex items-center justify-center">
                       <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                     </div>
@@ -269,7 +154,7 @@ export default function CollectionsSection({
                     <button
                       type="button"
                       onClick={() => handleRemoveFromCollection(colId)}
-                      className="invisible group-hover:visible size-5 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0 mr-1"
+                      className="invisible group-hover:visible size-5 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0"
                       title={`Remove from "${col.name}"`}
                       aria-label={`Remove from collection ${col.name}`}
                     >

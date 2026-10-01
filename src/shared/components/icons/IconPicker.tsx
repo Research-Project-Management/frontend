@@ -145,7 +145,7 @@ export function IconPicker({
             type="button"
             onClick={() => setTab('emoji')}
             className={cn(
-              'h-7 text-xs rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5',
+              'h-7 text-xs rounded-md transition-colors duration-150 cursor-pointer flex items-center justify-center gap-1.5',
               tab === 'emoji'
                 ? 'bg-background text-foreground shadow-xs font-semibold'
                 : 'text-muted-foreground hover:text-foreground font-medium'
@@ -157,7 +157,7 @@ export function IconPicker({
             type="button"
             onClick={() => setTab('icon')}
             className={cn(
-              'h-7 text-xs rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5',
+              'h-7 text-xs rounded-md transition-colors duration-150 cursor-pointer flex items-center justify-center gap-1.5',
               tab === 'icon'
                 ? 'bg-background text-foreground shadow-xs font-semibold'
                 : 'text-muted-foreground hover:text-foreground font-medium'

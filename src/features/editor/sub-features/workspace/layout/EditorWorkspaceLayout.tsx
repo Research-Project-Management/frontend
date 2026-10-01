@@ -11,7 +11,7 @@
  */
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, ArrowRight, ArrowLeft } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 
@@ -50,20 +50,6 @@ export function EditorWorkspaceLayout() {
   const { resolvedTheme } = useTheme();
   const { engine } = useEditorInstance();
 
-  const handleSyncTeXForward = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      const pos = engine?.getCursorPosition();
-      const line = pos?.line || 1;
-      editorCommandBus.dispatch({ type: 'viewer:jump-to-line', line });
-    },
-    [engine],
-  );
-
-  const handleSyncTeXBackward = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    EditorEventBus.emit('flux:synctex-backward');
-  }, []);
   const {
     layout,
     setLayout,
@@ -404,9 +390,8 @@ export function EditorWorkspaceLayout() {
         <div
           style={{ width: isNarrowScreen ? '100%' : (isSidebarCollapsed ? 44 : localSidebarWidth) }}
           className={cn(
-            "shrink-0 overflow-hidden bg-background border-r border-border transition-[width] duration-200 ease-out",
+            "shrink-0 overflow-hidden bg-background border-r border-border",
             isNarrowScreen && "hidden",
-            isDraggingSidebar && "transition-none"
           )}
         >
           <SideBar activePanel={activeSidebarPanel} onActivePanelChange={setActiveSidebarPanel} />
@@ -520,47 +505,6 @@ export function EditorWorkspaceLayout() {
               className="bg-transparent hover:bg-muted-foreground/10 active:bg-muted-foreground/20"
             />
 
-            {/* Overleaf Bidirectional SyncTeX Jump Controls */}
-            <div className="absolute inset-x-0 top-[38%] -translate-y-1/2 z-30 flex flex-col items-center gap-1.5 -left-3.5 w-9 pointer-events-auto select-none">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={handleSyncTeXForward}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    aria-label="View in PDF (SyncTeX: Code → PDF)"
-                    title="View in PDF (SyncTeX: Code → PDF)"
-                    className="size-7 rounded-full bg-background border border-border hover:bg-emerald-600 hover:border-emerald-600 hover:text-white text-foreground shadow-sm flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 select-none"
-                  >
-                    <ArrowRight className="size-3.5 shrink-0" strokeWidth={2.2} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="text-xs font-medium">
-                  View in PDF (SyncTeX: Code → PDF)
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={handleSyncTeXBackward}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    aria-label="View in Code (SyncTeX: PDF → Code)"
-                    title="View in Code (SyncTeX: PDF → Code)"
-                    className="size-7 rounded-full bg-background border border-border hover:bg-emerald-600 hover:border-emerald-600 hover:text-white text-foreground shadow-sm flex items-center justify-center cursor-pointer transition-all hover:scale-110 active:scale-95 select-none"
-                  >
-                    <ArrowLeft className="size-3.5 shrink-0" strokeWidth={2.2} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="left" className="text-xs font-medium">
-                  View in Code (SyncTeX: PDF → Code)
-                </TooltipContent>
-              </Tooltip>
-            </div>
-
             {/* Panel Toggle Arrow: Collapse PDF viewer */}
             <button
               type="button"
@@ -572,7 +516,7 @@ export function EditorWorkspaceLayout() {
               onTouchStart={(e) => e.stopPropagation()}
               title="Close PDF preview"
               aria-label="Close PDF preview"
-              className="absolute inset-x-0 top-[55%] -translate-y-1/2 z-30 flex items-center justify-center w-full h-8 rounded-sm bg-background border border-border hover:bg-muted text-muted-foreground hover:text-foreground shadow-2xs transition-colors cursor-pointer select-none"
+              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-full h-8 rounded-sm bg-background border border-border hover:bg-muted text-muted-foreground hover:text-foreground shadow-2xs transition-colors cursor-pointer select-none"
             >
               <ChevronRight className="size-3 shrink-0 text-foreground" strokeWidth={2} />
             </button>
@@ -615,10 +559,7 @@ export function EditorWorkspaceLayout() {
             flex: showDivider ? 1 - localEditorFlex : 1,
             display: showViewer ? undefined : 'none'
           }}
-          className={cn(
-            "min-w-0 overflow-hidden bg-muted dark:bg-background/60",
-            isDraggingSplitter && "transition-none"
-          )}
+          className="min-w-0 overflow-hidden bg-background flex flex-col"
         >
           <Viewer />
         </div>

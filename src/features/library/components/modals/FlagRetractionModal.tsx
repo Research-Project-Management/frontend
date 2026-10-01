@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FileText, Flag, FlagOff, Link2, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui';
 import {
   Dialog,
@@ -95,8 +94,7 @@ export default function FlagRetractionModal({
       });
       onOpenChange(false);
     } catch (err) {
-      console.error(err);
-      toast.error('Failed to flag retraction');
+      console.error('Failed to flag retraction:', err);
     }
   };
 
@@ -107,8 +105,7 @@ export default function FlagRetractionModal({
       await onUnflag(item.id);
       onOpenChange(false);
     } catch (err) {
-      console.error(err);
-      toast.error('Failed to remove retraction flag');
+      console.error('Failed to remove retraction flag:', err);
     } finally {
       setIsUnflagging(false);
     }

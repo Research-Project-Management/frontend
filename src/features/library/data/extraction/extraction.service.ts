@@ -3,7 +3,7 @@ import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from "@/shared/lib/token-storage";
 import type { AttachmentDto } from "../../types/library.types";
 import { isProjectScope } from '../../domain';
-import { AnnotationsService } from '@/features/reader/services/annotations.service';
+import { AnnotationsService } from './annotations.service';
 
 export type { AttachmentDto };
 export { AnnotationsService };

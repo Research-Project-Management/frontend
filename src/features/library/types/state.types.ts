@@ -6,6 +6,8 @@ export const itemStateSchema = z.object({
   readStatus: readStatusSchema.default('unread'),
   rating: z.number().min(0).max(5).default(0),
   lastReadAt: z.string().nullable().optional(),
+  currentPage: z.number().optional(),
+  scrollPosition: z.unknown().optional(),
 });
 
 export const itemStateResponseSchema = z.object({
@@ -21,6 +23,8 @@ export const batchItemStateResponseSchema = z.object({
 export const updateItemStateSchema = z.object({
   readStatus: readStatusSchema.optional(),
   rating: z.number().min(0).max(5).optional(),
+  currentPage: z.number().optional(),
+  scrollPosition: z.unknown().optional(),
 });
 
 export const itemStateDataSchema = itemStateSchema;

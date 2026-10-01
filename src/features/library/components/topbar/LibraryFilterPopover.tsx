@@ -161,7 +161,6 @@ function formatTypeFallback(type: string): string {
 export interface LibraryFilterPopoverProps {
   scopeId?: string;
   projectId?: string;
-  workspaceId?: string;
   items?: Item[];
   className?: string;
 }
@@ -169,7 +168,6 @@ export interface LibraryFilterPopoverProps {
 export function LibraryFilterPopover({
   scopeId: propScopeId,
   projectId: propProjectId,
-  workspaceId,
   items,
   className,
 }: LibraryFilterPopoverProps) {
@@ -178,7 +176,7 @@ export function LibraryFilterPopover({
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
-  const scopeId = propScopeId || propProjectId || workspaceId || 'user';
+  const scopeId = propScopeId || propProjectId || 'user';
   const { data: allItemsFromHook } = useItems({ scopeId, enabled: !items });
   const [isOpen, setIsOpen] = useState(false);
 
@@ -565,7 +563,7 @@ export function LibraryFilterPopover({
                 type="button"
                 size={activeCount > 0 ? "sm" : "icon"}
                 className={cn(
-                  "rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors shrink-0 shadow-2xs select-none inline-flex items-center",
+                  "rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors shrink-0 select-none inline-flex items-center",
                   activeCount > 0 ? "h-8 px-2.5 gap-1.5 border-primary/50 text-primary" : "size-8",
                   isOpen && "bg-muted",
                   className
@@ -574,7 +572,7 @@ export function LibraryFilterPopover({
               >
                 <FilterFunnelIcon className={cn("size-4 shrink-0", activeCount > 0 ? "text-primary" : "text-foreground")} />
                 {activeCount > 0 && (
-                  <span className="text-11 font-medium font-mono tabular-nums leading-none">
+                  <span className="text-12 font-medium font-mono tabular-nums leading-none">
                     {activeCount}
                   </span>
                 )}
@@ -601,7 +599,7 @@ export function LibraryFilterPopover({
             placeholder="Search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-7.5 w-full pl-8 pr-7 text-11 bg-background border border-border rounded-md outline-none focus:outline-none focus:border-foreground/40 focus:ring-0 text-foreground placeholder:text-foreground placeholder:font-normal shadow-none"
+            className="h-7.5 w-full pl-8 pr-7 text-12 bg-background border border-border rounded-md outline-none focus:outline-none focus:border-foreground/40 focus:ring-0 text-foreground placeholder:text-muted-foreground placeholder:font-normal shadow-none"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           />
@@ -623,11 +621,11 @@ export function LibraryFilterPopover({
           {searchQuery.trim() && totalMatchesCount === 0 ? (
             <div className="py-6 text-center text-12 text-muted-foreground select-none">
               <p className="font-medium text-foreground">No matching filters</p>
-              <p className="text-11 text-muted-foreground mt-0.5">No options match &ldquo;{searchQuery}&rdquo;</p>
+              <p className="text-12 text-muted-foreground mt-0.5">No options match &ldquo;{searchQuery}&rdquo;</p>
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="mt-2 text-11 text-foreground underline cursor-pointer font-medium"
+                className="mt-2 text-12 text-foreground underline cursor-pointer font-medium"
               >
                 Clear search
               </button>
@@ -878,7 +876,7 @@ export function LibraryFilterPopover({
                         e.stopPropagation();
                         handleClearDate();
                       }}
-                      className="text-11 text-foreground underline cursor-pointer px-1 py-0.5 rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      className="text-12 text-foreground underline cursor-pointer px-1 py-0.5 rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       title="Clear date filter"
                     >
                       Clear

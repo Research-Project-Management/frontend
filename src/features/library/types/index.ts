@@ -1,3 +1,4 @@
+export * from './annotations.types';
 export * from './attachments.types';
 export * from './citation.types';
 export * from './collections.types';

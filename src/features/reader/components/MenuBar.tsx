@@ -15,10 +15,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/shared/components/ui";
-import { cn } from "@/shared/lib/utils";
-import { useLibrarySidebarStore, ExportService } from '@/features/library';
+import { useReaderUIStore } from '../store/reader-ui.store';
+import { readerService } from '../data/reader.service';
 import { useReaderStore } from '@/features/reader/store/reader.store';
-import { toast } from 'sonner';
+import { useExportAnnotatedPdf } from '../data/reader.queries';
 
 export function FluxLogo({ className }: { className?: string }) {
   return (
@@ -44,7 +44,7 @@ export function MenuBar() {
   const isReader = pathname.includes('/library/papers/');
 
   // Stores
-  const { isOpen, setIsOpen, isInspectorOpen, setIsInspectorOpen } = useLibrarySidebarStore();
+  const { isOpen, setIsOpen, isInspectorOpen, setIsInspectorOpen } = useReaderUIStore();
   const { tabs, activeTabId, setActiveTab, closeTab } = useReaderStore();
 
   const handleGoLibrary = () => {
@@ -106,15 +106,15 @@ export function MenuBar() {
     }
   };
 
+  const { exportAnnotatedPdf } = useExportAnnotatedPdf('me');
+
   const handleExportAnnotatedPdf = async () => {
     if (!activeTabId || activeTabId === 'library') return;
     const currentTab = tabs.find((t) => t.id === activeTabId);
-    toast.loading('Exporting PDF with annotations...', { id: 'export-annotated-pdf' });
     try {
-      await ExportService.downloadAnnotatedPdf('me', activeTabId, `${currentTab?.title || 'document'}-annotated.pdf`);
-      toast.success('Annotated PDF exported successfully', { id: 'export-annotated-pdf' });
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to export annotated PDF', { id: 'export-annotated-pdf' });
+      await exportAnnotatedPdf(activeTabId, `${currentTab?.title || 'document'}-annotated.pdf`);
+    } catch {
+      // Handled in useExportAnnotatedPdf hook toast
     }
   };
 

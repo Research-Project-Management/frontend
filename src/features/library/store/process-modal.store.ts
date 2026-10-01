@@ -165,6 +165,7 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
     }));
 
     const queue = [...files];
+    const metadataTasks: Promise<void>[] = [];
     const concurrency = 2;
     let completedCount = 0;
     let successCount = 0;
@@ -390,57 +391,13 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
           // If metadata ingestion submission endpoint is unreachable, file remains securely attached.
         }
 
-        // Successfully preserved in library - file upload completed
-        successCount++;
-        completedCount++;
+        // Start background metadata polling task that tracks actual extraction completion
+        const metadataTask = (async () => {
+          let finalTitle = identifiedTitle;
+          let finalItemId = completedItemId;
 
-        set((s) => {
-          const items = s.state.data?.items.map((i) =>
-            i.title === file.name
-              ? { ...i, status: 'SUCCEEDED' as const, itemName: identifiedTitle }
-              : i,
-          );
-          const percentage = Math.round((completedCount / files.length) * 100);
-          return {
-            processingItems: s.processingItems.map((p) =>
-              p.fileName === file.name && p.fileSize === file.size
-                ? {
-                    ...p,
-                    status: 'SUCCEEDED',
-                    extractedTitle: identifiedTitle,
-                    itemId: completedItemId,
-                  }
-                : p,
-            ),
-            state: s.state.data
-              ? {
-                  ...s.state,
-                  data: {
-                    ...s.state.data,
-                    items: items || [],
-                    processed: completedCount,
-                    succeeded: successCount,
-                    percentage,
-                  },
-                }
-              : s.state,
-          };
-        });
-
-        // Trigger reactive per-file cache invalidation so the row updates in real time
-        queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
-        queryClient.invalidateQueries({ queryKey: ['library', 'items', scopeId] });
-        if (effectiveCollection) {
-          queryClient.invalidateQueries({
-            queryKey: itemKeys.byCollection(scopeId, effectiveCollection),
-          });
-        }
-
-        // Non-blocking background metadata polling (Zotero Graceful Enrichment)
-        // Does NOT block the concurrency queue from uploading the next files!
-        if (runId) {
-          const targetRunId = runId;
-          void (async () => {
+          if (runId) {
+            const targetRunId = runId;
             const startTime = Date.now();
             const maxWaitMs = 60000;
             while (Date.now() - startTime < maxWaitMs) {
@@ -456,40 +413,12 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
                 const statusData = statusPayload?.data || statusPayload;
                 const currentStatus = statusData?.status;
                 if (currentStatus === 'COMPLETED' || currentStatus === 'READY') {
-                  const finalTitle =
-                    statusData?.title && statusData.title !== 'Uploaded Document'
-                      ? statusData.title
-                      : identifiedTitle;
-                  set((s) => ({
-                    processingItems: s.processingItems.map((p) =>
-                      p.fileName === file.name && p.fileSize === file.size
-                        ? {
-                            ...p,
-                            extractedTitle: finalTitle,
-                            itemId: statusData?.itemId || completedItemId,
-                          }
-                        : p,
-                    ),
-                    state: s.state.data
-                      ? {
-                          ...s.state,
-                          data: {
-                            ...s.state.data,
-                            items: s.state.data.items.map((it) =>
-                              it.title === file.name
-                                ? {
-                                    ...it,
-                                    itemName: finalTitle,
-                                    status: 'SUCCEEDED' as const,
-                                  }
-                                : it,
-                            ),
-                          },
-                        }
-                      : s.state,
-                  }));
-                  queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
-                  queryClient.invalidateQueries({ queryKey: ['library', 'items', scopeId] });
+                  if (statusData?.title && statusData.title !== 'Uploaded Document') {
+                    finalTitle = statusData.title;
+                  }
+                  if (statusData?.itemId) {
+                    finalItemId = statusData.itemId;
+                  }
                   break;
                 }
                 if (
@@ -502,17 +431,65 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
                 break;
               }
             }
-          })();
-        }
+          }
 
-        // Seamless handover: remove provisional placeholder after 2.5s
-        setTimeout(() => {
-          set((s) => ({
-            processingItems: s.processingItems.filter(
-              (p) => !(p.fileName === file.name && p.fileSize === file.size),
-            ),
-          }));
-        }, 2500);
+          // Metadata extraction is now completely finished for this file
+          successCount++;
+          completedCount++;
+
+          set((s) => {
+            const items = s.state.data?.items.map((i) =>
+              i.title === file.name
+                ? { ...i, status: 'SUCCEEDED' as const, itemName: finalTitle }
+                : i,
+            );
+            const percentage = Math.round((completedCount / files.length) * 100);
+            return {
+              processingItems: s.processingItems.map((p) =>
+                p.fileName === file.name && p.fileSize === file.size
+                  ? {
+                      ...p,
+                      status: 'SUCCEEDED',
+                      extractedTitle: finalTitle,
+                      itemId: finalItemId,
+                    }
+                  : p,
+              ),
+              state: s.state.data
+                ? {
+                    ...s.state,
+                    data: {
+                      ...s.state.data,
+                      items: items || [],
+                      processed: completedCount,
+                      succeeded: successCount,
+                      percentage,
+                    },
+                  }
+                : s.state,
+            };
+          });
+
+          // Trigger reactive per-file cache invalidation so the row updates in real time
+          queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
+          queryClient.invalidateQueries({ queryKey: ['library', 'items', scopeId] });
+          if (effectiveCollection) {
+            queryClient.invalidateQueries({
+              queryKey: itemKeys.byCollection(scopeId, effectiveCollection),
+            });
+          }
+
+          // Seamless handover: remove provisional placeholder after 2.5s
+          setTimeout(() => {
+            set((s) => ({
+              processingItems: s.processingItems.filter(
+                (p) => !(p.fileName === file.name && p.fileSize === file.size),
+              ),
+            }));
+          }, 2500);
+        })();
+
+        metadataTasks.push(metadataTask);
       } catch (err: unknown) {
         // Fallback for unexpected errors
         const errorMsg = err instanceof Error ? err.message : 'Processing failed';
@@ -534,6 +511,8 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
     );
 
     await Promise.all(workers);
+    // Wait for all metadata extraction tasks across all uploaded files to finish!
+    await Promise.all(metadataTasks);
 
     // Mark completion
     set((s) => ({
@@ -570,12 +549,14 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
           : `Imported ${successCount} of ${files.length} documents`,
         {
           description: 'Metadata and attachments are ready in your library.',
+          id: 'process-modal-import',
         },
       );
       if (onSuccess) onSuccess();
     } else if (failCount > 0) {
       toast.error('Import failed', {
         description: 'None of the documents could be processed.',
+        id: 'process-modal-import',
       });
     }
   },

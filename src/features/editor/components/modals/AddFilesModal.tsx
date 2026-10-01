@@ -132,28 +132,30 @@ export default function AddFilesModal({
     }
   }, [open, activeTab]);
 
-  const handleCreateNewFile = async (e?: React.FormEvent) => {
+  const handleCreateNewFile = (e?: React.FormEvent) => {
     e?.preventDefault();
     const raw = newFileName.trim();
     if (!raw || !parentPageId) return;
 
     const title = /\.[a-z0-9]+$/i.test(raw) ? raw : `${raw}.tex`;
     setIsCreatingNewFile(true);
-    try {
-      const created = await createFile.mutateAsync({
+    createFile.mutate(
+      {
         parentPageId,
         title,
         content: '',
-      });
-      toast.success(`Created ${title}`);
-      setSearchParams({ file: created.id });
-      setNewFileName('');
-      onOpenChange(false);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to create file');
-    } finally {
-      setIsCreatingNewFile(false);
-    }
+      },
+      {
+        onSuccess: (created) => {
+          setSearchParams({ file: created.id });
+          setNewFileName('');
+          onOpenChange(false);
+        },
+        onSettled: () => {
+          setIsCreatingNewFile(false);
+        },
+      },
+    );
   };
 
   // ── 2. Upload State & Handlers ────────────────────────────────────────────
@@ -248,17 +250,23 @@ export default function AddFilesModal({
       const contentStr = typeof rawContent === 'string'
         ? rawContent
         : (rawContent as any)?.text || (rawContent as any)?.content || '';
-      const created = await createFile.mutateAsync({
-        parentPageId,
-        title: projectTargetName.trim(),
-        content: contentStr,
-      });
-      toast.success(`Copied ${projectTargetName} into this project`);
-      setSearchParams({ file: created.id });
-      onOpenChange(false);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to copy file from project');
-    } finally {
+      createFile.mutate(
+        {
+          parentPageId,
+          title: projectTargetName.trim(),
+          content: contentStr,
+        },
+        {
+          onSuccess: (created) => {
+            setSearchParams({ file: created.id });
+            onOpenChange(false);
+          },
+          onSettled: () => {
+            setIsCopyingFromProject(false);
+          },
+        },
+      );
+    } catch {
       setIsCopyingFromProject(false);
     }
   };
@@ -335,7 +343,6 @@ export default function AddFilesModal({
             title: targetName,
             content: textContent,
           });
-          toast.success(`Imported ${targetName} from URL`);
           setSearchParams({ file: created.id });
         } else {
           const blob = await response.blob();
@@ -347,7 +354,6 @@ export default function AddFilesModal({
             projectId: effectiveProjectId,
             pageId: parentPageId,
           });
-          toast.success(`Imported asset ${targetName} from URL`);
         }
         queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
         queryClient.invalidateQueries({ queryKey: ['storage-files', parentPageId] });
@@ -402,33 +408,32 @@ export default function AddFilesModal({
     });
   };
 
-  const handleExportFromLibrary = async () => {
+  const handleExportFromLibrary = () => {
     if (!parentPageId || selectedItemIds.size === 0) return;
     const targetName = bibFileName.trim() || 'references.bib';
     const chosenItems = libraryItems.filter((i) => selectedItemIds.has(i.id));
 
     setIsExportingBib(true);
-    try {
-      const bibEntries = chosenItems
-        .map((item) => formatItemToBibtex(item))
-        .join('\n\n');
+    const bibEntries = chosenItems
+      .map((item) => formatItemToBibtex(item))
+      .join('\n\n');
 
-      const created = await createFile.mutateAsync({
+    createFile.mutate(
+      {
         parentPageId,
         title: targetName,
         content: bibEntries,
-      });
-
-      toast.success(
-        `Created ${targetName} with ${chosenItems.length} citation(s)`,
-      );
-      setSearchParams({ file: created.id });
-      onOpenChange(false);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to export library references');
-    } finally {
-      setIsExportingBib(false);
-    }
+      },
+      {
+        onSuccess: (created) => {
+          setSearchParams({ file: created.id });
+          onOpenChange(false);
+        },
+        onSettled: () => {
+          setIsExportingBib(false);
+        },
+      },
+    );
   };
 
   // ── Navigation Tabs Configuration ─────────────────────────────────────────

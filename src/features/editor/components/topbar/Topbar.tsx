@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Home, PanelLeft, History, Check, Loader2, MessageSquareQuote, Menu, Calculator } from 'lucide-react';
+import { Home, PanelLeft, History, Check, Loader2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import {
@@ -19,7 +19,6 @@ import EditMenu from './edit/EditMenu';
 import ViewMenu from './view/ViewMenu';
 import InsertMenu from './insert/InsertMenu';
 import FormatMenu from './format/FormatMenu';
-import DocumentBreadcrumb from './breadcrumb/DocumentBreadcrumb';
 import LayoutSwitcher from './view/LayoutSwitcher';
 import TemplateGalleryModal from '@/features/editor/components/modals/TemplateGalleryModal';
 import KeyboardShortcutsModal from '@/features/editor/components/modals/KeyboardShortcutsModal';
@@ -27,60 +26,17 @@ import QuickOpenModal from '@/features/editor/components/modals/QuickOpenModal';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useSettingsStore, useCompileStore, usePageStore } from '@/features/editor/store';
 import { usePageActions } from '@/features/editor/hooks/use-core';
-import { usePageComments } from '@/features/editor/hooks/use-comment';
-import { usePageSuggestions } from '@/features/editor/hooks/use-suggestion';
 import { cn } from '@/shared/lib/utils';
 
 export default function Topbar() {
   const params = useParams<{ projectId?: string }>();
   const homeHref = params?.projectId ? `/projects/${params.projectId}` : '/projects';
   const {
-    toggleSettingsPanel,
     toggleHistory,
     isHistoryOpen,
-    activeSidebarPanel,
-    setActiveSidebarPanel,
   } = useSettingsStore();
   const { dirtyContentMap } = useCompileStore();
   const { updateTitle: updateTitleMutation } = usePageActions();
-  const queryClient = useQueryClient();
-
-  const activePageId = usePageStore((s) => s.activePageId);
-  const currentPage = usePageStore((s) => s.currentPage);
-  const pageId = activePageId || currentPage?.id;
-
-  const { data: comments = [] } = usePageComments(pageId ?? null);
-  const { data: suggestions = [] } = usePageSuggestions(pageId ?? null, 'pending');
-
-  const openCommentsCount = comments.filter((c) => c.status === 'open').length;
-  const pendingSuggestionsCount = suggestions.filter((s) => s.status === 'pending').length;
-  const totalReviewItems = openCommentsCount + pendingSuggestionsCount;
-
-  const isReviewOpen = activeSidebarPanel === 'Review';
-
-  const handleToggleReview = () => {
-    if (isReviewOpen) {
-      setActiveSidebarPanel(null);
-    } else {
-      setActiveSidebarPanel('Review');
-      EditorEventBus.emit('flux:open-panel', 'Review');
-    }
-  };
-
-  // Realtime updates from Socket.IO room events
-  useEffect(() => {
-    if (!pageId) return;
-    const unsub = EditorEventBus.on('flux:review-event', ({ pageId: evtPageId, event }) => {
-      if (evtPageId !== pageId) return;
-      if (event.startsWith('comment:') || event.startsWith('comments:')) {
-        queryClient.invalidateQueries({ queryKey: ['page-comments', pageId] });
-      }
-      if (event.startsWith('suggestion:') || event.startsWith('suggestions:')) {
-        queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
-      }
-    });
-    return () => unsub();
-  }, [pageId, queryClient]);
 
   const isSaving = dirtyContentMap.size > 0 || updateTitleMutation.isPending;
 
@@ -129,18 +85,6 @@ export default function Topbar() {
           <PanelLeft className="size-4 shrink-0" />
         </button>
 
-        {/* Overleaf Signature Menu Button */}
-        <button
-          type="button"
-          onClick={toggleSettingsPanel}
-          title="Project Menu & Settings (Overleaf Parity)"
-          aria-label="Project Menu & Settings"
-          className="flex items-center gap-1.5 h-7.5 px-2.5 rounded-md bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs transition-colors shadow-2xs cursor-pointer select-none shrink-0 mr-0.5"
-        >
-          <Menu className="size-3.5 shrink-0" strokeWidth={2.2} />
-          <span>Menu</span>
-        </button>
-
         <TooltipProvider delayDuration={150}>
           {/* Single Logo button: click to go back to project, hover transforms to Home icon */}
           <Tooltip>
@@ -152,11 +96,11 @@ export default function Topbar() {
               >
                 <img
                   src="/Flux.svg"
-                  className="size-5 shrink-0 transition-[opacity,transform] duration-150 group-hover:scale-0 group-hover:opacity-0"
+                  className="size-5 shrink-0 transition-opacity duration-150 group-hover:opacity-0"
                   alt="Flux"
                 />
                 <Home
-                  className="size-4 shrink-0 text-foreground transition-[opacity,transform] duration-150 absolute scale-0 opacity-0 group-hover:scale-100 group-hover:opacity-100"
+                  className="size-4 shrink-0 text-foreground transition-opacity duration-150 absolute opacity-0 group-hover:opacity-100"
                   strokeWidth={1.75}
                 />
               </Link>
@@ -177,9 +121,6 @@ export default function Topbar() {
         </Menubar>
       </div>
 
-      {/* ── Center: Document Breadcrumb & Inline Rename ── */}
-      <DocumentBreadcrumb />
-
       {/* ── Right: Save Status, Review, History, Quick Layout Switcher & Settings Trigger ── */}
       <div className="flex items-center gap-1.5 shrink-0">
         {/* Save Status Indicator */}
@@ -187,7 +128,7 @@ export default function Topbar() {
           {isSaving ? (
             <span
               className="flex items-center gap-1 text-11 font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full select-none"
-              title="Saving changes..."
+              title="Saving..."
             >
               <Loader2 className="size-3 animate-spin shrink-0" />
               <span className="hidden sm:inline">Saving...</span>
@@ -195,7 +136,7 @@ export default function Topbar() {
           ) : (
             <span
               className="flex items-center gap-1 text-11 font-medium text-muted-foreground/80 hover:text-foreground transition-colors px-1.5 py-0.5 rounded-sm select-none cursor-default"
-              title="All changes saved to cloud"
+              title="Saved (Cloud)"
             >
               <Check className="size-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span className="hidden sm:inline text-11">Saved</span>
@@ -203,55 +144,11 @@ export default function Topbar() {
           )}
         </div>
 
-        {/* Word Count (Overleaf Feature) */}
-        <button
-          type="button"
-          onClick={() => EditorEventBus.emit('flux:open-word-count')}
-          title="Document Word Count"
-          aria-label="Document Word Count"
-          className="flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer outline-none select-none"
-        >
-          <Calculator className="size-3.5 shrink-0" />
-          <span className="hidden md:inline">Word Count</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={handleToggleReview}
-          title={
-            totalReviewItems > 0
-              ? `Review (${openCommentsCount} open comments, ${pendingSuggestionsCount} pending suggestions)`
-              : "Review & Track Changes"
-          }
-          aria-label="Review & Track Changes"
-          className={cn(
-            "flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer outline-none select-none",
-            isReviewOpen
-              ? "bg-background text-foreground font-semibold shadow-2xs border border-border"
-              : "text-foreground/80 hover:text-foreground hover:bg-sidebar-hover"
-          )}
-        >
-          <MessageSquareQuote className="size-3.5 shrink-0" />
-          <span className="hidden sm:inline">Review</span>
-          {totalReviewItems > 0 && (
-            <span
-              className={cn(
-                "flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-10 font-bold leading-none select-none",
-                isReviewOpen
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-amber-500/20 text-amber-700 dark:text-amber-400"
-              )}
-            >
-              {totalReviewItems}
-            </span>
-          )}
-        </button>
-
         <button
           type="button"
           onClick={toggleHistory}
-          title="Project History & Revisions"
-          aria-label="Project History"
+          title="History (Revisions)"
+          aria-label="History"
           className={cn(
             "flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer outline-none select-none",
             isHistoryOpen

@@ -8,6 +8,7 @@ import { authKeys } from '../constants/auth.keys';
 import type { AuthUser } from '../types/auth.types';
 import { apiPost, setAuthToken } from "@/shared/lib/api";
 import { getErrorMessage } from "@/shared/lib/utils";
+import { getSafeRedirectUrl } from "@/shared/utils/auth-token.util";
 
 interface OAuthExchangeResponse {
   accessToken: string;
@@ -69,8 +70,17 @@ export const useOAuthCallback = () => {
           window.history.replaceState({}, document.title, '/auth/callback');
         }
 
-        // 4. Route user to /home (default post-auth destination)
-        router.replace('/home');
+        // 4. Retrieve preserved redirect or fallback to /home
+        let targetUrl = '/home';
+        if (typeof window !== 'undefined') {
+          const preservedRedirect = sessionStorage.getItem('flux_oauth_redirect');
+          if (preservedRedirect) {
+            sessionStorage.removeItem('flux_oauth_redirect');
+            targetUrl = getSafeRedirectUrl(preservedRedirect, '/home');
+          }
+        }
+
+        router.replace(targetUrl);
       } catch (err: unknown) {
         toast.error(getErrorMessage(err));
         router.replace('/login');

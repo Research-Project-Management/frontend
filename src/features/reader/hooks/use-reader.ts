@@ -12,6 +12,7 @@ import { AnnotationsService } from '../services/annotations.service';
 import { readerAnnotationKeys, useAnnotations } from './use-annotations';
 import { useLibraryReaderStore } from '../store/reader.store';
 import type { ReaderPanel, ReaderDocument, AnnotationRect, ReaderNavigationTarget } from '../types/reader.types';
+import { formatAnnotationCitation } from '../utils/reader.util';
 
 const MIN_PANEL_WIDTH = 320;
 const MAX_PANEL_WIDTH = 560;
@@ -99,6 +100,8 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     annotations = [],
     updateAnnotation,
     deleteAnnotation,
+    extractNotes,
+    importExternal,
   } = useAnnotations(scopeId, effectiveAttachmentId);
 
   const startXRef = useRef(0);
@@ -234,19 +237,8 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
 
     let citationLink = '';
     if (pageNumber) {
-      const creators = paper?.creators || [];
-      const firstAuthor =
-        creators[0]?.lastName ||
-        creators[0]?.fullName?.split(' ').slice(-1)[0] ||
-        'Unknown';
-      const year = paper?.year || 'n.d.';
-      const authorCitation =
-        creators.length > 1 ? `${firstAuthor} et al., ${year}` : `${firstAuthor}, ${year}`;
-      const citationLabel = `(${authorCitation}, p. ${pageNumber})`;
-      const backlink = effectiveAttachmentId
-        ? `flux://open-pdf/library/items/${effectiveAttachmentId}?page=${pageNumber}&annotation=${annotationId || ''}`
-        : `flux://open-pdf/library/items?page=${pageNumber}&annotation=${annotationId || ''}`;
-      citationLink = `\n> — [${citationLabel}](${backlink})`;
+      const cit = formatAnnotationCitation(paper, effectiveAttachmentId, pageNumber, annotationId);
+      citationLink = `\n> — ${cit.markdown}`;
     }
 
     const formatted = `> "${trimmed}"${citationLink}`;
@@ -261,31 +253,34 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     rects?: AnnotationRect[],
     // Zotero 7 annotation types (no 'strike' — does not exist in Zotero 7)
     type: 'highlight' | 'underline' | 'note' | 'text' | 'rect' | 'area' = 'highlight',
+    comment?: string,
   ) => {
     setActivePanel('annotations');
     if (!effectiveAttachmentId) return;
 
     const quote = text?.trim();
-    if (!quote && type !== 'rect' && type !== 'area' && type !== 'text') return;
+    if (!quote && type !== 'rect' && type !== 'area' && type !== 'text' && type !== 'note') return;
 
     try {
       const pageIndex = pageNum !== undefined && pageNum > 0 ? pageNum - 1 : 0;
       const effectiveType = type === 'area' ? 'rect' : type;
-      await AnnotationsService.create(scopeId, effectiveAttachmentId, {
+      const created = await AnnotationsService.create(scopeId, effectiveAttachmentId, {
         type: effectiveType as any,
         pageIndex,
         color: colorHex,
         quoteText: quote || undefined,
+        comment: comment?.trim() || undefined,
         rects,
       });
       qc.invalidateQueries({
         queryKey: readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),
       });
       // Silent on success to keep academic reading flow distraction-free (Zotero parity)
+      return created;
     } catch (err) {
       console.error('Failed to create highlight annotation:', err);
-      toast.error('Failed to save highlight', {
-        description: getErrorMessage(err) || 'Could not save highlight. Please try again.',
+      toast.error('Failed to save annotation', {
+        description: getErrorMessage(err) || 'Could not save annotation. Please try again.',
         id: 'reader-annotation-toast',
       });
     }
@@ -415,7 +410,15 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
 
     const selected = existing.filter((a) => selectedAnnotationIds.has(a.id));
     const quotes = selected
-      .map((a) => `> "${a.quoteText || ''}"\n\n— *Page ${(a.pageIndex ?? 0) + 1}*`)
+      .map((a) => {
+        const pageNum = a.pageIndex !== undefined ? a.pageIndex + 1 : undefined;
+        const cit = formatAnnotationCitation(paper, effectiveAttachmentId, pageNum, a.id);
+        const quotePart = a.quoteText ? `> "${a.quoteText.trim().replace(/\n+/g, '\n> ')}"` : '';
+        const citPart = pageNum ? `\n> — ${cit.markdown}` : '';
+        const commentPart = a.comment ? `\n\n**Note:** ${a.comment.trim()}` : '';
+        return `${quotePart}${citPart}${commentPart}`;
+      })
+      .filter(Boolean)
       .join('\n\n---\n\n');
 
     setPendingNoteText(quotes);
@@ -437,8 +440,6 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     state: {
       scopeId,
       projectId: isProject ? rawProjectId : undefined,
-      workspaceId: scopeId,
-      workspaceUrl: scopeId,
       paperId: effectivePaperId,
       isLoadingPapers,
       paper,
@@ -494,6 +495,8 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       handleBatchAddToNote,
       updateAnnotation,
       deleteAnnotation,
+      extractNotes,
+      importExternal,
     },
   };
 }

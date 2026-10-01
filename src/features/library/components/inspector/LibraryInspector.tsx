@@ -1,15 +1,9 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, Plus, Folder, FolderPlus } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from '@/shared/components/ui';
+import { ChevronDown, ChevronRight, Plus, X } from 'lucide-react';
 import {
   useLibrarySidebarStore,
   useLibraryViewStore,
@@ -88,7 +82,7 @@ function InspectorSection({
   onAdd,
   actionSlot,
   children,
-  contentClassName = 'px-3 pt-1.5 pb-3',
+  contentClassName = 'px-3 pt-1.5 pb-2.5',
   canEdit = true,
 }: InspectorSectionProps) {
   return (
@@ -182,6 +176,9 @@ export interface LibraryInspectorProps {
   canEdit?: boolean;
   onClose?: () => void;
   onSelectPaper?: (paperId: string) => void;
+  pendingNoteText?: string;
+  onClearPendingText?: () => void;
+  onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void;
 }
 
 /**
@@ -197,16 +194,36 @@ export function LibraryInspector({
   canEdit = true,
   onClose: propOnClose,
   onSelectPaper,
+  pendingNoteText,
+  onClearPendingText,
+  onNavigateToAnnotation,
 }: LibraryInspectorProps) {
   // Sidebar & View store state
   const isInspectorOpen = useLibrarySidebarStore((s) => s.isInspectorOpen);
+  const setIsInspectorOpen = useLibrarySidebarStore((s) => s.setIsInspectorOpen);
   const toggleInspector = useLibrarySidebarStore((s) => s.toggleInspector);
   const activeInspectorTab = useLibrarySidebarStore((s) => s.activeInspectorTab);
   const setActiveInspectorTab = useLibrarySidebarStore((s) => s.setActiveInspectorTab);
 
   const activeItemId = useLibraryViewStore((s) => s.activeItemId);
+  const selectOnly = useLibraryViewStore((s) => s.selectOnly);
+  const handleSelectPaper = onSelectPaper || selectOnly;
   const openModal = useLibraryModalStore((s) => s.openModal);
   const { width, isDragging, handleMouseDown, setWidth, resetWidth } = useInspectorResize();
+
+  const [isMounted, setIsMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    if (typeof window !== 'undefined') {
+      const mql = window.matchMedia('(max-width: 767px)');
+      setIsMobile(mql.matches);
+      const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+      mql.addEventListener('change', handler);
+      return () => mql.removeEventListener('change', handler);
+    }
+  }, []);
 
   // Scope & Item resolution
   const targetScope = scopeId || projectId || 'user';
@@ -305,7 +322,22 @@ export function LibraryInspector({
   const attachmentsAddRef = useRef<(() => void) | null>(null);
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [isAddingTag, setIsAddingTag] = useState(false);
+
+  // When pending text is passed from PDF viewer (e.g. "Add to Note"), open inspector and activate notes tab
+  useEffect(() => {
+    if (pendingNoteText) {
+      setIsInspectorOpen(true);
+      setActiveInspectorTab('notes');
+      setExpandedSections((prev) => ({ ...prev, notes: true }));
+    }
+  }, [pendingNoteText, setIsInspectorOpen, setActiveInspectorTab]);
   const [isAddRelatedOpen, setIsAddRelatedOpen] = useState(false);
+  const handleAddRelatedOpenChange = useCallback((open: boolean) => {
+    setIsAddRelatedOpen(open);
+    if (open) {
+      setExpandedSections((prev) => ({ ...prev, relations: true }));
+    }
+  }, []);
 
   // Collections data & actions
   const { state: colState } = useCollections(targetScope);
@@ -324,25 +356,6 @@ export function LibraryInspector({
     return Array.from(ids);
   }, [effectiveItem]);
 
-  const unassignedCollections = useMemo(() => {
-    if (!collections || collections.length === 0) return [];
-    return collections.filter((c: Collection) => !itemCollectionIds.includes(c.id));
-  }, [collections, itemCollectionIds]);
-
-  const handleAddToCollection = (targetColId: string) => {
-    if (!effectiveItem?.id) return;
-    setExpandedSections((prev) => ({ ...prev, collections: true }));
-    const newIds = Array.from(new Set([...itemCollectionIds, targetColId]));
-    updateMutation.mutate({
-      id: effectiveItem.id,
-      payload: {
-        collectionIds: newIds,
-        collectionId: newIds[0] || null,
-        expectedVersion: effectiveItem.version,
-      } as any,
-      expectedVersion: effectiveItem.version,
-    });
-  };
 
   // Relations data
   const { relatedItems } = useRelations(targetScope, effectiveItem?.id || '');
@@ -402,69 +415,9 @@ export function LibraryInspector({
     return null;
   }
 
-  return (
-    <div className="flex h-full shrink-0 select-none">
-      {/* Mobile Backdrop */}
-      <div
-        onClick={handleClose}
-        className="fixed inset-0 bg-background/80 backdrop-blur-xs z-30 md:hidden"
-        aria-hidden="true"
-      />
-
-      {/* Drawer content when open */}
-      <aside
-        style={{ width: `${width}px` }}
-        onScroll={(e) => {
-          e.currentTarget.scrollTop = 0;
-        }}
-        className={cn(
-          'fixed inset-y-0 right-10 z-40 max-w-[calc(100vw-40px)] md:static md:max-w-none md:z-20',
-          'h-full border-l border-border bg-background flex flex-col shrink-0 overflow-hidden select-text shadow-elevation-3 md:shadow-none',
-          isDragging && 'select-none transition-none'
-        )}
-      >
-        {/* Draggable left-border resize handle */}
-        <div
-          role="separator"
-          aria-orientation="vertical"
-          aria-valuenow={width}
-          aria-valuemin={300}
-          aria-valuemax={640}
-          aria-label="Resize library inspector"
-          tabIndex={0}
-          onMouseDown={handleMouseDown}
-          onDoubleClick={resetWidth}
-          onKeyDown={(e) => {
-            if (e.key === 'ArrowLeft') {
-              e.preventDefault();
-              setWidth(width + 20);
-            } else if (e.key === 'ArrowRight') {
-              e.preventDefault();
-              setWidth(width - 20);
-            } else if (e.key === 'Home') {
-              e.preventDefault();
-              setWidth(300);
-            } else if (e.key === 'End') {
-              e.preventDefault();
-              setWidth(640);
-            } else if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              resetWidth();
-            }
-          }}
-          className="absolute top-0 bottom-0 -left-1.5 w-3 cursor-col-resize z-30 flex items-center justify-center group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-          title="Drag or use arrow keys to resize inspector (double-click to reset)"
-        >
-          <div
-            className={cn(
-              "w-0.5 h-full transition-colors duration-150",
-              "group-hover:bg-primary/60",
-              isDragging && "bg-primary"
-            )}
-          />
-        </div>
-
-          {effectiveItem ? (
+  const inspectorContent = (
+    <>
+      {effectiveItem ? (
             <>
               {/* Header with Title and Quick Actions */}
               <InspectorHeader
@@ -477,7 +430,7 @@ export function LibraryInspector({
               {/* Scrollable Collapsible Sections */}
               <div
                 ref={scrollContainerRef}
-                className="relative flex-1 overflow-y-auto overflow-x-hidden min-h-0 bg-background inspector-scrollbar"
+                className="relative flex-1 overflow-y-auto overflow-x-hidden min-h-0 bg-background inspector-scrollbar scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
               >
                 {/* 1. Details (Level 8) */}
                 {visibleSectionIds.has('info') && (
@@ -486,7 +439,7 @@ export function LibraryInspector({
                     title="Details"
                     isExpanded={expandedSections.info}
                     onToggleExpand={() => toggleSection('info')}
-                    contentClassName="px-3 pt-1.5 pb-3 flex flex-col gap-2"
+                    contentClassName="px-3 pt-1.5 pb-2.5 flex flex-col gap-1"
                     canEdit={canEdit}
                   >
                     <InfoSection
@@ -504,7 +457,7 @@ export function LibraryInspector({
                     title="Abstract"
                     isExpanded={expandedSections.abstract}
                     onToggleExpand={() => toggleSection('abstract')}
-                    contentClassName="px-3 pt-1.5 pb-3"
+                    contentClassName="px-3 pt-1.5 pb-2.5"
                     canEdit={canEdit}
                   >
                     <AbstractSection
@@ -528,7 +481,7 @@ export function LibraryInspector({
                       setExpandedSections((prev) => ({ ...prev, files: true }));
                       attachmentsAddRef.current?.();
                     }}
-                    contentClassName={hasFiles ? 'px-3 pt-1.5 pb-3 flex flex-col gap-2' : 'p-0'}
+                    contentClassName={hasFiles ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
                     canEdit={canEdit}
                   >
                     <AttachmentsSection
@@ -555,14 +508,17 @@ export function LibraryInspector({
                       setExpandedSections((prev) => ({ ...prev, notes: true }));
                       setIsAddingNote(true);
                     }}
-                    contentClassName={hasNotes ? 'px-3 pt-1.5 pb-3 flex flex-col gap-2' : 'p-0'}
+                    contentClassName={hasNotes ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
                     canEdit={canEdit}
                   >
                     <NotesSection
                       paper={effectiveItem}
                       scopeId={targetScope}
                       hideHeader
-                      forceAdding={isAddingNote}
+                      forceAdding={isAddingNote || Boolean(pendingNoteText)}
+                      pendingText={pendingNoteText}
+                      onClearPendingText={onClearPendingText}
+                      onNavigateToAnnotation={onNavigateToAnnotation}
                       onCancelAdding={() => setIsAddingNote(false)}
                       canEdit={canEdit}
                     />
@@ -577,64 +533,11 @@ export function LibraryInspector({
                     count={itemCollectionIds.length}
                     isExpanded={expandedSections.collections}
                     onToggleExpand={() => toggleSection('collections')}
-                    actionSlot={
-                      canEdit ? (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!expandedSections.collections) {
-                                  toggleSection('collections');
-                                }
-                              }}
-                              className="size-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
-                              title="Add to collection"
-                              aria-label="Add to collection"
-                            >
-                              <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5 text-xs font-sans"
-                          >
-                            <DropdownMenuItem
-                              onClick={() => openModal('CREATE_COLLECTION')}
-                              className="flex items-center gap-2 h-7 px-2 cursor-pointer text-foreground hover:bg-muted rounded-md"
-                            >
-                              <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                              <span className="font-medium">New Collection...</span>
-                            </DropdownMenuItem>
-
-                            {unassignedCollections.length > 0 ? (
-                              <>
-                                <DropdownMenuSeparator className="my-1" />
-                                <div className="px-2 py-1 text-11 font-medium text-muted-foreground">
-                                  Add to collection
-                                </div>
-                                {unassignedCollections.map((col: Collection) => (
-                                  <DropdownMenuItem
-                                    key={col.id}
-                                    onClick={() => handleAddToCollection(col.id)}
-                                    className="flex items-center gap-2 h-7 px-2 cursor-pointer text-foreground hover:bg-muted rounded-md"
-                                  >
-                                    <Folder className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                                    <span className="truncate">{col.name}</span>
-                                  </DropdownMenuItem>
-                                ))}
-                              </>
-                            ) : collections.length > 0 ? (
-                              <div className="px-2 py-1 text-11 text-muted-foreground italic">
-                                All collections assigned
-                              </div>
-                            ) : null}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      ) : null
-                    }
-                    contentClassName="px-3 pt-1.5 pb-3 flex flex-col gap-2"
+                    onAdd={() => {
+                      setExpandedSections((prev) => ({ ...prev, collections: true }));
+                      openModal('CREATE_COLLECTION');
+                    }}
+                    contentClassName="px-3 pt-1.5 pb-2.5 flex flex-col gap-1"
                     canEdit={canEdit}
                   >
                     <CollectionsSection
@@ -658,7 +561,7 @@ export function LibraryInspector({
                       setExpandedSections((prev) => ({ ...prev, tags: true }));
                       setIsAddingTag(true);
                     }}
-                    contentClassName={hasTags ? 'px-3 pt-1.5 pb-3' : 'p-0'}
+                    contentClassName={hasTags ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-1' : 'p-0'}
                     canEdit={canEdit}
                   >
                     <TagsSection
@@ -677,43 +580,24 @@ export function LibraryInspector({
                     id="relations"
                     title="Related"
                     count={relatedItems.length}
-                    isExpanded={Boolean(expandedSections.relations && relatedItems.length > 0)}
-                    onToggleExpand={() => {
-                      if (relatedItems.length === 0) {
-                        return;
-                      }
-                      toggleSection('relations');
-                    }}
+                    isExpanded={expandedSections.relations}
+                    onToggleExpand={() => toggleSection('relations')}
                     onAdd={() => {
-                      setExpandedSections((prev) => ({ ...prev, relations: true }));
-                      setIsAddRelatedOpen(true);
+                      handleAddRelatedOpenChange(true);
                     }}
-                    contentClassName={relatedItems.length > 0 ? 'px-3 pt-1.5 pb-3' : 'p-0'}
+                    contentClassName={relatedItems.length > 0 ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
                     canEdit={canEdit}
                   >
                     <RelatedSection
                       paper={effectiveItem}
                       scopeId={targetScope}
-                      onSelectPaper={onSelectPaper}
+                      onSelectPaper={handleSelectPaper}
                       hideHeader
                       isAddOpen={isAddRelatedOpen}
-                      onAddOpenChange={setIsAddRelatedOpen}
+                      onAddOpenChange={handleAddRelatedOpenChange}
                       canEdit={canEdit}
                     />
                   </InspectorSection>
-                )}
-
-                {/* Render modal dialog when collapsed/empty so Add Related modal can open */}
-                {(!expandedSections.relations || relatedItems.length === 0) && isAddRelatedOpen && (
-                  <RelatedSection
-                    paper={effectiveItem}
-                    scopeId={targetScope}
-                    onSelectPaper={onSelectPaper}
-                    hideHeader
-                    isAddOpen={isAddRelatedOpen}
-                    onAddOpenChange={setIsAddRelatedOpen}
-                    canEdit={canEdit}
-                  />
                 )}
 
                 {/* 8. Citation (Level 1) */}
@@ -723,7 +607,7 @@ export function LibraryInspector({
                     title="Citation"
                     isExpanded={expandedSections.cite}
                     onToggleExpand={() => toggleSection('cite')}
-                    contentClassName="px-3 pt-1.5 pb-3"
+                    contentClassName="px-3 pt-1.5 pb-2.5 flex flex-col gap-2"
                     canEdit={canEdit}
                   >
                     <CiteSection
@@ -738,16 +622,27 @@ export function LibraryInspector({
           ) : (
             /* Empty State */
             <>
-              <div className="sticky top-0 z-10 h-11 px-3 flex items-center border-b border-border bg-background shrink-0 select-none">
-                <span className="text-12 font-medium text-muted-foreground">Inspector</span>
+              <div className="sticky top-0 z-10 h-11 px-3 flex items-center justify-between border-b border-border bg-background shrink-0 select-none">
+                <span className="text-12 font-semibold text-foreground">Inspector</span>
+                {isMobile && (
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                    title="Close inspector"
+                    aria-label="Close inspector"
+                  >
+                    <X className="size-4 shrink-0" />
+                  </button>
+                )}
               </div>
               <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-muted-foreground gap-2">
                 {isLoading ? (
-                  <p className="text-12">Loading item details...</p>
+                  <p className="text-13 text-muted-foreground">Loading item details...</p>
                 ) : (
                   <>
-                    <p className="text-12 font-medium">No item selected</p>
-                    <p className="text-11 text-muted-foreground">
+                    <p className="text-13 font-semibold text-foreground">No item selected</p>
+                    <p className="text-13 text-muted-foreground leading-relaxed max-w-[240px]">
                       Select an item from the list to view its details, attachments, and citation metadata.
                     </p>
                   </>
@@ -755,18 +650,100 @@ export function LibraryInspector({
               </div>
             </>
           )}
-        </aside>
+    </>
+  );
 
-      {/* ── Right Part: Vertical Icon Panel Bar ── */}
-      <InspectorTabs
-        activeTab={activeInspectorTab}
-        onTabChange={handleTabChange}
-        attachmentCount={attachmentCount}
-        noteCount={noteCount}
-        isInspectorOpen={isInspectorOpen}
-        onToggleInspector={toggleInspector}
-      />
-    </div>
+  const mobileDrawer =
+    isMobile && isMounted && typeof document !== 'undefined'
+      ? createPortal(
+          <div className="md:hidden">
+            {/* Mobile Backdrop */}
+            <div
+              onClick={handleClose}
+              className="fixed inset-0 bg-background/80 backdrop-blur-xs z-40"
+              aria-hidden="true"
+            />
+
+            {/* Mobile Drawer */}
+            <aside
+              aria-label="Library Inspector"
+              className="fixed inset-y-0 right-0 z-50 w-[calc(100vw-32px)] max-w-sm h-full border-l border-border bg-background flex flex-col select-text shadow-elevation-3"
+            >
+              {inspectorContent}
+            </aside>
+          </div>,
+          document.body,
+        )
+      : null;
+
+  return (
+    <>
+      {mobileDrawer}
+      <div className="flex h-full shrink-0 select-none">
+        {/* Desktop In-Flow Inspector Pane */}
+        {!isMobile && (
+          <aside
+            style={{ width: `${width}px` }}
+            className={cn(
+              'relative h-full border-l border-border bg-background flex flex-col shrink-0 select-text',
+              isDragging && 'select-none transition-none',
+            )}
+          >
+            {/* Draggable left-border resize handle */}
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-valuenow={width}
+              aria-valuemin={300}
+              aria-valuemax={640}
+              aria-label="Resize library inspector"
+              tabIndex={0}
+              onMouseDown={handleMouseDown}
+              onDoubleClick={resetWidth}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  setWidth(width + 20);
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  setWidth(width - 20);
+                } else if (e.key === 'Home') {
+                  e.preventDefault();
+                  setWidth(300);
+                } else if (e.key === 'End') {
+                  e.preventDefault();
+                  setWidth(640);
+                } else if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  resetWidth();
+                }
+              }}
+              className="absolute top-0 bottom-0 -left-1.5 w-3 cursor-col-resize z-30 flex items-center justify-center group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            >
+              <div
+                className={cn(
+                  'w-0.5 h-full transition-colors duration-150',
+                  'group-hover:bg-primary/60',
+                  isDragging && 'bg-primary',
+                )}
+              />
+            </div>
+
+            {inspectorContent}
+          </aside>
+        )}
+
+        {/* ── Right Part: Vertical Icon Panel Bar ── */}
+        <InspectorTabs
+          activeTab={activeInspectorTab}
+          onTabChange={handleTabChange}
+          attachmentCount={attachmentCount}
+          noteCount={noteCount}
+          isInspectorOpen={isInspectorOpen}
+          onToggleInspector={toggleInspector}
+        />
+      </div>
+    </>
   );
 }
 

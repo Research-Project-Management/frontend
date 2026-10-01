@@ -142,7 +142,7 @@ export function LibraryDisplayPopover({
 
           {columnsOpen && (
             <div className="flex flex-wrap items-center gap-1 pt-1 px-0.5 select-none">
-              <span className="h-6 px-2 text-11 font-medium rounded-md bg-primary text-primary-foreground border border-primary select-none inline-flex items-center justify-center">
+              <span className="h-6 px-2 text-12 font-medium rounded-md bg-primary text-primary-foreground border border-primary select-none inline-flex items-center justify-center">
                 Title
               </span>
               {COLUMN_ITEMS.map((item) => {
@@ -154,7 +154,7 @@ export function LibraryDisplayPopover({
                     aria-pressed={isSelected}
                     onClick={() => handleColumnToggle(item.key)}
                     className={cn(
-                      "h-6 px-2 text-11 font-medium rounded-md border transition-colors cursor-pointer select-none inline-flex items-center justify-center",
+                      "h-6 px-2 text-12 font-medium rounded-md border transition-colors cursor-pointer select-none inline-flex items-center justify-center",
                       isSelected
                         ? "border-primary bg-primary text-primary-foreground font-medium"
                         : "border-border bg-background text-foreground hover:bg-muted font-normal"
@@ -185,7 +185,7 @@ export function LibraryDisplayPopover({
               <button
                 type="button"
                 onClick={toggleOrderDirection}
-                className="size-6 flex items-center justify-center rounded-md border border-border hover:bg-muted text-foreground transition-colors cursor-pointer shadow-2xs"
+                className="size-6 flex items-center justify-center rounded-md border border-border hover:bg-muted text-foreground transition-colors cursor-pointer"
                 title={orderDirection === 'asc' ? 'Ascending (A to Z / Low to High)' : 'Descending (Z to A / High to Low)'}
                 aria-label="Toggle sort direction"
               >

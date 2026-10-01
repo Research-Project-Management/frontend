@@ -10,7 +10,6 @@ export function useActivityFeed() {
 
   return {
     state: {
-      workspaceId: source.workspaceId,
       allWorkItems: source.allWorkItems,
       activities: source.activities,
       count: source.activities.length,

@@ -288,7 +288,7 @@ export function DuplicateMergeInspector({
                   key={item.id}
                   onClick={() => handleSelectMaster(item.id)}
                   className={cn(
-                    'p-2.5 rounded-md border transition-all cursor-pointer relative text-left',
+                    'p-2.5 rounded-md border transition-colors cursor-pointer relative text-left',
                     isMaster
                       ? 'border-primary/60 bg-primary/5 ring-1 ring-primary/20 shadow-2xs'
                       : 'border-border/60 bg-background hover:bg-muted/40 hover:border-border',
@@ -353,7 +353,7 @@ export function DuplicateMergeInspector({
                 <div
                   key={field.key}
                   className={cn(
-                    'p-2.5 rounded-md border text-11 transition-all',
+                    'p-2.5 rounded-md border text-11 transition-colors',
                     field.hasConflict
                       ? 'border-amber-500/30 bg-amber-500/[0.02]'
                       : 'border-border/60 bg-muted/10',
@@ -399,7 +399,7 @@ export function DuplicateMergeInspector({
                           key={opt.itemId}
                           onClick={() => handleSelectFieldValue(field.key, opt)}
                           className={cn(
-                            'p-2 rounded-sm border cursor-pointer transition-all flex items-start justify-between gap-2',
+                            'p-2 rounded-sm border cursor-pointer transition-colors flex items-start justify-between gap-2',
                             isSelected
                               ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/20'
                               : 'border-border/50 bg-background text-muted-foreground hover:bg-muted hover:text-foreground',

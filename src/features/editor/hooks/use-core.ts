@@ -291,7 +291,7 @@ export function usePageActions() {
 
   const updateContentMutation = useMutation({
     mutationFn: async ({ pageId, content }: { pageId: string; content: string }) => {
-      if (isLocked) throw new Error('Tài liệu đang bị khóa');
+      if (isLocked) throw new Error('Document is locked');
       setCurrentPage((prev: Page | null) => (prev ? { ...prev, content } : prev));
       return await manuscriptService.docs.updateContent(pageId, content);
     },
@@ -299,7 +299,7 @@ export function usePageActions() {
       queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Không thể lưu nội dung';
+      const msg = err instanceof Error ? err.message : 'Failed to save document content';
       toast.error(msg);
     },
   });
@@ -312,57 +312,61 @@ export function usePageActions() {
 
   const updateTitleMutation = useMutation({
     mutationFn: async ({ pageId, title, oldTitle }: { pageId: string; title: string; oldTitle?: string }) => {
-      if (isLocked) throw new Error('Tài liệu đang bị khóa');
+      if (isLocked) throw new Error('Document is locked');
       setCurrentPage((prev: Page | null) => (prev ? { ...prev, title } : prev));
       return await manuscriptService.docs.updateTitle(pageId, title, oldTitle);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });
-      toast.success('Đã đổi tên tài liệu');
+      toast.success(`Renamed to "${variables.title}"`);
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Không thể đổi tên tài liệu';
+      const msg = err instanceof Error ? err.message : 'Failed to rename file';
       toast.error(msg);
     },
   });
 
   const deletePageMutation = useMutation({
     mutationFn: async (pageId: string) => {
-      if (isLocked) throw new Error('Tài liệu đang bị khóa');
+      if (isLocked) throw new Error('Document is locked');
       return await manuscriptService.docs.delete(pageId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      toast.success('Đã xóa trang');
+      toast.success('File deleted');
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Không thể xóa trang';
+      const msg = err instanceof Error ? err.message : 'Failed to delete file';
       toast.error(msg);
     },
   });
 
   const restorePageMutation = useMutation({
     mutationFn: async (pageId: string) => {
-      if (isLocked) throw new Error('Tài liệu đang bị khóa');
+      if (isLocked) throw new Error('Document is locked');
       return await manuscriptService.docs.restore(pageId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      toast.success('Đã khôi phục tệp');
+      toast.success('File restored');
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Failed to restore file';
+      toast.error(msg);
     },
   });
 
   const duplicatePageMutation = useMutation({
     mutationFn: async (pageId: string) => {
-      if (isLocked) throw new Error('Tài liệu đang bị khóa');
+      if (isLocked) throw new Error('Document is locked');
       return await manuscriptService.docs.duplicate(pageId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      toast.success('Đã nhân bản trang');
+      toast.success('File duplicated');
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Không thể nhân bản trang';
+      const msg = err instanceof Error ? err.message : 'Failed to duplicate file';
       toast.error(msg);
     },
   });
@@ -385,30 +389,30 @@ export function useFileActions() {
 
   const createFileMutation = useMutation({
     mutationFn: async ({ parentPageId, title, content }: { parentPageId: string; title: string; content?: string }) => {
-      if (isLocked) throw new Error('Tài liệu đang bị khóa');
+      if (isLocked) throw new Error('Document is locked');
       return await fileService.create({ parentPageId, title, content });
     },
     onSuccess: (newFile, variables) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.files(variables.parentPageId) });
-      toast.success(`Đã tạo tệp "${newFile.title}"`);
+      toast.success(`Created file "${newFile.title}"`);
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Không thể tạo tệp';
+      const msg = err instanceof Error ? err.message : 'Failed to create file';
       toast.error(msg);
     },
   });
 
   const setMainFileMutation = useMutation({
     mutationFn: async ({ pageId, fileId }: { pageId: string; fileId: string }) => {
-      if (isLocked) throw new Error('Tài liệu đang bị khóa');
+      if (isLocked) throw new Error('Document is locked');
       return await fileService.setMain({ pageId, fileId });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });
-      toast.success('Đã đặt làm tệp chính');
+      toast.success('Set as main document');
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Không thể đặt làm tệp chính';
+      const msg = err instanceof Error ? err.message : 'Failed to set main document';
       toast.error(msg);
     },
   });

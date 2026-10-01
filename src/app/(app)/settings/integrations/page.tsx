@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { IntegrationsHub } from '@/features/integrations/components/IntegrationsHub';
 
 export const metadata = {
@@ -7,5 +7,9 @@ export const metadata = {
 };
 
 export default function IntegrationsSettingsPage() {
-  return <IntegrationsHub />;
+  return (
+    <Suspense fallback={null}>
+      <IntegrationsHub />
+    </Suspense>
+  );
 }

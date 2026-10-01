@@ -142,13 +142,13 @@ export default function LayoutSwitcher() {
           <span className="flex-1 text-xs">PDF only</span>
         </DropdownMenuItem>
 
-        {/* 4. Open PDF in separate tab */}
+        {/* 4. Pop out PDF */}
         <DropdownMenuItem
           onClick={handleOpenPdfSeparateTab}
           className="flex items-center gap-2.5 px-2.5 py-2 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors"
         >
           <ExternalLink className="size-4 shrink-0 opacity-70" />
-          <span className="flex-1 text-xs">Open PDF in separate tab</span>
+          <span className="flex-1 text-xs">Pop out PDF (New tab)</span>
         </DropdownMenuItem>
 
         <DropdownMenuSeparator className="my-1 border-border" />
@@ -160,7 +160,7 @@ export default function LayoutSwitcher() {
         >
           <Maximize2 className="size-4 shrink-0 opacity-70" />
           <span className="flex-1 text-xs">Focus mode</span>
-          <span className="text-10 font-mono px-1 py-0.5 rounded-sm bg-muted border border-border text-muted-foreground">Ctrl Shift M</span>
+          <span className="text-10 font-mono text-muted-foreground">Ctrl+Shift+M</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -18,21 +18,28 @@ import {
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { toast } from 'sonner';
-import { Lock } from 'lucide-react';
+import { Lock, Search } from 'lucide-react';
 import { useTheme } from '@/shared/providers';
 import { cn } from '@/shared/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { filesQuery } from '@/features/editor/hooks/use-core';
+import {
+  useAcceptSuggestion,
+  useRejectSuggestion,
+  useCreateSuggestion,
+} from '@/features/editor/hooks/use-suggestion';
 import { useViewItems } from '@/features/library';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui';
 
 // Subcomponents & internal seams
 import Format from './Format';
 import UnifiedCodeMirrorEditor from './UnifiedCodeMirrorEditor';
 import { EditorModeSwitcher } from './subcomponents/EditorModeSwitcher';
 import { CollaboratorPresenceBar } from './subcomponents/CollaboratorPresenceBar';
-import { SyncStatusBadge } from './subcomponents/SyncStatusBadge';
+import { SourceVisualSwitcher } from './subcomponents/SourceVisualSwitcher';
 import { LatexDiagnosticsBadge } from './subcomponents/LatexDiagnosticsBadge';
 import { WordCountDialog } from './subcomponents/WordCountDialog';
+import { EditorSearchPanel } from './subcomponents/EditorSearchPanel';
 import type { SelFloating } from './subcomponents/EditorFloatingBar';
 import type { RenameDialogState } from './subcomponents/RenameSymbolDialog';
 import type { SuggestModalState } from './subcomponents/SuggestEditModal';
@@ -130,8 +137,6 @@ export default function Editor({ page }: EditorProps) {
     activeCollaborators,
     isDocumentLocked,
     lockedBy,
-    connectionStatus,
-    isSynced,
     yText,
     awareness,
   } = useEditorCollaborators({
@@ -242,17 +247,25 @@ export default function Editor({ page }: EditorProps) {
     editorMounted,
   });
 
-  const handleAcceptSuggestion = useCallback(async (s: PageSuggestion) => {
-    setSuggestions((prev) => prev.filter((item) => item.id !== s.id));
-    toast.success(`Accepted suggestion by ${s.author?.name || 'author'}`);
-    setActiveSuggestionWidgetData(null);
-  }, [setActiveSuggestionWidgetData]);
+  const acceptSuggestionMutation = useAcceptSuggestion();
+  const rejectSuggestionMutation = useRejectSuggestion();
+  const createSuggestionMutation = useCreateSuggestion();
 
-  const handleRejectSuggestion = useCallback(async (s: PageSuggestion) => {
+  const handleAcceptSuggestion = useCallback((s: PageSuggestion) => {
     setSuggestions((prev) => prev.filter((item) => item.id !== s.id));
-    toast.info(`Rejected suggestion by ${s.author?.name || 'author'}`);
     setActiveSuggestionWidgetData(null);
-  }, [setActiveSuggestionWidgetData]);
+    if (page?.id) {
+      acceptSuggestionMutation.mutate({ pageId: page.id, suggestionId: s.id });
+    }
+  }, [page?.id, acceptSuggestionMutation, setActiveSuggestionWidgetData]);
+
+  const handleRejectSuggestion = useCallback((s: PageSuggestion) => {
+    setSuggestions((prev) => prev.filter((item) => item.id !== s.id));
+    setActiveSuggestionWidgetData(null);
+    if (page?.id) {
+      rejectSuggestionMutation.mutate({ pageId: page.id, suggestionId: s.id });
+    }
+  }, [page?.id, rejectSuggestionMutation, setActiveSuggestionWidgetData]);
 
   const projectScopeId = effectiveProjectId;
 
@@ -340,6 +353,14 @@ export default function Editor({ page }: EditorProps) {
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   const [suggestModal, setSuggestModal] = useState<SuggestModalState | null>(null);
+  const [isFindOpen, setIsFindOpen] = useState(false);
+
+  useEffect(() => {
+    const unsub = editorCommandBus.subscribe('editor:find', (cmd) => {
+      setIsFindOpen((prev) => (cmd.open !== undefined ? cmd.open : !prev));
+    });
+    return () => unsub();
+  }, []);
 
   const closeMenu = useCallback(() => setCtxMenu(null), []);
 
@@ -372,7 +393,13 @@ export default function Editor({ page }: EditorProps) {
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'F' || e.key === 'f')) {
+        e.preventDefault();
+        setIsFindOpen((prev) => !prev);
+      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'H' || e.key === 'h')) {
+        e.preventDefault();
+        setIsFindOpen(true);
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
         e.preventDefault();
         const ed = editorRef.current;
         let query: string | undefined;
@@ -526,10 +553,20 @@ export default function Editor({ page }: EditorProps) {
       updatedAt: new Date().toISOString(),
     };
     setSuggestions((prev) => [...prev, newSug]);
+    createSuggestionMutation.mutate({
+      pageId: page.id,
+      type: suggestModal.type,
+      originalText: suggestModal.originalText,
+      suggestedText: suggestModal.type === 'delete' ? '' : suggestModal.suggestedText,
+      fromLine: suggestModal.fromLine,
+      fromColumn: 0,
+      toLine: suggestModal.toLine,
+      toColumn: 0,
+      description: suggestModal.description || undefined,
+    });
     setSuggestModal(null);
     EditorEventBus.emit('flux:open-panel', 'Review');
-    toast.success('Suggestion recorded');
-  }, [page.id, suggestModal, user]);
+  }, [page.id, suggestModal, user, createSuggestionMutation]);
 
   const handleCloseSuggestionWidget = useCallback(() => {
     setActiveSuggestionWidgetData(null);
@@ -575,16 +612,37 @@ export default function Editor({ page }: EditorProps) {
         </div>
         <div className="flex items-center gap-1.5 shrink-0 select-none">
           <LatexDiagnosticsBadge />
+          <SourceVisualSwitcher />
           <EditorModeSwitcher
             reviewMode={reviewMode}
             onSelectMode={handleSelectMode}
             isReviewerOnly={isReviewerOnly}
           />
-          <SyncStatusBadge
-            connectionStatus={connectionStatus}
-            isSynced={isSynced}
-            isReadOnly={isReadOnly}
-          />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setIsFindOpen((prev) => !prev)}
+                className={cn(
+                  'flex size-7 items-center justify-center rounded-sm text-xs font-medium transition-colors cursor-pointer outline-none select-none',
+                  isFindOpen
+                    ? 'bg-muted text-primary font-semibold'
+                    : 'text-foreground/80 hover:text-foreground hover:bg-muted active:scale-95',
+                )}
+                aria-label="Search and Replace (Ctrl+F)"
+              >
+                <Search className="size-3.5 shrink-0" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              <div className="flex items-center gap-1.5">
+                <span>Search and Replace</span>
+                <kbd className="px-1 py-0.5 text-10 rounded bg-muted text-muted-foreground font-mono">
+                  Ctrl+F
+                </kbd>
+              </div>
+            </TooltipContent>
+          </Tooltip>
           <CollaboratorPresenceBar
             collaborators={activeCollaborators}
           />
@@ -596,11 +654,11 @@ export default function Editor({ page }: EditorProps) {
           <div className="flex items-center gap-2">
             <Lock className="size-3.5 shrink-0 text-amber-500" />
             <span>
-              Document is locked{lockedBy ? ` by ${lockedBy}` : ''}. Editing is disabled.
+              Document locked{lockedBy ? ` (${lockedBy})` : ''}
             </span>
           </div>
           <span className="text-11 font-mono font-medium bg-amber-500/20 px-1.5 py-0.5 rounded-sm text-amber-800 dark:text-amber-200 tracking-normal">
-            Read Only
+            Read only
           </span>
         </div>
       )}
@@ -612,14 +670,11 @@ export default function Editor({ page }: EditorProps) {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
             </span>
-            <span className="font-semibold">Track Changes (Review Mode) Active</span>
-            <span className="text-amber-700/80 dark:text-amber-400/80 hidden md:inline">
-              — Text replacement or deletion will be proposed as suggestions for author review.
-            </span>
+            <span className="font-semibold">Track Changes (Review Mode)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="inline-flex items-center rounded-md bg-amber-500/15 p-0.5 text-11 font-medium border border-amber-500/30">
-              <span className="text-10 text-amber-800/80 dark:text-amber-300/80 px-1.5 uppercase font-semibold">View:</span>
+              <span className="text-11 text-amber-800/80 dark:text-amber-300/80 px-1.5 uppercase font-semibold">View:</span>
               <button
                 type="button"
                 onClick={() => setTrackChangesViewMode('changes')}
@@ -629,7 +684,7 @@ export default function Editor({ page }: EditorProps) {
                     ? 'bg-amber-600 text-white font-semibold shadow-2xs'
                     : 'text-amber-900/80 dark:text-amber-300/80 hover:text-amber-900 hover:bg-amber-500/20',
                 )}
-                title="View all tracked changes with diff highlights"
+                title="Diff view"
               >
                 Changes
               </button>
@@ -642,7 +697,7 @@ export default function Editor({ page }: EditorProps) {
                     ? 'bg-amber-600 text-white font-semibold shadow-2xs'
                     : 'text-amber-900/80 dark:text-amber-300/80 hover:text-amber-900 hover:bg-amber-500/20',
                 )}
-                title="Preview clean document with all suggestions accepted"
+                title="Clean preview"
               >
                 Clean
               </button>
@@ -655,7 +710,7 @@ export default function Editor({ page }: EditorProps) {
                     ? 'bg-amber-600 text-white font-semibold shadow-2xs'
                     : 'text-amber-900/80 dark:text-amber-300/80 hover:text-amber-900 hover:bg-amber-500/20',
                 )}
-                title="View original document without any suggestions"
+                title="Original view"
               >
                 Original
               </button>
@@ -681,15 +736,15 @@ export default function Editor({ page }: EditorProps) {
               }}
               className="px-2 py-0.5 rounded-sm text-11 font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 transition-colors cursor-pointer shadow-2xs"
             >
-              Propose Suggestion
+              New suggestion
             </button>
             <button
               type="button"
               onClick={() => toggleReviewMode()}
               className="px-2 py-0.5 rounded-sm text-11 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-              title="Turn off Review Mode"
+              title="Exit Review mode"
             >
-              Turn Off
+              Exit
             </button>
           </div>
         </div>
@@ -710,6 +765,12 @@ export default function Editor({ page }: EditorProps) {
             awareness={awareness}
           />
         </div>
+
+        {/* In-Editor Search & Replace Bar */}
+        <EditorSearchPanel
+          isOpen={isFindOpen}
+          onClose={() => setIsFindOpen(false)}
+        />
 
         {/* Vim status bar */}
         {keybinding === 'vim' && (
@@ -736,7 +797,7 @@ export default function Editor({ page }: EditorProps) {
             aria-label="Emacs mode status bar"
           >
             <div className="flex items-center gap-2">
-              <span className="px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-10 font-semibold tracking-normal">
+              <span className="px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-11 font-semibold tracking-normal">
                 Emacs
               </span>
               <span className="text-foreground font-medium text-xs">

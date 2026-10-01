@@ -87,6 +87,13 @@ export const useLogin = () => {
   }, [isAuthLoading, user, router]);
 
   const handleOAuthLogin = (provider: 'google' | 'github') => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get('redirect');
+      if (redirect) {
+        sessionStorage.setItem('flux_oauth_redirect', redirect);
+      }
+    }
     window.location.href = `${env.NEXT_PUBLIC_API_URL}/auth/${provider}`;
   };
 

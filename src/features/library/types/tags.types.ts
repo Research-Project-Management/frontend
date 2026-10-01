@@ -8,7 +8,6 @@ export const tagSchema = z.object({
   scopeId: z.string().optional(),
   projectId: z.string().nullable().optional(),
   userId: z.string().nullable().optional(),
-  workspaceId: z.string().optional(),
   _count: z.object({
     itemTags: z.number(),
   }).optional(),

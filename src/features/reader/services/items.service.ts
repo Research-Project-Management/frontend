@@ -1,16 +1,12 @@
-import {
-  ItemsService as LibraryItemsService,
-  fetchPdfBlob,
-  getPaperFileUrl,
-} from '@/features/library';
+import { readerService, fetchPdfBlob, getPaperFileUrl } from '../data/reader.service';
 import type { ReaderDocument, DocumentFulltext } from '../types/reader.types';
 
 export { getPaperFileUrl, fetchPdfBlob };
 export const fetchDocumentBuffer = fetchPdfBlob;
 
 /**
- * ItemsService corresponding to backend ItemsService (backend/src/modules/library/items/items.service.ts)
- * Facade delegating to features/library/services/items.service.ts for a single source of truth.
+ * ItemsService corresponding to backend ItemsService
+ * Delegates to Reader Client SDK (features/reader/data/reader.service.ts)
  */
 export const ItemsService = {
   getPaperFileUrl,
@@ -21,7 +17,7 @@ export const ItemsService = {
     scopeId: string | undefined,
     itemId: string,
   ): Promise<ReaderDocument> => {
-    return (await LibraryItemsService.getItem(scopeId, itemId)) as unknown as ReaderDocument;
+    return readerService.documents.get(scopeId, itemId);
   },
 
   updateItem: async (
@@ -29,24 +25,26 @@ export const ItemsService = {
     itemId: string,
     data: Partial<ReaderDocument>,
   ): Promise<ReaderDocument> => {
-    return (await LibraryItemsService.updateItem(
-      scopeId,
-      itemId,
-      data as any,
-    )) as unknown as ReaderDocument;
+    return readerService.documents.update(scopeId, itemId, data);
   },
 
   reindexItem: async (
     scopeId: string | undefined,
     itemId: string,
   ): Promise<{ success: boolean }> => {
-    return LibraryItemsService.reindexItem(scopeId, itemId);
+    return readerService.documents.reindex(scopeId, itemId);
   },
 
   getFulltext: async (
     scopeId: string | undefined,
     itemId: string,
   ): Promise<DocumentFulltext | null> => {
-    return LibraryItemsService.getFulltext(scopeId, itemId);
+    return readerService.documents.getFulltext(scopeId, itemId);
+  },
+
+  getCounts: async (scopeId?: string) => {
+    return readerService.documents.getCounts(scopeId);
   },
 };
+
+export default ItemsService;

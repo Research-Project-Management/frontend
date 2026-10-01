@@ -6,7 +6,7 @@ import {
   Paperclip,
   StickyNote,
   ShieldAlert,
-  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/shared/components/ui';
@@ -79,15 +79,14 @@ export const ItemTableRow = React.memo(function ItemTableRow({
 
   const cleanTitle = cleanAcademicText(item.title) || 'Untitled';
   const authorTooltip = React.useMemo(() => {
-    if (!item.authors) return '';
-    if (Array.isArray(item.authors)) {
-      return item.authors
-        .map((a: string | { name?: string }) => (typeof a === 'string' ? cleanAcademicText(a) : a?.name || ''))
-        .filter(Boolean)
-        .join(', ');
-    }
-    return cleanAcademicText(String(item.authors));
-  }, [item.authors]);
+    const raw =
+      item.authors && item.authors.length > 0
+        ? item.authors
+        : (item as any).creators;
+    if (!raw) return '';
+    const formatted = formatAcademicAuthors(raw, 999);
+    return formatted !== '—' ? formatted : '';
+  }, [item.authors, (item as any).creators]);
 
   const isStarred =
     Boolean(item.isStarred) ||
@@ -147,12 +146,12 @@ export const ItemTableRow = React.memo(function ItemTableRow({
       item={item}
       isTrash={isTrash}
       collections={collections}
-      onToggleStar={onToggleStar ? handleToggleStarContextMenu : undefined}
-      onDelete={onDelete ? handleDeleteContextMenu : undefined}
-      onRestore={onRestore ? handleRestoreContextMenu : undefined}
-      onPurge={onPurge ? handlePurgeContextMenu : undefined}
-      onMoveToCollection={onMoveToCollection ? handleMoveToCollection : undefined}
-      onDetachFromCollection={onDetachFromCollection ? () => onDetachFromCollection(item.id) : undefined}
+      onToggleStar={!isProcessing && onToggleStar ? handleToggleStarContextMenu : undefined}
+      onDelete={!isProcessing && onDelete ? handleDeleteContextMenu : undefined}
+      onRestore={!isProcessing && onRestore ? handleRestoreContextMenu : undefined}
+      onPurge={!isProcessing && onPurge ? handlePurgeContextMenu : undefined}
+      onMoveToCollection={!isProcessing && onMoveToCollection ? handleMoveToCollection : undefined}
+      onDetachFromCollection={!isProcessing && onDetachFromCollection ? () => onDetachFromCollection(item.id) : undefined}
     >
       <tr
         draggable={!isProcessing}
@@ -177,6 +176,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
             if (isProcessing) {
               toast.info('Document is still processing metadata', {
                 description: 'Full paper details will be available shortly.',
+                id: 'document-processing-notice',
               });
               return;
             }
@@ -231,31 +231,12 @@ export const ItemTableRow = React.memo(function ItemTableRow({
                 )}
               />
             </div>
-            {isProcessing && (
+            {isProcessing && processingStatus === 'FAILED' && (
               <span
-                title={
-                  processingError ||
-                  (processingStatus === 'UPLOADING'
-                    ? 'Uploading raw file...'
-                    : 'Extracting metadata...')
-                }
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-11 font-medium shrink-0',
-                  processingStatus === 'FAILED'
-                    ? 'bg-destructive/10 text-destructive border border-destructive/20'
-                    : 'bg-primary/10 text-primary border border-primary/20',
-                )}
+                title={processingError || 'Extraction failed'}
+                className="inline-flex items-center shrink-0"
               >
-                {processingStatus !== 'FAILED' && (
-                  <Loader2 className="size-3 animate-spin shrink-0" />
-                )}
-                <span>
-                  {processingStatus === 'FAILED'
-                    ? 'Extraction failed'
-                    : processingStatus === 'UPLOADING'
-                      ? 'Uploading...'
-                      : 'Processing...'}
-                </span>
+                <AlertCircle className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
               </span>
             )}
             {isRetracted && (
@@ -284,8 +265,8 @@ export const ItemTableRow = React.memo(function ItemTableRow({
             )}
             <span
               className={cn(
-                'truncate text-13 font-normal',
-                isProcessing && 'text-foreground font-medium',
+                'truncate text-13 font-normal text-foreground',
+                isProcessing && 'font-medium',
               )}
               title={cleanTitle}
             >
@@ -305,7 +286,11 @@ export const ItemTableRow = React.memo(function ItemTableRow({
               <span className="text-muted-foreground text-12 italic">Extracting authors...</span>
             ) : (
               <span title={authorTooltip}>
-                {formatAcademicAuthors(item.authors)}
+                {formatAcademicAuthors(
+                  item.authors && item.authors.length > 0
+                    ? item.authors
+                    : (item as any).creators,
+                )}
               </span>
             )}
           </td>
@@ -320,7 +305,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
 
         {/* Publication Venue */}
         {columns.publication !== false && (
-          <td className="px-3 h-8 py-0 align-middle truncate text-13 text-foreground font-normal">
+          <td className="px-3 h-8 py-0 align-middle truncate text-12 font-serif italic text-foreground/85 font-normal">
             {isProcessing && !item.publicationTitle ? (
               <span className="text-muted-foreground text-12 italic">Recognizing venue...</span>
             ) : (
@@ -338,7 +323,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
 
         {/* Item Type Label */}
         {columns.itemType && (
-          <td className="px-3 h-8 py-0 align-middle truncate text-13 capitalize text-foreground font-normal">
+          <td className="px-3 h-8 py-0 align-middle truncate text-12 font-mono uppercase tracking-wide text-muted-foreground font-normal">
             {item.itemType || '—'}
           </td>
         )}

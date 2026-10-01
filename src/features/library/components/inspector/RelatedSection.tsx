@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   FileText,
   X,
@@ -10,12 +10,18 @@ import {
   Plus,
   Folder,
   Library,
+  ArrowRight,
 } from 'lucide-react';
 import { useRelations, useViewItems, useCollections } from '../../data';
+import { useLibraryViewStore } from '../../store';
 import {
   Button,
   Checkbox,
   Input,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
 } from '@/shared/components/ui';
 import {
   Dialog,
@@ -26,66 +32,7 @@ import {
 } from '@/shared/components/ui';
 import type { Item, RelatedItem } from '@/features/library/types/library.types';
 import { cn } from '@/shared/lib/utils';
-import { toast } from 'sonner';
-
-/**
- * Normalizes broken hyphens and irregular whitespace frequently introduced
- * by GROBID / PDF extraction pipelines (e.g. "Real- Time" -> "Real-Time", "Large -Scale" -> "Large-Scale", "U -Net" -> "U-Net").
- */
-function cleanAcademicText(text?: string | null): string {
-  if (!text) return '';
-  return text
-    // Replace all unicode dashes/hyphens (en-dash, em-dash, non-breaking hyphen) flanked by whitespace between words
-    .replace(/(\b[A-Za-z0-9]+)\s*[-‐‑‒–—−]\s*([A-Za-z0-9]+\b)/g, '$1-$2')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/**
- * Filter list of known PDF OCR / extraction junk tokens.
- */
-const JUNK_AUTHOR_PATTERNS = [
-  /^\s*a\s*b\s*s\s*t\s*r\s*a\s*c\s*t\b/i,
-  /^\s*i\s*n\s*t\s*r\s*o\s*d\s*u\s*c\s*t\s*i\s*o\s*n\b/i,
-  /^\s*c\s*o\s*n\s*c\s*l\s*u\s*s\s*i\s*o\s*n\b/i,
-  /^\s*m\s*e\s*t\s*h\s*o\s*d\b/i,
-  /^\s*r\s*e\s*s\s*u\s*l\s*t\s*s\b/i,
-  /^\s*r\s*e\s*f\s*e\s*r\s*e\s*n\s*c\s*e\s*s\b/i,
-  /^\s*d\s*i\s*s\s*c\s*u\s*s\s*s\s*i\s*o\s*n\b/i,
-  /^\s*e\s*m\s*p\s*i\s*r\s*i\s*c\s*a\s*l\b/i,
-  /^\s*b\s*a\s*c\s*k\s*g\s*r\s*o\s*u\s*n\s*d\b/i,
-  /^\s*a\s*c\s*k\s*n\s*o\s*w\s*l\s*e\s*d\s*g/i,
-  /\b(imagenet|neural networks?|deep learning|image segmentation|convolutional)\b/i,
-  /\b(university|department|faculty|laboratory|institute|proceedings|conference|ieee|arxiv)\b/i,
-  /^\s*table\s+\d+/i,
-  /^\s*figure\s+\d+/i,
-  /^\s*vol\.\s*\d+/i,
-  /^\s*no\.\s*\d+/i,
-  /^\s*pp\.\s*\d+/i,
-];
-
-/**
- * Filters and formats academic authors cleanly (e.g. "Simonyan & Zisserman" or "Ronneberger et al.")
- */
-function formatAcademicAuthors(authors?: string[] | null, maxAuthors = 2): string {
-  if (!authors || !Array.isArray(authors) || authors.length === 0) {
-    return '';
-  }
-
-  // Filter out noisy OCR tokens
-  const cleanAuthors = authors
-    .map((a) => cleanAcademicText(a))
-    .filter((a) => {
-      if (!a || a.length < 2 || a.length > 50) return false;
-      return !JUNK_AUTHOR_PATTERNS.some((pattern) => pattern.test(a));
-    });
-
-  if (cleanAuthors.length === 0) return '';
-  if (cleanAuthors.length === 1) return cleanAuthors[0];
-  if (cleanAuthors.length === 2) return `${cleanAuthors[0]}, ${cleanAuthors[1]}`;
-
-  return `${cleanAuthors.slice(0, maxAuthors).join(', ')} et al.`;
-}
+import { cleanAcademicText, formatAcademicAuthors } from '../../utils';
 
 interface VenueBearingItem {
   journal?: string;
@@ -109,7 +56,6 @@ interface RelatedSectionProps {
   paper: Item;
   scopeId?: string;
   projectId?: string;
-  workspaceId?: string;
   onSelectPaper?: (paperId: string) => void;
   hideHeader?: boolean;
   forceAdding?: boolean;
@@ -122,7 +68,6 @@ export default function RelatedSection({
   paper,
   scopeId,
   projectId,
-  workspaceId,
   onSelectPaper,
   hideHeader = false,
   forceAdding = false,
@@ -134,7 +79,6 @@ export default function RelatedSection({
     scopeId ||
     projectId ||
     paper.projectId ||
-    workspaceId ||
     'user';
 
   const { relatedItems, isLoading, link, unlink, isLinking } = useRelations(
@@ -162,29 +106,18 @@ export default function RelatedSection({
 
   const relatedList: RelatedItem[] = relatedItems;
 
-  // Compute reference counts for each collection
-  const collectionCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    const all = allItemsRes?.items || [];
-    for (const it of all) {
-      if (it.collectionId) {
-        counts[it.collectionId] = (counts[it.collectionId] || 0) + 1;
+  const selectOnly = useLibraryViewStore((s) => s.selectOnly);
+  const handlePaperClick = useCallback(
+    (targetId: string) => {
+      if (onSelectPaper) {
+        onSelectPaper(targetId);
+      } else {
+        selectOnly(targetId);
       }
-      if (Array.isArray(it.collectionIds)) {
-        for (const cid of it.collectionIds) {
-          counts[cid] = (counts[cid] || 0) + 1;
-        }
-      }
-      if (Array.isArray(it.collections)) {
-        for (const c of it.collections) {
-          if (c?.id) {
-            counts[c.id] = (counts[c.id] || 0) + 1;
-          }
-        }
-      }
-    }
-    return counts;
-  }, [allItemsRes?.items]);
+    },
+    [onSelectPaper, selectOnly],
+  );
+
 
   // Filter available items for linking (excluding current paper & already linked papers)
   const availableItems = useMemo(() => {
@@ -242,23 +175,13 @@ export default function RelatedSection({
     });
   };
 
-  const isAllSelected =
-    availableItems.length > 0 && selectedTargetIds.size === availableItems.length;
 
-  const handleSelectAll = () => {
-    if (isAllSelected) {
-      setSelectedTargetIds(new Set());
-    } else {
-      setSelectedTargetIds(new Set(availableItems.map((i) => i.id)));
-    }
-  };
-
-  const handleClearSelection = () => {
-    setSelectedTargetIds(new Set());
-  };
+  const isSubmittingRef = useRef(false);
+  const unlinkingRef = useRef<Set<string>>(new Set());
 
   const handleLinkConfirm = useCallback(async () => {
-    if (selectedTargetIds.size === 0 || isLinking) return;
+    if (selectedTargetIds.size === 0 || isLinking || isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     const targets = Array.from(selectedTargetIds);
 
     try {
@@ -271,20 +194,23 @@ export default function RelatedSection({
       setSearchQuery('');
       setSelectedCollectionFilter('all');
       setModalOpen(false);
-      toast.success(`Successfully linked ${targets.length} ${targets.length === 1 ? 'reference' : 'references'}`);
     } catch (err) {
-      console.error(err);
-      toast.error('Failed to link items');
+      console.error('Failed to link items:', err);
+    } finally {
+      isSubmittingRef.current = false;
     }
   }, [selectedTargetIds, isLinking, link, setModalOpen]);
 
   const handleUnlink = async (targetItemId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (unlinkingRef.current.has(targetItemId)) return;
+    unlinkingRef.current.add(targetItemId);
     try {
       await unlink({ targetItemId });
     } catch (err) {
-      console.error(err);
-      toast.error('Failed to unlink item');
+      console.error('Failed to unlink item:', err);
+    } finally {
+      unlinkingRef.current.delete(targetItemId);
     }
   };
 
@@ -306,7 +232,7 @@ export default function RelatedSection({
   const currentPaperCleanTitle = cleanAcademicText(paper.title) || 'Current Reference';
 
   return (
-    <div className="space-y-2 text-12 min-w-0">
+    <div className="flex flex-col gap-2 text-12 min-w-0">
       {/* Header bar */}
       {!hideHeader && (
         <div className="flex items-center justify-between">
@@ -337,65 +263,112 @@ export default function RelatedSection({
 
       {/* Relations list in Inspector */}
       {!isLoading && relatedList.length > 0 && (
-        <div className="divide-y divide-border border border-border rounded-md overflow-hidden bg-transparent">
-          {relatedList.map((item) => {
-            const cleanTitle = cleanAcademicText(item.title) || 'Untitled Item';
-            const cleanAuthors = formatAcademicAuthors(item.authors);
-            const venue = getPublicationVenue(item as unknown as VenueBearingItem);
+        <TooltipProvider delayDuration={300}>
+          <div className="flex flex-col gap-2">
+            {relatedList.map((item) => {
+              const cleanTitle = cleanAcademicText(item.title) || 'Untitled Item';
+              const authorsStr = formatAcademicAuthors(item.authors || (item as any).creators, 2);
+              const cleanAuthors = authorsStr !== '—' ? authorsStr : '';
+              const venue = getPublicationVenue(item as unknown as VenueBearingItem);
 
-            return (
-              <div
-                key={item.id}
-                className="px-[8px] py-[5px] min-h-[34px] hover:bg-muted flex items-center justify-between gap-[8px] group cursor-pointer transition-colors"
-                onClick={() => onSelectPaper?.(item.id)}
-                title={cleanTitle}
-              >
-                <div className="flex items-start gap-[8px] min-w-0 flex-1">
-                  <div className="size-4 shrink-0 flex items-center justify-center pt-0.5">
-                    <FileText className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
+              return (
+                <div
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handlePaperClick(item.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handlePaperClick(item.id);
+                    }
+                  }}
+                  className="group relative flex items-start gap-2 p-2 rounded-md border border-border/70 bg-card hover:bg-muted/50 hover:border-border transition-all cursor-pointer select-none"
+                  title={cleanTitle}
+                >
+                  {/* Left document icon */}
+                  <div className="size-6 rounded bg-muted/60 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 flex items-center justify-center shrink-0 mt-0.5 transition-colors">
+                    <FileText className="size-3.5" strokeWidth={1.5} />
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-normal text-foreground break-words leading-snug text-12 group-hover:underline">
+
+                  {/* Main reference info */}
+                  <div className="min-w-0 flex-1 pr-1">
+                    <p className="font-medium text-12 text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
                       {cleanTitle}
                     </p>
                     {(cleanAuthors || venue || item.year) && (
-                      <p className="text-11 text-muted-foreground break-words leading-snug mt-0.5">
+                      <p className="text-11 text-muted-foreground mt-0.5 leading-normal line-clamp-1">
                         {[cleanAuthors, venue, item.year].filter(Boolean).join(' • ')}
                       </p>
                     )}
                   </div>
-                </div>
 
-                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  {item.doi && (
-                    <a
-                      href={`https://doi.org/${encodeURIComponent(item.doi)}`}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
-                      title={`Open DOI: ${item.doi}`}
-                      aria-label="Open DOI"
-                    >
-                      <ExternalLink className="size-3.5 shrink-0" strokeWidth={1.5} />
-                    </a>
-                  )}
+                  {/* Top-right action controls */}
+                  <div
+                    className="flex items-center gap-0.5 shrink-0 -mt-0.5"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Open in library */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => handlePaperClick(item.id)}
+                          className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                          aria-label="Open paper in library"
+                        >
+                          <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" strokeWidth={1.5} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={4} className="text-11">
+                        Open in library
+                      </TooltipContent>
+                    </Tooltip>
 
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={(e) => handleUnlink(item.id, e)}
-                      className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-muted invisible group-hover:visible cursor-pointer transition-colors"
-                      title="Unlink item"
-                      aria-label="Unlink item"
-                    >
-                      <X className="size-3.5 shrink-0" strokeWidth={1.5} />
-                    </button>
-                  )}
+                    {/* Open DOI */}
+                    {item.doi && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <a
+                            href={`https://doi.org/${encodeURIComponent(item.doi)}`}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                            aria-label={`Open DOI: ${item.doi}`}
+                          >
+                            <ExternalLink className="size-3.5" strokeWidth={1.5} />
+                          </a>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={4} className="text-11">
+                          DOI: {item.doi}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+
+                    {/* Unlink */}
+                    {canEdit && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={(e) => handleUnlink(item.id, e)}
+                            className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-60 group-hover:opacity-100 cursor-pointer"
+                            aria-label="Unlink item"
+                          >
+                            <X className="size-3.5" strokeWidth={1.5} />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={4} className="text-11">
+                          Unlink reference
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </TooltipProvider>
       )}
 
       {/* Two-Column Master-Detail "Add Related Items" Dialog */}
@@ -404,15 +377,15 @@ export default function RelatedSection({
           onKeyDown={handleDialogKeyDown}
           className="sm:max-w-[780px] w-[95vw] bg-background text-foreground p-0 gap-0 border border-border rounded-xl shadow-raised-200 overflow-hidden flex flex-col h-[580px] max-h-[85vh]"
         >
-          {/* Header - No icon box */}
-          <DialogHeader className="px-5 py-3.5 border-b border-border/80 space-y-1 bg-background shrink-0">
+          {/* Header */}
+          <DialogHeader className="px-5 py-3 border-b border-border bg-background space-y-0.5 shrink-0">
             <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
               Add Related References
             </DialogTitle>
             <DialogDescription className="text-11 text-muted-foreground leading-normal flex items-center gap-1.5 min-w-0">
               <span className="shrink-0">Linking with:</span>
               <span
-                className="font-medium text-foreground truncate max-w-[540px]"
+                className="font-medium text-foreground truncate max-w-[500px]"
                 title={currentPaperCleanTitle}
               >
                 &ldquo;{currentPaperCleanTitle}&rdquo;
@@ -423,12 +396,9 @@ export default function RelatedSection({
           {/* Body: Left Sidebar (Collections) + Right Main Panel (References) */}
           <div className="flex-1 flex min-h-0 overflow-hidden">
             {/* Left Sidebar: Collections */}
-            <div className="w-48 sm:w-52 shrink-0 border-r border-border bg-muted/20 flex flex-col min-h-0 select-none">
-              <div className="px-3 pt-3 pb-1.5 flex items-center justify-between text-11 font-medium text-muted-foreground">
-                <span>Collections</span>
-                <span className="text-10 text-muted-foreground/70 font-mono">
-                  {collections.length + 1}
-                </span>
+            <div className="w-48 sm:w-52 shrink-0 border-r border-border bg-background flex flex-col min-h-0 select-none">
+              <div className="px-3 pt-3 pb-1.5 text-11 font-semibold text-muted-foreground uppercase tracking-wider">
+                Collections
               </div>
 
               <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5 thin-scrollbar">
@@ -437,25 +407,19 @@ export default function RelatedSection({
                   type="button"
                   onClick={() => setSelectedCollectionFilter('all')}
                   className={cn(
-                    'w-full text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none',
+                    'w-full text-left px-2.5 py-1.5 rounded-md text-12 flex items-center gap-2 cursor-pointer transition-colors select-none',
                     selectedCollectionFilter === 'all'
-                      ? 'bg-muted text-foreground font-medium shadow-2xs'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                      ? 'bg-secondary text-secondary-foreground font-medium'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/40',
                   )}
                 >
-                  <div className="flex items-center gap-2 min-w-0 truncate">
-                    <Library className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
-                    <span className="truncate">All Items</span>
-                  </div>
-                  <span className="text-10 font-mono text-muted-foreground/80 shrink-0 tabular-nums">
-                    {allItemsRes?.items?.length || 0}
-                  </span>
+                  <Library className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+                  <span className="truncate">All Items</span>
                 </button>
 
                 {/* Individual Collections */}
                 {collections.map((col: any) => {
                   const isSelected = selectedCollectionFilter === col.id;
-                  const count = collectionCounts[col.id] ?? col.itemCount ?? null;
 
                   return (
                     <button
@@ -463,26 +427,19 @@ export default function RelatedSection({
                       type="button"
                       onClick={() => setSelectedCollectionFilter(col.id)}
                       className={cn(
-                        'w-full text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none',
+                        'w-full text-left px-2.5 py-1.5 rounded-md text-12 flex items-center gap-2 cursor-pointer transition-colors select-none',
                         isSelected
-                          ? 'bg-muted text-foreground font-medium shadow-2xs'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                          ? 'bg-secondary text-secondary-foreground font-medium'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/40',
                       )}
                       title={col.name}
                     >
-                      <div className="flex items-center gap-2 min-w-0 truncate">
-                        <Folder
-                          className="size-3.5 shrink-0"
-                          style={{ color: col.color || 'var(--muted-foreground)' }}
-                          strokeWidth={1.5}
-                        />
-                        <span className="truncate">{col.name}</span>
-                      </div>
-                      {count !== null && (
-                        <span className="text-10 font-mono text-muted-foreground/80 shrink-0 tabular-nums">
-                          {count}
-                        </span>
-                      )}
+                      <Folder
+                        className="size-3.5 shrink-0"
+                        style={{ color: col.color || 'var(--muted-foreground)' }}
+                        strokeWidth={1.5}
+                      />
+                      <span className="truncate">{col.name}</span>
                     </button>
                   );
                 })}
@@ -491,8 +448,8 @@ export default function RelatedSection({
 
             {/* Right Main Panel: Full Search + References List */}
             <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-background">
-              {/* Full Width Search Bar */}
-              <div className="px-3.5 py-1.5 border-b border-border/60 bg-muted/10 flex items-center gap-2 shrink-0">
+              {/* Clean Search Bar */}
+              <div className="p-2.5 border-b border-border bg-background flex items-center gap-2 shrink-0">
                 <div className="relative flex-1 flex items-center">
                   <Search
                     className="absolute left-2.5 size-3.5 text-muted-foreground pointer-events-none shrink-0"
@@ -503,7 +460,7 @@ export default function RelatedSection({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search by title, author, venue, year..."
-                    className="w-full pl-8 pr-7 text-12 bg-background text-foreground placeholder:text-muted-foreground rounded-md border-border h-7.5 shadow-2xs focus-visible:ring-1 focus-visible:ring-ring"
+                    className="w-full pl-8 pr-7 text-12 bg-muted/20 hover:bg-muted/30 focus:bg-background text-foreground placeholder:text-muted-foreground rounded-md border-border h-8 shadow-none focus-visible:ring-1 focus-visible:ring-ring transition-colors"
                     autoFocus
                   />
                   {searchQuery && (
@@ -519,41 +476,9 @@ export default function RelatedSection({
                 </div>
               </div>
 
-              {/* Selection Status & Batch Toolbar */}
-              <div className="px-4 py-1.5 border-b border-border/40 flex items-center justify-between text-11 text-muted-foreground bg-background select-none shrink-0">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSelectAll}
-                    disabled={availableItems.length === 0}
-                    className="text-foreground hover:underline cursor-pointer font-medium disabled:opacity-40"
-                  >
-                    {isAllSelected ? 'Deselect All' : 'Select All'}
-                  </button>
-                  <span>•</span>
-                  <span className="tabular-nums">
-                    {availableItems.length} available
-                  </span>
-                </div>
-
-                {selectedTargetIds.size > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-foreground font-medium bg-muted px-1.5 py-0.5 rounded text-11 tabular-nums">
-                      {selectedTargetIds.size} selected
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleClearSelection}
-                      className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                )}
-              </div>
 
               {/* Scrollable References List */}
-              <div className="flex-1 overflow-y-auto px-3 py-2 min-h-0 thin-scrollbar space-y-1">
+              <div className="flex-1 overflow-y-auto px-2.5 py-2 min-h-0 thin-scrollbar space-y-0.5">
                 {availableItems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground space-y-2 text-center px-4">
                     <div className="size-9 rounded-full bg-muted flex items-center justify-center">
@@ -561,7 +486,7 @@ export default function RelatedSection({
                     </div>
                     <div className="space-y-0.5">
                       <p className="text-12 font-medium text-foreground">No references available</p>
-                      <p className="text-11 text-muted-foreground max-w-[280px]">
+                      <p className="text-12 text-muted-foreground max-w-[280px]">
                         {searchQuery || selectedCollectionFilter !== 'all'
                           ? 'No items match your search in this collection.'
                           : 'All available items in this collection are already linked.'}
@@ -576,7 +501,7 @@ export default function RelatedSection({
                           setSearchQuery('');
                           setSelectedCollectionFilter('all');
                         }}
-                        className="h-7 text-11 mt-1 shadow-2xs"
+                        className="h-7 text-12 mt-1"
                       >
                         Reset filters
                       </Button>
@@ -586,18 +511,16 @@ export default function RelatedSection({
                   availableItems.map((targetItem: Item) => {
                     const isChecked = selectedTargetIds.has(targetItem.id);
                     const cleanTitle = cleanAcademicText(targetItem.title) || 'Untitled Reference';
-                    const cleanAuthors = formatAcademicAuthors(targetItem.authors);
-                    const venue = getPublicationVenue(targetItem);
 
                     return (
                       <div
                         key={targetItem.id}
                         onClick={() => handleToggleSelect(targetItem.id)}
                         className={cn(
-                          'w-full text-left px-3 py-2 rounded-lg text-12 flex items-center gap-3 cursor-pointer transition-colors duration-150 select-none group',
+                          'w-full text-left px-2.5 py-1.5 rounded-md text-13 flex items-center gap-2.5 cursor-pointer transition-colors duration-150 select-none group',
                           isChecked
-                            ? 'bg-muted text-foreground'
-                            : 'text-foreground hover:bg-muted/60',
+                            ? 'bg-accent/40 text-foreground ring-1 ring-border'
+                            : 'text-foreground hover:bg-muted/40',
                         )}
                       >
                         {/* Checkbox with click propagation stop */}
@@ -613,46 +536,27 @@ export default function RelatedSection({
                           />
                         </div>
 
-                        {/* Document Icon */}
-                        <div className="size-7 rounded-md bg-muted/60 flex items-center justify-center shrink-0 text-muted-foreground group-hover:text-foreground group-hover:bg-muted transition-colors">
-                          <FileText className="size-3.5" strokeWidth={1.5} />
-                        </div>
-
-                        {/* Middle: Clean Title & Metadata */}
-                        <div className="min-w-0 flex-1 space-y-0.5">
+                        {/* Title only */}
+                        <div className="min-w-0 flex-1">
                           <p
                             className={cn(
-                              'font-medium text-12 leading-snug line-clamp-1 break-words',
-                              isChecked ? 'text-foreground font-semibold' : 'text-foreground',
+                              'text-13 leading-normal line-clamp-1 break-words',
+                              isChecked ? 'text-foreground font-semibold' : 'text-foreground font-medium',
                             )}
                             title={cleanTitle}
                           >
                             {cleanTitle}
                           </p>
-
-                          <div className="flex items-center gap-1.5 text-11 text-muted-foreground truncate">
-                            {cleanAuthors ? (
-                              <span className="truncate">{cleanAuthors}</span>
-                            ) : (
-                              <span className="italic text-muted-foreground/70">Unknown authors</span>
-                            )}
-                            {venue && (
-                              <>
-                                <span className="shrink-0 text-muted-foreground/50">•</span>
-                                <span className="truncate shrink-0 font-medium text-muted-foreground/90">{venue}</span>
-                              </>
-                            )}
-                          </div>
                         </div>
 
-                        {/* Right: Year Badge (Monospace tabular) */}
-                        {targetItem.year && (
-                          <div className="shrink-0 pl-2">
-                            <span className="font-mono text-11 text-muted-foreground tabular-nums bg-muted px-1.5 py-0.5 rounded border border-border/50">
+                        {/* Right: Year in black/foreground text */}
+                        {targetItem.year ? (
+                          <div className="shrink-0 pl-3">
+                            <span className="font-mono text-12 text-foreground font-medium tabular-nums">
                               {targetItem.year}
                             </span>
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     );
                   })
@@ -662,48 +566,36 @@ export default function RelatedSection({
           </div>
 
           {/* Footer Actions across full modal width */}
-          <div className="px-5 py-3 border-t border-border bg-muted/20 flex items-center justify-between shrink-0">
-            <span className="text-11 text-muted-foreground">
-              {selectedTargetIds.size > 0 ? (
-                <span className="text-foreground font-medium">
-                  Linking {selectedTargetIds.size} {selectedTargetIds.size === 1 ? 'reference' : 'references'} bidirectionally
-                </span>
-              ) : (
-                'Select references above to link'
-              )}
-            </span>
-
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 px-3 text-12 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-md"
-                onClick={() => {
-                  setModalOpen(false);
-                  setSelectedTargetIds(new Set());
-                  setSearchQuery('');
-                  setSelectedCollectionFilter('all');
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                variant="default"
-                disabled={selectedTargetIds.size === 0 || isLinking}
-                onClick={handleLinkConfirm}
-                className="h-8 px-4 text-12 cursor-pointer font-medium rounded-md shadow-2xs flex items-center gap-1.5"
-              >
-                {isLinking && <Loader2 className="size-3.5 animate-spin shrink-0" strokeWidth={1.5} />}
-                <span>
-                  {isLinking
-                    ? 'Linking...'
-                    : selectedTargetIds.size > 1
-                    ? `Link (${selectedTargetIds.size}) Items`
-                    : 'Link Item'}
-                </span>
-              </Button>
-            </div>
+          <div className="px-5 py-3 border-t border-border bg-background flex items-center justify-end gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-3 text-12 text-foreground hover:bg-muted cursor-pointer rounded-md border-border/80"
+              onClick={() => {
+                setModalOpen(false);
+                setSelectedTargetIds(new Set());
+                setSearchQuery('');
+                setSelectedCollectionFilter('all');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant="default"
+              disabled={selectedTargetIds.size === 0 || isLinking}
+              onClick={handleLinkConfirm}
+              className="h-8 px-4 text-12 cursor-pointer font-medium rounded-md shadow-2xs flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
+            >
+              {isLinking && <Loader2 className="size-3.5 animate-spin shrink-0" strokeWidth={1.5} />}
+              <span>
+                {isLinking
+                  ? 'Linking...'
+                  : selectedTargetIds.size > 1
+                  ? 'Link Items'
+                  : 'Link Item'}
+              </span>
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -12,7 +12,6 @@ export function useCreatedWork() {
 
   return {
     state: {
-      workspaceId: source.workspaceId,
       allWorkItems: source.allWorkItems,
       createdWorkItems,
       count: createdWorkItems.length,

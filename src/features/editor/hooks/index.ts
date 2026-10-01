@@ -18,3 +18,7 @@ export * from './use-history';
 export * from './use-collaboration';
 export * from './use-citation';
 export * from './use-storage';
+export * from './use-export';
+export * from './use-notification-bundler';
+export * from './use-spelling';
+export * from './use-github-sync';

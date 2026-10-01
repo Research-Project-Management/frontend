@@ -1002,7 +1002,7 @@ export function ReaderToolbar({
 
           <div className="w-px h-3.5 bg-border mx-0.5" />
 
-          {/* Context Pane / Inspector Toggle [ |] — Zotero 7 naming */}
+          {/* Inspector Toggle [ |] — Shared with Library */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -1014,13 +1014,13 @@ export function ReaderToolbar({
                     ? "bg-muted text-foreground font-medium"
                     : "text-foreground hover:bg-muted"
                 )}
-                aria-label="Toggle context pane"
+                aria-label={isInspectorOpen ? "Collapse inspector" : "Expand inspector"}
               >
-                <PanelRight className="size-4 shrink-0" strokeWidth={1.5} />
+                <PanelRight className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-11">
-              {isInspectorOpen ? "Close context pane (Ctrl+/)" : "Open context pane (Ctrl+/)"}
+              {isInspectorOpen ? "Collapse inspector (Ctrl+/)" : "Expand inspector (Ctrl+/)"}
             </TooltipContent>
           </Tooltip>
         </div>

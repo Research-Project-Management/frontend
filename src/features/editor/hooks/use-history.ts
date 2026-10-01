@@ -39,28 +39,28 @@ export const projectHistoryQueryOptions = historyQuery;
 export function useVersionActions() {
   const saveVersion = {
     mutate: (_payload: any) => {
-      toast.success('Đã lưu phiên bản');
+      toast.success('Version saved');
     },
     isPending: false,
   };
 
   const restoreVersion = {
     mutate: (_payload: any) => {
-      toast.success('Đã khôi phục phiên bản');
+      toast.success('Version restored');
     },
     isPending: false,
   };
 
   const updateLabel = {
     mutate: (_payload: any) => {
-      toast.success('Đã cập nhật nhãn phiên bản');
+      toast.success('Version label updated');
     },
     isPending: false,
   };
 
   const deleteVersion = {
     mutate: (_payload: any) => {
-      toast.success('Đã xóa phiên bản');
+      toast.success('Version deleted');
     },
     isPending: false,
   };
@@ -78,7 +78,7 @@ import type { ProjectEvent } from '../types';
 export function useProjectHistory(_projectId: string) {
   const restoreToEvent = {
     mutate: (_payload: any) => {
-      toast.success('Đã khôi phục về sự kiện lịch sử');
+      toast.success('Restored to historical event');
     },
     isPending: false,
   };
@@ -93,7 +93,7 @@ export function useProjectHistory(_projectId: string) {
 export function useHistoryActions() {
   const restoreToEvent = {
     mutate: (_payload: any) => {
-      toast.success('Đã khôi phục về sự kiện lịch sử');
+      toast.success('Restored to historical event');
     },
     isPending: false,
   };

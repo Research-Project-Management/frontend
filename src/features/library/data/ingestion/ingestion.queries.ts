@@ -207,13 +207,13 @@ export function useUrlCapture(scopeId?: string) {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       toast.success('Document imported from URL', {
         description: data.title || 'Successfully captured to your library.',
-        id: 'capture-url-success',
+        id: 'capture-url',
       });
     },
     onError: (err: any) => {
       toast.error('Import confirmation failed', {
         description: err?.message || 'Could not save captured URL to library.',
-        id: 'capture-url-error',
+        id: 'capture-url',
       });
     },
   });
@@ -257,7 +257,7 @@ export function useIngestion(scopeId?: string) {
     onError: (err: any) => {
       toast.error('Ingestion failed', {
         description: err?.message || 'Unable to submit document for processing.',
-        id: 'ingest-submit-error',
+        id: 'ingest-submit',
       });
     },
   });
@@ -438,15 +438,17 @@ export function useRetraction(scopeId?: string) {
       if (data.isRetracted) {
         toast.error('Retraction detected!', {
           description: `This publication was flagged as ${data.nature || 'retracted'}.`,
+          id: 'retraction-check',
         });
       } else {
         toast.success('Retraction check complete', {
           description: 'No retraction notices found for this item.',
+          id: 'retraction-check',
         });
       }
     },
     onError: (err: any) => {
-      toast.error('Check failed', { description: err?.message });
+      toast.error('Check failed', { description: err?.message, id: 'retraction-check' });
     },
   });
 
@@ -457,15 +459,17 @@ export function useRetraction(scopeId?: string) {
       if (res.newlyRetracted > 0) {
         toast.warning(`Scan completed: ${res.newlyRetracted} retracted item(s) found!`, {
           description: `Scanned ${res.scanned} publications in this library.`,
+          id: 'retraction-scan',
         });
       } else {
         toast.success(`Scan completed: All ${res.scanned} publications clear`, {
           description: 'No new retracted items detected.',
+          id: 'retraction-scan',
         });
       }
     },
     onError: (err: any) => {
-      toast.error('Library scan failed', { description: err?.message });
+      toast.error('Library scan failed', { description: err?.message, id: 'retraction-scan' });
     },
   });
 
@@ -474,10 +478,10 @@ export function useRetraction(scopeId?: string) {
       RetractionService.flagItem(effectiveScope, itemId, data),
     onSuccess: () => {
       invalidateRetraction(queryClient, scopeId);
-      toast.warning('Item flagged as retracted');
+      toast.warning('Item flagged as retracted', { id: 'retraction-flag' });
     },
     onError: (err: any) => {
-      toast.error('Failed to flag item', { description: err?.message });
+      toast.error('Failed to flag item', { description: err?.message, id: 'retraction-flag' });
     },
   });
 
@@ -485,10 +489,10 @@ export function useRetraction(scopeId?: string) {
     mutationFn: (itemId: string) => RetractionService.unflagItem(effectiveScope, itemId),
     onSuccess: () => {
       invalidateRetraction(queryClient, scopeId);
-      toast.success('Retraction flag removed');
+      toast.success('Retraction flag removed', { id: 'retraction-flag' });
     },
     onError: (err: any) => {
-      toast.error('Failed to remove flag', { description: err?.message });
+      toast.error('Failed to remove flag', { description: err?.message, id: 'retraction-flag' });
     },
   });
 

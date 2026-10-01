@@ -43,10 +43,11 @@ export const useCreateSuggestion = () => {
     },
     onSuccess: (_newSug, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
-      toast.success('Đã đề xuất thay đổi');
+      queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
+      toast.success('Suggestion submitted');
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Không thể gửi đề xuất');
+      toast.error(err?.message || 'Failed to submit suggestion');
     },
   });
 };
@@ -59,10 +60,12 @@ export const useAcceptSuggestion = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
-      toast.success('Đã chấp nhận đề xuất');
+      queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
+      queryClient.invalidateQueries({ queryKey: ['pages', 'detail', variables.pageId] });
+      toast.success('Suggestion accepted');
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Không thể chấp nhận đề xuất');
+      toast.error(err?.message || 'Failed to accept suggestion');
     },
   });
 };
@@ -75,10 +78,11 @@ export const useRejectSuggestion = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
-      toast.info('Đã từ chối đề xuất');
+      queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
+      toast.info('Suggestion rejected');
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Không thể từ chối đề xuất');
+      toast.error(err?.message || 'Failed to reject suggestion');
     },
   });
 };
@@ -91,10 +95,12 @@ export const useAcceptAllSuggestions = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
-      toast.success('Đã chấp thuận tất cả đề xuất');
+      queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
+      queryClient.invalidateQueries({ queryKey: ['pages', 'detail', variables.pageId] });
+      toast.success('All suggestions accepted');
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Không thể chấp thuận tất cả đề xuất');
+      toast.error(err?.message || 'Failed to accept all suggestions');
     },
   });
 };
@@ -107,10 +113,11 @@ export const useRejectAllSuggestions = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
-      toast.info('Đã từ chối tất cả đề xuất');
+      queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
+      toast.info('All suggestions rejected');
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Không thể từ chối tất cả đề xuất');
+      toast.error(err?.message || 'Failed to reject all suggestions');
     },
   });
 };

@@ -134,9 +134,9 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
             onCreateClick={() => setIsCreateModalOpen(true)}
           />
         ) : viewMode === 'grid' ? (
-          <GridView pages={filteredPages} workspaceId="" />
+          <GridView pages={filteredPages} />
         ) : (
-          <ListView pages={filteredPages} workspaceId="" />
+          <ListView pages={filteredPages} />
         )}
       </div>
 

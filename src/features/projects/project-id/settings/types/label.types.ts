@@ -9,7 +9,6 @@ export interface Label {
   sortOrder?: number;
   type?: LabelType;
   projectId?: string | null;
-  workspaceId?: string;
   createdById?: string;
   createdAt?: string;
   updatedAt?: string;

@@ -302,7 +302,7 @@
   --secondary: var(--gray-50);
   --secondary-foreground: var(--gray-900);
   --muted: var(--gray-100);
-  --muted-foreground: var(--gray-500);
+  --muted-foreground: var(--gray-600);
   --accent: var(--gray-50);
   --accent-foreground: var(--gray-700);
   --destructive: var(--red-500);
@@ -363,7 +363,7 @@
   --secondary: oklch(17% 0 0);
   --secondary-foreground: oklch(92% 0 0);
   --muted: oklch(17% 0 0);
-  --muted-foreground: oklch(52% 0 0);
+  --muted-foreground: oklch(65% 0 0);
   --accent: oklch(17% 0 0);
   --accent-foreground: oklch(72% 0 0);
   --destructive: oklch(64% 0.210 25);
@@ -1131,45 +1131,16 @@
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* Inspector interactive scrollbar: overlay and border-touching */
+/* Inspector interactive scrollbar: overlay without layout-shifting gutter */
 .inspector-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-  transition: scrollbar-color 0.25s ease;
-}
-
-@supports (overflow-y: overlay) {
-  .inspector-scrollbar {
-    overflow-y: overlay !important;
-  }
-}
-
-.inspector-scrollbar:hover,
-.inspector-scrollbar:focus-within {
-  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .inspector-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-
-.inspector-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.inspector-scrollbar::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 9999px;
-  transition: background-color 0.25s ease;
-}
-
-.inspector-scrollbar:hover::-webkit-scrollbar-thumb,
-.inspector-scrollbar:focus-within::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
-}
-
-.inspector-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 /* --------------------------------------------------------------------------
@@ -1189,6 +1160,16 @@
 .content-auto-card {
   content-visibility: auto;
   contain-intrinsic-size: 0 120px;
+}
+
+/* --------------------------------------------------------------------------
+   Sonner Toaster: Disable layout property (height) animation
+   Prevents layout recalculations & satisfies Impeccable craft floor
+   -------------------------------------------------------------------------- */
+[data-sonner-toaster],
+[data-sonner-toaster] [data-sonner-toast],
+[data-sonner-toaster] [data-height-wrapper] {
+  transition-property: transform, opacity !important;
 }
 
 

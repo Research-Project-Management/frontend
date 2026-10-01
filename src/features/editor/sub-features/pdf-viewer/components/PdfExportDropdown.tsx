@@ -33,7 +33,7 @@ import {
   exportDocumentAsMarkdown,
   getExportFilename,
 } from '../../../utils';
-import { toast } from 'sonner';
+import { useProjectExport } from '../../../hooks/use-export';
 
 export interface PdfExportDropdownProps {
   pdfUrl: string | null;
@@ -47,45 +47,26 @@ export const PdfExportDropdown = React.memo(function PdfExportDropdown({
   const { projectId } = useParams<{ projectId?: string }>();
   const currentPage = usePageStore((s) => s.currentPage);
   const docTitle = currentPage?.title || 'document';
+  const { exportZip, exportArxiv, exportWord, exportMarkdown } = useProjectExport();
 
-  const handleExportZip = async () => {
+  const handleExportZip = () => {
     if (!projectId) return;
-    try {
-      await exportProjectAsZip({ parentPageId: projectId, projectTitle: docTitle });
-      toast.success('Project source exported as ZIP');
-    } catch {
-      toast.error('Failed to export ZIP');
-    }
+    exportZip({ parentPageId: projectId, projectTitle: docTitle });
   };
 
-  const handleExportArxiv = async () => {
+  const handleExportArxiv = () => {
     if (!projectId) return;
-    try {
-      await exportArxivSubmissionZip({ parentPageId: projectId, projectTitle: docTitle });
-      toast.success('arXiv submission bundle ready');
-    } catch {
-      toast.error('Failed to generate arXiv bundle');
-    }
+    exportArxiv({ parentPageId: projectId, projectTitle: docTitle });
   };
 
-  const handleExportWord = async () => {
+  const handleExportWord = () => {
     if (!projectId) return;
-    try {
-      await exportDocumentAsWord({ pageId: projectId, projectTitle: docTitle });
-      toast.success('Exported as Microsoft Word');
-    } catch {
-      toast.error('Word export failed');
-    }
+    exportWord({ pageId: projectId, projectTitle: docTitle });
   };
 
-  const handleExportMarkdown = async () => {
+  const handleExportMarkdown = () => {
     if (!projectId) return;
-    try {
-      await exportDocumentAsMarkdown({ pageId: projectId, projectTitle: docTitle });
-      toast.success('Exported as Markdown');
-    } catch {
-      toast.error('Markdown export failed');
-    }
+    exportMarkdown({ pageId: projectId, projectTitle: docTitle });
   };
 
   return (

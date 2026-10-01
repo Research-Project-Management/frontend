@@ -17,8 +17,8 @@ import type {
 
 export const labelKeys = {
   all: ['labels'] as const,
-  list: (workspaceId: string, type?: LabelType) =>
-    ['labels', workspaceId, type ?? 'all'] as const,
+  list: (type?: LabelType) =>
+    ['labels', type ?? 'all'] as const,
   project: (projectId: string) => ['project-labels', projectId] as const,
 };
 
@@ -108,22 +108,21 @@ export function useReorderProjectLabels(projectId: string) {
   });
 }
 
-// ── Legacy Hooks (Preserved for Backward Compatibility) ───────────────────────
+// ── Global / Project-Independent Hooks ───────────────────────────────────────
 
-export function useLabels(workspaceId: string, type?: LabelType) {
+export function useLabels(type?: LabelType, projectId?: string) {
   return useQuery<Label[]>({
-    queryKey: labelKeys.list(workspaceId, type),
-    queryFn: () => LabelService.list(workspaceId, type),
-    enabled: Boolean(workspaceId),
+    queryKey: projectId ? labelKeys.project(projectId) : labelKeys.list(type),
+    queryFn: () => LabelService.list(type, projectId),
   });
 }
 
-export function useCreateLabel(workspaceId: string) {
+export function useCreateLabel() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: CreateLabelInput) =>
-      LabelService.create(workspaceId, input),
+    mutationFn: (input: CreateLabelInput & { projectId?: string }) =>
+      LabelService.create(input),
     onSuccess: (newLabel) => {
       queryClient.invalidateQueries({ queryKey: labelKeys.all });
       toast.success(`Label "${newLabel.name}" created`, { id: 'settings-label' });
@@ -134,7 +133,7 @@ export function useCreateLabel(workspaceId: string) {
   });
 }
 
-export function useUpdateLabel(workspaceId: string) {
+export function useUpdateLabel() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -150,7 +149,7 @@ export function useUpdateLabel(workspaceId: string) {
   });
 }
 
-export function useDeleteLabel(workspaceId: string) {
+export function useDeleteLabel() {
   const queryClient = useQueryClient();
 
   return useMutation({

@@ -43,11 +43,13 @@ import { toast } from 'sonner';
 export interface CompileButtonProps {
   onCompile: () => void;
   onClearCacheAndCompile?: () => void;
+  onStopCompilation?: () => void;
 }
 
 export const CompileButton = React.memo(function CompileButton({
   onCompile,
   onClearCacheAndCompile,
+  onStopCompilation,
 }: CompileButtonProps) {
   const compileStatus = useCompileStore((s) => s.compileStatus);
   const setCompileStatus = useCompileStore((s) => s.setCompileStatus);
@@ -65,12 +67,16 @@ export const CompileButton = React.memo(function CompileButton({
     compileStatus !== 'idle' && compileStatus !== 'done' && compileStatus !== 'error';
 
   const statusLabel: Record<string, string> = {
-    flushing: 'Saving…',
+    flushing: 'Preparing…',
     syncing: 'Syncing…',
     compiling: 'Compiling…',
   };
 
   const handleStopCompilation = () => {
+    if (onStopCompilation) {
+      onStopCompilation();
+      return;
+    }
     LatexCompilerEngine.cancelInFlightCompile();
     setCompileStatus('idle');
     toast.info('Compilation stopped');
@@ -115,7 +121,7 @@ export const CompileButton = React.memo(function CompileButton({
           >
             <div className="flex items-center gap-2">
               <RefreshCw className="size-3.5 text-muted-foreground" />
-              <span>Normal (Full Output)</span>
+              <span>Normal (Full)</span>
             </div>
             {compileMode === 'full' && <Check className="size-3.5 text-primary" />}
           </DropdownMenuItem>
@@ -125,7 +131,7 @@ export const CompileButton = React.memo(function CompileButton({
           >
             <div className="flex items-center gap-2">
               <Zap className="size-3.5 text-amber-500" />
-              <span>Fast (Draft / No figures)</span>
+              <span>Fast (Draft)</span>
             </div>
             {compileMode === 'draft' && <Check className="size-3.5 text-primary" />}
           </DropdownMenuItem>
@@ -156,7 +162,7 @@ export const CompileButton = React.memo(function CompileButton({
             onClick={() => setAutoCompile(!autoCompile)}
             className="flex items-center justify-between cursor-pointer"
           >
-            <span>Auto-compile on change</span>
+            <span>Auto-compile</span>
             {autoCompile && <Check className="size-3.5 text-primary" />}
           </DropdownMenuItem>
 
@@ -164,7 +170,7 @@ export const CompileButton = React.memo(function CompileButton({
             onClick={() => setStopOnFirstError(!stopOnFirstError)}
             className="flex items-center justify-between cursor-pointer"
           >
-            <span>Stop on first error</span>
+            <span>Stop on error</span>
             {stopOnFirstError && <Check className="size-3.5 text-primary" />}
           </DropdownMenuItem>
 
@@ -175,7 +181,7 @@ export const CompileButton = React.memo(function CompileButton({
                 onClick={onClearCacheAndCompile}
                 className="text-destructive focus:text-destructive cursor-pointer"
               >
-                Clear cache and recompile
+                Recompile (Clear cache)
               </DropdownMenuItem>
             </>
           )}

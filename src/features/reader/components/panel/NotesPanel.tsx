@@ -13,7 +13,7 @@ import type { ReaderDocument, Note, NoteFormData } from '../../types/reader.type
 
 interface NotesPanelProps {
   paper: ReaderDocument;
-  workspaceId: string;
+  scopeId?: string;
   pendingText?: string;
   onClearPendingText?: () => void;
   onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void;
@@ -150,7 +150,7 @@ function NoteEditForm({
 
 export default function NotesPanel({
   paper,
-  workspaceId,
+  scopeId,
   pendingText,
   onClearPendingText,
   onNavigateToAnnotation,
@@ -164,7 +164,7 @@ export default function NotesPanel({
     isCreating,
     isUpdating,
     isDeleting,
-  } = useNotes(workspaceId, paper.id);
+  } = useNotes(scopeId, paper.id);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);

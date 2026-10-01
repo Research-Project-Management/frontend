@@ -17,7 +17,6 @@ export const pageSchema = z.object({
   ).default([]),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
-  workspaceId: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
   projectId: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
   parentPage: z.string().optional(),
   parentPageId: z.string().optional(),

@@ -167,3 +167,17 @@ export const changePassword = async (
 ): Promise<ChangePasswordResponse> => {
   return apiPut<ChangePasswordResponse>('/auth/change-password', payload);
 };
+
+/**
+ * Confirms password reset using cryptographic token from email.
+ */
+export const resetPassword = async (
+  token: string,
+  newPassword: string,
+): Promise<{ message: string }> => {
+  return apiPost<{ message: string }>('/auth/reset-password', {
+    token,
+    newPassword,
+  });
+};
+

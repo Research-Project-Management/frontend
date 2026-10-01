@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { ShieldAlert, ExternalLink, RotateCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShieldAlert, ExternalLink, RotateCw, X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useUpdateLibraryItemMutation, useRetraction } from '../../data';
 import type { Item } from '../../types/library.types';
@@ -17,9 +17,9 @@ export function InspectorHeader({
   item,
   scopeId,
   canEdit = true,
+  onClose,
 }: InspectorHeaderProps) {
   const [titleDraft, setTitleDraft] = useState(item.title || '');
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const updateMutation = useUpdateLibraryItemMutation(scopeId);
   const { unflagItem, checkItem, isCheckingItem, isUnflagging } = useRetraction(scopeId);
@@ -48,23 +48,23 @@ export function InspectorHeader({
 
   const handleCommitTitle = () => {
     if (!canEdit) return;
-    const trimmed = titleDraft.trim();
-    if (trimmed && trimmed !== item.title) {
+    const cleanTitle = titleDraft.replace(/\r?\n+/g, ' ').trim();
+    if (cleanTitle && cleanTitle !== item.title) {
+      setTitleDraft(cleanTitle);
       updateMutation.mutate({
         id: item.id,
-        payload: { title: trimmed },
+        payload: { title: cleanTitle },
       });
-    } else if (!trimmed && item.title) {
+    } else if (!cleanTitle && item.title) {
       setTitleDraft(item.title);
     }
   };
 
   return (
     <div className="sticky top-0 z-10 flex flex-col shrink-0 select-none bg-background">
-      {/* ── Fixed h-11 Title Header: Exactly aligns with LibraryTopbar and InspectorTabs ── */}
+      {/* ── Title Header: EXACTLY h-11 (44px) with border-b matching LibraryTopbar and InspectorTabs ── */}
       <div className="h-11 px-3 flex items-center w-full min-w-0 border-b border-border bg-background shrink-0">
         <input
-          ref={inputRef}
           type="text"
           value={titleDraft}
           placeholder="Untitled Document"
@@ -76,24 +76,36 @@ export function InspectorHeader({
             if (e.key === 'Enter') {
               e.preventDefault();
               handleCommitTitle();
-              inputRef.current?.blur();
+              (e.target as HTMLInputElement).blur();
             } else if (e.key === 'Escape') {
               e.preventDefault();
               setTitleDraft(item.title || '');
-              inputRef.current?.blur();
+              (e.target as HTMLInputElement).blur();
             }
           }}
           className={cn(
-            "w-full h-8 text-13 font-semibold tracking-tight text-foreground font-sans truncate outline-none select-text rounded-md",
-            "px-2 border border-transparent bg-transparent transition-[border-color,background-color,box-shadow]",
-            canEdit && [
-              "cursor-pointer hover:bg-muted/40",
-              "focus:cursor-text focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary focus:hover:bg-background",
-            ],
-            !canEdit && "cursor-default"
+            "w-full h-8 text-13 font-semibold tracking-tight text-foreground font-sans select-text rounded-md outline-none truncate transition-colors",
+            "px-2 border",
+            canEdit ? [
+              "cursor-pointer hover:bg-muted/40 hover:border-border/60",
+              "border-transparent focus:cursor-text focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary focus:hover:bg-background",
+            ] : [
+              "border-transparent cursor-default",
+            ]
           )}
           title={titleDraft || 'Untitled Document'}
         />
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="md:hidden size-7 ml-1 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+            title="Close inspector"
+            aria-label="Close inspector"
+          >
+            <X className="size-4 shrink-0" />
+          </button>
+        )}
       </div>
 
       {/* ⚠️ Retraction Warning Alert Banner (Rendered below the continuous h-11 line) */}

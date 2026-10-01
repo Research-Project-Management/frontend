@@ -8,7 +8,6 @@ import {
   ChevronRight,
   MoreHorizontal,
   Search,
-  Plus,
   FileText,
   FileUp,
   FolderUp,
@@ -39,9 +38,12 @@ import {
   Map,
   Palette,
   Trash2,
-  Blocks,
 } from 'lucide-react';
-import { LibraryIcon } from '@/shared/components/icons';
+import {
+  LibraryIcon,
+  ZoteroLineIcon,
+  MendeleyLineIcon,
+} from '@/shared/components/icons';
 import { Button, Input } from '@/shared/components/ui';
 import {
   DropdownMenu,
@@ -85,7 +87,6 @@ export interface TopbarProps {
   onDisplayOptionsChange?: (options: LibraryDisplayOptions) => void;
   scopeId?: string;
   projectId?: string;
-  workspaceId?: string;
   items?: Item[];
   onAddPaper?: (mode?: 'file' | 'folder' | 'link') => void;
   onNewManualItem?: (itemType: string) => void;
@@ -125,7 +126,6 @@ export function LibraryTopbar({
   onDisplayOptionsChange: propOnDisplayOptionsChange,
   scopeId: propScopeId,
   projectId: propProjectId,
-  workspaceId: propWorkspaceId,
   items,
   onAddPaper,
   onNewManualItem,
@@ -166,7 +166,6 @@ export function LibraryTopbar({
   const effectiveScopeId =
     propScopeId ||
     propProjectId ||
-    propWorkspaceId ||
     (activeScope.type === 'project' ? activeScope.id : 'user');
 
   const displayTitle = title || activeScope.name || 'My Library';
@@ -175,11 +174,23 @@ export function LibraryTopbar({
   const directFolderInputRef = useRef<HTMLInputElement>(null);
 
   const handleAddFileClick = () => {
-    openModal('UPLOAD_FILES', { collectionId: params?.collectionId });
+    const hasUploadedBefore =
+      typeof window !== 'undefined' &&
+      localStorage.getItem('flux_has_uploaded_before') === 'true';
+
+    if (hasUploadedBefore && onDirectFilesUpload && directFileInputRef.current) {
+      directFileInputRef.current.click();
+    } else {
+      openModal('UPLOAD_FILES', { collectionId: params?.collectionId });
+    }
   };
 
   const handleAddFolderClick = () => {
-    if (onDirectFolderUpload && directFolderInputRef.current) {
+    const hasUploadedBefore =
+      typeof window !== 'undefined' &&
+      localStorage.getItem('flux_has_uploaded_before') === 'true';
+
+    if (hasUploadedBefore && onDirectFolderUpload && directFolderInputRef.current) {
       directFolderInputRef.current.click();
     } else {
       openModal('UPLOAD_FILES', { collectionId: params?.collectionId });
@@ -278,7 +289,7 @@ export function LibraryTopbar({
         ) : (
           <div className="flex items-center gap-2 min-w-0">
             {Icon && <Icon className="size-4 text-foreground shrink-0" />}
-            <h1 className="text-16 font-semibold tracking-tight text-foreground truncate">
+            <h1 className="text-18 font-semibold tracking-tight text-foreground truncate">
               {displayTitle}
             </h1>
             {typeof count === 'number' && (
@@ -333,170 +344,172 @@ export function LibraryTopbar({
                 <span>New</span>
               </Button>
             </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            sideOffset={4}
-            onCloseAutoFocus={(e) => e.preventDefault()}
-            className="w-60 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
-          >
-            {/* Group 1: Create Reference */}
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
-                <PenLine className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                <span className="text-foreground">Create Reference</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent
-                collisionPadding={16}
-                sideOffset={4}
-                alignOffset={-4}
-                className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
-              >
-                {[
-                  { type: 'journalArticle', label: 'Journal Article', icon: FileText },
-                  { type: 'book', label: 'Book', icon: Book },
-                  { type: 'bookSection', label: 'Book Section', icon: BookOpen },
-                  { type: 'conferencePaper', label: 'Conference Paper', icon: Users },
-                  { type: 'preprint', label: 'Preprint', icon: ScrollText },
-                  { type: 'report', label: 'Report', icon: FileBarChart },
-                  { type: 'thesis', label: 'Thesis', icon: GraduationCap },
-                  { type: 'webpage', label: 'Web Page', icon: Globe },
-                  { type: 'dataset', label: 'Dataset', icon: Database },
-                ].map(({ type, label, icon: TypeIcon }) => (
-                  <DropdownMenuItem
-                    key={type}
-                    onClick={() => {
-                      if (onNewManualItem) onNewManualItem(type);
-                      else openModal('IMPORT_PAPER');
-                    }}
-                    className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
-                  >
-                    <TypeIcon className="size-3.5 text-foreground shrink-0" />
-                    <span>{label}</span>
-                  </DropdownMenuItem>
-                ))}
-
-                <DropdownMenuSeparator className="mx-1 my-1" />
-
-                {/* More Types Submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted">
-                    <MoreHorizontal className="size-3.5 text-foreground shrink-0" />
-                    <span>More Types...</span>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent
-                    collisionPadding={16}
-                    sideOffset={4}
-                    alignOffset={-4}
-                    className="w-56 max-h-[min(380px,var(--radix-dropdown-menu-content-available-height,calc(100vh-64px)))] overflow-y-auto overflow-x-hidden p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
-                  >
-                    {[
-                      { type: 'artwork', label: 'Artwork', icon: Palette },
-                      { type: 'audioRecording', label: 'Audio Recording', icon: Music },
-                      { type: 'bill', label: 'Bill', icon: FileText },
-                      { type: 'blogPost', label: 'Blog Post', icon: Globe },
-                      { type: 'case', label: 'Case', icon: Briefcase },
-                      { type: 'computerProgram', label: 'Computer Program', icon: Code2 },
-                      { type: 'dictionaryEntry', label: 'Dictionary Entry', icon: Book },
-                      { type: 'document', label: 'Document', icon: File },
-                      { type: 'encyclopediaArticle', label: 'Encyclopedia Article', icon: BookOpen },
-                      { type: 'film', label: 'Film', icon: Video },
-                      { type: 'forumPost', label: 'Forum Post', icon: Globe },
-                      { type: 'hearing', label: 'Hearing', icon: Users },
-                      { type: 'interview', label: 'Interview', icon: UserCheck },
-                      { type: 'magazineArticle', label: 'Magazine Article', icon: FileText },
-                      { type: 'manuscript', label: 'Manuscript', icon: ScrollText },
-                      { type: 'map', label: 'Map', icon: Map },
-                      { type: 'newspaperArticle', label: 'Newspaper Article', icon: Newspaper },
-                      { type: 'patent', label: 'Patent', icon: Scale },
-                      { type: 'podcast', label: 'Podcast', icon: Mic },
-                      { type: 'presentation', label: 'Presentation', icon: Presentation },
-                      { type: 'standard', label: 'Standard', icon: Bookmark },
-                      { type: 'statute', label: 'Statute', icon: Scale },
-                      { type: 'tvBroadcast', label: 'TV Broadcast', icon: Video },
-                      { type: 'videoRecording', label: 'Video Recording', icon: Video },
-                    ].map(({ type, label, icon: MoreIcon }) => (
-                      <DropdownMenuItem
-                        key={type}
-                        onClick={() => {
-                          if (onNewManualItem) onNewManualItem(type);
-                          else openModal('IMPORT_PAPER');
-                        }}
-                        className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
-                      >
-                        <MoreIcon className="size-3.5 text-foreground shrink-0" />
-                        <span>{label}</span>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-
-            {/* Group 2: Add by Identifier */}
-            <DropdownMenuItem
-              onClick={handleAddLinkClick}
-              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+            <DropdownMenuContent
+              align="end"
+              sideOffset={4}
+              onCloseAutoFocus={(e) => e.preventDefault()}
+              className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 select-none space-y-0.5"
             >
-              <Wand2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-              <span className="text-foreground">Add by Identifier</span>
-            </DropdownMenuItem>
-
-            <DropdownMenuSeparator className="mx-1 my-1" />
-
-            {/* Group 3: File & Folder Upload */}
-            <DropdownMenuItem
-              onClick={handleAddFileClick}
-              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-            >
-              <FileUp className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-              <span className="text-foreground">Upload Files</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={handleAddFolderClick}
-              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-            >
-              <FolderUp className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-              <span className="text-foreground">Upload Folder</span>
-            </DropdownMenuItem>
-
-            <DropdownMenuSeparator className="mx-1 my-1" />
-
-            {/* Group 4: Collection Creation */}
-            <DropdownMenuItem
-              onClick={handleCreateCollectionClick}
-              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-            >
-              <FolderPlus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-              <span className="text-foreground">
-                {isSubcollection ? 'New Subcollection' : 'New Collection'}
-              </span>
-            </DropdownMenuItem>
-
-            {/* Group 5: Import from Personal Library (When in Project Scope) */}
-            {onImportFromPersonal && (
               <DropdownMenuItem
-                onClick={onImportFromPersonal}
+                onClick={handleAddLinkClick}
                 className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
               >
-                <FolderInput className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                <span className="text-foreground">Import from My Library</span>
+                <Wand2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                <span className="text-foreground">Add by Identifier</span>
               </DropdownMenuItem>
-            )}
 
-            <DropdownMenuSeparator className="mx-1 my-1" />
+              <DropdownMenuItem
+                onClick={handleAddFileClick}
+                className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              >
+                <FileUp className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                <span className="text-foreground">Upload Files</span>
+              </DropdownMenuItem>
 
-            {/* Group 6: External Integrations */}
-            <DropdownMenuItem
-              onClick={() => {
-                router.push('/settings/integrations');
-              }}
-              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-            >
-              <Blocks className="size-4 text-primary shrink-0" strokeWidth={1.5} />
-              <span className="text-foreground">Zotero / Mendeley Sync...</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuItem
+                onClick={handleAddFolderClick}
+                className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              >
+                <FolderUp className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                <span className="text-foreground">Upload Folder</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
+                  <PenLine className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span className="text-foreground">Manual Entry</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent
+                  collisionPadding={16}
+                  sideOffset={4}
+                  alignOffset={-4}
+                  className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+                >
+                  {[
+                    { type: 'journalArticle', label: 'Journal Article', icon: FileText },
+                    { type: 'book', label: 'Book', icon: Book },
+                    { type: 'bookSection', label: 'Book Section', icon: BookOpen },
+                    { type: 'conferencePaper', label: 'Conference Paper', icon: Users },
+                    { type: 'preprint', label: 'Preprint', icon: ScrollText },
+                    { type: 'report', label: 'Report', icon: FileBarChart },
+                    { type: 'thesis', label: 'Thesis', icon: GraduationCap },
+                    { type: 'webpage', label: 'Web Page', icon: Globe },
+                    { type: 'dataset', label: 'Dataset', icon: Database },
+                  ].map(({ type, label, icon: TypeIcon }) => (
+                    <DropdownMenuItem
+                      key={type}
+                      onClick={() => {
+                        if (onNewManualItem) onNewManualItem(type);
+                        else openModal('IMPORT_PAPER');
+                      }}
+                      className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                    >
+                      <TypeIcon className="size-3.5 text-foreground shrink-0" />
+                      <span>{label}</span>
+                    </DropdownMenuItem>
+                  ))}
+
+                  <DropdownMenuSeparator className="mx-1 my-1" />
+
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted">
+                      <MoreHorizontal className="size-3.5 text-foreground shrink-0" />
+                      <span>More Types...</span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent
+                      collisionPadding={16}
+                      sideOffset={4}
+                      alignOffset={-4}
+                      className="w-56 max-h-[min(380px,var(--radix-dropdown-menu-content-available-height,calc(100vh-64px)))] overflow-y-auto overflow-x-hidden p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+                    >
+                      {[
+                        { type: 'artwork', label: 'Artwork', icon: Palette },
+                        { type: 'audioRecording', label: 'Audio Recording', icon: Music },
+                        { type: 'bill', label: 'Bill', icon: FileText },
+                        { type: 'blogPost', label: 'Blog Post', icon: Globe },
+                        { type: 'case', label: 'Case', icon: Briefcase },
+                        { type: 'computerProgram', label: 'Software', icon: Code2 },
+                        { type: 'dictionaryEntry', label: 'Dictionary Entry', icon: Book },
+                        { type: 'document', label: 'Document', icon: File },
+                        { type: 'encyclopediaArticle', label: 'Encyclopedia Article', icon: BookOpen },
+                        { type: 'film', label: 'Film', icon: Video },
+                        { type: 'forumPost', label: 'Forum Post', icon: Globe },
+                        { type: 'hearing', label: 'Hearing', icon: Users },
+                        { type: 'interview', label: 'Interview', icon: UserCheck },
+                        { type: 'magazineArticle', label: 'Magazine Article', icon: FileText },
+                        { type: 'manuscript', label: 'Manuscript', icon: ScrollText },
+                        { type: 'map', label: 'Map', icon: Map },
+                        { type: 'newspaperArticle', label: 'Newspaper Article', icon: Newspaper },
+                        { type: 'patent', label: 'Patent', icon: Scale },
+                        { type: 'podcast', label: 'Podcast', icon: Mic },
+                        { type: 'presentation', label: 'Presentation', icon: Presentation },
+                        { type: 'standard', label: 'Standard', icon: Bookmark },
+                        { type: 'statute', label: 'Statute', icon: Scale },
+                        { type: 'tvBroadcast', label: 'TV Broadcast', icon: Video },
+                        { type: 'videoRecording', label: 'Video Recording', icon: Video },
+                      ].map(({ type, label, icon: MoreIcon }) => (
+                        <DropdownMenuItem
+                          key={type}
+                          onClick={() => {
+                            if (onNewManualItem) onNewManualItem(type);
+                            else openModal('IMPORT_PAPER');
+                          }}
+                          className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                        >
+                          <MoreIcon className="size-3.5 text-foreground shrink-0" />
+                          <span>{label}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              <DropdownMenuSeparator className="mx-1 my-1" />
+
+              <DropdownMenuItem
+                onClick={handleCreateCollectionClick}
+                className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              >
+                <FolderPlus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                <span className="text-foreground">
+                  {isSubcollection ? 'New Subcollection' : 'New Collection'}
+                </span>
+              </DropdownMenuItem>
+
+              {onImportFromPersonal && (
+                <DropdownMenuItem
+                  onClick={onImportFromPersonal}
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                >
+                  <FolderInput className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span className="text-foreground">Import from My Library</span>
+                </DropdownMenuItem>
+              )}
+
+              <DropdownMenuSeparator className="mx-1 my-1" />
+
+              <DropdownMenuItem
+                onClick={() => {
+                  router.push('/settings/integrations?provider=zotero');
+                }}
+                className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              >
+                <ZoteroLineIcon className="size-4 text-foreground shrink-0" />
+                <span className="text-foreground">Zotero Sync...</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => {
+                  router.push('/settings/integrations?provider=mendeley');
+                }}
+                className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              >
+                <MendeleyLineIcon className="size-4 text-foreground shrink-0" />
+                <span className="text-foreground">Mendeley Sync...</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : null}
 
         {children}

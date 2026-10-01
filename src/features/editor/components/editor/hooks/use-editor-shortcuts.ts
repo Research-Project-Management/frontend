@@ -73,6 +73,8 @@ export function useEditorShortcuts({
       engine?.undo();
     } else if (action === 'redo') {
       engine?.redo();
+    } else if (action === 'actions.find') {
+      editorCommandBus.dispatch({ type: 'editor:find', open: true });
     }
     closeMenu();
   };

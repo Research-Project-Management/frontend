@@ -16,7 +16,6 @@ import type {
 import type { ProjectMap } from '../utils/your-work.util';
 
 export interface YourWorkContextType {
-  workspaceId?: string;
   currentUserId?: string | null;
   // Selected project state
   selectedProjectId: string | null;
@@ -152,7 +151,6 @@ export function YourWorkProvider({ children }: { children: React.ReactNode }) {
 
   const contextValue: YourWorkContextType = useMemo(
     () => ({
-      workspaceId: base.workspaceId,
       currentUserId: base.currentUserId,
       selectedProjectId,
       selectedProject,
@@ -179,7 +177,6 @@ export function YourWorkProvider({ children }: { children: React.ReactNode }) {
       invalidate: base.invalidate,
     }),
     [
-      base.workspaceId,
       base.currentUserId,
       selectedProjectId,
       selectedProject,

@@ -108,7 +108,7 @@ const ModalStickyCard = React.memo(function ModalStickyCard({
   return (
     <div
       style={{ backgroundColor: colorConfig.bg, color: colorConfig.text }}
-      className="group relative h-[285px] rounded-md border border-border/40 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+      className="group relative h-[285px] rounded-md border border-border/40 overflow-hidden shadow-xs hover:shadow-md transition-shadow duration-200 flex flex-col justify-between"
     >
       {/* Top Header with Date */}
       <div className="h-6 px-3.5 pt-1.5 flex items-center justify-between select-none shrink-0">

@@ -56,10 +56,11 @@ export const useCreateComment = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
-      toast.success('Đã thêm bình luận');
+      queryClient.invalidateQueries({ queryKey: ['page-comments'] });
+      toast.success('Comment added');
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Không thể thêm bình luận');
+      toast.error(err?.message || 'Failed to add comment');
     },
   });
 };
@@ -85,10 +86,11 @@ export const useUpdateComment = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
-      toast.success('Đã cập nhật bình luận');
+      queryClient.invalidateQueries({ queryKey: ['page-comments'] });
+      toast.success('Comment updated');
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Không thể cập nhật bình luận');
+      toast.error(err?.message || 'Failed to update comment');
     },
   });
 };
@@ -101,10 +103,11 @@ export const useDeleteComment = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
-      toast.success('Đã xóa bình luận');
+      queryClient.invalidateQueries({ queryKey: ['page-comments'] });
+      toast.success('Comment deleted');
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Không thể xóa bình luận');
+      toast.error(err?.message || 'Failed to delete comment');
     },
   });
 };
@@ -125,10 +128,11 @@ export const useAddReply = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
-      toast.success('Đã trả lời bình luận');
+      queryClient.invalidateQueries({ queryKey: ['page-comments'] });
+      toast.success('Reply added');
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Không thể gửi phản hồi');
+      toast.error(err?.message || 'Failed to add reply');
     },
   });
 };
@@ -149,10 +153,11 @@ export const useResolveComment = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
-      toast.success(variables.resolved ? 'Đã giải quyết bình luận' : 'Đã mở lại bình luận');
+      queryClient.invalidateQueries({ queryKey: ['page-comments'] });
+      toast.success(variables.resolved ? 'Comment resolved' : 'Comment reopened');
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Không thể cập nhật trạng thái');
+      toast.error(err?.message || 'Failed to update status');
     },
   });
 };
@@ -173,10 +178,11 @@ export const useDeleteReply = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
-      toast.success('Đã xóa phản hồi');
+      queryClient.invalidateQueries({ queryKey: ['page-comments'] });
+      toast.success('Reply deleted');
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Không thể xóa phản hồi');
+      toast.error(err?.message || 'Failed to delete reply');
     },
   });
 };

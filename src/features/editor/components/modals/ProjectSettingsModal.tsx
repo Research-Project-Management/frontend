@@ -16,8 +16,7 @@ import {
   Check,
   Plus,
 } from 'lucide-react';
-import { toast } from 'sonner';
-import { spellingService } from '../../services/spelling.service';
+import { useSpellingDictionary } from '../../hooks/use-spelling';
 import { ProjectReferencesTab } from './ProjectReferencesTab';
 import { ProjectGithubTab } from './ProjectGithubTab';
 import { GitHubIcon } from '@/shared/components/icons';
@@ -208,50 +207,23 @@ export default function ProjectSettingsModal() {
   }, [projectFiles]);
 
   const [newWordInput, setNewWordInput] = useState('');
-  const { data: userWords = [], refetch: refetchUserWords } = useQuery({
-    queryKey: ['spelling-user-dictionary'],
-    queryFn: () => spellingService.getUserDictionary(),
-    enabled: settingsPanelOpen && activeTab === 'spelling',
-  });
+  const {
+    userWords,
+    projectWords,
+    addWord,
+    removeWord,
+  } = useSpellingDictionary(projectId, settingsPanelOpen && activeTab === 'spelling');
 
-  const { data: projectWords = [], refetch: refetchProjectWords } = useQuery({
-    queryKey: ['spelling-project-dictionary', projectId],
-    queryFn: () => (projectId ? spellingService.getProjectDictionary(projectId) : Promise.resolve([])),
-    enabled: settingsPanelOpen && activeTab === 'spelling' && !!projectId,
-  });
-
-  const handleAddWord = async (e: React.FormEvent) => {
+  const handleAddWord = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = newWordInput.trim().toLowerCase();
     if (!trimmed) return;
-    try {
-      if (projectId) {
-        await spellingService.learnProjectWord(projectId, trimmed);
-        refetchProjectWords();
-      } else {
-        await spellingService.learnUserWord(trimmed);
-        refetchUserWords();
-      }
-      setNewWordInput('');
-      toast.success(`Added "${trimmed}" to dictionary`);
-    } catch {
-      toast.error('Failed to add word to dictionary');
-    }
+    addWord({ word: trimmed, isProject: !!projectId });
+    setNewWordInput('');
   };
 
-  const handleRemoveWord = async (word: string, isProject: boolean) => {
-    try {
-      if (isProject && projectId) {
-        await spellingService.unlearnProjectWord(projectId, word);
-        refetchProjectWords();
-      } else {
-        await spellingService.unlearnUserWord(word);
-        refetchUserWords();
-      }
-      toast.success(`Removed "${word}" from dictionary`);
-    } catch {
-      toast.error(`Failed to remove "${word}"`);
-    }
+  const handleRemoveWord = (word: string, isProject: boolean) => {
+    removeWord({ word, isProject });
   };
 
   const navTabs = [

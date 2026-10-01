@@ -12,7 +12,6 @@ export function useAssignedWork() {
 
   return {
     state: {
-      workspaceId: source.workspaceId,
       allWorkItems: source.allWorkItems,
       assignedWorkItems,
       count: assignedWorkItems.length,

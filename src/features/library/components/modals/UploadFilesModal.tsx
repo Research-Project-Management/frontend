@@ -6,9 +6,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   UploadCloud,
   FileText,
-  X,
-  Upload,
-  Folder,
 } from 'lucide-react';
 
 import {
@@ -51,28 +48,16 @@ function formatFileSize(bytes: number): string {
 
 function getFileTypeBadge(filename: string) {
   const lower = filename.toLowerCase();
-  if (lower.endsWith('.pdf')) {
-    return (
-      <span className="px-1.5 py-0.5 rounded text-10 font-semibold bg-destructive/10 text-destructive border border-destructive/20 shrink-0">
-        PDF
-      </span>
-    );
-  }
-  if (lower.endsWith('.bib') || lower.endsWith('.bibtex')) {
-    return (
-      <span className="px-1.5 py-0.5 rounded text-10 font-semibold bg-primary/10 text-primary border border-primary/20 shrink-0">
-        BIB
-      </span>
-    );
-  }
-  if (lower.endsWith('.ris')) {
-    return (
-      <span className="px-1.5 py-0.5 rounded text-10 font-semibold bg-muted text-foreground border border-border shrink-0">
-        RIS
-      </span>
-    );
-  }
-  return <FileText className="size-4 text-muted-foreground shrink-0" strokeWidth={1.5} />;
+  let label = 'FILE';
+  if (lower.endsWith('.pdf')) label = 'PDF';
+  else if (lower.endsWith('.bib') || lower.endsWith('.bibtex')) label = 'BIB';
+  else if (lower.endsWith('.ris')) label = 'RIS';
+
+  return (
+    <span className="px-1.5 py-0.5 rounded text-10 font-medium bg-muted text-muted-foreground border border-border/70 shrink-0 font-mono">
+      {label}
+    </span>
+  );
 }
 
 export default function UploadFilesModal({
@@ -179,14 +164,6 @@ export default function UploadFilesModal({
     }
   };
 
-  const removeItem = (id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
-  };
-
-  const clearAll = () => {
-    setItems([]);
-  };
-
   const totalBytes = useMemo(() => {
     return items.reduce((acc, it) => acc + it.file.size, 0);
   }, [items]);
@@ -196,6 +173,15 @@ export default function UploadFilesModal({
     if (items.length === 0) return;
     const filesToUpload = items.map((i) => i.file);
     const targetCollection = selectedCollectionId || undefined;
+
+    // Save flag that user has uploaded before to bypass future confirmation modals
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('flux_has_uploaded_before', 'true');
+      } catch {
+        // Ignore quota/private browsing errors
+      }
+    }
 
     // Close upload modal immediately and reset staging state
     onOpenChange(false);
@@ -219,25 +205,24 @@ export default function UploadFilesModal({
           <DialogTitle className="text-15 font-semibold text-foreground tracking-tight">
             Upload Documents
           </DialogTitle>
-          <DialogDescription className="text-12 text-muted-foreground mt-0.5">
-            Add papers or bibliographic files. Raw files appear in your library immediately while metadata is extracted.
+          <DialogDescription className="sr-only">
+            Upload papers or bibliographic files.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3.5 min-h-0 flex-1 overflow-y-auto pr-0.5">
           {/* Target Collection Selector */}
-          <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-border/70 bg-muted/20 text-12">
-            <div className="flex items-center gap-2 text-muted-foreground font-medium shrink-0">
-              <Folder className="size-3.5 text-foreground/70" />
-              <span>Target Collection:</span>
-            </div>
+          <div className="flex items-center gap-2.5 text-12">
+            <span className="text-muted-foreground font-medium shrink-0">
+              Target Collection:
+            </span>
             <Select
               value={selectedCollectionId || 'root'}
               onValueChange={(val) => setSelectedCollectionId(val === 'root' ? '' : val)}
             >
               <SelectTrigger
                 aria-label="Collection"
-                className="h-7 text-12 text-foreground min-w-[160px] max-w-[240px] justify-between rounded-md border-border/80 bg-background shadow-2xs hover:border-foreground/30 cursor-pointer"
+                className="h-7 text-12 text-foreground w-auto min-w-[150px] max-w-[240px] justify-between rounded-md border-border/80 bg-background shadow-none hover:border-foreground/30 cursor-pointer"
               >
                 <SelectValue placeholder={rootLibraryName} />
               </SelectTrigger>
@@ -260,7 +245,7 @@ export default function UploadFilesModal({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border border-dashed rounded-lg transition-all text-center cursor-pointer select-none ${
+            className={`border border-dashed rounded-lg transition-colors text-center cursor-pointer select-none ${
               items.length > 0 ? 'py-4 px-4' : 'py-7 px-6'
             } ${
               isDragging
@@ -278,20 +263,16 @@ export default function UploadFilesModal({
             />
             <div className="flex flex-col items-center justify-center gap-2">
               <UploadCloud
-                className={`${items.length > 0 ? 'size-5' : 'size-6'} text-muted-foreground/70 transition-all`}
+                className={`${items.length > 0 ? 'size-5' : 'size-6'} text-muted-foreground/70 transition-colors`}
                 strokeWidth={1.5}
               />
               <div className="space-y-1">
                 <p className="text-13 font-medium text-foreground">
                   Drag and drop files here, or <span className="text-primary underline-offset-2 hover:underline">browse</span>
                 </p>
-                <div className="flex items-center justify-center gap-1.5 pt-0.5">
-                  <span className="text-11 text-muted-foreground">Supported formats:</span>
-                  <span className="px-1.5 py-0.5 rounded text-10 font-medium bg-destructive/10 text-destructive">PDF</span>
-                  <span className="px-1.5 py-0.5 rounded text-10 font-medium bg-primary/10 text-primary">BibTeX</span>
-                  <span className="px-1.5 py-0.5 rounded text-10 font-medium bg-muted text-foreground">RIS</span>
-                  <span className="text-11 text-muted-foreground">• max 100MB</span>
-                </div>
+                <p className="text-11 text-muted-foreground pt-0.5">
+                  Supported formats: PDF, BibTeX, RIS • max 100MB
+                </p>
               </div>
             </div>
           </div>
@@ -301,18 +282,11 @@ export default function UploadFilesModal({
             <div className="space-y-1.5 pt-0.5">
               <div className="flex items-center justify-between text-11 text-muted-foreground px-0.5 font-medium">
                 <span>
-                  {items.length} {items.length === 1 ? 'file' : 'files'} selected • {formatFileSize(totalBytes)}
+                  {items.length} {items.length === 1 ? 'file' : 'files'} in queue • {formatFileSize(totalBytes)}
                 </span>
-                <button
-                  type="button"
-                  onClick={clearAll}
-                  className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                >
-                  Clear all
-                </button>
               </div>
 
-              <div className="rounded-lg border border-border bg-background overflow-hidden shadow-2xs">
+              <div className="rounded-lg border border-border bg-background overflow-hidden">
                 <div className="max-h-[200px] overflow-y-auto divide-y divide-border/60">
                   {items.map((item) => (
                     <div
@@ -330,14 +304,6 @@ export default function UploadFilesModal({
                         <span className="text-11 text-muted-foreground font-mono tabular-nums">
                           {formatFileSize(item.file.size)}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => removeItem(item.id)}
-                          className="text-muted-foreground hover:text-destructive p-1 rounded hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                          title="Remove file"
-                        >
-                          <X className="size-3.5" />
-                        </button>
                       </div>
                     </div>
                   ))}
@@ -365,12 +331,9 @@ export default function UploadFilesModal({
             size="sm"
             disabled={items.length === 0}
             onClick={handleStartUpload}
-            className="text-12 h-8 px-4 gap-1.5 cursor-pointer font-medium"
+            className="text-12 h-8 px-4 cursor-pointer font-medium"
           >
-            <Upload className="size-3.5" />
-            <span>
-              Upload{items.length > 0 ? ` ${items.length} ${items.length === 1 ? 'File' : 'Files'}` : ''}
-            </span>
+            Upload{items.length > 0 ? ` ${items.length} ${items.length === 1 ? 'File' : 'Files'}` : ''}
           </Button>
         </div>
       </DialogContent>

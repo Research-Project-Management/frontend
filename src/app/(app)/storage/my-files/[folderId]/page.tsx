@@ -1,13 +1,18 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import MyFilesPage from '@/features/storage/pages/MyFilesPage';
+import HomePage from '@/features/storage/pages/HomePage';
 
 export const metadata: Metadata = { title: 'Folder · Storage · Flux' };
 
-export default function StorageFolderPage() {
+export default async function StorageFolderPage({
+  params,
+}: {
+  params: Promise<{ folderId: string }>;
+}) {
+  const { folderId } = await params;
   return (
     <Suspense fallback={null}>
-      <MyFilesPage />
+      <HomePage initialSection="my-files" initialFolderId={folderId} />
     </Suspense>
   );
 }

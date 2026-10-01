@@ -17,7 +17,11 @@ import {
 import { DRIVE_QUERY_OPTIONS } from './use-drive';
 import type { FileQueryParams } from '../services/drive.service';
 
-export function useTrash(scopeId?: string, params?: FileQueryParams) {
+export function useTrash(
+  scopeId?: string,
+  params?: FileQueryParams,
+  options?: { enabled?: boolean },
+) {
   return useInfiniteQuery({
     queryKey: [...storageKeys.workspaceTrashed(scopeId), 'infinite', params],
     queryFn: ({ pageParam = 1 }) =>
@@ -25,7 +29,7 @@ export function useTrash(scopeId?: string, params?: FileQueryParams) {
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
-    enabled: true,
+    enabled: options?.enabled !== undefined ? options.enabled : true,
     ...DRIVE_QUERY_OPTIONS,
   });
 }

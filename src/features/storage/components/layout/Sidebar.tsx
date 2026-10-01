@@ -2,7 +2,6 @@
 
 import { useId } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { motion, LayoutGroup } from 'framer-motion';
 import {
   Home,
@@ -14,21 +13,21 @@ import {
 } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 
+import { useStorageUIStore, buildStorageUrl, type StorageSection } from '../../store/storage-ui.store';
 import StorageQuotaWidget from './StorageQuotaWidget';
 
 export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
-  const pathname = usePathname();
   const id = useId();
-
-  const basePath = `/storage`;
+  const activeSection = useStorageUIStore((s) => s.activeSection);
+  const navigateToSection = useStorageUIStore((s) => s.navigateToSection);
 
   // Storage-specific navigation
-  const storageItems = [
-    { label: 'Home', icon: Home, to: basePath },
-    { label: 'All Files', icon: Folder, to: `${basePath}/my-files` },
-    { label: 'Shared', icon: Users, to: `${basePath}/shared` },
-    { label: 'Starred', icon: Star, to: `${basePath}/starred` },
-    { label: 'Trash', icon: Trash, to: `${basePath}/trash` },
+  const storageItems: { label: string; icon: any; section: StorageSection }[] = [
+    { label: 'Home', icon: Home, section: 'home' },
+    { label: 'All Files', icon: Folder, section: 'my-files' },
+    { label: 'Shared', icon: Users, section: 'shared' },
+    { label: 'Starred', icon: Star, section: 'starred' },
+    { label: 'Trash', icon: Trash, section: 'trash' },
   ];
 
   return (
@@ -53,14 +52,19 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
             className='flex flex-col gap-1 max-md:flex-row max-md:overflow-x-auto max-md:no-scrollbar max-md:py-0.5 max-md:gap-1.5'
           >
             {storageItems.map((item) => {
-              const isActive = pathname === item.to || (item.to !== basePath && pathname.startsWith(item.to));
+              const isActive = activeSection === item.section;
+              const href = buildStorageUrl(item.section);
               return (
                 <Link
-                  href={item.to}
+                  href={href}
                   key={item.label}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigateToSection(item.section);
+                  }}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
-                    'group relative flex h-8 items-center gap-2 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none max-md:shrink-0 max-md:h-8 max-md:px-3 max-md:rounded-full',
+                    'group relative flex h-8 items-center gap-2 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none max-md:shrink-0 max-md:h-8 max-md:px-3 max-md:rounded-full cursor-pointer',
                     isActive
                       ? 'bg-muted text-foreground font-medium'
                       : 'text-foreground hover:bg-muted font-normal'

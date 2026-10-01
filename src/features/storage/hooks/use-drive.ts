@@ -36,6 +36,7 @@ export function useHomeFiles(
   scopeId?: string,
   parentId?: string | null,
   queryParams?: FileQueryParams,
+  options?: { enabled?: boolean },
 ) {
   const mergedParams: FileQueryParams = {
     parentId: parentId ?? undefined,
@@ -49,16 +50,16 @@ export function useHomeFiles(
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
-    enabled: true,
+    enabled: options?.enabled !== undefined ? options.enabled : true,
     ...DRIVE_QUERY_OPTIONS,
   });
 }
 
-export function useDriveFiles(scopeId?: string, parentId?: string | null) {
+export function useDriveFiles(scopeId?: string, parentId?: string | null, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: storageKeys.driveFiles(scopeId, parentId),
     queryFn: () => getAllFiles(scopeId, parentId),
-    enabled: true,
+    enabled: options?.enabled !== undefined ? options.enabled : true,
     ...DRIVE_QUERY_OPTIONS,
   });
 }
@@ -70,7 +71,11 @@ function createInfiniteStorageQuery(
   getKey: (scopeId?: string) => readonly unknown[],
   fetcher: (scopeId?: string, params?: FileQueryParams) => Promise<any>,
 ) {
-  return function useInfiniteStorage(scopeId?: string, params?: FileQueryParams) {
+  return function useInfiniteStorage(
+    scopeId?: string,
+    params?: FileQueryParams,
+    options?: { enabled?: boolean },
+  ) {
     return useInfiniteQuery({
       queryKey: [...getKey(scopeId), 'infinite', params],
       queryFn: ({ pageParam = 1 }) =>
@@ -78,7 +83,7 @@ function createInfiniteStorageQuery(
       initialPageParam: 1,
       getNextPageParam: (lastPage) =>
         lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
-      enabled: true,
+      enabled: options?.enabled !== undefined ? options.enabled : true,
       ...DRIVE_QUERY_OPTIONS,
     });
   };

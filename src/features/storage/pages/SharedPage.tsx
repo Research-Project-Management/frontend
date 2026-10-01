@@ -1,20 +1,7 @@
-﻿'use client';
+'use client';
 
-import { Share2 } from 'lucide-react';
-import { useSharedFiles, useToggleStarItem, useDeleteItem } from '@/features/storage/hooks/use-storage';
-import { StoragePageTemplate } from '../components/layout/StoragePageTemplate';
+import HomePage from './HomePage';
 
 export default function WorkspaceSharedPage() {
-  const { mutateAsync: handleToggleStar } = useToggleStarItem();
-  const { mutateAsync: handleDelete } = useDeleteItem();
-
-  return (
-    <StoragePageTemplate
-      title="Shared"
-      icon={Share2}
-      useFilesHook={useSharedFiles}
-      onToggleStar={handleToggleStar}
-      onDelete={handleDelete}
-    />
-  );
+  return <HomePage initialSection="shared" />;
 }

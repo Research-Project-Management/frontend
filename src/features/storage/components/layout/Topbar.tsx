@@ -1,5 +1,4 @@
 import React from 'react';
-import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { cn } from "@/shared/lib/utils";
 import {
@@ -44,6 +43,8 @@ import { useViewStore } from '../../store/use-view-store';
 import { StorageFilterPopover } from '../filters/StorageFilterPopover';
 import StorageQuotaWidget from './StorageQuotaWidget';
 
+import { useStorageUIStore, type StorageSection } from '../../store/storage-ui.store';
+
 export interface BreadcrumbItem {
   id: string | null;
   name: string;
@@ -62,12 +63,12 @@ interface TopbarProps {
   className?: string;
 }
 
-const STORAGE_NAV_SECTIONS = [
-  { label: 'Home', icon: Home, to: '/storage' },
-  { label: 'All Files', icon: Folder, to: '/storage/my-files' },
-  { label: 'Shared', icon: Users, to: '/storage/shared' },
-  { label: 'Starred', icon: Star, to: '/storage/starred' },
-  { label: 'Trash', icon: Trash, to: '/storage/trash' },
+const STORAGE_NAV_SECTIONS: { label: string; icon: any; section: StorageSection }[] = [
+  { label: 'Home', icon: Home, section: 'home' },
+  { label: 'All Files', icon: Folder, section: 'my-files' },
+  { label: 'Shared', icon: Users, section: 'shared' },
+  { label: 'Starred', icon: Star, section: 'starred' },
+  { label: 'Trash', icon: Trash, section: 'trash' },
 ];
 
 export default function Topbar({
@@ -82,8 +83,8 @@ export default function Topbar({
   children,
   className,
 }: TopbarProps) {
-  const pathname = usePathname();
-  const router = useRouter();
+  const activeSection = useStorageUIStore((s) => s.activeSection);
+  const navigateToSection = useStorageUIStore((s) => s.navigateToSection);
 
   const {
     isSearchExpanded,
@@ -176,14 +177,12 @@ export default function Topbar({
                     Storage
                   </div>
                   {STORAGE_NAV_SECTIONS.map((sec) => {
-                    const isActive =
-                      pathname === sec.to ||
-                      (sec.to !== '/storage' && pathname.startsWith(sec.to));
+                    const isActive = activeSection === sec.section;
                     const SecIcon = sec.icon;
                     return (
                       <DropdownMenuItem
-                        key={sec.to}
-                        onClick={() => router.push(sec.to)}
+                        key={sec.section}
+                        onClick={() => navigateToSection(sec.section)}
                         className={cn(
                           "flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer text-xs transition-colors",
                           isActive

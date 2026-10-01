@@ -215,7 +215,7 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
         onCloseAutoFocus={(e) => e.preventDefault()}
         className="sm:max-w-lg p-0 gap-0 overflow-hidden bg-popover text-popover-foreground border border-border rounded-lg "
       >
-        <DialogHeader className="px-5 py-4 border-b border-border">
+        <DialogHeader className="px-5 py-4 pr-10 border-b border-border">
           <div className="flex items-center gap-2">
             <div className="size-8 rounded-md bg-muted text-primary flex items-center justify-center shrink-0">
               <FolderInput className="size-4 shrink-0" />

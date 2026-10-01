@@ -29,7 +29,7 @@ export function StorageViewContainer({
   const { view } = useViewStore();
 
   return (
-    <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
+    <div className="flex-1 overflow-auto p-2.5 sm:p-4 md:p-6 bg-background">
       {isLoading ? (
         <div className="space-y-4">
           <Skeleton className="h-9 w-full rounded-md" />

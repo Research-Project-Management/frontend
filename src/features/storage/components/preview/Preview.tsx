@@ -137,41 +137,48 @@ export default function Preview() {
   ];
 
   return (
-    <div className="w-[320px] shrink-0 h-full border-l border-border bg-background flex flex-col overflow-hidden animate-in slide-in-from-right-3 duration-200 ease-out">
-      {/* ─── Header ──────────────────────────────────────────────────── */}
-      <div className="flex items-start gap-3 px-4 py-3.5 border-b border-border bg-muted/20">
-        <span className="mt-0.5 shrink-0 [&>svg]:size-5" style={{ color }}>
-          {getFileIcon(fileType, 4)}
-        </span>
+    <div
+      className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-end md:static md:z-auto md:bg-transparent md:backdrop-blur-none"
+      onClick={() => setSelectedItem(null)}
+    >
+      <div
+        className="w-full sm:w-[380px] md:w-[320px] shrink-0 h-full border-l border-border bg-background flex flex-col overflow-hidden animate-in slide-in-from-right duration-200 ease-out shadow-2xl md:shadow-none"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* ─── Header ──────────────────────────────────────────────────── */}
+        <div className="flex items-start gap-3 px-4 py-3.5 border-b border-border bg-muted/20">
+          <span className="mt-0.5 shrink-0 [&>svg]:size-5" style={{ color }}>
+            {getFileIcon(fileType, 4)}
+          </span>
 
-        <div className="flex-1 min-w-0">
-          <p
-            className="text-sm font-semibold text-foreground leading-snug break-words line-clamp-2 pr-1"
-            title={item.filename}
-          >
-            {item.filename}
-          </p>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-xs text-muted-foreground/70 truncate">
-              {formatMimeType(item as any)}
-            </span>
-            {item.starred && (
-              <Star className="size-3 fill-amber-400 text-amber-400 shrink-0" />
-            )}
+          <div className="flex-1 min-w-0">
+            <p
+              className="text-sm font-semibold text-foreground leading-snug break-words line-clamp-2 pr-1"
+              title={item.filename}
+            >
+              {item.filename}
+            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-xs text-muted-foreground/70 truncate">
+                {formatMimeType(item as any)}
+              </span>
+              {item.starred && (
+                <Star className="size-3 fill-amber-400 text-amber-400 shrink-0" />
+              )}
+            </div>
           </div>
+
+          <button
+            onClick={() => setSelectedItem(null)}
+            aria-label="Close preview"
+            className="mt-0.5 shrink-0 size-8 md:size-6 flex items-center justify-center rounded-md hover:bg-muted transition-colors text-muted-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
+          >
+            <X className="size-4 shrink-0" />
+          </button>
         </div>
 
-        <button
-          onClick={() => setSelectedItem(null)}
-          aria-label="Close preview"
-          className="mt-0.5 shrink-0 size-6 flex items-center justify-center rounded hover:bg-muted transition-colors text-muted-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
-        >
-          <X className="size-4 shrink-0" />
-        </button>
-      </div>
-
-      {/* ─── Scrollable body ─────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto">
+        {/* ─── Scrollable body ─────────────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto">
         {/* Thumbnail preview zone */}
         <div
           className="relative border-b border-border flex items-center justify-center h-44 overflow-hidden shrink-0"
@@ -387,6 +394,7 @@ export default function Preview() {
           file={item as any}
         />
       )}
+      </div>
     </div>
   );
 }

@@ -39,7 +39,7 @@ export function DeleteModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-[520px] p-0 overflow-hidden border border-border shadow-raised-200">
-        <div className="p-6">
+        <div className="p-6 pr-12">
           <DialogHeader className="flex flex-row items-start gap-4 space-y-0">
             <div className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
               <Trash2 className="size-5 shrink-0" />

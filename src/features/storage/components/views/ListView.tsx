@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Star,
   Folder,
@@ -13,16 +13,21 @@ import {
   Square,
   MinusSquare,
   Loader2,
+  Info,
+  History,
+  Table2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { Button } from "@/shared/components/ui";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/components/ui";
 import { DeleteModal } from '../modal/DeleteModal';
 import { resolveFileUrl } from "@/shared/lib/file-client";
+import { cn } from "@/shared/lib/utils";
 import { useInfiniteSentinel } from '../../hooks/use-infinite-sentinel';
 import type { StorageItem } from '@/features/storage/types/storage.types';
 import { useStorageUIStore } from '@/features/storage/store/storage-ui.store';
+import { usePreviewStore } from '@/features/storage/store/use-preview-store';
 import StorageEmptyState from '../layout/StorageEmptyState';
 import {
   getFileType,
@@ -94,6 +99,7 @@ type ItemActionsProps = {
   isTrash?: boolean;
   onMoveToParent?: (item: StorageItem) => void;
   onOpenLocation?: (item: StorageItem) => void;
+  alwaysVisible?: boolean;
 };
 
 export function ItemActions({
@@ -103,21 +109,32 @@ export function ItemActions({
   onRestore,
   onDownload,
   isTrash,
-  onMoveToParent,
   onOpenLocation,
+  alwaysVisible = false,
 }: ItemActionsProps) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteDone, setIsDeleteDone] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
 
-  const handleRenameClick = () => {
-    useStorageUIStore.getState().openRenameModal(item);
-  };
+  const setSelectedItem = usePreviewStore((s) => s.setSelectedItem);
+  const openRenameModal = useStorageUIStore((s) => s.openRenameModal);
+  const openMoveModal = useStorageUIStore((s) => s.openMoveModal);
+  const openVersionModal = useStorageUIStore((s) => s.openVersionModal);
+  const openScientificViewer = useStorageUIStore((s) => s.openScientificViewer);
 
-  const handleMoveClick = () => {
-    useStorageUIStore.getState().openMoveModal(item);
-  };
+  const ext = item.filename.split('.').pop()?.toLowerCase() || '';
+  const isScientificText = [
+    'csv',
+    'tsv',
+    'ipynb',
+    'tex',
+    'md',
+    'json',
+    'py',
+    'txt',
+    'bib',
+  ].includes(ext);
 
   const handleConfirmDelete = async () => {
     setIsDeleting(true);
@@ -162,7 +179,7 @@ export function ItemActions({
         <Button
           variant="ghost"
           size="icon"
-          className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
+          className="hidden sm:inline-flex size-7 text-muted-foreground hover:text-foreground cursor-pointer"
           onClick={() => onToggleStar?.(item.id)}
           title={item.starred ? "Unstar" : "Star"}
         >
@@ -174,7 +191,7 @@ export function ItemActions({
         <Button
           variant="ghost"
           size="icon"
-          className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
+          className="hidden sm:inline-flex size-7 text-muted-foreground hover:text-foreground cursor-pointer"
           onClick={() => onDownload(item)}
           title="Download"
         >
@@ -211,35 +228,89 @@ export function ItemActions({
             <Button
               variant="ghost"
               size="icon"
-              className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
+              className={cn(
+                "size-8 sm:size-7 text-muted-foreground hover:text-foreground cursor-pointer rounded-md",
+                alwaysVisible ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+              )}
+              aria-label="Item actions"
             >
-              <MoreVertical className="size-3.5 shrink-0" />
+              <MoreVertical className="size-4 sm:size-3.5 shrink-0" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44 text-xs">
-            <DropdownMenuItem onClick={handleRenameClick} className="gap-2 cursor-pointer">
-              <Pencil className="size-3.5 shrink-0" />
+          <DropdownMenuContent align="end" className="w-52 text-xs p-1">
+            <DropdownMenuItem
+              onClick={() => setSelectedItem(item)}
+              className="gap-2 cursor-pointer"
+            >
+              <Info className="size-3.5 shrink-0 text-muted-foreground" />
+              <span>Details & preview</span>
+            </DropdownMenuItem>
+
+            {!item.isFolder && (
+              <DropdownMenuItem
+                onClick={() => openVersionModal(item)}
+                className="gap-2 cursor-pointer"
+              >
+                <History className="size-3.5 shrink-0 text-muted-foreground" />
+                <span>Version history</span>
+              </DropdownMenuItem>
+            )}
+
+            {isScientificText && (
+              <DropdownMenuItem
+                onClick={() => openScientificViewer(item)}
+                className="gap-2 text-primary focus:text-primary cursor-pointer"
+              >
+                <Table2 className="size-3.5 shrink-0" />
+                <span>View dataset & code</span>
+              </DropdownMenuItem>
+            )}
+
+            {!item.isFolder && (
+              <DropdownMenuItem
+                onClick={() => onDownload(item)}
+                className="gap-2 cursor-pointer sm:hidden"
+              >
+                <Download className="size-3.5 shrink-0 text-muted-foreground" />
+                <span>Download</span>
+              </DropdownMenuItem>
+            )}
+
+            <DropdownMenuItem
+              onClick={() => onToggleStar?.(item.id)}
+              className="gap-2 cursor-pointer sm:hidden"
+            >
+              <Star className={cn("size-3.5 shrink-0", item.starred ? "fill-amber-400 text-amber-400" : "text-muted-foreground")} />
+              <span>{item.starred ? "Remove star" : "Add star"}</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator className="my-1" />
+
+            <DropdownMenuItem onClick={() => openRenameModal(item)} className="gap-2 cursor-pointer">
+              <Pencil className="size-3.5 shrink-0 text-muted-foreground" />
               <span>Rename</span>
             </DropdownMenuItem>
 
-            <DropdownMenuItem onClick={handleMoveClick} className="gap-2 cursor-pointer">
-              <FolderInput className="size-3.5 shrink-0" />
-              <span>Move</span>
+            <DropdownMenuItem onClick={() => openMoveModal(item)} className="gap-2 cursor-pointer">
+              <FolderInput className="size-3.5 shrink-0 text-muted-foreground" />
+              <span>Move to…</span>
             </DropdownMenuItem>
 
             {onOpenLocation && (
               <DropdownMenuItem onClick={() => onOpenLocation(item)} className="gap-2 cursor-pointer">
-                <FolderSymlink className="size-3.5 shrink-0" />
+                <FolderSymlink className="size-3.5 shrink-0 text-muted-foreground" />
                 <span>Go to location</span>
               </DropdownMenuItem>
             )}
+
+            <DropdownMenuSeparator className="my-1" />
 
             <DropdownMenuItem
               onClick={() => setIsDeleteModalOpen(true)}
               className="gap-2 text-destructive focus:text-destructive cursor-pointer"
             >
               <Trash2 className="size-3.5 shrink-0" />
-              <span>Delete</span>
+              <span>{isTrash ? "Delete permanently" : "Move to trash"}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -310,8 +381,8 @@ export default function ListView({
 
   return (
     <div className="rounded-lg overflow-hidden select-none">
-      {/* Header - Google Drive style */}
-      <div className="grid grid-cols-12 gap-3 px-4 py-2 type-dense font-medium text-foreground border-b border-border select-none">
+      {/* Desktop Header - Google Drive style */}
+      <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-2 type-dense font-medium text-foreground border-b border-border select-none">
         <div className="col-span-5 flex items-center gap-3">
           {!isReadOnly && (
             <button
@@ -362,7 +433,7 @@ export default function ListView({
                     }
                   }}
                   {...createFolderDropHandlers(item, isReadOnly, onDropOnFolder, setDragOverFolderId)}
-                  className={`grid grid-cols-12 gap-3 items-center px-4 py-2 hover:bg-muted cursor-pointer group transition-colors select-none ${
+                  className={`hover:bg-muted cursor-pointer group transition-colors select-none ${
                     isSelected ? "bg-muted font-medium text-foreground" : ""
                   } ${dragOverFolderId === item.id ? "bg-muted ring-1 ring-muted-foreground/30" : ""}`}
                   onClick={(e: React.MouseEvent) => {
@@ -383,87 +454,157 @@ export default function ListView({
                     }
                   }}
                 >
-                  <div className="col-span-5 flex items-center gap-3 min-w-0 overflow-hidden">
-                    {!isReadOnly && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (e.shiftKey) {
-                            selectRange(allItemIds, item.id);
-                          } else {
+                  {/* Desktop 12-column grid layout */}
+                  <div className="hidden md:grid grid-cols-12 gap-3 items-center px-4 py-2">
+                    <div className="col-span-5 flex items-center gap-3 min-w-0 overflow-hidden">
+                      {!isReadOnly && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (e.shiftKey) {
+                              selectRange(allItemIds, item.id);
+                            } else {
+                              toggleSelect(item.id);
+                            }
+                          }}
+                          className={`size-4 flex items-center justify-center transition-opacity cursor-pointer shrink-0 ${
+                            isMultiSelected
+                              ? "opacity-100 text-primary"
+                              : "opacity-0 group-hover:opacity-60 hover:opacity-100 text-muted-foreground"
+                          }`}
+                          title={isMultiSelected ? "Deselect" : "Select"}
+                        >
+                          {isMultiSelected ? (
+                            <CheckSquare className="size-4 text-primary shrink-0" />
+                          ) : (
+                            <Square className="size-4 shrink-0" />
+                          )}
+                        </button>
+                      )}
+
+                      <FileIconItem item={item} />
+                      <span className="text-sm truncate font-medium text-foreground" title={item.filename}>
+                        {item.filename}
+                      </span>
+                      {item.starred && (
+                        <Star className="size-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                      )}
+                    </div>
+
+                    <div className="col-span-2 flex items-center gap-2 min-w-0 overflow-hidden">
+                      {item.isFolder ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : (
+                        <>
+                          {item.author?.avatar ? (
+                            <img
+                              src={resolveFileUrl(item.author.avatar) || ""}
+                              alt=""
+                              className="size-5 rounded-full shrink-0 object-cover"
+                            />
+                          ) : (
+                            <div className="size-5 rounded-full bg-muted flex items-center justify-center shrink-0">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                {item.author?.name?.charAt(0)?.toUpperCase() || "?"}
+                              </span>
+                            </div>
+                          )}
+                          <span className="text-xs text-muted-foreground truncate">
+                            {item.author?.name || "—"}
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="col-span-2 text-xs text-muted-foreground">
+                      {formatDate(item.updatedAt)}
+                    </div>
+
+                    <div className="col-span-1 text-xs text-muted-foreground">
+                      {item.isFolder ? "—" : formatFileSize(item.size)}
+                    </div>
+
+                    <div className="col-span-2 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                      {!isReadOnly && (
+                        <ItemActions
+                          item={item}
+                          onToggleStar={onToggleStar}
+                          onDelete={onDelete}
+                          onRestore={onRestore}
+                          onDownload={onDownload}
+                          isTrash={isTrash}
+                          onMoveToParent={onMoveToParent}
+                          onOpenLocation={onOpenLocation}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Mobile High-Density List Item Card */}
+                  <div className="flex md:hidden items-center justify-between px-3 py-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      {/* Checkbox */}
+                      {!isReadOnly && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
                             toggleSelect(item.id);
-                          }
-                        }}
-                        className={`size-4 flex items-center justify-center transition-opacity cursor-pointer shrink-0 ${
-                          isMultiSelected
-                            ? "opacity-100 text-primary"
-                            : "opacity-0 group-hover:opacity-60 hover:opacity-100 text-muted-foreground"
-                        }`}
-                        title={isMultiSelected ? "Deselect" : "Select"}
-                      >
-                        {isMultiSelected ? (
-                          <CheckSquare className="size-4 text-primary shrink-0" />
-                        ) : (
-                          <Square className="size-4 shrink-0" />
-                        )}
-                      </button>
-                    )}
+                          }}
+                          className={`size-6 rounded flex items-center justify-center shrink-0 cursor-pointer ${
+                            isMultiSelected ? "text-primary" : "text-muted-foreground/50 hover:text-foreground"
+                          }`}
+                          title={isMultiSelected ? "Deselect" : "Select"}
+                        >
+                          {isMultiSelected ? (
+                            <CheckSquare className="size-4.5 text-primary shrink-0" />
+                          ) : (
+                            <Square className="size-4.5 shrink-0" />
+                          )}
+                        </button>
+                      )}
 
-                    <FileIconItem item={item} />
-                    <span className="text-sm truncate font-medium text-foreground" title={item.filename}>
-                      {item.filename}
-                    </span>
-                    {item.starred && (
-                      <Star className="size-3.5 fill-amber-400 text-amber-400 shrink-0" />
-                    )}
-                  </div>
+                      <div className="size-9 rounded-lg bg-muted/60 flex items-center justify-center shrink-0">
+                        <FileIconItem item={item} />
+                      </div>
 
-                  <div className="col-span-2 flex items-center gap-2 min-w-0 overflow-hidden">
-                    {item.isFolder ? (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    ) : (
-                      <>
-                        {item.author?.avatar ? (
-                          <img
-                            src={resolveFileUrl(item.author.avatar) || ""}
-                            alt=""
-                            className="size-5 rounded-full shrink-0 object-cover"
-                          />
-                        ) : (
-                          <div className="size-5 rounded-full bg-muted flex items-center justify-center shrink-0">
-                            <span className="text-xs font-medium text-muted-foreground">
-                              {item.author?.name?.charAt(0)?.toUpperCase() || "?"}
-                            </span>
-                          </div>
-                        )}
-                        <span className="text-xs text-muted-foreground truncate">
-                          {item.author?.name || "—"}
-                        </span>
-                      </>
-                    )}
-                  </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs sm:text-sm font-medium text-foreground truncate" title={item.filename}>
+                            {item.filename}
+                          </span>
+                          {item.starred && (
+                            <Star className="size-3 fill-amber-400 text-amber-400 shrink-0" />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-11 text-muted-foreground mt-0.5">
+                          <span>{item.isFolder ? 'Folder' : formatFileSize(item.size)}</span>
+                          <span>•</span>
+                          <span>{formatDate(item.updatedAt)}</span>
+                          {item.author?.name && (
+                            <>
+                              <span>•</span>
+                              <span className="truncate max-w-[80px]">{item.author.name}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
 
-                  <div className="col-span-2 text-xs text-muted-foreground">
-                    {formatDate(item.updatedAt)}
-                  </div>
-
-                  <div className="col-span-1 text-xs text-muted-foreground">
-                    {item.isFolder ? "—" : formatFileSize(item.size)}
-                  </div>
-
-                  <div className="col-span-2 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                    {!isReadOnly && (
-                      <ItemActions
-                        item={item}
-                        onToggleStar={onToggleStar}
-                        onDelete={onDelete}
-                        onRestore={onRestore}
-                        onDownload={onDownload}
-                        isTrash={isTrash}
-                        onMoveToParent={onMoveToParent}
-                        onOpenLocation={onOpenLocation}
-                      />
-                    )}
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      {!isReadOnly && (
+                        <ItemActions
+                          item={item}
+                          onToggleStar={onToggleStar}
+                          onDelete={onDelete}
+                          onRestore={onRestore}
+                          onDownload={onDownload}
+                          isTrash={isTrash}
+                          onMoveToParent={onMoveToParent}
+                          onOpenLocation={onOpenLocation}
+                          alwaysVisible
+                        />
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               );

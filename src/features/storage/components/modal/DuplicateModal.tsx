@@ -47,7 +47,7 @@ export default function DuplicateModal({
         onCloseAutoFocus={(e) => e.preventDefault()}
         className="sm:max-w-md p-6 overflow-hidden gap-0 border-border bg-popover"
       >
-        <DialogHeader className="mb-4">
+        <DialogHeader className="mb-4 pr-8">
           <DialogTitle className="text-lg leading-snug font-semibold text-foreground">
             File already exists
           </DialogTitle>

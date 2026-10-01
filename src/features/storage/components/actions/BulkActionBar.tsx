@@ -138,12 +138,12 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 30, scale: 0.95 }}
           transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[calc(100vw-2rem)] flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-popover border border-border text-popover-foreground text-xs select-none overflow-x-auto"
+          className="fixed bottom-16 sm:bottom-4 left-1/2 -translate-x-1/2 z-40 max-w-[calc(100vw-1rem)] sm:max-w-max flex items-center gap-1 sm:gap-1.5 p-1 sm:px-3 sm:py-1.5 rounded-xl bg-popover border border-border text-popover-foreground text-xs select-none overflow-x-auto shadow-xl"
         >
           {/* Select all checkbox toggle */}
           <button
             onClick={handleToggleSelectAll}
-            className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-muted transition-colors font-medium cursor-pointer shrink-0"
+            className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1 rounded-md hover:bg-muted transition-colors font-medium cursor-pointer shrink-0"
             title={allSelected ? 'Deselect all' : 'Select all'}
           >
             {allSelected ? (
@@ -151,12 +151,12 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
             ) : (
               <Square className="size-4 text-muted-foreground shrink-0" />
             )}
-            <span className="text-foreground font-semibold">
-              {selectedCount} selected
+            <span className="text-foreground font-semibold whitespace-nowrap">
+              {selectedCount} <span className="hidden sm:inline">selected</span>
             </span>
           </button>
 
-          <div className="h-4 w-px bg-border mx-1 shrink-0" />
+          <div className="h-4 w-px bg-border mx-0.5 sm:mx-1 shrink-0" />
 
           {/* Action buttons */}
           {!isTrash && (
@@ -164,7 +164,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer shrink-0 rounded-md"
+                className="h-8 px-2 sm:px-2.5 text-xs gap-1 sm:gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer shrink-0 rounded-md"
                 onClick={handleBulkDownload}
                 disabled={isDownloading}
                 title="Download selected items as ZIP archive"
@@ -174,13 +174,14 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
                 ) : (
                   <Download className="size-3.5 shrink-0" />
                 )}
-                Download ZIP
+                <span className="hidden sm:inline">Download ZIP</span>
+                <span className="sm:hidden">ZIP</span>
               </Button>
 
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer shrink-0 rounded-md"
+                className="h-8 px-2 sm:px-2.5 text-xs gap-1 sm:gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer shrink-0 rounded-md"
                 onClick={handleBulkStar}
                 disabled={isStarring}
                 title={hasUnstarred ? 'Star selected' : 'Unstar selected'}
@@ -196,7 +197,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer shrink-0 rounded-md"
+                className="h-8 px-2 sm:px-2.5 text-xs gap-1 sm:gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer shrink-0 rounded-md"
                 onClick={() => {
                   useStorageUIStore.getState().openMoveModal(selectedItems);
                 }}
@@ -213,7 +214,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2.5 text-xs gap-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer shrink-0 rounded-md"
+                className="h-8 px-2 sm:px-2.5 text-xs gap-1 sm:gap-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer shrink-0 rounded-md"
                 onClick={handleBulkRestore}
                 disabled={isRestoring}
                 title="Restore selected items"
@@ -229,20 +230,21 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2.5 text-xs gap-1.5 text-destructive hover:bg-destructive/10 cursor-pointer shrink-0 rounded-md"
+                className="h-8 px-2 sm:px-2.5 text-xs gap-1 sm:gap-1.5 text-destructive hover:bg-destructive/10 cursor-pointer shrink-0 rounded-md"
                 onClick={() => setIsDeleteModalOpen(true)}
                 disabled={isPermanentDeleting}
                 title="Delete selected items permanently"
               >
                 <Trash2 className="size-3.5 shrink-0" />
-                Delete permanently
+                <span className="hidden sm:inline">Delete permanently</span>
+                <span className="sm:hidden">Delete</span>
               </Button>
             </>
           ) : (
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 px-2.5 text-xs gap-1.5 text-destructive hover:bg-destructive/10 cursor-pointer shrink-0 rounded-md"
+              className="h-8 px-2 sm:px-2.5 text-xs gap-1 sm:gap-1.5 text-destructive hover:bg-destructive/10 cursor-pointer shrink-0 rounded-md"
               onClick={() => setIsDeleteModalOpen(true)}
               disabled={isDeleting}
               title="Move selected items to trash"

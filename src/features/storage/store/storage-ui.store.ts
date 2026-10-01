@@ -17,6 +17,16 @@ interface StorageUIState {
   openMoveModal: (target: StorageItem[] | StorageItem) => void;
   closeMoveModal: () => void;
 
+  // Version History Modal
+  versionModalItem: StorageItem | null;
+  openVersionModal: (item: StorageItem) => void;
+  closeVersionModal: () => void;
+
+  // Scientific Viewer Modal
+  scientificViewerItem: StorageItem | null;
+  openScientificViewer: (item: StorageItem) => void;
+  closeScientificViewer: () => void;
+
   // Upload Trigger
   uploadTriggerCount: number;
   triggerUpload: () => void;
@@ -41,6 +51,14 @@ export const useStorageUIStore = create<StorageUIState>((set) => ({
       movingItems: Array.isArray(target) ? target : [target],
     }),
   closeMoveModal: () => set({ movingItems: [] }),
+
+  versionModalItem: null,
+  openVersionModal: (item) => set({ versionModalItem: item }),
+  closeVersionModal: () => set({ versionModalItem: null }),
+
+  scientificViewerItem: null,
+  openScientificViewer: (item) => set({ scientificViewerItem: item }),
+  closeScientificViewer: () => set({ scientificViewerItem: null }),
 
   uploadTriggerCount: 0,
   triggerUpload: () => set((s) => ({ uploadTriggerCount: s.uploadTriggerCount + 1 })),

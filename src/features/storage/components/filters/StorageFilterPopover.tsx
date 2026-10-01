@@ -86,7 +86,7 @@ export function StorageFilterPopover() {
                 variant="outline"
                 size="icon"
                 className={cn(
-                  'relative size-8 rounded-md bg-transparent border border-border hover:bg-muted cursor-pointer outline-none transition-colors',
+                  'relative size-8 rounded-md bg-transparent border border-border hover:bg-muted cursor-pointer outline-none transition-colors shrink-0',
                   isActive &&
                     'bg-muted border-primary text-primary hover:bg-muted hover:text-primary'
                 )}
@@ -108,15 +108,15 @@ export function StorageFilterPopover() {
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-80 p-3 rounded-md border border-border bg-popover text-popover-foreground z-50 select-none animate-in fade-in-0 zoom-in-95"
+        className="w-64 sm:w-72 p-2.5 rounded-xl border border-border bg-popover text-popover-foreground z-50 select-none animate-in fade-in-0 zoom-in-95 shadow-xl"
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-border">
+        <div className="flex items-center justify-between pb-2 mb-1.5 border-b border-border">
           <div className="flex items-center gap-1.5">
             <ListFilter className="size-3.5 text-primary shrink-0" />
             <span className="text-xs font-semibold text-foreground">Filter & Sort</span>
             {activeCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-10 font-semibold bg-muted border border-border text-foreground">
+              <span className="px-1.5 py-0.2 rounded-full text-10 font-semibold bg-primary/10 border border-primary/20 text-primary">
                 {activeCount}
               </span>
             )}
@@ -124,15 +124,15 @@ export function StorageFilterPopover() {
           {isActive && (
             <button
               onClick={resetFilters}
-              className="flex items-center gap-1 text-11 font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none"
+              className="flex items-center gap-1 text-10 font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none"
             >
-              <RotateCcw className="size-3 shrink-0" />
+              <RotateCcw className="size-2.5 shrink-0" />
               Reset all
             </button>
           )}
         </div>
 
-        <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+        <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-0.5">
           {/* 1. File Type Section */}
           <div>
             <button
@@ -174,7 +174,7 @@ export function StorageFilterPopover() {
                         }
                       }}
                       className={cn(
-                        'flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs cursor-pointer transition-colors',
+                        'flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs cursor-pointer transition-colors',
                         isChecked
                           ? 'bg-accent text-foreground font-medium'
                           : 'hover:bg-muted text-foreground'
@@ -183,10 +183,10 @@ export function StorageFilterPopover() {
                       <Checkbox
                         checked={isChecked}
                         tabIndex={-1}
-                        className="pointer-events-none"
+                        className="pointer-events-none size-3.5"
                       />
                       <Icon className="size-3.5 text-muted-foreground shrink-0" />
-                      <span className="flex-1 truncate">{opt.label}</span>
+                      <span className="flex-1 truncate text-xs">{opt.label}</span>
                     </div>
                   );
                 })}
@@ -195,7 +195,7 @@ export function StorageFilterPopover() {
           </div>
 
           {/* 2. Sort By Section */}
-          <div className="border-t border-border pt-2.5">
+          <div className="border-t border-border pt-2">
             <button
               type="button"
               onClick={() => setIsSortOpen(!isSortOpen)}
@@ -223,13 +223,13 @@ export function StorageFilterPopover() {
                       type="button"
                       onClick={() => setSortBy(opt.value)}
                       className={cn(
-                        'flex items-center justify-between w-full px-2 py-1.5 rounded-md text-xs text-left cursor-pointer transition-colors',
+                        'flex items-center justify-between w-full px-2 py-1.5 rounded-lg text-xs text-left cursor-pointer transition-colors',
                         isSelected
                           ? 'bg-accent text-foreground font-medium'
                           : 'hover:bg-muted text-foreground'
                       )}
                     >
-                      <span className="truncate">{opt.label}</span>
+                      <span className="truncate text-xs">{opt.label}</span>
                       {isSelected && <Check className="size-3.5 text-primary shrink-0 ml-2" />}
                     </button>
                   );

@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useUpload } from "@/shared/hooks/use-upload";
-import { useCreateFileRecord } from "./use-storage";
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from "sonner";
+import { uploadFile } from '../services/upload.service';
+import { storageKeys } from '../constants/storage.keys';
 import { checkDuplicateFile, deleteItem } from '../services/file.service';
 import type { UploadMode } from '../components/modal/DuplicateModal';
 import { useStorageUIStore } from '../store/storage-ui.store';
@@ -18,12 +19,11 @@ export function useTopbar({
   onSearchChange?: (query: string) => void;
 }) {
   const scopeId = projectId;
+  const queryClient = useQueryClient();
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
-  const { uploadFile } = useUpload();
-  const { mutateAsync: createFileRecord } = useCreateFileRecord();
 
   // State for Duplicate Modal Queue
   const [duplicatePrompt, setDuplicatePrompt] = useState<{
@@ -77,18 +77,12 @@ export function useTopbar({
 
   const performSingleFileUpload = useCallback(async (file: File, targetFolder: string | null) => {
     const doUpload = async () => {
-      const url = await uploadFile(file, {
-        prefix: projectId ? `project/${projectId}` : `user`,
-      });
-      
-      return await createFileRecord({
+      const res = await uploadFile(file, {
         projectId,
-        filename: file.name,
-        size: file.size,
-        mimeType: file.type,
-        url,
         parentId: targetFolder,
       });
+      await queryClient.invalidateQueries({ queryKey: storageKeys.all });
+      return res;
     };
 
     const uploadPromise = doUpload();
@@ -96,12 +90,12 @@ export function useTopbar({
     toast.promise(uploadPromise, {
       loading: `Uploading ${file.name}...`,
       success: `${file.name} uploaded successfully`,
-      error: `Failed to upload ${file.name}`,
+      error: (err: any) => err?.message || `Failed to upload ${file.name}`,
     });
     
     // Await the single upload promise so sequential uploads in loop wait for completion
     await uploadPromise.catch((err) => console.error(err));
-  }, [projectId, uploadFile, createFileRecord]);
+  }, [projectId, queryClient]);
 
   const handleUploadFiles = useCallback(async (filesToUpload: File[], targetFolder: string | null) => {
     for (const file of filesToUpload) {

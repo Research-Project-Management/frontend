@@ -197,26 +197,28 @@ export function uploadFileWithDetails(
     formData.append('file', file);
     formData.append('fileName', file.name);
 
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
     if (prefix) {
       const parts = prefix.split('/').filter(Boolean);
       if (parts.length >= 2) {
         if (parts.includes('library')) {
           formData.append('source', 'library');
-        } else if (parts[0] === 'project') {
+        } else if (parts[0] === 'project' && UUID_REGEX.test(parts[1])) {
           formData.append('projectId', parts[1]);
-        } else if (parts[0] === 'page') {
+        } else if (parts[0] === 'page' && UUID_REGEX.test(parts[1])) {
           formData.append('pageId', parts[1]);
         }
-      } else if (parts.length === 1 && !['avatars', 'general', 'projects'].includes(parts[0])) {
+      } else if (parts.length === 1 && UUID_REGEX.test(parts[0])) {
         formData.append('projectId', parts[0]);
       }
     } else if (scope) {
-      if ((scope.type as string) === 'library' && scope.id) {
+      if ((scope.type as string) === 'library' && scope.id && UUID_REGEX.test(scope.id)) {
         formData.append('projectId', scope.id);
         formData.append('source', 'library');
-      } else if (scope.type === 'project' && scope.id) {
+      } else if (scope.type === 'project' && scope.id && UUID_REGEX.test(scope.id)) {
         formData.append('projectId', scope.id);
-      } else if (scope.type === 'page' && scope.id) {
+      } else if (scope.type === 'page' && scope.id && UUID_REGEX.test(scope.id)) {
         formData.append('pageId', scope.id);
       }
     }
@@ -250,16 +252,37 @@ export function uploadFileWithDetails(
       } else {
         let errorMsg = `Upload failed with status ${xhr.status}`;
         try {
-          const errRes = JSON.parse(xhr.responseText) as Record<string, any>;
-          if (errRes.message) {
-            errorMsg = Array.isArray(errRes.message)
-              ? errRes.message.join(', ')
-              : errRes.message;
-          } else if (errRes.error) {
-            errorMsg = errRes.error;
+          const rawText = xhr.responseText;
+          if (rawText) {
+            const errRes: any = JSON.parse(rawText);
+            if (typeof errRes === 'string') {
+              errorMsg = errRes;
+            } else if (errRes && typeof errRes === 'object') {
+              if (errRes.message) {
+                if (Array.isArray(errRes.message)) {
+                  errorMsg = errRes.message
+                    .map((m: any) => (typeof m === 'object' && m !== null ? m.message || JSON.stringify(m) : String(m)))
+                    .join(', ');
+                } else if (typeof errRes.message === 'object' && errRes.message !== null) {
+                  errorMsg = errRes.message.message || errRes.message.error || JSON.stringify(errRes.message);
+                } else {
+                  errorMsg = String(errRes.message);
+                }
+              } else if (errRes.error) {
+                if (typeof errRes.error === 'object' && errRes.error !== null) {
+                  errorMsg = errRes.error.message || errRes.error.error || JSON.stringify(errRes.error);
+                } else {
+                  errorMsg = String(errRes.error);
+                }
+              } else if (errRes.detail) {
+                errorMsg = typeof errRes.detail === 'object' ? JSON.stringify(errRes.detail) : String(errRes.detail);
+              }
+            }
           }
         } catch {
-          // ignore
+          if (xhr.responseText && typeof xhr.responseText === 'string') {
+            errorMsg = xhr.responseText.slice(0, 300);
+          }
         }
         reject(new Error(errorMsg));
       }

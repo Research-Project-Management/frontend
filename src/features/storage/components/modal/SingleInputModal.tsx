@@ -41,7 +41,7 @@ export function SingleInputModal({
         className="sm:max-w-md bg-popover"
       >
         <form onSubmit={onSubmit}>
-          <DialogHeader>
+          <DialogHeader className="pr-8">
             <DialogTitle className="text-foreground">
               {title}
             </DialogTitle>

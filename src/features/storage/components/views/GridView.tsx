@@ -167,7 +167,7 @@ export default function GridView({
                     </div>
 
                     {!isReadOnly && (
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                      <div className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity ml-1">
                         <ItemActions
                           item={folder}
                           onToggleStar={onToggleStar}
@@ -176,6 +176,7 @@ export default function GridView({
                           isTrash={isTrash}
                           onMoveToParent={onMoveToParent}
                           onOpenLocation={onOpenLocation}
+                          alwaysVisible
                         />
                       </div>
                     )}
@@ -187,7 +188,7 @@ export default function GridView({
         </div>
       )}
 
-      {/* â”€â”€ FILES SECTION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ─── FILES SECTION ──────────────────────────────────────────────── */}
       {files.length > 0 && (
         <div className="space-y-2.5">
           {folders.length > 0 && (
@@ -198,7 +199,7 @@ export default function GridView({
             </div>
           )}
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3">
             <AnimatePresence initial={false}>
               {files.map((file) => {
                 const isMultiSelected = selectedIds.includes(file.id);
@@ -239,7 +240,7 @@ export default function GridView({
                     }}
                   >
                     {/* Thumbnail Area */}
-                    <div className="h-32 flex items-center justify-center bg-muted overflow-hidden relative border-b border-border">
+                    <div className="h-28 sm:h-32 flex items-center justify-center bg-muted overflow-hidden relative border-b border-border">
                       {/* Selection Checkbox (top-left) */}
                       {!isReadOnly && (
                         <button
@@ -251,10 +252,10 @@ export default function GridView({
                               toggleSelect(file.id);
                             }
                           }}
-                          className={`absolute top-2 left-2 z-10 size-6 rounded-md flex items-center justify-center bg-background/80 backdrop-blur-sm transition-opacity cursor-pointer ${
+                          className={`absolute top-1.5 left-1.5 z-10 size-6 rounded-md flex items-center justify-center bg-background/80 backdrop-blur-sm transition-opacity cursor-pointer ${
                             isMultiSelected
                               ? "opacity-100 text-primary"
-                              : "opacity-0 group-hover:opacity-100 text-foreground"
+                              : "opacity-0 md:group-hover:opacity-100 text-foreground"
                           }`}
                           title={isMultiSelected ? "Deselect" : "Select"}
                         >
@@ -270,8 +271,8 @@ export default function GridView({
 
                       {/* Overlay actions (top-right) */}
                       {!isReadOnly && (
-                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                          <div className="bg-background/80 backdrop-blur-sm rounded-md">
+                        <div className="absolute top-1.5 right-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10">
+                          <div className="bg-background/85 backdrop-blur-sm rounded-md shadow-2xs">
                             <ItemActions
                               item={file}
                               onToggleStar={onToggleStar}
@@ -280,6 +281,7 @@ export default function GridView({
                               isTrash={isTrash}
                               onMoveToParent={onMoveToParent}
                               onOpenLocation={onOpenLocation}
+                              alwaysVisible
                             />
                           </div>
                         </div>

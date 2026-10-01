@@ -431,11 +431,7 @@ export const uploadFile = async (
     });
   }
 
-  const storagePrefix = 'user';
-  const timestamp = Date.now();
-  const fileName = `${storagePrefix}/${timestamp}-${file.name}`;
-
-  const { url: uploadPath, fileId } = await uploadBlobWithPresigned(file, fileName, {
+  const { url: uploadPath, fileId } = await uploadBlobWithPresigned(file, file.name, {
     projectId: params.projectId,
     pageId: params.pageId || undefined,
     parentId: params.parentId,

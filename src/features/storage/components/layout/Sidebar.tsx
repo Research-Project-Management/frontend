@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 
+import StorageQuotaWidget from './StorageQuotaWidget';
+
 export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const pathname = usePathname();
   const id = useId();
@@ -30,9 +32,9 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
   ];
 
   return (
-    <aside className='h-full w-60 shrink-0 flex flex-col justify-between overflow-x-hidden border-r border-border bg-transparent p-2.5 py-4 select-none max-md:w-full max-md:border-r-0 max-md:border-b max-md:py-2'>
-      <div>
-        {/* Header */}
+    <aside className='hidden md:flex h-full w-60 shrink-0 flex-col justify-between overflow-x-hidden border-r border-border bg-transparent p-2.5 py-4 select-none'>
+      <div className="w-full">
+        {/* Header (Desktop) */}
         <div className='mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground max-md:hidden'>
           <span>Storage</span>
           <button
@@ -48,18 +50,17 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
         <LayoutGroup id={`storage-nav-${id}`}>
           <nav
             aria-label='Storage Navigation'
-            className='flex flex-col gap-1 max-md:flex-row max-md:overflow-x-auto'
+            className='flex flex-col gap-1 max-md:flex-row max-md:overflow-x-auto max-md:no-scrollbar max-md:py-0.5 max-md:gap-1.5'
           >
             {storageItems.map((item) => {
               const isActive = pathname === item.to || (item.to !== basePath && pathname.startsWith(item.to));
-              const Icon = item.icon;
               return (
                 <Link
                   href={item.to}
                   key={item.label}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
-                    'group relative flex h-8 items-center gap-2 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none max-md:shrink-0',
+                    'group relative flex h-8 items-center gap-2 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none max-md:shrink-0 max-md:h-8 max-md:px-3 max-md:rounded-full',
                     isActive
                       ? 'bg-muted text-foreground font-medium'
                       : 'text-foreground hover:bg-muted font-normal'
@@ -68,7 +69,7 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
                   {isActive && (
                     <motion.div
                       layoutId={`storage-nav-active-${id}`}
-                      className='absolute inset-0 rounded-md bg-muted'
+                      className='absolute inset-0 rounded-md max-md:rounded-full bg-muted border border-border/50'
                       initial={false}
                       transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                     />
@@ -76,7 +77,7 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
                   <item.icon
                     className='relative z-10 size-4 shrink-0 text-foreground'
                   />
-                  <span className='relative z-10 min-w-0 truncate tracking-tight'>
+                  <span className='relative z-10 min-w-0 truncate tracking-tight text-xs sm:text-13'>
                     {item.label}
                   </span>
                 </Link>
@@ -84,6 +85,11 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
             })}
           </nav>
         </LayoutGroup>
+      </div>
+
+      {/* Quota widget for Desktop */}
+      <div className="max-md:hidden pt-4">
+        <StorageQuotaWidget />
       </div>
     </aside>
   );

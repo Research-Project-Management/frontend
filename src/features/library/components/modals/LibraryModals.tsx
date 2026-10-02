@@ -13,6 +13,7 @@ import {
 import {
   useCreateCollectionMutation,
   useDeleteLibraryItemsMutation,
+  useBatchPurgeItemsMutation,
   IngestionService,
   QualityService,
   itemKeys,
@@ -53,6 +54,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
   // Mutations
   const createCollectionMutation = useCreateCollectionMutation(effectiveScope);
   const deleteItemsMutation = useDeleteLibraryItemsMutation(effectiveScope);
+  const purgeItemsMutation = useBatchPurgeItemsMutation(effectiveScope);
 
   // 1. Create Collection Modal
   const isCreateCollectionOpen = activeModal === 'CREATE_COLLECTION';
@@ -69,9 +71,16 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
   // 2. Delete Items Modal
   const isDeleteItemsOpen = activeModal === 'DELETE_ITEMS';
   const itemIdsToDelete: string[] = payload?.itemIds || [];
+  const isPermanentDelete = Boolean(payload?.permanent);
   const handleDeleteItems = async () => {
     if (itemIdsToDelete.length === 0) return;
-    await deleteItemsMutation.mutateAsync(itemIdsToDelete);
+    if (isPermanentDelete) {
+      // Permanent purge (called from Trash view)
+      await purgeItemsMutation.mutateAsync(itemIdsToDelete);
+    } else {
+      // Soft delete → move to trash
+      await deleteItemsMutation.mutateAsync(itemIdsToDelete);
+    }
     clearSelection();
     closeModal();
   };
@@ -118,7 +127,6 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
     try {
       await IngestionService.ingest(effectiveScope, ingestionPayload);
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: ['items', effectiveScope] });
       if (targetCollectionId) {
         queryClient.invalidateQueries({
           queryKey: itemKeys.byCollection(effectiveScope, targetCollectionId),
@@ -130,9 +138,9 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
         id: toastId,
       });
       closeModal();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error('Import failed', {
-        description: err?.message || 'Could not import reference.',
+        description: err instanceof Error ? err.message : 'Could not import reference.',
         id: toastId,
       });
     } finally {
@@ -166,6 +174,14 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
     closeModal();
   };
 
+  // 7. Empty Trash Confirmation
+  const isTrashConfirmOpen = activeModal === 'TRASH_CONFIRM';
+  const trashConfirmCallback = payload?.onConfirm as (() => Promise<void>) | undefined;
+  const handleTrashConfirm = async () => {
+    await trashConfirmCallback?.();
+    closeModal();
+  };
+
   return (
     <>
       {isCreateCollectionOpen && (
@@ -182,10 +198,15 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
         <DeleteModal
           open={isDeleteItemsOpen}
           onOpenChange={(open) => !open && closeModal()}
-          title="Delete Items"
-          description={`Are you sure you want to delete ${itemIdsToDelete.length} selected ${itemIdsToDelete.length === 1 ? 'item' : 'items'}?`}
+          title={isPermanentDelete ? 'Permanently Delete Items' : 'Move to Trash'}
+          description={
+            isPermanentDelete
+              ? `Are you sure you want to permanently delete ${itemIdsToDelete.length} selected ${itemIdsToDelete.length === 1 ? 'item' : 'items'}? This action cannot be undone.`
+              : `Are you sure you want to move ${itemIdsToDelete.length} selected ${itemIdsToDelete.length === 1 ? 'item' : 'items'} to the trash?`
+          }
+          confirmLabel={isPermanentDelete ? 'Permanently Delete' : 'Move to Trash'}
           onConfirm={handleDeleteItems}
-          isDeleting={deleteItemsMutation.isPending}
+          isDeleting={isPermanentDelete ? purgeItemsMutation.isPending : deleteItemsMutation.isPending}
         />
       )}
 
@@ -206,7 +227,6 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           projectName={activeScope?.name || 'Project'}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-            queryClient.invalidateQueries({ queryKey: ['items', effectiveScope] });
             closeModal();
           }}
         />
@@ -218,6 +238,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           onOpenChange={(open) => !open && closeModal()}
           item={payload?.item}
           targetType={payload?.targetType || 'journalArticle'}
+          scopeId={effectiveScope}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
             closeModal();
@@ -250,13 +271,25 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
         />
       )}
 
+      {isTrashConfirmOpen && (
+        <DeleteModal
+          open={isTrashConfirmOpen}
+          onOpenChange={(open) => !open && closeModal()}
+          title="Empty Trash"
+          description="Are you sure you want to permanently empty the trash? All items will be permanently deleted and cannot be recovered."
+          onConfirm={handleTrashConfirm}
+        />
+      )}
+
       {/* Standalone Process / Metadata Retrieval Modal */}
-      <ProcessModal
-        state={processModalState}
-        onClose={closeProcessModal}
-        onMinimize={minimizeProcessModal}
-        onRestore={restoreProcessModal}
-      />
+      {(processModalState.isOpen || processModalState.isMinimized) && (
+        <ProcessModal
+          state={processModalState}
+          onClose={closeProcessModal}
+          onMinimize={minimizeProcessModal}
+          onRestore={restoreProcessModal}
+        />
+      )}
     </>
   );
 }

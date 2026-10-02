@@ -15,10 +15,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tooltip';
 
 export interface CreatorEntry {
   creatorType: string;
@@ -91,7 +93,7 @@ export function parseCreators(paper: Item): CreatorEntry[] {
     : paper.contributors;
   if (Array.isArray(rawCreators) && rawCreators.length > 0) {
     const parsedCreators: CreatorEntry[] = [];
-    for (const rawCreatorItem of rawCreators) {
+    for (const rawCreatorItem of (rawCreators as any[])) {
       const creatorType = rawCreatorItem.creatorType || 'author';
       const fieldMode = (rawCreatorItem as any).fieldMode ?? 0;
       const shortName = cleanValue((rawCreatorItem as any).shortName);
@@ -143,7 +145,6 @@ export function parseCreators(paper: Item): CreatorEntry[] {
   const normalizedAuthorList = normalizeAuthors(
     paper.authors,
     paper.creators,
-    paper.contributors,
   );
   if (normalizedAuthorList.length > 0) {
     const defaultRole = getPrimaryCreatorType(paper.itemType) || 'author';
@@ -379,7 +380,7 @@ export function CreatorFields({
     return (
       <div
         key={originalIndex}
-        className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5 group"
+        className="grid grid-cols-[80px_1fr] gap-1.5 items-center py-0.5 group w-full min-w-0"
       >
         {/* Left Role Column */}
         <div className="flex items-center justify-end min-w-0 pr-1">
@@ -410,7 +411,7 @@ export function CreatorFields({
                       handleUpdateCreatorType(originalIndex, creatorTypeItem.creatorType)
                     }
                     className={cn(
-                      'flex items-center justify-between h-7 px-2 text-xs font-normal rounded-md cursor-pointer text-foreground hover:bg-muted',
+                      'flex items-center justify-between h-7 px-2 text-12 font-normal rounded-md cursor-pointer text-foreground hover:bg-muted',
                       creatorEntry.creatorType === creatorTypeItem.creatorType &&
                         'bg-muted text-foreground font-medium',
                     )}
@@ -486,7 +487,7 @@ export function CreatorFields({
                     handleAddCreator(originalIndex);
                   }
                 }}
-                className="flex-1 min-w-0 h-7 bg-transparent px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-12 leading-normal outline-none font-normal font-sans"
+                className="flex-1 min-w-0 h-7 bg-transparent px-1.5 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-12 leading-normal outline-none font-normal font-sans"
               />
 
               {/* Optional Short Name / Acronym when in single-field institutional mode */}
@@ -572,7 +573,7 @@ export function CreatorFields({
               </div>
             </>
           ) : (
-            <div className="flex-1 min-h-7 h-auto px-2 py-1 text-foreground text-12 leading-snug min-w-0 font-normal font-sans break-words select-text flex items-center gap-1.5">
+            <div className="flex-1 min-h-7 h-auto px-1.5 py-1 text-foreground text-12 leading-snug min-w-0 font-normal font-sans break-words select-text flex items-center gap-1.5">
               <span>{creatorEntry.name}</span>
               {creatorEntry.shortName && (
                 <span className="text-11 text-muted-foreground font-mono">
@@ -587,15 +588,15 @@ export function CreatorFields({
   };
 
   return (
-    <div className="py-0.5 space-y-0.5">
+    <div className="py-0.5 space-y-0.5 w-full min-w-0">
       {localCreators.length === 0 ? (
         canEdit ? (
-          <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5">
+          <div className="grid grid-cols-[80px_1fr] gap-1.5 items-center py-0.5 w-full min-w-0">
             <span
               className="text-muted-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate"
-              title={typeDefinition.creatorTypes[0]?.label || 'Author'}
+              title={typeDefinition.creatorTypes?.[0]?.label || 'Author'}
             >
-              {typeDefinition.creatorTypes[0]?.label || 'Author'}
+              {typeDefinition.creatorTypes?.[0]?.label || 'Author'}
             </span>
             <input
               type="text"
@@ -605,7 +606,6 @@ export function CreatorFields({
                 const existingAuthors = normalizeAuthors(
                   paper.authors,
                   paper.creators,
-                  paper.contributors,
                 );
                 if (
                   trimmedValue &&
@@ -641,7 +641,6 @@ export function CreatorFields({
                   const existingAuthors = normalizeAuthors(
                     paper.authors,
                     paper.creators,
-                    paper.contributors,
                   );
                   if (
                     trimmedValue &&
@@ -673,7 +672,7 @@ export function CreatorFields({
                   (keyboardEvent.target as HTMLInputElement).blur();
                 }
               }}
-              className="flex-1 h-7 bg-transparent px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-12 leading-normal outline-none min-w-0 font-normal font-sans"
+              className="flex-1 h-7 bg-transparent px-1.5 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-12 leading-normal outline-none min-w-0 font-normal font-sans"
             />
           </div>
         ) : null
@@ -686,7 +685,7 @@ export function CreatorFields({
 
           {/* Authors collapse toggle button - ONLY for authors */}
           {authorEntries.length > MAX_COLLAPSED_AUTHORS && (
-            <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5">
+            <div className="grid grid-cols-[80px_1fr] gap-1.5 items-center py-0.5 w-full min-w-0">
               <span />
               <button
                 type="button"

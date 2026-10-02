@@ -241,7 +241,7 @@ export function useSpellChecker({
       disposable.dispose();
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [editorRef, enabled, scheduleSpellCheck]);
 
   // ─── Clear decorations when disabled ───────────────────────────────────────

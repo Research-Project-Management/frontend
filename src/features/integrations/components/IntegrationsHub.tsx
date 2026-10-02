@@ -7,7 +7,7 @@ import { useIntegrations } from '../hooks/use-integrations';
 import { IntegrationCard } from './IntegrationCard';
 import { IntegrationDetailView } from './IntegrationDetailView';
 import { TopBar } from '@/features/settings/components/layout/TopBar';
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 
 export function IntegrationsHub() {
   const searchParams = useSearchParams();

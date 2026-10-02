@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { TooltipProvider } from '@/shared/components/ui';
+import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { EditorWorkspaceLayout } from '../sub-features/workspace/layout/EditorWorkspaceLayout';
 import { EditorInstanceProvider } from '../core/context/editor-instance.context';
 import { ViewerInstanceProvider } from '../core/context/viewer-instance.context';

@@ -36,7 +36,6 @@ import {
   ExtractionService,
   AttachmentsService,
   UploadService,
-  AnnotationsService,
 } from './extraction';
 
 import {
@@ -102,7 +101,6 @@ export const libraryService = {
   tags: TagsService,
   notes: NotesService,
   attachments: AttachmentsService,
-  annotations: AnnotationsService,
   state: StateService,
   curation: CurationService,
   citations: CitationService,

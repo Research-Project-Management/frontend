@@ -3,7 +3,10 @@
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useProjectDetails } from '@/features/projects/shell/hooks/use-project';
-import { Button, Input, Skeleton } from '@/shared/components/ui';
+import dynamic from 'next/dynamic';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import {
   Popover,
   PopoverTrigger,
@@ -15,7 +18,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/shared/components/ui/dropdown-menu';
-import { DeleteModal } from '@/features/settings/components/modal/DeleteModal';
+
+const DeleteModal = dynamic(
+  () =>
+    import('@/features/settings/components/modal/DeleteModal').then(
+      (m) => m.DeleteModal
+    ),
+  { ssr: false }
+);
 import TopBar from '../components/layout/TopBar';
 import {
   Tag,
@@ -578,16 +588,18 @@ export default function LabelPage() {
       </div>
 
       {/* ── Delete Confirmation Modal ── */}
-      <DeleteModal
-        isOpen={Boolean(deletingLabel)}
-        onClose={() => setDeletingLabel(null)}
-        onConfirm={confirmDelete}
-        loading={deleteMutation.isPending}
-        title="Delete label"
-        description={`Are you sure you want to delete "${deletingLabel?.name || ''}"? This label will be removed from all work items.`}
-        confirmText="Delete label"
-        cancelText="Cancel"
-      />
+      {Boolean(deletingLabel) && (
+        <DeleteModal
+          isOpen={Boolean(deletingLabel)}
+          onClose={() => setDeletingLabel(null)}
+          onConfirm={confirmDelete}
+          loading={deleteMutation.isPending}
+          title="Delete label"
+          description={`Are you sure you want to delete "${deletingLabel?.name || ''}"? This label will be removed from all work items.`}
+          confirmText="Delete label"
+          cancelText="Cancel"
+        />
+      )}
     </div>
   );
 }

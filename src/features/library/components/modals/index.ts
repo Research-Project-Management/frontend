@@ -6,8 +6,6 @@ export { default as ConvertModal } from './ConvertModal';
 export { default as SnapshotViewerModal } from './SnapshotViewerModal';
 export { default as AddLinkModal } from './AddLinkModal';
 export { default as MergeModal } from './MergeModal';
-export { default as AuthorshipModal } from './AuthorshipModal';
-export { default as FlagRetractionModal } from './FlagRetractionModal';
 export { default as ImportFromPersonalModal } from './ImportFromPersonalModal';
 export { default as ProcessModal } from './ProcessModal';
 export { default as UploadFilesModal } from './UploadFilesModal';

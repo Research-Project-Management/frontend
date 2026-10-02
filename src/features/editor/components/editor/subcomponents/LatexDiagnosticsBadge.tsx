@@ -144,7 +144,7 @@ export function LatexDiagnosticsBadge() {
           setSelectedExplanation(null);
         }}
         className={cn(
-          'flex items-center gap-1.5 h-6 px-2 rounded-md text-11 font-semibold transition-all cursor-pointer shadow-2xs',
+          'flex items-center gap-1.5 h-6 px-2 rounded-md text-11 font-semibold transition-colors cursor-pointer',
           errorCount > 0
             ? 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-700 dark:text-rose-300 border border-rose-500/30'
             : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30',
@@ -212,7 +212,7 @@ export function LatexDiagnosticsBadge() {
                   <ArrowLeft className="size-3.5" />
                   <span>Back to issues</span>
                 </button>
-                <span className="text-10 font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                <span className="text-11 font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                   {selectedExplanation.code}
                 </span>
               </div>
@@ -221,17 +221,17 @@ export function LatexDiagnosticsBadge() {
                 <h4 className="text-xs font-semibold text-foreground">
                   {selectedExplanation.title}
                 </h4>
-                <p className="text-11 text-muted-foreground mt-1 leading-relaxed">
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                   {selectedExplanation.explanation || selectedExplanation.summary}
                 </p>
               </div>
 
               {selectedExplanation.commonCauses && selectedExplanation.commonCauses.length > 0 && (
                 <div className="space-y-1">
-                  <span className="text-10 uppercase tracking-wider font-semibold text-muted-foreground">
+                  <span className="text-11 uppercase font-mono tracking-wider font-semibold text-muted-foreground">
                     Common Causes
                   </span>
-                  <ul className="text-11 space-y-1 text-foreground/90 pl-3 list-disc">
+                  <ul className="text-xs space-y-1 text-foreground/90 pl-3 list-disc">
                     {selectedExplanation.commonCauses.map((cause, i) => (
                       <li key={i}>{cause}</li>
                     ))}

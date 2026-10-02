@@ -20,15 +20,17 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
-  Input,
-  Checkbox,
-  Badge,
+} from '@/shared/components/ui/dialog';
+import { Input } from '@/shared/components/ui/input';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Badge } from '@/shared/components/ui/badge';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/select';
 import { cn } from '@/shared/lib/utils';
 import { useFileActions, pageKeys } from '@/features/editor/hooks/use-core';
 import { useEditorStorage } from '@/features/editor/hooks/use-storage';
@@ -523,7 +525,7 @@ export default function AddFilesModal({
               >
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-semibold text-foreground">
+                    <h3 className="text-base font-semibold text-foreground">
                       Create a new file
                     </h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -577,7 +579,7 @@ export default function AddFilesModal({
               <div className="flex-1 flex flex-col justify-between">
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-semibold text-foreground">
+                    <h3 className="text-base font-semibold text-foreground">
                       Upload files
                     </h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -652,7 +654,7 @@ export default function AddFilesModal({
               <div className="flex-1 flex flex-col justify-between">
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-semibold text-foreground">
+                    <h3 className="text-base font-semibold text-foreground">
                       Add file from another project
                     </h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -797,7 +799,7 @@ export default function AddFilesModal({
               <div className="flex-1 flex flex-col justify-between">
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-semibold text-foreground">
+                    <h3 className="text-base font-semibold text-foreground">
                       Add file from external URL
                     </h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -865,7 +867,7 @@ export default function AddFilesModal({
               <div className="flex-1 flex flex-col justify-between">
                 <div className="space-y-3">
                   <div>
-                    <h3 className="text-sm font-semibold text-foreground">
+                    <h3 className="text-base font-semibold text-foreground">
                       Add references from your library
                     </h3>
                     <p className="text-xs text-muted-foreground mt-0.5">

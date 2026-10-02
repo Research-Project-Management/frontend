@@ -18,7 +18,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tooltip';
 import type { ChatMessage, SourceItem, AgentAction } from '../../types/chat.types';
 import { renderMarkdown } from '../../utils/render-markdown';
 import { ActionCardsGroup } from '../chat/action-card';

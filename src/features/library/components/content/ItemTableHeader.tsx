@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ArrowUp, ArrowDown } from 'lucide-react';
-import { Checkbox } from '@/shared/components/ui';
+import { Checkbox } from '@/shared/components/ui/checkbox';
 
 export interface ItemTableHeaderProps {
   columns: Record<string, boolean>;

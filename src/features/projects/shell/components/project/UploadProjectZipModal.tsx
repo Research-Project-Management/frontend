@@ -21,9 +21,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  Button,
-  Input,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
 import {
   isZipFile,

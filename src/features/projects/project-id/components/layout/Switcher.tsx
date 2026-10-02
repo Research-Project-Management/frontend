@@ -11,8 +11,8 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-  ProjectAvatar,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/popover';
+import { ProjectAvatar } from '@/shared/components/icons';
 import { useProjects, useProject } from '@/features/projects/shell/hooks/use-project';
 import { cn } from '@/shared/lib/utils';
 

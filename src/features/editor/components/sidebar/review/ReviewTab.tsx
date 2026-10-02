@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -15,6 +16,7 @@ import {
   MessageSquare,
   MessageSquareCheck,
   MessageSquarePlus,
+  MoreVertical,
   RotateCcw,
   Send,
   Trash2,
@@ -50,7 +52,13 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { cn } from '@/shared/lib/utils';
-import { Form } from '@/shared/components/ui';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/shared/components/ui/dropdown-menu';
+import { Form } from '@/shared/components/ui/form';
 import { toast } from 'sonner';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
 import { MentionTextarea } from './subcomponents/MentionTextarea';
@@ -58,6 +66,27 @@ import { MentionRenderer } from './subcomponents/MentionBadge';
 import { NotificationDigestBadge } from './subcomponents/NotificationDigestBadge';
 import { OverleafReviewSolidIcon } from './subcomponents/OverleafReviewIcon';
 import { type MentionMember, extractMentions } from '@/features/editor/utils/mention.util';
+
+function formatOverleafDate(iso: string): string {
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    const day = d.getDate();
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const month = months[d.getMonth()];
+    let hours = d.getHours();
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    return `${day} ${month}, ${hours}:${minutes} ${ampm}`;
+  } catch {
+    return iso;
+  }
+}
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -102,7 +131,7 @@ function Avatar({
   );
 }
 
-// ── Empty Review State (Light Theme) ─────────────────────────────────────────
+// ── Empty Review State (Overleaf Parity) ─────────────────────────────────────
 function EmptyReviewState({
   title = 'No comments or suggestions',
   subtitle = 'No one has commented or left any suggestions yet.',
@@ -113,13 +142,13 @@ function EmptyReviewState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center select-none">
+    <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center select-none">
       {/* Clean circular icon badge */}
-      <div className="size-16 rounded-full bg-muted flex items-center justify-center mb-3 shadow-inner">
+      <div className="size-16 rounded-full bg-muted border border-border flex items-center justify-center mb-4 shadow-2xs">
         <OverleafReviewSolidIcon className="size-8 text-muted-foreground" />
       </div>
       {/* Title */}
-      <h3 className="text-foreground font-semibold text-sm mb-1 leading-snug">
+      <h3 className="text-foreground font-semibold text-base mb-1 leading-snug">
         {title}
       </h3>
       {/* Subtitle */}
@@ -131,7 +160,7 @@ function EmptyReviewState({
   );
 }
 
-// ── Single comment card ──────────────────────────────────────────────────────
+// ── Single comment card (Overleaf 1:1 Parity) ────────────────────────────────
 const CommentCard = React.memo(function CommentCard({
   comment,
   pageId,
@@ -149,8 +178,6 @@ const CommentCard = React.memo(function CommentCard({
   members?: MentionMember[];
   membersMap?: Map<string, MentionMember>;
 }) {
-  const [expanded, setExpanded] = useState(false);
-
   const replyForm = useForm<CreateReplyInput>({
     resolver: zodResolver(createReplySchema),
     defaultValues: {
@@ -182,13 +209,12 @@ const CommentCard = React.memo(function CommentCard({
         matched?.email?.split('@')[0] ||
         comment.author.name ||
         'Collaborator',
-      avatar: matched?.avatar || comment.author.avatar,
+      color: (matched as any)?.color || (comment.author as any)?.color || '#0ea5e9',
     };
   }, [comment.author, membersMap]);
 
   const isResolved = comment.status === 'resolved';
   const hasReplies = comment.replies && comment.replies.length > 0;
-  const lineEnd = comment.lineEnd;
 
   const handleToggleStatus = () => {
     resolveMutation.mutate({
@@ -219,118 +245,92 @@ const CommentCard = React.memo(function CommentCard({
   };
 
   return (
-    <li
+    <div
       id={`comment-${comment.id}`}
       className={cn(
-        'border-b border-border last:border-b-0 hover:bg-muted/20 transition-all duration-200',
-        isHighlighted && 'bg-primary/5 ring-1 ring-primary/40 rounded-md',
+        'rounded-lg border p-3 bg-card text-card-foreground shadow-2xs mb-2.5 transition-colors duration-150',
+        isHighlighted
+          ? 'border-primary ring-1 ring-primary/40'
+          : 'border-border hover:border-border/80',
+        isResolved && 'opacity-65',
       )}
     >
-      {/* Main comment body */}
-      <div className={cn('px-3.5 py-3', isResolved && 'opacity-60')}>
-        {/* Row 1: avatar + author + status badge */}
-        <div className="flex items-center gap-2 min-w-0 mb-1.5">
-          <Avatar author={authorDisplay} size={5} />
-          <span className="text-xs font-semibold text-foreground truncate flex-1 min-w-0">
+      {/* Row 1: Header (color block + author + resolve + more) */}
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span
+            className="size-2.5 rounded-[2px] shrink-0"
+            style={{ backgroundColor: authorDisplay.color }}
+          />
+          <span className="text-[13px] font-medium text-foreground truncate">
             {authorDisplay.name}
           </span>
-          {isResolved ? (
-            <span className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full border border-emerald-500/20">
-              <CheckCircle2 className="size-2.5 shrink-0" />
-              Resolved
-            </span>
-          ) : (
-            <span className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-medium text-sky-600 dark:text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded-full border border-sky-500/20">
-              <Circle className="size-2.5 shrink-0" />
-              Open
-            </span>
-          )}
         </div>
 
-        {/* Row 2: line badge + timestamp */}
-        <div className="flex items-center gap-2 mb-2 ml-7">
-          {comment.line != null && (
-            <button
-              type="button"
-              onClick={() => onNavigate?.(comment.line!)}
-              className="text-[11px] font-mono border border-border bg-muted/60 px-1.5 py-0.5 rounded text-muted-foreground shrink-0 hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-              title="Jump to line"
-            >
-              L{comment.line}
-              {lineEnd != null && lineEnd !== comment.line ? `\u2013${lineEnd}` : ''}
-            </button>
-          )}
-          <span className="text-[11px] text-muted-foreground">
-            {timeAgo(comment.createdAt)}
-          </span>
-        </div>
-
-        {/* Row 3: content with @mention badges */}
-        <div className="text-xs text-foreground leading-relaxed wrap-break-word whitespace-pre-wrap ml-7">
-          <MentionRenderer content={comment.content} />
-        </div>
-
-        {/* Row 4: actions */}
-        <div className="flex items-center gap-3 mt-2.5 ml-7 flex-wrap">
+        <div className="flex items-center gap-0.5 shrink-0">
           <button
             type="button"
             onClick={handleToggleStatus}
             disabled={resolveMutation.isPending}
-            className={cn(
-              'flex items-center gap-1 text-xs transition-colors cursor-pointer',
-              isResolved
-                ? 'text-muted-foreground hover:text-foreground'
-                : 'text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-medium',
-            )}
+            title={isResolved ? 'Reopen comment' : 'Resolve comment'}
+            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
           >
             {resolveMutation.isPending ? (
-              <Loader2 className="size-3 animate-spin shrink-0" />
+              <Loader2 className="size-3.5 animate-spin" />
             ) : isResolved ? (
-              <RotateCcw className="size-3 shrink-0" />
+              <RotateCcw className="size-3.5" />
             ) : (
-              <CheckCircle2 className="size-3 shrink-0" />
+              <Check className="size-3.5" />
             )}
-            {isResolved ? 'Reopen' : 'Resolve'}
           </button>
 
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded transition-colors cursor-pointer"
-          >
-            <MessageSquare className="size-3 shrink-0" />
-            {hasReplies
-              ? `${comment.replies.length} ${comment.replies.length === 1 ? 'reply' : 'replies'}`
-              : 'Reply'}
-            {hasReplies &&
-              (expanded ? (
-                <ChevronDown className="size-3 shrink-0" />
-              ) : (
-                <ChevronRight className="size-3 shrink-0" />
-              ))}
-          </button>
-
-          {isAuthor && (
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={deleteMutation.isPending}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors ml-auto cursor-pointer"
-              title="Delete comment"
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              >
+                <MoreVertical className="size-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-36 bg-popover border-border text-popover-foreground"
             >
-              {deleteMutation.isPending ? (
-                <Loader2 className="size-3 animate-spin shrink-0" />
-              ) : (
-                <Trash2 className="size-3 shrink-0" />
+              {comment.line != null && (
+                <DropdownMenuItem
+                  onClick={() => onNavigate?.(comment.line!)}
+                  className="text-xs hover:bg-muted cursor-pointer"
+                >
+                  Jump to line {comment.line}
+                </DropdownMenuItem>
               )}
-            </button>
-          )}
+              {isAuthor && (
+                <DropdownMenuItem
+                  onClick={handleDelete}
+                  className="text-xs text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                >
+                  Delete comment
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      {/* Replies section */}
-      {expanded && (
-        <div className="ml-7 border-l border-border pl-3 pr-3 pb-2.5 bg-muted/20">
+      {/* Row 2: Overleaf Timestamp */}
+      <div className="text-[11px] text-muted-foreground mt-0.5">
+        {formatOverleafDate(comment.createdAt)}
+      </div>
+
+      {/* Row 3: Comment Body */}
+      <div className="text-[13px] text-foreground mt-1.5 font-normal leading-relaxed whitespace-pre-wrap break-words">
+        <MentionRenderer content={comment.content} />
+      </div>
+
+      {/* Row 4: Replies (if any) */}
+      {hasReplies && (
+        <div className="mt-2.5 pt-2 border-t border-border space-y-2">
           {comment.replies.map((reply: CommentReply) => (
             <ReplyRow
               key={reply.id}
@@ -341,40 +341,43 @@ const CommentCard = React.memo(function CommentCard({
               membersMap={membersMap}
             />
           ))}
-          <Form {...replyForm}>
-            <form
-              onSubmit={replyForm.handleSubmit(handleSendReply)}
-              className="flex items-center gap-1.5 mt-2"
-            >
-              <div className="flex-1 min-w-0">
-                <MentionTextarea
-                  singleLine
-                  value={replyContent}
-                  onChange={(val) =>
-                    replyForm.setValue('content', val, { shouldValidate: true })
-                  }
-                  members={members}
-                  placeholder="Reply with @mention..."
-                  onSubmit={replyForm.handleSubmit(handleSendReply)}
-                  className="bg-background text-foreground border border-input focus:border-primary text-xs"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={addReplyMutation.isPending || replyForm.formState.isSubmitting}
-                className="p-1.5 rounded text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 shrink-0 cursor-pointer"
-              >
-                {addReplyMutation.isPending ? (
-                  <Loader2 className="size-3.5 animate-spin shrink-0" />
-                ) : (
-                  <Send className="size-3.5 shrink-0" />
-                )}
-              </button>
-            </form>
-          </Form>
         </div>
       )}
-    </li>
+
+      {/* Row 5: Integrated Inline Reply Input */}
+      <div className="mt-2.5">
+        <form onSubmit={replyForm.handleSubmit(handleSendReply)} className="relative">
+          <input
+            type="text"
+            value={replyContent}
+            onChange={(e) =>
+              replyForm.setValue('content', e.target.value, { shouldValidate: true })
+            }
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                replyForm.handleSubmit(handleSendReply)();
+              }
+            }}
+            placeholder="Reply"
+            className="w-full h-8 px-2.5 rounded border border-input bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+          />
+          {replyContent.trim().length > 0 && (
+            <button
+              type="submit"
+              disabled={addReplyMutation.isPending}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-primary hover:text-primary/80 transition-colors cursor-pointer"
+            >
+              {addReplyMutation.isPending ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <Send className="size-3" />
+              )}
+            </button>
+          )}
+        </form>
+      </div>
+    </div>
   );
 });
 
@@ -408,35 +411,39 @@ const ReplyRow = React.memo(function ReplyRow({
         matched?.email?.split('@')[0] ||
         reply.author.name ||
         'Collaborator',
-      avatar: matched?.avatar || reply.author.avatar,
+      color: (matched as any)?.color || '#38bdf8',
     };
   }, [reply.author, membersMap]);
 
   return (
-    <div className="group flex items-start gap-2 py-1.5 min-w-0">
-      <Avatar author={authorDisplay} size={4} />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          <span className="text-xs font-semibold text-foreground truncate">
+    <div className="group flex flex-col py-1 text-xs">
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span
+            className="size-2 rounded-[2px] shrink-0"
+            style={{ backgroundColor: authorDisplay.color }}
+          />
+          <span className="font-semibold text-foreground truncate text-11">
             {authorDisplay.name}
           </span>
-          <span className="text-[10px] text-muted-foreground shrink-0">
-            {timeAgo(reply.createdAt)}
+          <span className="text-10 text-muted-foreground">
+            {formatOverleafDate(reply.createdAt)}
           </span>
-          {isAuthor && (
-            <button
-              type="button"
-              onClick={() => onDelete(reply.id)}
-              disabled={isPending}
-              className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0 cursor-pointer"
-            >
-              <Trash2 className="size-3 shrink-0" />
-            </button>
-          )}
         </div>
-        <div className="text-xs text-foreground leading-relaxed wrap-break-word whitespace-pre-wrap">
-          <MentionRenderer content={reply.content} />
-        </div>
+        {isAuthor && (
+          <button
+            type="button"
+            onClick={() => onDelete(reply.id)}
+            disabled={isPending}
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-0.5 cursor-pointer"
+            title="Delete reply"
+          >
+            <Trash2 className="size-3" />
+          </button>
+        )}
+      </div>
+      <div className="text-foreground text-xs mt-1 pl-3.5 whitespace-pre-wrap break-words">
+        <MentionRenderer content={reply.content} />
       </div>
     </div>
   );
@@ -489,8 +496,8 @@ const SuggestionCard = React.memo(function SuggestionCard({
     <div
       id={`suggestion-${suggestion.id}`}
       className={cn(
-        'mx-3 my-2 rounded-md border border-border bg-card p-3 space-y-2.5 transition-all duration-200 text-xs text-foreground shadow-xs',
-        isHighlighted && 'ring-1 ring-primary/50 bg-primary/5',
+        'mb-2.5 rounded-lg border border-border bg-card p-3 space-y-2.5 transition-colors duration-150 text-xs text-card-foreground shadow-2xs',
+        isHighlighted && 'ring-1 ring-primary/40 border-primary',
         !isPending && 'opacity-70',
       )}
     >
@@ -503,7 +510,7 @@ const SuggestionCard = React.memo(function SuggestionCard({
               {authorDisplay.name}
             </span>
             <span className="text-[10px] text-muted-foreground">
-              {timeAgo(suggestion.createdAt)}
+              {formatOverleafDate(suggestion.createdAt)}
             </span>
           </div>
         </div>
@@ -533,12 +540,12 @@ const SuggestionCard = React.memo(function SuggestionCard({
       {/* Diff Preview */}
       <div className="rounded bg-muted/40 p-2 font-mono text-xs leading-relaxed break-words space-y-1 border border-border">
         {suggestion.originalText && (
-          <div className="text-rose-700 dark:text-rose-400 line-through bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">
+          <div className="text-rose-600 dark:text-rose-400 line-through bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">
             - {suggestion.originalText}
           </div>
         )}
         {suggestion.suggestedText && (
-          <div className="text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+          <div className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
             + {suggestion.suggestedText}
           </div>
         )}
@@ -558,7 +565,7 @@ const SuggestionCard = React.memo(function SuggestionCard({
             type="button"
             onClick={() => onReject(suggestion.id)}
             disabled={isRejecting || isAccepting}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 cursor-pointer"
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 transition-colors disabled:opacity-50 cursor-pointer"
           >
             <X className="size-3.5 shrink-0" />
             <span>Reject</span>
@@ -574,7 +581,7 @@ const SuggestionCard = React.memo(function SuggestionCard({
           </button>
         </div>
       ) : (
-        <div className="pt-1 text-[10px] text-muted-foreground text-right italic">
+        <div className="pt-1 text-10 text-muted-foreground text-right italic">
           Status: <span className="font-medium capitalize">{suggestion.status}</span>
         </div>
       )}
@@ -642,13 +649,13 @@ const OverviewFileGroup = React.memo(function OverviewFileGroup({
       {/* File Section Header */}
       <div
         onClick={() => onNavigateToFile(file.id)}
-        className="flex items-center justify-between px-3.5 py-2 bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors border-b border-border"
+        className="flex items-center justify-between px-3.5 py-2 bg-muted/40 hover:bg-muted/70 cursor-pointer transition-colors border-b border-border"
       >
         <div className="flex items-center gap-2 min-w-0">
           <FileText className="size-3.5 text-muted-foreground shrink-0" />
           <span className="text-xs font-semibold text-foreground truncate">{file.title}</span>
         </div>
-        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-muted text-foreground border border-border">
+        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-background text-foreground border border-border">
           {totalVisibleCount}
         </span>
       </div>
@@ -1011,8 +1018,8 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground border-l border-border select-none">
       {/* ── Top Header ── */}
-      <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-3 bg-background">
-        <h2 className="text-xs font-semibold text-foreground tracking-tight">Review</h2>
+      <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3.5 bg-background">
+        <h2 className="text-base font-semibold text-foreground tracking-tight">Review</h2>
 
         <div className="flex items-center gap-0.5">
           {/* Quick Add Comment button */}
@@ -1020,15 +1027,15 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
             type="button"
             onClick={() => setShowAddForm((prev) => !prev)}
             className={cn(
-              'flex size-7 items-center justify-center rounded-md transition-colors cursor-pointer',
+              'flex size-7 items-center justify-center rounded transition-colors cursor-pointer',
               showAddForm
-                ? 'bg-primary/10 text-primary'
+                ? 'bg-muted text-foreground'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted',
             )}
             title="Add comment"
             aria-label="Add comment"
           >
-            <MessageSquarePlus className="size-3.5 shrink-0" />
+            <MessageSquarePlus className="size-4 shrink-0" />
           </button>
 
           {/* Resolved comments toggle button */}
@@ -1039,20 +1046,20 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
               onMouseEnter={() => setShowResolvedTooltip(true)}
               onMouseLeave={() => setShowResolvedTooltip(false)}
               className={cn(
-                'flex size-7 items-center justify-center rounded-md transition-colors cursor-pointer',
+                'flex size-7 items-center justify-center rounded transition-colors cursor-pointer',
                 showResolved
-                  ? 'bg-primary/10 text-primary'
+                  ? 'bg-muted text-foreground'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted',
               )}
               title="Resolved comments"
               aria-label="Resolved comments"
             >
-              <MessageSquareCheck className="size-3.5 shrink-0" />
+              <MessageSquareCheck className="size-4 shrink-0" />
             </button>
 
             {/* Resolved tooltip popover */}
             {showResolvedTooltip && (
-              <div className="absolute right-0 top-full mt-1.5 z-50 rounded-md bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md border border-border whitespace-nowrap pointer-events-none animate-in fade-in-0 zoom-in-95 duration-100">
+              <div className="absolute right-0 top-full mt-1.5 z-50 rounded bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-lg border border-border whitespace-nowrap pointer-events-none animate-in fade-in-0 zoom-in-95 duration-100">
                 {activeResolvedCount === 0
                   ? 'No resolved comments'
                   : showResolved
@@ -1067,10 +1074,10 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
             <button
               type="button"
               onClick={onClose}
-              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="flex size-7 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
               aria-label="Close"
             >
-              <X className="size-3.5 shrink-0" />
+              <X className="size-4 shrink-0" />
             </button>
           )}
         </div>
@@ -1088,7 +1095,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
 
           {/* Track Changes Display Mode & Bulk Actions */}
           {suggestions.length > 0 && (
-            <div className="flex items-center justify-between border-b border-border bg-muted/20 px-3.5 py-1.5 text-xs shrink-0">
+            <div className="flex items-center justify-between border-b border-border bg-muted/40 px-3.5 py-1.5 text-xs shrink-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] font-semibold uppercase text-muted-foreground tracking-wider">
                   Mode
@@ -1102,7 +1109,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
                       className={cn(
                         'px-2 py-0.5 rounded-sm capitalize transition-colors cursor-pointer text-[11px]',
                         trackChangesViewMode === m
-                          ? 'bg-background text-foreground shadow-xs font-semibold'
+                          ? 'bg-background text-foreground shadow-2xs font-semibold'
                           : 'text-muted-foreground hover:text-foreground',
                       )}
                       title={
@@ -1125,7 +1132,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
                     type="button"
                     onClick={() => pageId && rejectAllMutation.mutate({ pageId })}
                     disabled={rejectAllMutation.isPending}
-                    className="px-2 py-0.5 rounded text-[11px] text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                    className="px-2 py-0.5 rounded text-11 text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 transition-colors cursor-pointer"
                   >
                     Reject All
                   </button>
@@ -1133,7 +1140,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
                     type="button"
                     onClick={() => pageId && acceptAllMutation.mutate({ pageId })}
                     disabled={acceptAllMutation.isPending}
-                    className="px-2 py-0.5 rounded text-[11px] bg-primary text-primary-foreground hover:bg-primary/90 font-medium transition-colors cursor-pointer shadow-xs"
+                    className="px-2 py-0.5 rounded text-11 bg-primary text-primary-foreground hover:bg-primary/90 font-medium transition-colors cursor-pointer shadow-xs"
                   >
                     Accept All
                   </button>
@@ -1144,7 +1151,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
 
           {/* Add comment form */}
           {showAddForm && (
-            <div className="border-b border-border bg-muted/20 p-3.5">
+            <div className="border-b border-border bg-card p-3.5">
               <Form {...form}>
                 <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -1166,7 +1173,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
                     className="bg-background text-foreground border border-input focus:border-primary text-xs"
                   />
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-10 text-muted-foreground">
                       {lineStartVal ? `Line ${lineStartVal}` : 'Whole document'}
                     </span>
                     <button
@@ -1184,7 +1191,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
           )}
 
           {/* Main Feed */}
-          <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="flex-1 overflow-y-auto min-h-0 p-3">
             {isCommentsLoading || isSuggestionsLoading ? (
               <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
                 <Loader2 className="size-4 animate-spin shrink-0" />
@@ -1229,7 +1236,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
                 ))}
 
                 {/* Comments */}
-                <ul className="flex flex-col">
+                <div className="flex flex-col">
                   {visibleComments.map((comment) => (
                     <CommentCard
                       key={comment.id}
@@ -1242,7 +1249,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
                       membersMap={membersMap}
                     />
                   ))}
-                </ul>
+                </div>
               </div>
             )}
           </div>
@@ -1261,14 +1268,14 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
       )}
 
       {/* ── Bottom Navigation Tabs: Current file vs Overview ── */}
-      <div className="flex h-11 shrink-0 border-t border-border bg-background select-none">
+      <nav aria-label="Review scope" className="flex h-11 shrink-0 border-t border-border bg-background select-none">
         {/* Tab 1: Current file */}
         <button
           type="button"
           onClick={() => setScope('current')}
           className={cn(
             'relative flex flex-1 flex-col items-center justify-center gap-1 py-1.5 transition-colors cursor-pointer font-medium',
-            scope === 'current' ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+            scope === 'current' ? 'text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground',
           )}
         >
           {scope === 'current' && (
@@ -1284,7 +1291,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
           onClick={() => setScope('overview')}
           className={cn(
             'relative flex flex-1 flex-col items-center justify-center gap-1 py-1.5 transition-colors cursor-pointer font-medium',
-            scope === 'overview' ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+            scope === 'overview' ? 'text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground',
           )}
         >
           {scope === 'overview' && (
@@ -1293,7 +1300,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
           <List className="size-3.5 shrink-0" />
           <span className="text-[11px] leading-none">Overview</span>
         </button>
-      </div>
+      </nav>
     </div>
   );
 });

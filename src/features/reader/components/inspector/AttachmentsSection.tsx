@@ -35,6 +35,7 @@ import {
   useRenameAttachment,
   useExportAnnotatedPdf,
 } from '../../data';
+import { usePdf } from '../../hooks/use-pdf';
 import { readerService } from '../../data/reader.service';
 import type { Item, ItemAttachment } from '../../types/reader.types';
 import SnapshotViewerModal from '../modals/SnapshotViewerModal';
@@ -417,7 +418,7 @@ export default function AttachmentsSection({
         className="hidden"
         onChange={handleFileSelect}
       />
-      <div className="flex flex-col gap-2 text-xs font-sans select-none w-full">
+      <div className="flex flex-col gap-2 text-12 font-sans select-none w-full">
         {!hideHeader && (
         <div className="flex items-center justify-between pb-1">
           <h3 className="text-12 font-medium text-foreground">
@@ -429,7 +430,7 @@ export default function AttachmentsSection({
                 <button
                   type="button"
                   disabled={isUploadingFile}
-                  className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+                  className="size-5 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
                   title="Add attachment"
                   aria-label="Add attachment"
                 >
@@ -440,7 +441,7 @@ export default function AttachmentsSection({
                   )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 p-1.5 text-xs font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5">
+              <DropdownMenuContent align="end" className="w-56 p-1.5 text-12 font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5">
                 <DropdownMenuItem
                   onClick={() => fileInputRef.current?.click()}
                   className="gap-2 cursor-pointer"
@@ -482,7 +483,7 @@ export default function AttachmentsSection({
               </div>
               <div className="min-w-0 flex-1">
                 <p
-                  className="text-xs font-medium text-foreground break-all leading-snug"
+                  className="text-12 font-medium text-foreground break-all leading-snug"
                   title={primaryAttachment?.title || paper.filename || ((paper as any)?.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
                 >
                   {primaryAttachment?.title || paper.filename || ((paper as any)?.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
@@ -505,7 +506,7 @@ export default function AttachmentsSection({
                   <MoreVertical className="size-3.5 text-foreground shrink-0" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64 p-1.5 text-xs font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5">
+              <DropdownMenuContent align="end" className="w-64 p-1.5 text-12 font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5">
                 <DropdownMenuItem
                   onClick={handleOpenReader}
                   className="gap-2 cursor-pointer"
@@ -580,7 +581,7 @@ export default function AttachmentsSection({
                         setActiveSnapshot({
                           url: downloadUrl,
                           title: att.filename || paper.title,
-                          sourceUrl: paper.url,
+                          sourceUrl: paper.url || undefined,
                         })
                     : isLink && downloadUrl
                     ? () => window.open(downloadUrl, '_blank', 'noopener,noreferrer')
@@ -597,7 +598,7 @@ export default function AttachmentsSection({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-foreground break-all leading-snug" title={att.title || att.filename || att.name}>
+                  <p className="text-12 font-medium text-foreground break-all leading-snug" title={att.title || att.filename || att.name}>
                     {att.title || att.filename || att.name}
                   </p>
                   <p className="text-10 text-muted-foreground flex items-center gap-1.5 truncate">
@@ -628,14 +629,14 @@ export default function AttachmentsSection({
                       <MoreVertical className="size-3.5 text-foreground shrink-0" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-64 p-1.5 text-xs font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5">
+                  <DropdownMenuContent align="end" className="w-64 p-1.5 text-12 font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5">
                     {isSnapshot && (
                       <DropdownMenuItem
                         onClick={() =>
                           setActiveSnapshot({
                             url: downloadUrl,
                             title: att.filename || paper.title,
-                            sourceUrl: paper.url,
+                            sourceUrl: paper.url || undefined,
                           })
                         }
                         className="gap-2 cursor-pointer"
@@ -694,7 +695,7 @@ export default function AttachmentsSection({
           type="button"
           disabled={isCapturingSnapshot}
           onClick={handleCaptureSnapshot}
-          className="w-full mt-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md border border-dashed border-border hover:bg-muted text-xs text-foreground transition-colors disabled:opacity-50 cursor-pointer"
+          className="w-full mt-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md border border-dashed border-border hover:bg-muted text-12 text-foreground transition-colors disabled:opacity-50 cursor-pointer"
         >
           {isCapturingSnapshot ? (
             <>

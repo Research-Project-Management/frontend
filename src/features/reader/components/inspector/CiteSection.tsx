@@ -183,8 +183,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
 
   const isExportFormat = activeFormat === 'bibtex' || activeFormat === 'ris';
 
-  // 2. Backend CSL engine is the single source of truth for formatted output
-  const currentCslStyle = activeFormat as CslStyle;
+  const currentCslStyle = activeFormat;
 
   const { data: cslData, isLoading } = useCslCitation(
     activeScopeId,
@@ -265,7 +264,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
 
       {/* ⚠️ Citation Guard: Retraction Notice (Zotero Style) */}
       {(paper.isRetracted || (paper as any).retractionStatus === 'retracted') && (
-        <div className="p-2 rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-xs flex items-start gap-2 select-none shrink-0 animate-in fade-in duration-200">
+        <div className="p-2 rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-12 flex items-start gap-2 select-none shrink-0 animate-in fade-in duration-200">
           <ShieldAlert className="size-4 text-destructive shrink-0 mt-0.5" strokeWidth={1.5} />
           <div className="flex-1 space-y-1 min-w-0">
             <span className="font-semibold text-destructive block text-12">
@@ -290,14 +289,14 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
       )}
 
       {/* 4 Standard/Active Slots + 1 Fixed "More ▾" Button */}
-      <div className="flex items-center gap-1 text-xs w-full overflow-hidden shrink-0 select-none">
+      <div className="flex items-center gap-1 text-12 w-full overflow-hidden shrink-0 select-none">
         {barItems.map((item) => (
           <button
             key={item.id}
             type="button"
             onClick={() => setActiveFormat(item.id)}
             className={cn(
-              'h-6 px-2 text-xs rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium shrink-0 transition-colors',
+              'h-6 px-2 text-12 rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium shrink-0 transition-colors',
               item.isSelected
                 ? 'bg-muted text-foreground font-semibold'
                 : 'text-foreground hover:bg-muted',
@@ -312,7 +311,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
             <button
               type="button"
               className={cn(
-                'h-6 px-2 text-xs rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium inline-flex items-center gap-1 shrink-0 transition-colors',
+                'h-6 px-2 text-12 rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium inline-flex items-center gap-1 shrink-0 transition-colors',
                 'text-foreground hover:bg-muted',
               )}
             >
@@ -323,7 +322,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
           <DropdownMenuContent
             align="end"
             sideOffset={4}
-            className="w-52 p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200 text-xs z-50 max-h-72 overflow-y-auto"
+            className="w-52 p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200 text-12 z-50 max-h-72 overflow-y-auto"
           >
             {dropdownStyles.map((fmt) => {
               const isSelected = activeFormat === fmt.id;
@@ -333,7 +332,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
                   onSelect={() => setActiveFormat(fmt.id)}
                   onClick={() => setActiveFormat(fmt.id)}
                   className={cn(
-                    'h-7.5 px-2 text-xs cursor-pointer rounded-md hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary flex items-center justify-between',
+                    'h-7.5 px-2 text-12 cursor-pointer rounded-md hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary flex items-center justify-between',
                     isSelected ? 'font-medium text-foreground bg-muted' : 'text-foreground',
                   )}
                 >
@@ -349,7 +348,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
             <DropdownMenuItem
               onSelect={() => setIsSearchModalOpen(true)}
               onClick={() => setIsSearchModalOpen(true)}
-              className="h-7.5 px-2 text-xs cursor-pointer rounded-md hover:bg-muted text-foreground font-medium flex items-center gap-1.5"
+              className="h-7.5 px-2 text-12 cursor-pointer rounded-md hover:bg-muted text-foreground font-medium flex items-center gap-1.5"
             >
               <Search className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
               <span>Search more styles...</span>
@@ -484,7 +483,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
               }}
             />
           ) : (
-            <div className="text-muted-foreground text-xs italic select-none py-1">
+            <div className="text-muted-foreground text-12 italic select-none py-1">
               Citation data unavailable.
             </div>
           )}

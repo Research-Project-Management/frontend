@@ -6,8 +6,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
+} from "@/shared/components/ui/dialog";
+import { Button } from "@/shared/components/ui/button";
 import { Trash2, AlertTriangle } from "lucide-react";
 
 interface DeleteModalProps {

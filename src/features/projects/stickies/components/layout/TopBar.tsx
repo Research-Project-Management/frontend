@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Plus, Search, X } from "lucide-react";
-import { StickiesIcon } from "@/shared/components/ui";
+import { StickiesIcon } from "@/shared/components/icons";
 import { Button } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";

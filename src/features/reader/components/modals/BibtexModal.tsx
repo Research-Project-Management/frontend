@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { Check, Copy, Download, FileJson, FileText } from 'lucide-react';
 import { useReaderClipboard, useReaderFileDownload } from '../../hooks/use-reader-feedback';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/components/ui/dialog";
+import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { generateCitationKey } from '../../utils/reader.util';
 import { readerService } from '../../data/reader.service';
@@ -150,8 +150,8 @@ export default function PaperBibtexDialog({
               onClick={handleCopy}
               className="h-8 px-3 text-12 font-medium gap-1.5 shadow-2xs border-border bg-background text-foreground hover:bg-muted cursor-pointer rounded-md focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
             >
-              {isCopied ? <Check className="size-3.5 text-primary shrink-0" strokeWidth={1.5} /> : <Copy className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />}
-              <span>{isCopied ? 'Copied' : 'Copy'}</span>
+              {isCopied() ? <Check className="size-3.5 text-primary shrink-0" strokeWidth={1.5} /> : <Copy className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />}
+              <span>{isCopied() ? 'Copied' : 'Copy'}</span>
             </Button>
             <Button
               size="sm"

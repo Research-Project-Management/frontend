@@ -48,6 +48,5 @@ export * from "./toggle-group";
 export * from "./toggle";
 export * from "./tooltip";
 
-// Re-exports from shared components
-export * from "../icons";
+// Utilities
 export { cn } from "@/shared/lib/utils";

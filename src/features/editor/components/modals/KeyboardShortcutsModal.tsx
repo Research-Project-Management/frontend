@@ -16,9 +16,9 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
-  Input,
-  Badge,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dialog';
+import { Input } from '@/shared/components/ui/input';
+import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 
 export interface ShortcutItem {

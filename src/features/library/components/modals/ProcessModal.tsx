@@ -7,8 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
+} from "@/shared/components/ui/dialog";
+import { Button } from "@/shared/components/ui/button";
 import {
   CheckCircle2,
   AlertCircle,
@@ -118,15 +118,33 @@ export default function ProcessModal({
         }
       }}
     >
-      <DialogContent className="sm:max-w-[560px] p-2.5 sm:p-3 rounded-lg border border-border bg-background shadow-raised-200 font-sans gap-0 overflow-hidden [&>[data-slot=dialog-close]]:top-2 sm:[&>[data-slot=dialog-close]]:top-2.5 [&>[data-slot=dialog-close]]:right-2 sm:[&>[data-slot=dialog-close]]:right-2.5">
-        {/* Modal Header: line removed and reduced margin */}
-        <div className="pb-2.5 bg-background flex items-center justify-between">
-          <DialogHeader className="text-left gap-0">
-            <DialogTitle className="text-14 font-semibold text-foreground">
-              Metadata Retrieval
-            </DialogTitle>
-            <DialogDescription className="sr-only">
-              Metadata retrieval progress and status
+      <DialogContent className="sm:max-w-[580px] p-5 sm:p-6 rounded-xl border border-border bg-background shadow-raised-200 font-sans gap-0 overflow-hidden">
+        {/* Modal Header */}
+        <div className="pb-3.5 flex items-start justify-between">
+          <DialogHeader className="text-left gap-1">
+            <div className="flex items-center gap-2.5">
+              <DialogTitle className="text-16 font-semibold text-foreground tracking-tight">
+                Metadata Retrieval
+              </DialogTitle>
+              {isRunning && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-11 font-medium bg-primary/10 text-primary">
+                  <span className="size-1.5 rounded-full bg-primary animate-pulse" />
+                  In progress
+                </span>
+              )}
+              {state.isComplete && !state.error && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-11 font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="size-3" />
+                  Completed
+                </span>
+              )}
+            </div>
+            <DialogDescription className="text-12 text-muted-foreground pt-0.5">
+              {isRunning
+                ? `Extracting academic metadata and authors from documents (${processed}/${total})`
+                : state.error
+                  ? 'Some documents encountered errors during extraction'
+                  : `Successfully processed ${data?.succeeded ?? processed} of ${total} document(s)`}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -134,18 +152,18 @@ export default function ProcessModal({
         {/* Modal Body */}
         <div className="space-y-3 bg-background">
           {/* Progress Overview */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-12 font-medium text-foreground">
-              <span>
-                {isRunning ? 'Processing files...' : state.error ? 'Processing failed' : 'Processing complete'}
+          <div className="space-y-2 pb-2">
+            <div className="flex items-center justify-between text-12 font-medium">
+              <span className="text-foreground">
+                {isRunning ? 'Processing files...' : state.error ? 'Processing failed' : 'All files processed'}
               </span>
-              <span className="font-mono tabular-nums text-foreground">
+              <span className="font-mono tabular-nums text-foreground font-semibold">
                 {percentage}%
               </span>
             </div>
 
             {/* Progress Bar */}
-            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-muted/70 rounded-full overflow-hidden">
               <div
                 className={cn(
                   'h-full w-full origin-left transition-transform duration-300 ease-out rounded-full',
@@ -163,17 +181,17 @@ export default function ProcessModal({
             </div>
           )}
 
-          {/* 2-Column Table: Attachment Name | Item Name */}
+          {/* 2-Column List: Attachment Name | Item Name (Clean line dividers without board box) */}
           {items.length > 0 && (
-            <div className="rounded-md border border-border bg-background overflow-hidden">
-              {/* Table Header: Strictly text-foreground font-medium, NO gray text */}
-              <div className="grid grid-cols-[48%_52%] px-3 py-2 bg-muted border-b border-border text-12 font-medium text-foreground select-none">
+            <div className="pt-1">
+              {/* Column Headers with subtle line */}
+              <div className="grid grid-cols-[45%_55%] px-1 pb-2 border-b border-border text-12 font-medium text-muted-foreground select-none">
                 <span>Attachment Name</span>
                 <span>Item Name</span>
               </div>
 
-              {/* Table Rows */}
-              <div className="max-h-[240px] overflow-y-auto divide-y divide-border/30">
+              {/* Rows separated by clean subtle dividers */}
+              <div className="max-h-[250px] overflow-y-auto divide-y divide-border/40">
                 {items.map((item, idx) => {
                   const status = String(item.status);
                   const isItemFailed = ['FAILED', 'FAILED_FINAL', 'FAILED_RETRYABLE'].includes(status);
@@ -188,49 +206,49 @@ export default function ProcessModal({
                   return (
                     <div
                       key={item.title || idx}
-                      className="grid grid-cols-[48%_52%] px-3 py-2 items-center gap-2 hover:bg-muted/40 transition-colors"
+                      className="grid grid-cols-[45%_55%] px-1 py-3 items-center gap-3 hover:bg-muted/20 transition-colors"
                     >
                       {/* Column 1: Attachment Name */}
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center gap-2.5 min-w-0">
                         {isItemSuccess ? (
-                          <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                         ) : isItemProcessing ? (
-                          <RefreshCw className="size-3.5 text-foreground animate-spin [animation-duration:2s] shrink-0" />
+                          <RefreshCw className="size-3.5 text-primary animate-spin [animation-duration:2s] shrink-0" />
                         ) : isItemFailed ? (
-                          <AlertCircle className="size-3.5 text-destructive shrink-0" />
+                          <AlertCircle className="size-4 text-destructive shrink-0" />
                         ) : (
-                          <span className="size-3.5 shrink-0" />
+                          <span className="size-4 rounded-full border border-border shrink-0" />
                         )}
                         <span
-                          className="truncate font-normal text-foreground text-12"
+                          className="truncate text-12 text-foreground font-normal"
                           title={item.title}
                         >
                           {formatSourceLabel(item.title)}
                         </span>
                       </div>
 
-                      {/* Column 2: Item Name (Strictly text-foreground, NO gray text) */}
+                      {/* Column 2: Item Name */}
                       <div className="min-w-0">
                         {isItemSuccess ? (
                           <span
                             className="truncate block text-foreground font-normal text-12"
-                            title={(item as any).itemName || item.title}
+                            title={item.itemName || item.title}
                           >
-                            {(item as any).itemName || item.title}
+                            {item.itemName || item.title}
                           </span>
                         ) : isItemProcessing ? (
-                          <span className="text-foreground text-12 font-normal">
-                            {(item.status as string) === 'UPLOADING' ? 'Uploading...' : 'Extracting metadata...'}
+                          <span className="text-muted-foreground text-12 font-normal flex items-center gap-1.5">
+                            {(item.status as string) === 'UPLOADING' ? 'Uploading file...' : 'Extracting metadata...'}
                           </span>
                         ) : isItemFailed ? (
                           <span
-                            className="truncate block text-destructive text-11"
+                            className="truncate block text-destructive text-12 font-normal"
                             title={item.error || 'Failed'}
                           >
-                            {item.error || 'Failed'}
+                            {item.error || 'Extraction failed'}
                           </span>
                         ) : (
-                          <span className="text-foreground text-12 font-normal">—</span>
+                          <span className="text-muted-foreground/60 text-12 font-normal">—</span>
                         )}
                       </div>
                     </div>
@@ -242,16 +260,21 @@ export default function ProcessModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="pt-3 bg-background flex items-center justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={isRunning ? (onMinimize || onClose) : onClose}
-            className="h-8 px-3.5 text-13 font-medium rounded-md border border-border bg-background shadow-2xs hover:bg-muted text-foreground cursor-pointer"
-          >
-            {isRunning ? 'Minimize' : 'Close'}
-          </Button>
+        <div className="pt-4 mt-3 border-t border-border flex items-center justify-between">
+          <span className="text-11 text-muted-foreground">
+            {isRunning ? `${processed} of ${total} files processed` : `${total} file(s) total`}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant={isRunning ? 'outline' : 'default'}
+              size="sm"
+              onClick={isRunning ? (onMinimize || onClose) : onClose}
+              className="h-8 px-4 text-12 font-medium rounded-md cursor-pointer"
+            >
+              {isRunning ? 'Minimize' : 'Close'}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

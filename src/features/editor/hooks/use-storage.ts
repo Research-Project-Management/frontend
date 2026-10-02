@@ -134,20 +134,67 @@ export function useEditorStorage(pageId?: string | null, parentId?: string | nul
     },
   });
 
+  const reorderMutation = useMutation({
+    mutationFn: async (args: { itemId: string; sortOrder: number; projectId?: string }) => {
+      const pid = args.projectId || effectiveProjectId;
+      return await StorageService.reorderItem(args.itemId, args.sortOrder, pid);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      toast.success('Reordered successfully');
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Failed to reorder item';
+      toast.error(msg);
+    },
+  });
+
+  const setRootDocMutation = useMutation({
+    mutationFn: async (args: { nodeId: string; projectId?: string }) => {
+      const pid = args.projectId || effectiveProjectId;
+      return await StorageService.setRootDoc(args.nodeId, pid);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      queryClient.invalidateQueries({ queryKey: ['editor-root-doc'] });
+      toast.success('Main document set successfully');
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Failed to set main document';
+      toast.error(msg);
+    },
+  });
+
+  const rootDocQuery = useQuery({
+    queryKey: ['editor-root-doc', effectiveProjectId],
+    queryFn: async () => {
+      if (!effectiveProjectId) return null;
+      return await StorageService.getRootDoc(effectiveProjectId);
+    },
+    enabled: !!effectiveProjectId,
+  });
+
   return {
     children: items,
     files: items,
     isLoading,
     refetch,
+    rootDoc: rootDocQuery.data,
+    rootDocLoading: rootDocQuery.isLoading,
     uploadFile: uploadFileMutation,
     createFolder: createFolderMutation,
     renameFile: renameMutation,
     deleteFile: deleteMutation,
     moveItem: moveMutation,
+    reorderItem: reorderMutation,
+    setRootDoc: setRootDocMutation,
     uploadFileMutation,
     createFolderMutation,
     renameMutation,
     deleteMutation,
     moveMutation,
+    reorderMutation,
+    setRootDocMutation,
   };
 }
+

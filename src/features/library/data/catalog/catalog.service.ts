@@ -3,6 +3,7 @@ import { API_BASE_URL } from '@/config/env';
 import type {
   Item,
   PaginatedItemsResponse,
+  CursorPaginationMeta,
   ItemQueryParams,
   Collection,
   CreateCollectionDTO,
@@ -123,7 +124,7 @@ export const fetchPdfBlob = async (
   const baseUrl =
     typeof window !== 'undefined' && window.location?.origin
       ? window.location.origin
-      : (rawApiBase || 'http://localhost:3000');
+      : rawApiBase;
 
   let resolvedUrl = targetUrl;
   let isTrustedOrigin = false;
@@ -140,12 +141,16 @@ export const fetchPdfBlob = async (
       resolvedUrl = targetUrl;
     }
 
-    const resolvedOrigin = new URL(resolvedUrl, baseUrl).origin;
-    const apiOrigin = rawApiBase ? new URL(rawApiBase, baseUrl).origin : new URL(baseUrl).origin;
-    isTrustedOrigin =
-      resolvedOrigin === new URL(baseUrl).origin ||
-      resolvedOrigin === apiOrigin ||
-      targetUrl.startsWith('/api/');
+    if (baseUrl) {
+      const resolvedOrigin = new URL(resolvedUrl, baseUrl).origin;
+      const apiOrigin = rawApiBase ? new URL(rawApiBase, baseUrl).origin : new URL(baseUrl).origin;
+      isTrustedOrigin =
+        resolvedOrigin === new URL(baseUrl).origin ||
+        resolvedOrigin === apiOrigin ||
+        targetUrl.startsWith('/api/');
+    } else {
+      isTrustedOrigin = targetUrl.startsWith('/api/');
+    }
   } catch {
     isTrustedOrigin = targetUrl.startsWith('/api/');
   }
@@ -257,7 +262,7 @@ export const ItemsService = {
       const items: Item[] = Array.isArray(res)
         ? res
         : res?.items || [];
-      const meta = res?.pagination || res?.meta;
+      const meta = (res?.pagination || res?.meta) as CursorPaginationMeta | undefined;
       const total =
         meta?.totalCount ??
         res?.total ??
@@ -405,6 +410,12 @@ export const ItemsService = {
   purge: (scopeId: string, itemId: string) =>
     apiDelete<{ success: boolean; data: { purged: boolean } }>(
       getItemUrl(scopeId, `${encodeURIComponent(itemId)}/purge`),
+    ),
+
+  bulkPurge: (scopeId: string, itemIds: string[]) =>
+    apiPost<{ success: boolean; count: number; purgedIds: string[] }>(
+      getItemUrl(scopeId, 'bulk-purge'),
+      { itemIds },
     ),
 
   addAttachment: (
@@ -647,6 +658,21 @@ export const CollectionsService = {
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
+  /**
+   * Remove multiple items from a collection in a single batch request
+   * Backed by POST /collections/:collectionId/items/bulk-detach
+   */
+  bulkDetachItems: (
+    scopeId: string | undefined,
+    collectionId: string,
+    itemIds: string[],
+  ) =>
+    apiPost<{ success: boolean; count: number }>(
+      `/api/v1/library/collections/${encodeURIComponent(collectionId)}/items/bulk-detach`,
+      { itemIds },
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+    ),
+
   exportBibtex: (scopeId: string | undefined, collectionId: string) => {
     const projectQuery = isProjectScope(scopeId) ? `&projectId=${encodeURIComponent(scopeId!)}` : '';
     return apiGet<{ bibtex: string; total: number; filename: string }>(
@@ -709,6 +735,22 @@ export const TagsService = {
         type,
         ...(isProject ? { projectId: scopeId } : {}),
       },
+    );
+    return raw?.data || raw;
+  },
+
+  update: async (
+    scopeId: string | undefined,
+    tagId: string,
+    data: { name?: string; color?: string; type?: string },
+  ): Promise<TagWithCount> => {
+    const isProject = isProjectScope(scopeId);
+    const basePath = isProject
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/tags`
+      : `/api/v1/library/tags`;
+    const raw = await apiPatch<any>(
+      `${basePath}/${encodeURIComponent(tagId)}`,
+      data,
     );
     return raw?.data || raw;
   },
@@ -1130,12 +1172,15 @@ export const RelationsService = {
     const basePath = isProject
       ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/items`
       : `/api/v1/library/items`;
-    return apiGet<{ relatedItems: RelatedItem[]; total: number }>(
+    return apiGet<{ relatedItems?: RelatedItem[]; relatedPapers?: RelatedItem[]; total?: number }>(
       `${basePath}/${encodeURIComponent(itemId)}/relations`,
-    ).then((res) => ({
-      relatedItems: (res as any).relatedItems || (res as any).relatedPapers || [],
-      total: (res as any).total || ((res as any).relatedItems || (res as any).relatedPapers || []).length,
-    }));
+    ).then((res) => {
+      const items = res?.relatedItems ?? res?.relatedPapers ?? [];
+      return {
+        relatedItems: items,
+        total: res?.total ?? items.length,
+      };
+    });
   },
 
   link: (

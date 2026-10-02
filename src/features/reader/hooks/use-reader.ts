@@ -271,6 +271,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
         quoteText: quote || undefined,
         comment: comment?.trim() || undefined,
         rects,
+        tags: [],
       });
       qc.invalidateQueries({
         queryKey: readerAnnotationKeys.byAttachment(scopeId, effectiveAttachmentId),

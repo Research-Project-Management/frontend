@@ -52,7 +52,7 @@ export default function NotesSection({
   onNavigateToAnnotation,
 }: NotesSectionProps) {
   const paperId = paper.id;
-  const activeScopeId = scopeId || projectId || (paper as any)?.projectId || 'user';
+  const activeScopeId = scopeId || projectId || paper?.projectId || 'user';
   const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {

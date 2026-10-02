@@ -137,7 +137,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
         queryKey: readerAnnotationKeys.byAttachment(scopeId, attachmentId),
       });
       toast.success('Annotations imported', {
-        description: `Imported ${res?.imported ?? 0} annotations from PDF.`,
+        description: `Imported ${res?.importedCount ?? 0} annotations from PDF.`,
         id: 'reader-annotation-toast',
       });
     },

@@ -17,7 +17,7 @@ import { useParams } from 'next/navigation';
 
 import SideBar, { type SidebarTab } from '../../../components/sidebar/SideBar';
 import Topbar from '../../../components/topbar/Topbar';
-import Setting from '../../../components/topbar/settings/Setting';
+const Setting = dynamic(() => import('../../../components/topbar/settings/Setting'), { ssr: false });
 import { ResizeHandle } from './ResizeHandle';
 import { EditorColumn } from './EditorColumn';
 
@@ -27,7 +27,7 @@ import { EditorEventBus } from '../../../utils/editor.util';
 import { useCollaborationStream } from '../../../hooks/use-collaboration';
 import { useEditorInstance } from '../../../core/context/editor-instance.context';
 import { editorCommandBus } from '../../../core/command-bus/editor-command-bus';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { useTheme } from '@/shared/providers';
 
@@ -90,8 +90,31 @@ export function EditorWorkspaceLayout() {
   const [isDraggingSidebar, setIsDraggingSidebar] = useState(false);
   const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
 
+  // Smooth drag tracking refs & requestAnimationFrame throttles
+  const isDraggingSidebarRef = useRef(false);
+  const isDraggingSplitterRef = useRef(false);
+  const sidebarRafRef = useRef<number | null>(null);
+  const splitterRafRef = useRef<number | null>(null);
+  const dragStartSidebarPosRef = useRef({ x: 0, y: 0 });
+  const dragStartSplitterPosRef = useRef({ x: 0, y: 0 });
+  const sidebarDragDistanceRef = useRef(0);
+  const splitterDragDistanceRef = useRef(0);
+
   const isSidebarCollapsed = !activeSidebarPanel;
   const lastActiveSidebarPanelRef = useRef<SidebarTab>('Files');
+
+  useEffect(() => {
+    return () => {
+      if (splitterRafRef.current !== null) {
+        cancelAnimationFrame(splitterRafRef.current);
+      }
+      if (sidebarRafRef.current !== null) {
+        cancelAnimationFrame(sidebarRafRef.current);
+      }
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, []);
 
   useEffect(() => {
     if (activeSidebarPanel) {
@@ -134,30 +157,54 @@ export function EditorWorkspaceLayout() {
     if (clamped !== sidebarWidth) setSidebarWidth(clamped);
   }, [clampSidebarWidth, setSidebarWidth, sidebarWidth]);
 
-  // Sidebar resize (Mouse & Touch)
+  // Sidebar resize (Mouse & Touch) with RAF throttling & drag threshold
   const handleSidebarResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    setIsDraggingSidebar(true);
     const startX = e.clientX;
+    const startY = e.clientY;
+    dragStartSidebarPosRef.current = { x: startX, y: startY };
+    sidebarDragDistanceRef.current = 0;
     const startWidth = sidebarWidthRef.current;
 
     const onMove = (ev: MouseEvent) => {
-      const newW = clampSidebarWidth(startWidth + (ev.clientX - startX));
-      sidebarWidthRef.current = newW;
-      setLocalSidebarWidth(newW);
+      const dist = Math.abs(ev.clientX - startX) + Math.abs(ev.clientY - startY);
+      sidebarDragDistanceRef.current = dist;
+
+      if (dist > 3 && !isDraggingSidebarRef.current) {
+        isDraggingSidebarRef.current = true;
+        setIsDraggingSidebar(true);
+      }
+
+      if (isDraggingSidebarRef.current) {
+        if (sidebarRafRef.current !== null) return;
+        sidebarRafRef.current = requestAnimationFrame(() => {
+          sidebarRafRef.current = null;
+          const newW = clampSidebarWidth(startWidth + (ev.clientX - startX));
+          sidebarWidthRef.current = newW;
+          setLocalSidebarWidth(newW);
+        });
+      }
     };
 
     const onUp = () => {
-      setIsDraggingSidebar(false);
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
+      if (sidebarRafRef.current !== null) {
+        cancelAnimationFrame(sidebarRafRef.current);
+        sidebarRafRef.current = null;
+      }
+      window.removeEventListener('mousemove', onMove, true);
+      window.removeEventListener('mouseup', onUp, true);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
-      setSidebarWidth(sidebarWidthRef.current);
+
+      if (isDraggingSidebarRef.current) {
+        isDraggingSidebarRef.current = false;
+        setIsDraggingSidebar(false);
+        setSidebarWidth(sidebarWidthRef.current);
+      }
     };
 
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
+    window.addEventListener('mousemove', onMove, true);
+    window.addEventListener('mouseup', onUp, true);
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
   }, [clampSidebarWidth, setSidebarWidth]);
@@ -165,28 +212,64 @@ export function EditorWorkspaceLayout() {
   const handleSidebarTouchResize = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
     if (!touch) return;
-    setIsDraggingSidebar(true);
     const startX = touch.clientX;
+    const startY = touch.clientY;
+    dragStartSidebarPosRef.current = { x: startX, y: startY };
+    sidebarDragDistanceRef.current = 0;
     const startWidth = sidebarWidthRef.current;
 
     const onTouchMove = (ev: TouchEvent) => {
       const currentTouch = ev.touches[0];
       if (!currentTouch) return;
-      const newW = clampSidebarWidth(startWidth + (currentTouch.clientX - startX));
-      sidebarWidthRef.current = newW;
-      setLocalSidebarWidth(newW);
+      const dist = Math.abs(currentTouch.clientX - startX) + Math.abs(currentTouch.clientY - startY);
+      sidebarDragDistanceRef.current = dist;
+
+      if (dist > 3 && !isDraggingSidebarRef.current) {
+        isDraggingSidebarRef.current = true;
+        setIsDraggingSidebar(true);
+      }
+
+      if (isDraggingSidebarRef.current) {
+        if (sidebarRafRef.current !== null) return;
+        sidebarRafRef.current = requestAnimationFrame(() => {
+          sidebarRafRef.current = null;
+          const newW = clampSidebarWidth(startWidth + (currentTouch.clientX - startX));
+          sidebarWidthRef.current = newW;
+          setLocalSidebarWidth(newW);
+        });
+      }
     };
 
     const onTouchEnd = () => {
-      setIsDraggingSidebar(false);
-      document.removeEventListener('touchmove', onTouchMove);
-      document.removeEventListener('touchend', onTouchEnd);
-      setSidebarWidth(sidebarWidthRef.current);
+      if (sidebarRafRef.current !== null) {
+        cancelAnimationFrame(sidebarRafRef.current);
+        sidebarRafRef.current = null;
+      }
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+
+      if (isDraggingSidebarRef.current) {
+        isDraggingSidebarRef.current = false;
+        setIsDraggingSidebar(false);
+        setSidebarWidth(sidebarWidthRef.current);
+      }
     };
 
     document.addEventListener('touchmove', onTouchMove, { passive: true });
     document.addEventListener('touchend', onTouchEnd);
   }, [clampSidebarWidth, setSidebarWidth]);
+
+  const handleToggleSidebar = useCallback((e: React.MouseEvent) => {
+    if (sidebarDragDistanceRef.current > 3) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    if (activeSidebarPanel) {
+      lastActiveSidebarPanelRef.current = activeSidebarPanel;
+    }
+    setActiveSidebarPanel(null);
+  }, [activeSidebarPanel, setActiveSidebarPanel]);
 
   const handleSidebarReset = useCallback(() => {
     sidebarWidthRef.current = DEFAULT_SIDEBAR;
@@ -213,35 +296,62 @@ export function EditorWorkspaceLayout() {
     }
   }, [clampSidebarWidth, setSidebarWidth, handleSidebarReset]);
 
-  // Editor-Viewer Splitter Resize (Mouse & Touch)
+  // Editor-Viewer Splitter Resize (Mouse & Touch) with RAF throttling & drag threshold
   const handleEditorViewerResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     const container = containerRef.current;
     if (!container) return;
-    setIsDraggingSplitter(true);
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    dragStartSplitterPosRef.current = { x: startX, y: startY };
+    splitterDragDistanceRef.current = 0;
 
     const rect = container.getBoundingClientRect();
     const currentSidebarWidth = isSidebarCollapsed ? 44 : sidebarWidthRef.current;
-    const available = rect.width - currentSidebarWidth - 4;
+    const editorLeft = rect.left + currentSidebarWidth + 8;
+    const available = rect.width - (currentSidebarWidth + 8) - 8;
 
     const onMove = (ev: MouseEvent) => {
-      const mouseX = ev.clientX - rect.left - currentSidebarWidth - 2;
-      const newFlex = Math.min(Math.max(mouseX / available, MIN_EDITOR_FLEX), MAX_EDITOR_FLEX);
-      editorFlexRef.current = newFlex;
-      setLocalEditorFlex(newFlex);
+      const dist = Math.abs(ev.clientX - startX) + Math.abs(ev.clientY - startY);
+      splitterDragDistanceRef.current = dist;
+
+      if (dist > 3 && !isDraggingSplitterRef.current) {
+        isDraggingSplitterRef.current = true;
+        setIsDraggingSplitter(true);
+      }
+
+      if (isDraggingSplitterRef.current) {
+        if (splitterRafRef.current !== null) return;
+        splitterRafRef.current = requestAnimationFrame(() => {
+          splitterRafRef.current = null;
+          const mouseX = ev.clientX - editorLeft;
+          const newFlex = Math.min(Math.max(mouseX / Math.max(available, 100), MIN_EDITOR_FLEX), MAX_EDITOR_FLEX);
+          editorFlexRef.current = newFlex;
+          setLocalEditorFlex(newFlex);
+        });
+      }
     };
 
     const onUp = () => {
-      setIsDraggingSplitter(false);
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
+      if (splitterRafRef.current !== null) {
+        cancelAnimationFrame(splitterRafRef.current);
+        splitterRafRef.current = null;
+      }
+      window.removeEventListener('mousemove', onMove, true);
+      window.removeEventListener('mouseup', onUp, true);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
-      setEditorFlex(editorFlexRef.current);
+
+      if (isDraggingSplitterRef.current) {
+        isDraggingSplitterRef.current = false;
+        setIsDraggingSplitter(false);
+        setEditorFlex(editorFlexRef.current);
+      }
     };
 
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
+    window.addEventListener('mousemove', onMove, true);
+    window.addEventListener('mouseup', onUp, true);
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
   }, [MIN_EDITOR_FLEX, MAX_EDITOR_FLEX, setEditorFlex, isSidebarCollapsed]);
@@ -251,31 +361,67 @@ export function EditorWorkspaceLayout() {
     if (!container) return;
     const touch = e.touches[0];
     if (!touch) return;
-    setIsDraggingSplitter(true);
+
+    const startX = touch.clientX;
+    const startY = touch.clientY;
+    dragStartSplitterPosRef.current = { x: startX, y: startY };
+    splitterDragDistanceRef.current = 0;
 
     const rect = container.getBoundingClientRect();
     const currentSidebarWidth = isSidebarCollapsed ? 44 : sidebarWidthRef.current;
-    const available = rect.width - currentSidebarWidth - 4;
+    const editorLeft = rect.left + currentSidebarWidth + 8;
+    const available = rect.width - (currentSidebarWidth + 8) - 8;
 
     const onTouchMove = (ev: TouchEvent) => {
       const currentTouch = ev.touches[0];
       if (!currentTouch) return;
-      const touchX = currentTouch.clientX - rect.left - currentSidebarWidth - 2;
-      const newFlex = Math.min(Math.max(touchX / available, MIN_EDITOR_FLEX), MAX_EDITOR_FLEX);
-      editorFlexRef.current = newFlex;
-      setLocalEditorFlex(newFlex);
+      const dist = Math.abs(currentTouch.clientX - startX) + Math.abs(currentTouch.clientY - startY);
+      splitterDragDistanceRef.current = dist;
+
+      if (dist > 3 && !isDraggingSplitterRef.current) {
+        isDraggingSplitterRef.current = true;
+        setIsDraggingSplitter(true);
+      }
+
+      if (isDraggingSplitterRef.current) {
+        if (splitterRafRef.current !== null) return;
+        splitterRafRef.current = requestAnimationFrame(() => {
+          splitterRafRef.current = null;
+          const touchX = currentTouch.clientX - editorLeft;
+          const newFlex = Math.min(Math.max(touchX / Math.max(available, 100), MIN_EDITOR_FLEX), MAX_EDITOR_FLEX);
+          editorFlexRef.current = newFlex;
+          setLocalEditorFlex(newFlex);
+        });
+      }
     };
 
     const onTouchEnd = () => {
-      setIsDraggingSplitter(false);
-      document.removeEventListener('touchmove', onTouchMove);
-      document.removeEventListener('touchend', onTouchEnd);
-      setEditorFlex(editorFlexRef.current);
+      if (splitterRafRef.current !== null) {
+        cancelAnimationFrame(splitterRafRef.current);
+        splitterRafRef.current = null;
+      }
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+
+      if (isDraggingSplitterRef.current) {
+        isDraggingSplitterRef.current = false;
+        setIsDraggingSplitter(false);
+        setEditorFlex(editorFlexRef.current);
+      }
     };
 
     document.addEventListener('touchmove', onTouchMove, { passive: true });
     document.addEventListener('touchend', onTouchEnd);
   }, [MIN_EDITOR_FLEX, MAX_EDITOR_FLEX, setEditorFlex, isSidebarCollapsed]);
+
+  const handleTogglePDF = useCallback((e: React.MouseEvent) => {
+    if (splitterDragDistanceRef.current > 3) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    setLayout('editor-only');
+  }, [setLayout]);
 
   const handleSplitterReset = useCallback(() => {
     editorFlexRef.current = 0.5;
@@ -350,7 +496,7 @@ export function EditorWorkspaceLayout() {
   }
 
   return (
-    <div className="flex flex-col h-dvh overflow-hidden bg-muted">
+    <div className="flex flex-col h-dvh bg-background">
       <Topbar />
 
       {/* Mobile Tab Switcher for Split Layout */}
@@ -385,12 +531,12 @@ export function EditorWorkspaceLayout() {
         </div>
       )}
 
-      <div ref={containerRef} className="flex-1 flex overflow-hidden relative">
+      <div ref={containerRef} className="flex-1 flex min-h-0 relative">
         {/* Desktop Sidebar */}
         <div
           style={{ width: isNarrowScreen ? '100%' : (isSidebarCollapsed ? 44 : localSidebarWidth) }}
           className={cn(
-            "shrink-0 overflow-hidden bg-background border-r border-border",
+            "shrink-0 overflow-hidden bg-muted border-r border-border",
             isNarrowScreen && "hidden",
           )}
         >
@@ -405,8 +551,8 @@ export function EditorWorkspaceLayout() {
               onClick={() => setActiveSidebarPanel(null)}
               aria-label="Close drawer"
             />
-            <div className="relative z-10 w-[85vw] max-w-[340px] h-full bg-background border-r border-border flex flex-col">
-              <div className="flex items-center justify-between px-3 h-11 border-b border-border bg-background shrink-0">
+            <div className="relative z-10 w-[85vw] max-w-[340px] h-full bg-muted border-r border-border flex flex-col">
+              <header className="flex items-center justify-between px-3 h-11 border-b border-border bg-muted shrink-0">
                 <span className="text-xs font-semibold text-foreground">Explorer & Tools</span>
                 <button
                   type="button"
@@ -416,7 +562,7 @@ export function EditorWorkspaceLayout() {
                 >
                   <X className="size-4 shrink-0" />
                 </button>
-              </div>
+              </header>
               <div className="flex-1 overflow-hidden">
                 <SideBar activePanel={activeSidebarPanel} onActivePanelChange={setActiveSidebarPanel} />
               </div>
@@ -426,7 +572,7 @@ export function EditorWorkspaceLayout() {
 
         {/* Sidebar <-> Editor Splitter */}
         {!isNarrowScreen && !isSidebarCollapsed && (
-          <div className="relative shrink-0 flex items-stretch w-2 bg-muted hover:bg-muted-foreground/10 border-r border-border transition-colors">
+          <div className="relative shrink-0 flex items-stretch w-2.5 bg-muted border-r border-border select-none">
             <ResizeHandle
               onMouseDown={handleSidebarResize}
               onTouchStart={handleSidebarTouchResize}
@@ -437,31 +583,26 @@ export function EditorWorkspaceLayout() {
               valueMin={MIN_SIDEBAR}
               valueMax={MAX_SIDEBAR}
               label="Resize sidebar pane (Double-click to reset)"
-              className="bg-transparent hover:bg-muted-foreground/10 active:bg-muted-foreground/20"
-            />
-
-            {/* Panel Toggle Arrow: Collapse sidebar */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                lastActiveSidebarPanelRef.current = activeSidebarPanel;
-                setActiveSidebarPanel(null);
-              }}
-              onMouseDown={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
-              title="Close sidebar"
-              aria-label="Close sidebar"
-              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-full h-8 rounded-sm bg-background border border-border hover:bg-muted text-muted-foreground hover:text-foreground shadow-2xs transition-colors cursor-pointer select-none"
             >
-              <ChevronLeft className="size-3 shrink-0 text-foreground" strokeWidth={2} />
-            </button>
+              {/* Panel Toggle Arrow: Collapse sidebar */}
+              <button
+                type="button"
+                onClick={handleToggleSidebar}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                title="Close sidebar"
+                aria-label="Close sidebar"
+                className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-full h-12 rounded-none border-y border-border bg-muted-foreground/20 hover:bg-sidebar-accent text-foreground cursor-pointer select-none transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-x-2.5 after:inset-y-0 after:content-['']"
+              >
+                <ChevronLeft className="size-3 shrink-0" strokeWidth={2.5} />
+              </button>
+            </ResizeHandle>
           </div>
         )}
 
         {/* Expand Sidebar Button when collapsed */}
         {!isNarrowScreen && isSidebarCollapsed && (
-          <div className="relative shrink-0 flex items-stretch w-2 bg-muted hover:bg-muted-foreground/10 border-r border-border transition-colors">
+          <div className="relative shrink-0 flex items-stretch w-2.5 bg-muted border-r border-border select-none">
             <button
               type="button"
               onClick={() => {
@@ -469,9 +610,9 @@ export function EditorWorkspaceLayout() {
               }}
               title="Open sidebar"
               aria-label="Open sidebar"
-              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-full h-8 rounded-sm bg-background border border-border hover:bg-muted text-muted-foreground hover:text-foreground shadow-2xs transition-colors cursor-pointer select-none"
+              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-full h-12 rounded-none bg-muted-foreground/20 hover:bg-sidebar-accent border-y border-border text-foreground cursor-pointer select-none transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-x-2.5 after:inset-y-0 after:content-['']"
             >
-              <ChevronRight className="size-3 shrink-0 text-foreground" strokeWidth={2} />
+              <ChevronRight className="size-3 shrink-0" strokeWidth={2.5} />
             </button>
           </div>
         )}
@@ -481,8 +622,8 @@ export function EditorWorkspaceLayout() {
           <div
             style={{ flex: showDivider ? localEditorFlex : 1 }}
             className={cn(
-              "min-w-0 overflow-hidden bg-background",
-              isDraggingSplitter && "transition-none"
+              "min-w-0 flex flex-col",
+              (isDraggingSplitter || isDraggingSidebar) && "pointer-events-none select-none"
             )}
           >
             <EditorColumn />
@@ -491,7 +632,7 @@ export function EditorWorkspaceLayout() {
 
         {/* Editor <-> Viewer Splitter */}
         {showDivider && (
-          <div className="relative shrink-0 flex items-stretch w-2 bg-muted hover:bg-muted-foreground/10 border-l border-border transition-colors">
+          <div className="relative shrink-0 flex items-stretch w-2.5 bg-muted border-x border-border select-none">
             <ResizeHandle
               onMouseDown={handleEditorViewerResize}
               onTouchStart={handleEditorViewerTouchResize}
@@ -502,53 +643,49 @@ export function EditorWorkspaceLayout() {
               valueMin={Math.round(MIN_EDITOR_FLEX * 100)}
               valueMax={Math.round(MAX_EDITOR_FLEX * 100)}
               label="Resize editor and PDF preview panes (Double-click to reset 50/50)"
-              className="bg-transparent hover:bg-muted-foreground/10 active:bg-muted-foreground/20"
-            />
-
-            {/* Panel Toggle Arrow: Collapse PDF viewer */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setLayout('editor-only');
-              }}
-              onMouseDown={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
-              title="Close PDF preview"
-              aria-label="Close PDF preview"
-              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-full h-8 rounded-sm bg-background border border-border hover:bg-muted text-muted-foreground hover:text-foreground shadow-2xs transition-colors cursor-pointer select-none"
             >
-              <ChevronRight className="size-3 shrink-0 text-foreground" strokeWidth={2} />
-            </button>
+              {/* Panel Toggle Arrow: Collapse PDF viewer */}
+              <button
+                type="button"
+                onClick={handleTogglePDF}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                title="Close PDF preview"
+                aria-label="Close PDF preview"
+                className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-full h-12 rounded-none border-y border-border bg-muted-foreground/20 hover:bg-sidebar-accent text-foreground cursor-pointer select-none transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-x-2.5 after:inset-y-0 after:content-['']"
+              >
+                <ChevronRight className="size-3 shrink-0" strokeWidth={2.5} />
+              </button>
+            </ResizeHandle>
           </div>
         )}
 
         {/* Expand PDF Viewer Button when collapsed (editor-only) */}
         {!isNarrowScreen && layout === 'editor-only' && (
-          <div className="relative shrink-0 flex items-stretch w-2 bg-muted hover:bg-muted-foreground/10 border-l border-border transition-colors">
+          <div className="relative shrink-0 flex items-stretch w-2.5 bg-muted border-x border-border select-none">
             <button
               type="button"
               onClick={() => setLayout('split')}
               title="Open PDF preview"
               aria-label="Open PDF preview"
-              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-full h-8 rounded-sm bg-background border border-border hover:bg-muted text-muted-foreground hover:text-foreground shadow-2xs transition-colors cursor-pointer select-none"
+              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-full h-12 rounded-none bg-muted-foreground/20 hover:bg-sidebar-accent border-y border-border text-foreground cursor-pointer select-none transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-x-2.5 after:inset-y-0 after:content-['']"
             >
-              <ChevronLeft className="size-3 shrink-0 text-foreground" strokeWidth={2} />
+              <ChevronLeft className="size-3 shrink-0" strokeWidth={2.5} />
             </button>
           </div>
         )}
 
         {/* Expand Editor Button when editor is collapsed (viewer-only) */}
         {!isNarrowScreen && layout === 'viewer-only' && (
-          <div className="relative shrink-0 flex items-stretch w-2 bg-muted hover:bg-muted-foreground/10 border-r border-border transition-colors">
+          <div className="relative shrink-0 flex items-stretch w-2.5 bg-muted border-x border-border select-none">
             <button
               type="button"
               onClick={() => setLayout('split')}
               title="Open LaTeX editor"
               aria-label="Open LaTeX editor"
-              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center w-full h-8 rounded-sm bg-background border border-border hover:bg-muted text-muted-foreground hover:text-foreground shadow-2xs transition-colors cursor-pointer select-none"
+              className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-full h-12 rounded-none bg-muted-foreground/20 hover:bg-sidebar-accent border-y border-border text-foreground cursor-pointer select-none transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-x-2.5 after:inset-y-0 after:content-['']"
             >
-              <ChevronRight className="size-3 shrink-0 text-foreground" strokeWidth={2} />
+              <ChevronRight className="size-3 shrink-0" strokeWidth={2.5} />
             </button>
           </div>
         )}
@@ -559,10 +696,21 @@ export function EditorWorkspaceLayout() {
             flex: showDivider ? 1 - localEditorFlex : 1,
             display: showViewer ? undefined : 'none'
           }}
-          className="min-w-0 overflow-hidden bg-background flex flex-col"
+          className={cn(
+            "min-w-0 flex flex-col",
+            (isDraggingSplitter || isDraggingSidebar) && "pointer-events-none select-none"
+          )}
         >
           <Viewer />
         </div>
+
+        {/* Global drag overlay to prevent pointer-events capture by iframes / editors */}
+        {(isDraggingSidebar || isDraggingSplitter) && (
+          <div
+            className="fixed inset-0 z-[99999] cursor-col-resize select-none pointer-events-auto"
+            style={{ userSelect: 'none', cursor: 'col-resize' }}
+          />
+        )}
 
         {/* Settings Panel */}
         {settingsPanelOpen && <Setting />}

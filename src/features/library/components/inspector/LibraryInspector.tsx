@@ -15,6 +15,7 @@ import {
   useUpdateLibraryItemMutation,
   useCollections,
   useRelations,
+  itemKeys,
 } from '../../data';
 import { normalizeTags } from '../../domain';
 
@@ -46,16 +47,16 @@ import { InspectorHeader } from './InspectorHeader';
 import { InspectorTabs } from './InspectorTabs';
 
 import dynamic from 'next/dynamic';
-import InfoSection from './InfoSection';
-import AbstractSection from './AbstractSection';
+const InfoSection = dynamic(() => import('./InfoSection'), { ssr: false });
+const AbstractSection = dynamic(() => import('./AbstractSection'), { ssr: false });
 const AttachmentsSection = dynamic(() => import('./AttachmentsSection'), {
   ssr: false,
 });
-import CiteSection from './CiteSection';
-import NotesSection from './NotesSection';
-import TagsSection from './TagsSection';
-import CollectionsSection from './CollectionsSection';
-import RelatedSection from './RelatedSection';
+const CiteSection = dynamic(() => import('./CiteSection'), { ssr: false });
+const NotesSection = dynamic(() => import('./NotesSection'), { ssr: false });
+const TagsSection = dynamic(() => import('./TagsSection'), { ssr: false });
+const CollectionsSection = dynamic(() => import('./CollectionsSection'), { ssr: false });
+const RelatedSection = dynamic(() => import('./RelatedSection'), { ssr: false });
 
 import { cn } from '@/shared/lib/utils';
 import type { Item, Collection } from '../../types/library.types';
@@ -242,11 +243,11 @@ export function LibraryInspector({
   // without triggering an unneeded network fetch of the entire library
   const cachedListItem = useMemo(() => {
     if (!queryItemId) return null;
-    const directCached = queryClient.getQueryData<any>(['library', 'item', targetScope, queryItemId]);
+    const directCached = queryClient.getQueryData<any>(itemKeys.byId(targetScope, queryItemId));
     const resolvedDirect = directCached?.item ?? directCached;
     if (resolvedDirect && resolvedDirect.id === queryItemId) return resolvedDirect as Item;
 
-    const queries = queryClient.getQueriesData<any>({ queryKey: ['library', 'items', targetScope] });
+    const queries = queryClient.getQueriesData<any>({ queryKey: itemKeys.all(targetScope).slice(0, 3) });
     for (const [_, data] of queries) {
       if (Array.isArray(data?.items)) {
         const found = data.items.find((it: Item) => it.id === queryItemId);
@@ -273,14 +274,9 @@ export function LibraryInspector({
     (activeItemId ? lastItemRef.current : null);
   const handleClose = propOnClose || toggleInspector;
 
-  // Calculate file & note counts for tab badges
-  const attachmentCount = useMemo(() => {
-    return effectiveItem?.attachments?.length || 0;
-  }, [effectiveItem?.attachments]);
-
-  const noteCount = useMemo(() => {
-    return effectiveItem?.notes?.length || 0;
-  }, [effectiveItem?.notes]);
+  // Calculate file & note counts for tab badges (O(1) — no memoization needed)
+  const attachmentCount = effectiveItem?.attachments?.length ?? 0;
+  const noteCount = effectiveItem?.notes?.length ?? 0;
 
   const updateMutation = useUpdateLibraryItemMutation(targetScope);
 
@@ -290,13 +286,12 @@ export function LibraryInspector({
   ) => {
     if (!effectiveItem) return;
     const version =
-      (payload as any)?.expectedVersion ??
-      (payload as any)?.version ??
+      payload.version ??
       effectiveItem.version;
-    const isSilent = Boolean(options?.silent || (payload as any)?.silent);
+    const isSilent = Boolean(options?.silent || payload.silent);
     updateMutation.mutate({
       id: effectiveItem.id,
-      payload: payload as any,
+      payload,
       expectedVersion: typeof version === 'number' ? version : undefined,
       silent: isSilent,
     });
@@ -369,7 +364,7 @@ export function LibraryInspector({
   const hasFiles = Boolean(
     effectiveItem?.filename ||
     (effectiveItem?.attachments && effectiveItem.attachments.length > 0) ||
-    (effectiveItem as any)?.openAccessPdfUrl
+    effectiveItem?.openAccessPdfUrl
   );
   const hasNotes = noteCount > 0 || isAddingNote;
   const hasTags = tagsList.length > 0 || isAddingTag;
@@ -446,6 +441,7 @@ export function LibraryInspector({
                       paper={effectiveItem}
                       onUpdatePaper={handleUpdatePaper}
                       canEdit={canEdit}
+                      scopeId={targetScope}
                     />
                   </InspectorSection>
                 )}

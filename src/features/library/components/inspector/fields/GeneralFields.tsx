@@ -11,7 +11,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dropdown-menu';
 import dynamic from 'next/dynamic';
 import { InlineTextarea } from './InlineTextarea';
 
@@ -23,6 +23,7 @@ export interface GeneralFieldsProps {
   selectableItemTypes: Array<{ value: string; label: string }>;
   typeDefinition: SchemaItemTypeDefinition;
   canEdit?: boolean;
+  scopeId?: string;
   onUpdatePaper?: (data: Partial<Item>) => void;
   previewAsync: (params: {
     itemId: string;
@@ -49,12 +50,14 @@ export function GeneralFields({
   selectableItemTypes,
   typeDefinition,
   canEdit = true,
+  scopeId,
   onUpdatePaper,
   previewAsync,
   convertAsync,
 }: GeneralFieldsProps) {
   const [isConversionDialogOpen, setIsConversionDialogOpen] = useState(false);
   const [targetConversionType, setTargetConversionType] = useState<string>('');
+  const [previewData, setPreviewData] = useState<any>(null);
   const [isCheckingType, setIsCheckingType] = useState(false);
 
   const effectiveItemTypes =
@@ -63,8 +66,8 @@ export function GeneralFields({
       : ALL_ITEM_TYPES_FLAT;
 
   const handleTitleChange = (val: string) => {
-    const cleaned = cleanPaperTitle(val);
-    onUpdatePaper?.({ title: cleaned || val || undefined });
+    const trimmed = val.replace(/\r?\n+/g, ' ').trim();
+    onUpdatePaper?.({ title: trimmed || undefined });
   };
 
   return (
@@ -83,12 +86,12 @@ export function GeneralFields({
                   : '🚨 Retracted Publication'}
               </div>
               <p className="text-xs text-destructive/90 break-words leading-snug">
-                {((paper.retractionDetails as any)?.reason) ||
+                {(paper.retractionDetails?.reason as string | undefined) ||
                   'This publication has been flagged as retracted or unreliable by academic integrity audits.'}
               </p>
-              {((paper.retractionDetails as any)?.noticeUrl) && (
+              {Boolean(paper.retractionDetails?.noticeUrl) && (
                 <a
-                  href={(paper.retractionDetails as any).noticeUrl}
+                  href={String(paper.retractionDetails?.noticeUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-11 font-medium text-destructive underline hover:text-destructive/80 mt-1"
@@ -152,29 +155,33 @@ export function GeneralFields({
                             targetType: t.value,
                             retainUnmappedInExtra: true,
                           });
+                          setPreviewData(prev);
                           if (!prev?.hasLoss) {
                             // Lossless: convert immediately without dialog and without notification
                             const result = await convertAsync({
                               itemId: paper.id,
                               targetType: t.value,
-                              expectedVersion: (paper as any).version,
+                              expectedVersion: paper.version,
                               retainUnmappedInExtra: true,
                               silent: true,
                             });
                             const updated =
-                              (result as any)?.item ?? (result as any)?.data ?? result;
+                              result && typeof result === 'object' && 'item' in result
+                                ? (result as { item: Item }).item
+                                : (result as Item);
                             onUpdatePaper?.(updated);
                           } else {
                             // Lossy: open modal with preview already loaded
                             setTargetConversionType(t.value);
                             setIsConversionDialogOpen(true);
                           }
-                        } catch {
+                        } catch (err: unknown) {
+                          console.error('Type conversion error:', err);
                           // Fallback to direct itemType update so changing type is never blocked
                           try {
                             onUpdatePaper?.({ itemType: t.value });
-                          } catch {
-                            // ignore
+                          } catch (fallbackErr) {
+                            console.error('Fallback type update failed:', fallbackErr);
                           }
                         } finally {
                           setIsCheckingType(false);
@@ -226,15 +233,19 @@ export function GeneralFields({
       </div>
 
       {/* Item Type Conversion Modal */}
-      <ConvertModal
-        open={isConversionDialogOpen}
-        onOpenChange={setIsConversionDialogOpen}
-        paper={paper}
-        targetType={targetConversionType}
-        onSuccess={(updatedPaper: any) => {
-          onUpdatePaper?.(updatedPaper);
-        }}
-      />
+      {isConversionDialogOpen && (
+        <ConvertModal
+          open={isConversionDialogOpen}
+          onOpenChange={setIsConversionDialogOpen}
+          paper={paper}
+          targetType={targetConversionType}
+          scopeId={scopeId}
+          initialPreview={previewData}
+          onSuccess={(updatedPaper: any) => {
+            onUpdatePaper?.(updatedPaper);
+          }}
+        />
+      )}
     </>
   );
 }

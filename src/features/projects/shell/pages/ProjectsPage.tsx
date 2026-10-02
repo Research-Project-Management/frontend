@@ -29,7 +29,7 @@ import { CreateProjectModal } from '../components/project/CreateProjectModal';
 import { UploadProjectZipModal } from '../components/project/UploadProjectZipModal';
 import { ProjectTagsBar } from '../components/project/ProjectTagsBar';
 import { ManageProjectTagsModal } from '../components/project/ManageProjectTagsModal';
-import { ProjectAvatar } from "@/shared/components/ui";
+import { ProjectAvatar } from "@/shared/components/icons";
 import { Topbar } from '../components/project/Topbar';
 import { Card } from '../components/project/Card';
 import {

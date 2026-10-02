@@ -23,7 +23,7 @@ import { useParams, useRouter, usePathname } from 'next/navigation';
 import { LayoutGroup } from 'framer-motion';
 import { cn } from '@/shared/lib/utils';
 import { getErrorMessage } from '@/shared/lib/utils';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { toast } from 'sonner';
 
 import type { ChatSession } from '../../types/chat.types';

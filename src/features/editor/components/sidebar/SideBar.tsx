@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
 import { cn } from "@/shared/lib/utils";
 
 import FilesTab from "./explorer/FilesTab";
@@ -43,6 +43,7 @@ import { useSettingsStore, usePageStore } from "@/features/editor/store";
 import { usePageComments } from "@/features/editor/hooks/use-comment";
 import { usePageSuggestions } from "@/features/editor/hooks/use-suggestion";
 import { OverleafReviewIcon } from "./review/subcomponents/OverleafReviewIcon";
+import { editorCommandBus } from "@/features/editor/core/command-bus/editor-command-bus";
 import { logger } from "@/shared/lib/utils";
 
 const sideBarItems = [
@@ -140,11 +141,14 @@ const SideBar = React.memo(function SideBar({
     setActivePanel(activePanelRef.current === name ? null : name);
   }, [setActivePanel]);
 
+  const setActiveSidebarPanel = useSettingsStore((s) => s.setActiveSidebarPanel);
+
   useEffect(() => {
     if (mounted && activePanel !== undefined) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(activePanel));
+      setActiveSidebarPanel(activePanel as any);
     }
-  }, [activePanel, mounted]);
+  }, [activePanel, mounted, setActiveSidebarPanel]);
 
   useEffect(() => {
     const unsubPanel = EditorEventBus.on("flux:open-panel", (detail) => {
@@ -164,15 +168,33 @@ const SideBar = React.memo(function SideBar({
       togglePanel("AI");
     });
 
+    const unsubCmdToggle = editorCommandBus.subscribe("sidebar:toggle-panel", (cmd) => {
+      if (cmd.panel === "Explorer" || cmd.panel === "Outline") {
+        togglePanel("Files");
+      } else if (cmd.panel && validTabs.has(cmd.panel as SidebarTab)) {
+        togglePanel(cmd.panel as SidebarTab);
+      }
+    });
+
+    const unsubCmdOpen = editorCommandBus.subscribe("sidebar:open-panel", (cmd) => {
+      if (cmd.panel === "Explorer" || cmd.panel === "Outline") {
+        setActivePanel("Files");
+      } else if (cmd.panel && validTabs.has(cmd.panel as SidebarTab)) {
+        setActivePanel(cmd.panel as SidebarTab);
+      }
+    });
+
     return () => {
       unsubPanel();
       unsubOpenAi();
       unsubToggleAi();
+      unsubCmdToggle();
+      unsubCmdOpen();
     };
   }, [setActivePanel, togglePanel]);
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-background">
+    <div className="flex h-full w-full overflow-hidden bg-muted">
       {/* Icon strip */}
       <ul
         role="tablist"
@@ -196,9 +218,7 @@ const SideBar = React.memo(function SideBar({
                     className={cn(
                       "relative flex size-8 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer",
                       isOpen
-                        ? item.name === 'Review'
-                          ? "bg-[#0e6245] text-white shadow-2xs font-medium"
-                          : "bg-sidebar-accent text-foreground shadow-2xs font-medium"
+                        ? "bg-sidebar-accent text-foreground font-medium"
                         : "text-foreground/75 hover:text-foreground hover:bg-sidebar-hover",
                     )}
                   >
@@ -215,7 +235,7 @@ const SideBar = React.memo(function SideBar({
                       <item.icon className="size-4 shrink-0" strokeWidth={1.75} />
                     )}
                     {showBadge && (
-                      <span className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-0.5 items-center justify-center rounded-full bg-amber-500 text-10 font-bold text-white shadow-xs leading-none">
+                      <span className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-0.5 items-center justify-center rounded-full bg-amber-500 text-11 font-mono font-bold text-white shadow-xs leading-none">
                         {totalReviewItems > 99 ? '99+' : totalReviewItems}
                       </span>
                     )}
@@ -247,7 +267,7 @@ const SideBar = React.memo(function SideBar({
                 className={cn(
                   "flex size-8 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer",
                   settingsPanelOpen
-                    ? "bg-sidebar-accent text-foreground shadow-2xs font-medium"
+                    ? "bg-sidebar-accent text-foreground font-medium"
                     : "text-foreground/75 hover:text-foreground hover:bg-sidebar-hover",
                 )}
               >

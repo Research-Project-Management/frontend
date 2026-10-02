@@ -211,6 +211,8 @@ export interface CslStyleMetadata {
   title: string;
   shortTitle?: string;
   summary?: string;
+  name?: string;
+  isPrimary?: boolean;
 }
 
 export interface ItemFieldDefinition {
@@ -218,6 +220,8 @@ export interface ItemFieldDefinition {
   label: string;
   type?: string;
   required?: boolean;
+  mono?: boolean;
+  category?: string;
 }
 
 export type SchemaFieldDefinition = ItemFieldDefinition;
@@ -227,6 +231,7 @@ export interface SchemaItemTypeDefinition {
   label: string;
   fields?: ItemFieldDefinition[];
   creatorTypes?: Array<{ creatorType: string; label: string; primary?: boolean }>;
+  primaryCreatorType?: string;
 }
 
 export interface DroppedField {

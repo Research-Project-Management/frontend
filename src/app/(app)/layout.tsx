@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import React, { Suspense, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { ErrorBoundary } from '@/shared/components/ui';
+import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 
 const Topbar = dynamic(
   () => import('@/features/shell/components/Topbar'),

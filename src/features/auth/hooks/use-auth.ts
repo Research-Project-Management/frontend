@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { isApiError } from '@/shared/types/api.types';
-import { hasAuthToken } from '@/shared/lib/api';
+import { hasAuthToken, getAuthToken } from '@/shared/lib/api';
+import { isTokenValid } from '@/shared/utils/auth-token.util';
 import { getUser, logoutUser } from '../services/auth.service';
 import { authKeys } from '../constants/auth.keys';
 import type { AuthState, AuthUser } from '../types/auth.types';
@@ -74,7 +75,7 @@ export const useAuth = (): UseAuthReturn => {
     state = { status: 'loading', user: null, error: null };
   } else if (data) {
     state = { status: 'authenticated', user: data, error: null };
-  } else if (hasAuthToken()) {
+  } else if (hasAuthToken() && isTokenValid(getAuthToken())) {
     // Session query might have encountered transient network glitch while token still exists
     let fallbackUser: AuthUser | null = null;
     if (typeof window !== 'undefined') {

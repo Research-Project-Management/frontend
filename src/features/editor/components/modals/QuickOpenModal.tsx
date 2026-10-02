@@ -18,8 +18,8 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
-  Input,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dialog';
+import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
 import { usePageStore, useTabsStore } from '@/features/editor/store';
 import { filesQuery } from '@/features/editor/hooks/use-core';

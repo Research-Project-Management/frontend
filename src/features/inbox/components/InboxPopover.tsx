@@ -25,7 +25,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { useInbox } from '../hooks/use-inbox';
 import InboxTabs from './InboxTabs';

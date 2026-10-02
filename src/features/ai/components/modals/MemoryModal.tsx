@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dialog';
 import { useAiUIStore } from '../../store';
 import { clearAiMemory } from '../../services/chat.service';
 import { getErrorMessage } from '@/shared/lib/utils';

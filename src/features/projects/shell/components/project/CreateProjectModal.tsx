@@ -4,7 +4,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { IconPicker, ProjectAvatar, Form, getRandomProjectEmoji } from "@/shared/components/ui";
+import { Form } from "@/shared/components/ui";
 import { toast } from 'sonner';
 import {
   X,
@@ -38,6 +38,9 @@ import {
   MediumPriorityBoxIcon,
   HighPriorityBoxIcon,
   UrgentPriorityBoxIcon,
+  IconPicker,
+  ProjectAvatar,
+  getRandomProjectEmoji,
 } from "@/shared/components/icons";
 import { cn } from "@/shared/lib/utils";
 import { useCreateProject, useUpdateProject } from '../../hooks/use-project';

@@ -204,14 +204,8 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
           );
           const percentage = Math.round((completedCount / files.length) * 100);
           return {
-            processingItems: s.processingItems.map((p) =>
-              p.fileName === file.name && p.fileSize === file.size
-                ? {
-                    ...p,
-                    status: 'FAILED',
-                    error: errorMsg,
-                  }
-                : p,
+            processingItems: s.processingItems.filter(
+              (p) => !(p.fileName === file.name && p.fileSize === file.size),
             ),
             state: s.state.data
               ? {
@@ -275,16 +269,6 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
             );
             const percentage = Math.round((completedCount / files.length) * 100);
             return {
-              processingItems: s.processingItems.map((p) =>
-                p.fileName === file.name && p.fileSize === file.size
-                  ? {
-                      ...p,
-                      status: 'SUCCEEDED',
-                      extractedTitle,
-                      itemId: createdItemId,
-                    }
-                  : p,
-              ),
               state: s.state.data
                 ? {
                     ...s.state,
@@ -300,22 +284,20 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
             };
           });
 
-          // Invalidate cache immediately for this completed file
-          queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
-          queryClient.invalidateQueries({ queryKey: ['library', 'items', scopeId] });
+          // Await cache refetch so real item is ready in store before provisional removal
+          await queryClient.refetchQueries({ queryKey: itemKeys.all(scopeId) });
           if (effectiveCollection) {
-            queryClient.invalidateQueries({
+            await queryClient.refetchQueries({
               queryKey: itemKeys.byCollection(scopeId, effectiveCollection),
             });
           }
 
-          setTimeout(() => {
-            set((s) => ({
-              processingItems: s.processingItems.filter(
-                (p) => !(p.fileName === file.name && p.fileSize === file.size),
-              ),
-            }));
-          }, 2000);
+          // Immediately remove from provisional items without lag
+          set((s) => ({
+            processingItems: s.processingItems.filter(
+              (p) => !(p.fileName === file.name && p.fileSize === file.size),
+            ),
+          }));
 
           return;
         }
@@ -346,8 +328,7 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
           return;
         }
 
-        // 2. Metadata Extraction stage (Zotero Graceful Degradation)
-        // File is stored in physical storage; now extract metadata via background pipeline
+        // 2. Metadata Extraction stage
         set((s) => {
           const items = s.state.data?.items.map((i) =>
             i.title === file.name ? { ...i, status: 'PROCESSING' as const } : i,
@@ -381,115 +362,109 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
           });
 
           const ingestPayload = ingestRes as {
-            data?: { runId?: string; itemId?: string };
+            data?: { runId?: string; itemId?: string; status?: string };
             runId?: string;
             itemId?: string;
+            status?: string;
           } | null;
           runId = ingestPayload?.data?.runId || ingestPayload?.runId;
           completedItemId = ingestPayload?.data?.itemId || ingestPayload?.itemId;
-        } catch {
-          // If metadata ingestion submission endpoint is unreachable, file remains securely attached.
+        } catch (submitErr) {
+          const errorMsg = submitErr instanceof Error ? submitErr.message : 'Ingestion submission failed';
+          markFileFailed(errorMsg);
+          return;
         }
 
-        // Start background metadata polling task that tracks actual extraction completion
-        const metadataTask = (async () => {
-          let finalTitle = identifiedTitle;
-          let finalItemId = completedItemId;
+        // 3. Await metadata extraction and polling completion for this file
+        let finalTitle = identifiedTitle;
+        let finalItemId = completedItemId;
 
-          if (runId) {
-            const targetRunId = runId;
-            const startTime = Date.now();
-            const maxWaitMs = 60000;
-            while (Date.now() - startTime < maxWaitMs) {
-              await new Promise((r) => setTimeout(r, 1500));
-              try {
-                const runStatus = await IngestionService.getRunStatus(scopeId, targetRunId);
-                const statusPayload = runStatus as {
-                  data?: { status?: string; title?: string; itemId?: string };
-                  status?: string;
-                  title?: string;
-                  itemId?: string;
-                } | null;
-                const statusData = statusPayload?.data || statusPayload;
-                const currentStatus = statusData?.status;
-                if (currentStatus === 'COMPLETED' || currentStatus === 'READY') {
-                  if (statusData?.title && statusData.title !== 'Uploaded Document') {
-                    finalTitle = statusData.title;
-                  }
-                  if (statusData?.itemId) {
-                    finalItemId = statusData.itemId;
-                  }
-                  break;
+        if (runId) {
+          const targetRunId = runId;
+          const startTime = Date.now();
+          const maxWaitMs = 60000;
+          let isDone = false;
+
+          while (Date.now() - startTime < maxWaitMs && !isDone) {
+            await new Promise((r) => setTimeout(r, 1200));
+            try {
+              const runStatus = await IngestionService.getRunStatus(scopeId, targetRunId);
+              const statusPayload = runStatus as {
+                data?: { status?: string; title?: string; itemId?: string; lastError?: string; errorMessage?: string };
+                status?: string;
+                title?: string;
+                itemId?: string;
+                lastError?: string;
+                errorMessage?: string;
+              } | null;
+              const statusData = statusPayload?.data || statusPayload;
+              const currentStatus = statusData?.status;
+              if (currentStatus === 'COMPLETED' || currentStatus === 'READY' || currentStatus === 'SUCCEEDED') {
+                if (statusData?.title && statusData.title !== 'Uploaded Document') {
+                  finalTitle = statusData.title;
                 }
-                if (
-                  currentStatus === 'FAILED_FINAL' ||
-                  currentStatus === 'FAILED_RETRYABLE'
-                ) {
-                  break;
+                if (statusData?.itemId) {
+                  finalItemId = statusData.itemId;
                 }
-              } catch {
+                isDone = true;
                 break;
               }
+              if (
+                currentStatus === 'FAILED_FINAL' ||
+                currentStatus === 'FAILED_RETRYABLE' ||
+                currentStatus === 'CANCELLED'
+              ) {
+                const failError = statusData?.lastError || statusData?.errorMessage || 'Extraction failed';
+                markFileFailed(failError);
+                return;
+              }
+            } catch {
+              // Retry on transient poll network glitch
             }
           }
+        }
 
-          // Metadata extraction is now completely finished for this file
-          successCount++;
-          completedCount++;
+        // File extraction completed successfully!
+        successCount++;
+        completedCount++;
 
-          set((s) => {
-            const items = s.state.data?.items.map((i) =>
-              i.title === file.name
-                ? { ...i, status: 'SUCCEEDED' as const, itemName: finalTitle }
-                : i,
-            );
-            const percentage = Math.round((completedCount / files.length) * 100);
-            return {
-              processingItems: s.processingItems.map((p) =>
-                p.fileName === file.name && p.fileSize === file.size
-                  ? {
-                      ...p,
-                      status: 'SUCCEEDED',
-                      extractedTitle: finalTitle,
-                      itemId: finalItemId,
-                    }
-                  : p,
-              ),
-              state: s.state.data
-                ? {
-                    ...s.state,
-                    data: {
-                      ...s.state.data,
-                      items: items || [],
-                      processed: completedCount,
-                      succeeded: successCount,
-                      percentage,
-                    },
-                  }
-                : s.state,
-            };
+        set((s) => {
+          const items = s.state.data?.items.map((i) =>
+            i.title === file.name
+              ? { ...i, status: 'SUCCEEDED' as const, itemName: finalTitle }
+              : i,
+          );
+          const percentage = Math.round((completedCount / files.length) * 100);
+          return {
+            state: s.state.data
+              ? {
+                  ...s.state,
+                  data: {
+                    ...s.state.data,
+                    items: items || [],
+                    processed: completedCount,
+                    succeeded: successCount,
+                    percentage,
+                  },
+                }
+              : s.state,
+          };
+        });
+
+        // Trigger refetch so the real item is pulled from the backend into cache BEFORE clearing provisional placeholder
+        await queryClient.refetchQueries({ queryKey: itemKeys.all(scopeId) });
+        if (effectiveCollection) {
+          await queryClient.refetchQueries({
+            queryKey: itemKeys.byCollection(scopeId, effectiveCollection),
           });
+        }
 
-          // Trigger reactive per-file cache invalidation so the row updates in real time
-          queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
-          queryClient.invalidateQueries({ queryKey: ['library', 'items', scopeId] });
-          if (effectiveCollection) {
-            queryClient.invalidateQueries({
-              queryKey: itemKeys.byCollection(scopeId, effectiveCollection),
-            });
-          }
-
-          // Seamless handover: remove provisional placeholder after 2.5s
-          setTimeout(() => {
-            set((s) => ({
-              processingItems: s.processingItems.filter(
-                (p) => !(p.fileName === file.name && p.fileSize === file.size),
-              ),
-            }));
-          }, 2500);
-        })();
-
-        metadataTasks.push(metadataTask);
+        // Immediately remove this file from provisional processingItems so real item renders in table seamlessly
+        set((s) => ({
+          processingItems: s.processingItems.filter(
+            (p) => !(p.fileName === file.name && p.fileSize === file.size),
+          ),
+        }));
       } catch (err: unknown) {
         // Fallback for unexpected errors
         const errorMsg = err instanceof Error ? err.message : 'Processing failed';
@@ -510,12 +485,24 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
       () => runWorker(),
     );
 
+    // Wait until all files have been completely processed & their metadata synchronized
     await Promise.all(workers);
-    // Wait for all metadata extraction tasks across all uploaded files to finish!
-    await Promise.all(metadataTasks);
 
-    // Mark completion
+    // Final synchronization: ensure all queries are fully updated
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: itemKeys.all(scopeId) }),
+      queryClient.refetchQueries({ queryKey: itemKeys.counts(scopeId) }),
+      collectionId
+        ? queryClient.refetchQueries({ queryKey: itemKeys.byCollection(scopeId, collectionId) })
+        : Promise.resolve(),
+    ]);
+    invalidateCollections(queryClient, scopeId);
+
+    // Ensure all provisional items for this batch are wiped
     set((s) => ({
+      processingItems: s.processingItems.filter(
+        (p) => !files.some((f) => f.name === p.fileName && f.size === p.fileSize),
+      ),
       state: {
         ...s.state,
         isComplete: true,
@@ -525,23 +512,16 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
               ...s.state.data,
               status: failCount === files.length ? 'FAILED_FINAL' : 'COMPLETED',
               percentage: 100,
+              processed: files.length,
+              succeeded: successCount,
+              failed: failCount,
               completedAt: new Date().toISOString(),
             }
           : null,
       },
     }));
 
-    // Invalidate TanStack query cache for library
-    queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
-    queryClient.invalidateQueries({ queryKey: ['items', scopeId] });
-    if (collectionId) {
-      queryClient.invalidateQueries({
-        queryKey: itemKeys.byCollection(scopeId, collectionId),
-      });
-    }
-    invalidateCollections(queryClient, scopeId);
-
-    // Toast notification
+    // Toast notification ONLY fires after the UI is completely updated with the real items!
     if (successCount > 0) {
       toast.success(
         files.length === 1

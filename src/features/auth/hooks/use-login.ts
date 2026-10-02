@@ -12,7 +12,8 @@ import { loginUser } from '../services/auth.service';
 import { authKeys } from '../constants/auth.keys';
 import { loginSchema, type LoginSchema } from '../schemas/auth.schema';
 import { env } from '@/config/env';
-import { getSafeRedirectUrl } from '@/shared/utils/auth-token.util';
+import { getSafeRedirectUrl, isTokenValid } from '@/shared/utils/auth-token.util';
+import { getAuthToken, tokenStorage } from '@/shared/lib/api';
 
 /**
  * Dedicated Hook for LoginPage.
@@ -70,16 +71,42 @@ export const useLogin = () => {
   // Redirect if already authenticated
   useEffect(() => {
     let isMounted = true;
-    if (!isAuthLoading && user) {
-      const params =
-        typeof window !== 'undefined'
-          ? new URLSearchParams(window.location.search)
-          : null;
-      if (params?.get('force') === 'true') {
+    if (!isAuthLoading) {
+      const token = getAuthToken();
+      const hasValidToken = isTokenValid(token);
+
+      // If token is missing or expired, clean up stale state and stay on login page
+      if (!hasValidToken) {
+        if (token) {
+          tokenStorage.clearTokens();
+        }
         return;
       }
-      const targetUrl = getSafeRedirectUrl(params?.get('redirect'), '/home');
-      router.replace(targetUrl);
+
+      if (user) {
+        const params =
+          typeof window !== 'undefined'
+            ? new URLSearchParams(window.location.search)
+            : null;
+        if (params?.get('force') === 'true') {
+          return;
+        }
+
+        const targetUrl = getSafeRedirectUrl(params?.get('redirect'), '/home');
+
+        // Loop breaker: if we just came from targetUrl in this session, don't loop endlessly
+        if (typeof window !== 'undefined') {
+          const lastRedirect = sessionStorage.getItem('flux_auth_redirect_attempt');
+          if (lastRedirect === targetUrl) {
+            sessionStorage.removeItem('flux_auth_redirect_attempt');
+            tokenStorage.clearTokens();
+            return;
+          }
+          sessionStorage.setItem('flux_auth_redirect_attempt', targetUrl);
+        }
+
+        router.replace(targetUrl);
+      }
     }
     return () => {
       isMounted = false;

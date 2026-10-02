@@ -15,6 +15,7 @@ import {
 import { Input } from '@/shared/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { Search, Sigma, Pi, Sparkles } from 'lucide-react';
+import { OverleafOmegaIcon } from '@/features/editor/sub-features/code-editor/components/OverleafToolbarIcons';
 
 export interface MathSymbolItem {
   display: string;
@@ -241,18 +242,24 @@ export function MathSymbolPalette({ onInsert, trigger }: MathSymbolPaletteProps)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        {trigger || (
-          <button
-            type="button"
-            aria-label="LaTeX Math Symbol Palette"
-            className="h-7 px-1.5 flex items-center justify-center gap-1 rounded-sm text-xs font-medium text-foreground hover:bg-muted active:scale-95 outline-none transition-all duration-150 select-none cursor-pointer"
-          >
-            <Pi className="size-3.5 shrink-0 text-primary" />
-            <span className="text-xs">Symbols</span>
-          </button>
-        )}
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            {trigger || (
+              <button
+                type="button"
+                aria-label="LaTeX Math Symbol Palette (Ω)"
+                className="flex size-7 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 outline-none transition-colors select-none cursor-pointer"
+              >
+                <OverleafOmegaIcon className="size-3.5 shrink-0" />
+              </button>
+            )}
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          Math Symbols
+        </TooltipContent>
+      </Tooltip>
 
       <PopoverContent
         align="start"

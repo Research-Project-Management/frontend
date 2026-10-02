@@ -32,9 +32,9 @@ export interface ProcessModalState {
 }
 
 export const ingestKeys = {
-  all: ['ingest'] as const,
-  status: (scopeId: string, runId?: string) =>
-    ['ingest', scopeId, runId || 'none'] as const,
+  all: (scopeId?: string) => libraryKeys.ingestion(scopeId),
+  status: (scopeId?: string, runId?: string) =>
+    libraryKeys.ingestionRun(scopeId, runId),
 };
 
 export function useIngestProgress(scopeId: string = 'user') {

@@ -19,6 +19,11 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-muted text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        ai: "bg-ai text-ai-foreground hover:bg-ai-hover shadow-2xs font-medium focus-visible:ring-ai/30",
+        "ai-outline":
+          "border border-ai-border bg-transparent text-ai hover:bg-ai-subtle shadow-2xs font-medium focus-visible:ring-ai/30",
+        "ai-subtle":
+          "bg-ai-subtle text-ai hover:bg-ai-subtle/80 border border-ai-border font-medium focus-visible:ring-ai/30",
       },
       size: {
         default: "h-8 gap-1.5 rounded-md px-3 text-13 has-[>svg]:px-2.5",

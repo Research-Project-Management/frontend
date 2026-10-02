@@ -33,6 +33,7 @@ export const createCollectionSchema = z.object({
   color: z.string().optional().default('#3b82f6'),
   icon: z.string().optional().default('📁'),
   parentId: z.string().nullable().optional(),
+  parent: z.string().nullable().optional(),
 });
 
 export const updateCollectionSchema = createCollectionSchema.partial();

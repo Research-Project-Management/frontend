@@ -14,7 +14,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 
 export interface FileTreeToolbarProps {
@@ -86,11 +86,11 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
                   <button
                     onClick={action}
                     aria-label={label}
-                    className="relative flex size-7 items-center justify-center rounded-sm text-foreground/80 transition-colors hover:bg-muted hover:text-foreground cursor-pointer"
+                    className="relative flex size-7 items-center justify-center rounded-sm text-foreground/80 transition-colors hover:bg-sidebar-hover hover:text-foreground cursor-pointer"
                   >
                     <Icon className="size-3.5 shrink-0" />
                     {badge !== undefined && (
-                      <span className="absolute -top-0.5 -right-0.5 flex size-3.5 items-center justify-center rounded-full bg-rose-500 text-9 font-bold text-white shadow-xs">
+                      <span className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-0.5 items-center justify-center rounded-full bg-rose-500 text-11 font-mono font-bold text-white shadow-xs leading-none">
                         {badge > 9 ? '9+' : badge}
                       </span>
                     )}
@@ -106,7 +106,7 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
       {/* ── File filter search bar (Overleaf Parity) ─────────────────── */}
       {isFileTreeOpen && (
         <div className="px-2.5 pb-2 pt-0.5 border-b border-border bg-background">
-          <div className="relative flex items-center h-7 rounded-md border border-border/80 bg-muted/30 px-2 text-xs focus-within:border-primary/50 focus-within:bg-background transition-colors">
+          <div className="relative flex items-center h-7 rounded-md border border-border/80 bg-background/80 px-2 text-xs focus-within:border-primary/50 focus-within:bg-background transition-colors">
             <Search className="size-3.5 shrink-0 text-muted-foreground mr-1.5" />
             <input
               type="text"

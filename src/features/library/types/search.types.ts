@@ -38,7 +38,15 @@ export const searchResponseSchema = z.object({
     .object({
       cursor: z.string().optional(),
       hasNextPage: z.boolean().default(false),
-      totalCount: z.number().default(0),
+      pageCount: z.number().optional(),
+      totalCount: z.number().optional(),
+    })
+    .transform((m) => {
+      if (!m) return m;
+      return {
+        ...m,
+        totalCount: m.totalCount ?? m.pageCount ?? 0,
+      };
     })
     .optional(),
   nextCursor: z.string().nullable().optional(),

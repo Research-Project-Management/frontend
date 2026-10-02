@@ -1,16 +1,29 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { format } from "date-fns";
 
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { Skeleton } from "@/shared/components/ui";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { fixMojibake } from "@/shared/lib/utils";
-import { ChatAi, Recent, Quicklinks, Stickies } from "../components";
+import { ChatAi, Recent, Quicklinks } from "../components";
 import { Section } from "../components/layouts/section";
-import { ManageWidgetsModal } from "../components/modals/manage-widgets-modal";
 import { Topbar } from "../components/layouts/topbar";
 import { Shapes } from "lucide-react";
+
+const Stickies = dynamic(() => import("../components/Stickies"), {
+  ssr: false,
+  loading: () => <div className="h-32 w-full rounded-lg bg-muted/30 animate-pulse" />,
+});
+
+const ManageWidgetsModal = dynamic(
+  () =>
+    import("../components/modals/manage-widgets-modal").then(
+      (m) => m.ManageWidgetsModal
+    ),
+  { ssr: false }
+);
 
 // ─── Section registry ───────────────────────────────────────────────────────
 
@@ -31,7 +44,7 @@ const SECTION_REGISTRY = [
     id: "stickies" as const,
     label: "Stickies",
     description: "Recent sticky notes",
-    component: () => <Stickies />,
+    component: Stickies,
   },
 ];
 
@@ -82,14 +95,16 @@ export default function HomePage() {
     <div className="h-full flex flex-col overflow-clip">
       <Topbar onManageWidgetsClick={() => setSettingsOpen(true)} />
       
-      <ManageWidgetsModal
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        config={config}
-        setConfig={setConfig}
-        enrichedConfig={enrichedConfig}
-        saveConfig={saveSectionConfig}
-      />
+      {settingsOpen && (
+        <ManageWidgetsModal
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          config={config}
+          setConfig={setConfig}
+          enrichedConfig={enrichedConfig}
+          saveConfig={saveSectionConfig}
+        />
+      )}
 
       <main className="flex-1 overflow-y-auto no-scrollbar">
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col gap-10">

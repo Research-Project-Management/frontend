@@ -10,26 +10,25 @@ import {
   Plus,
   Folder,
   Library,
-  ArrowRight,
 } from 'lucide-react';
 import { useRelations, useViewItems, useCollections } from '../../data';
 import { useLibraryViewStore } from '../../store';
+import { Button } from '@/shared/components/ui/button';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Input } from '@/shared/components/ui/input';
 import {
-  Button,
-  Checkbox,
-  Input,
   Tooltip,
   TooltipTrigger,
   TooltipContent,
   TooltipProvider,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tooltip';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dialog';
 import type { Item, RelatedItem } from '@/features/library/types/library.types';
 import { cn } from '@/shared/lib/utils';
 import { cleanAcademicText, formatAcademicAuthors } from '../../utils';
@@ -244,7 +243,6 @@ export default function RelatedSection({
               type="button"
               onClick={() => setModalOpen(true)}
               className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
-              title="Add related item"
               aria-label="Add related item"
             >
               <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -263,13 +261,10 @@ export default function RelatedSection({
 
       {/* Relations list in Inspector */}
       {!isLoading && relatedList.length > 0 && (
-        <TooltipProvider delayDuration={300}>
+        <TooltipProvider delayDuration={700}>
           <div className="flex flex-col gap-2">
             {relatedList.map((item) => {
               const cleanTitle = cleanAcademicText(item.title) || 'Untitled Item';
-              const authorsStr = formatAcademicAuthors(item.authors || (item as any).creators, 2);
-              const cleanAuthors = authorsStr !== '—' ? authorsStr : '';
-              const venue = getPublicationVenue(item as unknown as VenueBearingItem);
 
               return (
                 <div
@@ -286,45 +281,23 @@ export default function RelatedSection({
                   className="group relative flex items-start gap-2 p-2 rounded-md border border-border/70 bg-card hover:bg-muted/50 hover:border-border transition-all cursor-pointer select-none"
                   title={cleanTitle}
                 >
-                  {/* Left document icon */}
-                  <div className="size-6 rounded bg-muted/60 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 flex items-center justify-center shrink-0 mt-0.5 transition-colors">
+                  {/* Left document icon - neutral, does not change color on hover */}
+                  <div className="size-6 rounded bg-muted/60 text-muted-foreground flex items-center justify-center shrink-0 mt-0.5">
                     <FileText className="size-3.5" strokeWidth={1.5} />
                   </div>
 
-                  {/* Main reference info */}
+                  {/* Main reference info - paper title only */}
                   <div className="min-w-0 flex-1 pr-1">
-                    <p className="font-medium text-12 text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
+                    <p className="font-medium text-12 text-foreground leading-snug line-clamp-2">
                       {cleanTitle}
                     </p>
-                    {(cleanAuthors || venue || item.year) && (
-                      <p className="text-11 text-muted-foreground mt-0.5 leading-normal line-clamp-1">
-                        {[cleanAuthors, venue, item.year].filter(Boolean).join(' • ')}
-                      </p>
-                    )}
                   </div>
 
-                  {/* Top-right action controls */}
+                  {/* Top-right action controls - pushed to the right, clean neutral colors */}
                   <div
-                    className="flex items-center gap-0.5 shrink-0 -mt-0.5"
+                    className="flex items-center gap-0.5 shrink-0 ml-auto -mt-0.5"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {/* Open in library */}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => handlePaperClick(item.id)}
-                          className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                          aria-label="Open paper in library"
-                        >
-                          <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" strokeWidth={1.5} />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" sideOffset={4} className="text-11">
-                        Open in library
-                      </TooltipContent>
-                    </Tooltip>
-
                     {/* Open DOI */}
                     {item.doi && (
                       <Tooltip>
@@ -336,11 +309,11 @@ export default function RelatedSection({
                             className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                             aria-label={`Open DOI: ${item.doi}`}
                           >
-                            <ExternalLink className="size-3.5" strokeWidth={1.5} />
+                            <ExternalLink className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                           </a>
                         </TooltipTrigger>
-                        <TooltipContent side="top" sideOffset={4} className="text-11">
-                          DOI: {item.doi}
+                        <TooltipContent side="top" align="end" sideOffset={4} className="text-12 px-2 py-1">
+                          Open DOI
                         </TooltipContent>
                       </Tooltip>
                     )}
@@ -352,13 +325,13 @@ export default function RelatedSection({
                           <button
                             type="button"
                             onClick={(e) => handleUnlink(item.id, e)}
-                            className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-60 group-hover:opacity-100 cursor-pointer"
-                            aria-label="Unlink item"
+                            className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                            aria-label="Unlink reference"
                           >
-                            <X className="size-3.5" strokeWidth={1.5} />
+                            <X className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent side="top" sideOffset={4} className="text-11">
+                        <TooltipContent side="top" align="end" sideOffset={4} className="text-12 px-2 py-1">
                           Unlink reference
                         </TooltipContent>
                       </Tooltip>
@@ -384,10 +357,7 @@ export default function RelatedSection({
             </DialogTitle>
             <DialogDescription className="text-11 text-muted-foreground leading-normal flex items-center gap-1.5 min-w-0">
               <span className="shrink-0">Linking with:</span>
-              <span
-                className="font-medium text-foreground truncate max-w-[500px]"
-                title={currentPaperCleanTitle}
-              >
+              <span className="font-medium text-foreground truncate max-w-[500px]">
                 &ldquo;{currentPaperCleanTitle}&rdquo;
               </span>
             </DialogDescription>
@@ -432,7 +402,7 @@ export default function RelatedSection({
                           ? 'bg-secondary text-secondary-foreground font-medium'
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/40',
                       )}
-                      title={col.name}
+                      aria-label={col.name}
                     >
                       <Folder
                         className="size-3.5 shrink-0"
@@ -468,7 +438,7 @@ export default function RelatedSection({
                       type="button"
                       onClick={() => setSearchQuery('')}
                       className="absolute right-2 p-0.5 rounded text-muted-foreground hover:text-foreground cursor-pointer"
-                      title="Clear search"
+                      aria-label="Clear search"
                     >
                       <X className="size-3" strokeWidth={1.5} />
                     </button>
@@ -543,7 +513,6 @@ export default function RelatedSection({
                               'text-13 leading-normal line-clamp-1 break-words',
                               isChecked ? 'text-foreground font-semibold' : 'text-foreground font-medium',
                             )}
-                            title={cleanTitle}
                           >
                             {cleanTitle}
                           </p>

@@ -8,10 +8,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
-import { Checkbox } from "@/shared/components/ui";
-import { Label } from "@/shared/components/ui";
+} from "@/shared/components/ui/dialog";
+import { Button } from "@/shared/components/ui/button";
+import { Checkbox } from "@/shared/components/ui/checkbox";
+import { Label } from "@/shared/components/ui/label";
 import type { Item } from '../../types/library.types';
 import { ALL_ITEM_TYPES_FLAT } from '../../types';
 import {
@@ -26,6 +26,8 @@ export interface ConvertModalProps {
   item?: Item | null;
   paper?: Item | null;
   targetType: string;
+  scopeId?: string;
+  initialPreview?: TypeConversionPreview | null;
   onSuccess?: (updatedItem: Item) => void;
 }
 
@@ -48,16 +50,18 @@ export function ConvertModal({
   item,
   paper,
   targetType,
+  scopeId: propScopeId,
+  initialPreview,
   onSuccess,
 }: ConvertModalProps) {
   const currentItem = item || paper;
   const itemId = currentItem?.id || '';
   const itemType = currentItem?.itemType || 'journalArticle';
-  const scopeId = currentItem?.projectId || currentItem?.userId || 'user';
+  const scopeId = propScopeId || currentItem?.projectId || 'user';
   const itemTitle = currentItem?.title || 'Untitled Item';
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [preview, setPreview] = useState<TypeConversionPreview | null>(null);
+  const [preview, setPreview] = useState<TypeConversionPreview | null>(initialPreview || null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [retainUnmapped, setRetainUnmapped] = useState(true);
 
@@ -87,8 +91,12 @@ export function ConvertModal({
   }, [open, itemId, targetType, itemType, retainUnmapped, previewAsync]);
 
   useEffect(() => {
+    if (initialPreview && initialPreview.targetType === targetType && retainUnmapped) {
+      setPreview(initialPreview);
+      return;
+    }
     loadPreview();
-  }, [loadPreview]);
+  }, [loadPreview, initialPreview, targetType, retainUnmapped]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const droppedWithValues = useMemo(() => {

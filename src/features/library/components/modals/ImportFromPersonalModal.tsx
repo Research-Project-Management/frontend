@@ -17,10 +17,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/shared/components/ui';
-import { Input } from '@/shared/components/ui';
-import { Button } from '@/shared/components/ui';
-import { Checkbox } from '@/shared/components/ui';
+} from '@/shared/components/ui/dialog';
+import { Input } from '@/shared/components/ui/input';
+import { Button } from '@/shared/components/ui/button';
+import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
 import { useViewItems, useCollections, ItemService } from '../../data';
 import { formatCreatorCompact, normalizeAuthors } from '../../domain';

@@ -3,16 +3,17 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Home, PanelLeft, History, Check, Loader2 } from 'lucide-react';
+import { Home, PanelLeft, History, Loader2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { Menubar } from "@/shared/components/ui/menubar";
 import {
-  Menubar,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/shared/components/ui";
+} from "@/shared/components/ui/tooltip";
+import dynamic from 'next/dynamic';
 
 import FileMenu from './file/FileMenu';
 import EditMenu from './edit/EditMenu';
@@ -20,9 +21,19 @@ import ViewMenu from './view/ViewMenu';
 import InsertMenu from './insert/InsertMenu';
 import FormatMenu from './format/FormatMenu';
 import LayoutSwitcher from './view/LayoutSwitcher';
-import TemplateGalleryModal from '@/features/editor/components/modals/TemplateGalleryModal';
-import KeyboardShortcutsModal from '@/features/editor/components/modals/KeyboardShortcutsModal';
-import QuickOpenModal from '@/features/editor/components/modals/QuickOpenModal';
+
+const TemplateGalleryModal = dynamic(
+  () => import('@/features/editor/components/modals/TemplateGalleryModal'),
+  { ssr: false }
+);
+const KeyboardShortcutsModal = dynamic(
+  () => import('@/features/editor/components/modals/KeyboardShortcutsModal'),
+  { ssr: false }
+);
+const QuickOpenModal = dynamic(
+  () => import('@/features/editor/components/modals/QuickOpenModal'),
+  { ssr: false }
+);
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useSettingsStore, useCompileStore, usePageStore } from '@/features/editor/store';
 import { usePageActions } from '@/features/editor/hooks/use-core';
@@ -34,6 +45,7 @@ export default function Topbar() {
   const {
     toggleHistory,
     isHistoryOpen,
+    isTemplateModalOpen,
   } = useSettingsStore();
   const { dirtyContentMap } = useCompileStore();
   const { updateTitle: updateTitleMutation } = usePageActions();
@@ -70,7 +82,7 @@ export default function Topbar() {
   return (
     <nav
       aria-label="Editor toolbar"
-      className="flex h-11 items-center justify-between gap-2 px-2 py-1 bg-muted shrink-0 z-10 select-none"
+      className="flex h-11 items-center justify-between gap-2 px-3 py-1 bg-muted border-b border-border shrink-0 z-10 select-none"
     >
       {/* ── Left: Logo (Back to project / Home), Main Menubar ── */}
       <div className="flex items-center min-w-0 shrink-0 gap-1">
@@ -123,9 +135,9 @@ export default function Topbar() {
 
       {/* ── Right: Save Status, Review, History, Quick Layout Switcher & Settings Trigger ── */}
       <div className="flex items-center gap-1.5 shrink-0">
-        {/* Save Status Indicator */}
-        <div className="flex items-center shrink-0 mr-0.5">
-          {isSaving ? (
+        {/* Save Status Indicator: only show when actively saving */}
+        {isSaving && (
+          <div className="flex items-center shrink-0 mr-0.5">
             <span
               className="flex items-center gap-1 text-11 font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full select-none"
               title="Saving..."
@@ -133,16 +145,9 @@ export default function Topbar() {
               <Loader2 className="size-3 animate-spin shrink-0" />
               <span className="hidden sm:inline">Saving...</span>
             </span>
-          ) : (
-            <span
-              className="flex items-center gap-1 text-11 font-medium text-muted-foreground/80 hover:text-foreground transition-colors px-1.5 py-0.5 rounded-sm select-none cursor-default"
-              title="Saved (Cloud)"
-            >
-              <Check className="size-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span className="hidden sm:inline text-11">Saved</span>
-            </span>
-          )}
-        </div>
+          </div>
+        )}
+
 
         <button
           type="button"
@@ -152,7 +157,7 @@ export default function Topbar() {
           className={cn(
             "flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer outline-none select-none",
             isHistoryOpen
-              ? "bg-background text-foreground font-semibold shadow-2xs border border-border"
+              ? "bg-background text-foreground font-semibold"
               : "text-foreground/80 hover:text-foreground hover:bg-sidebar-hover"
           )}
         >
@@ -162,15 +167,19 @@ export default function Topbar() {
 
         <LayoutSwitcher />
 
-        <TemplateGalleryModal />
-        <KeyboardShortcutsModal
-          open={isShortcutsOpen}
-          onOpenChange={setIsShortcutsOpen}
-        />
-        <QuickOpenModal
-          open={isQuickOpenOpen}
-          onOpenChange={setIsQuickOpenOpen}
-        />
+        {isTemplateModalOpen && <TemplateGalleryModal />}
+        {isShortcutsOpen && (
+          <KeyboardShortcutsModal
+            open={isShortcutsOpen}
+            onOpenChange={setIsShortcutsOpen}
+          />
+        )}
+        {isQuickOpenOpen && (
+          <QuickOpenModal
+            open={isQuickOpenOpen}
+            onOpenChange={setIsQuickOpenOpen}
+          />
+        )}
       </div>
     </nav>
   );

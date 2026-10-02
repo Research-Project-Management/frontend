@@ -158,6 +158,7 @@ export const IngestionRunSnapshotDataSchema = z
     item: z.unknown().nullable().optional(),
     snapshot: z.unknown().nullable().optional(),
     title: z.string().nullable().optional(),
+    itemName: z.string().nullable().optional(),
     lastError: z.string().nullable().optional(),
     errorMessage: z.string().nullable().optional(),
     executionLog: z.unknown().nullable().optional(),

@@ -6,7 +6,6 @@ import {
   Sparkles,
   Send,
   Square,
-  Trash2,
   X,
   Copy,
   Check,
@@ -36,12 +35,11 @@ import {
   clearPageChat,
 } from '@/features/ai/services/chat.service';
 import type { ChatMessage } from '@/features/ai/types/chat.types';
-import { Badge } from '@/shared/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 
 interface AiTabProps {
@@ -368,43 +366,20 @@ export default function AiTab({ onClose }: AiTabProps) {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground select-none">
       {/* ── Top Header ── */}
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-background">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="flex size-6 items-center justify-center rounded-md bg-muted/60">
-            <img src="/Chat.svg" alt="AI" className="size-4 shrink-0 rounded-full" />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-foreground truncate">AI Copilot Học thuật</span>
-              <Badge variant="outline" className="text-9 px-1 py-0 bg-primary/10 text-primary border-primary/20">
-                LaTeX
-              </Badge>
-            </div>
-          </div>
-        </div>
+      <header className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-background">
+        <span className="text-xs font-semibold text-foreground truncate">AI Assistant</span>
 
-        <div className="flex items-center gap-1">
+        {onClose && (
           <button
             type="button"
-            onClick={handleClearChat}
-            disabled={messages.length === 0 && !streamingMessage}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-muted transition-colors disabled:opacity-40 cursor-pointer"
-            title="Làm mới cuộc trò chuyện"
+            onClick={onClose}
+            className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
+            title="Đóng bảng AI"
           >
-            <Trash2 className="size-3.5" />
+            <X className="size-3.5" />
           </button>
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
-              title="Đóng bảng AI"
-            >
-              <X className="size-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
+        )}
+      </header>
 
       {/* ── Selection Context Banner ── */}
       {selectionContext && (
@@ -441,16 +416,16 @@ export default function AiTab({ onClose }: AiTabProps) {
             <div className="flex size-12 items-center justify-center rounded-md bg-muted/80 text-primary/80">
               <Bot className="size-6" />
             </div>
-            <div className="space-y-1 max-w-[240px]">
-              <p className="text-xs font-semibold text-foreground">Trợ lý Nghiên cứu & LaTeX</p>
-              <p className="text-11 leading-relaxed text-muted-foreground">
+            <div className="space-y-1 max-w-[250px]">
+              <h3 className="text-xs font-semibold text-foreground">Trợ lý Nghiên cứu & LaTeX</h3>
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 Hỏi đáp cú pháp, viết lại đoạn văn chuẩn IEEE/ACM, chỉnh sửa lỗi biên dịch hoặc giải thích công thức.
               </p>
             </div>
 
             {/* Quick Action Pills */}
             <div className="w-full pt-3 flex flex-col gap-1.5 text-left">
-              <span className="text-10 font-semibold uppercase tracking-wider text-muted-foreground/70 px-1">
+              <span className="text-10 font-medium text-muted-foreground/80 px-1">
                 Tác vụ nhanh:
               </span>
               {QUICK_ACTIONS.map((act) => (
@@ -458,7 +433,7 @@ export default function AiTab({ onClose }: AiTabProps) {
                   key={act.id}
                   type="button"
                   onClick={() => handleSendMessage(act.prompt)}
-                  className="flex items-center justify-between rounded-md border border-border bg-card px-2.5 py-1.5 text-xs text-foreground hover:bg-accent/60 hover:border-primary/30 transition-colors text-left cursor-pointer shadow-2xs"
+                  className="flex items-center justify-between rounded-md bg-muted/60 hover:bg-muted px-2.5 py-1.5 text-xs text-foreground transition-colors text-left cursor-pointer border border-transparent hover:border-border/50"
                 >
                   <span className="truncate">{act.label}</span>
                   <Sparkles className="size-3 text-primary/60 shrink-0 ml-1.5" />
@@ -542,7 +517,7 @@ export default function AiTab({ onClose }: AiTabProps) {
       </div>
 
       {/* ── Chat Input Area ── */}
-      <div className="shrink-0 border-t border-border bg-background p-2.5">
+      <div className="shrink-0 border-t border-border bg-muted p-2.5">
         {/* Quick action chips above textarea if conversation is active */}
         {messages.length > 0 && (
           <div className="flex items-center gap-1 overflow-x-auto pb-2 scrollbar-none">

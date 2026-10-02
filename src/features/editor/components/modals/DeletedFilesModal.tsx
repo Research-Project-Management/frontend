@@ -18,10 +18,10 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
-  Button,
-  Input,
-  Badge,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { deletedFilesQuery, usePageActions } from '@/features/editor/hooks/use-core';

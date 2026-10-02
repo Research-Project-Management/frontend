@@ -48,9 +48,9 @@ export const readerAnnotationSchema = z.object({
 });
 
 export const createAnnotationSchema = z.object({
-  paperId: z.string(),
+  paperId: z.string().optional(),
   attachmentId: z.string().optional(),
-  pageNumber: z.number().int().positive(),
+  pageNumber: z.number().int().positive().optional(),
   pageIndex: z.number().int().nonnegative().optional(),
   ...baseAnnotationFields,
 });
@@ -120,10 +120,11 @@ export const documentAttachmentSchema = z.object({
   fileId: z.string().optional(),
   url: z.string().optional(),
   size: z.number().optional(),
+  linkMode: z.string().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
-});
+}).passthrough();
 
 export const primaryFileSchema = z.object({
   fileId: z.string().optional(),
@@ -223,10 +224,18 @@ export const readerDocumentSchema = z.object({
   primaryFile: primaryFileSchema.nullable().optional(),
   notes: z.array(readerNoteSchema).optional(),
   tags: z.array(documentTagSchema).optional(),
+  labels: z.array(z.string()).optional(),
+  contributors: z.array(z.unknown()).optional(),
+  extra: z.string().nullable().optional(),
+  extraFields: z.record(z.string(), z.unknown()).nullable().optional(),
+  isRetracted: z.boolean().optional(),
+  retractionDetails: z.unknown().optional(),
+  retractionNature: z.string().optional(),
+  openAccessPdfUrl: z.string().nullable().optional(),
   version: z.number().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
-});
+}).passthrough();
 
 export const updateDocumentSchema = z.object({
   title: z.string().optional(),

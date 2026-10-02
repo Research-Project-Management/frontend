@@ -12,12 +12,14 @@ import {
   SheetHeader,
   SheetTitle,
   SheetDescription,
-  Skeleton,
-  Badge,
+} from '@/shared/components/ui/sheet';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Badge } from '@/shared/components/ui/badge';
+import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/avatar';
 import { BarChart3, TrendingUp, Users, CheckCircle2 } from 'lucide-react';
 
 export interface AnalyticsDrawerProps {

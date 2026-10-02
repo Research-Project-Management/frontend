@@ -29,24 +29,36 @@ import { logger } from '@/shared/lib/logger';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import dynamic from 'next/dynamic';
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-  ProjectAvatar,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
 import {
   AddWorkItemIcon,
   DraftsIcon,
   WorkItemsIcon,
   StickiesIcon,
+  ProjectAvatar,
 } from '@/shared/components/icons';
 import { useProjects } from '../hooks/use-project';
 import { useFavorites } from '../hooks/use-favorites';
 import { useProject } from '@/features/projects/project-id/work-items/hooks/use-work-item';
-import { CreateProjectModal } from '@/features/projects/shell/components/project/CreateProjectModal';
-import { CreateModal } from '@/features/projects/project-id/work-items/components/modals/CreateModal';
+
+const CreateProjectModal = dynamic(
+  () =>
+    import('./project/CreateProjectModal').then((m) => m.CreateProjectModal),
+  { ssr: false }
+);
+const CreateModal = dynamic(
+  () =>
+    import(
+      '@/features/projects/project-id/work-items/components/modals/CreateModal'
+    ).then((m) => m.CreateModal),
+  { ssr: false }
+);
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -765,11 +777,13 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
       </div>
 
       {/* Modals */}
-      <CreateProjectModal
-        open={createProjectOpen}
-        onOpenChange={setCreateProjectOpen}
-        onSuccess={() => setCreateProjectOpen(false)}
-      />
+      {createProjectOpen && (
+        <CreateProjectModal
+          open={createProjectOpen}
+          onOpenChange={setCreateProjectOpen}
+          onSuccess={() => setCreateProjectOpen(false)}
+        />
+      )}
 
       {isCreateWorkItemOpen && (
         <CreateModal

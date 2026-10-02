@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
 import { useLibraryUIStore } from '../../store/library-ui.store';
 import {
@@ -19,6 +20,7 @@ import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
   type LibraryDisplayOptions,
 } from '../topbar/LibraryDisplayPopover';
+import { sortLibraryItems } from '../../utils/sort-items';
 import { ItemTableHeader } from './ItemTableHeader';
 import { ItemTableRow } from './ItemTableRow';
 import type { Item } from '../../types/library.types';
@@ -104,16 +106,15 @@ export const ItemTable = React.memo(function ItemTable({
       try {
         await CollectionsService.moveItems(scopeId, targetCollectionId, [itemId]);
         queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
-        queryClient.invalidateQueries({ queryKey: ['items', scopeId || 'user'] });
         queryClient.invalidateQueries({ queryKey: itemKeys.byCollection(scopeId, targetCollectionId) });
         invalidateCollections(queryClient, scopeId);
         toast.success('Reference moved', {
           description: 'Reference successfully moved to collection.',
           id: toastId,
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         toast.error('Failed to move reference', {
-          description: err?.message || 'Could not move document to collection.',
+          description: err instanceof Error ? err.message : 'Could not move document to collection.',
           id: toastId,
         });
       }
@@ -141,6 +142,9 @@ export const ItemTable = React.memo(function ItemTable({
 
   // Track last selected index for Shift + Click range selection
   const lastSelectedIndexRef = useRef<number | null>(null);
+
+  // Scrollable container ref for TanStack Virtual
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Sentinel ref and lifecycle-safe IntersectionObserver for infinite scrolling
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -172,55 +176,75 @@ export const ItemTable = React.memo(function ItemTable({
       setSortColumn(columnKey);
       setSortDirection('desc');
     }
-    setStoreDisplayOptions?.((prev) => ({
-      ...prev,
-      orderBy: columnKey as any,
-      orderDirection: nextDir,
-    }));
-    onSortChange?.(columnKey, nextDir);
+    if (onSortChange) {
+      // Server-sort mode: let the parent (LibraryContent) own the store update
+      // to avoid double-refetch (setStoreDisplayOptions + onSortChange both trigger query re-run)
+      onSortChange(columnKey, nextDir);
+    } else {
+      // Client-sort mode: update store so Topbar reflects the active sort column
+      setStoreDisplayOptions?.((prev) => ({
+        ...prev,
+        orderBy: columnKey as any,
+        orderDirection: nextDir,
+      }));
+    }
   };
 
-  // Sort items client-side only when server-side sorting (onSortChange) is not active
-  const sortedItems = useMemo(() => {
-    const processing = items.filter((it: any) => it._isProcessing);
-    const regular = items.filter((it: any) => !it._isProcessing);
+  // Sort items client-side only when server-side sorting (onSortChange) is not active.
+  // Processing items (_isProcessing) are always pinned to the top.
+  const sortedItems = useMemo(
+    () => sortLibraryItems(items, sortColumn, sortDirection, Boolean(onSortChange)),
+    [items, onSortChange, sortColumn, sortDirection],
+  );
 
-    if (onSortChange || !sortColumn) {
-      return [...processing, ...regular];
+  // Dynamic row height estimate based on density for smooth virtualization
+  const estimatedRowHeight = useMemo(() => {
+    switch (displayOptions.density) {
+      case 'compact':
+        return 32;
+      case 'comfortable':
+        return 48;
+      default:
+        return 38;
     }
+  }, [displayOptions.density]);
 
-    const sortedRegular = [...regular].sort((a, b) => {
-      const recordA = a as unknown as Record<string, unknown>;
-      const recordB = b as unknown as Record<string, unknown>;
-      let valA: unknown = recordA[sortColumn];
-      let valB: unknown = recordB[sortColumn];
+  // TanStack Virtual instance
+  const rowVirtualizer = useVirtualizer({
+    count: sortedItems.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => estimatedRowHeight,
+    overscan: 12,
+  });
 
-      if (sortColumn === 'authors') {
-        valA = Array.isArray(a.authors) ? a.authors[0] : a.authors;
-        valB = Array.isArray(b.authors) ? b.authors[0] : b.authors;
-      } else if (sortColumn === 'dateAdded') {
-        valA = a.createdAt;
-        valB = b.createdAt;
-      } else if (sortColumn === 'dateModified') {
-        valA = a.updatedAt;
-        valB = b.updatedAt;
-      }
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const totalVirtualHeight = rowVirtualizer.getTotalSize();
 
-      if (!valA && valA !== 0) return 1;
-      if (!valB && valB !== 0) return -1;
+  // Auto-trigger infinite load more when virtual window reaches bottom items
+  const lastVirtualRow = virtualRows[virtualRows.length - 1];
+  React.useEffect(() => {
+    if (!lastVirtualRow || !hasNextPage || isLoadingMore) return;
+    if (lastVirtualRow.index >= sortedItems.length - 4) {
+      onLoadMore?.();
+    }
+  }, [lastVirtualRow, hasNextPage, isLoadingMore, onLoadMore, sortedItems.length]);
 
-      if (typeof valA === 'string' && typeof valB === 'string') {
-        const cmp = valA.localeCompare(valB);
-        return sortDirection === 'asc' ? cmp : -cmp;
-      }
+  const columns =
+    displayOptions?.columns || DEFAULT_LIBRARY_DISPLAY_OPTIONS.columns;
 
-      if (Number(valA) < Number(valB)) return sortDirection === 'asc' ? -1 : 1;
-      if (Number(valA) > Number(valB)) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-    return [...processing, ...sortedRegular];
-  }, [items, onSortChange, sortColumn, sortDirection]);
+  // Active column count for proper colSpan on virtual spacer rows
+  const activeColumnCount = useMemo(() => {
+    let count = 1;
+    if (columns.authors !== false) count++;
+    if (columns.year !== false) count++;
+    if (columns.publication !== false) count++;
+    if (columns.itemType) count++;
+    if (columns.doi) count++;
+    if (columns.citationKey) count++;
+    if (columns.citations) count++;
+    if (isTrash) count++;
+    return count;
+  }, [columns, isTrash]);
 
   // Select all handler
   const handleSelectAll = () => {
@@ -345,7 +369,7 @@ export const ItemTable = React.memo(function ItemTable({
 
   const handleToggleStar = useCallback(
     (item: Item, isStarred: boolean) => {
-      if ((item as any)._isProcessing) return;
+      if (item._isProcessing) return;
       toggleStarMutation.mutate({
         id: item.id,
         isStarred: !isStarred,
@@ -357,7 +381,7 @@ export const ItemTable = React.memo(function ItemTable({
   const handleDelete = useCallback(
     (id: string) => {
       const targetItem = items.find((it) => it.id === id);
-      if ((targetItem as any)?._isProcessing) {
+      if (targetItem?._isProcessing) {
         toast.warning('Cannot delete an item that is currently uploading or processing', {
           id: 'library-item-guard',
         });
@@ -382,7 +406,7 @@ export const ItemTable = React.memo(function ItemTable({
   const handlePurge = useCallback(
     (id: string) => {
       const targetItem = items.find((it) => it.id === id);
-      if ((targetItem as any)?._isProcessing) {
+      if (targetItem?._isProcessing) {
         toast.warning('Cannot delete an item that is currently uploading or processing', {
           id: 'library-item-guard',
         });
@@ -397,8 +421,6 @@ export const ItemTable = React.memo(function ItemTable({
     [onPermanentDeleteItems, purgeMutation, items],
   );
 
-  const columns =
-    displayOptions?.columns || DEFAULT_LIBRARY_DISPLAY_OPTIONS.columns;
 
   // Dynamically balance proportional column widths using Golden Ratio (phi ≈ 1.618)
   const colWidths = useMemo(() => {
@@ -451,6 +473,7 @@ export const ItemTable = React.memo(function ItemTable({
     <div className="flex flex-col h-full w-full overflow-hidden">
       {/* Scrollable Data Table Container */}
       <div
+        ref={tableContainerRef}
         tabIndex={0}
         onKeyDown={handleKeyDown}
         onClick={(e) => {
@@ -488,25 +511,52 @@ export const ItemTable = React.memo(function ItemTable({
           />
 
           <tbody className="divide-y divide-border">
-            {sortedItems.map((item, index) => (
-              <ItemTableRow
-                key={item.id}
-                item={item}
-                index={index}
-                columns={columns}
-                density={displayOptions.density}
-                isTrash={isTrash}
-                collections={collections}
-                onRowClick={handleRowClick}
-                onToggleSelect={handleToggleSelect}
-                onToggleStar={handleToggleStar}
-                onDelete={handleDelete}
-                onRestore={handleRestore}
-                onPurge={handlePurge}
-                onMoveToCollection={handleMoveToCollection}
-                onDetachFromCollection={onDetachItem}
-              />
-            ))}
+            {/* Top virtual spacer */}
+            {virtualRows.length > 0 && virtualRows[0].start > 0 && (
+              <tr style={{ height: `${virtualRows[0].start}px`, border: 'none' }}>
+                <td colSpan={activeColumnCount} style={{ padding: 0, border: 'none' }} />
+              </tr>
+            )}
+
+            {/* Virtualized visible window rows */}
+            {virtualRows.map((virtualRow) => {
+              const item = sortedItems[virtualRow.index];
+              if (!item) return null;
+              return (
+                <ItemTableRow
+                  key={item.id}
+                  item={item}
+                  index={virtualRow.index}
+                  columns={columns}
+                  density={displayOptions.density}
+                  isTrash={isTrash}
+                  collections={collections}
+                  onRowClick={handleRowClick}
+                  onToggleSelect={handleToggleSelect}
+                  onToggleStar={handleToggleStar}
+                  onDelete={handleDelete}
+                  onRestore={handleRestore}
+                  onPurge={handlePurge}
+                  onMoveToCollection={handleMoveToCollection}
+                  onDetachFromCollection={onDetachItem}
+                />
+              );
+            })}
+
+            {/* Bottom virtual spacer */}
+            {virtualRows.length > 0 && (
+              <tr
+                style={{
+                  height: `${Math.max(
+                    0,
+                    totalVirtualHeight - (virtualRows[virtualRows.length - 1]?.end ?? 0),
+                  )}px`,
+                  border: 'none',
+                }}
+              >
+                <td colSpan={activeColumnCount} style={{ padding: 0, border: 'none' }} />
+              </tr>
+            )}
           </tbody>
         </table>
 

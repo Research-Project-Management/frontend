@@ -12,8 +12,7 @@ import {
   Link2,
   Quote,
 } from 'lucide-react';
-import { Button } from "@/shared/components/ui";
-import { Badge } from "@/shared/components/ui";
+import { Button, Badge, Separator } from "@/shared/components/ui";
 import { useReaderClipboard } from '../../hooks/use-reader-feedback';
 import { cleanDoi as sanitizeDoi, normalizeAuthors } from '../../utils/reader.util';
 import type { ReaderDocument } from '../../types/reader.types';

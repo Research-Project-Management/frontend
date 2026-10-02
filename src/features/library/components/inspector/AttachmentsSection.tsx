@@ -223,7 +223,8 @@ export default function AttachmentsSection({
   const searchParams = useSearchParams();
   const currentQuery = searchParams.get('q');
   const qParam = currentQuery ? `?q=${encodeURIComponent(currentQuery)}` : '';
-  const rawScopeId = (scopeId || projectId || (paper as any)?.projectId || (params as any)?.projectId || 'user') as string;
+  const routeProjectId = typeof params?.projectId === 'string' ? params.projectId : undefined;
+  const rawScopeId = scopeId || projectId || paper.projectId || routeProjectId || 'user';
 
   const {
     captureSnapshot,
@@ -295,11 +296,11 @@ export default function AttachmentsSection({
     }
   };
 
-  const rawAttachments = paper.attachments || (paper as any).files || EMPTY_ATTACHMENTS;
+  const rawAttachments = paper.attachments || paper.files || EMPTY_ATTACHMENTS;
   const paperUrl = getPaperFileUrl(paper);
 
   const paperFilename = paper.filename;
-  const openAccessPdfUrl = (paper as any)?.openAccessPdfUrl;
+  const openAccessPdfUrl = paper.openAccessPdfUrl;
 
   const primaryAttachment = useMemo(() => {
     return (
@@ -496,9 +497,9 @@ export default function AttachmentsSection({
               <div className="min-w-0 flex-1">
                 <p
                   className="text-xs font-medium text-foreground break-all leading-snug"
-                  title={primaryAttachment?.title || paper.filename || ((paper as any)?.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
+                  title={primaryAttachment?.title || paper.filename || (paper.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
                 >
-                  {primaryAttachment?.title || paper.filename || ((paper as any)?.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
+                  {primaryAttachment?.title || paper.filename || (paper.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
                 </p>
                 {primaryAttachment?.title && paper.filename && primaryAttachment.title !== paper.filename && (
                   <p className="text-10 text-muted-foreground truncate" title={paper.filename}>

@@ -11,12 +11,25 @@ import {
   List,
   BarChart3,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui';
-import { Skeleton } from '@/shared/components/ui';
+import dynamic from 'next/dynamic';
+import { Button } from '@/shared/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Card } from '@/features/projects/shell/components/project/Card';
 import { CollapsibleSearchInput } from '@/features/projects/shell/components/project/CollapsibleSearchInput';
-import { CreateProjectModal } from '@/features/projects/shell/components/project/CreateProjectModal';
+
+const CreateProjectModal = dynamic(
+  () =>
+    import('@/features/projects/shell/components/project/CreateProjectModal').then(
+      (m) => m.CreateProjectModal
+    ),
+  { ssr: false }
+);
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { useFavorites } from '../hooks/use-favorites';
 import {
@@ -247,10 +260,12 @@ export function FavoritesPage() {
         )}
       </main>
 
-      <CreateProjectModal
-        open={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
-      />
+      {isCreateOpen && (
+        <CreateProjectModal
+          open={isCreateOpen}
+          onOpenChange={setIsCreateOpen}
+        />
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { ErrorBoundary } from '@/shared/components/ui';
+import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 
 export default function EditorLayout({
   children,

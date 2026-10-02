@@ -92,7 +92,7 @@ export function MergeModal({
 
     // Check if items already have full metadata (e.g. abstract or attachments present)
     const hasDetailedMetadata = duplicates.some(
-      (d) => Boolean(d.abstract) || Array.isArray((d as any).attachments),
+      (d) => Boolean(d.abstract) || (Array.isArray(d.attachments) && d.attachments.length > 0),
     );
 
     if (hasDetailedMetadata) {
@@ -307,7 +307,7 @@ export function MergeModal({
                 const authorList = formatAcademicAuthors(
                   item.authors && item.authors.length > 0
                     ? item.authors
-                    : (item as any).creators,
+                    : item.creators,
                 );
 
                 return (

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { cn } from '@/shared/lib/utils';
 import {
   Menubar,
   MenubarMenu,

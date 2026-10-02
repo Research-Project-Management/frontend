@@ -3,9 +3,21 @@
  * Standardized 100% against Official Zotero Schema v42 (https://api.zotero.org/schema).
  * Single Source of Truth is owned by backend (/api/v1/library/item-types).
  */
-import { ITEM_TYPE_FIELDS_MAP, FIELD_LABELS } from './item-fields.constants';
+import {
+  ITEM_TYPE_FIELDS_MAP,
+  FIELD_LABELS,
+  updateCachedFields,
+  saveSchemaCache,
+  loadSchemaCache,
+} from './item-fields.constants';
 
-export { ITEM_TYPE_FIELDS_MAP, FIELD_LABELS };
+export {
+  ITEM_TYPE_FIELDS_MAP,
+  FIELD_LABELS,
+  updateCachedFields,
+  saveSchemaCache,
+  loadSchemaCache,
+};
 
 
 export interface SchemaFieldDefinition {
@@ -580,6 +592,8 @@ export function updateLibrarySchemaRegistry(data: unknown): void {
   // Handle case where data is directly an array of item types
   if (Array.isArray(data)) {
     const mapped = mapRegistryItemTypes(data);
+    updateCachedFields(mapped);
+    saveSchemaCache(data);
     for (const def of mapped) {
       LIBRARY_ITEM_TYPES[def.itemType] = def;
       ITEM_TYPE_LABELS[def.itemType] = def.label;
@@ -611,6 +625,8 @@ export function updateLibrarySchemaRegistry(data: unknown): void {
   const rawTypes = payload.itemTypes || payload.data;
   if (Array.isArray(rawTypes)) {
     const mapped = mapRegistryItemTypes(rawTypes);
+    updateCachedFields(mapped);
+    saveSchemaCache(payload);
     for (const def of mapped) {
       LIBRARY_ITEM_TYPES[def.itemType] = def;
       ITEM_TYPE_LABELS[def.itemType] = def.label;
@@ -620,6 +636,14 @@ export function updateLibrarySchemaRegistry(data: unknown): void {
         }
       }
     }
+  }
+}
+
+// Synchronously hydrate from client cache if present
+if (typeof window !== 'undefined') {
+  const cached = loadSchemaCache();
+  if (cached) {
+    updateLibrarySchemaRegistry(cached);
   }
 }
 

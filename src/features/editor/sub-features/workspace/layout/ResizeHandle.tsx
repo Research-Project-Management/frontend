@@ -22,6 +22,7 @@ export interface ResizeHandleProps {
   valueMax?: number;
   hideGrip?: boolean;
   className?: string;
+  children?: React.ReactNode;
 }
 
 export function ResizeHandle({
@@ -35,6 +36,7 @@ export function ResizeHandle({
   valueMin,
   valueMax,
   className,
+  children,
 }: ResizeHandleProps) {
   return (
     <div
@@ -50,13 +52,12 @@ export function ResizeHandle({
       onDoubleClick={onDoubleClick}
       onKeyDown={onKeyDown}
       className={cn(
-        'group relative w-2 hover:opacity-90 active:opacity-100 cursor-col-resize shrink-0 transition-colors duration-150 outline-none select-none',
-        className || 'bg-muted hover:bg-muted/80 active:bg-primary/20',
-        isDragging && 'bg-sky-500/40',
+        'group relative w-full h-full cursor-col-resize shrink-0 outline-none select-none bg-transparent',
+        className,
       )}
     >
-      {/* Expanded invisible hit area */}
-      <div className="absolute inset-y-0 -left-1 -right-1 z-10" />
+      {children}
     </div>
   );
 }
+

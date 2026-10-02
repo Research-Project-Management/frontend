@@ -19,6 +19,7 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { toast } from 'sonner';
 import { Lock, Search } from 'lucide-react';
+import { OverleafSearchIcon } from '@/features/editor/sub-features/code-editor/components/OverleafToolbarIcons';
 import { useTheme } from '@/shared/providers';
 import { cn } from '@/shared/lib/utils';
 import { useQuery } from '@tanstack/react-query';
@@ -28,16 +29,15 @@ import {
   useRejectSuggestion,
   useCreateSuggestion,
 } from '@/features/editor/hooks/use-suggestion';
+import { usePageComments } from '@/features/editor/hooks/use-comment';
 import { useViewItems } from '@/features/library';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 
 // Subcomponents & internal seams
 import Format from './Format';
 import UnifiedCodeMirrorEditor from './UnifiedCodeMirrorEditor';
 import { EditorModeSwitcher } from './subcomponents/EditorModeSwitcher';
-import { CollaboratorPresenceBar } from './subcomponents/CollaboratorPresenceBar';
 import { SourceVisualSwitcher } from './subcomponents/SourceVisualSwitcher';
-import { LatexDiagnosticsBadge } from './subcomponents/LatexDiagnosticsBadge';
 import { WordCountDialog } from './subcomponents/WordCountDialog';
 import { EditorSearchPanel } from './subcomponents/EditorSearchPanel';
 import type { SelFloating } from './subcomponents/EditorFloatingBar';
@@ -122,9 +122,19 @@ export default function Editor({ page }: EditorProps) {
     [setReviewMode],
   );
 
-  // Presentational state for comments & suggestions (decoupled from legacy API)
-  const [comments] = useState<PageComment[]>([]);
+  // Live comments & suggestions for Overleaf review parity
+  const { data: comments = [] } = usePageComments(page?.id ?? null);
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<PageSuggestion[]>([]);
+
+  useEffect(() => {
+    const unsub = EditorEventBus.on('flux:open-panel', (detail) => {
+      if (typeof detail === 'object' && detail !== null && detail.commentId) {
+        setActiveCommentId(detail.commentId);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   // Realtime collaboration & remote cursor tracking (clean presentation state)
   const rawProjId = 'projectId' in page ? page.projectId : undefined;
@@ -289,6 +299,7 @@ export default function Editor({ page }: EditorProps) {
     editorRef,
     pageFiles,
     libraryItems,
+    projectId: projectScopeId,
   });
 
   // Local popup states
@@ -604,14 +615,14 @@ export default function Editor({ page }: EditorProps) {
   const isReadOnly = Boolean(isPageLocked || isDocumentLocked);
 
   return (
-    <div className="h-full w-full flex flex-col overflow-hidden">
-      {/* Header format bar & mode switches */}
+    <div className="h-full w-full flex flex-col min-h-0">
+      {/* Header format bar & mode switches (Overleaf 1:1 Parity) */}
       <div className="h-9 flex items-center justify-between border-b border-border bg-background pl-1 pr-2 shrink-0 overflow-hidden gap-1.5">
         <div className="flex-1 min-w-0 overflow-hidden">
           <Format />
         </div>
         <div className="flex items-center gap-1.5 shrink-0 select-none">
-          <LatexDiagnosticsBadge />
+          <div className="h-4 w-px bg-border/60 mx-1 shrink-0" />
           <SourceVisualSwitcher />
           <EditorModeSwitcher
             reviewMode={reviewMode}
@@ -624,14 +635,12 @@ export default function Editor({ page }: EditorProps) {
                 type="button"
                 onClick={() => setIsFindOpen((prev) => !prev)}
                 className={cn(
-                  'flex size-7 items-center justify-center rounded-sm text-xs font-medium transition-colors cursor-pointer outline-none select-none',
-                  isFindOpen
-                    ? 'bg-muted text-primary font-semibold'
-                    : 'text-foreground/80 hover:text-foreground hover:bg-muted active:scale-95',
+                  'flex size-7 items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer outline-none select-none',
+                  isFindOpen && 'bg-muted text-foreground font-semibold shadow-2xs',
                 )}
                 aria-label="Search and Replace (Ctrl+F)"
               >
-                <Search className="size-3.5 shrink-0" />
+                <OverleafSearchIcon className="size-3.5 shrink-0" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs">
@@ -643,9 +652,6 @@ export default function Editor({ page }: EditorProps) {
               </div>
             </TooltipContent>
           </Tooltip>
-          <CollaboratorPresenceBar
-            collaborators={activeCollaborators}
-          />
         </div>
       </div>
 
@@ -751,8 +757,8 @@ export default function Editor({ page }: EditorProps) {
       )}
 
       {/* Editor surface area */}
-      <div className="flex-1 w-full relative min-h-0 flex flex-col overflow-hidden">
-        <div className="flex-1 w-full relative min-h-0 overflow-hidden">
+      <div className="flex-1 w-full relative min-h-0 flex flex-col">
+        <div className="flex-1 w-full relative min-h-0">
           <UnifiedCodeMirrorEditor
             value={currentContent}
             onChange={handleContentChange}
@@ -763,6 +769,8 @@ export default function Editor({ page }: EditorProps) {
             keybinding={keybinding}
             yText={yText}
             awareness={awareness}
+            comments={comments}
+            activeCommentId={activeCommentId}
           />
         </div>
 
@@ -850,6 +858,7 @@ export default function Editor({ page }: EditorProps) {
         setCitationModalOpen={setCitationModalOpen}
         bibEntries={bibEntries}
         onInsertCitation={handleInsertCitationSnippet}
+        projectId={projectScopeId}
         tableWizardOpen={tableWizardOpen}
         setTableWizardOpen={setTableWizardOpen}
         figureWizardOpen={figureWizardOpen}

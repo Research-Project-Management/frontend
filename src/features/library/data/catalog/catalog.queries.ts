@@ -37,6 +37,7 @@ import type {
   Item,
   CreateItemDTO,
   UpdateItemDTO,
+  CursorPaginationMeta,
   ItemQueryParams,
   Collection,
   CreateCollectionDTO,
@@ -53,12 +54,11 @@ export { itemKeys };
 // ── COLLECTIONS QUERY KEYS & HOOKS ───────────────────────────────────────────
 
 export const collectionKeys = {
-  all: (scopeId?: string) => ['collections', scopeId || 'user'] as const,
-  byId: (scopeId?: string, collectionId?: string) => ['collections', scopeId || 'user', collectionId] as const,
+  all: (scopeId?: string) => libraryKeys.collections(scopeId),
+  byId: (scopeId?: string, collectionId?: string) => libraryKeys.collection(scopeId, collectionId),
 };
 
 export const invalidateCollections = (qc: QueryClient, scopeId?: string) => {
-  qc.invalidateQueries({ queryKey: collectionKeys.all(scopeId) });
   qc.invalidateQueries({ queryKey: libraryKeys.collections(scopeId) });
   qc.invalidateQueries({ queryKey: libraryKeys.collectionsList(scopeId) });
   qc.invalidateQueries({ queryKey: itemKeys.counts(scopeId) });
@@ -92,16 +92,16 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
 
   const createMutation = useMutation({
     mutationFn: (data: CreateCollectionDTO) => {
-      const rawParent = (data as any).parentId ?? (data as any).parent ?? null;
+      const rawParent = data.parentId ?? data.parent ?? null;
       const cleanParentId = rawParent === 'root' || !rawParent ? null : rawParent;
-      const payload = {
+      const payload: CreateCollectionDTO = {
         name: data.name?.trim() || 'Untitled',
         description: data.description?.trim() || '',
         color: data.color || '#2563eb',
         icon: data.icon || '',
         parentId: cleanParentId,
       };
-      return createCollection(scopeId, payload as any);
+      return createCollection(scopeId, payload);
     },
     onSuccess: () => {
       invalidateCollections(queryClient, scopeId);
@@ -261,17 +261,17 @@ export function useCreateCollectionMutation(scopeId?: string) {
   const effectiveScope = scopeId || 'user';
 
   return useMutation({
-    mutationFn: (data: CreateCollectionDTO | { name: string; description?: string; color?: string; parentId?: string | null }) => {
-      const rawParent = (data as any).parentId ?? (data as any).parent ?? null;
+    mutationFn: (data: CreateCollectionDTO) => {
+      const rawParent = data.parentId ?? data.parent ?? null;
       const cleanParentId = rawParent === 'root' || !rawParent ? null : rawParent;
-      const payload = {
+      const payload: CreateCollectionDTO = {
         name: data.name?.trim() || 'Untitled',
         description: data.description?.trim() || '',
         color: data.color || '#2563eb',
-        icon: (data as any).icon || '',
+        icon: data.icon || '',
         parentId: cleanParentId,
       };
-      return createCollection(effectiveScope, payload as any);
+      return createCollection(effectiveScope, payload);
     },
     onSuccess: () => {
       invalidateCollections(queryClient, effectiveScope);
@@ -312,9 +312,7 @@ export function useBatchDetachItemsMutation(scopeId?: string) {
 
   return useMutation({
     mutationFn: async ({ collectionId, itemIds }: { collectionId: string; itemIds: string[] }) => {
-      await Promise.all(
-        itemIds.map((itemId) => CollectionsService.detachItem(effectiveScope, collectionId, itemId)),
-      );
+      await CollectionsService.bulkDetachItems(effectiveScope, collectionId, itemIds);
     },
     onSuccess: (_data, variables) => {
       invalidateCollections(queryClient, effectiveScope);
@@ -347,7 +345,7 @@ export function useViewItems(
     enabled: true,
     select: (data) => {
       const items: Item[] = data?.items || [];
-      const meta = data?.meta || data?.pagination || null;
+      const meta = (data?.meta || data?.pagination || null) as CursorPaginationMeta | null;
       const total: number =
         meta?.totalCount ??
         data?.total ??
@@ -574,7 +572,6 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
           ids,
         );
         queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
-        queryClient.invalidateQueries({ queryKey: ['items', targetScope || 'user'] });
         if (targetCollectionId) {
           queryClient.invalidateQueries({
             queryKey: itemKeys.byCollection(targetScope, targetCollectionId),
@@ -627,10 +624,6 @@ export function useItemTypes(scopeIdOrOptions?: string | { scopeId?: string; pro
     enabled: true,
     staleTime: 1000 * 60 * 60,
   });
-
-  if (data) {
-    updateLibrarySchemaRegistry(data as unknown as Parameters<typeof updateLibrarySchemaRegistry>[0]);
-  }
 
   const types = Array.isArray(data)
     ? data
@@ -769,8 +762,10 @@ export function useTrash(scopeId?: string) {
   const emptyTrashMutation = useMutation({
     mutationFn: async (items: Item[]) => {
       if (items.length === 0) return 0;
-      await Promise.all(items.map((item) => ItemService.purge(effectiveScope, item.id)));
-      return items.length;
+      const ids = items.map((item) => item.id).filter(Boolean);
+      if (ids.length === 0) return 0;
+      const res = await ItemService.bulkPurge(effectiveScope, ids);
+      return res?.count ?? ids.length;
     },
     onSuccess: (count) => {
       toast.success('Trash emptied', {
@@ -860,14 +855,14 @@ export function useItemTable({
   }, [sortField]);
 
   const selectableItems = useMemo(
-    () => targetItems.filter((item) => !(item as any).isPending),
+    () => targetItems.filter((item) => !item.isPending),
     [targetItems],
   );
 
   const toggleSelect = useCallback((itemId: string, clickEvent?: MouseEvent) => {
     if (clickEvent) clickEvent.stopPropagation();
     const item = targetItems.find((i) => i.id === itemId);
-    if (item && (item as any).isPending) return;
+    if (item && item.isPending) return;
 
     setSelectedIds((previousSelectedIds) => {
       const nextSelectedIds = new Set(previousSelectedIds);
@@ -895,8 +890,8 @@ export function useItemTable({
 
   const sortedItems = useMemo(() => {
     return [...targetItems].sort((firstItem, secondItem) => {
-      const aPending = Boolean((firstItem as any).isPending);
-      const bPending = Boolean((secondItem as any).isPending);
+      const aPending = Boolean(firstItem.isPending);
+      const bPending = Boolean(secondItem.isPending);
       if (aPending && !bPending) return -1;
       if (!aPending && bPending) return 1;
       if (aPending && bPending) {
@@ -1028,7 +1023,7 @@ export function useLibraryItemsQuery(
     queryFn: async (): Promise<LibraryItemsQueryResult> => {
       const res = await ItemService.getAll(targetScope, params);
       const items: Item[] = res?.items || [];
-      const pagination = res?.pagination || res?.meta || null;
+      const pagination = (res?.pagination || res?.meta || null) as CursorPaginationMeta | null;
       const total =
         pagination?.totalCount ??
         res?.total ??
@@ -1064,7 +1059,7 @@ export function useInfiniteLibraryItemsQuery(
         cursor: pageParam ? String(pageParam) : undefined,
       });
       const items: Item[] = res?.items || [];
-      const pagination = res?.pagination || res?.meta || null;
+      const pagination = (res?.pagination || res?.meta || null) as CursorPaginationMeta | null;
       const total =
         pagination?.totalCount ??
         res?.total ??
@@ -1124,14 +1119,15 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
       silent?: boolean;
     }) => {
       const targetId = id || itemId || '';
-      const rawData = (payload || data || {}) as any;
+      const rawData = payload || data || {};
       const { silent: _silent, ...updateData } = rawData;
-      const cached = queryClient.getQueryData<any>(itemKeys.byId(effectiveScope, targetId));
+      const cached = queryClient.getQueryData<{ item?: Item; version?: number }>(
+        itemKeys.byId(effectiveScope, targetId)
+      );
       const cachedVersion = cached?.item?.version ?? cached?.version;
       const resolvedVersion =
         expectedVersion ??
-        (updateData as any)?.expectedVersion ??
-        (updateData as any)?.version ??
+        updateData.version ??
         (typeof cachedVersion === 'number' ? cachedVersion : undefined);
       return ItemService.update(effectiveScope, targetId, updateData, resolvedVersion);
     },
@@ -1144,8 +1140,8 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
       }
       const isSilent = Boolean(
         variables.silent ||
-        (variables.payload as any)?.silent ||
-        (variables.data as any)?.silent
+        variables.payload?.silent ||
+        variables.data?.silent
       );
       if (!isSilent) {
         toast.success('Item updated', { id: 'item-update' });
@@ -1241,7 +1237,7 @@ export function useBatchPurgeItemsMutation(scopeId?: string) {
   return useMutation({
     mutationFn: async (itemIds: string[] | string) => {
       const ids = Array.isArray(itemIds) ? itemIds : [itemIds];
-      await Promise.all(ids.map((id) => ItemService.purge(effectiveScope, id)));
+      await ItemService.bulkPurge(effectiveScope, ids);
       return ids;
     },
     onSuccess: (ids) => {
@@ -1360,12 +1356,12 @@ export const useTagsQuery = useTags;
 // ── NOTES QUERY HOOKS ─────────────────────────────────────────────────────────
 
 export const noteKeys = {
-  all: ['notes'] as const,
-  lists: () => [...noteKeys.all, 'list'] as const,
+  all: (scopeId?: string) => [...libraryKeys.all, 'notes', scopeId || 'user'] as const,
+  lists: () => [...libraryKeys.all, 'notes'] as const,
   list: (scopeId?: string, itemId?: string) =>
-    [...noteKeys.lists(), scopeId || 'default', itemId || 'all'] as const,
+    libraryKeys.notes(scopeId, itemId),
   detail: (scopeId?: string, id?: string) =>
-    [...noteKeys.all, 'detail', scopeId || 'default', id] as const,
+    [...libraryKeys.all, 'notes', scopeId || 'user', 'detail', id || 'none'] as const,
 };
 
 export function useNotes(scopeId?: string, itemId?: string) {
@@ -1385,7 +1381,7 @@ export function useNotes(scopeId?: string, itemId?: string) {
       NoteService.create(scopeId, { ...dto, itemId: dto.itemId !== undefined ? dto.itemId : itemId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, itemId) });
-      queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId) });
+      queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
       toast.success('Note saved', { id: 'note-mutation-toast' });
     },
     onError: (err: any) => {
@@ -1408,7 +1404,7 @@ export function useNotes(scopeId?: string, itemId?: string) {
     }) => NoteService.update(scopeId, id, version, dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, itemId) });
-      queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId) });
+      queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
       toast.success('Note updated', { id: 'note-mutation-toast' });
     },
     onError: (err: any) => {
@@ -1424,7 +1420,7 @@ export function useNotes(scopeId?: string, itemId?: string) {
       NoteService.delete(scopeId, id, version),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, itemId) });
-      queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId) });
+      queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
       toast.success('Note deleted', { id: 'note-mutation-toast' });
     },
     onError: (err: any) => {
@@ -1642,7 +1638,7 @@ export function useRelations(
     queryFn: () => RelationService.getRelated(scopeId || '', effectiveItemId),
     enabled: Boolean(effectiveItemId && effectiveItemId !== 'user'),
     select: (data) => ({
-      items: data.relatedItems || (data as any).relatedPapers || [],
+      items: data.relatedItems || [],
       total: data.total || 0,
     }),
   });

@@ -45,18 +45,18 @@ const TabItem = React.memo(function TabItem({ tab, isActive, onActivate, onClose
       onAuxClick={handleAuxClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        'group/tab relative flex items-center gap-1.5 h-full px-2.5 cursor-pointer select-none outline-none',
+        'group/tab relative flex items-center gap-1.5 h-full px-3 cursor-pointer select-none outline-none',
         'border-r border-border min-w-0 max-w-[200px] shrink-0 transition-colors',
         isActive
-          ? 'bg-background text-foreground font-medium border-t-2 border-t-transparent'
-          : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground border-t-2 border-t-transparent',
+          ? 'bg-background text-foreground font-medium border-t-2 border-t-primary'
+          : 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground border-t-2 border-t-transparent',
       )}
     >
       {/* File Document Icon */}
       <FileText className="size-3.5 shrink-0 opacity-70" />
 
       {/* Title */}
-      <span className="text-xs truncate leading-none">{tab.title}</span>
+      <span className="text-xs font-mono truncate leading-none">{tab.title}</span>
 
       {/* Close button */}
       <button
@@ -68,10 +68,11 @@ const TabItem = React.memo(function TabItem({ tab, isActive, onActivate, onClose
         }}
         onAuxClick={(e) => e.preventDefault()}
         className={cn(
-          'ml-auto shrink-0 size-4 min-w-[16px] min-h-[16px] flex items-center justify-center rounded-xs transition-colors outline-none cursor-pointer',
+          'relative ml-auto shrink-0 size-4 min-w-[16px] min-h-[16px] flex items-center justify-center rounded-xs transition-colors outline-none cursor-pointer',
+          'after:absolute after:-inset-1.5 after:content-[""]',
           isActive
-            ? 'opacity-60 hover:opacity-100 hover:bg-muted'
-            : 'opacity-0 group-hover/tab:opacity-60 group-hover/tab:hover:opacity-100 hover:bg-muted',
+            ? 'opacity-60 hover:opacity-100 hover:bg-muted hover:text-foreground'
+            : 'opacity-0 group-hover/tab:opacity-60 group-hover/tab:hover:opacity-100 hover:bg-muted hover:text-foreground',
         )}
       >
         <X className="size-3 shrink-0" />
@@ -152,7 +153,7 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
   if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-center h-9 bg-muted/40 select-none">
+    <div className="flex items-center h-8 bg-background select-none border-b border-border">
       {/* ── File tabs ── */}
       <LayoutGroup id={`tab-bar-${rootPageId}`}>
         <div

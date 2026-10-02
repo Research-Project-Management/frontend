@@ -4,8 +4,8 @@ import { retractionNatureSchema } from './retraction.types';
 // ── Collection Form ──────────────────────────────────────────────────────────
 export const collectionFormSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  description: z.string().optional().default(''),
-  color: z.string().optional().default(''),
+  description: z.string().optional(),
+  color: z.string().optional(),
   parent: z.string().nullable().optional(),
   parentId: z.string().nullable().optional(),
 });

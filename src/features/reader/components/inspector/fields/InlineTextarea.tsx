@@ -6,6 +6,7 @@ import { cn } from '@/shared/lib/utils';
 export interface InlineTextareaProps {
   value: string;
   ariaLabel?: string;
+  placeholder?: string;
   onSave: (val: string) => void;
   className?: string;
   rows?: number;
@@ -19,6 +20,7 @@ export interface InlineTextareaProps {
 export function InlineTextarea({
   value,
   ariaLabel,
+  placeholder,
   onSave,
   className,
   rows = 1,
@@ -57,7 +59,7 @@ export function InlineTextarea({
     return (
       <div
         className={cn(
-          'w-full min-h-7 text-foreground px-2 py-1 rounded-md text-12 leading-normal font-normal break-words [overflow-wrap:anywhere] whitespace-pre-wrap select-text font-sans',
+          'w-full min-h-7 text-foreground px-1.5 py-1 rounded-md text-12 leading-normal font-normal break-words [overflow-wrap:anywhere] whitespace-pre-wrap select-text font-sans',
           className,
         )}
       >
@@ -78,6 +80,7 @@ export function InlineTextarea({
       ref={textareaRef}
       rows={rows}
       value={draft}
+      placeholder={placeholder}
       aria-label={ariaLabel || 'Text area'}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
@@ -92,7 +95,7 @@ export function InlineTextarea({
         }
       }}
       className={cn(
-        'w-full min-h-7 bg-transparent text-foreground px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-12 leading-normal font-normal resize-none overflow-hidden break-words [overflow-wrap:anywhere] select-text focus:outline-none focus-visible:outline-none font-sans',
+        'w-full min-h-7 bg-transparent text-foreground px-1.5 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-12 leading-normal font-normal resize-none overflow-hidden break-words [overflow-wrap:anywhere] select-text focus:outline-none focus-visible:outline-none font-sans',
         className,
       )}
     />

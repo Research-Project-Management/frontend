@@ -2,7 +2,9 @@
  * history.service.ts
  *
  * Clean decoupled service for Editor Version History & Snapshots.
- * Delegates to unified manuscriptService.history (`/api/v1/manuscripts/docs/:docId/versions`).
+ * Delegates to unified manuscriptService.history:
+ *  - Project-level snapshots, labels, diffs, and restore
+ *  - Doc/page-level versions, labels, diffs, and timeline scrubbing
  */
 
 import { manuscriptService } from './manuscript.service';
@@ -27,7 +29,19 @@ export const PageVersionService = versionService;
 
 export const historyService = {
   getByProjectId: manuscriptService.history.getByProjectId,
-  restoreToEvent: async (_payload: { rootPageId: string; eventId: string }) => [],
+  getProjectVersions: manuscriptService.history.getProjectVersions,
+  getProjectSnapshot: manuscriptService.history.getProjectSnapshot,
+  compareProjectVersions: manuscriptService.history.compareProjectVersions,
+  labelProjectVersion: manuscriptService.history.labelProjectVersion,
+  deleteProjectLabel: manuscriptService.history.deleteProjectLabel,
+  restoreProjectVersion: manuscriptService.history.restoreProjectVersion,
+  createProjectSnapshot: manuscriptService.history.createProjectSnapshot,
+  restoreToEvent: async (payload: { rootPageId: string; eventId?: string; versionNumber?: number }) => {
+    if (payload.versionNumber) {
+      return manuscriptService.history.restoreProjectVersion(payload.rootPageId, payload.versionNumber);
+    }
+    return [];
+  },
   getTimeline: manuscriptService.history.getTimeline,
   getContentAt: manuscriptService.history.getContentAt,
 };

@@ -12,15 +12,15 @@ import {
   ExternalLink,
   X,
 } from 'lucide-react';
+import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import {
-  Button,
-  Skeleton,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ProjectAvatar,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dropdown-menu';
+import { ProjectAvatar } from '@/shared/components/icons';
 import { useProjects } from '../hooks/use-project';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
 import { PagesEmptyState } from '@/features/projects/project-id/pages/components/layout/PagesEmptyState';

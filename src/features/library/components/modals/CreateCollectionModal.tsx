@@ -33,7 +33,7 @@ export default function CreateCollectionModal({
   defaultParentId = null,
 }: CreateCollectionModalProps) {
   const form = useForm<CollectionFormValues>({
-    resolver: zodResolver(collectionFormSchema) as any,
+    resolver: zodResolver(collectionFormSchema),
     defaultValues: {
       name: 'Untitled',
       description: '',

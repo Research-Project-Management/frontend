@@ -17,7 +17,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
-import { ProjectAvatar } from "@/shared/components/ui";
+import { ProjectAvatar } from "@/shared/components/icons";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { useFavorites } from '../../hooks/use-favorites';

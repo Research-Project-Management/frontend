@@ -20,6 +20,32 @@ import {
 type ToasterProps = React.ComponentProps<typeof SonnerToaster>;
 
 export function Toaster({ ...props }: ToasterProps) {
+  React.useEffect(() => {
+    // Purge layout property animations (height) from injected stylesheets (such as Sonner's auto-injected style)
+    const purgeHeightTransition = () => {
+      try {
+        const styles = document.querySelectorAll('style');
+        styles.forEach((style) => {
+          if (
+            style.textContent &&
+            (style.textContent.includes('height .4s') ||
+              style.textContent.includes('height 400ms') ||
+              (style.textContent.includes('[data-sonner-toast]') && style.textContent.includes('height')))
+          ) {
+            style.textContent = style.textContent
+              .replace(/,\s*height\s*[\d.]+m?s/g, '')
+              .replace(/height\s*[\d.]+m?s\s*,?/g, '');
+          }
+        });
+      } catch (_) {}
+    };
+
+    purgeHeightTransition();
+    const observer = new MutationObserver(purgeHeightTransition);
+    observer.observe(document.head, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <SonnerToaster
       position="bottom-right"

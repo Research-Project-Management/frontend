@@ -44,7 +44,8 @@ import {
   ZoteroLineIcon,
   MendeleyLineIcon,
 } from '@/shared/components/icons';
-import { Button, Input } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,8 +55,8 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
   DropdownMenuSeparator,
-} from '@/shared/components/ui';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui';
+} from '@/shared/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { LibraryFilterPopover } from './LibraryFilterPopover';
 import { LibraryDisplayPopover, type LibraryDisplayOptions } from './LibraryDisplayPopover';
 import { TopbarSearch } from './TopbarSearch';
@@ -174,23 +175,11 @@ export function LibraryTopbar({
   const directFolderInputRef = useRef<HTMLInputElement>(null);
 
   const handleAddFileClick = () => {
-    const hasUploadedBefore =
-      typeof window !== 'undefined' &&
-      localStorage.getItem('flux_has_uploaded_before') === 'true';
-
-    if (hasUploadedBefore && onDirectFilesUpload && directFileInputRef.current) {
-      directFileInputRef.current.click();
-    } else {
-      openModal('UPLOAD_FILES', { collectionId: params?.collectionId });
-    }
+    openModal('UPLOAD_FILES', { collectionId: params?.collectionId });
   };
 
   const handleAddFolderClick = () => {
-    const hasUploadedBefore =
-      typeof window !== 'undefined' &&
-      localStorage.getItem('flux_has_uploaded_before') === 'true';
-
-    if (hasUploadedBefore && onDirectFolderUpload && directFolderInputRef.current) {
+    if (onDirectFolderUpload && directFolderInputRef.current) {
       directFolderInputRef.current.click();
     } else {
       openModal('UPLOAD_FILES', { collectionId: params?.collectionId });

@@ -20,10 +20,12 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel,
+} from '@/shared/components/ui/dropdown-menu';
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tooltip';
 import { useParams } from 'next/navigation';
 import { usePageStore } from '../../../store';
 import {

@@ -8,11 +8,12 @@ import {
   type AttachmentDto,
 } from './extraction.service';
 import type { ItemAttachment } from '../../types/library.types';
+import { itemKeys, libraryKeys } from '../query-keys';
 
 // ── Query Keys ────────────────────────────────────────────────────────────────
 export const attachmentKeys = {
   byItem: (scopeId?: string, itemId?: string) =>
-    ['attachments', scopeId || 'user', itemId || 'none'] as const,
+    libraryKeys.attachments(scopeId, itemId),
 };
 
 // ── useAttachments ────────────────────────────────────────────────────────────
@@ -81,7 +82,7 @@ export function useAttachments(
         queryKey: attachmentKeys.byItem(scopeId, itemId),
       });
       queryClient.invalidateQueries({
-        queryKey: ['items'],
+        queryKey: itemKeys.all(scopeId),
       });
       toast.success('Web Snapshot captured', { id: 'snapshot-mutation' });
     },
@@ -101,7 +102,7 @@ export function useAttachments(
         queryKey: attachmentKeys.byItem(scopeId, itemId),
       });
       queryClient.invalidateQueries({
-        queryKey: ['items'],
+        queryKey: itemKeys.all(scopeId),
       });
       toast.success('Set as primary document', { id: 'primary-attachment-mutation' });
     },
@@ -155,8 +156,8 @@ export function useRenameAttachment(scopeId?: string) {
         pattern,
       }),
     onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ['attachments'] });
-      queryClient.invalidateQueries({ queryKey: ['items'] });
+      queryClient.invalidateQueries({ queryKey: libraryKeys.attachments(effectiveScope) });
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       toast.success('File renamed', {
         description: `Renamed to "${res.newFilename}"`,
         id: 'attachment-rename',
@@ -180,8 +181,8 @@ export function useBatchRenameAttachments(scopeId?: string) {
     mutationFn: (dto: { itemIds?: string[]; attachmentIds?: string[]; pattern?: string }) =>
       AttachmentsService.batchRenameAttachments(effectiveScope, dto),
     onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ['attachments'] });
-      queryClient.invalidateQueries({ queryKey: ['items'] });
+      queryClient.invalidateQueries({ queryKey: libraryKeys.attachments(effectiveScope) });
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       toast.success('Files renamed', {
         description: `Successfully renamed ${res.renamedCount} attachment file(s) according to pattern.`,
         id: 'batch-attachment-rename',

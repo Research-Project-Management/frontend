@@ -31,7 +31,14 @@ const LoginPage = () => {
     );
   }
 
-  if (user) return null;
+  if (user) {
+    return (
+      <div className='flex min-h-dvh items-center justify-center bg-background' suppressHydrationWarning>
+        <Loader2 className='h-8 w-8 animate-spin text-primary shrink-0' />
+        <span className='sr-only'>Redirecting to workspace...</span>
+      </div>
+    );
+  }
 
   return (
     <div className='flex min-h-dvh items-center justify-center bg-background px-4 py-8' suppressHydrationWarning>

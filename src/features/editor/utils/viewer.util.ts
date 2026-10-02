@@ -10,6 +10,7 @@ import {
   type CompilerDiagnostic,
 } from "../services/compiler.service";
 import { synctexService, type ForwardSyncResult } from "../services/synctex.service";
+import { manuscriptService } from "../services/manuscript.service";
 import { parseCompileErrors, type ParsedCompileError } from "./editor.util";
 import { logger } from "@/shared/lib/utils";
 
@@ -253,6 +254,9 @@ export const LatexCompilerEngine = {
     if (dirtyFiles.length > 0) {
       onPhaseChange?.("flushing");
       // Background non-blocking flush to ensure database sync eventually
+      if (projectId) {
+        manuscriptService.updater.flushProject(projectId).catch(() => {});
+      }
       Promise.all(
         dirtyFiles.map(async ({ fileId, content }) => {
           try {

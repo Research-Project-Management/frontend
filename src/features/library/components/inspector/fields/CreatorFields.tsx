@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Plus, Minus, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Minus, Check, ChevronDown, ChevronUp, Building2, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import type { Item, CreatorCredit } from '@/features/library/types/library.types';
-import { normalizeAuthors, splitAuthorString } from '../../../domain';
+import { normalizeAuthors, splitAuthorString, parseCreatorName } from '../../../domain';
 import {
   ALL_CREATOR_TYPES,
   getPrimaryCreatorType,
@@ -16,10 +16,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tooltip';
 
 export interface CreatorEntry {
   creatorType: string;
@@ -94,8 +96,8 @@ export function parseCreators(paper: Item): CreatorEntry[] {
     const parsedCreators: CreatorEntry[] = [];
     for (const rawCreatorItem of rawCreators) {
       const creatorType = rawCreatorItem.creatorType || 'author';
-      const fieldMode = (rawCreatorItem as any).fieldMode ?? 0;
-      const shortName = cleanValue((rawCreatorItem as any).shortName);
+      const fieldMode = rawCreatorItem.fieldMode ?? 0;
+      const shortName = cleanValue(rawCreatorItem.shortName || undefined);
       let creatorName = cleanValue(rawCreatorItem.name || rawCreatorItem.fullName);
       const firstName = cleanValue(
         rawCreatorItem.firstName || (rawCreatorItem as Record<string, unknown>).given,
@@ -108,13 +110,17 @@ export function parseCreators(paper: Item): CreatorEntry[] {
       }
 
       if (creatorName) {
-        const splitNameParts = splitAuthorString(creatorName);
+        // If creator is marked as institution (fieldMode === 1), do NOT split by 'and' or commas
+        const splitNameParts = fieldMode === 1 ? [creatorName] : splitAuthorString(creatorName);
         if (splitNameParts.length > 1) {
           for (const authorPart of splitNameParts) {
+            const parsed = parseCreatorName(authorPart);
             parsedCreators.push({
               creatorType,
               name: authorPart,
               fieldMode: 0,
+              firstName: parsed.firstName || undefined,
+              lastName: parsed.lastName || undefined,
             });
           }
         } else {
@@ -205,16 +211,31 @@ export function areCreatorsEqual(
 
 /** Convert CreatorEntry items into strongly typed CreatorCredit items for Item */
 export function toItemCreators(creatorEntries: CreatorEntry[]): CreatorCredit[] {
-  return creatorEntries.map((creatorEntry, indexPosition) => ({
-    orderIndex: indexPosition,
-    creatorType: creatorEntry.creatorType || 'author',
-    fieldMode: creatorEntry.fieldMode ?? 0,
-    fullName: creatorEntry.name.trim(),
-    name: creatorEntry.name.trim(),
-    firstName: creatorEntry.firstName,
-    lastName: creatorEntry.lastName,
-    shortName: creatorEntry.shortName?.trim() || undefined,
-  }));
+  return creatorEntries.map((creatorEntry, indexPosition) => {
+    const trimmedName = creatorEntry.name.trim();
+    let firstName = creatorEntry.firstName;
+    let lastName = creatorEntry.lastName;
+
+    if (creatorEntry.fieldMode === 1) {
+      firstName = '';
+      lastName = trimmedName;
+    } else if (trimmedName) {
+      const parsed = parseCreatorName(trimmedName);
+      firstName = parsed.firstName;
+      lastName = parsed.lastName;
+    }
+
+    return {
+      orderIndex: indexPosition,
+      creatorType: creatorEntry.creatorType || 'author',
+      fieldMode: creatorEntry.fieldMode ?? 0,
+      fullName: trimmedName,
+      name: trimmedName,
+      firstName: firstName || undefined,
+      lastName: lastName || undefined,
+      shortName: creatorEntry.shortName?.trim() || undefined,
+    };
+  });
 }
 
 export function CreatorFields({
@@ -331,7 +352,7 @@ export function CreatorFields({
             authors: finalAuthors.length ? finalAuthors : undefined,
             creators: updatedCreators.length ? toItemCreators(updatedCreators) : undefined,
             silent: true,
-          } as any,
+          },
           { silent: true },
         );
       }
@@ -348,6 +369,19 @@ export function CreatorFields({
     }
     const updatedCreators = [...localCreators];
     updatedCreators[targetIndex] = { ...currentCreator, creatorType: newCreatorType };
+    setLocalCreators(updatedCreators);
+    syncCreatorsToParent(updatedCreators);
+  };
+
+  const handleToggleFieldMode = (targetIndex: number) => {
+    const currentCreator = localCreators[targetIndex];
+    if (!currentCreator) return;
+    const nextMode = currentCreator.fieldMode === 1 ? 0 : 1;
+    const updatedCreators = [...localCreators];
+    updatedCreators[targetIndex] = {
+      ...currentCreator,
+      fieldMode: nextMode,
+    };
     setLocalCreators(updatedCreators);
     syncCreatorsToParent(updatedCreators);
   };
@@ -456,20 +490,27 @@ export function CreatorFields({
                 aria-label={`${roleLabel} ${originalIndex + 1}`}
                 onChange={(changeEvent) => {
                   const inputValue = changeEvent.target.value;
+                  // Only split multi-authors if NOT in institutional single-field mode
                   if (
-                    inputValue.includes(';') ||
-                    /\s+and\s+/i.test(inputValue) ||
-                    inputValue.includes('\n')
+                    creatorEntry.fieldMode !== 1 &&
+                    (inputValue.includes(';') ||
+                      /\s+and\s+/i.test(inputValue) ||
+                      inputValue.includes('\n'))
                   ) {
                     const splitParts = splitAuthorString(inputValue);
                     if (splitParts.length > 1) {
                       const updatedCreators = [...localCreators];
                       const currentEntry = updatedCreators[originalIndex];
-                      const newCreatorEntries = splitParts.map((authorNamePart) => ({
-                        creatorType: currentEntry?.creatorType || 'author',
-                        fieldMode: currentEntry?.fieldMode ?? 0,
-                        name: authorNamePart,
-                      }));
+                      const newCreatorEntries = splitParts.map((authorNamePart) => {
+                        const parsed = parseCreatorName(authorNamePart);
+                        return {
+                          creatorType: currentEntry?.creatorType || 'author',
+                          fieldMode: 0,
+                          name: authorNamePart,
+                          firstName: parsed.firstName || undefined,
+                          lastName: parsed.lastName || undefined,
+                        };
+                      });
                       updatedCreators.splice(originalIndex, 1, ...newCreatorEntries);
                       setLocalCreators(updatedCreators);
                       return;
@@ -524,6 +565,39 @@ export function CreatorFields({
                   </TooltipContent>
                 </Tooltip>
               )}
+
+              {/* Field Mode Toggle Button (Person vs Institution) */}
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleFieldMode(originalIndex)}
+                    className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none shrink-0"
+                    aria-label={
+                      creatorEntry.fieldMode === 1
+                        ? 'Switch to two fields (person name)'
+                        : 'Switch to single field (institution/organization)'
+                    }
+                  >
+                    {creatorEntry.fieldMode === 1 ? (
+                      <Building2 className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                    ) : (
+                      <User className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  align="start"
+                  sideOffset={6}
+                  alignOffset={2}
+                  className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                >
+                  {creatorEntry.fieldMode === 1
+                    ? 'Single-field mode (institution). Click to switch to person'
+                    : 'Person mode. Click to switch to institution (single-field)'}
+                </TooltipContent>
+              </Tooltip>
 
               {/* Action Buttons (Add, Remove) - only visible on hover */}
               <div className="invisible group-hover:visible flex items-center gap-0.5 shrink-0">
@@ -632,7 +706,7 @@ export function CreatorFields({
                           },
                         ],
                         silent: true,
-                      } as any,
+                      },
                       { silent: true },
                     );
                   }
@@ -668,7 +742,7 @@ export function CreatorFields({
                             },
                           ],
                           silent: true,
-                        } as any,
+                        },
                         { silent: true },
                       );
                     }

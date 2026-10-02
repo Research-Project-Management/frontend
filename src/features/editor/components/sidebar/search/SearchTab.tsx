@@ -318,7 +318,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground select-none">
       {/* Header */}
-      <div className="flex h-10 shrink-0 items-center justify-between px-3 bg-background">
+      <div className="flex h-10 shrink-0 items-center justify-between px-3 bg-background border-b border-border">
         <span className="truncate text-xs font-semibold text-foreground tracking-normal">
           Search
         </span>
@@ -328,7 +328,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             title="Close search"
             aria-label="Close search"
             onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors hover:bg-muted cursor-pointer"
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors hover:bg-sidebar-hover cursor-pointer"
           >
             <X className="size-3.5 shrink-0" />
           </button>
@@ -376,7 +376,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             type="button"
             onClick={handleSearch}
             disabled={isFetching}
-            className="h-8 px-3.5 rounded-full bg-[#138a42] hover:bg-[#117a3a] active:bg-[#0e6630] disabled:opacity-85 text-white text-xs font-semibold cursor-pointer shrink-0 transition-colors shadow-2xs flex items-center justify-center gap-1.5"
+            className="h-8 px-3.5 rounded-full bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-xs font-semibold cursor-pointer shrink-0 transition-colors shadow-2xs flex items-center justify-center gap-1.5"
           >
             {isFetching && <Loader2 className="size-3 animate-spin shrink-0" />}
             <span>Search</span>
@@ -394,8 +394,8 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             className={cn(
               "size-7 rounded-full text-xs font-medium transition-colors flex items-center justify-center cursor-pointer select-none",
               caseSensitive
-                ? "bg-muted text-foreground dark:bg-[#283548] dark:text-white font-semibold shadow-2xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium",
+                ? "bg-muted text-foreground font-semibold shadow-2xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
             )}
           >
             Aa
@@ -410,8 +410,8 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             className={cn(
               "size-7 rounded-full text-xs font-mono transition-colors flex items-center justify-center cursor-pointer select-none",
               useRegex
-                ? "bg-muted text-foreground dark:bg-[#283548] dark:text-white font-semibold shadow-2xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium",
+                ? "bg-muted text-foreground font-semibold shadow-2xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
             )}
           >
             [.*]
@@ -426,8 +426,8 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             className={cn(
               "size-7 rounded-full text-xs font-semibold transition-colors flex items-center justify-center cursor-pointer select-none",
               wholeWord
-                ? "bg-muted text-foreground dark:bg-[#283548] dark:text-white font-semibold shadow-2xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium",
+                ? "bg-muted text-foreground font-semibold shadow-2xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
             )}
           >
             W
@@ -497,13 +497,13 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                 {fileResults.map((file) => {
                   const isCollapsed = collapsedFiles.has(file.fileId);
                   return (
-                    <li key={file.fileId} className="bg-background">
+                    <li key={file.fileId} className="bg-muted">
                       {/* File Accordion Header */}
                       <button
                         type="button"
                         onClick={() => toggleFileCollapse(file.fileId)}
                         aria-expanded={!isCollapsed}
-                        className="flex h-8 w-full items-center gap-1.5 px-3 text-left text-xs transition-colors hover:bg-muted/60 cursor-pointer outline-none select-none border-b border-border/10"
+                        className="flex h-8 w-full items-center gap-1.5 px-3 text-left text-xs transition-colors hover:bg-sidebar-hover cursor-pointer outline-none select-none border-b border-border/10"
                       >
                         {isCollapsed ? (
                           <ChevronRight className="size-3.5 text-muted-foreground shrink-0" />
@@ -565,7 +565,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
               <div className="flex h-40 flex-col items-center justify-center gap-1.5 text-center text-muted-foreground px-4">
                 <SearchIcon className="size-6 opacity-30 shrink-0" />
                 <p className="text-xs font-medium">No results found for &ldquo;{effectiveQuery}&rdquo;</p>
-                <p className="text-11 text-muted-foreground/80">
+                <p className="text-xs text-muted-foreground/80">
                   No matching text found across project files.
                 </p>
               </div>

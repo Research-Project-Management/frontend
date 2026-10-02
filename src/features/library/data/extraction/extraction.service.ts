@@ -3,10 +3,8 @@ import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from "@/shared/lib/token-storage";
 import type { AttachmentDto } from "../../types/library.types";
 import { isProjectScope } from '../../domain';
-import { AnnotationsService } from './annotations.service';
 
 export type { AttachmentDto };
-export { AnnotationsService };
 
 
 export interface RenameAttachmentInput {
@@ -677,5 +675,4 @@ export const UploadService = {
 export const ExtractionService = {
   attachments: AttachmentsService,
   upload: UploadService,
-  annotations: AnnotationsService,
 };

@@ -24,23 +24,29 @@ export function usePdfZoom({
     if (!el) return;
 
     let isInitial = true;
+    let rafId: number | null = null;
     const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const w = entry.contentRect.width;
-        if (w > 0) {
-          setContainerWidth((prevWidth) => {
-            if (!isInitial && prevWidth > 0 && Math.abs(prevWidth - w) > 2) {
-              setAutoFit(true);
-            }
-            return w;
-          });
-          isInitial = false;
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        for (const entry of entries) {
+          const w = Math.round(entry.contentRect.width);
+          if (w > 0) {
+            setContainerWidth((prevWidth) => {
+              if (Math.abs(prevWidth - w) < 4) return prevWidth;
+              if (!isInitial) {
+                setAutoFit(true);
+              }
+              return w;
+            });
+            isInitial = false;
+          }
         }
-      }
+      });
     });
 
     observer.observe(el);
     return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
       observer.unobserve(el);
     };
   }, [containerRef, pdfUrl]);

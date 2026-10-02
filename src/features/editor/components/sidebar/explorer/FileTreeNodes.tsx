@@ -434,7 +434,7 @@ export function StorageFileRow({
         />
       ) : (
         <>
-          <span className="flex-1 min-w-0 truncate text-sm text-foreground/90">
+          <span className="flex-1 min-w-0 truncate text-xs font-mono text-foreground/90">
             {item.filename}
           </span>
           <RowActions>

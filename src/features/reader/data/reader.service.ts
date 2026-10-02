@@ -62,7 +62,19 @@ export function getScopeUrl(scopeId?: string, subpath = ''): string {
   return subpath ? `${base}/${subpath}` : base;
 }
 
-export function getPaperFileUrl(urlOrPath?: string | null): string {
+export function getPaperFileUrl(urlOrPathOrPaper?: any): string {
+  if (!urlOrPathOrPaper) return '';
+  if (typeof urlOrPathOrPaper === 'object') {
+    const candidate =
+      urlOrPathOrPaper.url ||
+      urlOrPathOrPaper.primaryFile?.url ||
+      urlOrPathOrPaper.fileUrl ||
+      urlOrPathOrPaper.attachments?.[0]?.url ||
+      urlOrPathOrPaper.attachments?.[0]?.fileUrl ||
+      '';
+    return candidate ? getPaperFileUrl(candidate) : '';
+  }
+  const urlOrPath = String(urlOrPathOrPaper).trim();
   if (!urlOrPath) return '';
   if (
     urlOrPath.startsWith('http://') ||
@@ -260,21 +272,32 @@ export const ReaderDocumentsService = {
 };
 
 // ── 2. Annotations Domain ───────────────────────────────────────────────────
+export function getAttachmentAnnotationsUrl(scopeId?: string, attachmentId = '', subpath = ''): string {
+  const base = isProjectScope(scopeId)
+    ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/attachments/${encodeURIComponent(attachmentId)}/annotations`
+    : `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/annotations`;
+  return subpath ? `${base}/${subpath}` : base;
+}
+
 export const ReaderAnnotationsService = {
-  getByAttachment: async (attachmentId: string): Promise<ReaderAnnotation[]> => {
+  getByAttachment: async (scopeId: string | undefined, attachmentId: string): Promise<ReaderAnnotation[]> => {
     if (!attachmentId) return [];
-    const res = await apiGet<ReaderAnnotation[] | { data?: ReaderAnnotation[]; annotations?: ReaderAnnotation[] }>(
-      `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/annotations`,
-    );
+    const url = getAttachmentAnnotationsUrl(scopeId, attachmentId);
+    const res = await apiGet<ReaderAnnotation[] | { data?: ReaderAnnotation[]; annotations?: ReaderAnnotation[] }>(url);
     if (Array.isArray(res)) return res;
     if (res && Array.isArray((res as any).data)) return (res as any).data;
     if (res && Array.isArray((res as any).annotations)) return (res as any).annotations;
     return [];
   },
 
-  create: async (attachmentId: string, dto: CreateAnnotationDto): Promise<ReaderAnnotation> => {
+  create: async (
+    scopeId: string | undefined,
+    attachmentId: string,
+    dto: CreateAnnotationDto,
+  ): Promise<ReaderAnnotation> => {
+    const url = getAttachmentAnnotationsUrl(scopeId, attachmentId);
     const res = await apiPost<ReaderAnnotation | { data?: ReaderAnnotation; annotation?: ReaderAnnotation }>(
-      `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/annotations`,
+      url,
       dto,
     );
     if (res && typeof res === 'object' && 'data' in res && (res as any).data) return (res as any).data;
@@ -282,19 +305,36 @@ export const ReaderAnnotationsService = {
     return res as ReaderAnnotation;
   },
 
-  update: async (id: string, dto: UpdateAnnotationDto): Promise<ReaderAnnotation> => {
+  update: async (
+    scopeId: string | undefined,
+    attachmentId: string,
+    id: string,
+    expectedVersion?: number,
+    dto?: UpdateAnnotationDto,
+  ): Promise<ReaderAnnotation> => {
+    const url = getAttachmentAnnotationsUrl(scopeId, attachmentId, encodeURIComponent(id));
     const res = await apiPatch<ReaderAnnotation | { data?: ReaderAnnotation; annotation?: ReaderAnnotation }>(
-      `/api/v1/library/annotations/${encodeURIComponent(id)}`,
-      dto,
+      url,
+      {
+        ...dto,
+        expectedVersion,
+      },
     );
     if (res && typeof res === 'object' && 'data' in res && (res as any).data) return (res as any).data;
     if (res && typeof res === 'object' && 'annotation' in res && (res as any).annotation) return (res as any).annotation;
     return res as ReaderAnnotation;
   },
 
-  delete: async (id: string): Promise<{ deleted: boolean; id: string }> => {
+  delete: async (
+    scopeId: string | undefined,
+    attachmentId: string,
+    id: string,
+    expectedVersion?: number,
+  ): Promise<{ deleted: boolean; id: string }> => {
+    const url = getAttachmentAnnotationsUrl(scopeId, attachmentId, encodeURIComponent(id));
     const res = await apiDelete<{ deleted?: boolean; id?: string; data?: { deleted?: boolean; id?: string } }>(
-      `/api/v1/library/annotations/${encodeURIComponent(id)}`,
+      url,
+      expectedVersion !== undefined ? { params: { expectedVersion } } : undefined,
     );
     return {
       deleted: res?.data?.deleted ?? res?.deleted ?? true,
@@ -302,28 +342,41 @@ export const ReaderAnnotationsService = {
     };
   },
 
-  batch: async (attachmentId: string, operations: {
-    creates?: CreateAnnotationDto[];
-    updates?: Array<UpdateAnnotationDto & { id: string }>;
-    deletes?: string[];
-  }): Promise<{ created: ReaderAnnotation[]; updated: ReaderAnnotation[]; deleted: string[] }> => {
-    return apiPost(
-      `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/annotations/batch`,
-      operations,
-    );
+  batch: async (
+    scopeId: string | undefined,
+    attachmentId: string,
+    operations: {
+      creates?: CreateAnnotationDto[];
+      updates?: Array<UpdateAnnotationDto & { id: string }>;
+      deletes?: string[];
+      upserts?: any[];
+    },
+  ): Promise<{ created: ReaderAnnotation[]; updated: ReaderAnnotation[]; deleted: string[] }> => {
+    const url = getAttachmentAnnotationsUrl(scopeId, attachmentId, 'batch');
+    const upserts = operations.upserts || [
+      ...(operations.creates || []),
+      ...(operations.updates || []),
+    ];
+    return apiPut(url, {
+      upserts,
+      deletes: operations.deletes || [],
+    });
   },
 
-  extractNotes: async (attachmentId: string, options?: { noteId?: string; tagColor?: boolean; includeComments?: boolean }) => {
-    return apiPost<{ success: boolean; totalExtracted: number }>(
-      `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/annotations/extract-notes`,
-      options || {},
-    );
+  extractNotes: async (
+    scopeId: string | undefined,
+    itemId: string,
+    options?: { noteId?: string; tagColor?: boolean; includeComments?: boolean },
+  ) => {
+    const url = isProjectScope(scopeId)
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/notes/items/${encodeURIComponent(itemId)}/from-annotations`
+      : `/api/v1/library/notes/items/${encodeURIComponent(itemId)}/from-annotations`;
+    return apiPost<{ success: boolean; totalExtracted: number }>(url, options || {});
   },
 
-  importExternal: async (attachmentId: string) => {
-    return apiPost<{ success: boolean; importedCount: number }>(
-      `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/annotations/import-external`,
-    );
+  importExternal: async (scopeId: string | undefined, attachmentId: string) => {
+    const url = getAttachmentAnnotationsUrl(scopeId, attachmentId, 'import-external');
+    return apiPost<{ success: boolean; importedCount: number }>(url, {});
   },
 };
 
@@ -414,7 +467,7 @@ export const ReaderStateService = {
       scrollPosition?: Record<string, unknown> | Array<unknown> | null;
     },
   ): Promise<DocumentReadingState> => {
-    const res = await apiPut<DocumentReadingState | { state?: DocumentReadingState; data?: DocumentReadingState }>(
+    const res = await apiPatch<DocumentReadingState | { state?: DocumentReadingState; data?: DocumentReadingState }>(
       getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/state`),
       data,
     );
@@ -424,7 +477,10 @@ export const ReaderStateService = {
   },
 
   markAsRead: async (scopeId: string | undefined, itemId: string): Promise<DocumentReadingState> => {
-    return ReaderStateService.updateState(scopeId, itemId, { readStatus: 'completed' });
+    return apiPost<DocumentReadingState>(
+      getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/state/read`),
+      {},
+    );
   },
 };
 
@@ -459,6 +515,22 @@ export const ReaderAttachmentsService = {
     );
   },
 
+  captureSnapshot: async (
+    scopeId: string | undefined,
+    itemId: string,
+    url?: string,
+  ): Promise<DocumentAttachment> => {
+    const res = await apiPost<{ attachment?: DocumentAttachment } | DocumentAttachment>(
+      getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/attachments/snapshot`),
+      url ? { url } : {},
+    );
+    const candidate = res as { attachment?: DocumentAttachment };
+    if (candidate && candidate.attachment) {
+      return candidate.attachment;
+    }
+    return res as DocumentAttachment;
+  },
+
   delete: async (scopeId: string | undefined, attachmentId: string): Promise<{ deleted: boolean }> => {
     return apiDelete<{ deleted: boolean }>(
       `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}`,
@@ -470,21 +542,22 @@ export const ReaderAttachmentsService = {
     itemId: string,
     attachmentId: string,
   ): Promise<{ success: boolean }> => {
-    return apiPut<{ success: boolean }>(
-      getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/primary-attachment`),
-      { attachmentId },
-    );
+    const url = isProjectScope(scopeId)
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/attachments/${encodeURIComponent(attachmentId)}/set-primary`
+      : `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/set-primary`;
+    return apiPost<{ success: boolean }>(url, { itemId });
   },
 
   rename: async (
     scopeId: string | undefined,
     attachmentId: string,
-    filename: string,
-  ): Promise<DocumentAttachment> => {
-    return apiPatch<DocumentAttachment>(
-      `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}`,
-      { filename },
-    );
+    options?: { filename?: string; pattern?: string } | string,
+  ): Promise<{ success: boolean; newFilename?: string }> => {
+    const payload = typeof options === 'string' ? { filename: options } : (options || {});
+    const url = isProjectScope(scopeId)
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/attachments/${encodeURIComponent(attachmentId)}/rename`
+      : `/api/v1/library/attachments/${encodeURIComponent(attachmentId)}/rename`;
+    return apiPatch<{ success: boolean; newFilename?: string }>(url, payload);
   },
 
   reExtract: async (
@@ -516,7 +589,7 @@ export const ReaderAttachmentsService = {
       body: formData,
     });
     if (!res.ok) throw new Error(`Upload failed (${res.status}): ${res.statusText}`);
-    const json = await res.json();
+    const json = (await res.json()) as any;
     return json.data || json;
   },
 };
@@ -560,10 +633,13 @@ export const ReaderCollectionsService = {
     collectionId: string,
     itemIds: string[],
   ): Promise<{ success: boolean }> => {
-    return apiDelete<{ success: boolean }>(
-      getScopeUrl(scopeId, `collections/${encodeURIComponent(collectionId)}/items`),
-      { body: { itemIds } as any },
+    if (!itemIds || itemIds.length === 0) return { success: true };
+    await Promise.all(
+      itemIds.map((itemId) =>
+        apiDelete(getScopeUrl(scopeId, `collections/${encodeURIComponent(collectionId)}/items/${encodeURIComponent(itemId)}`)),
+      ),
     );
+    return { success: true };
   },
 };
 
@@ -581,13 +657,12 @@ export const ReaderTagsService = {
 
   getItemTags: async (scopeId: string | undefined, itemId: string): Promise<DocumentTag[]> => {
     if (!itemId) return [];
-    const res = await apiGet<DocumentTag[] | { tags?: DocumentTag[]; data?: DocumentTag[] }>(
-      getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/tags`),
-    );
-    if (Array.isArray(res)) return res;
-    if (res && Array.isArray((res as any).tags)) return (res as any).tags;
-    if (res && Array.isArray((res as any).data)) return (res as any).data;
-    return [];
+    try {
+      const doc = await ReaderDocumentsService.get(scopeId, itemId);
+      return (doc as any)?.tags || (doc as any)?.itemTags || [];
+    } catch {
+      return [];
+    }
   },
 
   addToItem: async (
@@ -595,10 +670,26 @@ export const ReaderTagsService = {
     itemId: string,
     tags: string[],
   ): Promise<{ success: boolean; tags: DocumentTag[] }> => {
-    return apiPost(
-      getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/tags`),
-      { tags },
-    );
+    const createdTags: DocumentTag[] = [];
+    for (const tagName of tags) {
+      try {
+        const tagRes = await apiPost<DocumentTag | { tag?: DocumentTag }>(
+          getScopeUrl(scopeId, 'tags'),
+          { name: tagName, projectId: isProjectScope(scopeId) ? scopeId : undefined },
+        );
+        const tag = (tagRes && typeof tagRes === 'object' && 'tag' in tagRes && tagRes.tag)
+          ? tagRes.tag
+          : (tagRes as DocumentTag);
+        const tagObj = typeof tag === 'object' && tag !== null ? (tag as { id?: string }) : null;
+        if (tagObj?.id) {
+          await apiPost(getScopeUrl(scopeId, `tags/${encodeURIComponent(tagObj.id)}/items/${encodeURIComponent(itemId)}`), {});
+          createdTags.push(tag);
+        }
+      } catch {
+        // continue with other tags
+      }
+    }
+    return { success: true, tags: createdTags };
   },
 
   removeFromItem: async (
@@ -607,7 +698,7 @@ export const ReaderTagsService = {
     tagIdOrName: string,
   ): Promise<{ success: boolean }> => {
     return apiDelete(
-      getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/tags/${encodeURIComponent(tagIdOrName)}`),
+      getScopeUrl(scopeId, `tags/${encodeURIComponent(tagIdOrName)}/items/${encodeURIComponent(itemId)}`),
     );
   },
 };
@@ -641,33 +732,57 @@ export const ReaderRelationsService = {
     scopeId: string | undefined,
     itemId: string,
     targetItemId: string,
-    predicate?: string,
   ): Promise<{ success: boolean }> => {
     return apiDelete(
-      getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/relations`),
-      { body: { targetItemId, predicate } as any },
+      getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/relations/${encodeURIComponent(targetItemId)}`),
     );
   },
 };
 
 // ── 9. Citations & Exports Domain ───────────────────────────────────────────
 export const ReaderCitationsService = {
-  format: async (scopeId: string | undefined, itemId: string, style = 'apa'): Promise<{ citation: string; html?: string }> => {
-    return apiGet(
-      getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/citation`),
-      { params: { style } },
-    );
+  format: async (
+    scopeId: string | undefined,
+    itemId: string,
+    style = 'apa',
+  ): Promise<{
+    citation: string;
+    html?: string;
+    bibliography?: string;
+    bibliographyHtml?: string;
+    inText?: string;
+  }> => {
+    const url = isProjectScope(scopeId)
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/citation/items/${encodeURIComponent(itemId)}/citation`
+      : `/api/v1/library/citation/items/${encodeURIComponent(itemId)}/citation`;
+    const res = await apiGet<any>(url, { params: { style } });
+    return {
+      citation: res?.bibliography || res?.citation || res?.inText || '',
+      html: res?.html || res?.bibliographyHtml,
+      bibliography: res?.bibliography || res?.citation || '',
+      bibliographyHtml: res?.bibliographyHtml || res?.html || '',
+      inText: res?.inText || '',
+    };
   },
 
   getBibtex: async (scopeId: string | undefined, itemId: string): Promise<{ bibtex: string }> => {
-    return apiGet(
-      getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/bibtex`),
-    );
+    const url = isProjectScope(scopeId)
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/exports`
+      : '/api/v1/library/exports';
+    const res = await apiPost<{ content?: string; bibtex?: string }>(url, {
+      format: 'bibtex',
+      itemIds: [itemId],
+      projectId: isProjectScope(scopeId) ? scopeId : undefined,
+    });
+    return { bibtex: res?.bibtex ?? res?.content ?? '' };
   },
 
   getStyles: async (query?: string): Promise<CslStyleMetadata[]> => {
+    const endpoint = query
+      ? '/api/v1/library/citation/styles/search'
+      : '/api/v1/library/citation/styles';
     const res = await apiGet<CslStyleMetadata[] | { styles?: CslStyleMetadata[]; data?: CslStyleMetadata[] }>(
-      '/api/v1/library/csl/styles',
+      endpoint,
       query ? { params: { q: query } } : undefined,
     );
     if (Array.isArray(res)) return res;
@@ -680,10 +795,15 @@ export const ReaderCitationsService = {
     scopeId?: string,
     options?: { format: 'bibtex' | 'ris' | 'json'; itemIds?: string[]; collectionId?: string },
   ): Promise<{ content: string; filename?: string }> => {
-    return apiPost(
-      getScopeUrl(scopeId, 'export'),
-      options || { format: 'bibtex' },
-    );
+    const url = isProjectScope(scopeId)
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/exports`
+      : '/api/v1/library/exports';
+    return apiPost(url, {
+      format: options?.format || 'bibtex',
+      itemIds: options?.itemIds,
+      collectionId: options?.collectionId,
+      projectId: isProjectScope(scopeId) ? scopeId : undefined,
+    });
   },
 
   downloadAnnotatedPdf: async (
@@ -691,7 +811,9 @@ export const ReaderCitationsService = {
     itemId: string,
     filename?: string,
   ): Promise<void> => {
-    const url = getScopeItemsUrl(scopeId, `${encodeURIComponent(itemId)}/annotated-pdf`);
+    const url = isProjectScope(scopeId)
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/exports/items/${encodeURIComponent(itemId)}/annotated-pdf`
+      : `/api/v1/library/exports/items/${encodeURIComponent(itemId)}/annotated-pdf`;
     const token = getAuthToken();
     const headers: Record<string, string> = {};
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -699,15 +821,24 @@ export const ReaderCitationsService = {
     const res = await fetch(url, { headers });
     if (!res.ok) throw new Error(`Download failed: ${res.statusText}`);
 
-    const blob = await res.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = filename || `document_${itemId}_annotated.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(blobUrl);
+    const data = (await res.json()) as any;
+    if (data.base64) {
+      const byteCharacters = atob(data.base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: data.mimeType || 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename || data.filename || `document_${itemId}_annotated.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    }
   },
 };
 
@@ -715,10 +846,11 @@ export const ReaderCitationsService = {
 export const ReaderItemTypesService = {
   list: async (): Promise<SchemaItemTypeDefinition[]> => {
     try {
-      const res = await apiGet<SchemaItemTypeDefinition[] | { types?: SchemaItemTypeDefinition[]; data?: SchemaItemTypeDefinition[] }>(
-        '/api/v1/library/schema/types',
+      const res = await apiGet<SchemaItemTypeDefinition[] | { itemTypes?: SchemaItemTypeDefinition[]; types?: SchemaItemTypeDefinition[]; data?: SchemaItemTypeDefinition[] }>(
+        '/api/v1/library/item-types',
       );
       if (Array.isArray(res)) return res;
+      if (res && Array.isArray((res as any).itemTypes)) return (res as any).itemTypes;
       if (res && Array.isArray((res as any).types)) return (res as any).types;
       if (res && Array.isArray((res as any).data)) return (res as any).data;
       return [];
@@ -730,23 +862,24 @@ export const ReaderItemTypesService = {
 
 // ── 11. Retraction Domain ───────────────────────────────────────────────────
 export const ReaderRetractionService = {
-  checkItem: (scopeId: string | undefined, itemId: string) =>
-    apiPost<{
+  checkItem: (scopeId: string | undefined, itemId: string) => {
+    const url = isProjectScope(scopeId)
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/retraction/items/${encodeURIComponent(itemId)}/check`
+      : `/api/v1/library/retraction/items/${encodeURIComponent(itemId)}/check`;
+    return apiPost<{
       itemId: string;
       isRetracted: boolean;
       nature?: string;
       details?: Record<string, unknown>;
-    }>(
-      `/api/v1/library/retraction/items/${encodeURIComponent(itemId)}/check`,
-      {},
-      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
-    ),
+    }>(url, {});
+  },
 
-  unflagItem: (scopeId: string | undefined, itemId: string) =>
-    apiDelete<ReaderDocument>(
-      `/api/v1/library/retraction/items/${encodeURIComponent(itemId)}/flag`,
-      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
-    ),
+  unflagItem: (scopeId: string | undefined, itemId: string) => {
+    const url = isProjectScope(scopeId)
+      ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/retraction/items/${encodeURIComponent(itemId)}/flag`
+      : `/api/v1/library/retraction/items/${encodeURIComponent(itemId)}/flag`;
+    return apiDelete<ReaderDocument>(url);
+  },
 };
 
 // ── UNIFIED READER SDK ENTRY POINT ───────────────────────────────────────────

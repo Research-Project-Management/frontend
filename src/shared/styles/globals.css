@@ -84,6 +84,25 @@
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-snappy: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Motion Primitive Scale */
+  --duration-0: 0ms;
+  --duration-100: 100ms;
+  --duration-120: 120ms;
+  --duration-150: 150ms;
+  --duration-200: 200ms;
+  --duration-250: 250ms;
+  --duration-300: 300ms;
+
+  /* Motion Semantic Roles */
+  --duration-instant: var(--duration-0);
+  --duration-micro: var(--duration-120);
+  --duration-exit: var(--duration-150);
+  --duration-enter-dialog: var(--duration-200);
+  --duration-enter-drawer: var(--duration-250);
+  --duration-feedback: var(--duration-300);
 
   --animate-smooth-pulse: smooth-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-shimmer: shimmer 2s linear infinite;
@@ -222,6 +241,28 @@
   --color-divide-subtle: var(--divide-subtle);
   --color-layer-transparent-hover: var(--layer-transparent-hover);
 
+  /* Flux Design System Semantic Tokens */
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-panel: var(--panel);
+  --color-ai: var(--ai);
+  --color-ai-hover: var(--ai-hover);
+  --color-ai-foreground: var(--ai-foreground);
+  --color-ai-subtle: var(--ai-subtle);
+  --color-ai-border: var(--ai-border);
+
+  --color-primary-subtle: var(--primary-subtle);
+  --color-primary-border: var(--primary-border);
+
+  --color-state-started: var(--state-started);
+  --color-state-completed: var(--state-completed);
+  --color-state-backlog: var(--state-backlog);
+  --color-state-unstarted: var(--state-unstarted);
+  --color-state-cancelled: var(--state-cancelled);
+
+  --shadow-hairline: var(--shadow-hairline);
+  --shadow-raised: var(--shadow-raised);
+  --shadow-overlay: var(--shadow-overlay);
   --shadow-2xs: var(--shadow-2xs);
   --shadow-xs: var(--shadow-xs);
   --shadow-sm: var(--shadow-sm);
@@ -237,10 +278,61 @@
    -------------------------------------------------------------------------- */
 
 :root {
-  --brand-hue: 265;
   --radius: 0.5rem;
+  --brand-hue: 265;
 
-  /* Dynamic Brand Palette via OKLCH Single Source of Truth (--brand-hue) */
+  /* ── FLUX DESIGN SYSTEM TOKENS (Light Mode) ── */
+  --canvas: #FCFCFB;
+  --surface: #F5F5F4;
+  --panel: #EFEEEC;
+  --border: #DEDEDE;
+  --border-subtle: #E8E8E8;
+  --divide-subtle: #E8E8E8;
+  --layer-transparent-hover: #EBEBEB;
+  --surface-1: #FCFCFB;
+
+  /* Text Hierarchy */
+  --foreground: #212121;
+  --text-primary: #212121;
+  --text-secondary: #595959;
+  --text-muted: #717171;
+  --muted-foreground: #717171;
+  --text-placeholder: #BDBDBD;
+
+  /* System Blue (The Dual-Engine Separation Rule) */
+  --primary: #0969DA;
+  --primary-hover: #0854B0;
+  --primary-foreground: #FFFFFF;
+  --primary-subtle: #DDF4FF;
+  --primary-border: #B6E3FF;
+  --brand: var(--primary);
+  --brand-hover: var(--primary-hover);
+  --brand-foreground: var(--primary-foreground);
+
+  /* AI Copilot Purple (The Verified Intelligence Rule) */
+  --ai: #8250DF;
+  --ai-hover: #6E40C9;
+  --ai-foreground: #FFFFFF;
+  --ai-subtle: #F2EAFF;
+  --ai-border: #D8B9FF;
+
+  /* Work Item State Colors */
+  --state-backlog: #6B7280;
+  --state-unstarted: #94A3B8;
+  --state-started: #D97706;
+  --state-completed: #1A7F37;
+  --state-cancelled: #9CA3AF;
+
+  /* Semantic Feedback */
+  --success: #1A7F37;
+  --success-foreground: #FFFFFF;
+  --warning: #9A6700;
+  --warning-foreground: #212121;
+  --destructive: #CF222E;
+  --destructive-hover: #A40E26;
+  --destructive-foreground: #FFFFFF;
+
+  /* Dynamic Brand Palette via OKLCH (Retained for purple/accent compatibility) */
   --brand-50: oklch(97% 0.02 var(--brand-hue));
   --brand-100: oklch(93% 0.04 var(--brand-hue));
   --brand-200: oklch(86% 0.08 var(--brand-hue));
@@ -253,33 +345,32 @@
   --brand-900: oklch(20% 0.08 var(--brand-hue));
   --brand-950: oklch(14% 0.05 var(--brand-hue));
 
-  /* Backward-compatible blue aliases dynamically bound to brand palette */
-  --blue-50: var(--brand-50);
-  --blue-100: var(--brand-100);
-  --blue-200: var(--brand-200);
-  --blue-300: var(--brand-300);
-  --blue-400: var(--brand-400);
-  --blue-500: var(--brand-500);
-  --blue-600: var(--brand-600);
-  --blue-700: var(--brand-700);
-  --blue-800: var(--brand-800);
-  --blue-900: var(--brand-900);
-  --blue-950: var(--brand-950);
+  --blue-50: #F0F6FC;
+  --blue-100: #DDF4FF;
+  --blue-200: #B6E3FF;
+  --blue-300: #54AEFF;
+  --blue-400: #218BFF;
+  --blue-500: #0969DA;
+  --blue-600: #0854B0;
+  --blue-700: #053B7A;
+  --blue-800: #03254C;
+  --blue-900: #02142B;
+  --blue-950: #010B18;
 
-  --gray-0: oklch(100% 0 0);
-  --gray-25: oklch(98.5% 0 0);
-  --gray-50: oklch(97% 0 0);
-  --gray-100: oklch(94% 0 0);
-  --gray-150: oklch(91% 0 0);
-  --gray-200: oklch(88% 0 0);
-  --gray-300: oklch(82% 0 0);
-  --gray-400: oklch(72% 0 0);
-  --gray-500: oklch(60% 0 0);
-  --gray-600: oklch(48% 0 0);
-  --gray-700: oklch(36% 0 0);
-  --gray-800: oklch(24% 0 0);
-  --gray-900: oklch(14% 0 0);
-  --gray-950: oklch(8% 0 0);
+  --gray-0: #FFFFFF;
+  --gray-25: #FCFCFB;
+  --gray-50: #F5F5F4;
+  --gray-100: #EFEEEC;
+  --gray-150: #E8E8E8;
+  --gray-200: #DEDEDE;
+  --gray-300: #BDBDBD;
+  --gray-400: #9E9E9E;
+  --gray-500: #717171;
+  --gray-600: #595959;
+  --gray-700: #3E3E3E;
+  --gray-800: #2B2B2B;
+  --gray-900: #212121;
+  --gray-950: #141414;
 
   --red-50: oklch(97% 0.025 25);
   --red-100: oklch(90% 0.060 25);
@@ -287,56 +378,41 @@
   --red-600: oklch(50% 0.210 25);
   --red-800: oklch(35% 0.150 25);
 
-  --background: var(--gray-0);
-  --foreground: var(--gray-900);
-  --card: var(--gray-0);
-  --card-foreground: var(--gray-900);
-  --popover: var(--gray-0);
-  --popover-foreground: var(--gray-900);
-  --primary: oklch(47% 0.165 var(--brand-hue));
-  --primary-hover: oklch(42% 0.165 var(--brand-hue));
-  --primary-foreground: #FFFFFF;
-  --brand: var(--primary);
-  --brand-hover: var(--primary-hover);
-  --brand-foreground: var(--primary-foreground);
-  --secondary: var(--gray-50);
-  --secondary-foreground: var(--gray-900);
-  --muted: var(--gray-100);
-  --muted-foreground: var(--gray-600);
-  --accent: var(--gray-50);
-  --accent-foreground: var(--gray-700);
-  --destructive: var(--red-500);
-  --destructive-hover: var(--red-600);
-  --destructive-foreground: var(--gray-0);
-  --success: oklch(62% 0.17 145);
-  --success-foreground: var(--gray-0);
-  --warning: oklch(75% 0.16 75);
-  --warning-foreground: var(--gray-900);
-  --border: var(--gray-200);
-  --border-hover: var(--gray-400);
-  --border-subtle: var(--border);
-  --divide-subtle: var(--border);
-  --layer-transparent-hover: var(--gray-100);
-  --surface-1: var(--gray-0);
-  --input: var(--gray-200);
-  --ring: oklch(47% 0.165 var(--brand-hue));
+  /* Surface & Component Mappings */
+  --background: var(--surface);
+  --card: var(--canvas);
+  --card-foreground: var(--text-primary);
+  --popover: var(--canvas);
+  --popover-foreground: var(--text-primary);
+  --secondary: var(--panel);
+  --secondary-foreground: var(--text-primary);
+  --muted: #EBEBEB;
+  --accent: var(--panel);
+  --accent-foreground: var(--text-primary);
+  --border-hover: #C2C2C2;
+  --input: var(--border);
+  --ring: var(--primary);
 
-  --chart-1: oklch(47% 0.165 var(--brand-hue));
-  --chart-2: oklch(0.600 0.118 185);
-  --chart-3: oklch(0.398 0.070 227);
-  --chart-4: oklch(0.828 0.189 84);
-  --chart-5: oklch(0.769 0.188 70);
+  --chart-1: #0969DA;
+  --chart-2: #8250DF;
+  --chart-3: #1A7F37;
+  --chart-4: #D97706;
+  --chart-5: #CF222E;
 
-  --sidebar: var(--muted);
-  --sidebar-foreground: var(--gray-900);
+  --sidebar: var(--panel);
+  --sidebar-foreground: var(--text-primary);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-hover: var(--gray-150);
-  --sidebar-accent: var(--gray-200);
-  --sidebar-accent-foreground: var(--gray-900);
-  --sidebar-border: var(--gray-200);
+  --sidebar-hover: #E4E3E0;
+  --sidebar-accent: var(--muted);
+  --sidebar-accent-foreground: var(--text-primary);
+  --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
 
+  /* Shadows (Flat-by-Default with Hairline Exception) */
+  --shadow-hairline: 0 1px rgb(0 0 0 / 0.05);
+  --shadow-raised: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px 0 rgb(0 0 0 / 0.03);
+  --shadow-overlay: 0 4px 12px 0 rgb(0 0 0 / 0.08), 0 2px 4px 0 rgb(0 0 0 / 0.04);
   --shadow-2xs: 0 1px rgb(0 0 0 / 0.05);
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.06);
   --shadow-sm: none;
@@ -348,64 +424,97 @@
 }
 
 .dark {
-  --background: oklch(11% 0 0);
-  --foreground: oklch(92% 0 0);
-  --card: oklch(14% 0 0);
-  --card-foreground: oklch(92% 0 0);
-  --popover: oklch(14% 0 0);
-  --popover-foreground: oklch(92% 0 0);
-  --primary: oklch(55.3% 0.178 var(--brand-hue));
-  --primary-hover: oklch(62% 0.178 var(--brand-hue));
-  --primary-foreground: #FFFFFF;
+  /* ── FLUX DESIGN SYSTEM DARK TOKENS ── */
+  --canvas: #1A1A22;
+  --surface: #111118;
+  --panel: #0D0D14;
+  --border: #2D2D31;
+  --border-subtle: #222226;
+  --divide-subtle: #222226;
+  --layer-transparent-hover: #1A1A22;
+  --surface-1: #1A1A22;
+
+  /* Text Hierarchy */
+  --foreground: #F0F0F0;
+  --text-primary: #F0F0F0;
+  --text-secondary: #8E8E93;
+  --text-muted: #8A8A8E;        /* WCAG 5.0:1 fix from audit */
+  --muted-foreground: #8A8A8E;   /* WCAG 5.0:1 fix from audit */
+  --text-placeholder: #48484A;
+
+  /* System Blue (Dark Luminance Shift) */
+  --primary: #58A6FF;
+  --primary-hover: #79B8FF;
+  --primary-foreground: #0D1117;
+  --primary-subtle: rgba(56, 139, 253, 0.15);
+  --primary-border: rgba(56, 139, 253, 0.3);
   --brand: var(--primary);
   --brand-hover: var(--primary-hover);
   --brand-foreground: var(--primary-foreground);
-  --secondary: oklch(17% 0 0);
-  --secondary-foreground: oklch(92% 0 0);
-  --muted: oklch(17% 0 0);
-  --muted-foreground: oklch(65% 0 0);
-  --accent: oklch(17% 0 0);
-  --accent-foreground: oklch(72% 0 0);
-  --destructive: oklch(64% 0.210 25);
-  --destructive-hover: oklch(56% 0.210 25);
-  --destructive-foreground: oklch(100% 0 0);
-  --success: oklch(68% 0.16 145);
-  --success-foreground: oklch(100% 0 0);
-  --warning: oklch(75% 0.16 75);
-  --warning-foreground: oklch(15% 0.05 75);
-  --border: oklch(22% 0 0);
-  --border-hover: oklch(32% 0 0);
-  --border-subtle: var(--border);
-  --divide-subtle: var(--border);
-  --layer-transparent-hover: oklch(17% 0 0);
-  --surface-1: oklch(14% 0 0);
-  --input: oklch(22% 0 0 / 70%);
-  --ring: oklch(55.3% 0.178 var(--brand-hue));
 
-  --chart-1: oklch(55.3% 0.178 var(--brand-hue));
-  --chart-2: oklch(0.696 0.170 162);
-  --chart-3: oklch(0.769 0.188 70);
-  --chart-4: oklch(0.627 0.265 304);
-  --chart-5: oklch(0.645 0.246 16);
+  /* AI Copilot Purple (Dark Luminance Shift) */
+  --ai: #BC8CFF;
+  --ai-hover: #D2A8FF;
+  --ai-foreground: #0D1117;
+  --ai-subtle: rgba(188, 140, 255, 0.15);
+  --ai-border: rgba(188, 140, 255, 0.3);
 
-  --sidebar: var(--muted);
-  --sidebar-foreground: oklch(92% 0 0);
+  /* Work Item State Colors (Dark Shift) */
+  --state-started: #FBBF24;
+  --state-completed: #3FB950;
+
+  /* Semantic Feedback */
+  --success: #3FB950;
+  --success-foreground: #0D1117;
+  --warning: #FBBF24;
+  --warning-foreground: #0D1117;
+  --destructive: #F85149;
+  --destructive-hover: #FF7B72;
+  --destructive-foreground: #0D1117;
+
+  /* Surface & Component Mappings */
+  --background: var(--surface);
+  --card: var(--canvas);
+  --card-foreground: var(--text-primary);
+  --popover: var(--canvas);
+  --popover-foreground: var(--text-primary);
+  --secondary: var(--panel);
+  --secondary-foreground: var(--text-primary);
+  --muted: #252529;
+  --accent: var(--panel);
+  --accent-foreground: var(--text-primary);
+  --border-hover: #44444A;
+  --input: var(--border);
+  --ring: var(--primary);
+
+  --chart-1: #58A6FF;
+  --chart-2: #BC8CFF;
+  --chart-3: #3FB950;
+  --chart-4: #FBBF24;
+  --chart-5: #F85149;
+
+  --sidebar: var(--panel);
+  --sidebar-foreground: var(--text-primary);
   --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: oklch(100% 0 0);
-  --sidebar-hover: oklch(21% 0 0);
-  --sidebar-accent: oklch(25% 0 0);
-  --sidebar-accent-foreground: oklch(95% 0 0);
-  --sidebar-border: oklch(22% 0 0);
+  --sidebar-primary-foreground: #0D1117;
+  --sidebar-hover: #171720;
+  --sidebar-accent: var(--muted);
+  --sidebar-accent-foreground: var(--text-primary);
+  --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
 
-  --shadow-2xs: 0 1px rgb(0 0 0 / 0.25);
+  /* Shadows */
+  --shadow-hairline: 0 1px rgb(255 255 255 / 0.04);
+  --shadow-raised: 0 1px 3px 0 rgb(0 0 0 / 0.3);
+  --shadow-overlay: 0 4px 12px 0 rgb(0 0 0 / 0.4);
+  --shadow-2xs: 0 1px rgb(255 255 255 / 0.04);
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.35);
   --shadow-sm: none;
   --shadow-md: none;
   --shadow-lg: none;
   --shadow-xl: none;
   --shadow-2xl: none;
-  --shadow-raised-200: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px 0 rgb(0 0 0 / 0.2);
+  --shadow-raised-200: 0 1px 3px 0 rgb(0 0 0 / 0.3);
 }
 
 /* --------------------------------------------------------------------------
@@ -1167,9 +1276,32 @@
    Prevents layout recalculations & satisfies Impeccable craft floor
    -------------------------------------------------------------------------- */
 [data-sonner-toaster],
+[data-sonner-toaster] *,
+[data-sonner-toast],
+[data-sonner-toast] *,
 [data-sonner-toaster] [data-sonner-toast],
 [data-sonner-toaster] [data-height-wrapper] {
+  transition: transform 0.2s ease, opacity 0.2s ease !important;
   transition-property: transform, opacity !important;
 }
+
+/* --------------------------------------------------------------------------
+   CODEMIRROR 6 FOCUS OUTLINE SUPPRESSION
+   Suppresses CodeMirror's built-in 1px dotted outline when editor receives focus.
+   -------------------------------------------------------------------------- */
+.cm-editor,
+.cm-editor.cm-focused,
+.cm-editor:focus,
+.cm-editor:focus-visible,
+.cm-scroller,
+.cm-scroller:focus,
+.cm-scroller:focus-visible,
+.cm-content,
+.cm-content:focus,
+.cm-content:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 
 

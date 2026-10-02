@@ -61,8 +61,8 @@ export default function CollectionsSection({
           path.unshift(found);
           currId = found.parentId || null;
         } else {
-          // Fallback if collection not in current active collections array
-          const fallbackCol = (paper.collections || []).find((c) => c.id === currId);
+          const rawPaperCols = (paper as any).collections;
+          const fallbackCol = Array.isArray(rawPaperCols) ? rawPaperCols.find((c: any) => c.id === currId) : null;
           if (fallbackCol) {
             path.unshift(fallbackCol as Collection);
           }
@@ -109,7 +109,7 @@ export default function CollectionsSection({
                   openModal('CREATE_COLLECTION');
                 }
               }}
-              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              className="size-5 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
               title="New Collection"
               aria-label="New Collection"
             >
@@ -120,11 +120,11 @@ export default function CollectionsSection({
       )}
 
       {/* Primary Library Row (Root) */}
-      <div className="flex items-center gap-2 py-0.5 px-1.5 text-13 rounded-md hover:bg-muted transition-colors group">
+      <div className="flex items-center gap-2 py-0.5 px-1.5 text-12 rounded-md hover:bg-muted transition-colors group">
         <div className="size-4 shrink-0 flex items-center justify-center">
           <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
         </div>
-        <span className="font-medium text-13 text-foreground tracking-tight break-words">My Library</span>
+        <span className="font-medium text-12 text-foreground break-words">My Library</span>
       </div>
 
       {/* Collection Tree Rows */}
@@ -138,14 +138,14 @@ export default function CollectionsSection({
                 <div
                   key={`${colId}-${col.id}-${idx}`}
                   style={{ paddingLeft: `${indentPx}px` }}
-                  className="flex items-center justify-between gap-1.5 py-0.5 pr-1.5 text-13 rounded-md hover:bg-muted transition-colors group"
+                  className="flex items-center justify-between gap-1.5 py-0.5 pr-1 text-12 rounded-md hover:bg-muted transition-colors group"
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     <div className="size-4 shrink-0 flex items-center justify-center">
                       <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                     </div>
                     <span
-                      className="text-13 break-words leading-snug text-foreground font-normal"
+                      className="text-12 break-words leading-snug text-foreground font-normal"
                       title={col.name}
                     >
                       {col.name}
@@ -155,7 +155,7 @@ export default function CollectionsSection({
                     <button
                       type="button"
                       onClick={() => handleRemoveFromCollection(colId)}
-                      className="invisible group-hover:visible size-5 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0"
+                      className="invisible group-hover:visible size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0"
                       title={`Remove from "${col.name}"`}
                       aria-label={`Remove from collection ${col.name}`}
                     >

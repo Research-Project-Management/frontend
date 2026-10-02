@@ -3,14 +3,14 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { PenLine, Search, X, Columns3, AlignJustify } from 'lucide-react';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import {
-  Button,
-  Input,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { Switcher } from '@/features/projects/project-id/components/layout/Switcher';
 

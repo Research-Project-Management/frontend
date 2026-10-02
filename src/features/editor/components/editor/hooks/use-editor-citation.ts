@@ -12,11 +12,13 @@ export interface UseEditorCitationOptions {
   pageFiles?: Array<{ name?: string; title?: string; filename?: string; content?: string; url?: string }>;
   /** Optional library items from the project / personal scope */
   libraryItems?: any[];
+  projectId?: string;
 }
 
 export function useEditorCitation({
   pageFiles = [],
   libraryItems = [],
+  projectId,
 }: UseEditorCitationOptions) {
   const { engine } = useEditorInstance();
   const [citationModalOpen, setCitationModalOpen] = useState(false);
@@ -108,6 +110,7 @@ export function useEditorCitation({
   };
 
   return {
+    projectId,
     bibEntries,
     citationModalOpen,
     setCitationModalOpen,

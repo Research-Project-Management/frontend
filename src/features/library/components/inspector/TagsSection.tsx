@@ -123,7 +123,7 @@ export default function TagsSection({
 
   const saveTags = (updatedTags: string[]) => {
     if (onUpdateTags) onUpdateTags(updatedTags);
-    if (onUpdatePaper) onUpdatePaper({ tags: updatedTags, silent: true } as any, { silent: true });
+    if (onUpdatePaper) onUpdatePaper({ tags: updatedTags, silent: true }, { silent: true });
   };
 
   const handleAddTag = () => {

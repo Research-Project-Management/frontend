@@ -3,7 +3,7 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import { FileCode2 } from 'lucide-react';
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import Tabs from '../../../components/editor/Tabs';
 import { ImagePanel } from './ImagePanel';
 import { useActiveDocument } from '../../../hooks/use-core';
@@ -11,18 +11,33 @@ import { useCollaborationStream } from '../../../hooks/use-collaboration';
 
 const Editor = dynamic(() => import('../../../components/editor/Editor'), { ssr: false });
 
-function EmptyEditorState() {
+interface EmptyEditorStateProps {
+  onOpenDefaultFile?: () => void;
+  fileName?: string;
+}
+
+function EmptyEditorState({ onOpenDefaultFile, fileName = 'main.tex' }: EmptyEditorStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-3 select-none bg-background">
+    <div className="flex flex-col items-center justify-center h-full gap-3 select-none bg-background px-4">
       <div className="size-14 rounded-lg bg-muted border border-border flex items-center justify-center">
         <FileCode2 className="size-7 text-muted-foreground/50 shrink-0" />
       </div>
       <div className="text-center space-y-1">
         <p className="text-sm font-medium text-foreground">No file open</p>
         <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
-          Select a document from the Files explorer or create a new file to start writing.
+          Select a document from the Files explorer or reopen the default manuscript to start writing.
         </p>
       </div>
+      {onOpenDefaultFile && (
+        <button
+          type="button"
+          onClick={onOpenDefaultFile}
+          className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border transition-colors cursor-pointer"
+        >
+          <FileCode2 className="size-3.5 shrink-0 opacity-70" />
+          <span>Open {fileName}</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -61,12 +76,27 @@ function LoadingSkeleton() {
 }
 
 export function EditorColumn() {
-  const { isLoading, activePage, isAssetTab, displayPage, pageId, fileId, selectedAsset } =
-    useActiveDocument();
+  const {
+    isLoading,
+    activePage,
+    isAssetTab,
+    displayPage,
+    pageId,
+    fileId,
+    selectedAsset,
+    selectFile,
+    parentPage,
+  } = useActiveDocument();
 
   // Stream real-time events for active sub-file if different from root page
   const childPageId = displayPage?.id && displayPage.id !== pageId ? displayPage.id : null;
   useCollaborationStream(undefined, childPageId);
+
+  const handleOpenDefault = React.useCallback(() => {
+    if (pageId) {
+      selectFile(pageId);
+    }
+  }, [pageId, selectFile]);
 
   if (isLoading) return <LoadingSkeleton />;
 
@@ -79,15 +109,18 @@ export function EditorColumn() {
   }
 
   return (
-    <div className="h-full w-full overflow-hidden flex flex-col bg-background">
+    <div className="h-full w-full flex flex-col bg-background">
       {pageId && <Tabs rootPageId={pageId} activeFileId={fileId ?? activePage.id ?? ''} />}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0">
         {isAssetTab ? (
           <ImagePanel asset={selectedAsset!} />
         ) : displayPage ? (
           <Editor page={displayPage as any} />
         ) : (
-          <EmptyEditorState />
+          <EmptyEditorState
+            onOpenDefaultFile={handleOpenDefault}
+            fileName={parentPage?.title || 'main.tex'}
+          />
         )}
       </div>
     </div>

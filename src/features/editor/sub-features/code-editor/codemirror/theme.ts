@@ -20,10 +20,18 @@ export const fluxLightTheme = EditorView.theme(
       fontSize: '14px',
       height: '100%',
     },
+    '&.cm-focused': {
+      outline: 'none !important',
+    },
     '.cm-scroller': {
       fontFamily: 'var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)',
       lineHeight: '1.65',
+      outline: 'none !important',
     },
+    '.cm-content': {
+      outline: 'none !important',
+    },
+
     '.cm-gutters': {
       backgroundColor: 'var(--muted, #f8fafc)',
       color: '#94a3b8',
@@ -54,6 +62,18 @@ export const fluxLightTheme = EditorView.theme(
       backgroundColor: 'rgba(239, 68, 68, 0.15) !important',
       textDecoration: 'underline wavy #ef4444',
     },
+    '.cm-comment-highlight': {
+      backgroundColor: '#fae29c !important',
+      color: '#0f172a !important',
+      borderRadius: '2px',
+      cursor: 'pointer',
+    },
+    '.cm-comment-highlight-active': {
+      backgroundColor: '#fcd34d !important',
+      outline: '1.5px solid #3b82f6',
+      borderRadius: '2px',
+      cursor: 'pointer',
+    },
   },
   { dark: false }
 );
@@ -66,10 +86,18 @@ export const fluxDarkTheme = EditorView.theme(
       fontSize: '14px',
       height: '100%',
     },
+    '&.cm-focused': {
+      outline: 'none !important',
+    },
     '.cm-scroller': {
       fontFamily: 'var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)',
       lineHeight: '1.65',
+      outline: 'none !important',
     },
+    '.cm-content': {
+      outline: 'none !important',
+    },
+
     '.cm-gutters': {
       backgroundColor: 'var(--muted, #0f172a)',
       color: '#64748b',
@@ -99,6 +127,17 @@ export const fluxDarkTheme = EditorView.theme(
     '.cm-error-line': {
       backgroundColor: 'rgba(239, 68, 68, 0.2) !important',
       textDecoration: 'underline wavy #ef4444',
+    },
+    '.cm-comment-highlight': {
+      backgroundColor: 'rgba(250, 226, 156, 0.4) !important',
+      borderRadius: '2px',
+      cursor: 'pointer',
+    },
+    '.cm-comment-highlight-active': {
+      backgroundColor: 'rgba(250, 226, 156, 0.65) !important',
+      outline: '1.5px solid #3b82f6',
+      borderRadius: '2px',
+      cursor: 'pointer',
     },
   },
   { dark: true }

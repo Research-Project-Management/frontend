@@ -10,7 +10,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dropdown-menu';
 import dynamic from 'next/dynamic';
 import { InlineTextarea } from './InlineTextarea';
 
@@ -54,6 +54,7 @@ export function GeneralFields({
 }: GeneralFieldsProps) {
   const [isConversionDialogOpen, setIsConversionDialogOpen] = useState(false);
   const [targetConversionType, setTargetConversionType] = useState<string>('');
+  const [previewData, setPreviewData] = useState<any>(null);
   const [isCheckingType, setIsCheckingType] = useState(false);
 
   const effectiveItemTypes =
@@ -70,7 +71,7 @@ export function GeneralFields({
     <>
       {/* ⚠️ Retraction Warning Alert Banner */}
       {paper.isRetracted && (
-        <div className="mb-3 p-3 rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-xs select-none">
+        <div className="mb-3 p-3 rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-12 select-none">
           <div className="flex items-start gap-2.5">
             <ShieldAlert className="size-4 text-destructive shrink-0 mt-0.5" strokeWidth={1.5} />
             <div className="flex-1 space-y-1">
@@ -81,7 +82,7 @@ export function GeneralFields({
                   ? 'ℹ️ Publisher Correction Notice'
                   : '🚨 Retracted Publication'}
               </div>
-              <p className="text-xs text-destructive/90 break-words leading-snug">
+              <p className="text-12 text-destructive/90 break-words leading-snug">
                 {((paper.retractionDetails as any)?.reason) ||
                   'This publication has been flagged as retracted or unreliable by academic integrity audits.'}
               </p>
@@ -102,7 +103,7 @@ export function GeneralFields({
       )}
 
       {/* Item Type Selector */}
-      <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5">
+      <div className="grid grid-cols-[80px_1fr] gap-1.5 items-center py-0.5 w-full min-w-0">
         <span
           className="text-muted-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate"
           id="label-item-type"
@@ -116,7 +117,7 @@ export function GeneralFields({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="w-full h-7 text-left px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary data-[state=open]:border-primary data-[state=open]:bg-muted text-12 leading-normal font-normal text-foreground bg-transparent cursor-pointer outline-none select-none flex items-center justify-between"
+                  className="w-full h-7 text-left px-1.5 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary data-[state=open]:border-primary data-[state=open]:bg-muted text-12 leading-normal font-normal text-foreground bg-transparent cursor-pointer outline-none select-none flex items-center justify-between"
                   aria-label="Item Type"
                 >
                   <div className="flex items-center gap-1.5 min-w-0 truncate">
@@ -151,6 +152,7 @@ export function GeneralFields({
                             targetType: t.value,
                             retainUnmappedInExtra: true,
                           });
+                          setPreviewData(prev);
                           if (!prev?.hasLoss) {
                             // Lossless: convert immediately without dialog and without notification
                             const result = await convertAsync({
@@ -180,7 +182,7 @@ export function GeneralFields({
                         }
                       }}
                       className={cn(
-                        'flex items-center justify-between h-7.5 px-2.5 text-xs font-normal rounded-md cursor-pointer text-foreground hover:bg-muted select-none transition-colors',
+                        'flex items-center justify-between h-7.5 px-2.5 text-12 font-normal rounded-md cursor-pointer text-foreground hover:bg-muted select-none transition-colors',
                         isSelected && 'bg-muted text-foreground font-medium',
                       )}
                     >
@@ -194,7 +196,7 @@ export function GeneralFields({
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div className="w-full h-7 text-left px-2 py-1 text-12 leading-normal font-normal text-foreground flex items-center select-text font-sans truncate">
+            <div className="w-full h-7 text-left px-1.5 py-1 text-12 leading-normal font-normal text-foreground flex items-center select-text font-sans truncate">
               <span className="truncate whitespace-nowrap">
                 {effectiveItemTypes.find((t) => t.value === currentItemType)?.label ||
                   typeDefinition.label ||
@@ -206,7 +208,7 @@ export function GeneralFields({
       </div>
 
       {/* Title */}
-      <div className="grid grid-cols-[84px_1fr] gap-2 items-start py-0.5">
+      <div className="grid grid-cols-[80px_1fr] gap-1.5 items-start py-0.5 w-full min-w-0">
         <span
           className="text-muted-foreground text-right font-normal select-none pr-1 pt-1 text-12 leading-normal whitespace-nowrap truncate"
           id="label-title"
@@ -225,15 +227,19 @@ export function GeneralFields({
       </div>
 
       {/* Item Type Conversion Modal */}
-      <ConvertModal
-        open={isConversionDialogOpen}
-        onOpenChange={setIsConversionDialogOpen}
-        paper={paper}
-        targetType={targetConversionType}
-        onSuccess={(updatedPaper: any) => {
-          onUpdatePaper?.(updatedPaper);
-        }}
-      />
+      {isConversionDialogOpen && (
+        <ConvertModal
+          open={isConversionDialogOpen}
+          onOpenChange={setIsConversionDialogOpen}
+          paper={paper}
+          targetType={targetConversionType}
+          scopeId={paper.projectId || 'user'}
+          initialPreview={previewData}
+          onSuccess={(updatedPaper: any) => {
+            onUpdatePaper?.(updatedPaper);
+          }}
+        />
+      )}
     </>
   );
 }

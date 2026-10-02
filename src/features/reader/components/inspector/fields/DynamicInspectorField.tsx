@@ -8,7 +8,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tooltip';
 
 export interface DynamicInspectorFieldProps {
   fieldDef: SchemaFieldDefinition;
@@ -115,7 +115,7 @@ export function DynamicInspectorField({
     (isUrlField && isValidValue(currentVal) && currentVal.trim() !== 'http://' && currentVal.trim() !== 'https://');
 
   return (
-    <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5 group">
+    <div className="grid grid-cols-[80px_1fr] gap-1.5 items-center py-0.5 group w-full min-w-0">
       <span
         className="text-muted-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate"
         title={fieldDef.label}

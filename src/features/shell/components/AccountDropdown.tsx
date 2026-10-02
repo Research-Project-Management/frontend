@@ -12,23 +12,38 @@ import {
   Mail,
   Bell,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/shared/components/ui";
+} from "@/shared/components/ui/dropdown-menu";
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui";
+import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui/avatar";
 import { resolveFileUrl } from "@/shared/lib/file-client";
 import { useUserCover } from '@/features/account/hooks/use-user-cover';
 import { CoverModal } from '@/features/account/components/CoverModal';
-import { useUpload } from '@/shared/hooks/use-upload';
-import { CreateProjectModal } from '@/features/projects/shell/components/project/CreateProjectModal';
-import { ProjectInvitesModal } from '@/features/projects/invitation/components/ProjectInvitesModal';
+import { useUpload } from "@/shared/hooks/use-upload";
+import dynamic from 'next/dynamic';
 import { useMyProjectInvitations } from '@/features/projects/invitation/hooks/use-project-invitations';
-import { useInbox } from '@/features/inbox/hooks/use-inbox';
-import { toast } from 'sonner';
+import { useUnreadNotificationCount } from '@/features/inbox/hooks/use-inbox';
+
+const CreateProjectModal = dynamic(
+  () =>
+    import('@/features/projects/shell/components/project/CreateProjectModal').then(
+      (m) => m.CreateProjectModal
+    ),
+  { ssr: false }
+);
+
+const ProjectInvitesModal = dynamic(
+  () =>
+    import('@/features/projects/invitation/components/ProjectInvitesModal').then(
+      (m) => m.ProjectInvitesModal
+    ),
+  { ssr: false }
+);
 
 interface AccountDropdownProps {
   className?: string;
@@ -41,7 +56,7 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
   const { cover, setCover } = useUserCover();
   const { uploadFile, isUploading } = useUpload();
   const { data: invitations = [] } = useMyProjectInvitations();
-  const { unreadCount = 0 } = useInbox();
+  const { data: unreadCount = 0 } = useUnreadNotificationCount();
   const [mounted, setMounted] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isProjectInvitesOpen, setIsProjectInvitesOpen] = useState(false);
@@ -110,22 +125,26 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
       </CoverModal>
 
       {/* ── Create Project Modal ── */}
-      <CreateProjectModal
-        open={isCreateProjectOpen}
-        onOpenChange={setIsCreateProjectOpen}
-        onSuccess={(newProj) => {
-          setIsCreateProjectOpen(false);
-          if (newProj?.id) {
-            router.push(`/projects/${newProj.id}`);
-          }
-        }}
-      />
+      {isCreateProjectOpen && (
+        <CreateProjectModal
+          open={isCreateProjectOpen}
+          onOpenChange={setIsCreateProjectOpen}
+          onSuccess={(newProj) => {
+            setIsCreateProjectOpen(false);
+            if (newProj?.id) {
+              router.push(`/projects/${newProj.id}`);
+            }
+          }}
+        />
+      )}
 
       {/* ── Project Invites Modal ── */}
-      <ProjectInvitesModal
-        open={isProjectInvitesOpen}
-        onOpenChange={setIsProjectInvitesOpen}
-      />
+      {isProjectInvitesOpen && (
+        <ProjectInvitesModal
+          open={isProjectInvitesOpen}
+          onOpenChange={setIsProjectInvitesOpen}
+        />
+      )}
 
       <DropdownMenu>
         <DropdownMenuTrigger className="relative flex items-center justify-center size-8 rounded-md transition-colors hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary data-[state=open]:bg-muted cursor-pointer">
@@ -268,6 +287,20 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {isCreateProjectOpen && (
+        <CreateProjectModal
+          open={isCreateProjectOpen}
+          onOpenChange={setIsCreateProjectOpen}
+        />
+      )}
+
+      {isProjectInvitesOpen && (
+        <ProjectInvitesModal
+          open={isProjectInvitesOpen}
+          onOpenChange={setIsProjectInvitesOpen}
+        />
+      )}
     </>
   );
 }

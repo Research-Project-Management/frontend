@@ -20,7 +20,7 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className='border-t border-border bg-background' aria-label='Site footer'>
+    <footer className='border-t border-border bg-card' aria-label='Site footer'>
       <div className='flux-container py-12'>
         <div className='grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-10 lg:gap-12'>
 
@@ -31,17 +31,23 @@ export default function Footer() {
               className='inline-flex items-center gap-2 shrink-0'
               aria-label='Flux home'
             >
-              <img src='/Flux.svg' className='size-6 shrink-0 object-contain' alt='' aria-hidden='true' />
-              <span className='font-semibold text-lg tracking-tight'>Flux</span>
+              <img
+                src='/Flux.svg'
+                className='size-6 shrink-0 object-contain'
+                alt='Flux'
+              />
+              <span className='font-semibold text-lg tracking-tight text-foreground'>
+                Flux
+              </span>
             </Link>
-            <p className='text-sm text-muted-foreground leading-relaxed max-w-xs'>
+            <p className='text-13 text-muted-foreground leading-relaxed max-w-xs'>
               The collaborative research workbench engineered for modern academic teams.
             </p>
             <a
               href='https://github.com/Research-Project-TDTU'
               target='_blank'
               rel='noopener noreferrer'
-              className='inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm'
+              className='inline-flex items-center gap-1.5 text-13 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm'
               aria-label='View Flux on GitHub (opens in new tab)'
             >
               <GithubIcon className='size-4' aria-hidden='true' />

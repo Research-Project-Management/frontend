@@ -65,7 +65,7 @@ export const useReaderUIStore = create<ReaderUIState>()(
         })),
       toggleInspector: () =>
         set((state) => ({ isInspectorOpen: !state.isInspectorOpen })),
-      inspectorWidth: 340,
+      inspectorWidth: 360,
       setInspectorWidth: (inspectorWidth: number) => set({ inspectorWidth }),
       activeInspectorTab: 'info',
       setActiveInspectorTab: (activeInspectorTab: InspectorSectionId) =>

@@ -2,7 +2,9 @@
 
 import React, { useState } from 'react';
 import { ChevronLeft, ShieldCheck, AlertCircle, Unplug } from 'lucide-react';
-import { Button, Badge, Card } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Badge } from '@/shared/components/ui/badge';
+import { Card } from '@/shared/components/ui/card';
 import { IntegrationProvider, IntegrationStatusItem } from '../types/integration.types';
 import { getProviderIcon } from './IntegrationCard';
 

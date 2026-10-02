@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
-import { Button } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
 
 interface ViewAppliedFiltersListProps {
   search: string;

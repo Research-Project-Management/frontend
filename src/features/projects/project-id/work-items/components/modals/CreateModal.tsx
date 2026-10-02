@@ -8,12 +8,15 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  Button,
-  Switch,
+} from "@/shared/components/ui/dialog";
+import { Button } from "@/shared/components/ui/button";
+import { Switch } from "@/shared/components/ui/switch";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/shared/components/ui";
+} from "@/shared/components/ui/popover";
+import { Form } from "@/shared/components/ui/form";
 import {
   Loader2,
   Bookmark,
@@ -49,7 +52,6 @@ import {
   useCreateTemplateMutation,
 } from '../../hooks/use-template';
 import { useWatch } from 'react-hook-form';
-import { Form } from '@/shared/components/ui';
 import {
   useItemForm,
   useProjectStates,

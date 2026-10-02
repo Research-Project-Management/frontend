@@ -1,4 +1,4 @@
-import { StickiesIcon } from "@/shared/components/ui";
+import { StickiesIcon } from "@/shared/components/icons";
 
 interface EmptyStateProps {
   searchQuery?: string;

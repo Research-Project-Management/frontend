@@ -145,6 +145,35 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
       case 'subsubsection':
         this.wrapSelection('\\subsubsection{', '}\n');
         break;
+      case 'paragraph':
+        this.wrapSelection('\\paragraph{', '}\n');
+        break;
+      case 'subparagraph':
+        this.wrapSelection('\\subparagraph{', '}\n');
+        break;
+      case 'normal': {
+        const { from, to } = this.view.state.selection.main;
+        if (from !== to) {
+          const selected = this.view.state.sliceDoc(from, to);
+          const unformatted = selected
+            .replace(/\\(?:sub){0,2}section\*?\{([^}]*)\}/g, '$1')
+            .replace(/\\(?:sub)?paragraph\*?\{([^}]*)\}/g, '$1');
+          this.view.dispatch({
+            changes: { from, to, insert: unformatted },
+          });
+        } else {
+          const line = this.view.state.doc.lineAt(from);
+          const unformatted = line.text
+            .replace(/\\(?:sub){0,2}section\*?\{([^}]*)\}/g, '$1')
+            .replace(/\\(?:sub)?paragraph\*?\{([^}]*)\}/g, '$1');
+          if (unformatted !== line.text) {
+            this.view.dispatch({
+              changes: { from: line.from, to: line.to, insert: unformatted },
+            });
+          }
+        }
+        break;
+      }
       case 'itemize':
         this.wrapSelection('\\begin{itemize}\n  \\item ', '\n\\end{itemize}');
         break;

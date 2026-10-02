@@ -90,7 +90,7 @@ export function BatchBar({
     resolvedItems.length > 0 &&
     resolvedItems.every(
       (item) =>
-        Boolean((item as any)._isProcessing) ||
+        Boolean(item._isProcessing) ||
         item.id.startsWith('temp-') ||
         item.id.startsWith('provisional-'),
     );
@@ -98,8 +98,8 @@ export function BatchBar({
   const retractedSelected = resolvedItems.filter(
     (i) =>
       i.isRetracted ||
-      (i as any).retractionStatus === 'retracted' ||
-      (i as any).is_retracted,
+      i.retractionStatus === 'retracted' ||
+      i.is_retracted,
   );
 
   const warnIfRetractedPresent = (actionLabel: string) => {
@@ -193,7 +193,7 @@ export function BatchBar({
     }
 
     const cachedBib = resolvedItems
-      .map((p) => (p as any).bibtex)
+      .map((p) => p.bibtex)
       .filter((b): b is string => Boolean(b && b.trim()))
       .join('\n\n');
     if (cachedBib) {
@@ -227,7 +227,7 @@ export function BatchBar({
     if (!bibtexContent) {
       bibtexContent =
         resolvedItems
-          .map((p) => (p as any).bibtex)
+          .map((p) => p.bibtex)
           .filter((b): b is string => Boolean(b && b.trim()))
           .join('\n\n') || null;
     }

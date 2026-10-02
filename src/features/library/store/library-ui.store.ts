@@ -51,6 +51,7 @@ export interface LibraryUIState {
 
   // ── Centralized Modal Dialog Bus ─────────────────────────────────────────────
   activeModal: LibraryModalType | null;
+  /** @deprecated Use modalProps instead */
   payload: any;
   modalProps: Record<string, any>;
 
@@ -85,7 +86,7 @@ export interface LibraryUIState {
   setViewMode: (mode: ViewMode) => void;
 
   // ── Actions: Modals ──────────────────────────────────────────────────────────
-  openModal: (modal: string, props?: Record<string, any>) => void;
+  openModal: (modal: LibraryModalType, props?: Record<string, any>) => void;
   closeModal: () => void;
 }
 
@@ -198,7 +199,7 @@ export const useLibraryUIStore = create<LibraryUIState>()(
       setViewMode: (viewMode: ViewMode) => set({ viewMode }),
 
       // Modal handlers
-      openModal: (activeModal: any, payloadOrProps: any = null) =>
+      openModal: (activeModal: LibraryModalType, payloadOrProps: any = null) =>
         set({
           activeModal,
           payload: payloadOrProps,

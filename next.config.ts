@@ -24,6 +24,7 @@ const nextConfig: NextConfig = {
     resolveAlias: {
       'pdfjs-dist': 'pdfjs-dist/legacy/build/pdf.mjs',
     },
+    resolveExtensions: ['.tsx', '.ts', '.jsx', '.js', '.json', '.mjs'],
   },
 
   webpack: (config, { isServer }) => {
@@ -57,6 +58,8 @@ const nextConfig: NextConfig = {
   },
 
   experimental: {
+    turbopackFileSystemCacheForDev: false,
+    turbopackFileSystemCacheForBuild: false,
     proxyClientMaxBodySize: '100mb',
     optimizePackageImports: [
       'lucide-react',
@@ -68,26 +71,6 @@ const nextConfig: NextConfig = {
       '@dnd-kit/core',
       '@dnd-kit/sortable',
       '@dnd-kit/utilities',
-      '@radix-ui/react-dialog',
-      '@radix-ui/react-dropdown-menu',
-      '@radix-ui/react-select',
-      '@radix-ui/react-tooltip',
-      '@radix-ui/react-popover',
-      '@radix-ui/react-tabs',
-      '@radix-ui/react-accordion',
-      '@radix-ui/react-avatar',
-      '@radix-ui/react-checkbox',
-      '@radix-ui/react-switch',
-      '@radix-ui/react-slider',
-      '@radix-ui/react-scroll-area',
-      '@radix-ui/react-separator',
-      '@radix-ui/react-collapsible',
-      '@radix-ui/react-hover-card',
-      '@radix-ui/react-toggle',
-      '@radix-ui/react-toggle-group',
-      'cmdk',
-      'sonner',
-      'react-markdown',
     ],
   },
 
@@ -232,6 +215,10 @@ const nextConfig: NextConfig = {
       {
         source: '/api/:path*',
         destination: `${backendUrl}/api/:path*`,
+      },
+      {
+        source: '/auth/:path*',
+        destination: `${backendUrl}/auth/:path*`,
       },
       {
         source: '/socket.io/:path*',

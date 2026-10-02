@@ -80,7 +80,7 @@ export function ExtraAuditFields({
     <>
       {/* Extra Field - Available when populated or in edit mode */}
       {(canEdit || isValidValue(formattedExtraMetadata)) && (
-        <div className="grid grid-cols-[84px_1fr] gap-2 items-start py-0.5">
+        <div className="grid grid-cols-[80px_1fr] gap-1.5 items-start py-0.5 w-full min-w-0">
           <span
             className="text-muted-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate pt-1"
             id="label-extra"
@@ -103,14 +103,14 @@ export function ExtraAuditFields({
 
       {/* Date Added */}
       {isValidValue(paper.createdAt) && (
-        <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5">
+        <div className="grid grid-cols-[80px_1fr] gap-1.5 items-center py-0.5 w-full min-w-0">
           <span
             className="text-muted-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate"
             title="Date Added"
           >
             Date Added
           </span>
-          <span className="text-foreground text-12 leading-normal px-2 py-1 select-text truncate whitespace-nowrap font-normal h-7 flex items-center font-sans">
+          <span className="text-foreground text-12 leading-normal px-1.5 py-1 select-text truncate whitespace-nowrap font-normal h-7 flex items-center font-sans">
             {formatAuditDate(paper.createdAt)}
           </span>
         </div>
@@ -118,14 +118,14 @@ export function ExtraAuditFields({
 
       {/* Modified */}
       {isValidValue(paper.updatedAt) && (
-        <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5">
+        <div className="grid grid-cols-[80px_1fr] gap-1.5 items-center py-0.5 w-full min-w-0">
           <span
             className="text-muted-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate"
             title="Modified"
           >
             Modified
           </span>
-          <span className="text-foreground text-12 leading-normal px-2 py-1 select-text truncate whitespace-nowrap font-normal h-7 flex items-center font-sans">
+          <span className="text-foreground text-12 leading-normal px-1.5 py-1 select-text truncate whitespace-nowrap font-normal h-7 flex items-center font-sans">
             {formatAuditDate(paper.updatedAt)}
           </span>
         </div>
@@ -133,7 +133,7 @@ export function ExtraAuditFields({
 
       {/* Metadata Provenance Sources (arXiv, GROBID, CrossRef) */}
       {sources.length > 0 && (
-        <div className="grid grid-cols-[84px_1fr] gap-2 items-start py-0.5">
+        <div className="grid grid-cols-[80px_1fr] gap-1.5 items-start py-0.5 w-full min-w-0">
           <span
             className="text-muted-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate pt-1"
             id="label-sources"
@@ -141,7 +141,7 @@ export function ExtraAuditFields({
           >
             Sources
           </span>
-          <div className="flex flex-nowrap gap-1 px-2 py-1 items-center overflow-x-auto min-w-0 h-7 thin-scrollbar">
+          <div className="flex flex-nowrap gap-1 px-1.5 py-1 items-center overflow-x-auto min-w-0 h-7 thin-scrollbar">
             {sources.map((s) => (
               <span
                 key={s.id}

@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react";
 import Card from '../components/card/Card';
 import { type Sticky } from '@/features/projects/stickies/types/sticky.types';
 import { Loader2 } from "lucide-react";
-import { StickiesIcon } from "@/shared/components/ui";
+import { StickiesIcon } from "@/shared/components/icons";
 import {
   DndContext,
   DragOverlay,

@@ -2,14 +2,12 @@
 
 import React, { useMemo, useCallback, useState } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { UploadCloud } from 'lucide-react';
 import {
   useInfiniteLibraryItemsQuery,
   useCollectionsQuery,
   useBatchRestoreItemsMutation,
-  useBatchPurgeItemsMutation,
   useDetachItemFromCollectionMutation,
   useBatchDetachItemsMutation,
   useLibraryItemsData,
@@ -19,6 +17,7 @@ import { ContentSkeleton } from './ContentSkeleton';
 import { ItemTable } from './ItemTable';
 import LibraryEmptyState from './LibraryEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
+import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { BatchBar } from './BatchBar';
 import {
   useLibraryModalStore,
@@ -29,6 +28,15 @@ import {
 } from '../../store';
 import { useQuickCopyShortcuts } from '../../hooks/use-quick-copy';
 import type { Item, Collection } from '../../types';
+
+/** Fields requested from the server for the list view — kept at module scope to avoid inline array allocation. */
+const ITEM_LIST_FIELDS = [
+  'id', 'title', 'itemType', 'type', 'year', 'publicationTitle', 'journal',
+  'authors', 'creators', 'contributors', 'firstAuthor', 'doi', 'citationKey',
+  'hasFile', 'attachmentCount', 'noteCount', 'readStatus', 'rating', 'isStarred',
+  'version', 'createdAt', 'updatedAt', 'deletedAt', 'collectionIds', 'collectionId',
+  'tags', 'labels', 'url',
+] as const;
 
 interface LibraryContentProps {
   scopeId?: string;
@@ -51,7 +59,6 @@ export function LibraryContent({
 }: LibraryContentProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const filterParam = searchParams.get('filter');
   const effectiveSavedSearchId =
@@ -85,7 +92,7 @@ export function LibraryContent({
   const queryParams = useMemo(
     () => ({
       collectionId,
-      view: (view as any) || undefined,
+      view: view || undefined,
       search,
       type: typeParam,
       itemType: typeParam,
@@ -95,36 +102,7 @@ export function LibraryContent({
       hasFile,
       orderBy: displayOptions?.orderBy,
       orderDirection: displayOptions?.orderDirection,
-      fields: [
-        'id',
-        'title',
-        'itemType',
-        'type',
-        'year',
-        'publicationTitle',
-        'journal',
-        'authors',
-        'creators',
-        'contributors',
-        'firstAuthor',
-        'doi',
-        'citationKey',
-        'hasFile',
-        'attachmentCount',
-        'noteCount',
-        'readStatus',
-        'rating',
-        'isStarred',
-        'version',
-        'createdAt',
-        'updatedAt',
-        'deletedAt',
-        'collectionIds',
-        'collectionId',
-        'tags',
-        'labels',
-        'url',
-      ],
+      fields: ITEM_LIST_FIELDS,
     }),
     [
       collectionId,
@@ -164,7 +142,6 @@ export function LibraryContent({
   const { data: collections = [] } = useCollectionsQuery(scopeId);
   const { batchMoveItems } = useLibraryItemsData({ scopeId, collectionId });
   const restoreMutation = useBatchRestoreItemsMutation(scopeId);
-  const purgeMutation = useBatchPurgeItemsMutation(scopeId);
   const detachMutation = useDetachItemFromCollectionMutation(scopeId);
   const batchDetachMutation = useBatchDetachItemsMutation(scopeId);
 
@@ -244,12 +221,14 @@ export function LibraryContent({
     return displayedItems.filter((item) => selectedIds.has(item.id));
   }, [displayedItems, selectedIds]);
 
+  const activeItemId = useLibraryUIStore((s) => s.activeItemId);
+
   // Zotero 7 Quick Copy Shortcuts (Ctrl+Shift+C: Bibliography, Ctrl+Shift+A: In-text Citation)
   useQuickCopyShortcuts({
     scopeId,
     items: displayedItems,
     selectedIds,
-    activeItemId: useLibraryUIStore.getState().activeItemId,
+    activeItemId,
   });
 
   const [isDragOver, setIsDragOver] = useState(false);
@@ -287,12 +266,18 @@ export function LibraryContent({
     [canEdit, isTrash, onDirectFilesUpload],
   );
 
+  /** IDs of currently-uploading items that cannot be moved, deleted, or detached. */
+  const processingIds = useMemo(
+    () =>
+      new Set(
+        selectedItems
+          .filter((item: any) => item._isProcessing || item.id.startsWith('temp-') || item.id.startsWith('provisional-'))
+          .map((item) => item.id),
+      ),
+    [selectedItems],
+  );
+
   const handleBatchMove = (targetColId: string | null) => {
-    const processingIds = new Set(
-      selectedItems
-        .filter((item: any) => item._isProcessing || item.id.startsWith('temp-') || item.id.startsWith('provisional-'))
-        .map((item) => item.id),
-    );
     const movableIds = Array.from(selectedIds).filter((id) => !processingIds.has(id));
     if (processingIds.size > 0) {
       toast.warning('Cannot move files that are currently uploading or processing', {
@@ -305,11 +290,6 @@ export function LibraryContent({
   };
 
   const handleBatchDelete = () => {
-    const processingIds = new Set(
-      selectedItems
-        .filter((item: any) => item._isProcessing || item.id.startsWith('temp-') || item.id.startsWith('provisional-'))
-        .map((item) => item.id),
-    );
     const deletableIds = Array.from(selectedIds).filter((id) => !processingIds.has(id));
     if (processingIds.size > 0) {
       toast.warning('Cannot delete files that are currently uploading or processing', {
@@ -318,14 +298,7 @@ export function LibraryContent({
     }
     if (deletableIds.length === 0) return;
     if (isTrash) {
-      if (
-        window.confirm(
-          `Are you sure you want to permanently delete ${deletableIds.length} item(s)? This action cannot be undone.`,
-        )
-      ) {
-        purgeMutation.mutate(deletableIds);
-        clearSelection();
-      }
+      openModal('DELETE_ITEMS', { itemIds: deletableIds, permanent: true });
       return;
     }
     openModal('DELETE_ITEMS', { itemIds: deletableIds });
@@ -335,7 +308,7 @@ export function LibraryContent({
     (itemId: string) => {
       if (!collectionId) return;
       const targetItem = displayedItems.find((it) => it.id === itemId);
-      if ((targetItem as any)?._isProcessing) {
+      if (targetItem?._isProcessing) {
         toast.warning('Cannot remove files that are currently uploading or processing', {
           id: 'library-item-guard',
         });
@@ -347,11 +320,6 @@ export function LibraryContent({
   );
 
   const handleBatchDetach = useCallback(() => {
-    const processingIds = new Set(
-      selectedItems
-        .filter((item: any) => item._isProcessing || item.id.startsWith('temp-') || item.id.startsWith('provisional-'))
-        .map((item) => item.id),
-    );
     const detachableIds = Array.from(selectedIds).filter((id) => !processingIds.has(id));
     if (processingIds.size > 0) {
       toast.warning('Cannot remove files that are currently uploading or processing', {
@@ -361,7 +329,7 @@ export function LibraryContent({
     if (!collectionId || detachableIds.length === 0) return;
     batchDetachMutation.mutate({ collectionId, itemIds: detachableIds });
     clearSelection();
-  }, [collectionId, selectedIds, selectedItems, batchDetachMutation, clearSelection]);
+  }, [collectionId, selectedIds, processingIds, batchDetachMutation, clearSelection]);
 
   const handleBatchRestore = () => {
     const ids = Array.from(selectedIds);
@@ -398,7 +366,7 @@ export function LibraryContent({
   }
 
   if (displayedItems.length === 0) {
-    const activeCollection = collectionId ? (collections as any[]).find((c) => c.id === collectionId) : undefined;
+    const activeCollection = collectionId ? collections.find((c) => c.id === collectionId) : undefined;
     return (
       <LibraryEmptyState
         canEdit={canEdit}
@@ -428,18 +396,20 @@ export function LibraryContent({
         </div>
       )}
 
-      <ItemTable
-        items={displayedItems}
-        totalCount={totalCount}
-        hasNextPage={Boolean(isSavedSearchView ? false : hasNextPage)}
-        isLoadingMore={isSavedSearchView ? false : isFetchingNextPage}
-        onLoadMore={isSavedSearchView ? undefined : () => fetchNextPage()}
-        onSortChange={handleSortChange}
-        scopeId={scopeId}
-        collectionId={collectionId}
-        onDetachItem={canEdit && !isTrash && collectionId ? handleDetachItem : undefined}
-        isTrash={isTrash}
-      />
+      <ErrorBoundary variant="section" featureName="Reference Table">
+        <ItemTable
+          items={displayedItems}
+          totalCount={totalCount}
+          hasNextPage={Boolean(isSavedSearchView ? false : hasNextPage)}
+          isLoadingMore={isSavedSearchView ? false : isFetchingNextPage}
+          onLoadMore={isSavedSearchView ? undefined : () => fetchNextPage()}
+          onSortChange={handleSortChange}
+          scopeId={scopeId}
+          collectionId={collectionId}
+          onDetachItem={canEdit && !isTrash && collectionId ? handleDetachItem : undefined}
+          isTrash={isTrash}
+        />
+      </ErrorBoundary>
 
       {/* Floating Multi-Selection Action Bar */}
       <BatchBar

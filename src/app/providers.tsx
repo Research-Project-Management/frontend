@@ -5,8 +5,8 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { getQueryClient } from "@/shared/lib/get-query-client";
 
-import { ErrorBoundary } from "@/shared/components/ui";
-import { TooltipProvider } from "@/shared/components/ui";
+import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
+import { TooltipProvider } from "@/shared/components/ui/tooltip";
 import { ThemeProvider } from "@/shared/providers";
 
 

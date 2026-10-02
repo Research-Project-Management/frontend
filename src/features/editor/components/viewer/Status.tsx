@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   FileText,
   Loader2,
-  Zap,
 } from 'lucide-react';
 import { useSettingsStore, type CompileStatus } from '@/features/editor/store';
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
@@ -49,22 +48,13 @@ export default React.memo(function Status({
   }, [compileStatus, getContent]);
 
   return (
-    <div className="flex items-center justify-between px-3 py-1 border-t border-border bg-secondary text-xs text-muted-foreground shrink-0 select-none">
+    <div className="flex items-center justify-between px-3 py-1 border-t border-border bg-muted text-xs text-muted-foreground shrink-0 select-none">
       <div
         role="status"
         aria-live="polite"
         aria-atomic="true"
         className="flex items-center gap-2"
       >
-        {autoCompile && (
-          <span
-            title="Auto-compile (2.5s)"
-            className="inline-flex items-center gap-1 text-11 px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary font-mono font-medium select-none"
-          >
-            <Zap className="size-3" />
-            Auto
-          </span>
-        )}
         {compileStatus === 'flushing' && (
           <span className="flex items-center gap-1">
             <Loader2 className="size-3 animate-spin shrink-0" />
@@ -87,6 +77,7 @@ export default React.memo(function Status({
           <button
             type="button"
             onClick={onToggleLog}
+            aria-label="Compilation failed. Click to view compiler logs"
             className="flex items-center gap-1 text-destructive hover:opacity-80 transition-opacity cursor-pointer font-medium"
             title="Compilation failed (Click to view logs)"
           >
@@ -107,6 +98,7 @@ export default React.memo(function Status({
           <button
             type="button"
             onClick={() => EditorEventBus.emit('flux:open-word-count')}
+            aria-label={`Document word count: ${wordCount.toLocaleString()} words. Click to open word count details`}
             className="flex items-center gap-1 text-muted-foreground hover:text-foreground hover:bg-muted px-1.5 py-0.5 rounded-sm text-11 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             title="Word count (TeXcount)"
           >

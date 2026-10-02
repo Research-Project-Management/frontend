@@ -29,20 +29,33 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+} from '@/shared/components/ui/popover';
+import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
-import { uploadDocument } from '../../services/chat.service';
-import { LibraryPickerModal } from './LibraryPickerModal';
-import { StoragePickerModal } from './StoragePickerModal';
+import { uploadDocument, type UploadDocumentProgress } from '../../services/chat.service';
+import dynamic from 'next/dynamic';
+
+const LibraryPickerModal = dynamic(
+  () => import('./LibraryPickerModal').then((m) => m.LibraryPickerModal),
+  { ssr: false }
+);
+
+const StoragePickerModal = dynamic(
+  () => import('./StoragePickerModal').then((m) => m.StoragePickerModal),
+  { ssr: false }
+);
 
 const ACCEPTED_TYPES =
   '.pdf,.doc,.docx,.txt,.md,.csv,.xls,.xlsx,.png,.jpg,.jpeg,.json,.ts,.tsx,.js,.py';
@@ -254,7 +267,7 @@ export function CompanionInput({
         const file = files[i];
         const tempId = tempItems[i].id;
         try {
-          const res = await uploadDocument(targetScope, file, (progress) => {
+          const res = await uploadDocument(targetScope, file, (progress: UploadDocumentProgress) => {
             setUploadingFiles((prev) =>
               prev.map((item) =>
                 item.id === tempId
@@ -811,44 +824,48 @@ export function CompanionInput({
       )}
 
       {/* Library Picker Modal */}
-      <LibraryPickerModal
-        isOpen={isLibraryModalOpen}
-        onClose={() => setIsLibraryModalOpen(false)}
-        projectId={selectedProject}
-        onSelectItems={(items) => {
-          setAttachedFiles((prev) => {
-            const existingIds = new Set(prev.map((f) => f.id));
-            const fresh = items.filter((f) => !existingIds.has(f.id));
-            return [...prev, ...fresh];
-          });
-        }}
-        onSelectItem={(item) => {
-          setAttachedFiles((prev) => {
-            if (prev.some((f) => f.id === item.id)) return prev;
-            return [...prev, item];
-          });
-        }}
-      />
+      {isLibraryModalOpen && (
+        <LibraryPickerModal
+          isOpen={isLibraryModalOpen}
+          onClose={() => setIsLibraryModalOpen(false)}
+          projectId={selectedProject}
+          onSelectItems={(items) => {
+            setAttachedFiles((prev) => {
+              const existingIds = new Set(prev.map((f) => f.id));
+              const fresh = items.filter((f) => !existingIds.has(f.id));
+              return [...prev, ...fresh];
+            });
+          }}
+          onSelectItem={(item) => {
+            setAttachedFiles((prev) => {
+              if (prev.some((f) => f.id === item.id)) return prev;
+              return [...prev, item];
+            });
+          }}
+        />
+      )}
 
       {/* Storage Picker Modal */}
-      <StoragePickerModal
-        isOpen={isStorageModalOpen}
-        onClose={() => setIsStorageModalOpen(false)}
-        projectId={selectedProject}
-        onSelectItems={(items) => {
-          setAttachedFiles((prev) => {
-            const existingIds = new Set(prev.map((f) => f.id));
-            const fresh = items.filter((f) => !existingIds.has(f.id));
-            return [...prev, ...fresh];
-          });
-        }}
-        onSelectItem={(item) => {
-          setAttachedFiles((prev) => {
-            if (prev.some((f) => f.id === item.id)) return prev;
-            return [...prev, item];
-          });
-        }}
-      />
+      {isStorageModalOpen && (
+        <StoragePickerModal
+          isOpen={isStorageModalOpen}
+          onClose={() => setIsStorageModalOpen(false)}
+          projectId={selectedProject}
+          onSelectItems={(items) => {
+            setAttachedFiles((prev) => {
+              const existingIds = new Set(prev.map((f) => f.id));
+              const fresh = items.filter((f) => !existingIds.has(f.id));
+              return [...prev, ...fresh];
+            });
+          }}
+          onSelectItem={(item) => {
+            setAttachedFiles((prev) => {
+              if (prev.some((f) => f.id === item.id)) return prev;
+              return [...prev, item];
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

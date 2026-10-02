@@ -215,16 +215,15 @@ export const EditorSearchPanel: React.FC<EditorSearchPanelProps> = ({
       role="search"
       aria-label="Search and Replace"
       className={cn(
-        'w-full border-t z-30 select-none transition-all duration-150',
-        'bg-[#1c2635] text-slate-100 border-[#2f3f52] shadow-2xl',
-        'dark:bg-[#18232e] dark:border-[#2b3a4a] dark:text-slate-100',
+        'w-full border-t z-30 select-none transition-colors duration-150',
+        'bg-background text-foreground border-border shadow-raised-200',
         'px-3.5 py-2.5 space-y-2',
       )}
     >
       {/* ── Row 1: Search for input & navigation ── */}
       <div className="flex items-center gap-2">
         {/* Main Search Input Box with embedded toggles */}
-        <div className="relative flex-1 min-w-0 flex items-center bg-[#131b26] dark:bg-[#101721] rounded-md border border-[#38495f] focus-within:border-primary focus-within:ring-1 focus-within:ring-primary px-2.5 h-8 transition-colors">
+        <div className="relative flex-1 min-w-0 flex items-center bg-muted/60 rounded-md border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary px-2.5 h-8 transition-colors">
           <input
             ref={searchInputRef}
             type="text"
@@ -232,7 +231,7 @@ export const EditorSearchPanel: React.FC<EditorSearchPanelProps> = ({
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={handleSearchKeyDown}
             placeholder="Search for"
-            className="flex-1 bg-transparent text-xs text-slate-100 placeholder:text-slate-400 outline-none min-w-0 font-mono tracking-tight"
+            className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none min-w-0 font-mono tracking-tight"
             aria-label="Search for"
           />
 
@@ -240,8 +239,8 @@ export const EditorSearchPanel: React.FC<EditorSearchPanelProps> = ({
           {searchTerm && (
             <span
               className={cn(
-                'text-[11px] font-mono shrink-0 mr-2 select-none',
-                matchCount.total > 0 ? 'text-slate-400' : 'text-rose-400',
+                'text-11 font-mono shrink-0 mr-2 select-none',
+                matchCount.total > 0 ? 'text-muted-foreground' : 'text-destructive',
               )}
             >
               {matchCount.total > 0
@@ -251,16 +250,16 @@ export const EditorSearchPanel: React.FC<EditorSearchPanelProps> = ({
           )}
 
           {/* In-field Toggles: [Aa] [.*] [W] */}
-          <div className="flex items-center gap-0.5 shrink-0 pl-1.5 border-l border-[#2e3e52]">
+          <div className="flex items-center gap-0.5 shrink-0 pl-1.5 border-l border-border">
             {/* Match Case */}
             <button
               type="button"
               onClick={() => setCaseSensitive((prev) => !prev)}
               className={cn(
-                'px-1.5 py-0.5 rounded text-[11px] font-mono font-medium transition-colors cursor-pointer select-none leading-none',
+                'px-1.5 py-0.5 rounded text-11 font-mono font-medium transition-colors cursor-pointer select-none leading-none',
                 caseSensitive
                   ? 'bg-primary text-primary-foreground font-bold shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50',
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted',
               )}
               title="Match Case (Alt+C)"
               aria-pressed={caseSensitive}
@@ -273,10 +272,10 @@ export const EditorSearchPanel: React.FC<EditorSearchPanelProps> = ({
               type="button"
               onClick={() => setIsRegex((prev) => !prev)}
               className={cn(
-                'px-1.5 py-0.5 rounded text-[11px] font-mono font-medium transition-colors cursor-pointer select-none leading-none',
+                'px-1.5 py-0.5 rounded text-11 font-mono font-medium transition-colors cursor-pointer select-none leading-none',
                 isRegex
                   ? 'bg-primary text-primary-foreground font-bold shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50',
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted',
               )}
               title="Use Regular Expression (Alt+R)"
               aria-pressed={isRegex}
@@ -289,10 +288,10 @@ export const EditorSearchPanel: React.FC<EditorSearchPanelProps> = ({
               type="button"
               onClick={() => setWholeWord((prev) => !prev)}
               className={cn(
-                'px-1.5 py-0.5 rounded text-[11px] font-mono font-medium transition-colors cursor-pointer select-none leading-none',
+                'px-1.5 py-0.5 rounded text-11 font-mono font-medium transition-colors cursor-pointer select-none leading-none',
                 wholeWord
                   ? 'bg-primary text-primary-foreground font-bold shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50',
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted',
               )}
               title="Match Whole Word (Alt+W)"
               aria-pressed={wholeWord}
@@ -303,12 +302,12 @@ export const EditorSearchPanel: React.FC<EditorSearchPanelProps> = ({
         </div>
 
         {/* Action buttons: Prev, Next, Toggle Replace, Close */}
-        <div className="flex items-center gap-1 shrink-0 text-slate-300">
+        <div className="flex items-center gap-1 shrink-0 text-muted-foreground">
           {/* Previous Match */}
           <button
             type="button"
             onClick={handlePrevious}
-            className="flex size-7 items-center justify-center rounded-sm hover:bg-slate-700/60 hover:text-white transition-colors cursor-pointer"
+            className="flex size-7 items-center justify-center rounded-sm hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
             title="Previous Match (Shift+Enter)"
             aria-label="Previous Match"
           >
@@ -319,7 +318,7 @@ export const EditorSearchPanel: React.FC<EditorSearchPanelProps> = ({
           <button
             type="button"
             onClick={handleNext}
-            className="flex size-7 items-center justify-center rounded-sm hover:bg-slate-700/60 hover:text-white transition-colors cursor-pointer"
+            className="flex size-7 items-center justify-center rounded-sm hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
             title="Next Match (Enter)"
             aria-label="Next Match"
           >
@@ -334,7 +333,7 @@ export const EditorSearchPanel: React.FC<EditorSearchPanelProps> = ({
               'flex size-7 items-center justify-center rounded-sm transition-colors cursor-pointer',
               showReplace
                 ? 'bg-primary/20 text-primary'
-                : 'hover:bg-slate-700/60 hover:text-white',
+                : 'hover:bg-muted hover:text-foreground',
             )}
             title="Toggle Replace Mode"
             aria-label="Toggle Replace"
@@ -347,7 +346,7 @@ export const EditorSearchPanel: React.FC<EditorSearchPanelProps> = ({
           <button
             type="button"
             onClick={handleClose}
-            className="flex size-7 items-center justify-center rounded-sm hover:bg-slate-700/60 hover:text-white transition-colors cursor-pointer ml-1"
+            className="flex size-7 items-center justify-center rounded-sm hover:bg-muted hover:text-foreground transition-colors cursor-pointer ml-1"
             title="Close (Escape)"
             aria-label="Close search"
           >
@@ -360,7 +359,7 @@ export const EditorSearchPanel: React.FC<EditorSearchPanelProps> = ({
       {showReplace && (
         <div className="flex items-center gap-2">
           {/* Replace Input Box */}
-          <div className="relative flex-1 min-w-0 flex items-center bg-[#131b26] dark:bg-[#101721] rounded-md border border-[#38495f] focus-within:border-primary focus-within:ring-1 focus-within:ring-primary px-2.5 h-8 transition-colors">
+          <div className="relative flex-1 min-w-0 flex items-center bg-muted/60 rounded-md border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary px-2.5 h-8 transition-colors">
             <input
               ref={replaceInputRef}
               type="text"
@@ -368,7 +367,7 @@ export const EditorSearchPanel: React.FC<EditorSearchPanelProps> = ({
               onChange={(e) => setReplaceTerm(e.target.value)}
               onKeyDown={handleReplaceKeyDown}
               placeholder="Replace with"
-              className="flex-1 bg-transparent text-xs text-slate-100 placeholder:text-slate-400 outline-none min-w-0 font-mono tracking-tight"
+              className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none min-w-0 font-mono tracking-tight"
               aria-label="Replace with"
             />
           </div>
@@ -378,14 +377,14 @@ export const EditorSearchPanel: React.FC<EditorSearchPanelProps> = ({
             <button
               type="button"
               onClick={handleReplace}
-              className="px-3 h-7 rounded text-xs font-semibold text-slate-100 hover:text-white hover:bg-slate-700/70 transition-colors cursor-pointer select-none"
+              className="px-3 h-7 rounded text-xs font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors cursor-pointer select-none"
             >
               Replace
             </button>
             <button
               type="button"
               onClick={handleReplaceAll}
-              className="px-3 h-7 rounded text-xs font-semibold text-slate-100 hover:text-white hover:bg-slate-700/70 transition-colors cursor-pointer select-none"
+              className="px-3 h-7 rounded text-xs font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors cursor-pointer select-none"
             >
               Replace All
             </button>

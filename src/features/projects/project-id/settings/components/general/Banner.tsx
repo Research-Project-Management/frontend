@@ -63,7 +63,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Avatar } from "@/shared/components/ui";
-import { IconPicker, ProjectAvatar } from "@/shared/components/ui";
+import { IconPicker, ProjectAvatar } from "@/shared/components/icons";
 import { CoverModal } from './CoverModal';
 
 interface GeneralBannerProps {

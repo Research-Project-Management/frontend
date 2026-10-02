@@ -31,7 +31,9 @@ export function generateCitationKey(
   }
   authorPart = authorPart.replace(/[^a-z0-9]/gi, '');
 
-  const yearPart = paper.year ? String(paper.year) : '';
+  const yearPart = paper.year
+    ? String(paper.year)
+    : (paper.publicationDate || paper.date || '').match(/\b(1[7-9]\d{2}|20\d{2})\b/)?.[1] || '';
 
   let titlePart = '';
   if (paper.title) {
@@ -70,8 +72,32 @@ export const getPaperCitationKey = generateCitationKey;
  */
 export function toBibTeXEntry(item: Partial<Item>): string {
   const citeKey = generateCitationKey(item);
-  const authors = normalizeAuthors(item.authors, item.creators);
-  const authorBibtex = authors.join(' and ');
+  let authorBibtex = '';
+  if (Array.isArray(item.creators) && item.creators.length > 0) {
+    authorBibtex = item.creators
+      .map((c) => {
+        if (c.fieldMode === 1) {
+          return `{${c.fullName || c.name}}`;
+        }
+        if (c.lastName && c.firstName) {
+          return `${c.lastName}, ${c.firstName}`;
+        }
+        return c.fullName || c.name || '';
+      })
+      .filter(Boolean)
+      .join(' and ');
+  } else {
+    const authors = normalizeAuthors(item.authors, item.creators);
+    authorBibtex = authors
+      .map((a) => {
+        const parsed = parseCreatorName(a);
+        if (parsed.isInstitution) return `{${parsed.fullName}}`;
+        if (parsed.lastName && parsed.firstName) return `${parsed.lastName}, ${parsed.firstName}`;
+        return parsed.fullName;
+      })
+      .filter(Boolean)
+      .join(' and ');
+  }
 
   const typeMap: Record<string, string> = {
     journalArticle: 'article',
@@ -84,12 +110,18 @@ export function toBibTeXEntry(item: Partial<Item>): string {
   };
 
   const entryType = typeMap[item.itemType || ''] || 'article';
+  const resolvedYear =
+    item.year != null
+      ? Number(item.year)
+      : (item.publicationDate || item.date || '').match(/\b(1[7-9]\d{2}|20\d{2})\b/)?.[1] ||
+        undefined;
+
   const fields: Array<[string, string | number | undefined]> = [
     ['author', authorBibtex || undefined],
     ['title', item.title],
     ['journal', item.journal || item.publicationTitle],
     ['booktitle', item.bookTitle || item.proceedingsTitle],
-    ['year', item.year != null ? Number(item.year) : undefined],
+    ['year', resolvedYear],
     ['volume', item.volume],
     ['number', item.issue],
     ['pages', item.pages],

@@ -112,7 +112,7 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
   const scopeId = (paper as any).projectId || '';
 
   const { previewAsync, convertAsync } = useConversion(scopeId);
-  const { types: registryItemTypes } = useItemTypes(scopeId || undefined);
+  const { data: registryItemTypes = [] } = useItemTypes();
 
   const itemTypeDefinitions = useMemo(() => {
     const serverDefinitions = mapRegistryItemTypes(registryItemTypes);
@@ -610,7 +610,7 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
   }, [typeDefinition, currentItemType]);
 
   return (
-    <div className="space-y-0.5 select-text font-sans antialiased">
+    <div className="space-y-0.5 select-text font-sans antialiased w-full min-w-0">
       {/* General Section: Warning, Item Type Selector, Title */}
       <GeneralFields
         paper={paper}
@@ -630,6 +630,28 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
         canEdit={canEdit}
         onUpdatePaper={onUpdatePaper}
       />
+
+      {/* Abstract: directly under Creators, single canonical location, no parentheses */}
+      <div className="grid grid-cols-[80px_1fr] gap-1.5 items-start py-0.5 w-full min-w-0">
+        <span
+          className="text-muted-foreground text-right font-normal select-none pr-1 pt-1 text-12 leading-normal whitespace-nowrap truncate"
+          id="label-abstract"
+          title="Abstract"
+        >
+          Abstract
+        </span>
+        <InlineTextarea
+          value={cleanValue(paper.abstract || (paper as any).abstractNote)}
+          ariaLabel="Abstract"
+          placeholder={canEdit ? "Add abstract..." : ""}
+          onSave={(newVal) => {
+            handleFieldChange('abstract', newVal);
+          }}
+          className="font-normal text-foreground text-12 leading-normal"
+          rows={2}
+          readOnly={!canEdit}
+        />
+      </div>
 
       {/* Dynamic Schema Fields for Selected Item Type in Canonical Zotero Order */}
       {dynamicFields.map((fieldDef: SchemaFieldDefinition) => {
@@ -672,7 +694,7 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
             fieldDef={fieldDef}
             paper={paper}
             val={val}
-            displayDoi={displayDoi}
+            displayDoi={displayDoi || ''}
             copiedKey={copiedKey}
             canEdit={canEdit}
             onSave={onSaveField}

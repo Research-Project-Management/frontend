@@ -83,7 +83,7 @@ export function MathInlinePopover({ trigger, onApply, onClose }: MathInlinePopov
     >
       {/* Header */}
       <div className="flex items-center justify-between pb-2 border-b border-border/50 text-xs font-semibold">
-        <div className="flex items-center gap-1.5 text-primary">
+        <div className="flex items-center gap-1.5 text-[#00853D]">
           <Sigma className="size-3.5" />
           <span>Edit LaTeX Math (In-place)</span>
           <span className="text-10 text-muted-foreground font-normal">
@@ -108,7 +108,7 @@ export function MathInlinePopover({ trigger, onApply, onClose }: MathInlinePopov
           value={formula}
           onChange={(e) => setFormula(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="w-full px-2.5 py-1.5 rounded-md border border-input bg-background font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
+          className="w-full px-2.5 py-1.5 rounded-md border border-input bg-background font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-[#00853D] shadow-2xs"
           placeholder="e.g. \frac{a}{b} + c^2 = d"
         />
       </div>
@@ -146,7 +146,7 @@ export function MathInlinePopover({ trigger, onApply, onClose }: MathInlinePopov
           <button
             type="button"
             onClick={handleSave}
-            className="px-2.5 py-1 rounded-sm bg-primary text-primary-foreground hover:bg-primary-hover font-medium flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+            className="px-2.5 py-1 rounded-sm bg-[#00853D] text-white hover:bg-[#007033] font-medium flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
           >
             <Check className="size-3" />
             <span>Apply</span>

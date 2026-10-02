@@ -21,8 +21,8 @@ import {
   Star,
   Tag,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui';
-import { Textarea } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Textarea } from '@/shared/components/ui/textarea';
 import dynamic from 'next/dynamic';
 
 const ScientificViewerModal = dynamic(

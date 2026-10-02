@@ -15,8 +15,13 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/shared/components/ui';
-import StickyDock from './StickyDock';
+} from '@/shared/components/ui/tooltip';
+import dynamic from 'next/dynamic';
+
+const StickyDock = dynamic(() => import('./StickyDock'), {
+  ssr: false,
+  loading: () => <div className="size-8" />,
+});
 
 const NAV_ITEMS_LEFT = [
   { label: 'Projects', icon: Layers, to: '/home' },
@@ -58,6 +63,7 @@ export default function Sidebar() {
       <Link
         key={item.label}
         href={fullPath}
+        prefetch={false}
         aria-current={isActive ? 'page' : undefined}
         className='group relative flex flex-1 md:w-full cursor-pointer flex-col items-center justify-center gap-0.5 select-none outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 text-foreground shrink-0 py-0.5'
       >
@@ -68,11 +74,7 @@ export default function Sidebar() {
           )}
         >
           {isActive && (
-            <motion.div
-              layoutId={`sidebar-active-${id}`}
-              className='absolute inset-0 rounded-md bg-sidebar-accent'
-              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-            />
+            <div className='absolute inset-0 rounded-md bg-sidebar-accent' />
           )}
 
           <Icon

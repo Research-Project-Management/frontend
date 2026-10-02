@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   BookOpen,
   Check,
@@ -13,18 +13,23 @@ import {
   Sparkles,
   X,
   FileCheck,
+  Search,
+  Loader2,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
   DialogTitle,
   DialogDescription,
-  Badge,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dialog';
+import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 import { useSettingsStore, usePageStore } from '@/features/editor/store';
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
+import { manuscriptService } from '@/features/editor/services/manuscript.service';
+
 
 export interface AcademicTemplate {
   id: string;
@@ -364,21 +369,91 @@ University of Technology
 
 export default function TemplateGalleryModal() {
   const { isTemplateModalOpen, setIsTemplateModalOpen } = useSettingsStore();
-  const { activeFilePage } = usePageStore();
+  const { activeFilePage, projectId } = usePageStore();
   const { engine } = useEditorInstance();
   const [selectedTemplate, setSelectedTemplate] = useState<AcademicTemplate>(ACADEMIC_TEMPLATES[0]);
   const [previewTab, setPreviewTab] = useState<'main' | 'bib'>('main');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
 
-  const handleApplyTemplate = () => {
+  // Query dynamic backend manuscript templates
+  const { data: serverTemplates = [], isLoading: isLoadingServer } = useQuery({
+    queryKey: ['manuscript-templates', categoryFilter, searchQuery],
+    queryFn: async () => {
+      try {
+        const res = await manuscriptService.templates.list({
+          category: categoryFilter === 'All' ? undefined : categoryFilter,
+          search: searchQuery || undefined,
+        });
+        return Array.isArray(res) ? res : [];
+      } catch {
+        return [];
+      }
+    },
+    enabled: isTemplateModalOpen,
+  });
+
+  const combinedTemplates = useMemo(() => {
+    const list: AcademicTemplate[] = [...ACADEMIC_TEMPLATES];
+    serverTemplates.forEach((st) => {
+      if (!list.some((t) => t.id === st.id)) {
+        list.push({
+          id: st.id,
+          name: st.name,
+          category: (st.category as any) || 'Conference',
+          publisher: st.publisher || 'Manuscripts',
+          description: st.description || 'Verified academic template from backend repository',
+          icon: Layout,
+          badge: st.badge || 'latex',
+          mainTex: `% Template: ${st.name}\n\\documentclass{article}\n\\begin{document}\n\\title{${st.name}}\n\\maketitle\n\n\\section{Introduction}\nDocument initialized from template.\n\\end{document}`,
+        });
+      }
+    });
+    return list.filter((tpl) => {
+      const matchCat =
+        categoryFilter === 'All' || tpl.category.toLowerCase() === categoryFilter.toLowerCase();
+      const matchQuery =
+        !searchQuery ||
+        tpl.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        tpl.description.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchCat && matchQuery;
+    });
+  }, [serverTemplates, categoryFilter, searchQuery]);
+
+  const handleSelectTemplate = async (tpl: AcademicTemplate) => {
+    setSelectedTemplate(tpl);
+    setPreviewTab('main');
+    // If it's a server template, dynamically fetch latest template payload
+    if (!ACADEMIC_TEMPLATES.some((a) => a.id === tpl.id)) {
+      try {
+        const remoteDetails = await manuscriptService.templates.getById(tpl.id);
+        if (remoteDetails?.mainTex || remoteDetails?.content) {
+          setSelectedTemplate((prev) => ({
+            ...prev,
+            mainTex: remoteDetails.mainTex || remoteDetails.content || prev.mainTex,
+            bibTex: remoteDetails.bibTex || prev.bibTex,
+          }));
+        }
+      } catch {
+        // use fallback mainTex
+      }
+    }
+  };
+
+  const handleApplyTemplate = async () => {
     if (!selectedTemplate) return;
-    if (engine) {
-      engine.setContent(selectedTemplate.mainTex);
-      toast.success(`Applied "${selectedTemplate.name}" to ${activeFilePage?.title || 'current document'}`);
-      setIsTemplateModalOpen(false);
-    } else {
-      navigator.clipboard.writeText(selectedTemplate.mainTex);
-      toast.success(`Copied "${selectedTemplate.name}" template code to clipboard`);
-      setIsTemplateModalOpen(false);
+    try {
+      if (engine) {
+        engine.setContent(selectedTemplate.mainTex);
+        toast.success(`Applied "${selectedTemplate.name}" to ${activeFilePage?.title || 'current document'}`);
+        setIsTemplateModalOpen(false);
+      } else {
+        navigator.clipboard.writeText(selectedTemplate.mainTex);
+        toast.success(`Copied "${selectedTemplate.name}" template code to clipboard`);
+        setIsTemplateModalOpen(false);
+      }
+    } catch {
+      toast.error('Could not apply template');
     }
   };
 
@@ -415,48 +490,74 @@ export default function TemplateGalleryModal() {
 
         {/* Modal Body: 2 Columns */}
         <div className="flex flex-col md:flex-row h-[520px] divide-y md:divide-y-0 md:divide-x divide-border overflow-hidden">
-          {/* Left Column: Template List (~340px) */}
-          <div className="w-full md:w-84 overflow-y-auto p-3 space-y-2 bg-muted/10 shrink-0">
-            {ACADEMIC_TEMPLATES.map((tpl) => {
-              const isSelected = selectedTemplate.id === tpl.id;
-              const IconComp = tpl.icon;
-              return (
-                <div
-                  key={tpl.id}
-                  onClick={() => {
-                    setSelectedTemplate(tpl);
-                    setPreviewTab('main');
-                  }}
-                  className={cn(
-                    'p-3 rounded-md border transition-all cursor-pointer text-left',
-                    isSelected
-                      ? 'bg-primary/10 border-primary shadow-2xs'
-                      : 'border-border/60 hover:border-border hover:bg-muted/40'
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-1.5 mb-1">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className={cn(
-                        'size-6 rounded-sm flex items-center justify-center shrink-0',
-                        isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                      )}>
-                        <IconComp className="size-3.5" />
-                      </div>
-                      <span className="text-xs font-semibold text-foreground truncate">
-                        {tpl.name}
-                      </span>
-                    </div>
-                    <Badge variant="outline" className="text-10 px-1 py-0 font-mono shrink-0 rounded-sm">
-                      {tpl.badge}
-                    </Badge>
-                  </div>
-                  <p className="text-11 text-muted-foreground line-clamp-2 leading-relaxed">
-                    {tpl.description}
-                  </p>
+          {/* Left Column: Search & Template List (~340px) */}
+          <div className="w-full md:w-84 flex flex-col bg-muted/10 shrink-0 overflow-hidden border-r border-border">
+            {/* Search Input */}
+            <div className="p-2.5 border-b border-border bg-background/50">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search templates..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground"
+                />
+              </div>
+            </div>
+
+            {/* Template List */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {isLoadingServer && combinedTemplates.length === 0 ? (
+                <div className="flex items-center justify-center py-8 text-muted-foreground text-xs gap-2">
+                  <Loader2 className="size-4 animate-spin" />
+                  Loading templates...
                 </div>
-              );
-            })}
+              ) : combinedTemplates.length === 0 ? (
+                <div className="text-center py-8 text-xs text-muted-foreground">
+                  No templates found matching &quot;{searchQuery}&quot;
+                </div>
+              ) : (
+                combinedTemplates.map((tpl) => {
+                  const isSelected = selectedTemplate.id === tpl.id;
+                  const IconComp = tpl.icon || Layout;
+                  return (
+                    <div
+                      key={tpl.id}
+                      onClick={() => handleSelectTemplate(tpl)}
+                      className={cn(
+                        'p-3 rounded-md border transition-all cursor-pointer text-left',
+                        isSelected
+                          ? 'bg-primary/10 border-primary shadow-2xs'
+                          : 'border-border/60 hover:border-border hover:bg-muted/40'
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-1.5 mb-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={cn(
+                            'size-6 rounded-sm flex items-center justify-center shrink-0',
+                            isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                          )}>
+                            <IconComp className="size-3.5" />
+                          </div>
+                          <span className="text-xs font-semibold text-foreground truncate">
+                            {tpl.name}
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="text-10 px-1 py-0 font-mono shrink-0 rounded-sm">
+                          {tpl.badge}
+                        </Badge>
+                      </div>
+                      <p className="text-11 text-muted-foreground line-clamp-2 leading-relaxed">
+                        {tpl.description}
+                      </p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
+
 
           {/* Right Column: Preview & Apply Area */}
           <div className="flex-1 flex flex-col min-w-0 bg-background overflow-hidden">

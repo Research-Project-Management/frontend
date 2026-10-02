@@ -9,7 +9,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Checkbox } from '@/shared/components/ui';
+import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
 import {
   useIsItemSelected,
@@ -18,7 +18,7 @@ import {
 } from '../../store/selectors';
 import { useLibraryUIStore } from '../../store/library-ui.store';
 import { ItemContextMenu } from './ItemContextMenu';
-import type { Item } from '../../types/library.types';
+import type { Item, Collection } from '../../types/library.types';
 import { cleanAcademicText, formatAcademicAuthors } from '../../utils';
 
 export interface ItemTableRowProps {
@@ -27,7 +27,7 @@ export interface ItemTableRowProps {
   columns: Record<string, boolean>;
   density?: 'comfortable' | 'compact';
   isTrash?: boolean;
-  collections?: any[];
+  collections?: Collection[];
   onRowClick: (e: React.MouseEvent, item: Item, index: number) => void;
   onToggleSelect?: (id: string, e: React.MouseEvent | React.KeyboardEvent, index: number) => void;
   onToggleStar?: (item: Item, isStarred: boolean) => void;
@@ -82,11 +82,11 @@ export const ItemTableRow = React.memo(function ItemTableRow({
     const raw =
       item.authors && item.authors.length > 0
         ? item.authors
-        : (item as any).creators;
+        : item.creators;
     if (!raw) return '';
     const formatted = formatAcademicAuthors(raw, 999);
     return formatted !== '—' ? formatted : '';
-  }, [item.authors, (item as any).creators]);
+  }, [item.authors, item.creators]);
 
   const isStarred =
     Boolean(item.isStarred) ||
@@ -289,7 +289,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
                 {formatAcademicAuthors(
                   item.authors && item.authors.length > 0
                     ? item.authors
-                    : (item as any).creators,
+                    : item.creators,
                 )}
               </span>
             )}
@@ -299,7 +299,9 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         {/* Year */}
         {columns.year !== false && (
           <td className="px-2 h-8 py-0 align-middle text-center text-13 font-mono tabular-nums text-foreground font-normal">
-            {item.year || '—'}
+            {item.year ||
+              (item.publicationDate || item.date || '').match(/\b(1[7-9]\d{2}|20\d{2})\b/)?.[1] ||
+              '—'}
           </td>
         )}
 

@@ -17,14 +17,11 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
-import { Button, Badge } from '@/shared/components/ui';
-import dynamic from 'next/dynamic';
+import { Button } from '@/shared/components/ui/button';
+import { Badge } from '@/shared/components/ui/badge';
 import { LibraryTopbar } from '../components/topbar';
 import { LibraryInspector, DuplicateMergeInspector } from '../components/inspector';
-import { LibraryModals } from '../components/modals';
 import { formatAcademicAuthors } from '../utils/academic-text';
-
-const MergeModal = dynamic(() => import('../components/modals/MergeModal'), { ssr: false });
 import { ContentSkeleton } from '../components/content/ContentSkeleton';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import {
@@ -37,6 +34,8 @@ import {
 } from '../data';
 import { useLibrarySidebarStore, useLibraryViewStore } from '../store';
 import { inspectItemDifferences } from '../domain';
+import { LibraryModals } from '../components/modals/LibraryModals';
+import MergeModal from '../components/modals/MergeModal';
 import type { Item, DuplicateGroup } from '../types/library.types';
 
 function InlineDiffView({ items }: { items: Item[] }) {
@@ -375,7 +374,7 @@ export function DuplicatesPage() {
                           const authorFormatted = formatAcademicAuthors(
                             item.authors && item.authors.length > 0
                               ? item.authors
-                              : (item as any).creators,
+                              : item.creators,
                           );
                           const authorStr = authorFormatted !== '—' ? authorFormatted : '';
 
@@ -481,7 +480,7 @@ export function DuplicatesPage() {
       {mergeCluster && (
         <MergeModal
           open={mergeOpen}
-          onOpenChange={(open) => {
+          onOpenChange={(open: boolean) => {
             setMergeOpen(open);
             if (!open) setMergeCluster(null);
           }}

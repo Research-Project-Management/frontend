@@ -102,7 +102,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
         : '');
 
     return (
-      <div className="mb-3 rounded-md border border-amber-200/60 dark:border-amber-900/40 bg-gradient-to-r from-amber-50/70 to-orange-50/40 dark:from-amber-950/20 dark:to-orange-950/10 p-2.5 text-xs shadow-xs transition-all">
+      <div className="mb-3 rounded-md border border-amber-200/60 dark:border-amber-900/40 bg-gradient-to-r from-amber-50/70 to-orange-50/40 dark:from-amber-950/20 dark:to-orange-950/10 p-2.5 text-xs shadow-xs transition-colors">
         <div className="flex items-center justify-between gap-2">
           <div
             className="flex items-center gap-2 cursor-pointer select-none flex-1 min-w-0"

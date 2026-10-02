@@ -7,9 +7,9 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
-} from '@/shared/components/ui';
-import { Button } from '@/shared/components/ui';
-import { Input } from '@/shared/components/ui';
+} from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
 import {
   useUserProjectLabels,

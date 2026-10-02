@@ -74,24 +74,23 @@ export async function searchReferences(
   if (!query || !query.trim()) return [];
 
   const trimmedQuery = query.trim();
-  const searchUrl = `/api/v1/library/citation/search`;
+  const searchUrl = `/api/v1/library/citation/crossref/search?query=${encodeURIComponent(trimmedQuery)}&rows=10`;
 
   try {
-    const response = await apiPost<{
-      results?: ReferenceData[];
+    const response = await apiGet<{
       works?: ReferenceData[];
+      results?: ReferenceData[];
       data?: ReferenceData[];
     }>(
       searchUrl,
-      { query: trimmedQuery },
       { silent: true },
     );
 
-    if (response?.results && Array.isArray(response.results)) {
-      return response.results;
-    }
     if (response?.works && Array.isArray(response.works)) {
       return response.works;
+    }
+    if (response?.results && Array.isArray(response.results)) {
+      return response.results;
     }
     if (response?.data && Array.isArray(response.data)) {
       return response.data;

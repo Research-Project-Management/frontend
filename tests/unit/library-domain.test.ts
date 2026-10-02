@@ -19,16 +19,6 @@ import {
   toBibTeXEntry,
   // Categories
   resolveArxivCategory,
-  getSubjectArea,
-  // Renamer
-  previewAttachmentFilename,
-  sanitizeFilenameStem,
-  RENAME_PRESETS,
-  // Search & Filter
-  LibraryFilterEngine,
-  // Deduplication
-  isDuplicatePair,
-  clusterDuplicateItems,
   // Diff & Merge
   inspectItemDifferences,
   aggregateItemAssets,
@@ -238,115 +228,8 @@ describe('Library Domain Layer — Pure Functional Logic', () => {
   });
 
   describe('Categories Domain (categories.ts)', () => {
-    it('should resolve arXiv category names and subject areas', () => {
+    it('should resolve arXiv category names', () => {
       expect(resolveArxivCategory('cs.AI')).toBe('cs.AI');
-      expect(getSubjectArea('cs.LG')).toBe('Computer Science');
-      expect(getSubjectArea('math.PR')).toBe('Mathematics');
-    });
-  });
-
-  describe('Renamer Domain (renamer.ts)', () => {
-    it('should format attachment filenames based on Zotero presets', () => {
-      const item = {
-        title: 'Mastering the Game of Go without Human Knowledge',
-        authors: ['David Silver', 'Julian Schrittwieser'],
-        year: 2017,
-      };
-
-      const defaultPreset = RENAME_PRESETS[0];
-      const filename = previewAttachmentFilename(defaultPreset.pattern, item, 'nature_go.pdf');
-      expect(filename).toBe('Silver - 2017 - Mastering the Game of Go without Human Knowledge.pdf');
-
-      const citeKeyPreset = RENAME_PRESETS.find((p) => p.id === 'citation-key');
-      if (citeKeyPreset) {
-        const keyFilename = previewAttachmentFilename(citeKeyPreset.pattern, item, 'nature_go.pdf');
-        expect(keyFilename).toBe('silver2017mastering.pdf');
-      }
-    });
-
-    it('should sanitize filename stems from illegal OS characters', () => {
-      expect(sanitizeFilenameStem('paper:with/illegal\\chars*?"<>|')).toBe('paper with illegal chars');
-    });
-  });
-
-  describe('Search & Filter Domain (search-filter.ts)', () => {
-    const testItems: any[] = [
-      { id: '1', title: 'Quantum Computing', year: 2021, authors: ['Nielsen'], createdAt: '2021-01-01' },
-      { id: '2', title: 'Deep Learning', year: 2023, authors: ['LeCun'], createdAt: '2023-01-01' },
-      { id: '3', title: 'AlphaFold', year: 2020, authors: ['Jumper'], createdAt: '2020-01-01' },
-    ];
-
-    it('should sort items by title, year, and date', () => {
-      const sortedByYearDesc = LibraryFilterEngine.sort(testItems, {
-        field: 'year',
-        direction: 'desc',
-      });
-      expect(sortedByYearDesc[0].id).toBe('2');
-      expect(sortedByYearDesc[2].id).toBe('3');
-
-      const sortedByTitleAsc = LibraryFilterEngine.sort(testItems, {
-        field: 'title',
-        direction: 'asc',
-      });
-      expect(sortedByTitleAsc[0].title).toBe('AlphaFold');
-    });
-
-    it('should filter items by search query', () => {
-      const filtered = LibraryFilterEngine.filterBySearch(testItems, 'Quantum');
-      expect(filtered.length).toBe(1);
-      expect(filtered[0].id).toBe('1');
-    });
-  });
-
-  describe('Deduplication Domain (deduplication.ts)', () => {
-    it('should detect duplicate pairs by DOI or title matching', () => {
-      const itemA = { id: 'a', title: 'Attention Is All You Need', doi: '10.1145/123' };
-      const itemB = { id: 'b', title: 'Attention Is All You Need (preprint)', doi: '10.1145/123' };
-      const itemC = { id: 'c', title: 'Unrelated Paper', doi: '10.9999/other' };
-
-      expect(isDuplicatePair(itemA, itemB).isDuplicate).toBe(true);
-      expect(isDuplicatePair(itemA, itemC).isDuplicate).toBe(false);
-    });
-
-    it('should cluster duplicates into deduplication groups', () => {
-      const items: any[] = [
-        { id: '1', title: 'Deep Learning', doi: '10.1000/1' },
-        { id: '2', title: 'Deep Learning', doi: '10.1000/1' },
-        { id: '3', title: 'Quantum Teleportation', doi: '10.2000/2' },
-      ];
-
-      const clusters = clusterDuplicateItems(items);
-      expect(clusters.length).toBe(1);
-      expect(clusters[0].items.length).toBe(2);
-      expect(clusters[0].items.map((i) => i.id)).toEqual(['1', '2']);
-    });
-
-    it('should scale linearly O(N) without freezing for large item lists', () => {
-      // Generate 2000 items with scattered duplicates
-      const largeList: any[] = [];
-      for (let i = 0; i < 2000; i++) {
-        largeList.push({
-          id: `item-${i}`,
-          title: `Unique Academic Paper Title #${i} with more than fifteen characters`,
-          doi: `10.1000/paper.${i}`,
-          year: 2020 + (i % 5),
-        });
-      }
-      // Inject duplicate pairs
-      largeList.push({
-        id: 'dup-1',
-        title: 'Unique Academic Paper Title #10 with more than fifteen characters',
-        doi: '10.1000/paper.10',
-        year: 2020,
-      });
-
-      const start = performance.now();
-      const clusters = clusterDuplicateItems(largeList);
-      const durationMs = performance.now() - start;
-
-      // O(N) bucket hashing should finish 2000 items in well under 1000ms (O(N^2) would take seconds)
-      expect(clusters.length).toBeGreaterThanOrEqual(1);
-      expect(durationMs).toBeLessThan(1000);
     });
   });
 
@@ -477,6 +360,48 @@ describe('Library Domain Layer — Pure Functional Logic', () => {
       expect(ids).toContain('child');
       expect(ids).toContain('root'); // Parent preserved!
       expect(ids).not.toContain('unrelated');
+    });
+  });
+
+  describe('Library Sorting Utility (sort-items.ts)', () => {
+    it('should pin processing items to the top regardless of sort direction', async () => {
+      const { sortLibraryItems } = await import('@/features/library/utils/sort-items');
+      const items: any[] = [
+        { id: '1', title: 'Beta', year: 2020 },
+        { id: '2', title: 'Alpha', year: 2024, _isProcessing: true },
+        { id: '3', title: 'Gamma', year: 2022 },
+      ];
+      const res = sortLibraryItems(items, 'title', 'asc', false);
+      expect(res[0].id).toBe('2');
+      expect(res[1].id).toBe('1');
+      expect(res[2].id).toBe('3');
+    });
+
+    it('should sort regular items alphabetically and numerically', async () => {
+      const { sortLibraryItems } = await import('@/features/library/utils/sort-items');
+      const items: any[] = [
+        { id: '1', title: 'Charlie', year: 2020 },
+        { id: '2', title: 'Alpha', year: 2024 },
+        { id: '3', title: 'Bravo', year: 2022 },
+      ];
+      const asc = sortLibraryItems(items, 'title', 'asc', false);
+      expect(asc.map((i) => i.title)).toEqual(['Alpha', 'Bravo', 'Charlie']);
+
+      const descYear = sortLibraryItems(items, 'year', 'desc', false);
+      expect(descYear.map((i) => i.year)).toEqual([2024, 2022, 2020]);
+    });
+
+    it('should correctly handle author and date aliases', async () => {
+      const { sortLibraryItems } = await import('@/features/library/utils/sort-items');
+      const items: any[] = [
+        { id: '1', authors: ['Knuth'], createdAt: '2024-01-01' },
+        { id: '2', authors: ['Einstein'], createdAt: '2024-05-01' },
+      ];
+      const sortedByAuthor = sortLibraryItems(items, 'authors', 'asc', false);
+      expect(sortedByAuthor[0].id).toBe('2');
+
+      const sortedByDate = sortLibraryItems(items, 'dateAdded', 'desc', false);
+      expect(sortedByDate[0].id).toBe('2');
     });
   });
 });

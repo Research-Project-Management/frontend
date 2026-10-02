@@ -64,36 +64,25 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
 
   return (
     <>
-      {/* Resizable Divider between File tree and File outline */}
-      {isOutlineOpen && (
-        <div
-          onMouseDown={isFileTreeOpen ? startResizeOutline : undefined}
-          className={cn(
-            'h-2 w-full shrink-0 flex items-center justify-center border-t border-border hover:bg-muted/60 select-none group transition-colors',
-            isFileTreeOpen ? 'cursor-row-resize' : 'cursor-default',
-          )}
-        >
-          <div className="flex items-center gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
-            <span className="size-1 rounded-full bg-foreground/60" />
-            <span className="size-1 rounded-full bg-foreground/60" />
-            <span className="size-1 rounded-full bg-foreground/60" />
-            <span className="size-1 rounded-full bg-foreground/60" />
-          </div>
-        </div>
-      )}
-
-      {/* ── File outline Accordion ────────────────────────────────────────── */}
+      {/* ── File outline Accordion with integrated clean resize border ── */}
       <div
         className={cn(
-          'bg-background flex flex-col select-none',
-          !isOutlineOpen && 'border-t border-border',
+          'bg-background flex flex-col select-none relative border-t border-border',
           !isFileTreeOpen && isOutlineOpen ? 'flex-1 min-h-0' : 'shrink-0',
         )}
       >
+        {/* Invisible row resize handle on top edge when both tree and outline are open */}
+        {isOutlineOpen && isFileTreeOpen && (
+          <div
+            onMouseDown={startResizeOutline}
+            className="absolute -top-1 inset-x-0 h-2 z-10 cursor-row-resize bg-transparent"
+            title="Resize section"
+          />
+        )}
         <button
           type="button"
           onClick={() => setIsOutlineOpen((value) => !value)}
-          className="flex h-8 w-full items-center gap-1.5 px-3 text-left text-xs font-semibold text-foreground transition-colors hover:bg-muted/60 cursor-pointer select-none"
+          className="flex h-8 w-full items-center gap-1.5 px-3 text-left text-xs font-semibold text-foreground transition-colors hover:bg-sidebar-hover cursor-pointer select-none"
         >
           <ChevronRight
             className={cn(
@@ -103,7 +92,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
           />
           <span className="min-w-0 flex-1 truncate">File outline</span>
           {outline.length > 0 && (
-            <span className="rounded-full bg-muted px-1.5 py-0.2 text-10 font-mono font-medium text-muted-foreground">
+            <span className="rounded-full bg-sidebar-accent px-1.5 py-0.2 text-10 font-mono font-medium text-muted-foreground">
               {outline.length}
             </span>
           )}
@@ -112,7 +101,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
           <div
             style={isFileTreeOpen ? { height: `${outlineHeight}px` } : undefined}
             className={cn(
-              'overflow-y-auto pb-1 border-t border-border/40',
+              'overflow-y-auto pb-1',
               !isFileTreeOpen && 'flex-1 min-h-0',
             )}
           >
@@ -135,7 +124,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
                     paddingLeft: `${24 + OUTLINE_INDENT[entry.level]}px`,
                   }}
                   className={cn(
-                    'flex h-7 w-full items-center gap-1.5 pr-2 text-left text-xs transition-colors hover:bg-muted/70 cursor-pointer',
+                    'flex h-7 w-full items-center gap-1.5 pr-2 text-left text-xs transition-colors hover:bg-sidebar-hover cursor-pointer',
                     OUTLINE_COLORS[entry.level],
                   )}
                 >

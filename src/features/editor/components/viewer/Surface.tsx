@@ -13,7 +13,7 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { AlertCircle, FileText, Loader2, Play } from 'lucide-react';
 import { LatexCompilerEngine, type SyncTeXMap } from '@/features/editor/utils/viewer.util';
 import { useIntersectionObserver } from "@/shared/hooks";
-import { logger } from "@/shared/lib/utils";
+import { logger, cn } from "@/shared/lib/utils";
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -52,6 +52,7 @@ interface OptimizedPDFPageProps {
     pixelY?: number,
   ) => void;
   clickIndicator?: ClickIndicator | null;
+  invertColors?: boolean;
 }
 
 const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
@@ -61,6 +62,7 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
   approxHeightRef,
   onDoubleClickPage,
   clickIndicator,
+  invertColors = false,
 }: OptimizedPDFPageProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -105,7 +107,7 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
       onClickCapture={handleClickCapture}
       onDoubleClickCapture={handleDoubleClick}
       title="Double-click or Ctrl+Click anywhere to jump to LaTeX source"
-      className="bg-card rounded-sm border border-border relative overflow-hidden flex items-center justify-center cursor-text"
+      className="bg-white rounded-sm border border-border/60 shadow-sm relative overflow-hidden flex items-center justify-center cursor-text"
       style={{
         width: 595 * scale,
         minHeight: isVisible ? undefined : estimatedHeight,
@@ -133,7 +135,7 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
       {clickIndicator && clickIndicator.page === pageNum && (
         <div
           key={clickIndicator.id}
-          className="pointer-events-none absolute z-30 transition-all duration-300"
+          className="pointer-events-none absolute z-30 transition-opacity duration-300"
           style={
             clickIndicator.w && clickIndicator.h
               ? {
@@ -320,52 +322,35 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
   return (
     <div
       ref={scrollContainerRef}
-      className="flex-1 overflow-auto bg-background p-4 flex flex-col items-center justify-start select-text relative"
+      role="region"
+      aria-label="PDF document preview"
+      className={cn(
+        "flex-1 overflow-auto p-4 flex flex-col items-center justify-start select-text relative transition-colors duration-200",
+        invertColors ? "bg-neutral-950 text-neutral-100" : "bg-background text-foreground"
+      )}
     >
       {!pdfUrl ? (
-        /* Empty State */
-        <div className="flex flex-col items-center justify-center h-full w-full select-none">
-          <div className="flex flex-col items-center justify-center text-center max-w-sm p-6 gap-4">
-            <div className="size-10 rounded-md bg-muted flex items-center justify-center text-foreground">
+        /* Clean, minimal Overleaf-style Empty State (no duplicate compile button) */
+        <div className="flex flex-col items-center justify-center h-full w-full select-none text-muted-foreground">
+          <div className="flex flex-col items-center justify-center text-center max-w-xs p-6 gap-3">
+            <div className={cn(
+              "size-10 rounded-full flex items-center justify-center transition-colors",
+              invertColors ? "bg-neutral-900 text-neutral-400" : "bg-muted/60 text-muted-foreground/80"
+            )}>
               <FileText className="size-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-foreground">No PDF yet</p>
-              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-                Click <strong className="font-semibold text-foreground">Compile</strong> or press{' '}
-                <kbd className="px-1.5 py-0.5 text-11 font-mono font-medium bg-muted border border-border rounded-sm text-foreground">
+              <p className={cn("text-sm font-medium transition-colors", invertColors ? "text-neutral-200" : "text-foreground")}>
+                No PDF preview
+              </p>
+              <p className={cn("text-xs mt-1.5 leading-relaxed transition-colors", invertColors ? "text-neutral-400" : "text-muted-foreground")}>
+                Click <strong className={cn("font-semibold", invertColors ? "text-neutral-200" : "text-foreground")}>Recompile</strong> on the toolbar or press{' '}
+                <kbd className={cn("px-1.5 py-0.5 text-11 font-mono font-medium rounded border transition-colors", invertColors ? "bg-neutral-900 border-neutral-800 text-neutral-300" : "bg-muted border-border text-foreground")}>
                   Ctrl+Enter
                 </kbd>{' '}
-                to generate the PDF
+                to build your document.
               </p>
             </div>
-            {onCompile && (
-              <button
-                type="button"
-                onClick={onCompile}
-                disabled={
-                  compileStatus !== 'idle' &&
-                  compileStatus !== 'done' &&
-                  compileStatus !== 'error'
-                }
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover text-primary-foreground font-medium rounded-md text-xs shadow-2xs transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                {compileStatus === 'compiling' ||
-                compileStatus === 'flushing' ||
-                compileStatus === 'syncing' ? (
-                  <Loader2 className="size-4 animate-spin shrink-0" />
-                ) : (
-                  <Play className="size-4 shrink-0" />
-                )}
-                {compileStatus === 'flushing'
-                  ? 'Preparing…'
-                  : compileStatus === 'syncing'
-                    ? 'Syncing…'
-                    : compileStatus === 'compiling'
-                      ? 'Compiling…'
-                      : 'Compile'}
-              </button>
-            )}
           </div>
         </div>
       ) : (
@@ -458,7 +443,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
                 handleDoubleClickPage(pageNumber, clickFraction, ptX, ptY, clickX, clickY);
               }}
               title="Double-click anywhere to jump to LaTeX source"
-              className="bg-card rounded-sm border border-border relative overflow-hidden flex items-center justify-center cursor-text transition-[filter] duration-200"
+              className="bg-white rounded-sm border border-border/60 shadow-sm relative overflow-hidden flex items-center justify-center cursor-text transition-[filter] duration-200"
               style={invertColors ? { filter: 'invert(0.9) hue-rotate(180deg) contrast(1.25)' } : undefined}
             >
               <Page
@@ -472,7 +457,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
               {clickIndicator && clickIndicator.page === pageNumber && (
                 <div
                   key={clickIndicator.id}
-                  className="pointer-events-none absolute z-30 transition-all duration-300"
+                  className="pointer-events-none absolute z-30 transition-opacity duration-300"
                   style={{
                     left: `${clickIndicator.x}px`,
                     top: `${clickIndicator.y}px`,

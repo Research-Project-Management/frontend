@@ -115,13 +115,12 @@ export function useCollectionActions({
     const toastId = toast.loading(`Exporting BibTeX for "${name}"...`, { id: 'collection-export' });
     try {
       const res = await CollectionService.exportBibtex(effectiveScopeId, collectionId);
-      const data = (res as any)?.data ?? res;
-      const bibtex = data?.bibtex || data?.content;
+      const bibtex = res?.bibtex;
       if (!bibtex) {
         toast.warning('No citations found in this collection.', { id: toastId });
         return;
       }
-      const filename = data?.filename || `${name.toLowerCase().replace(/\s+/g, '_')}.bib`;
+      const filename = res?.filename || `${name.toLowerCase().replace(/\s+/g, '_')}.bib`;
       const blob = new Blob([bibtex], { type: 'application/x-bibtex;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -131,7 +130,7 @@ export function useCollectionActions({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      const count = data?.total ?? data?.itemCount;
+      const count = res?.total;
       toast.success(count ? `Exported ${count} items to ${filename}` : `Exported to ${filename}`, { id: toastId });
     } catch (err: any) {
       toast.error('Failed to export BibTeX', { description: err?.message, id: toastId });
@@ -141,8 +140,7 @@ export function useCollectionActions({
   const handleExportBundle = async (collectionId: string, name: string) => {
     const toastId = toast.loading(`Preparing bundle for "${name}"...`, { id: 'bundle-export' });
     try {
-      const res = await CollectionService.exportBundle(effectiveScopeId, collectionId);
-      const data = (res as any)?.data ?? res;
+      const data = await CollectionService.exportBundle(effectiveScopeId, collectionId);
       if (!data) {
         toast.error('Failed to export bundle', { id: toastId });
         return;

@@ -26,8 +26,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ProjectAvatar,
 } from "@/shared/components/ui";
+import { ProjectAvatar } from "@/shared/components/icons";
 import { toast } from 'sonner';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useProjects, useRestoreProject, useDeleteProject, useTrashedProjects, usePermanentDeleteProject } from '../hooks/use-project';

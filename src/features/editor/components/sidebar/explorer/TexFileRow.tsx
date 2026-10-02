@@ -10,7 +10,7 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
-import { DropdownMenuItem } from '@/shared/components/ui';
+import { DropdownMenuItem } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
 import { RenameInput, RowActions } from './FileTreeNodes';
 
@@ -78,14 +78,14 @@ export const TexFileRow = React.memo(function TexFileRow({
       className={cn(
         'group/row flex h-7.5 cursor-pointer items-center rounded-md mx-1 px-2 my-0.5 transition-colors select-none',
         isActive
-          ? 'bg-primary text-primary-foreground shadow-2xs font-medium'
-          : 'hover:bg-muted/70 text-foreground/90',
+          ? 'bg-muted text-foreground font-medium'
+          : 'hover:bg-muted/60 text-foreground/90',
       )}
     >
       <FileIcon
         className={cn(
           'size-3.5 shrink-0 mr-1.5',
-          isActive ? 'text-white' : fileColor,
+          fileColor,
         )}
       />
 
@@ -101,20 +101,15 @@ export const TexFileRow = React.memo(function TexFileRow({
         <>
           <span
             className={cn(
-              'flex-1 min-w-0 truncate text-xs',
-              isActive ? 'text-white font-medium' : 'text-foreground/90',
+              'flex-1 min-w-0 truncate text-xs font-mono',
+              isActive ? 'text-foreground font-medium' : 'text-foreground/90',
             )}
           >
             {displayName(file.title)}
           </span>
           {isMain && !isRenaming && (
             <span
-              className={cn(
-                'shrink-0 text-10 px-1.5 py-px rounded-full font-medium mr-1',
-                isActive
-                  ? 'bg-white/20 text-white'
-                  : 'border border-primary/30 bg-primary/8 text-primary/80',
-              )}
+              className="shrink-0 text-11 font-mono px-1.5 py-px rounded-full font-medium mr-1 border border-primary/30 bg-primary/10 text-primary"
             >
               main
             </span>
@@ -123,7 +118,7 @@ export const TexFileRow = React.memo(function TexFileRow({
             <RowActions
               className={
                 isActive
-                  ? 'text-white/80 hover:text-white hover:bg-white/15 opacity-100'
+                  ? 'text-foreground opacity-100'
                   : undefined
               }
             >

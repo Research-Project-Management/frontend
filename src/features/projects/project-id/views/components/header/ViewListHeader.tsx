@@ -12,19 +12,21 @@ import {
   Globe,
   Star,
 } from 'lucide-react';
+import { Button } from '@/shared/components/ui/button';
 import {
-  Button,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuLabel,
+} from '@/shared/components/ui/dropdown-menu';
+import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-  Checkbox,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/popover';
+import { Checkbox } from '@/shared/components/ui/checkbox';
 import {
   SortAscendingIcon,
   SortDescendingIcon,

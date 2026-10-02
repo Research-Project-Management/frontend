@@ -30,6 +30,7 @@ export const formattedCitationSchema = z.object({
   styleId: z.string().optional(),
   inText: z.string(),
   bibliography: z.string(),
+  citation: z.string().optional(),
   html: z.string().optional(),
   bibliographyHtml: z.string().optional(),
   source: z.enum(['publisher', 'csl-engine']).optional(),

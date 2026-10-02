@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Pencil, ChevronDown } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
-import { ProjectAvatar } from "@/shared/components/ui";
+import { ProjectAvatar } from "@/shared/components/icons";
 import type { ProjectWorkloadBreakdown, UserProfileData } from '../../schemas/your-work.schema';
 
 export interface ProfileSidebarProps {

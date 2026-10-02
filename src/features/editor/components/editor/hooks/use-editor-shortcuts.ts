@@ -259,7 +259,7 @@ export function useEditorShortcuts({
     ctxStartLine,
     ctxEndLine,
     ctxSelText,
-  ]); // eslint-disable-line react-hooks/exhaustive-deps
+  ]);  
 
   return {
     menuGroups,

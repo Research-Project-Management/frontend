@@ -17,10 +17,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+} from '@/shared/components/ui/dropdown-menu';
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tooltip';
 
 export interface PdfZoomControlsProps {
   scale: number;
@@ -29,6 +31,7 @@ export interface PdfZoomControlsProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onSetScale?: (scale: number) => void;
+  compact?: boolean;
 }
 
 const ZOOM_PRESETS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0];
@@ -40,32 +43,36 @@ export const PdfZoomControls = React.memo(function PdfZoomControls({
   onZoomIn,
   onZoomOut,
   onSetScale,
+  compact = false,
 }: PdfZoomControlsProps) {
   const percentage = Math.round(scale * 100);
 
   return (
     <div className="flex items-center gap-0.5 select-none">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={onZoomOut}
-            aria-label="Zoom out"
-            className="size-7 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <Minus className="size-3.5" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs">
-          Zoom out
-        </TooltipContent>
-      </Tooltip>
+      {!compact && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onZoomOut}
+              aria-label="Zoom out"
+              className="size-7 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            >
+              <Minus className="size-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            Zoom out
+          </TooltipContent>
+        </Tooltip>
+      )}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="h-6 px-1.5 flex items-center gap-1 rounded-sm text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            aria-label="Select zoom preset"
+            className="h-6 px-1.5 flex items-center gap-1 rounded-sm text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
           >
             <span>{autoFit ? 'Fit Width' : `${percentage}%`}</span>
             <ChevronDown className="size-3 opacity-60" />
@@ -99,21 +106,23 @@ export const PdfZoomControls = React.memo(function PdfZoomControls({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={onZoomIn}
-            aria-label="Zoom in"
-            className="size-7 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <Plus className="size-3.5" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs">
-          Zoom in
-        </TooltipContent>
-      </Tooltip>
+      {!compact && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onZoomIn}
+              aria-label="Zoom in"
+              className="size-7 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            >
+              <Plus className="size-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            Zoom in
+          </TooltipContent>
+        </Tooltip>
+      )}
     </div>
   );
 });

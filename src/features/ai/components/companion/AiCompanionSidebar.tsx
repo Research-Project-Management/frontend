@@ -15,11 +15,13 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
+import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
 import { useAiCompanionStore } from '../../store/ai-companion.store';
 import { useCompanionChat } from '../../hooks/use-companion-chat';

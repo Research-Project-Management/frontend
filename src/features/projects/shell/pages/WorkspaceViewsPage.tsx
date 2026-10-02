@@ -16,15 +16,15 @@ import {
   Check,
   Plus,
 } from 'lucide-react';
+import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import {
-  Button,
-  Skeleton,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ProjectAvatar,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dropdown-menu';
+import { ProjectAvatar } from '@/shared/components/icons';
 import { useProjects } from '../hooks/use-project';
 import { ViewService } from '@/features/projects/project-id/views/services/view.service';
 import type { WorkItemViewItem } from '@/features/projects/project-id/views/types/view.types';

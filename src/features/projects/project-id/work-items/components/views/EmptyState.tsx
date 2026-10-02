@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Button } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
 
 const ILLUSTRATION_COLOR_TOKEN_MAP = {
   fill: {

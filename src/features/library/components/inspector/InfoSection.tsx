@@ -33,6 +33,7 @@ export interface InfoSectionProps {
   paper: Item;
   onUpdatePaper?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
   canEdit?: boolean;
+  scopeId?: string;
 }
 
 /** Fields backed by first-class Item columns. All other registry fields
@@ -106,11 +107,16 @@ export function formatAuditDate(dateStr?: string | Date | null): string {
   }
 }
 
-export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: InfoSectionProps) {
+export default function InfoSection({
+  paper,
+  onUpdatePaper,
+  canEdit = true,
+  scopeId: propScopeId,
+}: InfoSectionProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const currentItemType = paper.itemType || 'journalArticle';
-  const scopeId = (paper as any).projectId || '';
+  const scopeId = propScopeId || paper.projectId || 'user';
 
   const { previewAsync, convertAsync } = useConversion(scopeId);
   const { types: registryItemTypes } = useItemTypes(scopeId || undefined);
@@ -146,7 +152,7 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
     [currentItemType, itemTypeDefinitions],
   );
 
-  const displayDoi = cleanDoi(paper.doi || (paper as any).DOI);
+  const displayDoi = cleanDoi(paper.doi || paper.DOI);
 
   const copyToClipboard = async (text: string, label: string) => {
     if (!text || !text.trim()) {
@@ -172,14 +178,17 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
   /** Helper to retrieve value for a field definition key from paper */
   const getFieldValue = useCallback(
     (fieldKey: string): string => {
-      const p = paper as any;
+      const p = paper as unknown as Record<string, unknown>;
       const keyLower = fieldKey.toLowerCase();
-      const ef = (p.extraFields as Record<string, any>) || {};
+      const ef = (paper.extraFields as Record<string, unknown>) || {};
 
       if (keyLower === 'date' || keyLower === 'publicationdate') {
-        return cleanValue(
-          p.publicationDate || (p.year ? String(p.year) : '') || p.date || ef.date || ef.publicationDate,
-        );
+        const rawDate =
+          p.publicationDate || (p.year ? String(p.year) : '') || p.date || ef.date || ef.publicationDate;
+        if (!rawDate) return '';
+        const isoMatch = String(rawDate).match(/^(\d{4}-\d{2}-\d{2})T/);
+        if (isoMatch) return isoMatch[1];
+        return cleanValue(rawDate);
       }
       if (keyLower === 'issuedate') {
         return cleanValue(p.issueDate || ef.issueDate);
@@ -198,7 +207,7 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
         );
       }
       if (keyLower === 'accessdate' || keyLower === 'accessedat') {
-        return cleanValue(p.accessDate || (p.accessedAt ? formatAuditDate(p.accessedAt) : '') || ef.accessDate);
+        return cleanValue(p.accessDate || (p.accessedAt ? formatAuditDate(p.accessedAt as any) : '') || ef.accessDate);
       }
       if (keyLower === 'doi') {
         return cleanValue(displayDoi || p.doi || p.DOI || ef.doi);
@@ -223,8 +232,8 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
             ef.archiveId ||
             ef.archiveID ||
             ef.arxivId ||
-            extractArxivId(p.url) ||
-            extractArxivId(p.callNumber),
+            extractArxivId(p.url as string) ||
+            extractArxivId(p.callNumber as string),
         );
         if (!raw) return '';
         const clean = raw
@@ -319,10 +328,10 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
         return cleanValue(p.issuingAuthority || ef.issuingAuthority || p.authority);
       }
       if (keyLower === 'patentnumber') {
-        return cleanValue(p.patentNumber || ef.patentNumber || (p as any).number);
+        return cleanValue(paper.patentNumber || ef.patentNumber || paper.number);
       }
       if (keyLower === 'assignee') {
-        return cleanValue(p.assignee || ef.assignee);
+        return cleanValue(paper.assignee || ef.assignee);
       }
       if (
         keyLower === 'websitetitle' ||
@@ -336,7 +345,7 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
         return cleanValue(
           p[fieldKey] ||
             ef[fieldKey] ||
-            (['websitetitle', 'blogtitle'].includes(keyLower) ? p.publicationTitle : ''),
+            (['websitetitle', 'blogtitle'].includes(keyLower) ? paper.publicationTitle : ''),
         );
       }
       if (
@@ -345,10 +354,10 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
         keyLower === 'reporttype' ||
         keyLower === 'posttype'
       ) {
-        return cleanValue(p[fieldKey] || ef[fieldKey] || p.type || p.genre);
+        return cleanValue(p[fieldKey] || ef[fieldKey] || paper.type || paper.genre);
       }
       if (keyLower === 'reportnumber') {
-        return cleanValue(p.reportNumber || (p as any).number || ef.reportNumber);
+        return cleanValue(paper.reportNumber || paper.number || ef.reportNumber);
       }
       if (keyLower === 'country') {
         return cleanValue(p.country || ef.country);
@@ -368,7 +377,7 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
         return cleanValue(currentReferenceCount);
       }
 
-      return cleanValue(p[fieldKey] ?? ef[fieldKey] ?? p.customFields?.[fieldKey]);
+      return cleanValue((p as Record<string, any>)[fieldKey] ?? (ef as Record<string, any>)[fieldKey] ?? (p.customFields as Record<string, any> | undefined)?.[fieldKey]);
     },
     [paper, displayDoi],
   );
@@ -393,7 +402,7 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
       const parsedYear = yearMatch ? parseInt(yearMatch[1], 10) : parseInt(val, 10);
       const finalYear = !isNaN(parsedYear) && parsedYear >= 1000 && parsedYear <= 2999 ? parsedYear : undefined;
       patch = {
-        year: finalYear,
+        year: finalYear !== undefined ? finalYear : null,
         publicationDate: val || '',
         date: val || '',
       };
@@ -526,6 +535,33 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
         repository: val || '',
         ...(paper.itemType === 'preprint' ? {} : { publisher: val || '' }),
       };
+    } else if (keyLower === 'thesistype') {
+      patch = {
+        thesisType: val || '',
+        genre: val || '',
+        type: val || '',
+      };
+    } else if (keyLower === 'reporttype') {
+      patch = {
+        reportType: val || '',
+        genre: val || '',
+        type: val || '',
+      };
+    } else if (keyLower === 'websitetype') {
+      patch = {
+        websiteType: val || '',
+        type: val || '',
+      };
+    } else if (keyLower === 'patentnumber') {
+      patch = {
+        patentNumber: val || '',
+        number: val || '',
+      };
+    } else if (keyLower === 'reportnumber') {
+      patch = {
+        reportNumber: val || '',
+        number: val || '',
+      };
     } else if (DIRECT_METADATA_FIELDS.has(key) || DIRECT_METADATA_FIELDS.has(keyLower)) {
       patch = { [key]: val || '' };
     } else {
@@ -634,6 +670,7 @@ export default function InfoSection({ paper, onUpdatePaper, canEdit = true }: In
         selectableItemTypes={selectableItemTypes}
         typeDefinition={typeDefinition}
         canEdit={canEdit}
+        scopeId={scopeId}
         onUpdatePaper={onUpdatePaper}
         previewAsync={previewAsync}
         convertAsync={convertAsync}

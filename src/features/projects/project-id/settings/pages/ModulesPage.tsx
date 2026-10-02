@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { Skeleton } from "@/shared/components/ui";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { FileText, LayoutGrid } from 'lucide-react';
-import { WorkItemsIcon } from "@/shared/components/ui";
+import { WorkItemsIcon } from "@/shared/components/icons";
 import TopBar from '../components/layout/TopBar';
 import { Item } from '../components/module/Item';
 import { useModules } from '../hooks/use-module';

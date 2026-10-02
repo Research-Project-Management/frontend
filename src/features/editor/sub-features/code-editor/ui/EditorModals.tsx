@@ -53,6 +53,7 @@ export interface EditorModalsProps {
   setCitationModalOpen: (open: boolean) => void;
   bibEntries: any[];
   onInsertCitation: (key: string) => void;
+  projectId?: string;
 
   tableWizardOpen: boolean;
   setTableWizardOpen: (open: boolean) => void;
@@ -83,6 +84,7 @@ export function EditorModals({
   setCitationModalOpen,
   bibEntries,
   onInsertCitation,
+  projectId,
   tableWizardOpen,
   setTableWizardOpen,
   figureWizardOpen,
@@ -110,6 +112,7 @@ export function EditorModals({
           onOpenChange={setCitationModalOpen}
           items={bibEntries}
           onSelectCitation={onInsertCitation}
+          projectId={projectId}
         />
       )}
 

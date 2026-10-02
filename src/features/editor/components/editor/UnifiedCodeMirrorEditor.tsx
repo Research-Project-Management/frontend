@@ -52,6 +52,12 @@ import { editorCommandBus } from '../../core/command-bus/editor-command-bus';
 import { useSettingsStore } from '../../store';
 import { cn } from '@/shared/lib/utils';
 
+import type { PageComment } from '@/features/editor/types';
+import {
+  latexCommentsExtension,
+  setCommentsEffect,
+} from '../../sub-features/code-editor/codemirror/latex-comments';
+
 export interface UnifiedCodeMirrorEditorProps {
   value: string;
   onChange: (value: string) => void;
@@ -63,6 +69,8 @@ export interface UnifiedCodeMirrorEditorProps {
   keybinding?: string;
   yText?: Y.Text | null;
   awareness?: any | null;
+  comments?: PageComment[];
+  activeCommentId?: string | null;
 }
 
 function getTypographyExtension(fontSize = 15, fontFamily = 'default', lineHeight = 1.6) {
@@ -79,9 +87,16 @@ function getTypographyExtension(fontSize = 15, fontFamily = 'default', lineHeigh
     '&': {
       fontSize: `${fontSize}px`,
     },
+    '&.cm-focused': {
+      outline: 'none !important',
+    },
     '.cm-scroller': {
       fontFamily: resolvedFont,
       lineHeight: `${lineHeight}`,
+      outline: 'none !important',
+    },
+    '.cm-content': {
+      outline: 'none !important',
     },
   });
 }
@@ -131,6 +146,8 @@ export default function UnifiedCodeMirrorEditor({
   keybinding,
   yText,
   awareness,
+  comments = [],
+  activeCommentId,
 }: UnifiedCodeMirrorEditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -138,7 +155,6 @@ export default function UnifiedCodeMirrorEditor({
   const { setEngine } = useEditorInstance();
 
   const editorMode = useSettingsStore((s) => s.editorMode);
-  const setEditorMode = useSettingsStore((s) => s.setEditorMode);
   const storeKeybinding = useSettingsStore((s) => s.keybinding);
   const fontSize = useSettingsStore((s) => s.fontSize);
   const fontFamily = useSettingsStore((s) => s.fontFamily);
@@ -224,6 +240,7 @@ export default function UnifiedCodeMirrorEditor({
         history(),
         bracketMatching(),
         lineHighlightField,
+        latexCommentsExtension,
         search({ top: false }),
         EditorState.allowMultipleSelections.of(true),
         rectangularSelection(),
@@ -314,6 +331,18 @@ export default function UnifiedCodeMirrorEditor({
       adapterRef.current = null;
     };
   }, []); // Mount once
+
+  // ── Dynamic Comments Highlighting Switching ────────────────────────────────
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: setCommentsEffect.of({
+        comments: comments || [],
+        activeCommentId,
+      }),
+    });
+  }, [comments, activeCommentId]);
 
   // ── Dynamic Theme Switching ───────────────────────────────────────────────
   useEffect(() => {
@@ -549,34 +578,14 @@ export default function UnifiedCodeMirrorEditor({
   );
 
   return (
-    <div className="h-full w-full relative flex flex-col overflow-hidden bg-background">
-      {/* Visual Mode Indicator Banner (Overleaf 1:1) */}
-      {editorMode === 'visual' && (
-        <div className="flex items-center justify-between px-3 py-1 bg-primary/10 border-b border-primary/20 text-primary text-xs shrink-0 select-none">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-10 px-1.5 py-0.5 rounded-sm bg-primary/20 text-primary tracking-normal">
-              Visual Mode (CodeMirror 6)
-            </span>
-            <span className="text-11 text-foreground/80">
-              Interactive KaTeX rendering. Click any math formula to edit in-place.
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setEditorMode('code')}
-            className="ml-3 px-2 py-0.5 text-11 font-medium bg-primary/20 hover:bg-primary/30 text-primary rounded-sm transition-colors cursor-pointer shrink-0"
-          >
-            Switch to Source
-          </button>
-        </div>
-      )}
-
+    <div className="h-full w-full relative flex flex-col bg-background">
       {/* CodeMirror DOM Container */}
       <div
         ref={containerRef}
         onDoubleClick={handleDoubleClick}
         className={cn(
           'flex-1 w-full h-full overflow-hidden [&_.cm-editor]:h-full [&_.cm-scroller]:h-full',
+          '[&_.cm-editor]:outline-none [&_.cm-editor.cm-focused]:outline-none [&_.cm-scroller]:outline-none [&_.cm-content]:outline-none',
           '[&_.cm-ySelectionCaret]:border-l-2 [&_.cm-ySelectionCaret]:border-r-0 [&_.cm-ySelectionCaret]:transition-all',
           '[&_.cm-ySelectionInfo]:font-sans [&_.cm-ySelectionInfo]:rounded-xs [&_.cm-ySelectionInfo]:px-1.5 [&_.cm-ySelectionInfo]:py-0.5 [&_.cm-ySelectionInfo]:text-[10px] [&_.cm-ySelectionInfo]:font-semibold [&_.cm-ySelectionInfo]:shadow-xs [&_.cm-ySelectionInfo]:tracking-normal',
           editorMode === 'visual' &&

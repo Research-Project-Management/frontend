@@ -26,21 +26,21 @@ export function InspectorHeader({
 
   const isRetracted = Boolean(
     item.isRetracted ||
-    (item as any).retractionStatus === 'retracted' ||
-    (item as any).is_retracted
+    item.retractionStatus === 'retracted' ||
+    item.is_retracted
   );
-  const retractionDetails = item.retractionDetails as Record<string, any> | undefined;
+  const retractionDetails = item.retractionDetails as Record<string, unknown> | undefined;
   const noticeUrl =
-    retractionDetails?.noticeUrl ||
-    (item as any).noticeUrl ||
+    (retractionDetails?.noticeUrl as string | undefined) ||
+    item.noticeUrl ||
     (item.doi ? `https://doi.org/${item.doi}` : undefined);
   const retractionReason =
-    retractionDetails?.reason ||
-    (item as any).retractionReason ||
-    (item as any).reason;
+    (retractionDetails?.reason as string | undefined) ||
+    item.retractionReason ||
+    item.reason;
   const retractionDate =
-    retractionDetails?.date ||
-    (item as any).retractionDate;
+    (retractionDetails?.date as string | undefined) ||
+    item.retractionDate;
 
   useEffect(() => {
     setTitleDraft(item.title || '');

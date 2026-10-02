@@ -21,7 +21,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dialog';
 import { renderMarkdown } from '@/features/ai/utils/render-markdown';
 import type { StorageItem } from '@/features/storage/types/storage.types';
 import { resolveFileUrl, downloadFileUrl } from '@/shared/lib/file-client';

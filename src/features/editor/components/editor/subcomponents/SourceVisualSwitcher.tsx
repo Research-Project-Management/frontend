@@ -16,7 +16,7 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
       toast.info(
         mode === 'visual'
           ? 'Switched to Visual (Rich Text) mode'
-          : 'Switched to Source (Code) mode',
+          : 'Switched to Code mode',
         { duration: 1500 },
       );
     },
@@ -24,30 +24,30 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
   );
 
   return (
-    <div className="inline-flex items-center rounded-md bg-muted p-0.5 border border-border select-none shrink-0 shadow-2xs">
+    <div className="inline-flex items-center rounded-full bg-muted p-0.5 border border-border select-none shrink-0">
       <button
         type="button"
         onClick={() => handleSwitchMode('code')}
         className={cn(
-          'px-2 py-0.5 rounded-sm text-xs font-medium transition-all duration-150 cursor-pointer select-none leading-none',
+          'px-2.5 py-1 rounded-full text-xs transition-colors duration-150 cursor-pointer select-none leading-none',
           editorMode === 'code'
-            ? 'bg-background text-foreground font-semibold shadow-2xs'
-            : 'text-muted-foreground hover:text-foreground',
+            ? 'bg-background text-foreground shadow-2xs font-semibold'
+            : 'text-muted-foreground hover:text-foreground font-medium',
         )}
-        title="Source (Ctrl+Shift+V)"
+        title="Code mode (Ctrl+Shift+V)"
       >
-        Source
+        Code
       </button>
       <button
         type="button"
         onClick={() => handleSwitchMode('visual')}
         className={cn(
-          'px-2 py-0.5 rounded-sm text-xs font-medium transition-all duration-150 cursor-pointer select-none leading-none',
+          'px-2.5 py-1 rounded-full text-xs transition-colors duration-150 cursor-pointer select-none leading-none',
           editorMode === 'visual'
-            ? 'bg-background text-foreground font-semibold shadow-2xs'
-            : 'text-muted-foreground hover:text-foreground',
+            ? 'bg-background text-foreground shadow-2xs font-semibold'
+            : 'text-muted-foreground hover:text-foreground font-medium',
         )}
-        title="Visual (Ctrl+Shift+V)"
+        title="Visual mode (Ctrl+Shift+V)"
       >
         Visual
       </button>

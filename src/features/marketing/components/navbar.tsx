@@ -4,23 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Menu, X } from 'lucide-react';
-import { useAuth } from '@/features/auth/hooks/use-auth';
-import { hasAuthToken, getAuthToken } from '@/shared/lib/token-storage';
-import { isTokenValid } from '@/shared/utils/auth-token.util';
 
 export default function Navbar() {
-  const { user } = useAuth();
-  const [mounted, setMounted] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const isAuthenticated = mounted && Boolean(user || (typeof window !== 'undefined' && hasAuthToken() && isTokenValid(getAuthToken())));
-
-  // Harden: debounce + passive scroll listener
+  // Debounced passive scroll listener
   const handleScroll = useCallback(() => {
     setIsScrolled(window.scrollY > 10);
   }, []);
@@ -30,7 +19,7 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
 
-  // Harden: close menu on escape
+  // Close menu on escape
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsMenuOpen(false);
@@ -41,69 +30,67 @@ export default function Navbar() {
 
   return (
     <nav
-      className={`fixed top-0 z-50 w-full border-b border-border transition-colors duration-200 ${
+      className={`fixed top-0 z-50 w-full border-b border-border transition-colors duration-150 ${
         isScrolled
-          ? 'bg-card/90 backdrop-blur-md'
-          : 'bg-background'
+          ? 'bg-card/85 backdrop-blur-md shadow-2xs'
+          : 'bg-background/80 backdrop-blur-sm'
       }`}
       aria-label='Main navigation'
     >
       <div className='flux-container'>
-        <div className='flex justify-between items-center h-14'>
+        <div className='flex justify-between items-center h-12'>
 
           {/* Logo */}
           <div className='flex items-center'>
             <Link
               href='/'
-              className='flex gap-2.5 items-center min-h-11 shrink-0'
+              className='flex gap-2.5 items-center min-h-10 shrink-0'
               onClick={() => setIsMenuOpen(false)}
               aria-label='Flux home'
             >
-              <img src='/Flux.svg' className='size-6 shrink-0 object-contain' alt='' aria-hidden='true' />
-              <span className='font-semibold text-lg tracking-tight'>Flux</span>
+              <img
+                src='/Flux.svg'
+                className='size-6 shrink-0 object-contain'
+                alt='Flux'
+              />
+              <span className='font-semibold text-lg tracking-tight text-foreground'>
+                Flux
+              </span>
             </Link>
           </div>
 
           {/* Desktop Actions */}
           <div className='hidden md:flex items-center gap-2'>
-            {isAuthenticated ? (
-              <Link
-                href='/home'
-                className='group flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer shrink-0'
-              >
-                Open Workspace
-                <ArrowRight className='size-3.5 transition-transform group-hover:translate-x-0.5 shrink-0' aria-hidden='true' />
-              </Link>
-            ) : (
-              <>
-                <Link
-                  href='/login'
-                  className='flex h-9 items-center px-4 text-sm font-medium text-foreground rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer shrink-0'
-                >
-                  Sign in
-                </Link>
-                <Link
-                  href='/register'
-                  className='group flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer shrink-0'
-                >
-                  Get started
-                  <ArrowRight className='size-3.5 transition-transform group-hover:translate-x-0.5 shrink-0' aria-hidden='true' />
-                </Link>
-              </>
-            )}
+            <Link
+              href='/login'
+              className='flex h-8 items-center px-3 text-13 font-medium text-foreground rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0'
+            >
+              Sign in
+            </Link>
+            <Link
+              href='/register'
+              className='group flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-13 font-medium text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0 shadow-2xs'
+            >
+              Get started
+              <ArrowRight
+                className='size-3.5 transition-transform group-hover:translate-x-0.5 shrink-0'
+                aria-hidden='true'
+              />
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
           <button
-            className='flex items-center justify-center w-11 h-11 rounded-md transition-colors hover:bg-muted md:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
+            className='flex items-center justify-center w-10 h-10 rounded-md transition-colors hover:bg-muted md:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer'
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={isMenuOpen}
           >
-            {isMenuOpen
-              ? <X className='w-5 h-5 shrink-0' aria-hidden='true' />
-              : <Menu className='w-5 h-5 shrink-0' aria-hidden='true' />
-            }
+            {isMenuOpen ? (
+              <X className='size-5 shrink-0' aria-hidden='true' />
+            ) : (
+              <Menu className='size-5 shrink-0' aria-hidden='true' />
+            )}
           </button>
         </div>
 
@@ -114,39 +101,25 @@ export default function Navbar() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
               className='md:hidden py-4 border-t border-border'
             >
               <div className='flex flex-col gap-2'>
-
-                {isAuthenticated ? (
-                  <Link
-                    href='/home'
-                    className='flex items-center justify-center gap-1.5 min-h-11 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer shrink-0'
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Open Workspace
-                    <ArrowRight className='size-3.5 shrink-0' aria-hidden='true' />
-                  </Link>
-                ) : (
-                  <div className='flex flex-col gap-2'>
-                    <Link
-                      href='/login'
-                      className='flex items-center justify-center min-h-11 rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer shrink-0'
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Sign in
-                    </Link>
-                    <Link
-                      href='/register'
-                      className='flex items-center justify-center gap-1.5 min-h-11 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer shrink-0'
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Get started
-                      <ArrowRight className='size-3.5 shrink-0' aria-hidden='true' />
-                    </Link>
-                  </div>
-                )}
+                <Link
+                  href='/login'
+                  className='flex items-center justify-center h-9 rounded-md border border-border px-4 text-13 font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0'
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href='/register'
+                  className='flex items-center justify-center gap-1.5 h-9 rounded-md bg-primary px-4 text-13 font-medium text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0 shadow-2xs'
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Get started
+                  <ArrowRight className='size-3.5 shrink-0' aria-hidden='true' />
+                </Link>
               </div>
             </motion.div>
           )}

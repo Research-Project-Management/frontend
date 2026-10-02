@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, UserPlus, Loader2, CheckCircle2, LogIn } from 'lucide-react';
-import { Button } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useJoinProjectByCode } from '../hooks/use-project-invitations';
 import { toast } from 'sonner';

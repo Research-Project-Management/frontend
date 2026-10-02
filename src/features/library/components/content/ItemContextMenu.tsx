@@ -23,7 +23,7 @@ import {
   ContextMenuSub,
   ContextMenuSubContent,
   ContextMenuSubTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/context-menu';
 import { CitationService } from '../../data';
 import { useLibraryUIStore } from '../../store';
 import type { Item, Collection } from '../../types';
@@ -68,7 +68,7 @@ export function ItemContextMenu({
   const openModal = useLibraryUIStore((s) => s.openModal);
 
   const isStarred =
-    Boolean((item as any).isStarred) ||
+    Boolean(item.isStarred) ||
     Boolean(typeof item.rating === 'number' && item.rating > 0);
 
   const handleCopyBibliography = async () => {
@@ -89,7 +89,7 @@ export function ItemContextMenu({
   const handleCopyInTextCitation = async () => {
     try {
       const res = await CitationService.formatCitation(undefined, item.id, 'apa');
-      const text = res.inText || (res as any).citation || '';
+      const text = res.inText || res.citation || '';
       if (text) {
         await copyToClipboard(text);
         toast.success('Copied in-text citation to clipboard');

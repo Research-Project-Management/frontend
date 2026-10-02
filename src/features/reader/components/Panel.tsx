@@ -3,8 +3,7 @@
 import React from 'react';
 import {
   ReaderInspector,
-  type ReaderInspectorProps,
-} from './inspector';
+} from './inspector/ReaderInspector';
 import type { InspectorSectionId, Item, Collection } from '../types/reader.types';
 
 export interface InspectorPanelProps {

@@ -12,7 +12,7 @@ import {
   Quote,
   PanelRight,
 } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import type { InspectorSectionId } from '../../store';
 

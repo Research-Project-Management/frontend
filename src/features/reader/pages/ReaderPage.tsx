@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from "@/shared/lib/utils";
 import {
   Loader2,
@@ -13,21 +14,23 @@ import {
   ShieldAlert,
   ExternalLink,
 } from 'lucide-react';
-import { Button } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui/button";
 import { useReader } from '../hooks/use-reader';
 import { useReaderStore } from '../store/reader.store';
 import { useReaderUIStore } from '../store/reader-ui.store';
 import { readerService } from '../data/reader.service';
-import { useOcrExtraction } from '../data/reader.queries';
+import { useOcrExtraction, useExportAnnotatedPdf } from '../data/reader.queries';
 import { ReaderInspector } from '../components/inspector';
 import Topbar from '../components/Topbar';
-import MenuBar from '../components/MenuBar';
 import ReaderToolbar from '../components/ReaderToolbar';
 import Sidebar from '../components/Sidebar';
-import BibtexModal from '../components/modals/BibtexModal';
 import Systembar from '../components/Systembar';
 import DocumentNavDrawer from '../components/viewer/DocumentNavDrawer';
 import type { AnnotationRect } from '../types/reader.types';
+
+const BibtexModal = dynamic(() => import('../components/modals/BibtexModal'), {
+  ssr: false,
+});
 
 const Viewer = dynamic(() => import('../components/viewer/Viewer'), {
   ssr: false,
@@ -292,21 +295,38 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     }
   }, [effectiveAttachmentId, triggerOcr]);
 
+  const { exportAnnotatedPdf } = useExportAnnotatedPdf(scopeId || 'me');
+
+  const handleExportAnnotatedPdf = useCallback(async () => {
+    const currentPaperId = paper?.id || activeTabId;
+    if (!currentPaperId || currentPaperId === 'library') return;
+    try {
+      await exportAnnotatedPdf(currentPaperId, `${paper?.title || 'document'}-annotated.pdf`);
+    } catch {
+      // Handled in useExportAnnotatedPdf hook toast
+    }
+  }, [paper, activeTabId, exportAnnotatedPdf]);
+
+  const handlePrint = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.print();
+    }
+  }, []);
+
   return (
     <div className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background ${isResizingPanel ? 'select-none' : ''}`}>
-      {/* 0. ZOTERO 7 APPLICATION MENU BAR (File, Edit, View, Go) - Hidden in Reading Mode */}
-      {!isReadingMode && <MenuBar />}
-
       {/* 1. ZOTERO 7 MULTI-PAPER TAB BAR (Hàng 1) - Hidden in Reading Mode */}
       {!isReadingMode && (
         <Topbar
           paper={paper}
           tabs={tabs}
           activeTabId={paper?.id || activeTabId}
-          scopeTitle={activeScope?.name}
+          scopeTitle={activeScope}
           onSelectTab={handleSelectTab}
           onCloseTab={handleCloseTab}
           onBack={goBack}
+          onExportAnnotatedPdf={handleExportAnnotatedPdf}
+          onPrint={handlePrint}
         />
       )}
 
@@ -588,7 +608,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       />
 
       {/* BibTeX / RIS Export Modal */}
-      {paper && (
+      {paper && bibtexOpen && (
         <BibtexModal paper={paper} open={bibtexOpen} onOpenChange={setBibtexOpen} />
       )}
     </div>

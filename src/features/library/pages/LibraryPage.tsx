@@ -4,10 +4,16 @@ import React, { useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import dynamic from 'next/dynamic';
 import { LibraryTopbar } from '../components/topbar';
 import { LibraryContent } from '../components/content';
 import { LibraryInspector } from '../components/inspector';
-import { LibraryModals } from '../components/modals';
+import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
+
+const LibraryModals = dynamic(
+  () => import('../components/modals').then((m) => m.LibraryModals),
+  { ssr: false }
+);
 import {
   useLibrarySidebarStore,
   useLibraryModalStore,
@@ -17,12 +23,12 @@ import {
 import {
   useCollectionsQuery,
   useSavedSearches,
-  useBatchPurgeItemsMutation,
   useTrash,
   ItemService,
   itemKeys,
   invalidateCollections,
 } from '../data';
+import { formatItemTypeLabel } from '../domain';
 
 interface LibraryPageProps {
   scopeId?: string;
@@ -31,30 +37,7 @@ interface LibraryPageProps {
   title?: string;
 }
 
-function formatItemTypeLabel(type: string): string {
-  switch (type) {
-    case 'journalArticle':
-      return 'Journal Article';
-    case 'book':
-      return 'Book';
-    case 'bookSection':
-      return 'Book Section';
-    case 'conferencePaper':
-      return 'Conference Paper';
-    case 'preprint':
-      return 'Preprint';
-    case 'report':
-      return 'Report';
-    case 'thesis':
-      return 'Thesis';
-    case 'webpage':
-      return 'Web Page';
-    case 'dataset':
-      return 'Dataset';
-    default:
-      return type.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
-  }
-}
+
 
 /**
  * Modern Workspace Engine Library Page
@@ -127,57 +110,25 @@ export function ModernLibraryPage({
     }
   };
 
-  // Direct files upload handler: skips confirmation modal if previously uploaded
-  const handleDirectFilesUpload = async (files: File[]) => {
-    if (!files || files.length === 0) return;
-    const hasUploadedBefore =
-      typeof window !== 'undefined' &&
-      localStorage.getItem('flux_has_uploaded_before') === 'true';
-
-    if (hasUploadedBefore) {
-      void startBatchUpload(files, {
-        scopeId: effectiveScopeId,
-        collectionId: effectiveCollectionId,
-        queryClient,
-        onSuccess: () => {
-          invalidateCollections(queryClient, effectiveScopeId);
-          void queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
-        },
-      });
-      return;
-    }
-
-    openModal('UPLOAD_FILES', {
+  // Shared upload handler — used for both file and folder uploads.
+  // folderName is accepted by the folder variant but not used in the upload logic
+  // (folder structure is implicit in the File.webkitRelativePath metadata).
+  const processUpload = (files: File[]) => {
+    if (!files?.length) return;
+    void startBatchUpload(files, {
+      scopeId: effectiveScopeId,
       collectionId: effectiveCollectionId,
-      initialFiles: files,
+      queryClient,
+      onSuccess: () => {
+        invalidateCollections(queryClient, effectiveScopeId);
+        void queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
+      },
     });
   };
 
-  // Direct folder upload handler: skips confirmation modal if previously uploaded
-  const handleDirectFolderUpload = async (files: File[], folderName: string) => {
-    if (!files || files.length === 0) return;
-    const hasUploadedBefore =
-      typeof window !== 'undefined' &&
-      localStorage.getItem('flux_has_uploaded_before') === 'true';
+  const handleDirectFilesUpload = processUpload;
+  const handleDirectFolderUpload = (files: File[], _folderName: string) => processUpload(files);
 
-    if (hasUploadedBefore) {
-      void startBatchUpload(files, {
-        scopeId: effectiveScopeId,
-        collectionId: effectiveCollectionId,
-        queryClient,
-        onSuccess: () => {
-          invalidateCollections(queryClient, effectiveScopeId);
-          void queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
-        },
-      });
-      return;
-    }
-
-    openModal('UPLOAD_FILES', {
-      collectionId: effectiveCollectionId,
-      initialFiles: files,
-    });
-  };
 
   // Manual reference creation handler
   const handleNewManualItem = async (itemType: string) => {
@@ -190,7 +141,6 @@ export function ModernLibraryPage({
         collectionId: effectiveCollectionId,
       });
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
-      queryClient.invalidateQueries({ queryKey: ['items', effectiveScopeId] });
       if (effectiveCollectionId) {
         queryClient.invalidateQueries({
           queryKey: itemKeys.byCollection(effectiveScopeId, effectiveCollectionId),
@@ -222,27 +172,25 @@ export function ModernLibraryPage({
   const { state: trashState, actions: trashActions } = useTrash(effectiveScopeId);
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
 
-  const handleEmptyTrash = async () => {
-    if (
-      !window.confirm(
-        'Are you sure you want to permanently empty the trash? All items will be permanently deleted and cannot be recovered.',
-      )
-    ) {
-      return;
-    }
-
+  // Opens the confirmation dialog instead of using window.confirm.
+  // The actual deletion is dispatched via onConfirm inside LibraryModals.
+  const handleEmptyTrash = () => {
     if (trashState.trashItems.length === 0) {
       toast.info('Trash is already empty', { id: 'empty-trash' });
       return;
     }
-
-    try {
-      await trashActions.emptyTrash();
-      clearSelection();
-    } catch (err: unknown) {
-      console.error('Failed to empty trash:', err);
-    }
+    openModal('TRASH_CONFIRM', {
+      onConfirm: async () => {
+        try {
+          await trashActions.emptyTrash();
+          clearSelection();
+        } catch (err: unknown) {
+          console.error('Failed to empty trash:', err);
+        }
+      },
+    });
   };
+
 
   const displayTitle =
     title ||
@@ -293,7 +241,9 @@ export function ModernLibraryPage({
       </div>
 
       {/* Inspector Panel (Right side details, metadata, attachments) */}
-      <LibraryInspector scopeId={effectiveScopeId} canEdit={canEdit} />
+      <ErrorBoundary variant="section" featureName="Metadata Inspector">
+        <LibraryInspector scopeId={effectiveScopeId} canEdit={canEdit} />
+      </ErrorBoundary>
 
       {/* Modals (Centralized Dialog Bus) */}
       <LibraryModals scopeId={effectiveScopeId} />

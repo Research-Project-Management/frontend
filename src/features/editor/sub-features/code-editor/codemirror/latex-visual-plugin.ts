@@ -13,12 +13,11 @@ import {
   WidgetType,
   Decoration,
   DecorationSet,
-  ViewPlugin,
-  ViewUpdate,
   EditorView,
 } from '@codemirror/view';
-import { RangeSetBuilder, Range } from '@codemirror/state';
+import { StateField, Extension, EditorState, Range } from '@codemirror/state';
 import { renderMathHtml } from '../../../utils/latex-converter.util';
+import { TableWidget } from './table-visual-widget';
 
 export interface MathPopoverTrigger {
   math: string;
@@ -62,8 +61,8 @@ class MathWidget extends WidgetType {
   override toDOM(view: EditorView): HTMLElement {
     const wrap = document.createElement(this.isDisplay ? 'div' : 'span');
     wrap.className = this.isDisplay
-      ? 'cm-math-widget-display my-3 p-3 bg-muted/40 hover:bg-muted/70 rounded-md border border-border/60 text-center cursor-pointer transition-all hover:border-primary/50 relative group'
-      : 'cm-math-widget-inline px-1.5 py-0.5 mx-0.5 bg-muted/30 hover:bg-muted/60 rounded-sm inline-block cursor-pointer transition-all hover:border-primary/50 border border-transparent hover:border-border';
+      ? 'cm-math-widget-display my-3 p-3 bg-muted/40 hover:bg-muted/70 rounded-md border border-border/60 text-center cursor-pointer transition-all hover:border-[#00853D]/50 relative group'
+      : 'cm-math-widget-inline px-1.5 py-0.5 mx-0.5 bg-muted/30 hover:bg-muted/60 rounded-sm inline-block cursor-pointer transition-all hover:border-[#00853D]/50 border border-transparent hover:border-border';
 
     wrap.title = 'Click to edit LaTeX math formula in-place (Overleaf style)';
     wrap.innerHTML = renderMathHtml(this.math, this.isDisplay);
@@ -143,13 +142,70 @@ class ImageWidget extends WidgetType {
 }
 
 /**
+ * Citation chip widget for \cite{key}
+ */
+class CitationWidget extends WidgetType {
+  constructor(public readonly citeKey: string, public readonly from: number, public readonly to: number) {
+    super();
+  }
+
+  override eq(other: CitationWidget): boolean {
+    return this.citeKey === other.citeKey && this.from === other.from && this.to === other.to;
+  }
+
+  override toDOM(view: EditorView): HTMLElement {
+    const chip = document.createElement('span');
+    chip.className =
+      'cm-citation-chip inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 rounded-sm bg-[#00853D]/10 text-[#00853D] border border-[#00853D]/20 text-xs font-sans font-medium hover:bg-[#00853D]/20 cursor-pointer select-none transition-colors';
+    chip.title = `Citation: ${this.citeKey} (Click to select)`;
+    chip.innerHTML = `<span class="opacity-70 text-[10px]">📖</span><span>[${this.citeKey}]</span>`;
+    chip.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      view.dispatch({
+        selection: { anchor: this.from, head: this.to },
+        scrollIntoView: true,
+      });
+    });
+    return chip;
+  }
+}
+
+/**
+ * Cross-reference chip widget for \ref{key}
+ */
+class RefWidget extends WidgetType {
+  constructor(public readonly refKey: string, public readonly from: number, public readonly to: number) {
+    super();
+  }
+
+  override eq(other: RefWidget): boolean {
+    return this.refKey === other.refKey && this.from === other.from && this.to === other.to;
+  }
+
+  override toDOM(view: EditorView): HTMLElement {
+    const chip = document.createElement('span');
+    chip.className =
+      'cm-ref-chip inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-0.5 rounded-sm bg-muted text-foreground border border-border text-xs font-sans font-medium hover:bg-muted/80 cursor-pointer select-none transition-colors';
+    chip.title = `Cross-Reference: ${this.refKey}`;
+    chip.innerHTML = `<span class="opacity-70 text-[10px]">🏷️</span><span>${this.refKey}</span>`;
+    chip.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      view.dispatch({
+        selection: { anchor: this.from, head: this.to },
+        scrollIntoView: true,
+      });
+    });
+    return chip;
+  }
+}
+
+/**
  * Builds the visual decoration set by scanning the visible document.
  */
-function buildVisualDecorations(view: EditorView): DecorationSet {
-  const builder = new RangeSetBuilder<Decoration>();
-  const doc = view.state.doc;
-
-  // We scan the document text for visual widgets
+function buildVisualDecorations(state: EditorState): DecorationSet {
+  const doc = state.doc;
   const fullText = doc.toString();
 
   interface MatchItem {
@@ -158,7 +214,8 @@ function buildVisualDecorations(view: EditorView): DecorationSet {
     deco: Decoration;
   }
 
-  const items: MatchItem[] = [];
+  const replaceItems: MatchItem[] = [];
+  const lineRanges: Range<Decoration>[] = [];
 
   // 1. Display math: $$ ... $$
   const displayMathRegex = /\$\$([\s\S]*?)\$\$/g;
@@ -167,7 +224,7 @@ function buildVisualDecorations(view: EditorView): DecorationSet {
     const from = dMatch.index;
     const to = from + dMatch[0].length;
     const mathCode = dMatch[1].trim();
-    items.push({
+    replaceItems.push({
       from,
       to,
       deco: Decoration.replace({
@@ -184,7 +241,7 @@ function buildVisualDecorations(view: EditorView): DecorationSet {
     const from = eqMatch.index;
     const to = from + eqMatch[0].length;
     const mathCode = eqMatch[1].trim();
-    items.push({
+    replaceItems.push({
       from,
       to,
       deco: Decoration.replace({
@@ -201,7 +258,7 @@ function buildVisualDecorations(view: EditorView): DecorationSet {
     const from = iMatch.index;
     const to = from + iMatch[0].length;
     const mathCode = iMatch[1];
-    items.push({
+    replaceItems.push({
       from,
       to,
       deco: Decoration.replace({
@@ -217,7 +274,7 @@ function buildVisualDecorations(view: EditorView): DecorationSet {
     const from = imgMatch.index;
     const to = from + imgMatch[0].length;
     const src = imgMatch[1];
-    items.push({
+    replaceItems.push({
       from,
       to,
       deco: Decoration.replace({
@@ -227,61 +284,141 @@ function buildVisualDecorations(view: EditorView): DecorationSet {
     });
   }
 
-  // 5. Headings: \section{Title}
-  const secRegex = /\\section\*?\{([^}]+)\}/g;
-  let secMatch: RegExpExecArray | null;
-  while ((secMatch = secRegex.exec(fullText)) !== null) {
-    const from = secMatch.index;
-    const to = from + secMatch[0].length;
-    const lineObj = doc.lineAt(from);
-    items.push({
-      from: lineObj.from,
-      to: lineObj.from,
-      deco: Decoration.line({
-        attributes: {
-          class:
-            'cm-visual-heading text-xl font-bold text-foreground border-b border-border/40 pb-1 mb-2',
-        },
+  // 5. Tables: \begin{table}... \end{table}
+  const tableRegex = /\\begin\{table\*?\}(?:\[[^\]]*\])?[\s\S]*?\\end\{table\*?\}/g;
+  let tMatch: RegExpExecArray | null;
+  while ((tMatch = tableRegex.exec(fullText)) !== null) {
+    const from = tMatch.index;
+    const to = from + tMatch[0].length;
+    const tableCode = tMatch[0];
+    replaceItems.push({
+      from,
+      to,
+      deco: Decoration.replace({
+        widget: new TableWidget(tableCode, from, to),
+        block: true,
       }),
     });
   }
 
-  // Sort strictly by position (CodeMirror RangeSet requirement: from <= to, sorted ascending)
-  items.sort((a, b) => {
+  // Standalone \begin{tabular}...\end{tabular} (if not already matched inside a table environment)
+  const tabularRegex = /\\begin\{tabular\*?\}(?:\[[^\]]*\])?\{[^}]*\}[\s\S]*?\\end\{tabular\*?\}/g;
+  let tabMatch: RegExpExecArray | null;
+  while ((tabMatch = tabularRegex.exec(fullText)) !== null) {
+    const from = tabMatch.index;
+    const to = from + tabMatch[0].length;
+    const tabularCode = tabMatch[0];
+    const isInsideTable = replaceItems.some((item) => from >= item.from && to <= item.to);
+    if (!isInsideTable) {
+      replaceItems.push({
+        from,
+        to,
+        deco: Decoration.replace({
+          widget: new TableWidget(tabularCode, from, to),
+          block: true,
+        }),
+      });
+    }
+  }
+
+  // 6. Citations: \cite{...}, \citep{...}, \citet{...}
+  const citeRegex = /\\(?:cite|citep|citet|autocite)\{([^}]+)\}/g;
+  let cMatch: RegExpExecArray | null;
+  while ((cMatch = citeRegex.exec(fullText)) !== null) {
+    const from = cMatch.index;
+    const to = from + cMatch[0].length;
+    const citeKey = cMatch[1];
+    replaceItems.push({
+      from,
+      to,
+      deco: Decoration.replace({
+        widget: new CitationWidget(citeKey, from, to),
+      }),
+    });
+  }
+
+  // 7. References: \ref{...}, \eqref{...}
+  const refRegex = /\\(?:ref|eqref|autoref)\{([^}]+)\}/g;
+  let rMatch: RegExpExecArray | null;
+  while ((rMatch = refRegex.exec(fullText)) !== null) {
+    const from = rMatch.index;
+    const to = from + rMatch[0].length;
+    const refKey = rMatch[1];
+    replaceItems.push({
+      from,
+      to,
+      deco: Decoration.replace({
+        widget: new RefWidget(refKey, from, to),
+      }),
+    });
+  }
+
+  // 8. Headings: \section, \subsection, \subsubsection
+  const secRegex = /\\section\*?\{([^}]+)\}/g;
+  let secMatch: RegExpExecArray | null;
+  while ((secMatch = secRegex.exec(fullText)) !== null) {
+    const from = secMatch.index;
+    const lineObj = doc.lineAt(from);
+    lineRanges.push(
+      Decoration.line({
+        attributes: {
+          class:
+            'cm-visual-heading text-xl font-bold text-foreground border-b border-border/40 pb-1 mb-2',
+        },
+      }).range(lineObj.from)
+    );
+  }
+
+  const subsecRegex = /\\subsection\*?\{([^}]+)\}/g;
+  let subMatch: RegExpExecArray | null;
+  while ((subMatch = subsecRegex.exec(fullText)) !== null) {
+    const from = subMatch.index;
+    const lineObj = doc.lineAt(from);
+    lineRanges.push(
+      Decoration.line({
+        attributes: {
+          class: 'cm-visual-subheading text-lg font-semibold text-foreground/90 pb-0.5 mb-1.5',
+        },
+      }).range(lineObj.from)
+    );
+  }
+
+  // Sort replace items strictly by position (from ascending, then to ascending)
+  replaceItems.sort((a, b) => {
     if (a.from !== b.from) return a.from - b.from;
     return a.to - b.to;
   });
 
-  // Filter out any overlapping ranges to avoid RangeSet errors
+  // Filter out any overlapping replace ranges to avoid collision
+  const validReplaceRanges: Range<Decoration>[] = [];
   let lastTo = -1;
-  for (const item of items) {
+  for (const item of replaceItems) {
     if (item.from >= lastTo) {
-      builder.add(item.from, item.to, item.deco);
+      validReplaceRanges.push(item.deco.range(item.from, item.to));
       lastTo = Math.max(item.to, item.from);
     }
   }
 
-  return builder.finish();
+  // Combine line decorations and replace decorations; Decoration.set sorts and handles layers
+  return Decoration.set([...lineRanges, ...validReplaceRanges], true);
 }
 
 /**
- * ViewPlugin powering Overleaf's Visual Mode on CodeMirror 6.
+ * StateField powering Overleaf's Visual Mode on CodeMirror 6.
+ * Using StateField + EditorView.decorations.from is the ONLY supported way in CM6
+ * to provide block decorations without throwing RangeError: Block decorations may not be specified via plugins.
  */
-export const latexVisualPlugin = ViewPlugin.fromClass(
-  class {
-    decorations: DecorationSet;
-
-    constructor(view: EditorView) {
-      this.decorations = buildVisualDecorations(view);
-    }
-
-    update(update: ViewUpdate) {
-      if (update.docChanged || update.viewportChanged) {
-        this.decorations = buildVisualDecorations(update.view);
-      }
-    }
+export const latexVisualField = StateField.define<DecorationSet>({
+  create(state: EditorState): DecorationSet {
+    return buildVisualDecorations(state);
   },
-  {
-    decorations: (v) => v.decorations,
-  }
-);
+  update(decorations: DecorationSet, tr): DecorationSet {
+    if (tr.docChanged) {
+      return buildVisualDecorations(tr.state);
+    }
+    return decorations.map(tr.changes);
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
+
+export const latexVisualPlugin: Extension = [latexVisualField];

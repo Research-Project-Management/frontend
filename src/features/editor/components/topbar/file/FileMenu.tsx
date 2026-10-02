@@ -100,92 +100,92 @@ export default function FileMenu() {
       <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-sm">
         File
       </MenubarTrigger>
-      <MenubarContent className="min-w-48 py-1.5 px-1 bg-popover dark:bg-[#1b2432] border-border dark:border-[#2e3c51] text-foreground dark:text-slate-200 shadow-xl rounded-md z-[9999]">
+      <MenubarContent className="min-w-48 text-xs z-[9999]">
         <MenubarItem
           onClick={handleNewFile}
-          className="px-3 py-1.5 text-xs cursor-pointer rounded-sm hover:bg-accent focus:bg-accent dark:hover:bg-[#253246] dark:focus:bg-[#253246] dark:text-slate-200 font-normal outline-none"
+          className="cursor-pointer"
         >
           New file
         </MenubarItem>
         <MenubarItem
           onClick={handleNewFolder}
-          className="px-3 py-1.5 text-xs cursor-pointer rounded-sm hover:bg-accent focus:bg-accent dark:hover:bg-[#253246] dark:focus:bg-[#253246] dark:text-slate-200 font-normal outline-none"
+          className="cursor-pointer"
         >
           New folder
         </MenubarItem>
         <MenubarItem
           onClick={handleUploadFile}
-          className="px-3 py-1.5 text-xs cursor-pointer rounded-sm hover:bg-accent focus:bg-accent dark:hover:bg-[#253246] dark:focus:bg-[#253246] dark:text-slate-200 font-normal outline-none"
+          className="cursor-pointer"
         >
           Upload file
         </MenubarItem>
         <MenubarItem
           onClick={handleMakeCopy}
-          className="px-3 py-1.5 text-xs cursor-pointer rounded-sm hover:bg-accent focus:bg-accent dark:hover:bg-[#253246] dark:focus:bg-[#253246] dark:text-slate-200 font-normal outline-none"
+          className="cursor-pointer"
         >
           Make a copy
         </MenubarItem>
 
-        <MenubarSeparator className="my-1 border-t border-border/60 dark:border-[#2e3c51]" />
+        <MenubarSeparator />
 
         <MenubarItem
           onClick={toggleHistory}
-          className="px-3 py-1.5 text-xs cursor-pointer rounded-sm hover:bg-accent focus:bg-accent dark:hover:bg-[#253246] dark:focus:bg-[#253246] dark:text-slate-200 font-normal outline-none"
+          className="cursor-pointer"
         >
           Show version history
         </MenubarItem>
         <MenubarItem
           onClick={handleWordCount}
-          className="px-3 py-1.5 text-xs cursor-pointer rounded-sm hover:bg-accent focus:bg-accent dark:hover:bg-[#253246] dark:focus:bg-[#253246] dark:text-slate-200 font-normal outline-none"
+          className="cursor-pointer"
         >
           Word count
         </MenubarItem>
 
-        <MenubarSeparator className="my-1 border-t border-border/60 dark:border-[#2e3c51]" />
+        <MenubarSeparator />
 
         <MenubarItem
           onClick={() => setIsTemplateModalOpen(true)}
-          className="px-3 py-1.5 text-xs cursor-pointer rounded-sm hover:bg-accent focus:bg-accent dark:hover:bg-[#253246] dark:focus:bg-[#253246] dark:text-slate-200 font-normal outline-none"
+          className="cursor-pointer"
         >
           Submit
         </MenubarItem>
 
-        <MenubarSeparator className="my-1 border-t border-border/60 dark:border-[#2e3c51]" />
+        <MenubarSeparator />
 
         <MenubarSub>
-          <MenubarSubTrigger className="px-3 py-1.5 text-xs cursor-pointer rounded-sm hover:bg-accent focus:bg-accent dark:hover:bg-[#253246] dark:focus:bg-[#253246] data-[state=open]:bg-accent dark:data-[state=open]:bg-[#253246] dark:text-slate-200 font-normal outline-none">
+          <MenubarSubTrigger className="cursor-pointer">
             Download
           </MenubarSubTrigger>
-          <MenubarSubContent className="min-w-56 py-1.5 px-1 bg-popover dark:bg-[#1b2432] border-border dark:border-[#2e3c51] text-foreground dark:text-slate-200 shadow-xl rounded-md z-[9999]">
+          <MenubarSubContent className="min-w-56 text-xs z-[9999]">
             <MenubarItem
               onClick={handleDownloadZip}
               disabled={isZipping}
-              className="px-3 py-1.5 text-xs cursor-pointer rounded-sm hover:bg-accent focus:bg-accent dark:hover:bg-[#253246] dark:focus:bg-[#253246] dark:text-slate-200 font-normal outline-none"
+              className="cursor-pointer"
             >
               Download as source (.zip)
             </MenubarItem>
             <MenubarItem
               onClick={handleDownloadPdf}
               disabled={!pdfUrl}
-              className="px-3 py-1.5 text-xs cursor-pointer rounded-sm hover:bg-accent focus:bg-accent dark:hover:bg-[#253246] dark:focus:bg-[#253246] dark:text-slate-200 font-normal outline-none"
+              className="cursor-pointer"
             >
               Download as PDF
             </MenubarItem>
             <MenubarItem
               onClick={handleExportWord}
-              className="px-3 py-1.5 text-xs cursor-pointer rounded-sm hover:bg-accent focus:bg-accent dark:hover:bg-[#253246] dark:focus:bg-[#253246] dark:text-slate-200 font-normal outline-none"
+              className="cursor-pointer"
             >
               Export as Word document (.docx)
             </MenubarItem>
             <MenubarItem
               onClick={handleExportMarkdown}
-              className="px-3 py-1.5 text-xs cursor-pointer rounded-sm hover:bg-accent focus:bg-accent dark:hover:bg-[#253246] dark:focus:bg-[#253246] dark:text-slate-200 font-normal outline-none"
+              className="cursor-pointer"
             >
               Export as Markdown (.md)
             </MenubarItem>
             <MenubarItem
               onClick={handleExportHtml}
-              className="px-3 py-1.5 text-xs cursor-pointer rounded-sm hover:bg-accent focus:bg-accent dark:hover:bg-[#253246] dark:focus:bg-[#253246] dark:text-slate-200 font-normal outline-none"
+              className="cursor-pointer"
             >
               Export as HTML (.html)
             </MenubarItem>
@@ -194,7 +194,7 @@ export default function FileMenu() {
 
         <MenubarItem
           onClick={() => setSettingsPanelOpen(true)}
-          className="px-3 py-1.5 text-xs cursor-pointer rounded-sm hover:bg-accent focus:bg-accent dark:hover:bg-[#253246] dark:focus:bg-[#253246] dark:text-slate-200 font-normal outline-none"
+          className="cursor-pointer"
         >
           Settings
         </MenubarItem>

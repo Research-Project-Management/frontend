@@ -92,7 +92,7 @@ export function useReaderAnnotations(scopeId?: string, attachmentId?: string) {
     queryKey: readerQueryKeys.annotations(scopeId, attachmentId),
     queryFn: () => {
       if (!attachmentId) return [];
-      return readerService.annotations.getByAttachment(attachmentId);
+      return readerService.annotations.getByAttachment(scopeId, attachmentId);
     },
     enabled: Boolean(attachmentId),
     staleTime: 1000 * 30,
@@ -106,7 +106,7 @@ export function useCreateReaderAnnotation(scopeId?: string, attachmentId?: strin
     mutationFn: (dto: CreateAnnotationDto) => {
       const targetAttachmentId = attachmentId || dto.attachmentId;
       if (!targetAttachmentId) throw new Error('Attachment ID is required');
-      return readerService.annotations.create(targetAttachmentId, dto);
+      return readerService.annotations.create(scopeId, targetAttachmentId, dto);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -120,8 +120,11 @@ export function useUpdateReaderAnnotation(scopeId?: string, attachmentId?: strin
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: UpdateAnnotationDto }) =>
-      readerService.annotations.update(id, dto),
+    mutationFn: ({ id, expectedVersion, dto }: { id: string; expectedVersion?: number; dto: UpdateAnnotationDto }) => {
+      const targetAttachmentId = attachmentId || (dto as any).attachmentId;
+      if (!targetAttachmentId) throw new Error('Attachment ID is required');
+      return readerService.annotations.update(scopeId, targetAttachmentId, id, expectedVersion, dto);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: readerQueryKeys.annotations(scopeId, attachmentId),
@@ -134,7 +137,12 @@ export function useDeleteReaderAnnotation(scopeId?: string, attachmentId?: strin
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => readerService.annotations.delete(id),
+    mutationFn: (param: { id: string; expectedVersion?: number } | string) => {
+      const id = typeof param === 'string' ? param : param.id;
+      const expectedVersion = typeof param === 'object' ? param.expectedVersion : undefined;
+      if (!attachmentId) throw new Error('Attachment ID is required');
+      return readerService.annotations.delete(scopeId, attachmentId, id, expectedVersion);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: readerQueryKeys.annotations(scopeId, attachmentId),
@@ -153,7 +161,7 @@ export function useBatchReaderAnnotations(scopeId?: string, attachmentId?: strin
       deletes?: string[];
     }) => {
       if (!attachmentId) throw new Error('attachmentId is required');
-      return readerService.annotations.batch(attachmentId, operations);
+      return readerService.annotations.batch(scopeId, attachmentId, operations);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -399,11 +407,35 @@ export function useRenameReaderAttachment(scopeId?: string, itemId?: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ attachmentId, filename }: { attachmentId: string; filename: string }) =>
-      readerService.attachments.rename(scopeId, attachmentId, filename),
-    onSuccess: () => {
+    mutationFn: ({
+      attachmentId,
+      filename,
+      pattern,
+    }: {
+      attachmentId: string;
+      filename?: string;
+      pattern?: string;
+    }) =>
+      readerService.attachments.rename(scopeId, attachmentId, { filename, pattern }),
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({
         queryKey: readerQueryKeys.attachments(scopeId, itemId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['attachments'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: readerQueryKeys.item(scopeId, itemId),
+      });
+      toast.success('File renamed', {
+        description: res?.newFilename ? `Renamed to "${res.newFilename}"` : undefined,
+        id: 'attachment-rename',
+      });
+    },
+    onError: (err: any) => {
+      toast.error('Failed to rename file', {
+        description: err?.message || 'Please try again.',
+        id: 'attachment-rename',
       });
     },
   });
@@ -559,9 +591,9 @@ export function useRemoveReaderRelation(scopeId?: string, itemId?: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ targetItemId, predicate }: { targetItemId: string; predicate?: string }) => {
+    mutationFn: ({ targetItemId }: { targetItemId: string; predicate?: string }) => {
       if (!itemId) throw new Error('itemId is required');
-      return readerService.relations.remove(scopeId, itemId, targetItemId, predicate);
+      return readerService.relations.remove(scopeId, itemId, targetItemId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -775,7 +807,131 @@ export function useRetraction(scopeId?: string) {
 // ── Ergonomic Aliases Matching Library Inspector Names ───────────────────────
 export const useLibraryItemDetailQuery = useReaderItem;
 export const useUpdateLibraryItemMutation = useUpdateReaderItem;
-export const useAttachments = useReaderAttachments;
+export function useAttachments(
+  scopeIdOrOptions?: string | { scopeId?: string; projectId?: string },
+  itemId?: string,
+) {
+  const scopeId = typeof scopeIdOrOptions === 'string'
+    ? scopeIdOrOptions
+    : (scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId || 'user');
+
+  const queryClient = useQueryClient();
+
+  const attachmentsQuery = useReaderAttachments(scopeId, itemId);
+
+  const addMutation = useMutation({
+    mutationFn: (data: Partial<DocumentAttachment> & { itemId?: string }) => {
+      const targetItemId = data.itemId || itemId;
+      if (!targetItemId) throw new Error('itemId is required');
+      return readerService.attachments.create(scopeId, targetItemId, {
+        filename: data.filename || 'attachment',
+        url: data.url,
+        fileId: data.fileId,
+        contentType: data.mimeType || (data as any).contentType,
+        size: data.size,
+        isPrimary: data.isPrimary,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: readerQueryKeys.attachments(scopeId, itemId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: readerQueryKeys.item(scopeId, itemId),
+      });
+      toast.success('Attachment added', { id: 'reader-attachment-toast' });
+    },
+    onError: (err: any) => {
+      toast.error('Failed to add attachment', {
+        description: err?.message || 'Please try again.',
+        id: 'reader-attachment-toast',
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (attachmentId: string) =>
+      readerService.attachments.delete(scopeId, attachmentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: readerQueryKeys.attachments(scopeId, itemId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: readerQueryKeys.item(scopeId, itemId),
+      });
+      toast.success('Attachment deleted', { id: 'reader-attachment-toast' });
+    },
+    onError: (err: any) => {
+      toast.error('Failed to delete attachment', {
+        description: err?.message || 'Please try again.',
+        id: 'reader-attachment-toast',
+      });
+    },
+  });
+
+  const captureSnapshotMutation = useMutation({
+    mutationFn: (url?: string) => {
+      if (!itemId) throw new Error('itemId is required');
+      return readerService.attachments.captureSnapshot(scopeId, itemId, url);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: readerQueryKeys.attachments(scopeId, itemId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: readerQueryKeys.item(scopeId, itemId),
+      });
+      toast.success('Web Snapshot captured', { id: 'reader-snapshot-toast' });
+    },
+    onError: (err: any) => {
+      toast.error('Failed to capture snapshot', {
+        description: err?.message || 'Please verify the URL is accessible.',
+        id: 'reader-snapshot-toast',
+      });
+    },
+  });
+
+  const setPrimaryMutation = useMutation({
+    mutationFn: (attachmentId: string) => {
+      if (!itemId) throw new Error('itemId is required');
+      return readerService.attachments.setPrimary(scopeId, itemId, attachmentId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: readerQueryKeys.attachments(scopeId, itemId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: readerQueryKeys.item(scopeId, itemId),
+      });
+      toast.success('Set as primary document', { id: 'reader-primary-toast' });
+    },
+    onError: (err: any) => {
+      toast.error('Failed to set primary document', {
+        description: err?.message || 'Please try again.',
+        id: 'reader-primary-toast',
+      });
+    },
+  });
+
+  return {
+    ...attachmentsQuery,
+    attachments: attachmentsQuery.data ?? [],
+    add: addMutation.mutateAsync,
+    remove: deleteMutation.mutateAsync,
+    captureSnapshot: captureSnapshotMutation.mutateAsync,
+    setPrimary: setPrimaryMutation.mutateAsync,
+    isAdding: addMutation.isPending,
+    isDeleting: deleteMutation.isPending,
+    isCapturingSnapshot: captureSnapshotMutation.isPending,
+    isSettingPrimary: setPrimaryMutation.isPending,
+    addAttachment: addMutation.mutateAsync,
+    deleteAttachment: deleteMutation.mutateAsync,
+    setPrimaryAttachment: setPrimaryMutation.mutateAsync,
+  };
+}
+
+export const useItemAttachmentsQuery = useAttachments;
+export const useItemAttachments = useAttachments;
 export const useCreateAttachment = useCreateReaderAttachment;
 export const useDeleteAttachment = useDeleteReaderAttachment;
 export const useSetPrimaryAttachment = useSetPrimaryReaderAttachment;
@@ -792,7 +948,6 @@ export const useTags = useReaderTags;
 export const useItemTags = useReaderItemTags;
 export const useAddTagToItem = useAddTagToReaderItem;
 export const useRemoveTagFromItem = useRemoveTagFromReaderItem;
-export const useRelations = useReaderRelations;
 export const useAddRelation = useAddReaderRelation;
 export const useRemoveRelation = useRemoveReaderRelation;
 export const useCslCitation = useReaderCitation;

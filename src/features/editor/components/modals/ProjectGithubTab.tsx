@@ -13,6 +13,7 @@ import {
   Plus,
   RefreshCw,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useIntegrations } from '@/features/integrations/hooks/use-integrations';
 import { useGithubSync } from '../../hooks/use-github-sync';
 import { GitHubIcon } from '@/shared/components/icons';

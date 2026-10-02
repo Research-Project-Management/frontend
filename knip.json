@@ -1,4 +1,4 @@
-﻿{
+{
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": [
     "src/app/**/{page,layout,template,error,not-found,loading,route,default}.{js,ts,jsx,tsx}",
@@ -10,5 +10,5 @@
   ],
   "project": ["src/**/*.{ts,tsx}"],
   "ignore": ["**/*.d.ts"],
-  "ignoreDependencies": ["tw-animate-css"]
+  "ignoreDependencies": ["tw-animate-css", "postcss-load-config"]
 }

@@ -26,13 +26,15 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
+} from '@/shared/components/ui/dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/select';
+import { Switch } from '@/shared/components/ui/switch';
 import { cn } from '@/shared/lib/utils';
 import {
   useSettingsStore,

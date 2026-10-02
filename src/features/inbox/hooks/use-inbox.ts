@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { io, Socket } from 'socket.io-client';
 import { getEffectiveBaseUrl, getAuthToken } from '@/shared/lib/api';
 import { useAuth } from '@/features/auth/hooks/use-auth';
@@ -265,4 +266,19 @@ export function useInbox(initialCategory: InboxCategory = 'all'): UseInboxReturn
     deleteNotification,
     refresh: fetchNotifications,
   };
+}
+
+/**
+ * Lightweight, cached unread badge count hook for topbars and account menus.
+ * Avoids opening real-time socket connections and fetching 100 items.
+ */
+export function useUnreadNotificationCount() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['notifications', 'unread-count', user?.id],
+    queryFn: () => inboxService.getUnreadCount(),
+    enabled: Boolean(user?.id),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
 }

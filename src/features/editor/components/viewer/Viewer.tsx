@@ -27,7 +27,12 @@ import Surface, { type SurfaceHandle } from './Surface';
 import Logs, { parseLatexLog } from './Logs';
 import Status from './Status';
 import DetachedViewerPlaceholder from './DetachedViewerPlaceholder';
-import PresentationModeModal from './subcomponents/PresentationModeModal';
+import dynamic from 'next/dynamic';
+
+const PresentationModeModal = dynamic(
+  () => import('./subcomponents/PresentationModeModal'),
+  { ssr: false }
+);
 
 import { usePdfZoom } from '../../sub-features/pdf-viewer/hooks/use-pdf-zoom';
 import { usePdfCompiler } from '../../sub-features/compiler/hooks/use-pdf-compiler';
@@ -266,102 +271,107 @@ export default function Viewer() {
 
   return (
     <div className="h-full flex flex-col bg-background select-none relative overflow-hidden">
-      <Toolbar
-        compileStatus={compileStatus}
-        engine={engine}
-        setEngine={setEngine}
-        compileMode={compileMode as 'full' | 'draft'}
-        setCompileMode={handleSetCompileMode}
-        autoCompile={autoCompile}
-        onToggleAutoCompile={handleToggleAutoCompile}
-        onClearCacheAndCompile={handleClearCacheAndCompile}
-        onStopCompilation={handleStopCompilation}
-        onCompile={handleCompile}
-        onForceSync={handleForceSync}
-        scale={scale}
-        autoFit={autoFit}
-        showZoomGroup={showZoomGroup}
-        onToggleAutoFit={handleToggleAutoFit}
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onResetZoom={handleResetZoom}
-        onSetScale={handleSetScale}
-        pageNumber={pageNumber}
-        numPages={numPages}
-        onPrevPage={handlePrevPage}
-        onNextPage={handleNextPage}
-        pdfUrl={pdfUrl}
-        compileLog={compileLog || ''}
-        showLog={showLog}
-        showUtilityGroup={showUtilityGroup}
-        onToggleLog={handleToggleLog}
-        onDownload={handleDownload}
-        onPopout={handlePopoutWindow}
-        isPoppedOut={false}
-        outline={pdfOutline}
-        onJumpToPage={handleJumpToPage}
-        invertColors={invertColors}
-        onToggleInvertColors={handleToggleInvertColors}
-        isSpreadView={pdfSpreadView}
-        onToggleSpreadView={togglePdfSpreadView}
-        onOpenPresentationMode={() => setIsPresentationOpen(true)}
-        errorCount={parsedLog?.errors.length ?? 0}
-        warningCount={parsedLog?.warnings.length ?? 0}
-      />
-
-      <a ref={downloadRef} className="hidden" aria-hidden="true" />
-
-      {/* PDF Viewer Surface */}
-      <div ref={pdfContainerRef} className="flex-1 overflow-hidden relative flex flex-col">
-        <Surface
-          ref={pdfSurfaceRef}
-          pdfUrl={pdfUrl}
-          synctexMap={synctexMapRef.current}
-          scale={scale}
-          scrollMode={true}
-          pageNumber={pageNumber}
-          numPages={numPages}
-          compileStatus={compileStatus}
-          onPageNumberChange={setPageNumber}
-          onNumPagesChange={setNumPages}
-          onDocumentLoadSuccess={onDocumentLoadSuccess}
-          onJumpToSource={handleJumpToSource}
+      {showLog ? (
+        <Logs
+          log={compileLog || ''}
+          onClose={() => setShowLog(false)}
+          onJumpToError={(file, line) =>
+            handleJumpToSource(file || null, line, undefined, undefined, undefined, 'error')
+          }
+          onClearCacheAndCompile={handleClearCacheAndCompile}
           onCompile={handleCompile}
-          invertColors={invertColors}
-          isSpreadView={pdfSpreadView}
         />
-
-        {showLog && compileLog && (
-          <Logs
-            log={compileLog}
-            onClose={() => setShowLog(false)}
-            onJumpToError={(file, line) =>
-              handleJumpToSource(file || null, line, undefined, undefined, undefined, 'error')
-            }
+      ) : (
+        <>
+          <Toolbar
+            compileStatus={compileStatus}
+            engine={engine}
+            setEngine={setEngine}
+            compileMode={compileMode as 'full' | 'draft'}
+            setCompileMode={handleSetCompileMode}
+            autoCompile={autoCompile}
+            onToggleAutoCompile={handleToggleAutoCompile}
             onClearCacheAndCompile={handleClearCacheAndCompile}
+            onStopCompilation={handleStopCompilation}
+            onCompile={handleCompile}
+            onForceSync={handleForceSync}
+            scale={scale}
+            autoFit={autoFit}
+            showZoomGroup={showZoomGroup}
+            onToggleAutoFit={handleToggleAutoFit}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onResetZoom={handleResetZoom}
+            onSetScale={handleSetScale}
+            pageNumber={pageNumber}
+            numPages={numPages}
+            onPrevPage={handlePrevPage}
+            onNextPage={handleNextPage}
+            pdfUrl={pdfUrl}
+            compileLog={compileLog || ''}
+            showLog={showLog}
+            showUtilityGroup={showUtilityGroup}
+            onToggleLog={handleToggleLog}
+            onDownload={handleDownload}
+            onPopout={handlePopoutWindow}
+            isPoppedOut={false}
+            outline={pdfOutline}
+            onJumpToPage={handleJumpToPage}
+            invertColors={invertColors}
+            onToggleInvertColors={handleToggleInvertColors}
+            isSpreadView={pdfSpreadView}
+            onToggleSpreadView={togglePdfSpreadView}
+            onOpenPresentationMode={() => setIsPresentationOpen(true)}
+            errorCount={parsedLog?.errors.length ?? 0}
+            warningCount={parsedLog?.warnings.length ?? 0}
           />
-        )}
-      </div>
 
-      {/* Bottom Status Bar */}
-      <Status
-        compileStatus={compileStatus}
-        lastCompiledAt={lastCompiledAt}
-        pdfUrl={pdfUrl}
-        parsedLog={parsedLog}
-        onToggleLog={handleToggleLog}
-        onJumpToFirstError={handleJumpToFirstError}
-      />
+          <a ref={downloadRef} className="hidden" aria-hidden="true" />
+
+          {/* PDF Viewer Surface */}
+          <div ref={pdfContainerRef} className="flex-1 overflow-hidden relative flex flex-col">
+            <Surface
+              ref={pdfSurfaceRef}
+              pdfUrl={pdfUrl}
+              synctexMap={synctexMapRef.current}
+              scale={scale}
+              scrollMode={true}
+              pageNumber={pageNumber}
+              numPages={numPages}
+              compileStatus={compileStatus}
+              onPageNumberChange={setPageNumber}
+              onNumPagesChange={setNumPages}
+              onDocumentLoadSuccess={onDocumentLoadSuccess}
+              onJumpToSource={handleJumpToSource}
+              onCompile={handleCompile}
+              invertColors={invertColors}
+              isSpreadView={pdfSpreadView}
+            />
+          </div>
+
+          {/* Bottom Status Bar */}
+          <Status
+            compileStatus={compileStatus}
+            lastCompiledAt={lastCompiledAt}
+            pdfUrl={pdfUrl}
+            parsedLog={parsedLog}
+            onToggleLog={handleToggleLog}
+            onJumpToFirstError={handleJumpToFirstError}
+          />
+        </>
+      )}
 
       {/* Presentation Mode Fullscreen Modal (Overleaf Parity) */}
-      <PresentationModeModal
-        isOpen={isPresentationOpen}
-        onClose={() => setIsPresentationOpen(false)}
-        pdfUrl={pdfUrl}
-        initialPage={pageNumber}
-        numPages={numPages}
-        onPageChange={setPageNumber}
-      />
+      {isPresentationOpen && (
+        <PresentationModeModal
+          isOpen={isPresentationOpen}
+          onClose={() => setIsPresentationOpen(false)}
+          pdfUrl={pdfUrl}
+          initialPage={pageNumber}
+          numPages={numPages}
+          onPageChange={setPageNumber}
+        />
+      )}
     </div>
   );
 }

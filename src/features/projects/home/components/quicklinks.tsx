@@ -5,15 +5,24 @@ import { Section } from './layouts/section';
 import { Plus, Globe, MoreVertical, Pencil, ExternalLink, Link2, Trash2, FileText } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
+import dynamic from 'next/dynamic';
 import { useQuicklinks } from '../hooks/use-quicklinks';
-import { QuicklinkModal } from './modals/quicklink-modal';
-import { DeleteModal } from './modals/delete-modal';
+
+const QuicklinkModal = dynamic(
+  () => import('./modals/quicklink-modal').then((m) => m.QuicklinkModal),
+  { ssr: false }
+);
+
+const DeleteModal = dynamic(
+  () => import('./modals/delete-modal').then((m) => m.DeleteModal),
+  { ssr: false }
+);
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/shared/components/ui";
+} from "@/shared/components/ui/dropdown-menu";
 import type { Quicklink } from '../types/home.types';
 
 const getDisplayTitle = (title: string, url: string) => {
@@ -143,31 +152,35 @@ export default function Quicklinks() {
         )}
       </Section>
 
-      <QuicklinkModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        onSubmit={(data) => {
-          if (editLink) {
-            updateQuicklink(editLink.id, data);
-          } else {
-            addQuicklink(data);
-          }
-        }}
-        initialData={editLink || undefined}
-      />
+      {modalOpen && (
+        <QuicklinkModal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          onSubmit={(data) => {
+            if (editLink) {
+              updateQuicklink(editLink.id, data);
+            } else {
+              addQuicklink(data);
+            }
+          }}
+          initialData={editLink || undefined}
+        />
+      )}
 
-      <DeleteModal
-        open={!!deleteLinkId}
-        onOpenChange={(open) => !open && setDeleteLinkId(null)}
-        onConfirm={() => {
-          if (deleteLinkId) {
-            removeQuicklink(deleteLinkId);
-            setDeleteLinkId(null);
-          }
-        }}
-        title="Remove Quicklink"
-        description="Are you sure you want to remove this quicklink? This action cannot be undone."
-      />
+      {deleteLinkId && (
+        <DeleteModal
+          open={!!deleteLinkId}
+          onOpenChange={(open) => !open && setDeleteLinkId(null)}
+          onConfirm={() => {
+            if (deleteLinkId) {
+              removeQuicklink(deleteLinkId);
+              setDeleteLinkId(null);
+            }
+          }}
+          title="Remove Quicklink"
+          description="Are you sure you want to remove this quicklink? This action cannot be undone."
+        />
+      )}
     </>
   );
 }

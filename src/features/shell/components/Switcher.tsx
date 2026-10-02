@@ -12,17 +12,32 @@ import {
   UserPlus,
   Mail,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-  ProjectAvatar,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dropdown-menu';
+import { ProjectAvatar } from '@/shared/components/icons';
 import { resolveFileUrl } from '@/shared/lib/file-client';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
-import { CreateProjectModal } from '@/features/projects/shell/components/project/CreateProjectModal';
-import { ProjectInvitesModal } from '@/features/projects/invitation/components/ProjectInvitesModal';
+
+const CreateProjectModal = dynamic(
+  () =>
+    import('@/features/projects/shell/components/project/CreateProjectModal').then(
+      (m) => m.CreateProjectModal
+    ),
+  { ssr: false }
+);
+
+const ProjectInvitesModal = dynamic(
+  () =>
+    import(
+      '@/features/projects/invitation/components/ProjectInvitesModal'
+    ).then((m) => m.ProjectInvitesModal),
+  { ssr: false }
+);
 import { useMyProjectInvitations } from '@/features/projects/invitation/hooks/use-project-invitations';
 
 export interface DisplayProjectItem {
@@ -57,11 +72,10 @@ function formatProjectRole(
       return 'Contributor';
     case 'reviewer':
     case 'commenter':
-      return 'Reviewer';
     case 'viewer':
-      return 'Viewer';
+      return 'Reviewer';
     default:
-      return 'Member';
+      return 'Contributor';
   }
 }
 
@@ -69,11 +83,11 @@ function resolveMemberRole(
   project: any,
   userId?: string,
 ): DisplayProjectItem['role'] {
-  if (!userId) return 'Member';
+  if (!userId) return 'Contributor';
   if (project.createdById === userId) return 'Owner';
 
   const member = project.members?.find((m: any) => m.userId === userId);
-  if (!member?.role) return 'Member';
+  if (!member?.role) return 'Contributor';
 
   switch (String(member.role).toLowerCase()) {
     case 'owner':
@@ -84,11 +98,10 @@ function resolveMemberRole(
       return 'Contributor';
     case 'reviewer':
     case 'commenter':
-      return 'Reviewer';
     case 'viewer':
-      return 'Viewer';
+      return 'Reviewer';
     default:
-      return 'Member';
+      return 'Contributor';
   }
 }
 
@@ -159,7 +172,7 @@ export function Switcher({
     setStoredActiveId(proj.id);
     try {
       localStorage.setItem(STORAGE_KEY_ACTIVE_PROJECT, proj.id);
-    } catch {}
+    } catch { }
     setIsOpen(false);
     router.push(`/projects/${proj.id}`);
   };
@@ -348,22 +361,26 @@ export function Switcher({
       </DropdownMenu>
 
       {/* ── Create Project Modal ─────────────────────────────────── */}
-      <CreateProjectModal
-        open={isCreateProjectOpen}
-        onOpenChange={setIsCreateProjectOpen}
-        onSuccess={(newProj) => {
-          setIsCreateProjectOpen(false);
-          if (newProj?.id) {
-            router.push(`/projects/${newProj.id}`);
-          }
-        }}
-      />
+      {isCreateProjectOpen && (
+        <CreateProjectModal
+          open={isCreateProjectOpen}
+          onOpenChange={setIsCreateProjectOpen}
+          onSuccess={(newProj) => {
+            setIsCreateProjectOpen(false);
+            if (newProj?.id) {
+              router.push(`/projects/${newProj.id}`);
+            }
+          }}
+        />
+      )}
 
       {/* ── Project Invites Modal ─────────────────────────────────── */}
-      <ProjectInvitesModal
-        open={isProjectInvitesOpen}
-        onOpenChange={setIsProjectInvitesOpen}
-      />
+      {isProjectInvitesOpen && (
+        <ProjectInvitesModal
+          open={isProjectInvitesOpen}
+          onOpenChange={setIsProjectInvitesOpen}
+        />
+      )}
     </>
   );
 }

@@ -10,11 +10,11 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  Button,
-  Input,
-  Label,
-  ProjectAvatar,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
+import { ProjectAvatar } from '@/shared/components/icons';
 import {
   useMyProjectInvitations,
   useAcceptProjectInvitation,

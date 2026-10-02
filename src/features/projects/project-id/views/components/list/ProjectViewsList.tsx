@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Search, Plus } from 'lucide-react';
-import { Button } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
 import { ViewsOutlineIcon } from '@/shared/components/icons';
 import { ProjectViewListItem } from './ProjectViewListItem';
 import type { WorkItemViewItem } from '../../types/view.types';

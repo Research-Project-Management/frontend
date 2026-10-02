@@ -209,25 +209,30 @@ export function cleanSingleFrontendTag(raw: string): string | null {
   return result;
 }
 
+function parseMetadataObject(meta: unknown): Record<string, unknown> {
+  if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
+    return meta as Record<string, unknown>;
+  }
+  if (typeof meta === 'string' && meta.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(meta);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
 export function normalizeTags(
   paper: Partial<Item> | null | undefined,
   maxTags?: number
 ): string[] {
   if (!paper) return [];
 
-  const metadataObj =
-    typeof (paper as any).metadata === 'object' && (paper as any).metadata !== null
-      ? (paper as any).metadata
-      : typeof (paper as any).metadata === 'string' &&
-          (paper as any).metadata.trim().startsWith('{')
-        ? (() => {
-            try {
-              return JSON.parse((paper as any).metadata);
-            } catch {
-              return {};
-            }
-          })()
-        : {};
+  const metadataObj = parseMetadataObject(paper.metadata);
 
   const raw: unknown[] = [
     ...(Array.isArray(paper.tags) ? paper.tags : []),
@@ -298,11 +303,11 @@ export function normalizeNotes(
       };
     }
 
-    const noteObj = note as any;
+    const noteObj = note as Record<string, unknown>;
     const rawContent =
-      noteObj.content ||
-      noteObj.contentMd ||
-      noteObj.note ||
+      (typeof noteObj.content === 'string' ? noteObj.content : '') ||
+      (typeof noteObj.contentMd === 'string' ? noteObj.contentMd : '') ||
+      (typeof noteObj.note === 'string' ? noteObj.note : '') ||
       (typeof noteObj.contentJson === 'string' ? noteObj.contentJson : '') ||
       '';
     const cleanPreview = /<\/?[a-z][\s\S]*>/i.test(rawContent)
@@ -318,18 +323,18 @@ export function normalizeNotes(
         .trim() || '';
 
     const title =
-      noteObj.title ||
+      (typeof noteObj.title === 'string' ? noteObj.title : '') ||
       (firstLine ? (firstLine.length > 80 ? `${firstLine.slice(0, 77)}...` : firstLine) : 'Untitled Note');
 
     return {
-      id: note.id || `note-${index}`,
+      id: (typeof noteObj.id === 'string' ? noteObj.id : '') || `note-${index}`,
       title,
       content: cleanPreview,
-      contentMd: noteObj.contentMd || (noteObj.note ? cleanPreview : rawContent),
+      contentMd: typeof noteObj.contentMd === 'string' ? noteObj.contentMd : (noteObj.note ? cleanPreview : rawContent),
       contentJson: noteObj.contentJson,
-      note: noteObj.note || `<p>${cleanPreview}</p>`,
-      createdAt: (note as Note).createdAt || new Date().toISOString(),
-      updatedAt: (note as Note).updatedAt,
+      note: typeof noteObj.note === 'string' ? noteObj.note : `<p>${cleanPreview}</p>`,
+      createdAt: typeof (note as Note).createdAt === 'string' ? (note as Note).createdAt : new Date().toISOString(),
+      updatedAt: typeof (note as Note).updatedAt === 'string' ? (note as Note).updatedAt : undefined,
     };
   });
 }

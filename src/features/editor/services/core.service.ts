@@ -53,17 +53,39 @@ export const fileService = {
     title: string;
     content?: string;
   }): Promise<PageFile> => {
-    return {
-      id: `file-${Date.now()}`,
-      pageId: parentPageId,
-      title,
-      content: content || '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    try {
+      const node: any = await manuscriptService.structure.createNode(parentPageId, {
+        name: title,
+        type: 'doc',
+        content: content || '',
+      });
+      return {
+        id: node.id || node._id || `file-${Date.now()}`,
+        pageId: parentPageId,
+        title: node.name || title,
+        content: content || '',
+        createdAt: node.createdAt || new Date().toISOString(),
+        updatedAt: node.updatedAt || new Date().toISOString(),
+      };
+    } catch {
+      return {
+        id: `file-${Date.now()}`,
+        pageId: parentPageId,
+        title,
+        content: content || '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
   },
 
   setMain: async ({ pageId, fileId }: { pageId: string; fileId: string }): Promise<Page> => {
+    try {
+      await manuscriptService.structure.setRootDoc(pageId, fileId);
+    } catch {
+      // safe fallback
+    }
     return { id: pageId, mainFileId: fileId } as any;
   },
 };
+

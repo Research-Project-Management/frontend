@@ -41,7 +41,7 @@ function TagItemInput({
         <div className="size-4 shrink-0 flex items-center justify-center">
           <Tag className="size-3.5 text-foreground shrink-0" />
         </div>
-        <span className="flex-1 min-w-0 h-auto text-foreground px-1.5 py-0.5 text-xs font-normal break-words leading-snug select-text flex items-center font-sans">
+        <span className="flex-1 min-w-0 h-auto text-foreground px-1.5 py-0.5 text-12 font-normal break-words leading-snug select-text flex items-center font-sans">
           {tag}
         </span>
       </div>
@@ -80,7 +80,7 @@ function TagItemInput({
             inputRef.current?.blur();
           }
         }}
-        className="flex-1 min-w-0 h-6 bg-transparent text-foreground px-1.5 py-0.5 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-xs font-normal focus:outline-none focus-visible:outline-none font-sans cursor-pointer focus:cursor-text"
+        className="flex-1 min-w-0 h-6 bg-transparent text-foreground px-1.5 py-0.5 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-12 font-normal focus:outline-none focus-visible:outline-none font-sans cursor-pointer focus:cursor-text"
         title={tag}
       />
 
@@ -90,11 +90,11 @@ function TagItemInput({
           e.stopPropagation();
           onRemove(tag);
         }}
-        className="size-5 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer invisible group-hover:visible focus-visible:visible"
+        className="size-6 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer invisible group-hover:visible focus-visible:visible"
         title={`Remove tag "${tag}"`}
         aria-label={`Remove tag "${tag}"`}
       >
-        <MinusCircle className="size-3.5 text-foreground shrink-0" />
+        <MinusCircle className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
       </button>
     </div>
   );
@@ -158,7 +158,7 @@ export default function TagsSection({
   }
 
   return (
-    <div className="flex flex-col gap-1 text-xs select-none font-sans">
+    <div className="flex flex-col gap-1 text-12 select-none font-sans">
       {!hideHeader && (
         <div className="flex items-center justify-between pb-1 px-1.5">
           <h3 className="text-12 font-medium text-foreground">Tags</h3>
@@ -166,7 +166,7 @@ export default function TagsSection({
             <button
               type="button"
               onClick={() => setIsAdding(true)}
-              className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              className="size-5 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
               title="Add tag"
               aria-label="Add tag"
             >
@@ -211,7 +211,7 @@ export default function TagsSection({
                 onCancelAdding?.();
               }
             }}
-            className="flex-1 min-w-0 h-6 bg-background text-foreground px-1.5 py-0.5 rounded-md border border-primary focus:ring-1 focus:ring-primary outline-none text-xs font-normal focus:outline-none focus-visible:outline-none font-sans"
+            className="flex-1 min-w-0 h-6 bg-background text-foreground px-1.5 py-0.5 rounded-md border border-primary focus:ring-1 focus:ring-primary outline-none text-12 font-normal focus:outline-none focus-visible:outline-none font-sans"
           />
           <button
             type="button"
@@ -220,7 +220,7 @@ export default function TagsSection({
               setNewTag('');
               onCancelAdding?.();
             }}
-            className="size-5 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer"
+            className="size-6 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer"
             title="Cancel"
             aria-label="Cancel adding tag"
           >

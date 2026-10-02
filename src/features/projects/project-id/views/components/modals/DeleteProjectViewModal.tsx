@@ -8,8 +8,8 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  Button,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
 import type { WorkItemViewItem } from '../../types/view.types';
 
 export interface DeleteProjectViewModalProps {

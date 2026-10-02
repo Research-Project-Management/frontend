@@ -476,6 +476,7 @@ export type LatexFormatType =
   | 'section'
   | 'subsection'
   | 'subsubsection'
+  | 'paragraph'
   | 'itemize'
   | 'enumerate'
   | 'table'
@@ -560,6 +561,8 @@ export const EditorCommandBus = {
         return EditorCommandBus.wrapSelection(editor, '\\subsection{', '}', 'Subsection Title');
       case 'subsubsection':
         return EditorCommandBus.wrapSelection(editor, '\\subsubsection{', '}', 'Subsubsection Title');
+      case 'paragraph':
+        return EditorCommandBus.wrapSelection(editor, '\\paragraph{', '}', 'Paragraph Heading');
       case 'itemize':
         return EditorCommandBus.insertSnippet(
           editor,

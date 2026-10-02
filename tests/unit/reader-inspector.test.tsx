@@ -4,13 +4,36 @@ import { render, screen, cleanup } from '@testing-library/react';
 import { ReaderInspector } from '@/features/reader/components/inspector';
 import { Panel } from '@/features/reader';
 
-// Mock tanstack query and next
-vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => ({
-    getQueryData: vi.fn(),
-    getQueriesData: vi.fn().mockReturnValue([]),
-  }),
-}));
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { TooltipProvider } from '@/shared/components/ui/tooltip';
+
+const createTestClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
+vi.mock('@/features/reader/data/reader.queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/reader/data/reader.queries')>();
+  return {
+    ...actual,
+    useReaderItem: vi.fn().mockReturnValue({
+      data: {
+        id: 'test-paper-1',
+        title: 'Attention Is All You Need',
+        itemType: 'journalArticle',
+      },
+      isLoading: false,
+    }),
+    useReaderFulltext: vi.fn().mockReturnValue({
+      data: null,
+      isLoading: false,
+    }),
+  };
+});
 
 vi.mock('@/features/library', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/library')>();
@@ -80,12 +103,16 @@ describe('ReaderInspector Cloned Component Parity', () => {
     } as any;
 
     render(
-      <ReaderInspector
-        item={testItem}
-        paper={testItem}
-        scopeId="user"
-        canEdit={true}
-      />
+      <QueryClientProvider client={createTestClient()}>
+        <TooltipProvider>
+          <ReaderInspector
+            item={testItem}
+            paper={testItem}
+            scopeId="user"
+            canEdit={true}
+          />
+        </TooltipProvider>
+      </QueryClientProvider>
     );
 
     // Document Title in InspectorHeader
@@ -106,11 +133,15 @@ describe('ReaderInspector Cloned Component Parity', () => {
     } as any;
 
     render(
-      <Panel
-        item={testItem}
-        paper={testItem}
-        scopeId="user"
-      />
+      <QueryClientProvider client={createTestClient()}>
+        <TooltipProvider>
+          <Panel
+            item={testItem}
+            paper={testItem}
+            scopeId="user"
+          />
+        </TooltipProvider>
+      </QueryClientProvider>
     );
 
     const titleInput = screen.getByRole('textbox', { name: /document title/i });

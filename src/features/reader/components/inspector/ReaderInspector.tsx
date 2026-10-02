@@ -20,15 +20,14 @@ import type { InspectorSectionId } from '../../types/reader.types';
 import { normalizeTags } from '../../utils/reader.util';
 
 /**
- * 8 Inspector Levels counted from bottom icon to top icon:
+ * 7 Inspector Levels counted from bottom icon to top icon:
  * Level 1: 'cite' (1 bar: Citation)
  * Level 2: 'relations' (2 bars: Related, Citation)
  * Level 3: 'tags' (3 bars: Tags, Related, Citation)
  * Level 4: 'collections' (4 bars: Collections, Tags, Related, Citation)
  * Level 5: 'notes' (5 bars: Notes, Collections, Tags, Related, Citation)
  * Level 6: 'files' (6 bars: Attachments, Notes, Collections, Tags, Related, Citation)
- * Level 7: 'abstract' (7 bars: Abstract, Attachments, Notes, Collections, Tags, Related, Citation)
- * Level 8: 'info' (8 bars: All 8 sections)
+ * Level 7: 'info' (7 bars: Details including bibliographic metadata, authors, abstract)
  */
 export const INSPECTOR_LEVELS_FROM_BOTTOM: InspectorSectionId[] = [
   'cite',
@@ -37,7 +36,6 @@ export const INSPECTOR_LEVELS_FROM_BOTTOM: InspectorSectionId[] = [
   'collections',
   'notes',
   'files',
-  'abstract',
   'info',
 ];
 
@@ -48,7 +46,6 @@ import { InspectorTabs } from './InspectorTabs';
 
 import dynamic from 'next/dynamic';
 import InfoSection from './InfoSection';
-import AbstractSection from './AbstractSection';
 const AttachmentsSection = dynamic(() => import('./AttachmentsSection'), {
   ssr: false,
 });
@@ -83,16 +80,16 @@ function InspectorSection({
   onAdd,
   actionSlot,
   children,
-  contentClassName = 'px-3 pt-1.5 pb-2.5',
+  contentClassName = 'pl-3 pr-1.5 pt-1.5 pb-2.5 w-full min-w-0',
   canEdit = true,
 }: InspectorSectionProps) {
   return (
-    <div id={`inspector-section-${id}`} className="group/section border-b border-border/60 last:border-b-0 w-full">
+    <div id={`inspector-section-${id}`} className="group/section border-b border-border/60 last:border-b-0 w-full min-w-0">
       {/* Section Header Bar: Standard h-8 height to synchronize with Table Rows */}
       <div
         onClick={!isExpanded ? onToggleExpand : undefined}
         className={cn(
-          "flex items-center justify-between px-3 h-8 box-border select-none transition-colors w-full",
+          "flex items-center justify-between pl-3 pr-1.5 h-8 box-border select-none transition-colors w-full",
           isExpanded
             ? "bg-transparent"
             : "bg-transparent hover:bg-muted/40 cursor-pointer"
@@ -109,7 +106,7 @@ function InspectorSection({
             {title}
           </span>
           {count !== undefined && count > 0 && (
-            <span className="text-11 font-mono font-medium text-foreground px-1.5 py-0.5 rounded bg-muted">
+            <span className="text-11 font-mono font-medium text-foreground px-1.5 py-0.5 rounded-md bg-muted">
               {count}
             </span>
           )}
@@ -129,7 +126,7 @@ function InspectorSection({
                 }
                 onAdd();
               }}
-              className="size-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              className="size-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
               title={`Add ${title.toLowerCase()}`}
               aria-label={`Add ${title.toLowerCase()}`}
             >
@@ -143,7 +140,7 @@ function InspectorSection({
               e.stopPropagation();
               onToggleExpand();
             }}
-            className="size-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+            className="size-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
             title={isExpanded ? 'Collapse section' : 'Expand section'}
             aria-label={isExpanded ? 'Collapse section' : 'Expand section'}
             aria-expanded={isExpanded}
@@ -160,7 +157,7 @@ function InspectorSection({
 
       {/* Section Content (collapsible) */}
       {isExpanded && (
-        <div id={`section-content-${id}`} className={cn('bg-background', contentClassName)}>
+        <div id={`section-content-${id}`} className={cn('bg-background w-full min-w-0', contentClassName)}>
           {children}
         </div>
       )}
@@ -200,16 +197,16 @@ export function LibraryInspector({
   onNavigateToAnnotation,
 }: LibraryInspectorProps) {
   // Sidebar & View store state
-  const isInspectorOpen = useLibrarySidebarStore((s) => s.isInspectorOpen);
-  const setIsInspectorOpen = useLibrarySidebarStore((s) => s.setIsInspectorOpen);
-  const toggleInspector = useLibrarySidebarStore((s) => s.toggleInspector);
-  const activeInspectorTab = useLibrarySidebarStore((s) => s.activeInspectorTab);
-  const setActiveInspectorTab = useLibrarySidebarStore((s) => s.setActiveInspectorTab);
+  const isInspectorOpen = useReaderSidebarStore((s) => s.isInspectorOpen);
+  const setIsInspectorOpen = useReaderSidebarStore((s) => s.setIsInspectorOpen);
+  const toggleInspector = useReaderSidebarStore((s) => s.toggleInspector);
+  const activeInspectorTab = useReaderSidebarStore((s) => s.activeInspectorTab);
+  const setActiveInspectorTab = useReaderSidebarStore((s) => s.setActiveInspectorTab);
 
-  const activeItemId = useLibraryViewStore((s) => s.activeItemId);
-  const selectOnly = useLibraryViewStore((s) => s.selectOnly);
+  const activeItemId = useReaderViewStore((s) => s.activeItemId);
+  const selectOnly = useReaderViewStore((s) => s.selectOnly);
   const handleSelectPaper = onSelectPaper || selectOnly;
-  const openModal = useLibraryModalStore((s) => s.openModal);
+  const openModal = useReaderModalStore((s) => s.openModal);
   const { width, isDragging, handleMouseDown, setWidth, resetWidth } = useInspectorResize();
 
   const [isMounted, setIsMounted] = useState(false);
@@ -296,17 +293,14 @@ export function LibraryInspector({
       effectiveItem.version;
     const isSilent = Boolean(options?.silent || (payload as any)?.silent);
     updateMutation.mutate({
-      id: effectiveItem.id,
-      payload: payload as any,
-      expectedVersion: typeof version === 'number' ? version : undefined,
-      silent: isSilent,
+      itemId: effectiveItem.id,
+      data: payload as any,
     });
   };
 
   // Collapsible section state: Only "Details" (info) is expanded by default, all others remain collapsed until user interaction
-  const [expandedSections, setExpandedSections] = useState<Record<InspectorSectionId, boolean>>({
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     info: true,
-    abstract: false,
     files: false,
     notes: false,
     collections: false,
@@ -341,8 +335,8 @@ export function LibraryInspector({
   }, []);
 
   // Collections data & actions
-  const { state: colState } = useCollections(targetScope);
-  const collections = useMemo(() => colState?.collections || [], [colState?.collections]);
+  const { data: rawCollections } = useCollections(targetScope);
+  const collections = useMemo(() => (Array.isArray(rawCollections) ? rawCollections : []), [rawCollections]);
 
   const itemCollectionIds = useMemo(() => {
     if (!effectiveItem) return [];
@@ -440,7 +434,7 @@ export function LibraryInspector({
                     title="Details"
                     isExpanded={expandedSections.info}
                     onToggleExpand={() => toggleSection('info')}
-                    contentClassName="px-3 pt-1.5 pb-2.5 flex flex-col gap-1"
+                    contentClassName="pl-3 pr-1 pt-1 pb-2 flex flex-col gap-0.5 w-full min-w-0"
                     canEdit={canEdit}
                   >
                     <InfoSection
@@ -451,26 +445,7 @@ export function LibraryInspector({
                   </InspectorSection>
                 )}
 
-                {/* 2. Abstract (Level 7) */}
-                {visibleSectionIds.has('abstract') && (
-                  <InspectorSection
-                    id="abstract"
-                    title="Abstract"
-                    isExpanded={expandedSections.abstract}
-                    onToggleExpand={() => toggleSection('abstract')}
-                    contentClassName="px-3 pt-1.5 pb-2.5"
-                    canEdit={canEdit}
-                  >
-                    <AbstractSection
-                      paper={effectiveItem}
-                      onUpdatePaper={handleUpdatePaper}
-                      hideHeader
-                      canEdit={canEdit}
-                    />
-                  </InspectorSection>
-                )}
-
-                {/* 3. Attachments (Level 6) */}
+                {/* 2. Attachments (Level 6) */}
                 {visibleSectionIds.has('files') && (
                   <InspectorSection
                     id="files"
@@ -482,7 +457,7 @@ export function LibraryInspector({
                       setExpandedSections((prev) => ({ ...prev, files: true }));
                       attachmentsAddRef.current?.();
                     }}
-                    contentClassName={hasFiles ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
+                    contentClassName={hasFiles ? 'pl-3 pr-1.5 pt-1.5 pb-2.5 flex flex-col gap-2 w-full min-w-0' : 'p-0'}
                     canEdit={canEdit}
                   >
                     <AttachmentsSection
@@ -509,7 +484,7 @@ export function LibraryInspector({
                       setExpandedSections((prev) => ({ ...prev, notes: true }));
                       setIsAddingNote(true);
                     }}
-                    contentClassName={hasNotes ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
+                    contentClassName={hasNotes ? 'pl-3 pr-1.5 pt-1.5 pb-2.5 flex flex-col gap-2 w-full min-w-0' : 'p-0'}
                     canEdit={canEdit}
                   >
                     <NotesSection
@@ -538,7 +513,7 @@ export function LibraryInspector({
                       setExpandedSections((prev) => ({ ...prev, collections: true }));
                       openModal('CREATE_COLLECTION');
                     }}
-                    contentClassName="px-3 pt-1.5 pb-2.5 flex flex-col gap-1"
+                    contentClassName="pl-3 pr-1.5 pt-1.5 pb-2.5 flex flex-col gap-1 w-full min-w-0"
                     canEdit={canEdit}
                   >
                     <CollectionsSection
@@ -562,7 +537,7 @@ export function LibraryInspector({
                       setExpandedSections((prev) => ({ ...prev, tags: true }));
                       setIsAddingTag(true);
                     }}
-                    contentClassName={hasTags ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-1' : 'p-0'}
+                    contentClassName={hasTags ? 'pl-3 pr-1.5 pt-1.5 pb-2.5 flex flex-col gap-1 w-full min-w-0' : 'p-0'}
                     canEdit={canEdit}
                   >
                     <TagsSection
@@ -586,7 +561,7 @@ export function LibraryInspector({
                     onAdd={() => {
                       handleAddRelatedOpenChange(true);
                     }}
-                    contentClassName={relatedItems.length > 0 ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
+                    contentClassName={relatedItems.length > 0 ? 'pl-3 pr-1.5 pt-1.5 pb-2.5 flex flex-col gap-2 w-full min-w-0' : 'p-0'}
                     canEdit={canEdit}
                   >
                     <RelatedSection
@@ -608,7 +583,7 @@ export function LibraryInspector({
                     title="Citation"
                     isExpanded={expandedSections.cite}
                     onToggleExpand={() => toggleSection('cite')}
-                    contentClassName="px-3 pt-1.5 pb-2.5 flex flex-col gap-2"
+                    contentClassName="pl-3 pr-1.5 pt-1.5 pb-2.5 flex flex-col gap-2 w-full min-w-0"
                     canEdit={canEdit}
                   >
                     <CiteSection
@@ -749,4 +724,5 @@ export function LibraryInspector({
 }
 
 export const ReaderInspector = LibraryInspector;
+export type ReaderInspectorProps = LibraryInspectorProps;
 export default ReaderInspector;

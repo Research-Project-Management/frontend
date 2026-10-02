@@ -17,18 +17,20 @@ import {
   Check,
   RotateCcw,
 } from 'lucide-react';
+import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import {
-  Button,
-  Skeleton,
   Avatar,
   AvatarFallback,
   AvatarImage,
+} from '@/shared/components/ui/avatar';
+import { ProjectAvatar } from '@/shared/components/icons';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ProjectAvatar,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dropdown-menu';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { AnalyticsService } from '../services/analytics.service';
 import type { AnalyticsPageProps } from '../types/analytics.types';

@@ -248,6 +248,30 @@ export const StorageService = {
     }
     return apiPut(`/api/files/${itemId}/move`, { parentId: targetFolderId });
   },
+
+  reorderItem: async (itemId: string, sortOrder: number, projectId?: string) => {
+    if (projectId) {
+      try {
+        return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}/reorder`, {
+          sortOrder,
+        });
+      } catch {}
+    }
+    return null;
+  },
+
+  setRootDoc: async (nodeId: string, projectId: string) => {
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc/${nodeId}`, {});
+  },
+
+  getRootDoc: async (projectId: string) => {
+    try {
+      return await apiGet<any>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc`);
+    } catch {
+      return null;
+    }
+  },
 };
 
 export const EditorStorageService = StorageService;
+

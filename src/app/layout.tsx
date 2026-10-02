@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, IBM_Plex_Mono } from 'next/font/google';
-import { Toaster } from "@/shared/components/ui";
+import { Toaster } from "@/shared/components/ui/sonner";
 import '@/shared/styles/globals.css';
 import Providers from './providers';
 
@@ -45,18 +45,16 @@ export default function RootLayout({
       className={`${inter.variable} ${ibmPlexMono.variable}`}
       suppressHydrationWarning
     >
-      <head>
-        <script
-          id="flux-theme-init"
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('flux-theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme:dark)').matches);if(d){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}}catch(e){}})();`,
-          }}
-        />
-      </head>
       <body
         className="font-sans antialiased bg-background text-foreground min-h-dvh flex flex-col"
         suppressHydrationWarning
       >
+        <script
+          id="flux-theme-init"
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('flux-theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme:dark)').matches);if(d){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')};}catch(e){}})();`,
+          }}
+        />
         <Toaster />
         <Providers>{children}</Providers>
       </body>

@@ -74,7 +74,7 @@ export default function RawLogModal({
               <Terminal className="size-4" />
             </div>
             <div>
-              <h2 id="raw-log-title" className="text-sm font-semibold text-foreground">
+              <h2 id="raw-log-title" className="text-lg font-semibold text-foreground">
                 LaTeX Compilation Raw Logs
               </h2>
               <p className="text-xs text-muted-foreground">

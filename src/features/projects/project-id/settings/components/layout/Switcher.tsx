@@ -4,8 +4,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Search, ChevronsUpDown, X } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
-import { useClickOutside, useHotkeys } from "@/shared/hooks";
-import { ProjectAvatar } from "@/shared/components/ui";
+import { useClickOutside } from "@/shared/hooks/use-click-outside";
+import { useHotkeys } from "@/shared/hooks/use-hotkeys";
+import { ProjectAvatar } from "@/shared/components/icons";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

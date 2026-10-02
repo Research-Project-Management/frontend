@@ -97,6 +97,13 @@ export const itemTagRelationSchema = z.object({
   assignedAt: z.string().optional(),
 });
 
+export const itemMetaSchema = z.object({
+  creatorSummary: z.string().optional(),
+  parsedDate: z.string().optional(),
+  numChildren: z.number().optional(),
+  numTags: z.number().optional(),
+});
+
 export const itemSchema = z.object({
   id: z.string().optional().default(''),
   title: z.string().optional().default('Untitled Item'),
@@ -232,6 +239,20 @@ export const itemSchema = z.object({
   projectId: z.string().nullish(),
   scopeId: z.string().nullish(),
   deletedAt: z.string().nullish(),
+  isDeleted: z.boolean().optional().default(false),
+  fields: z.record(z.string(), z.unknown()).optional().default({}),
+  metadata: z.record(z.string(), z.unknown()).nullish(),
+  meta: itemMetaSchema.optional(),
+  authority: z.string().optional(),
+  number: z.string().optional(),
+  bibtex: z.string().optional(),
+  noticeUrl: z.string().optional(),
+  retractionReason: z.string().optional(),
+  reason: z.string().optional(),
+  retractionDate: z.string().optional(),
+  isPending: z.boolean().optional(),
+  files: z.array(attachmentSchema).optional(),
+  silent: z.boolean().optional(),
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
   lastReadAt: z.string().nullish(),
@@ -262,6 +283,7 @@ export const createItemSchema = itemSchema.partial().extend({
 
 export const updateItemSchema = itemSchema.partial().extend({
   expectedVersion: z.number().optional(),
+  silent: z.boolean().optional(),
 });
 
 export const typeConversionPreviewSchema = z.object({
@@ -307,10 +329,11 @@ export const paginatedItemsResponseSchema = z.object({
   items: z.array(itemSchema),
   papers: z.array(itemSchema).optional(),
   pagination: cursorPaginationMetaSchema.optional(),
-  meta: cursorPaginationMetaSchema.optional(),
+  meta: z.union([cursorPaginationMetaSchema, itemMetaSchema, z.record(z.string(), z.unknown())]).optional(),
   total: z.number().optional(),
 });
 
+export type ItemMeta = z.infer<typeof itemMetaSchema>;
 export type User = z.infer<typeof userSchema>;
 export type CreatorCredit = z.infer<typeof creatorCreditSchema>;
 export type ContributorRelation = z.infer<typeof contributorRelationSchema>;

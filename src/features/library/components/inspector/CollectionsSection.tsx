@@ -23,7 +23,7 @@ export default function CollectionsSection({
   hideHeader = false,
   canEdit = true,
 }: CollectionsSectionProps) {
-  const effectiveScope = scopeId || projectId || (paper as any)?.projectId || 'user';
+  const effectiveScope = scopeId || projectId || paper?.projectId || 'user';
   const { actions } = useItems({ scopeId: effectiveScope });
   const { updatePaper } = actions;
   const { state: colState } = useCollections(effectiveScope);

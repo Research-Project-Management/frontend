@@ -44,8 +44,13 @@ export function LibrarySidebar() {
   const router = useRouter();
   const id = useId();
 
-  const { activeScope, setActiveScope, isOpen, setIsOpen, width, setWidth, toggle } =
-    useLibrarySidebarStore();
+  const activeScope = useLibrarySidebarStore((s) => s.activeScope);
+  const setActiveScope = useLibrarySidebarStore((s) => s.setActiveScope);
+  const isOpen = useLibrarySidebarStore((s) => s.isOpen);
+  const setIsOpen = useLibrarySidebarStore((s) => s.setIsOpen);
+  const width = useLibrarySidebarStore((s) => s.width);
+  const setWidth = useLibrarySidebarStore((s) => s.setWidth);
+  const toggle = useLibrarySidebarStore((s) => s.toggle);
   const effectiveScopeId = activeScope.type === 'project' ? activeScope.id : 'user';
 
   const personalCollectionService = useCollections('user');
@@ -114,8 +119,14 @@ export function LibrarySidebar() {
   const unfiledCount = countsData?.unfiled ?? 0;
   const starredCount = countsData?.starred ?? 0;
   const duplicateCount = useMemo(() => {
-    const data = duplicateData as any;
-    return data?.groups?.length || data?.duplicateGroups?.length || 0;
+    if (!duplicateData) return 0;
+    if (Array.isArray(duplicateData)) return duplicateData.length;
+    if (typeof duplicateData === 'object') {
+      const obj = duplicateData as Record<string, unknown>;
+      if (Array.isArray(obj.groups)) return obj.groups.length;
+      if (Array.isArray(obj.duplicateGroups)) return obj.duplicateGroups.length;
+    }
+    return 0;
   }, [duplicateData]);
 
   const systemStats = useMemo(

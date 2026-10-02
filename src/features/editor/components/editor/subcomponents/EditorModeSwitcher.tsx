@@ -4,20 +4,25 @@ import React from 'react';
 import {
   PenLine,
   MessageSquareQuote,
-  ChevronDown,
   Check,
   Lock,
 } from 'lucide-react';
+import {
+  OverleafPenIcon,
+  OverleafCaretDownIcon,
+} from '@/features/editor/sub-features/code-editor/components/OverleafToolbarIcons';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+} from '@/shared/components/ui/dropdown-menu';
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { useSettingsStore } from '@/features/editor/store';
 
@@ -41,31 +46,19 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
     <button
       type="button"
       className={cn(
-        'inline-flex items-center gap-1.5 h-6 px-2 rounded-sm text-xs font-medium transition-colors cursor-pointer outline-none select-none border',
-        reviewMode
-          ? 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/15'
-          : 'bg-muted/60 text-foreground/80 border-border hover:bg-muted hover:text-foreground',
+        'inline-flex items-center justify-center gap-1 h-7 px-1.5 rounded-sm text-xs font-medium transition-colors cursor-pointer outline-none select-none text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95',
+        reviewMode && 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/40 hover:bg-amber-500/20',
         isReviewerOnly && 'cursor-default opacity-90',
         className,
       )}
       aria-label={`Editor Mode: ${reviewMode ? 'Reviewing' : 'Editing'}`}
+      title={reviewMode ? 'Reviewing mode' : 'Editing mode'}
     >
-      {reviewMode ? (
-        <>
-          <MessageSquareQuote className="size-3 shrink-0 text-amber-600 dark:text-amber-400" />
-          <span className="font-semibold">Reviewing</span>
-          {isReviewerOnly ? (
-            <Lock className="size-2.5 shrink-0 text-amber-600/70 dark:text-amber-400/70 ml-0.5" />
-          ) : (
-            <ChevronDown className="size-3 shrink-0 opacity-60 ml-0.5" />
-          )}
-        </>
+      <OverleafPenIcon className={cn('size-3.5 shrink-0', reviewMode ? 'text-amber-500 dark:text-amber-400' : 'text-foreground')} />
+      {isReviewerOnly ? (
+        <Lock className="size-2.5 shrink-0 text-amber-400" />
       ) : (
-        <>
-          <PenLine className="size-3 shrink-0 text-foreground/70" />
-          <span className="hidden md:inline">Editing</span>
-          <ChevronDown className="size-3 shrink-0 opacity-60 ml-0.5" />
-        </>
+        <OverleafCaretDownIcon className="h-2 w-auto opacity-70 ml-0.5 shrink-0" />
       )}
     </button>
   );
@@ -84,48 +77,47 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{triggerButton}</DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 text-xs p-1 z-[9999] rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200">
+      <DropdownMenuContent
+        align="end"
+        className="w-56 p-1.5 z-[9999] rounded-lg border border-border bg-popover text-popover-foreground shadow-xl"
+      >
         <DropdownMenuItem
           onClick={() => onSelectMode('editing')}
           className={cn(
-            'flex items-start gap-2.5 py-1.5 px-2 cursor-pointer rounded-sm',
-            !reviewMode && 'bg-accent font-medium text-accent-foreground',
+            'flex items-start gap-2.5 p-2 rounded-md cursor-pointer transition-colors outline-none',
+            !reviewMode
+              ? 'bg-[#00853D] text-white focus:bg-[#00853D] focus:text-white'
+              : 'hover:bg-muted text-foreground/90',
           )}
         >
-          <PenLine className="size-3.5 mt-0.5 shrink-0 text-foreground/70" />
+          <PenLine className={cn('size-4 mt-0.5 shrink-0', !reviewMode ? 'text-white' : 'text-muted-foreground')} />
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between">
-              <span className="font-medium">Editing</span>
-              {!reviewMode && <Check className="size-3 shrink-0 text-primary" />}
+            <div className={cn('font-semibold text-xs leading-none', !reviewMode ? 'text-white' : 'text-foreground')}>
+              Editing
             </div>
-            <p className="text-11 text-muted-foreground font-normal leading-tight mt-0.5">
-              Direct edits
-            </p>
+            <div className={cn('text-11 leading-tight mt-1', !reviewMode ? 'text-white/80' : 'text-muted-foreground')}>
+              Edit content directly
+            </div>
           </div>
         </DropdownMenuItem>
-
-        <DropdownMenuSeparator className="my-1" />
 
         <DropdownMenuItem
           onClick={() => onSelectMode('reviewing')}
           className={cn(
-            'flex items-start gap-2.5 py-1.5 px-2 cursor-pointer rounded-sm',
-            reviewMode && 'bg-amber-500/10 text-amber-900 dark:text-amber-200 font-medium',
+            'flex items-start gap-2.5 p-2 mt-1 rounded-md cursor-pointer transition-colors outline-none',
+            reviewMode
+              ? 'bg-[#00853D] text-white focus:bg-[#00853D] focus:text-white'
+              : 'hover:bg-muted text-foreground/90',
           )}
         >
-          <MessageSquareQuote className="size-3.5 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <MessageSquareQuote className={cn('size-4 mt-0.5 shrink-0', reviewMode ? 'text-white' : 'text-muted-foreground')} />
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-amber-800 dark:text-amber-300">
-                Reviewing
-              </span>
-              {reviewMode && (
-                <Check className="size-3 shrink-0 text-amber-600 dark:text-amber-400" />
-              )}
+            <div className={cn('font-semibold text-xs leading-none', reviewMode ? 'text-white' : 'text-foreground')}>
+              Reviewing
             </div>
-            <p className="text-11 text-muted-foreground font-normal leading-tight mt-0.5">
-              Track changes (Suggestions)
-            </p>
+            <div className={cn('text-11 leading-tight mt-1', reviewMode ? 'text-white/80' : 'text-muted-foreground')}>
+              Edits become suggestions
+            </div>
           </div>
         </DropdownMenuItem>
 

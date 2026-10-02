@@ -1,8 +1,8 @@
 /**
  * Features / Library - Public API
  *
- * This is the ONLY entry point that external features (reader, projects, etc.)
- * and app routes are permitted to import from.
+ * This is the canonical entry point that external features (reader, projects, etc.)
+ * and app routes import from.
  */
 
 // Pages (for Next.js App Router)
@@ -14,61 +14,16 @@ export {
   RecentlyReadPage,
   UnfiledPage,
 } from './pages';
+
+// Aliased Layout Components
 export { LibrarySidebar as Sidebar, LibrarySidebar } from './components';
 export { LibraryTopbar as Topbar, LibraryTopbar } from './components';
 
-// Types
+// Architecture Layers: Types, Store, Data, Domain, Components, Utils, Hooks
 export * from './types';
-
-// Architecture Layers: Store, Data, Domain, Components, Utils
 export * from './store';
 export * from './data';
 export * from './domain';
 export * from './components';
 export * from './utils';
 export * from './hooks/use-quick-copy';
-
-// Data Access Layer (Queries, Services, Centralized Query Keys)
-export {
-  // Queries
-  useItems,
-  useViewItems,
-  useCollections,
-  useAttachments,
-  useRenameAttachment,
-  useNotes,
-  useRelations,
-  useDuplicateGroups,
-  useRetraction,
-  useSavedSearches,
-  useConversion,
-  useItemTypeConversion,
-  // Services
-  ItemService,
-  ItemsService,
-  CollectionService,
-  ExportService,
-  downloadAnnotatedPdf,
-  uploadLibraryFile,
-  fetchPdfBlob,
-  libraryService,
-  LibraryService,
-  LIBRARY_API_BASE,
-} from './data';
-
-// Schemas & Types
-export { ALL_ITEM_TYPES_FLAT } from './types';
-
-// Utilities & Domain
-export {
-  normalizeNotes,
-  normalizeTags,
-  getPaperFileUrl,
-  getPaperCitationKey,
-  cleanDoi,
-} from './domain';
-
-// Modals (exported for Reader integration and external features)
-export { default as CreateCollectionModal } from './components/modals/CreateCollectionModal';
-export { default as DeleteModal, type DeleteModalConfig } from './components/modals/DeleteModal';
-

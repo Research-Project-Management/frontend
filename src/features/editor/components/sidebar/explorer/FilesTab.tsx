@@ -36,8 +36,18 @@ import {
   usePageActions,
   useFileActions,
 } from '@/features/editor/hooks/use-core';
-import DeletedFilesModal from '@/features/editor/components/modals/DeletedFilesModal';
-import AddFilesModal, { type AddFilesTab } from '@/features/editor/components/modals/AddFilesModal';
+import dynamic from 'next/dynamic';
+import type { AddFilesTab } from '@/features/editor/components/modals/AddFilesModal';
+
+const AddFilesModal = dynamic(
+  () => import('@/features/editor/components/modals/AddFilesModal'),
+  { ssr: false }
+);
+
+const DeletedFilesModal = dynamic(
+  () => import('@/features/editor/components/modals/DeletedFilesModal'),
+  { ssr: false }
+);
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/services/storage.service';
 
@@ -660,20 +670,24 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         onConfirm={handleConfirmUpload}
       />
 
-      <AddFilesModal
-        open={isAddFilesModalOpen}
-        onOpenChange={setIsAddFilesModalOpen}
-        defaultTab={addFilesTab}
-        parentPageId={parentPageId}
-        projectId={projectId}
-        onPickItems={handleAddFilesPick}
-      />
+      {isAddFilesModalOpen && (
+        <AddFilesModal
+          open={isAddFilesModalOpen}
+          onOpenChange={setIsAddFilesModalOpen}
+          defaultTab={addFilesTab}
+          parentPageId={parentPageId}
+          projectId={projectId}
+          onPickItems={handleAddFilesPick}
+        />
+      )}
 
-      <DeletedFilesModal
-        open={isDeletedFilesModalOpen}
-        onOpenChange={setIsDeletedFilesModalOpen}
-        pageId={pageId}
-      />
+      {isDeletedFilesModalOpen && (
+        <DeletedFilesModal
+          open={isDeletedFilesModalOpen}
+          onOpenChange={setIsDeletedFilesModalOpen}
+          pageId={pageId}
+        />
+      )}
     </>
   );
 });

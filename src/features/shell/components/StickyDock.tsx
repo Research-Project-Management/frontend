@@ -13,10 +13,12 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
+} from '@/shared/components/ui/dialog';
+import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { stripHtml } from '@/features/projects/stickies/utils/sticky.utils';
 import type { StickiesEditorHandle } from '@/features/projects/stickies/components/card/Content';

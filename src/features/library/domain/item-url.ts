@@ -68,10 +68,11 @@ export function getPaperFileUrl(
   }
 
   // 2. Direct fileId on paper or paper.metadata
+  const metaObj = typeof paper.metadata === 'object' && paper.metadata !== null ? (paper.metadata as Record<string, unknown>) : undefined;
   const resolvedDirectFileId =
     paper.fileId ||
-    (paper as any)?.metadata?.fileId ||
-    (paper as any)?.metadata?.file_id;
+    (typeof metaObj?.fileId === 'string' ? metaObj.fileId : undefined) ||
+    (typeof metaObj?.file_id === 'string' ? metaObj.file_id : undefined);
   if (resolvedDirectFileId) {
     return `/api/v1/library/files/${encodeURIComponent(resolvedDirectFileId)}/content`;
   }

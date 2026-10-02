@@ -1,12 +1,9 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  UploadCloud,
-  FileText,
-} from 'lucide-react';
+import { UploadCloud } from 'lucide-react';
 
 import {
   Dialog,
@@ -14,22 +11,20 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  Button,
+} from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/select';
 
 import { useCollectionsQuery } from '../../data';
 import { useLibrarySidebarStore, useProcessModalStore } from '../../store';
 import type { Collection } from '../../types';
-
-export interface StagedUploadItem {
-  id: string;
-  file: File;
-}
+import { cn } from '@/shared/lib/utils';
 
 export interface UploadFilesModalProps {
   open: boolean;
@@ -38,26 +33,6 @@ export interface UploadFilesModalProps {
   defaultCollectionId?: string;
   initialFiles?: File[];
   onSuccess?: () => void;
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function getFileTypeBadge(filename: string) {
-  const lower = filename.toLowerCase();
-  let label = 'FILE';
-  if (lower.endsWith('.pdf')) label = 'PDF';
-  else if (lower.endsWith('.bib') || lower.endsWith('.bibtex')) label = 'BIB';
-  else if (lower.endsWith('.ris')) label = 'RIS';
-
-  return (
-    <span className="px-1.5 py-0.5 rounded text-10 font-medium bg-muted text-muted-foreground border border-border/70 shrink-0 font-mono">
-      {label}
-    </span>
-  );
 }
 
 export default function UploadFilesModal({
@@ -82,7 +57,6 @@ export default function UploadFilesModal({
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>(() => {
     return defaultCollectionId || routeParams?.collectionId || '';
   });
-  const [items, setItems] = useState<StagedUploadItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
   // Sync selected collection when modal opens or collections change
@@ -97,43 +71,34 @@ export default function UploadFilesModal({
     }
   }, [open, defaultCollectionId, routeParams?.collectionId, collections]);
 
-  const addFilesToQueue = useCallback((files: FileList | File[]) => {
-    const fileArray = Array.from(files);
-    if (fileArray.length === 0) return;
+  // Direct upload handler: closes modal and triggers ProcessModal directly
+  const handleUploadFiles = useCallback(
+    (files: FileList | File[]) => {
+      const fileArray = Array.from(files);
+      if (fileArray.length === 0) return;
 
-    setItems((prev) => {
-      const existingNames = new Set(prev.map((i) => i.file.name + i.file.size));
-      const newItems: StagedUploadItem[] = [];
+      const targetCollection = selectedCollectionId || undefined;
 
-      for (const file of fileArray) {
-        const key = file.name + file.size;
-        if (!existingNames.has(key)) {
-          newItems.push({
-            id: `staged-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-            file,
-          });
-          existingNames.add(key);
-        }
-      }
+      // Close upload modal immediately
+      onOpenChange(false);
 
-      return [...prev, ...newItems];
-    });
-  }, []);
+      // Trigger ProcessModal & background batch upload
+      void startBatchUpload(fileArray, {
+        scopeId,
+        collectionId: targetCollection,
+        queryClient,
+        onSuccess,
+      });
+    },
+    [selectedCollectionId, onOpenChange, startBatchUpload, scopeId, queryClient, onSuccess],
+  );
 
-  // Append initial files if provided when opening modal
+  // If initial files were provided when opening modal, immediately upload them
   useEffect(() => {
     if (open && initialFiles.length > 0) {
-      addFilesToQueue(initialFiles);
+      handleUploadFiles(initialFiles);
     }
-  }, [open, initialFiles, addFilesToQueue]);
-
-  // Reset items when modal closes
-  useEffect(() => {
-    if (!open) {
-      setItems([]);
-      setIsDragging(false);
-    }
-  }, [open]);
+  }, [open, initialFiles, handleUploadFiles]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -153,53 +118,21 @@ export default function UploadFilesModal({
     setIsDragging(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      addFilesToQueue(e.dataTransfer.files);
+      handleUploadFiles(e.dataTransfer.files);
     }
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      addFilesToQueue(e.target.files);
+      handleUploadFiles(e.target.files);
       e.target.value = '';
     }
-  };
-
-  const totalBytes = useMemo(() => {
-    return items.reduce((acc, it) => acc + it.file.size, 0);
-  }, [items]);
-
-  // Submit staged files: close Upload modal & initiate background batch processing
-  const handleStartUpload = () => {
-    if (items.length === 0) return;
-    const filesToUpload = items.map((i) => i.file);
-    const targetCollection = selectedCollectionId || undefined;
-
-    // Save flag that user has uploaded before to bypass future confirmation modals
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('flux_has_uploaded_before', 'true');
-      } catch {
-        // Ignore quota/private browsing errors
-      }
-    }
-
-    // Close upload modal immediately and reset staging state
-    onOpenChange(false);
-    setItems([]);
-
-    // Trigger separate ProcessModal & background worker
-    void startBatchUpload(filesToUpload, {
-      scopeId,
-      collectionId: targetCollection,
-      queryClient,
-      onSuccess,
-    });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-[540px] max-h-[85vh] flex flex-col p-6 overflow-hidden gap-4 rounded-lg border border-border bg-background shadow-raised-200"
+        className="sm:max-w-[480px] flex flex-col p-6 overflow-hidden gap-4 rounded-lg border border-border bg-background shadow-raised-200"
       >
         <DialogHeader className="p-0 shrink-0 text-left">
           <DialogTitle className="text-15 font-semibold text-foreground tracking-tight">
@@ -210,7 +143,7 @@ export default function UploadFilesModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3.5 min-h-0 flex-1 overflow-y-auto pr-0.5">
+        <div className="space-y-4 min-h-0 flex-1">
           {/* Target Collection Selector */}
           <div className="flex items-center gap-2.5 text-12">
             <span className="text-muted-foreground font-medium shrink-0">
@@ -245,13 +178,12 @@ export default function UploadFilesModal({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border border-dashed rounded-lg transition-colors text-center cursor-pointer select-none ${
-              items.length > 0 ? 'py-4 px-4' : 'py-7 px-6'
-            } ${
+            className={cn(
+              'border border-dashed rounded-lg transition-all text-center cursor-pointer select-none py-10 px-6',
               isDragging
                 ? 'border-primary bg-primary/5 ring-2 ring-primary/20 scale-[0.99]'
-                : 'border-border/80 hover:border-muted-foreground/60 hover:bg-muted/20'
-            }`}
+                : 'border-border/80 hover:border-muted-foreground/60 hover:bg-muted/20',
+            )}
           >
             <input
               ref={fileInputRef}
@@ -261,9 +193,9 @@ export default function UploadFilesModal({
               className="hidden"
               onChange={handleFileInputChange}
             />
-            <div className="flex flex-col items-center justify-center gap-2">
+            <div className="flex flex-col items-center justify-center gap-2.5">
               <UploadCloud
-                className={`${items.length > 0 ? 'size-5' : 'size-6'} text-muted-foreground/70 transition-colors`}
+                className="size-8 text-muted-foreground/70 transition-colors"
                 strokeWidth={1.5}
               />
               <div className="space-y-1">
@@ -276,41 +208,6 @@ export default function UploadFilesModal({
               </div>
             </div>
           </div>
-
-          {/* Staged File List */}
-          {items.length > 0 && (
-            <div className="space-y-1.5 pt-0.5">
-              <div className="flex items-center justify-between text-11 text-muted-foreground px-0.5 font-medium">
-                <span>
-                  {items.length} {items.length === 1 ? 'file' : 'files'} in queue • {formatFileSize(totalBytes)}
-                </span>
-              </div>
-
-              <div className="rounded-lg border border-border bg-background overflow-hidden">
-                <div className="max-h-[200px] overflow-y-auto divide-y divide-border/60">
-                  {items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="p-2.5 flex items-center justify-between gap-2.5 text-12 hover:bg-muted/20 transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        {getFileTypeBadge(item.file.name)}
-                        <span className="font-medium text-foreground truncate" title={item.file.name}>
-                          {item.file.name}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <span className="text-11 text-muted-foreground font-mono tabular-nums">
-                          {formatFileSize(item.file.size)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Modal Actions */}
@@ -323,17 +220,6 @@ export default function UploadFilesModal({
             className="text-12 h-8 px-3.5 cursor-pointer"
           >
             Cancel
-          </Button>
-
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            disabled={items.length === 0}
-            onClick={handleStartUpload}
-            className="text-12 h-8 px-4 cursor-pointer font-medium"
-          >
-            Upload{items.length > 0 ? ` ${items.length} ${items.length === 1 ? 'File' : 'Files'}` : ''}
           </Button>
         </div>
       </DialogContent>

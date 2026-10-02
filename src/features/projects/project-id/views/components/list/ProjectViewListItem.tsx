@@ -13,21 +13,25 @@ import {
   ExternalLink,
   Trash2,
 } from 'lucide-react';
+import { Button } from '@/shared/components/ui/button';
 import {
-  Button,
   Avatar,
   AvatarFallback,
   AvatarImage,
+} from '@/shared/components/ui/avatar';
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
+import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dropdown-menu';
 import {
   ViewsOutlineIcon,
   BoardIcon,

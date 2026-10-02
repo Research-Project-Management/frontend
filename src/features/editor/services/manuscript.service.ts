@@ -142,6 +142,92 @@ export interface FileMetadataDto {
   createdAt: string;
 }
 
+export interface TrackChangeDto {
+  id: string;
+  projectId: string;
+  docId: string;
+  type: 'insert' | 'delete';
+  text: string;
+  fromIndex: number;
+  toIndex: number;
+  authorId: string;
+  authorName?: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  resolvedAt?: string;
+  resolvedById?: string;
+  createdAt: string;
+}
+
+export interface CommentReplyDto {
+  id: string;
+  threadId: string;
+  authorId: string;
+  authorName?: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface CommentThreadDto {
+  id: string;
+  projectId: string;
+  docId: string;
+  authorId: string;
+  authorName?: string;
+  content: string;
+  fromIndex: number;
+  toIndex: number;
+  selectedText?: string;
+  resolved: boolean;
+  resolvedAt?: string;
+  resolvedById?: string;
+  replies: CommentReplyDto[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DocReviewsResponseDto {
+  changes: TrackChangeDto[];
+  threads: CommentThreadDto[];
+}
+
+export interface QueueUpdatePayload {
+  pathname?: string;
+  docLines?: string[];
+  docOps?: any[];
+  version?: number;
+}
+
+export interface FlushResultDto {
+  flushed: boolean;
+  flushedDocCount: number;
+}
+
+export interface StructureNodeDto {
+  id: string;
+  projectId: string;
+  name: string;
+  path: string;
+  type: 'folder' | 'file' | 'doc';
+  parentId?: string | null;
+  sortOrder?: number;
+  isRootDoc?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  children?: StructureNodeDto[];
+}
+
+export interface DocstoreDocDto {
+  _id: string;
+  projectId: string;
+  path: string;
+  lines: string[];
+  version: number;
+  rev: number;
+  deleted?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // ─── Base URL Configuration ──────────────────────────────────────────────────
 
 export const MANUSCRIPTS_API_BASE =
@@ -519,6 +605,87 @@ const docs = {
       return [];
     }
   },
+
+  getAllDocs: async (projectId: string): Promise<DocstoreDocDto[]> => {
+    try {
+      return await apiGet<DocstoreDocDto[]>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/doc`);
+    } catch {
+      return [];
+    }
+  },
+
+  getAllDeletedDocs: async (projectId: string): Promise<DocstoreDocDto[]> => {
+    try {
+      return await apiGet<DocstoreDocDto[]>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/doc-deleted`);
+    } catch {
+      return [];
+    }
+  },
+
+  getAllRanges: async (projectId: string): Promise<any> => {
+    try {
+      return await apiGet<any>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/ranges`);
+    } catch {
+      return {};
+    }
+  },
+
+  getDoc: async (projectId: string, docId: string, includeDeleted = false): Promise<DocstoreDocDto | null> => {
+    try {
+      return await apiGet<DocstoreDocDto>(
+        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/doc/${docId}?include_deleted=${includeDeleted}`,
+      );
+    } catch {
+      return null;
+    }
+  },
+
+  getRawDoc: async (projectId: string, docId: string): Promise<string> => {
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/doc/${docId}/raw`, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
+      });
+      if (!res.ok) return '';
+      return await res.text();
+    } catch {
+      return '';
+    }
+  },
+
+  updateDocLines: async (
+    projectId: string,
+    docId: string,
+    lines: string[],
+    rev?: number,
+  ): Promise<{ modified: boolean; rev: number }> => {
+    return await apiPost<{ modified: boolean; rev: number }>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/doc/${docId}`,
+      { lines, rev },
+    );
+  },
+
+  patchDoc: async (
+    projectId: string,
+    docId: string,
+    dto: { path?: string; deleted?: boolean },
+  ): Promise<any> => {
+    return await apiPatch<any>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/doc/${docId}`, dto);
+  },
+
+  archiveDoc: async (projectId: string, docId: string): Promise<void> => {
+    await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/doc/${docId}/archive`, {});
+  },
+
+  archiveAllDocs: async (projectId: string): Promise<void> => {
+    await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/archive`, {});
+  },
+
+  unarchiveAllDocs: async (projectId: string): Promise<{ unarchived: number }> => {
+    return await apiPost<{ unarchived: number }>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/unarchive`, {});
+  },
 };
 
 // ─── 2. COMPILER CLIENT ─────────────────────────────────────────────────────
@@ -627,6 +794,33 @@ const compiler = {
     const token = getAuthToken();
     const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : '';
     return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/artifacts-zip${tokenQuery}`;
+  },
+
+  cancelCompile: async (projectId: string): Promise<{ success: boolean; cancelled: boolean }> => {
+    try {
+      return await apiPost<{ success: boolean; cancelled: boolean }>(
+        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/compile/cancel`,
+        {},
+      );
+    } catch {
+      return { success: false, cancelled: false };
+    }
+  },
+
+  getStatus: async (): Promise<any> => {
+    try {
+      return await apiGet<any>(`${MANUSCRIPTS_API_BASE}/clsi/status`);
+    } catch {
+      return { status: 'ok', engines: ['pdflatex', 'xelatex', 'lualatex'] };
+    }
+  },
+
+  getMetricsSummary: async (): Promise<any> => {
+    try {
+      return await apiGet<any>(`${MANUSCRIPTS_API_BASE}/clsi/metrics/summary`);
+    } catch {
+      return {};
+    }
   },
 };
 
@@ -799,6 +993,91 @@ const suggestions = {
   },
 };
 
+// ─── 5b. REVIEW & TRACK CHANGES CLIENT ──────────────────────────────────────
+
+const review = {
+  getDocReviews: async (projectId: string, docId: string): Promise<DocReviewsResponseDto> => {
+    try {
+      return await apiGet<DocReviewsResponseDto>(
+        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review`,
+      );
+    } catch {
+      return { changes: [], threads: [] };
+    }
+  },
+
+  recordChange: async (
+    projectId: string,
+    docId: string,
+    dto: { type: 'insert' | 'delete'; text: string; fromIndex: number; toIndex: number },
+  ): Promise<TrackChangeDto> => {
+    return await apiPost<TrackChangeDto>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes`,
+      dto,
+    );
+  },
+
+  acceptChange: async (projectId: string, docId: string, changeId: string): Promise<TrackChangeDto> => {
+    return await apiPost<TrackChangeDto>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes/${changeId}/accept`,
+      {},
+    );
+  },
+
+  rejectChange: async (projectId: string, docId: string, changeId: string): Promise<TrackChangeDto> => {
+    return await apiPost<TrackChangeDto>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes/${changeId}/reject`,
+      {},
+    );
+  },
+
+  batchResolveChanges: async (
+    projectId: string,
+    docId: string,
+    action: 'accept_all' | 'reject_all',
+  ): Promise<any> => {
+    return await apiPost<any>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes/batch`,
+      { action },
+    );
+  },
+
+  createCommentThread: async (
+    projectId: string,
+    docId: string,
+    dto: { content: string; fromIndex: number; toIndex: number; selectedText?: string },
+  ): Promise<CommentThreadDto> => {
+    return await apiPost<CommentThreadDto>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/threads`,
+      dto,
+    );
+  },
+
+  addCommentReply: async (
+    projectId: string,
+    docId: string,
+    threadId: string,
+    content: string,
+  ): Promise<CommentReplyDto> => {
+    return await apiPost<CommentReplyDto>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/threads/${threadId}/replies`,
+      { content },
+    );
+  },
+
+  resolveCommentThread: async (
+    projectId: string,
+    docId: string,
+    threadId: string,
+    resolve: boolean,
+  ): Promise<CommentThreadDto> => {
+    return await apiPatch<CommentThreadDto>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/threads/${threadId}/resolve`,
+      { resolve },
+    );
+  },
+};
+
 // ─── 6. HISTORY & SNAPSHOTS CLIENT ──────────────────────────────────────────
 
 const createFallbackVersion = (props: Partial<PageVersion> & { id: string }): PageVersion => ({
@@ -914,13 +1193,98 @@ const history = {
 
   getByProjectId: async (projectId: string): Promise<ProjectEvent[]> => {
     try {
-      const res = await apiGet<{ events?: ProjectEvent[]; history?: ProjectEvent[] }>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history`,
+      const res = await apiGet<any[]>(
+        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/versions`,
       );
-      return res?.events ?? res?.history ?? [];
+      if (Array.isArray(res) && res.length > 0) {
+        return res.map((s) => ({
+          id: s.id,
+          versionNumber: s.version,
+          title: s.summary || `Version ${s.version}`,
+          label: s.labels?.[0]?.label || s.summary || '',
+          fileName: 'Project Snapshot',
+          createdAt: s.createdAt,
+          savedBy: { id: s.createdById || 'user-1', name: s.createdById ? 'Collaborator' : 'You' },
+          eventType: s.isAutomatic ? 'auto_save' : 'manual_save',
+          page: projectId,
+        }));
+      }
+      return [];
     } catch {
       return [];
     }
+  },
+
+  getProjectVersions: async (projectId: string): Promise<any[]> => {
+    try {
+      const res = await apiGet<any[]>(
+        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/versions`,
+      );
+      return Array.isArray(res) ? res : [];
+    } catch {
+      return [];
+    }
+  },
+
+  getProjectSnapshot: async (projectId: string, version: number): Promise<any | null> => {
+    try {
+      return await apiGet<any>(
+        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/versions/${version}`,
+      );
+    } catch {
+      return null;
+    }
+  },
+
+  compareProjectVersions: async (
+    projectId: string,
+    baseVersion: number,
+    targetVersion: number,
+  ): Promise<any | null> => {
+    try {
+      return await apiGet<any>(
+        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/diff?baseVersion=${baseVersion}&targetVersion=${targetVersion}`,
+      );
+    } catch {
+      return null;
+    }
+  },
+
+  labelProjectVersion: async (
+    projectId: string,
+    version: number,
+    label: string,
+  ): Promise<any | null> => {
+    return apiPost<any>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/versions/${version}/labels`,
+      { label },
+    );
+  },
+
+  deleteProjectLabel: async (projectId: string, labelId: string): Promise<void> => {
+    await apiDelete(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/labels/${labelId}`,
+    );
+  },
+
+  restoreProjectVersion: async (
+    projectId: string,
+    targetVersion: number,
+  ): Promise<any> => {
+    return apiPost(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/restore`,
+      { targetVersion },
+    );
+  },
+
+  createProjectSnapshot: async (
+    projectId: string,
+    dto: { summary?: string; label?: string; isAutomatic?: boolean },
+  ): Promise<any | null> => {
+    return apiPost<any>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/snapshots`,
+      dto,
+    );
   },
 
   getTimeline: async (
@@ -993,6 +1357,44 @@ const exportDocs = {
       format,
       includeChildren,
     });
+  },
+
+  exportProjectZipUrl: (projectId: string, includeAux = false): string => {
+    const token = getAuthToken();
+    const tokenQuery = token ? `?token=${encodeURIComponent(token)}&includeAux=${includeAux}` : `?includeAux=${includeAux}`;
+    return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/export/zip${tokenQuery}`;
+  },
+
+  exportProjectZip: async (projectId: string, options: { includeAux?: boolean } = {}): Promise<Blob> => {
+    const token = getAuthToken();
+    const query = options.includeAux ? '?includeAux=true' : '';
+    const res = await fetch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/export/zip${query}`, {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : '',
+      },
+    });
+    if (!res.ok) throw new Error(`Export ZIP failed: ${res.statusText}`);
+    return await res.blob();
+  },
+
+  importProjectZip: async (projectId: string, file: File | Blob, preferredRootDoc?: string): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const query = preferredRootDoc ? `?preferredRootDoc=${encodeURIComponent(preferredRootDoc)}` : '';
+    const token = getAuthToken();
+    const res = await fetch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/import/zip${query}`, {
+      method: 'POST',
+      headers: {
+        Authorization: token ? `Bearer ${token}` : '',
+      },
+      body: formData,
+    });
+    if (!res.ok) throw new Error(`Import ZIP failed: ${res.statusText}`);
+    return await res.json();
+  },
+
+  scaffoldTemplate: async (projectId: string, templateId: string): Promise<any> => {
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/templates/${templateId}/scaffold`, {});
   },
 };
 
@@ -1073,6 +1475,22 @@ const structure = {
     return await apiGet(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/tree`);
   },
 
+  getAllNodes: async (projectId: string): Promise<StructureNodeDto[]> => {
+    try {
+      return await apiGet<StructureNodeDto[]>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`);
+    } catch {
+      return [];
+    }
+  },
+
+  getNodeById: async (projectId: string, nodeId: string): Promise<StructureNodeDto | null> => {
+    try {
+      return await apiGet<StructureNodeDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}`);
+    } catch {
+      return null;
+    }
+  },
+
   createNode: async (projectId: string, dto: any) => {
     return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, dto);
   },
@@ -1087,6 +1505,28 @@ const structure = {
 
   deleteNode: async (projectId: string, nodeId: string) => {
     return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}`);
+  },
+
+  getRootDoc: async (projectId: string): Promise<StructureNodeDto | null> => {
+    try {
+      return await apiGet<StructureNodeDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc`);
+    } catch {
+      return null;
+    }
+  },
+
+  setRootDoc: async (projectId: string, nodeId: string): Promise<StructureNodeDto> => {
+    return await apiPost<StructureNodeDto>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc/${nodeId}`,
+      {},
+    );
+  },
+
+  reorderNode: async (projectId: string, nodeId: string, sortOrder: number): Promise<void> => {
+    await apiPost(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}/reorder`,
+      { sortOrder },
+    );
   },
 };
 
@@ -1172,17 +1612,53 @@ const citations = {
   ) => {
     return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/sync-library`, dto);
   },
+
+  listLibraryCollections: async (): Promise<any[]> => {
+    try {
+      return await apiGet<any[]>(`${MANUSCRIPTS_API_BASE}/citations/library-collections`);
+    } catch {
+      return [];
+    }
+  },
+
+  parseRaw: async (rawBibtex: string): Promise<BibEntryDto[]> => {
+    try {
+      return await apiPost<BibEntryDto[]>(`${MANUSCRIPTS_API_BASE}/citations/parse-raw`, { rawBibtex });
+    } catch {
+      return [];
+    }
+  },
 };
 
 // ─── 14. TEMPLATES & GALLERY CLIENT ─────────────────────────────────────────
 
 const templates = {
-  list: async (): Promise<TemplateSummaryDto[]> => {
-    return await apiGet<TemplateSummaryDto[]>(`${MANUSCRIPTS_API_BASE}/templates`);
+  list: async (query?: { category?: string; search?: string; limit?: number; skip?: number }): Promise<TemplateSummaryDto[]> => {
+    const params: Record<string, string> = {};
+    if (query?.category) params.category = query.category;
+    if (query?.search) params.search = query.search;
+    if (query?.limit) params.limit = String(query.limit);
+    if (query?.skip) params.skip = String(query.skip);
+    return await apiGet<TemplateSummaryDto[]>(`${MANUSCRIPTS_API_BASE}/templates`, { params });
+  },
+
+  search: async (query: { q?: string; category?: string; tags?: string[] }): Promise<any> => {
+    const params: Record<string, string> = {};
+    if (query.q) params.q = query.q;
+    if (query.category) params.category = query.category;
+    return await apiGet<any>(`${MANUSCRIPTS_API_BASE}/templates/search`, { params });
   },
 
   getById: async (id: string): Promise<any> => {
     return await apiGet<any>(`${MANUSCRIPTS_API_BASE}/templates/${id}`);
+  },
+
+  instantiate: async (templateId: string, projectName: string): Promise<any> => {
+    return await apiPost<any>(`${MANUSCRIPTS_API_BASE}/templates/instantiate`, { templateId, projectName });
+  },
+
+  createCustom: async (dto: any): Promise<any> => {
+    return await apiPost<any>(`${MANUSCRIPTS_API_BASE}/templates/custom`, dto);
   },
 
   scaffold: async (projectId: string, templateId: string): Promise<{ success: boolean }> => {
@@ -1197,8 +1673,87 @@ const filestore = {
     return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/files/${fileId}`;
   },
 
+  upload: async (projectId: string, file: File | Blob, filename?: string): Promise<FileMetadataDto> => {
+    const name = filename || (file instanceof File ? file.name : 'unnamed.bin');
+    const formData = new FormData();
+    formData.append('file', file, name);
+    const token = getAuthToken();
+    const res = await fetch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/files?name=${encodeURIComponent(name)}`, {
+      method: 'POST',
+      headers: {
+        Authorization: token ? `Bearer ${token}` : '',
+      },
+      body: formData,
+    });
+    if (!res.ok) throw new Error(`File upload failed: ${res.statusText}`);
+    return (await res.json()) as FileMetadataDto;
+  },
+
+  getSignedUrl: async (projectId: string, fileId: string, expiresIn = 3600): Promise<{ signedUrl: string | null }> => {
+    try {
+      return await apiGet<{ signedUrl: string | null }>(
+        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/files/${fileId}/signed-url?expiresIn=${expiresIn}`,
+      );
+    } catch {
+      return { signedUrl: null };
+    }
+  },
+
   delete: async (projectId: string, fileId: string): Promise<void> => {
     return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/files/${fileId}`);
+  },
+};
+
+// ─── 16. DOCUMENT UPDATER CLIENT ────────────────────────────────────────────
+
+const updater = {
+  queueUpdate: async (
+    projectId: string,
+    docId: string,
+    dto: QueueUpdatePayload,
+  ): Promise<any> => {
+    return await apiPost<any>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/updater/doc/${docId}/update`,
+      dto,
+    );
+  },
+
+  flushProject: async (
+    projectId: string,
+    force = false,
+  ): Promise<FlushResultDto> => {
+    return await apiPost<FlushResultDto>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/updater/flush`,
+      { force },
+    );
+  },
+
+  flushDoc: async (
+    projectId: string,
+    docId: string,
+  ): Promise<{ flushed: boolean; docId: string; version: number }> => {
+    return await apiPost<{ flushed: boolean; docId: string; version: number }>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/updater/doc/${docId}/flush`,
+      {},
+    );
+  },
+
+  getDocState: async (
+    projectId: string,
+    docId: string,
+  ): Promise<any> => {
+    return await apiGet<any>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/updater/doc/${docId}/state`,
+    );
+  },
+
+  evictDoc: async (
+    projectId: string,
+    docId: string,
+  ): Promise<void> => {
+    await apiDelete(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/updater/doc/${docId}/buffer`,
+    );
   },
 };
 
@@ -1210,6 +1765,8 @@ export const manuscriptService = {
   synctex,
   comments,
   suggestions,
+  review,
+  trackChanges: review,
   history,
   search,
   export: exportDocs,
@@ -1220,6 +1777,7 @@ export const manuscriptService = {
   citations,
   templates,
   filestore,
+  updater,
   spelling: spellingService,
 };
 

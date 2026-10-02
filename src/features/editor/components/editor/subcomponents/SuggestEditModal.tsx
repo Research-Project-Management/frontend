@@ -47,7 +47,7 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
             <div>
               <h2
                 id="suggest-dialog-title"
-                className="text-sm font-semibold text-foreground"
+                className="text-lg font-semibold text-foreground"
               >
                 Suggest Edit (Track Changes)
               </h2>

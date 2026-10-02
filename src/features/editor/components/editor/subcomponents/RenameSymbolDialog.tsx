@@ -35,7 +35,7 @@ export const RenameSymbolDialog = React.memo(function RenameSymbolDialog({
       <div className="w-full max-w-sm rounded-lg border border-border bg-background p-4 space-y-3 shadow-raised-300">
         <h2
           id="rename-dialog-title"
-          className="text-sm font-semibold text-foreground"
+          className="text-lg font-semibold text-foreground"
         >
           Rename Occurrences
         </h2>

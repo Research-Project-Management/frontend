@@ -19,14 +19,16 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  Button,
-  Input,
-  Checkbox,
+} from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import {
   Tabs,
   TabsList,
   TabsTrigger,
   TabsContent,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tabs';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
 

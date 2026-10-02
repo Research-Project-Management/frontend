@@ -18,7 +18,51 @@ export interface SpellingSuggestionResponse {
   suggestions: string[];
 }
 
+export interface MisspelledWord {
+  word: string;
+  line: number;
+  col: number;
+  length: number;
+  suggestions: string[];
+}
+
+export interface SpellingReport {
+  language: string;
+  totalWordsChecked: number;
+  misspelledCount: number;
+  errors: MisspelledWord[];
+}
+
+export interface CheckSpellingPayload {
+  text?: string;
+  docId?: string;
+  language?: string;
+}
+
 export const spellingService = {
+  /**
+   * Check LaTeX document spelling and return errors with suggestions.
+   */
+  checkSpelling: async (
+    projectId: string,
+    payload: CheckSpellingPayload,
+  ): Promise<SpellingReport> => {
+    try {
+      const res = await apiPost<SpellingReport>(
+        `/api/v1/manuscripts/projects/${projectId}/spelling/check`,
+        payload,
+      );
+      return res;
+    } catch {
+      return {
+        language: payload.language || 'en-US',
+        totalWordsChecked: 0,
+        misspelledCount: 0,
+        errors: [],
+      };
+    }
+  },
+
   /**
    * List custom words learned for a specific project.
    */

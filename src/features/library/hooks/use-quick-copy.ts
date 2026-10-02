@@ -141,6 +141,11 @@ export function useQuickCopyShortcuts({
 
   // Global Keyboard Listener
   useEffect(() => {
+    // Compute once per effect registration — platform never changes during session
+    const isMac = typeof navigator !== 'undefined'
+      ? /mac/i.test(navigator.userAgent) || /mac/i.test((navigator as any).userAgentData?.platform ?? '')
+      : false;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if user is typing into form controls
       const target = e.target as HTMLElement | null;
@@ -154,7 +159,6 @@ export function useQuickCopyShortcuts({
         return;
       }
 
-      const isMac = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
       const modifier = isMac ? e.metaKey : e.ctrlKey;
 
       if (!modifier || !e.shiftKey) return;

@@ -4,36 +4,54 @@
  * PdfToolbar.tsx
  *
  * Unified PDF viewer header toolbar (Overleaf parity):
- * - Left: Compile Button (with TeX engine dropdown)
+ * - Left: Compile Button (with options dropdown), Logs and output files, Download PDF
  * - Center: Page Pagination + Zoom Controls
- * - Right: Invert Colors, Spread View, Presentation Mode, Popout, Logs, Export Dropdown
+ * - Right: Invert Colors, Spread View, Presentation Mode, Popout
  */
 
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   FileText,
-  ExternalLink,
-  Minimize2,
-  Presentation,
-  BookOpen,
-  SunMoon,
+  Download,
   MoreHorizontal,
+  BookOpen,
+  Presentation,
+  Minimize2,
+  ExternalLink,
 } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
 import { CompileButton } from '../../compiler/components/CompileButton';
 import { PdfPaginationControls } from './PdfPaginationControls';
 import { PdfZoomControls } from './PdfZoomControls';
-import { PdfExportDropdown } from './PdfExportDropdown';
 import type { CompileStatus } from '../../../store';
+
+function InvertColorsIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+      <path d="M12 22.7V2.7" />
+      <path d="M12 22.7A8 8 0 0 0 17.66 8.35L12 2.69v20.01z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
 
 export interface PdfToolbarProps {
   compileStatus: CompileStatus;
@@ -90,14 +108,13 @@ export const PdfToolbar = React.memo(function PdfToolbar({
   compileStatus,
   onCompile,
   onClearCacheAndCompile,
+  onStopCompilation,
   scale,
   autoFit,
   onToggleAutoFit,
   onZoomIn,
   onZoomOut,
   onSetScale,
-  showZoomGroup = true,
-  showUtilityGroup = true,
   pageNumber,
   numPages,
   onPrevPage,
@@ -105,21 +122,37 @@ export const PdfToolbar = React.memo(function PdfToolbar({
   onJumpToPage,
   invertColors,
   onToggleInvertColors,
-  isSpreadView,
-  onToggleSpreadView,
   pdfUrl,
-  compileLog,
   showLog,
   onToggleLog,
   onDownload,
-  onPopout,
-  isPoppedOut,
-  onOpenPresentationMode,
   errorCount = 0,
   warningCount = 0,
 }: PdfToolbarProps) {
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [isCompact, setIsCompact] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const el = toolbarRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // Only collapse pagination into 3-dots when viewer is narrow (< 370px)
+        setIsCompact(entry.contentRect.width < 370);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
-    <div className="h-9 border-b border-border bg-background px-2 flex items-center justify-between gap-1.5 shrink-0 select-none overflow-hidden">
+    <div
+      ref={toolbarRef}
+      role="toolbar"
+      aria-label="PDF viewer controls"
+      className="relative h-9 bg-background px-2 flex items-center justify-between gap-1.5 shrink-0 select-none overflow-visible border-b border-border"
+    >
       {/* 1. Left section: Compilation actions */}
       <div className="flex items-center gap-1.5 shrink-0">
         <CompileButton
@@ -128,221 +161,158 @@ export const PdfToolbar = React.memo(function PdfToolbar({
           onStopCompilation={onStopCompilation}
         />
 
-        {/* Overleaf Diagnostics Badge (immediately adjacent to Recompile) */}
+        {/* Overleaf Logs and output files (Pure icon button with tooltip) */}
         <Tooltip>
           <TooltipTrigger asChild>
             <button
               type="button"
               onClick={onToggleLog}
-              aria-label="Toggle compiler logs & diagnostics"
+              aria-label="Logs and output files"
               className={cn(
-                'h-7 px-2.5 flex items-center gap-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer border shadow-2xs select-none',
+                'size-7 relative flex items-center justify-center rounded-md text-xs font-semibold transition-colors cursor-pointer border select-none',
                 showLog
                   ? 'bg-primary/10 border-primary/40 text-primary'
                   : errorCount > 0
-                    ? 'bg-destructive/15 border-destructive/40 text-destructive hover:bg-destructive/25'
+                    ? 'border-destructive/40 text-destructive bg-destructive/10 hover:bg-destructive/20'
                     : warningCount > 0
-                      ? 'bg-amber-500/15 border-amber-500/40 text-amber-700 dark:text-amber-400 hover:bg-amber-500/25'
-                      : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted',
+                      ? 'border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted',
               )}
             >
               <FileText className="size-3.5 shrink-0" />
               {errorCount > 0 ? (
-                <span className="flex items-center gap-1">
-                  <span>{errorCount}</span>
-                  <span className="text-10 font-bold uppercase">{errorCount === 1 ? 'error' : 'errors'}</span>
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-10 font-bold text-destructive-foreground shadow-xs">
+                  {errorCount}
                 </span>
               ) : warningCount > 0 ? (
-                <span className="flex items-center gap-1">
-                  <span>{warningCount}</span>
-                  <span className="text-10 font-bold uppercase">{warningCount === 1 ? 'warn' : 'warns'}</span>
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-10 font-bold text-white shadow-xs">
+                  {warningCount}
                 </span>
-              ) : (
-                <span className="text-11 font-medium">Logs</span>
-              )}
+              ) : null}
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">
             {errorCount > 0
-              ? `${errorCount} compilation error${errorCount > 1 ? 's' : ''}. Click to open diagnostics.`
+              ? `${errorCount} compilation error${errorCount > 1 ? 's' : ''}. Logs and output files`
               : warningCount > 0
-                ? `${warningCount} warning${warningCount > 1 ? 's' : ''}. Click to open diagnostics.`
-                : 'Compiler logs & output files'}
+                ? `${warningCount} warning${warningCount > 1 ? 's' : ''}. Logs and output files`
+                : 'Logs and output files'}
+          </TooltipContent>
+        </Tooltip>
+
+        {/* Overleaf Download PDF (Pure icon button with tooltip) */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onDownload}
+              disabled={!pdfUrl}
+              aria-label="Download PDF"
+              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer select-none"
+            >
+              <Download className="size-3.5 shrink-0" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            Download PDF
           </TooltipContent>
         </Tooltip>
       </div>
 
-      {/* 2. Center section: Page & Zoom navigation */}
-      <div className="flex items-center gap-2 shrink-0">
-        <PdfPaginationControls
-          pageNumber={pageNumber}
-          numPages={numPages}
-          onPrevPage={onPrevPage}
-          onNextPage={onNextPage}
-          onJumpToPage={onJumpToPage}
-        />
+      {/* 2. Right section: Controls + adaptive 3-dot utility menu */}
+      <div className="flex items-center gap-1 shrink-0 select-none">
+        {/* Invert colors (Dark mode PDF) */}
+        {onToggleInvertColors && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onToggleInvertColors}
+                aria-label={invertColors ? 'Normal PDF view' : 'Dark mode (Invert PDF colors)'}
+                className={cn(
+                  'size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer',
+                  invertColors
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+                )}
+              >
+                <InvertColorsIcon className="size-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {invertColors ? 'Normal PDF view' : 'Dark mode (Invert PDF colors)'}
+            </TooltipContent>
+          </Tooltip>
+        )}
 
-        {showZoomGroup && (
-          <PdfZoomControls
-            scale={scale}
-            autoFit={autoFit}
-            onToggleAutoFit={onToggleAutoFit}
+        {/* Wide state: Inline pagination + zoom buttons */}
+        {!isCompact && (
+          <PdfPaginationControls
+            pageNumber={pageNumber}
+            numPages={numPages}
+            onPrevPage={onPrevPage}
+            onNextPage={onNextPage}
+            onJumpToPage={onJumpToPage}
             onZoomIn={onZoomIn}
             onZoomOut={onZoomOut}
-            onSetScale={onSetScale}
+            className="px-0.5"
           />
         )}
-      </div>
 
-      {/* 3. Right section: Display modes & Utilities */}
-      <div className="flex items-center gap-1 shrink-0">
-        {showUtilityGroup ? (
-          <>
-            {/* Color inversion (dark PDF) */}
-            {onToggleInvertColors && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={onToggleInvertColors}
-                    aria-label="Invert PDF colors"
-                    className={cn(
-                      'size-7 flex items-center justify-center rounded-sm transition-colors cursor-pointer',
-                      invertColors
-                        ? 'bg-primary/10 text-primary font-medium'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted',
-                    )}
-                  >
-                    <SunMoon className="size-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  {invertColors ? 'Normal mode' : 'Dark mode (Invert colors)'}
-                </TooltipContent>
-              </Tooltip>
-            )}
+        {/* Zoom preset dropdown: 61% ▾ / Fit Width ▾ */}
+        <PdfZoomControls
+          scale={scale}
+          autoFit={autoFit}
+          compact={true}
+          onToggleAutoFit={onToggleAutoFit}
+          onZoomIn={onZoomIn}
+          onZoomOut={onZoomOut}
+          onSetScale={onSetScale}
+        />
 
-            {/* Two-page spread */}
-            {onToggleSpreadView && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={onToggleSpreadView}
-                    aria-label="Two-page spread view"
-                    className={cn(
-                      'size-7 flex items-center justify-center rounded-sm transition-colors cursor-pointer',
-                      isSpreadView
-                        ? 'bg-primary/10 text-primary font-medium'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted',
-                    )}
-                  >
-                    <BookOpen className="size-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  {isSpreadView ? 'Single page view' : 'Two-page spread view'}
-                </TooltipContent>
-              </Tooltip>
-            )}
-
-            {/* Presentation mode */}
-            {onOpenPresentationMode && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={onOpenPresentationMode}
-                    disabled={!pdfUrl}
-                    aria-label="Presentation mode (F5)"
-                    className="size-7 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                  >
-                    <Presentation className="size-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  Presentation mode (F5)
-                </TooltipContent>
-              </Tooltip>
-            )}
-
-            {/* Popout detached window */}
-            {onPopout && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={onPopout}
-                    aria-label={isPoppedOut ? 'Reattach viewer' : 'Detach viewer to new window'}
-                    className="size-7 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                  >
-                    {isPoppedOut ? (
-                      <Minimize2 className="size-4 text-primary" />
-                    ) : (
-                      <ExternalLink className="size-4" />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  {isPoppedOut ? 'Reattach viewer' : 'Detach viewer to new window'}
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </>
-        ) : (
-          /* Compact overflow dropdown when width is constrained */
-          <DropdownMenu>
-            <Tooltip>
+        {/* Shrunk state: [...] button appears only when compact (< 370px) and holds collapsed pagination/zoom controls */}
+        {isCompact && (
+          <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+            <Tooltip open={isMenuOpen ? false : undefined}>
               <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
+                <PopoverTrigger asChild>
                   <button
                     type="button"
-                    aria-label="Viewer display options"
-                    className="size-7 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                    aria-label="More options"
+                    className={cn(
+                      'size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer',
+                      isMenuOpen
+                        ? 'bg-muted text-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+                    )}
                   >
                     <MoreHorizontal className="size-4" />
                   </button>
-                </DropdownMenuTrigger>
+                </PopoverTrigger>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">
                 More options
               </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" className="w-48 text-xs p-1">
-              {onToggleInvertColors && (
-                <DropdownMenuItem onClick={onToggleInvertColors} className="gap-2 cursor-pointer">
-                  <SunMoon className="size-3.5" />
-                  <span>{invertColors ? 'Normal mode' : 'Dark mode (Invert colors)'}</span>
-                </DropdownMenuItem>
-              )}
-              {onToggleSpreadView && (
-                <DropdownMenuItem onClick={onToggleSpreadView} className="gap-2 cursor-pointer">
-                  <BookOpen className="size-3.5" />
-                  <span>{isSpreadView ? 'Single page view' : 'Two-page spread view'}</span>
-                </DropdownMenuItem>
-              )}
-              {onOpenPresentationMode && (
-                <DropdownMenuItem
-                  onClick={onOpenPresentationMode}
-                  disabled={!pdfUrl}
-                  className="gap-2 cursor-pointer"
-                >
-                  <Presentation className="size-3.5" />
-                  <span>Presentation mode</span>
-                </DropdownMenuItem>
-              )}
-              {onPopout && (
-                <DropdownMenuItem onClick={onPopout} className="gap-2 cursor-pointer">
-                  {isPoppedOut ? <Minimize2 className="size-3.5" /> : <ExternalLink className="size-3.5" />}
-                  <span>{isPoppedOut ? 'Reattach viewer' : 'Detach window'}</span>
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
 
-        {/* Export dropdown */}
-        <PdfExportDropdown pdfUrl={pdfUrl} onDownloadPdf={onDownload} />
+            <PopoverContent
+              align="end"
+              sideOffset={6}
+              onOpenAutoFocus={(e) => e.preventDefault()}
+              className="w-auto p-1 bg-popover text-popover-foreground border border-border shadow-md rounded-md z-50 text-xs"
+            >
+              <PdfPaginationControls
+                pageNumber={pageNumber}
+                numPages={numPages}
+                onPrevPage={onPrevPage}
+                onNextPage={onNextPage}
+                onJumpToPage={onJumpToPage}
+                onZoomIn={onZoomIn}
+                onZoomOut={onZoomOut}
+              />
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
     </div>
   );

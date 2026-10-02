@@ -8,9 +8,9 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
-  Input,
-  Button,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dialog';
+import { Input } from '@/shared/components/ui/input';
+import { Button } from '@/shared/components/ui/button';
 import { Search, Check, Loader2, X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useSearchCslStyles } from '../../data';
@@ -37,7 +37,10 @@ export default function CslStyleSearchModal({
   // Sync initial selected style when modal opens or currentStyleId changes
   useEffect(() => {
     if (open) {
-      if (currentStyleId) {
+      const isCoreStyle = ['bibtex', 'apa-7th', 'ieee', 'mla-9th', 'apa', 'mla'].includes(
+        currentStyleId?.toLowerCase() || '',
+      );
+      if (currentStyleId && !isCoreStyle) {
         setSelectedStyle({ id: currentStyleId, label: getCleanStyleLabel(currentStyleId) });
       } else {
         setSelectedStyle(null);
@@ -188,7 +191,7 @@ export default function CslStyleSearchModal({
             <Button
               size="sm"
               className="h-8 text-12 gap-1.5"
-              disabled={!selectedStyle}
+              disabled={!selectedStyle || selectedStyle.id === currentStyleId}
               onClick={handleConfirm}
             >
               <Check className="size-3.5" />

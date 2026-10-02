@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dialog';
 import { useAiUIStore } from '../../store';
 
 export function AnalyticsModal() {

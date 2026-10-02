@@ -6,7 +6,7 @@ import { ChatModeProvider } from '@/features/ai/hooks/use-chat-mode';
 import { Panel } from '@/features/ai/components/layout/panel';
 import { Sidebar } from '@/features/ai/components/layout/Sidebar';
 import { AiTopbar } from '@/features/ai/components/topbar/AiTopbar';
-import { TooltipProvider } from '@/shared/components/ui';
+import { TooltipProvider } from '@/shared/components/ui/tooltip';
 
 export default function ChatAiLayout({ children }: { children?: React.ReactNode }) {
   return (

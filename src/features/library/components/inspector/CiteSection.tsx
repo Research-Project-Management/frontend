@@ -40,10 +40,15 @@ export const DEFAULT_FORMATS = [
   { id: 'mla-9th', label: 'MLA' },
   { id: 'bibtex', label: 'BibTeX' },
 ];
-export const ALL_FORMATS = DEFAULT_FORMATS;
-export const PRIMARY_FORMATS = DEFAULT_FORMATS;
-export const MORE_FORMATS = DEFAULT_FORMATS;
-export const MORE_POPULAR_STYLES = DEFAULT_FORMATS;
+export const MORE_FORMATS = [
+  { id: 'chicago', label: 'Chicago' },
+  { id: 'harvard', label: 'Harvard' },
+  { id: 'nature', label: 'Nature' },
+  { id: 'vancouver', label: 'Vancouver' },
+  { id: 'ris', label: 'RIS' },
+];
+export const MORE_POPULAR_STYLES = MORE_FORMATS;
+export const ALL_FORMATS = [...DEFAULT_FORMATS, ...MORE_FORMATS];
 
 /** Robust clipboard copy — tries modern Clipboard API, falls back to execCommand */
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -139,23 +144,11 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [searchedStyle, setSearchedStyle] = useState<{ id: string; label: string } | null>(null);
 
-  const activeScopeId = scopeId || projectId || (paper as any)?.projectId || 'user';
+  const activeScopeId = scopeId || projectId || paper?.projectId || 'user';
 
   // 1. Backend CSL style registry is the single source of truth for styles
   const { data: serverStyles = [] } = useCitationStyles(activeScopeId);
 
-  const primaryStyles = useMemo(() => {
-    if (serverStyles && serverStyles.length > 0) {
-      const primaries = serverStyles.filter((s) => s.isPrimary);
-      return primaries.length > 0 ? primaries : serverStyles.slice(0, 4);
-    }
-    return [
-      { id: 'apa-7th', name: 'American Psychological Association 7th edition', shortTitle: 'APA' },
-      { id: 'ieee', name: 'IEEE', shortTitle: 'IEEE' },
-      { id: 'mla-9th', name: 'Modern Language Association 9th edition', shortTitle: 'MLA' },
-      { id: 'bibtex', name: 'BibTeX', shortTitle: 'BibTeX' },
-    ];
-  }, [serverStyles]);
 
   const dropdownStyles = useMemo(() => {
     if (serverStyles && serverStyles.length > 0) {
@@ -192,34 +185,38 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
     return (rawCiteKey || 'ref').replace(/[^a-zA-Z0-9_-]/g, '');
   }, [rawCiteKey]);
 
-  // Top 3 primary anchors from backend (APA, IEEE, MLA)
-  const top3Styles = primaryStyles.slice(0, 3);
-  const isTop3Selected = top3Styles.some(
-    (s) => s.id === activeFormat || (s.id.startsWith('apa') && activeFormat.startsWith('apa')) || (s.id.startsWith('mla') && activeFormat.startsWith('mla')),
+  // 4 Core primary styles (APA, IEEE, MLA, BibTeX) - ALWAYS FIXED and NEVER replaced!
+  const coreStyles = useMemo(() => [
+    { id: 'apa-7th', label: 'APA' },
+    { id: 'ieee', label: 'IEEE' },
+    { id: 'mla-9th', label: 'MLA' },
+    { id: 'bibtex', label: 'BibTeX' },
+  ], []);
+
+  const isCoreSelected = coreStyles.some(
+    (s) =>
+      s.id === activeFormat ||
+      (s.id.startsWith('apa') && activeFormat.startsWith('apa')) ||
+      (s.id.startsWith('mla') && activeFormat.startsWith('mla')),
   );
 
-  // Slot 4: Either the active style (if non-core style) or the 4th primary style (BibTeX)
-  const defaultSlot4 = primaryStyles[3] || { id: 'bibtex', name: 'BibTeX', shortTitle: 'BibTeX' };
-  const slot4Id = isTop3Selected ? defaultSlot4.id : activeFormat;
-  const slot4Label = useMemo(() => {
-    if (isTop3Selected) return defaultSlot4.shortTitle || defaultSlot4.name;
+  const moreButtonLabel = useMemo(() => {
+    if (isCoreSelected) return 'More';
     if (searchedStyle?.id === activeFormat) return searchedStyle.label;
     const found = serverStyles.find((s) => s.id === activeFormat);
     return found?.shortTitle || found?.name || getCleanStyleLabel(activeFormat);
-  }, [isTop3Selected, defaultSlot4, searchedStyle, activeFormat, serverStyles]);
+  }, [isCoreSelected, searchedStyle, activeFormat, serverStyles]);
 
-  const barItems = [
-    ...top3Styles.map((s) => ({
-      id: s.id,
-      label: s.shortTitle || s.name,
-      isSelected: activeFormat === s.id || (s.id.startsWith('apa') && activeFormat.startsWith('apa')) || (s.id.startsWith('mla') && activeFormat.startsWith('mla')),
-    })),
-    {
-      id: slot4Id,
-      label: slot4Label,
-      isSelected: !isTop3Selected,
-    },
-  ];
+  const barItems = coreStyles.map((s) => ({
+    id: s.id,
+    label: s.label,
+    isSelected:
+      s.id === 'bibtex'
+        ? activeFormat === 'bibtex'
+        : activeFormat === s.id ||
+          (s.id.startsWith('apa') && activeFormat.startsWith('apa')) ||
+          (s.id.startsWith('mla') && activeFormat.startsWith('mla')),
+  }));
 
   const rawHtml = cslData?.bibliographyHtml || cslData?.html || cslData?.bibliography || '';
   const sanitizedHtml = useMemo(() => sanitizeCslHtml(rawHtml), [rawHtml]);
@@ -269,7 +266,7 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
       <div className="flex flex-col gap-2 min-w-0 font-sans select-none">
 
       {/* ⚠️ Citation Guard: Retraction Notice (Zotero Style) */}
-      {(paper.isRetracted || (paper as any).retractionStatus === 'retracted') && (
+      {(paper.isRetracted || paper.retractionStatus === 'retracted') && (
         <div className="p-2 rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-xs flex items-start gap-2 select-none shrink-0 animate-in fade-in duration-200">
           <ShieldAlert className="size-4 text-destructive shrink-0 mt-0.5" strokeWidth={1.5} />
           <div className="flex-1 space-y-1 min-w-0">
@@ -279,9 +276,9 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
             <p className="text-11 text-destructive/90 leading-snug break-words">
               This publication has been flagged as retracted in academic databases. Citing this paper may compromise academic rigor.
             </p>
-            {((paper.retractionDetails as Record<string, any>)?.noticeUrl || (paper as any).noticeUrl || (paper.doi ? `https://doi.org/${paper.doi}` : undefined)) && (
+            {((paper.retractionDetails?.noticeUrl as string | undefined) || paper.noticeUrl || (paper.doi ? `https://doi.org/${paper.doi}` : undefined)) && (
               <a
-                href={((paper.retractionDetails as Record<string, any>)?.noticeUrl || (paper as any).noticeUrl || `https://doi.org/${paper.doi}`)}
+                href={((paper.retractionDetails?.noticeUrl as string | undefined) || paper.noticeUrl || `https://doi.org/${paper.doi}`)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-11 font-medium text-destructive hover:underline mt-0.5"
@@ -318,10 +315,12 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
               type="button"
               className={cn(
                 'h-6 px-2 text-xs rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary font-medium inline-flex items-center gap-1 shrink-0 transition-colors',
-                'text-foreground hover:bg-muted',
+                !isCoreSelected
+                  ? 'bg-muted text-foreground font-semibold'
+                  : 'text-foreground hover:bg-muted',
               )}
             >
-              <span>More</span>
+              <span className="truncate max-w-[80px]">{moreButtonLabel}</span>
               <ChevronDown className="size-3 text-foreground shrink-0" />
             </button>
           </DropdownMenuTrigger>
@@ -364,14 +363,14 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
       </div>
 
 
-      {/* In-Text Citation Preview Row (Academic styles only) */}
+      {/* In-Text Citation Card (Academic styles only) */}
       {!isExportFormat && inTextPreview && (
         <div
           tabIndex={0}
-          className="flex items-center justify-between px-2 py-0.5 rounded-md border border-border bg-transparent hover:border-border/80 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors text-12 cursor-text"
+          className="flex items-center justify-between px-2.5 py-1 rounded-md border border-border bg-transparent hover:border-border/80 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors text-12 cursor-text"
         >
           <div className="flex items-center gap-1.5 min-w-0 pr-2">
-            <span className="text-muted-foreground text-12 shrink-0 font-medium">In-text:</span>
+            <span className="text-muted-foreground text-11 shrink-0 font-medium">In-text:</span>
             <span className="font-mono text-12 text-foreground break-words leading-snug select-text">
               {inTextPreview}
             </span>
@@ -400,10 +399,10 @@ export default function CiteSection({ paper, scopeId, projectId }: CiteSectionPr
         </div>
       )}
 
-      {/* Citation Box with Hover-Only Action Icons & Full Width Text */}
+      {/* Citation Box with Hover-Only Action Icons */}
       <div
         tabIndex={0}
-        className="group relative rounded-md border border-border bg-transparent p-2 min-h-[50px] max-h-56 overflow-y-auto text-12 leading-relaxed select-text font-sans hover:border-border/80 focus:border-primary focus:ring-1 focus:ring-primary focus-within:border-primary focus-within:ring-1 focus-within:ring-primary focus:outline-none transition-colors cursor-text"
+        className="group relative p-2.5 rounded-md border border-border bg-transparent hover:border-border/80 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors min-h-[50px] max-h-56 overflow-y-auto leading-relaxed select-text font-sans text-12 cursor-text"
       >
         <TooltipProvider delayDuration={700}>
           <div

@@ -118,7 +118,7 @@ export default function DocumentNavDrawer({
       aria-label="Document Structure Drawer"
     >
       {/* Header Chrome */}
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-background">
+      <header className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-background">
         <div className="flex items-center gap-2">
           <Layers className="size-4 text-primary shrink-0" strokeWidth={1.5} />
           <span className="text-12 font-medium text-foreground tracking-tight">
@@ -134,7 +134,7 @@ export default function DocumentNavDrawer({
         >
           <X className="size-3.5 shrink-0" strokeWidth={1.5} />
         </Button>
-      </div>
+      </header>
 
       {/* Underline Tab Strip */}
       <div className="flex h-9 shrink-0 items-center border-b border-border px-2 bg-background gap-1">

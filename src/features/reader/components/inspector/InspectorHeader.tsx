@@ -52,8 +52,8 @@ export function InspectorHeader({
     if (cleanTitle && cleanTitle !== item.title) {
       setTitleDraft(cleanTitle);
       updateMutation.mutate({
-        id: item.id,
-        payload: { title: cleanTitle },
+        itemId: item.id,
+        data: { title: cleanTitle },
       });
     } else if (!cleanTitle && item.title) {
       setTitleDraft(item.title);
@@ -63,7 +63,7 @@ export function InspectorHeader({
   return (
     <div className="sticky top-0 z-10 flex flex-col shrink-0 select-none bg-background">
       {/* ── Title Header: EXACTLY h-11 (44px) with border-b matching LibraryTopbar and InspectorTabs ── */}
-      <div className="h-11 px-3 flex items-center w-full min-w-0 border-b border-border bg-background shrink-0">
+      <div className="h-11 pl-3 pr-1.5 flex items-center w-full min-w-0 border-b border-border bg-background shrink-0">
         <input
           type="text"
           value={titleDraft}
@@ -111,7 +111,7 @@ export function InspectorHeader({
       {/* ⚠️ Retraction Warning Alert Banner (Rendered below the continuous h-11 line) */}
       {isRetracted && (
         <div className="p-3 border-b border-border bg-destructive/5 shrink-0 select-none animate-in fade-in duration-200">
-          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive flex items-start gap-2.5 select-none">
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2.5 text-12 text-destructive flex items-start gap-2.5 select-none">
             <ShieldAlert className="size-4 text-destructive shrink-0 mt-0.5" strokeWidth={1.5} />
             <div className="flex-1 min-w-0 space-y-1">
               <div className="flex items-center justify-between gap-2">
@@ -156,7 +156,7 @@ export function InspectorHeader({
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
-                      className="h-5 px-1.5 text-10 font-medium text-destructive hover:bg-destructive/20 rounded cursor-pointer flex items-center transition-colors"
+                      className="h-5 px-1.5 text-10 font-medium text-destructive hover:bg-destructive/20 rounded-md cursor-pointer flex items-center transition-colors"
                       disabled={isCheckingItem}
                       onClick={() => checkItem(item.id)}
                     >
@@ -165,7 +165,7 @@ export function InspectorHeader({
                     </button>
                     <button
                       type="button"
-                      className="h-5 px-1.5 text-10 font-medium border border-destructive/40 text-destructive hover:bg-destructive/20 rounded cursor-pointer transition-colors"
+                      className="h-5 px-1.5 text-10 font-medium border border-destructive/40 text-destructive hover:bg-destructive/20 rounded-md cursor-pointer transition-colors"
                       disabled={isUnflagging}
                       onClick={() => unflagItem(item.id)}
                     >

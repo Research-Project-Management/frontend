@@ -74,7 +74,7 @@ import {
   Archive,
   SlidersHorizontal,
 } from "lucide-react";
-import { WorkItemsIcon } from "@/shared/components/ui";
+import { WorkItemsIcon } from "@/shared/components/icons";
 
 export type ModalState =
   | { type: 'idle' }

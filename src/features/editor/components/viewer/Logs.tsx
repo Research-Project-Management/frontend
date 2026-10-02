@@ -1,21 +1,39 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+/**
+ * Logs.tsx
+ *
+ * Overleaf-parity Compiler Logs & Output Files Panel (1:1 UI/UX Match):
+ * - Top Header: [Recompile ▾] + [Back to PDF] button
+ * - Filter Tabs: All logs (count), Errors (count), Warnings (count), Info (count)
+ * - Collapsible: > Raw logs accordion
+ * - Error entries with AI Error Assist (suggest & apply fixes directly)
+ * - Bottom Bar:
+ *   - [🗑️ Clear cached files] (Red pill button)
+ *   - [Other logs and files ▴] (Popover with output.aux, output.log, synctex, etc. + Download all)
+ */
+
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
-  CheckCircle2,
   Info,
-  RefreshCw,
-  X,
+  ChevronRight,
+  ChevronUp,
+  Trash2,
+  Download,
+  Check,
   Sparkles,
   Loader2,
-  Check,
-  Download,
-  FileCode,
+  FileText,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from "@/shared/lib/utils";
+import { cn } from '@/shared/lib/utils';
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from '@/shared/components/ui/popover';
 import { usePageStore } from '@/features/editor/store';
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
@@ -29,6 +47,7 @@ import {
   downloadAllArtifactsZipUrl,
   type AuxFileItem,
 } from '@/features/editor/services/compiler.service';
+import { CompileButton } from '../../sub-features/compiler/components/CompileButton';
 
 export interface LogEntry {
   message: string;
@@ -44,6 +63,7 @@ export interface ParsedLog {
 }
 
 export function parseLatexLog(raw: string): ParsedLog {
+  if (!raw) return { errors: [], warnings: [], badBoxes: [] };
   const lines = raw.split('\n');
   const errors: LogEntry[] = [];
   const warnings: LogEntry[] = [];
@@ -114,7 +134,17 @@ export function parseLatexLog(raw: string): ParsedLog {
   return { errors, warnings, badBoxes };
 }
 
-type LogTab = 'errors' | 'warnings' | 'badboxes' | 'raw' | 'artifacts';
+type TabType = 'all' | 'errors' | 'warnings' | 'info';
+
+const DEFAULT_OUTPUT_FILES = [
+  'output.aux',
+  'output.chktex',
+  'output.log',
+  'output.pdfxref',
+  'output.stderr',
+  'output.stdout',
+  'output.synctex.gz',
+];
 
 function EntryRow({
   type,
@@ -134,7 +164,6 @@ function EntryRow({
   fixResult?: AiErrorFixResult | null;
   isFixApplied?: boolean;
   onApplyFix?: (entry: LogEntry, fix: AiErrorFixResult) => void;
-  key?: React.Key;
 }) {
   const isClickable = Boolean(entry.line);
   return (
@@ -153,14 +182,14 @@ function EntryRow({
           : undefined
       }
       className={cn(
-        'flex flex-col gap-1.5 px-3 py-2.5 border-b border-border last:border-0 transition-colors',
-        isClickable && 'cursor-pointer hover:bg-muted/60 focus-visible:bg-muted/80 focus-visible:outline-none',
+        'flex flex-col gap-1.5 px-3 py-2.5 border-b border-border last:border-b-0 transition-colors',
+        isClickable && 'cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/70 focus-visible:outline-none',
       )}
     >
       <div className="flex items-start gap-2.5">
         {type === 'error' && <AlertCircle className="size-3.5 text-destructive shrink-0 mt-0.5" />}
-        {type === 'warning' && <AlertTriangle className="size-3.5 text-warning shrink-0 mt-0.5" />}
-        {type === 'badbox' && <Info className="size-3.5 text-primary shrink-0 mt-0.5" />}
+        {type === 'warning' && <AlertTriangle className="size-3.5 text-amber-500 shrink-0 mt-0.5" />}
+        {type === 'badbox' && <Info className="size-3.5 text-sky-500 shrink-0 mt-0.5" />}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <p className="text-foreground font-mono text-xs leading-snug break-words">
@@ -174,12 +203,12 @@ function EntryRow({
                   onSuggestFix(entry);
                 }}
                 className={cn(
-                  'flex items-center gap-1 text-11 px-2 py-0.5 rounded-sm font-medium shrink-0 transition-all border shadow-2xs cursor-pointer',
+                  'flex items-center gap-1 text-10 px-2 py-0.5 rounded-sm font-medium shrink-0 transition-colors border cursor-pointer',
                   fixResult || isFixLoading
-                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
-                    : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 hover:border-primary/40'
+                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                    : 'bg-primary/10 text-primary border-primary/25 hover:bg-primary/20'
                 )}
-                title="Ask Overleaf AI Error Assist to explain and fix this LaTeX error"
+                title="Ask AI Error Assist to explain and fix this LaTeX error"
               >
                 {isFixLoading ? (
                   <Loader2 className="size-3 animate-spin text-amber-500" />
@@ -192,17 +221,17 @@ function EntryRow({
           </div>
           {(entry.file || entry.line !== undefined) && (
             <p className="text-xs mt-0.5 text-muted-foreground">
-              {entry.file && <span className="text-foreground/70">{entry.file}</span>}
+              {entry.file && <span className="text-foreground/80 font-medium">{entry.file}</span>}
               {entry.file && entry.line !== undefined && <span> · </span>}
               {entry.line !== undefined && (
-                <span className={cn(isClickable && 'underline underline-offset-2 decoration-muted-foreground/40 hover:text-foreground')}>
+                <span className={cn(isClickable && 'underline underline-offset-2 decoration-primary/40 hover:text-primary')}>
                   Line {entry.line}
                 </span>
               )}
             </p>
           )}
           {entry.detail && (
-            <p className="text-muted-foreground/80 text-xs mt-0.5 truncate">{entry.detail}</p>
+            <p className="text-muted-foreground text-xs mt-0.5 truncate">{entry.detail}</p>
           )}
         </div>
       </div>
@@ -211,12 +240,12 @@ function EntryRow({
       {(isFixLoading || fixResult) && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="ml-6 mt-1.5 p-3 rounded-md bg-card border border-border shadow-2xs text-xs space-y-2 select-text"
+          className="ml-6 mt-1.5 p-3 rounded-md bg-muted/40 border border-border shadow-2xs text-xs space-y-2 select-text"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 font-semibold text-foreground">
               <Sparkles className="size-3.5 text-amber-500 shrink-0" />
-              <span>Overleaf AI Error Assist</span>
+              <span>AI Error Assist</span>
             </div>
             {fixResult && (
               <span className="text-10 px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium capitalize">
@@ -237,10 +266,10 @@ function EntryRow({
               </p>
 
               {/* Code Diff Preview */}
-              <div className="rounded-md border border-border overflow-hidden font-mono text-11 my-1.5">
+              <div className="rounded-md border border-border bg-background overflow-hidden font-mono text-11 my-1.5">
                 {fixResult.originalSnippet && (
-                  <div className="bg-rose-500/10 text-rose-600 dark:text-rose-400 px-2.5 py-1.5 border-b border-border/40 whitespace-pre-wrap">
-                    <span className="select-none font-bold mr-2 text-rose-500">-</span>
+                  <div className="bg-destructive/10 text-destructive px-2.5 py-1.5 border-b border-border/60 whitespace-pre-wrap">
+                    <span className="select-none font-bold mr-2 text-destructive">-</span>
                     {fixResult.originalSnippet}
                   </div>
                 )}
@@ -260,7 +289,7 @@ function EntryRow({
                   className={cn(
                     'flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-colors cursor-pointer',
                     isFixApplied
-                      ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                      ? 'bg-muted text-muted-foreground border border-border cursor-not-allowed'
                       : 'bg-primary hover:bg-primary-hover text-primary-foreground shadow-2xs'
                   )}
                 >
@@ -285,20 +314,12 @@ function EntryRow({
   );
 }
 
-function LogEmpty({ text }: { text: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
-      <CheckCircle2 className="size-5 shrink-0" />
-      <span className="text-xs">{text}</span>
-    </div>
-  );
-}
-
 export interface LogsProps {
   log: string;
   onClose: () => void;
   onJumpToError?: (file: string | undefined, line: number) => void;
   onClearCacheAndCompile?: () => void;
+  onCompile?: () => void;
 }
 
 export default function Logs({
@@ -306,31 +327,33 @@ export default function Logs({
   onClose,
   onJumpToError,
   onClearCacheAndCompile,
+  onCompile,
 }: LogsProps) {
   const { projectId } = usePageStore();
   const { engine } = useEditorInstance();
   const parsed = useMemo(() => parseLatexLog(log), [log]);
-  const defaultTab = useMemo<LogTab>(() => {
-    if (parsed.errors.length > 0) return 'errors';
-    if (parsed.warnings.length > 0) return 'warnings';
-    if (parsed.badBoxes.length > 0) return 'badboxes';
-    return 'raw';
-  }, [parsed]);
-  const [selectedTab, setSelectedTab] = useState<LogTab | null>(null);
-  const activeTab = selectedTab ?? defaultTab;
 
-  // Auxiliary files state
+  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [isRawLogsOpen, setIsRawLogsOpen] = useState(false);
+  const [isOtherFilesOpen, setIsOtherFilesOpen] = useState(false);
+
+  // Auxiliary files list
   const [auxFiles, setAuxFiles] = useState<AuxFileItem[]>([]);
-  const [isLoadingAux, setIsLoadingAux] = useState(false);
-
-  React.useEffect(() => {
-    if (activeTab === 'artifacts' && projectId) {
-      setIsLoadingAux(true);
+  useEffect(() => {
+    if (projectId) {
       listAuxFiles(projectId)
         .then((files) => setAuxFiles(files))
-        .finally(() => setIsLoadingAux(false));
+        .catch(() => {});
     }
-  }, [activeTab, projectId]);
+  }, [projectId]);
+
+  const outputFiles = useMemo(() => {
+    if (auxFiles && auxFiles.length > 0) {
+      const names = auxFiles.map((f) => f.name);
+      return Array.from(new Set([...names, ...DEFAULT_OUTPUT_FILES]));
+    }
+    return DEFAULT_OUTPUT_FILES;
+  }, [auxFiles]);
 
   // AI Error Assist state
   const [fixState, setFixState] = useState<
@@ -396,11 +419,8 @@ export default function Logs({
           [key]: { loading: false, applied: true, result: fix },
         }));
         toast.success('Fix applied! Recompiling...');
-        if (onClearCacheAndCompile) {
-          onClearCacheAndCompile();
-        } else {
-          editorCommandBus.dispatch({ type: 'compiler:trigger' });
-        }
+        if (onClearCacheAndCompile) onClearCacheAndCompile();
+        else if (onCompile) onCompile();
         return;
       }
     }
@@ -416,12 +436,8 @@ export default function Logs({
       [key]: { loading: false, applied: true, result: fix },
     }));
     toast.success('Fix applied! Recompiling...');
-
-    if (onClearCacheAndCompile) {
-      onClearCacheAndCompile();
-    } else {
-      editorCommandBus.dispatch({ type: 'compiler:trigger' });
-    }
+    if (onClearCacheAndCompile) onClearCacheAndCompile();
+    else if (onCompile) onCompile();
   };
 
   const handleEntryClick = (entry: LogEntry) => {
@@ -438,117 +454,176 @@ export default function Logs({
     }
   };
 
-  const countOf = (key: LogTab) => {
-    if (key === 'errors') return parsed.errors.length;
-    if (key === 'warnings') return parsed.warnings.length;
-    if (key === 'badboxes') return parsed.badBoxes.length;
-    if (key === 'artifacts') return auxFiles.length > 0 ? auxFiles.length : null;
-    return null;
+  const handleDownloadFile = (fileName: string) => {
+    if (fileName === 'output.log' && log) {
+      const blob = new Blob([log], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'output.log';
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    if (projectId) {
+      const url = downloadAuxFileUrl(projectId, fileName);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+    } else {
+      toast.info(`Downloading ${fileName}...`);
+    }
   };
 
-  const badgeClass = (key: LogTab) => {
-    const n = countOf(key);
-    if (n === null) return '';
-    const inactive = 'bg-muted text-muted-foreground';
-    if (key === 'errors') {
-      if (n > 0) return 'bg-destructive text-destructive-foreground';
-      return inactive;
+  const handleDownloadAll = () => {
+    if (projectId) {
+      const url = downloadAllArtifactsZipUrl(projectId);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `project-${projectId}-output-files.zip`;
+      a.click();
+    } else {
+      // Fallback: download log as blob
+      handleDownloadFile('output.log');
     }
-    if (key === 'warnings') {
-      if (n > 0) return 'bg-warning text-warning-foreground';
-      return inactive;
-    }
-    if (key === 'badboxes') {
-      if (n > 0) return 'bg-primary text-primary-foreground';
-      return inactive;
-    }
-    if (key === 'artifacts') {
-      return 'bg-muted-foreground/20 text-foreground';
-    }
-    return '';
   };
 
-  const tabs: { key: LogTab; label: string }[] = [
-    { key: 'errors', label: 'Errors' },
-    { key: 'warnings', label: 'Warnings' },
-    { key: 'badboxes', label: 'Bad Boxes' },
-    { key: 'raw', label: 'Raw Log' },
-    { key: 'artifacts', label: 'Output Files' },
-  ];
+  const totalLogsCount = parsed.errors.length + parsed.warnings.length + parsed.badBoxes.length;
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-20 bg-background/95 backdrop-blur-sm flex flex-col border-t border-border h-[280px]">
-      {/* Tab bar */}
-      <div className="flex items-center justify-between border-b border-border bg-muted shrink-0">
-        <div className="flex overflow-x-auto" role="tablist" aria-label="Log tabs">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === tab.key}
-              onClick={() => setSelectedTab(tab.key)}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 shrink-0 transition-colors outline-none',
-                activeTab === tab.key
-                  ? 'border-primary text-foreground font-semibold'
-                  : 'border-transparent text-foreground hover:bg-muted',
-              )}
-            >
-              {tab.label}
-              {countOf(tab.key) !== null && (
-                <span
-                  className={cn(
-                    'px-1 min-w-4 text-center rounded-full text-10 font-bold tabular-nums leading-4',
-                    badgeClass(tab.key),
-                  )}
-                >
-                  {countOf(tab.key)}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1.5 pr-2">
-          {onClearCacheAndCompile && (
-            <button
-              type="button"
-              onClick={onClearCacheAndCompile}
-              className="flex items-center gap-1 px-2 py-1 text-11 font-medium text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-sm shadow-2xs transition-colors cursor-pointer"
-              title="Clear compilation cache and recompile from scratch"
-            >
-              <RefreshCw className="size-3 shrink-0" />
-              <span>Clear Cache & Recompile</span>
-            </button>
+    <div className="h-full w-full flex flex-col bg-background text-foreground select-none overflow-hidden">
+      {/* ── Top Header Toolbar (Overleaf 1:1 Parity) ── */}
+      <header className="h-10 px-3 bg-muted/60 border-b border-border flex items-center justify-between gap-2 shrink-0">
+        <div className="flex items-center gap-2">
+          {onCompile && (
+            <CompileButton
+              onCompile={onCompile}
+              onClearCacheAndCompile={onClearCacheAndCompile}
+            />
           )}
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close log panel"
-            className="p-1.5 text-foreground hover:bg-muted rounded-sm transition-colors shrink-0 cursor-pointer"
+            aria-label="Back to PDF"
+            className="px-3 py-1 rounded-full border border-border bg-background hover:bg-muted text-foreground text-xs font-medium transition-colors cursor-pointer select-none shadow-2xs"
           >
-            <X className="size-3.5 shrink-0" />
+            Back to PDF
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto">
-        {activeTab === 'raw' && (
-          <pre className="p-3 text-foreground/90 font-mono text-xs whitespace-pre-wrap leading-5">
-            {log}
-          </pre>
-        )}
-        {activeTab === 'errors' &&
-          (parsed.errors.length === 0 ? (
-            <LogEmpty text="No errors" />
-          ) : (
+      {/* ── Filter Tabs (All logs, Errors, Warnings, Info) ── */}
+      <nav aria-label="Log categories" className="h-9 px-3 bg-background border-b border-border flex items-center gap-4 shrink-0 overflow-x-auto no-scrollbar">
+        <button
+          type="button"
+          onClick={() => setActiveTab('all')}
+          className={cn(
+            'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2',
+            activeTab === 'all'
+              ? 'border-primary text-foreground font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground font-medium'
+          )}
+        >
+          <span>All logs</span>
+          <span className="px-1.5 py-0.2 rounded-full text-10 font-mono font-medium bg-muted text-muted-foreground">
+            {totalLogsCount}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('errors')}
+          className={cn(
+            'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2',
+            activeTab === 'errors'
+              ? 'border-primary text-foreground font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground font-medium'
+          )}
+        >
+          <span>Errors</span>
+          <span
+            className={cn(
+              'px-1.5 py-0.2 rounded-full text-10 font-mono font-bold',
+              parsed.errors.length > 0 ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground font-medium'
+            )}
+          >
+            {parsed.errors.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('warnings')}
+          className={cn(
+            'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2',
+            activeTab === 'warnings'
+              ? 'border-primary text-foreground font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground font-medium'
+          )}
+        >
+          <span>Warnings</span>
+          <span
+            className={cn(
+              'px-1.5 py-0.2 rounded-full text-10 font-mono font-bold',
+              parsed.warnings.length > 0 ? 'bg-amber-500 text-white' : 'bg-muted text-muted-foreground font-medium'
+            )}
+          >
+            {parsed.warnings.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('info')}
+          className={cn(
+            'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2',
+            activeTab === 'info'
+              ? 'border-primary text-foreground font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground font-medium'
+          )}
+        >
+          <span>Info</span>
+          <span className="px-1.5 py-0.2 rounded-full text-10 font-mono font-medium bg-muted text-muted-foreground">
+            {parsed.badBoxes.length}
+          </span>
+        </button>
+      </nav>
+
+      {/* ── Main Body ── */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-background">
+        {/* Collapsible: > Raw logs accordion (Overleaf 1:1 Match) */}
+        <div className="rounded-md border border-border bg-card overflow-hidden shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setIsRawLogsOpen((prev) => !prev)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-left font-medium text-xs text-foreground hover:bg-muted/60 transition-colors cursor-pointer select-none"
+          >
+            <ChevronRight
+              className={cn('size-3.5 text-muted-foreground transition-transform duration-150', isRawLogsOpen && 'rotate-90')}
+            />
+            <span>Raw logs</span>
+          </button>
+          {isRawLogsOpen && (
+            <div className="p-3 border-t border-border bg-muted/30">
+              <pre className="font-mono text-11 text-foreground/90 whitespace-pre-wrap break-words leading-relaxed max-h-96 overflow-y-auto select-text">
+                {log || 'No compilation logs recorded yet.'}
+              </pre>
+            </div>
+          )}
+        </div>
+
+        {/* Diagnostic Entries List */}
+        <div className="rounded-md border border-border bg-card overflow-hidden shadow-2xs">
+          {/* Errors */}
+          {(activeTab === 'all' || activeTab === 'errors') &&
             parsed.errors.map((e, i) => {
               const key = getEntryKey(e, i);
               const state = fixState[key];
               return (
                 <EntryRow
-                  key={i}
+                  key={`err-${i}`}
                   type="error"
                   entry={e}
                   onClick={() => handleEntryClick(e)}
@@ -559,89 +634,109 @@ export default function Logs({
                   onApplyFix={(_entry, fix) => handleApplyFix(e, fix, i)}
                 />
               );
-            })
-          ))}
-        {activeTab === 'warnings' &&
-          (parsed.warnings.length === 0 ? (
-            <LogEmpty text="No warnings" />
-          ) : (
+            })}
+
+          {/* Warnings */}
+          {(activeTab === 'all' || activeTab === 'warnings') &&
             parsed.warnings.map((e, i) => (
               <EntryRow
-                key={i}
+                key={`warn-${i}`}
                 type="warning"
                 entry={e}
                 onClick={() => handleEntryClick(e)}
               />
-            ))
-          ))}
-        {activeTab === 'badboxes' &&
-          (parsed.badBoxes.length === 0 ? (
-            <LogEmpty text="No bad boxes" />
-          ) : (
+            ))}
+
+          {/* Info / Bad boxes */}
+          {(activeTab === 'all' || activeTab === 'info') &&
             parsed.badBoxes.map((e, i) => (
               <EntryRow
-                key={i}
+                key={`info-${i}`}
                 type="badbox"
                 entry={e}
                 onClick={() => handleEntryClick(e)}
               />
-            ))
-          ))}
-        {activeTab === 'artifacts' && (
-          <div className="p-3">
-            {isLoadingAux ? (
-              <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground text-xs">
-                <Loader2 className="size-4 animate-spin text-primary shrink-0" />
-                <span>Loading output files...</span>
-              </div>
-            ) : auxFiles.length === 0 ? (
-              <LogEmpty text="No output files available yet. Compile your document to generate auxiliary files (.aux, .bbl, .log, etc.)." />
-            ) : (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between pb-1 border-b border-border text-xs text-muted-foreground">
-                  <span>Generated Auxiliary & Intermediates ({auxFiles.length} files)</span>
-                  <a
-                    href={downloadAllArtifactsZipUrl(projectId || '')}
-                    download={`project-${projectId || 'artifacts'}-artifacts.zip`}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                    title="Download all generated files as a ZIP archive"
-                  >
-                    <Download className="size-3" />
-                    <span>Download All (.zip)</span>
-                  </a>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                  {auxFiles.map((file) => {
-                    const sizeKb = (file.size / 1024).toFixed(1);
-                    return (
-                      <div
-                        key={file.name}
-                        className="flex items-center justify-between p-2 rounded-md border border-border bg-card/60 hover:bg-muted/50 transition-colors text-xs"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FileCode className="size-4 text-primary shrink-0" />
-                          <div className="min-w-0">
-                            <p className="font-mono font-medium text-foreground truncate">{file.name}</p>
-                            <p className="text-10 text-muted-foreground">{sizeKb} KB</p>
-                          </div>
-                        </div>
-                        <a
-                          href={downloadAuxFileUrl(projectId, file.name)}
-                          download={file.name}
-                          className="p-1.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
-                          title={`Download ${file.name}`}
-                        >
-                          <Download className="size-3.5" />
-                        </a>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+            ))}
+
+          {/* Empty States */}
+          {activeTab === 'errors' && parsed.errors.length === 0 && (
+            <div className="py-8 text-center text-xs text-muted-foreground font-medium">
+              No errors found in this compilation.
+            </div>
+          )}
+          {activeTab === 'warnings' && parsed.warnings.length === 0 && (
+            <div className="py-8 text-center text-xs text-muted-foreground font-medium">
+              No warnings found in this compilation.
+            </div>
+          )}
+          {activeTab === 'info' && parsed.badBoxes.length === 0 && (
+            <div className="py-8 text-center text-xs text-muted-foreground font-medium">
+              No bad boxes or layout warnings.
+            </div>
+          )}
+          {activeTab === 'all' && totalLogsCount === 0 && (
+            <div className="py-8 text-center text-xs text-muted-foreground font-medium">
+              No logs, errors, or warnings reported.
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* ── Bottom Action Bar (Clear cached files & Other logs and files) ── */}
+      <footer className="h-11 px-3 bg-muted/60 border-t border-border flex items-center justify-between shrink-0 select-none">
+        {/* Left: Clear cached files button */}
+        <button
+          type="button"
+          onClick={onClearCacheAndCompile}
+          className="h-7.5 px-3 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none shadow-2xs"
+        >
+          <Trash2 className="size-3.5 shrink-0" />
+          <span>Clear cached files</span>
+        </button>
+
+        {/* Right: Other logs and files Popover */}
+        <Popover open={isOtherFilesOpen} onOpenChange={setIsOtherFilesOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="h-7.5 px-3 rounded-full bg-background hover:bg-muted border border-border text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none shadow-2xs"
+            >
+              <span>Other logs and files</span>
+              <ChevronUp className="size-3.5 shrink-0 text-muted-foreground" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            side="top"
+            align="end"
+            sideOffset={8}
+            className="w-64 p-0 bg-popover border border-border text-popover-foreground shadow-raised-300 rounded-md overflow-hidden select-none"
+          >
+            <div className="px-3.5 py-2 text-xs font-medium text-muted-foreground border-b border-border bg-muted/40">
+              Download other output files
+            </div>
+            <div className="max-h-64 overflow-y-auto py-1">
+              {outputFiles.map((file) => (
+                <button
+                  key={file}
+                  type="button"
+                  onClick={() => handleDownloadFile(file)}
+                  className="w-full text-left px-3.5 py-1.5 text-xs font-mono text-foreground hover:bg-muted transition-colors cursor-pointer flex items-center justify-between group"
+                >
+                  <span>{file}</span>
+                  <Download className="size-3 text-muted-foreground group-hover:text-foreground" />
+                </button>
+              ))}
+            </div>
+            <div
+              onClick={handleDownloadAll}
+              className="px-3.5 py-2 text-xs font-medium text-foreground hover:bg-muted border-t border-border bg-muted/20 transition-colors cursor-pointer flex items-center justify-between"
+            >
+              <span>Download all ({outputFiles.length})</span>
+              <Download className="size-3.5 text-muted-foreground" />
+            </div>
+          </PopoverContent>
+        </Popover>
+      </footer>
     </div>
   );
 }

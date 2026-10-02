@@ -9,7 +9,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tooltip';
 
 export interface DynamicInspectorFieldProps {
   fieldDef: SchemaFieldDefinition;

@@ -296,7 +296,7 @@ export function ReaderToolbar({
   return (
     <div className="h-9 shrink-0 border-b border-border bg-background px-2 flex items-center justify-between select-none z-20 text-xs overflow-x-auto min-w-0 thin-scrollbar gap-2">
       <TooltipProvider delayDuration={300}>
-        {/* ── CỤM TRÁI: Sidebar toggle | Back | Page Navigation ─────────────────
+        {/* ── LEFT CLUSTER: Sidebar toggle | Back | Page Navigation ─────────────────
             Zotero 7 official left cluster order:
             [◀ Sidebar] | [← Back] | [‹ Prev] [Page / Total] [Next ›]            */}
         <div className="flex items-center gap-1 shrink-0">
@@ -377,7 +377,7 @@ export function ReaderToolbar({
                     e.currentTarget.blur();
                   }
                 }}
-                className="w-9 h-6 text-center text-11 font-mono rounded-md border border-border bg-card text-foreground shadow-2xs focus:outline-none focus:ring-1 focus:ring-primary tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-9 h-6 text-center text-11 font-mono rounded-md border border-border bg-card text-foreground focus:outline-none focus:ring-1 focus:ring-primary tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 aria-label="Current page number"
               />
               <span className="text-foreground text-11 font-mono">/</span>
@@ -403,7 +403,7 @@ export function ReaderToolbar({
         </div>
 
 
-        {/* ── CỤM GIỮA: Chú thích & Bảng màu nhanh (Annotation & Color) ────────── */}
+        {/* ── CENTER CLUSTER: Annotation & Quick Color Palette ────────── */}
         <div className="flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded-md border border-border shrink-0">
           {/* Mode toggle: Select (S) vs Hand (H) — Zotero 7 official shortcuts */}
           <Tooltip>
@@ -414,7 +414,7 @@ export function ReaderToolbar({
                 className={cn(
                   "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
                   interactionMode === 'select'
-                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
                 )}
                 aria-label="Text selection mode"
@@ -433,7 +433,7 @@ export function ReaderToolbar({
                 className={cn(
                   "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
                   interactionMode === 'hand'
-                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
                 )}
                 aria-label="Hand / Pan mode"
@@ -455,7 +455,7 @@ export function ReaderToolbar({
                 className={cn(
                   "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative",
                   activeTool === 'highlight'
-                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
                 )}
                 aria-label="Highlight text"
@@ -479,7 +479,7 @@ export function ReaderToolbar({
                 className={cn(
                   "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
                   activeTool === 'underline'
-                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
                 )}
                 aria-label="Underline text"
@@ -499,7 +499,7 @@ export function ReaderToolbar({
                 className={cn(
                   "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
                   activeTool === 'note'
-                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
                 )}
                 aria-label="Add note"
@@ -519,7 +519,7 @@ export function ReaderToolbar({
                 className={cn(
                   "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
                   activeTool === 'text'
-                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
                 )}
                 aria-label="Add text"
@@ -539,7 +539,7 @@ export function ReaderToolbar({
                 className={cn(
                   "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
                   activeTool === 'area'
-                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
                 )}
                 aria-label="Select area / image"
@@ -559,7 +559,7 @@ export function ReaderToolbar({
                 className={cn(
                   "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
                   activeTool === 'ink'
-                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
                 )}
                 aria-label="Draw ink"
@@ -581,7 +581,7 @@ export function ReaderToolbar({
                 className={cn(
                   "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer",
                   activeTool === 'eraser'
-                    ? "bg-background text-foreground font-medium shadow-2xs border border-border/50"
+                    ? "bg-background text-foreground font-medium border border-border/50"
                     : "text-foreground hover:bg-muted"
                 )}
                 aria-label="Eraser"
@@ -628,7 +628,7 @@ export function ReaderToolbar({
                   <ChevronDown className="size-3" strokeWidth={1.5} />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="p-1.5 flex items-center gap-1 min-w-0 bg-popover border border-border shadow-2xs rounded-md">
+              <DropdownMenuContent align="center" className="p-1.5 flex items-center gap-1 min-w-0 bg-popover border border-border shadow-md rounded-md">
                 {ZOTERO_COLORS.map((c) => (
                   <button
                     key={c.id}
@@ -675,7 +675,7 @@ export function ReaderToolbar({
           </div>
         </div>
 
-        {/* ── CỤM PHẢI: Zoom | Presentation Mode | Appearance & Rotate & Split | Find & Context Pane ──── */}
+        {/* ── RIGHT CLUSTER: Zoom | Presentation Mode | Appearance & Rotate & Split | Find & Context Pane ──── */}
         <div className="flex items-center gap-1 shrink-0">
           {/* Zoom Out */}
           <Tooltip>
@@ -704,7 +704,7 @@ export function ReaderToolbar({
                 <ChevronDown className="size-2.5 opacity-60 shrink-0" strokeWidth={1.5} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-28 text-xs p-1 bg-popover border border-border shadow-2xs rounded-md">
+            <DropdownMenuContent align="center" className="w-28 text-xs p-1 bg-popover border border-border shadow-md rounded-md">
               {ZOOM_PRESETS.map((preset) => (
                 <DropdownMenuItem
                   key={preset.label}
@@ -784,7 +784,7 @@ export function ReaderToolbar({
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-11">Page Presentation</TooltipContent>
               </Tooltip>
-              <DropdownMenuContent align="center" className="w-44 text-xs p-1 bg-popover border border-border shadow-2xs rounded-md">
+              <DropdownMenuContent align="center" className="w-44 text-xs p-1 bg-popover border border-border shadow-md rounded-md">
                 <DropdownMenuItem
                   onClick={() => onSelectViewMode?.('continuous')}
                   className="cursor-pointer text-11 flex items-center justify-between"
@@ -905,7 +905,7 @@ export function ReaderToolbar({
                   Split View ({splitMode === 'vertical' ? 'Vertical' : splitMode === 'horizontal' ? 'Horizontal' : 'Single'})
                 </TooltipContent>
               </Tooltip>
-              <DropdownMenuContent align="end" className="w-36 text-xs p-1 bg-popover border border-border shadow-2xs rounded-md">
+              <DropdownMenuContent align="end" className="w-36 text-xs p-1 bg-popover border border-border shadow-md rounded-md">
                 <DropdownMenuItem
                   onClick={() => onSelectSplitMode('none')}
                   className="cursor-pointer text-11 flex items-center justify-between"

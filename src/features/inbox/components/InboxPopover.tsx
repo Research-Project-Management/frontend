@@ -71,7 +71,7 @@ export default function InboxPopover({
                 type="button"
                 aria-label="Open notifications inbox"
                 className={cn(
-                  'relative flex size-8 items-center justify-center rounded-md border border-border bg-white dark:bg-card text-foreground shadow-2xs transition-colors hover:border-foreground/30 hover:bg-muted/50 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                  'relative flex size-8 items-center justify-center rounded-md border border-border bg-background text-foreground transition-colors hover:border-foreground/30 hover:bg-muted/50 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                   className
                 )}
               >
@@ -79,7 +79,7 @@ export default function InboxPopover({
 
                 {/* Live Unread Badge */}
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground ring-2 ring-background leading-none tabular-nums animate-in zoom-in-50 duration-200">
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground ring-2 ring-background leading-none tabular-nums animate-in zoom-in-50 duration-200">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}

@@ -58,12 +58,12 @@ export function useTransitionProjectState(projectId?: string) {
       queryClient.invalidateQueries({ queryKey: projectKeys.all() });
       toast.success(
         data.state
-          ? `Đã chuyển trạng thái: ${data.state.name}`
-          : 'Đã bỏ gán trạng thái đề tài'
+          ? `Status changed to: ${data.state.name}`
+          : 'Project stage unassigned'
       );
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Không thể cập nhật trạng thái đề tài');
+      toast.error(err?.message || 'Failed to update project status');
     },
   });
 }
@@ -76,10 +76,10 @@ export function useCreateProjectState(projectId: string) {
       ProjectService.createState(projectId, data),
     onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.states(projectId) });
-      toast.success(`Đã thêm giai đoạn: ${created.name}`);
+      toast.success(`Stage added: ${created.name}`);
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Không thể tạo giai đoạn');
+      toast.error(err?.message || 'Failed to create stage');
     },
   });
 }
@@ -100,10 +100,10 @@ export function useUpdateProjectStateItem(projectId: string) {
       queryClient.invalidateQueries({ queryKey: projectKeys.currentState(projectId) });
       queryClient.invalidateQueries({ queryKey: projectKeys.byId(projectId) });
       queryClient.invalidateQueries({ queryKey: projectKeys.overview(projectId) });
-      toast.success('Cập nhật giai đoạn thành công');
+      toast.success('Stage updated successfully');
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Không thể cập nhật giai đoạn');
+      toast.error(err?.message || 'Failed to update stage');
     },
   });
 }
@@ -134,7 +134,7 @@ export function useReorderProjectStates(projectId: string) {
       if (context?.previous) {
         queryClient.setQueryData(projectKeys.states(projectId), context.previous);
       }
-      toast.error('Không thể sắp xếp lại thứ tự các giai đoạn');
+      toast.error('Failed to reorder stages');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.states(projectId) });
@@ -158,10 +158,10 @@ export function useDeleteProjectState(projectId: string) {
       queryClient.invalidateQueries({ queryKey: projectKeys.currentState(projectId) });
       queryClient.invalidateQueries({ queryKey: projectKeys.byId(projectId) });
       queryClient.invalidateQueries({ queryKey: projectKeys.overview(projectId) });
-      toast.success('Đã xóa giai đoạn');
+      toast.success('Stage deleted');
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Không thể xóa giai đoạn');
+      toast.error(err?.message || 'Failed to delete stage');
     },
   });
 }

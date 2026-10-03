@@ -8,11 +8,11 @@ export interface AIIconProps extends React.SVGProps<SVGSVGElement> {
 }
 
 /**
- * AIIcon - BrainCircuit (Bộ não và Điện tử / Vi mạch Nơ-ron)
+ * AIIcon - BrainCircuit (Scholarly Cognition & Neural Electronic Circuit)
  * 
- * Biểu tượng chuẩn mực theo đúng yêu cầu của người dùng:
- * - Kết hợp giữa Bộ não nhận thức học thuật và Mạch vi điện tử nơ-ron (Brain + Circuit).
- * - Nghiêm túc, hàn lâm, hiện đại và đồng bộ tuyệt đối với Layers (Projects).
+ * Standardized icon:
+ * - Combines academic cognitive intelligence with neural circuits (Brain + Circuit).
+ * - Rigorous, scholarly, modern, and aligned with Layers (Projects).
  */
 export function AIIcon({
   className,

@@ -108,7 +108,7 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
       {/* ── Header: Author & Action Type ── */}
       <div className="flex items-center justify-between pb-2 border-b border-border">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="size-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-11 font-semibold shrink-0">
+          <div className="size-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
             {authorInitial}
           </div>
           <div className="min-w-0">
@@ -146,7 +146,7 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
         {suggestion.originalText && (
           <div className="space-y-0.5">
             <span className="text-10 font-medium text-muted-foreground">Original:</span>
-            <div className="max-h-16 overflow-y-auto px-2 py-1 rounded-md bg-rose-500/10 text-rose-700 dark:text-rose-400 font-mono text-11 line-through break-all">
+            <div className="max-h-16 overflow-y-auto px-2 py-1 rounded-md bg-rose-500/10 text-rose-700 dark:text-rose-400 font-mono text-xs line-through break-all">
               {suggestion.originalText}
             </div>
           </div>
@@ -155,14 +155,14 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
         {suggestion.suggestedText && (
           <div className="space-y-0.5">
             <span className="text-10 font-medium text-muted-foreground">Proposed:</span>
-            <div className="max-h-16 overflow-y-auto px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-mono text-11 font-medium break-all">
+            <div className="max-h-16 overflow-y-auto px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-mono text-xs font-medium break-all">
               {suggestion.suggestedText}
             </div>
           </div>
         )}
 
         {suggestion.description && (
-          <div className="flex items-start gap-1.5 p-1.5 rounded-sm bg-muted/60 text-11 text-muted-foreground italic">
+          <div className="flex items-start gap-1.5 p-1.5 rounded-sm bg-muted/60 text-xs text-muted-foreground italic">
             <CornerDownRight className="size-3 mt-0.5 shrink-0 text-primary" />
             <span className="line-clamp-2">{suggestion.description}</span>
           </div>
@@ -178,7 +178,7 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
               onOpenReviewTab(suggestion.id);
               onClose();
             }}
-            className="inline-flex items-center gap-1 text-11 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
           >
             <MessageSquare className="size-3" />
             <span>View thread</span>
@@ -190,7 +190,7 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
             type="button"
             disabled={isPending}
             onClick={() => onReject(suggestion)}
-            className="inline-flex items-center gap-1 h-6 px-2 rounded-sm text-11 font-medium border border-border bg-background hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 text-muted-foreground transition-colors disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-1 h-6 px-2 rounded-sm text-xs font-medium border border-border bg-background hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 text-muted-foreground transition-colors disabled:opacity-50 cursor-pointer"
           >
             {isRejecting ? (
               <Loader2 className="size-3 animate-spin" />
@@ -204,7 +204,7 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
             type="button"
             disabled={isPending}
             onClick={() => onAccept(suggestion)}
-            className="inline-flex items-center gap-1 h-6 px-2.5 rounded-sm text-11 font-medium bg-primary text-primary-foreground hover:bg-primary-hover shadow-2xs transition-colors disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-1 h-6 px-2.5 rounded-sm text-xs font-medium bg-primary text-primary-foreground hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer"
           >
             {isAccepting ? (
               <Loader2 className="size-3 animate-spin" />

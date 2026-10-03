@@ -120,7 +120,7 @@ export const CompileButton = React.memo(function CompileButton({
           className="w-[235px] p-1.5 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md text-xs z-[9999]"
         >
           {/* ── Section 1: Auto compile ── */}
-          <div className="text-11 font-medium text-muted-foreground px-3 pt-2 pb-1 select-none">
+          <div className="text-12 font-medium text-muted-foreground px-3 pt-2 pb-1 select-none">
             Auto compile
           </div>
           <DropdownMenuItem
@@ -142,7 +142,7 @@ export const CompileButton = React.memo(function CompileButton({
           <DropdownMenuSeparator className="my-1.5 bg-border" />
 
           {/* ── Section 2: Compile mode ── */}
-          <div className="text-11 font-medium text-muted-foreground px-3 pt-2 pb-1 select-none">
+          <div className="text-12 font-medium text-muted-foreground px-3 pt-2 pb-1 select-none">
             Compile mode
           </div>
           <DropdownMenuItem
@@ -164,7 +164,7 @@ export const CompileButton = React.memo(function CompileButton({
           <DropdownMenuSeparator className="my-1.5 bg-border" />
 
           {/* ── Section 3: Syntax checks ── */}
-          <div className="text-11 font-medium text-muted-foreground px-3 pt-2 pb-1 select-none">
+          <div className="text-12 font-medium text-muted-foreground px-3 pt-2 pb-1 select-none">
             Syntax checks
           </div>
           <DropdownMenuItem
@@ -186,7 +186,7 @@ export const CompileButton = React.memo(function CompileButton({
           <DropdownMenuSeparator className="my-1.5 bg-border" />
 
           {/* ── Section 4: Compile error handling ── */}
-          <div className="text-11 font-medium text-muted-foreground px-3 pt-2 pb-1 select-none">
+          <div className="text-12 font-medium text-muted-foreground px-3 pt-2 pb-1 select-none">
             Compile error handling
           </div>
           <DropdownMenuItem
@@ -215,7 +215,7 @@ export const CompileButton = React.memo(function CompileButton({
               "flex items-center px-3 py-1.5 rounded-sm text-xs font-normal transition-colors select-none",
               isRunning
                 ? "text-destructive hover:bg-destructive/10 focus:bg-destructive/10 focus:text-destructive cursor-pointer"
-                : "text-muted-foreground/60 opacity-60 cursor-not-allowed"
+                : "text-muted-foreground cursor-not-allowed opacity-50"
             )}
           >
             Stop compilation
@@ -223,7 +223,7 @@ export const CompileButton = React.memo(function CompileButton({
 
           <DropdownMenuItem
             onClick={handleRecompileFromScratch}
-            className="flex items-center px-3 py-1.5 rounded-sm text-xs font-medium text-primary hover:text-primary/80 hover:underline hover:bg-muted/40 focus:bg-muted/40 focus:text-primary cursor-pointer transition-colors select-none"
+            className="flex items-center px-3 py-1.5 rounded-sm text-xs font-normal text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors select-none"
           >
             Recompile from scratch
           </DropdownMenuItem>

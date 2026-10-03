@@ -15,6 +15,7 @@ interface CardProps {
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
   isDragging?: boolean;
   isOverlay?: boolean;
+  className?: string;
 }
 
 const Card = memo(
@@ -25,6 +26,7 @@ const Card = memo(
     dragHandleProps,
     isDragging,
     isOverlay,
+    className,
   }: CardProps) {
     const colorConfig = STICKY_COLOR_MAP[sticky.color];
     const [editor, setEditor] = useState<StickiesEditorHandle | null>(null);
@@ -37,7 +39,8 @@ const Card = memo(
     return (
       <div
         className={cn(
-          "group relative flex flex-col rounded-lg border border-border overflow-hidden",
+          "group relative flex flex-col justify-between w-full h-[340px] rounded-lg border border-border overflow-hidden",
+          className,
           isDragging
             ? " scale-[1.02] rotate-1 z-50 pointer-events-none"
             : "transition-[box-shadow,background-color,transform] duration-200"
@@ -47,7 +50,7 @@ const Card = memo(
         {/* Top accent bar + drag handle */}
         <div
           tabIndex={0}
-          className="h-10 flex items-center justify-between px-4 cursor-grab active:cursor-grabbing active:outline-0 select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          className="h-9 shrink-0 flex items-center justify-between px-3.5 cursor-grab active:cursor-grabbing active:outline-0 select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
           style={topAccentStyle}
           aria-label="Drag to move sticky"
           aria-roledescription="draggable card handle"
@@ -62,10 +65,18 @@ const Card = memo(
         </div>
 
         {/* Content */}
-        <Content sticky={sticky} onUpdate={onUpdate} onReady={setEditor} isOverlay={isOverlay} />
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <Content
+            sticky={sticky}
+            onUpdate={onUpdate}
+            onReady={setEditor}
+            isOverlay={isOverlay}
+            editorClassName="h-full min-h-[100px]"
+          />
+        </div>
 
         {/* Toolbar */}
-        <div className="transition-opacity duration-150">
+        <div className="shrink-0 transition-opacity duration-150">
           <Toolbar
             sticky={sticky}
             onUpdate={onUpdate}
@@ -82,6 +93,7 @@ const Card = memo(
     prev.sticky === next.sticky &&
     prev.isDragging === next.isDragging &&
     prev.isOverlay === next.isOverlay &&
+    prev.className === next.className &&
     prev.onUpdate === next.onUpdate &&
     prev.onDelete === next.onDelete
 );

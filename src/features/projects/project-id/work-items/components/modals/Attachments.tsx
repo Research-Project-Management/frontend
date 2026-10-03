@@ -307,7 +307,7 @@ export function Attachments({
             onClick={() => setActiveTab('pages')}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
               activeTab === 'pages'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
+                ? 'bg-background text-foreground font-semibold'
                 : 'text-foreground/80 hover:text-foreground'
             }`}
           >
@@ -325,7 +325,7 @@ export function Attachments({
             onClick={() => setActiveTab('papers')}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
               activeTab === 'papers'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
+                ? 'bg-background text-foreground font-semibold'
                 : 'text-foreground/80 hover:text-foreground'
             }`}
           >
@@ -343,7 +343,7 @@ export function Attachments({
             onClick={() => setActiveTab('files')}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
               activeTab === 'files'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
+                ? 'bg-background text-foreground font-semibold'
                 : 'text-foreground/80 hover:text-foreground'
             }`}
           >
@@ -925,7 +925,7 @@ export function Attachments({
                         onClick={() => setSelectedLibraryPaper(paper)}
                         className={`p-2.5 rounded-md border text-xs cursor-pointer transition-all ${
                           isSelected
-                            ? 'border-amber-500 bg-amber-500/5 shadow-xs'
+                            ? 'border-primary bg-primary/5'
                             : 'border-border hover:bg-muted/60'
                         }`}
                       >

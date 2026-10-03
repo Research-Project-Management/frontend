@@ -90,7 +90,7 @@ export function ProfileSidebar({
         </button>
 
         {/* Overlapping Avatar - Square with rounded-lg overlapping banner without being clipped */}
-        <div className="absolute -bottom-7 left-5 size-14 rounded-lg border-2 border-background shadow-xs overflow-hidden bg-muted flex items-center justify-center text-foreground font-semibold text-lg z-20">
+        <div className="absolute -bottom-7 left-5 size-14 rounded-lg border-2 border-background overflow-hidden bg-muted flex items-center justify-center text-foreground font-semibold text-lg z-20">
           {userData?.avatar ? (
             <img
               src={userData.avatar}

@@ -5,7 +5,7 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useChangePassword } from '../hooks/use-security';
 import { Button } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
-import { Eye, EyeOff, ShieldAlert } from 'lucide-react';
+import { Eye, EyeOff, ShieldAlert, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -60,128 +60,164 @@ export default function SecurityTab() {
   };
 
   return (
-    <div className='w-full max-w-3xl mx-auto p-6 md:p-8 space-y-6'>
+    <div className="w-full max-w-3xl mx-auto p-6 md:p-8 space-y-6">
       {isOAuth ? (
-        <div className='rounded-md border border-border bg-muted/30 p-4 flex items-start gap-3'>
-          <ShieldAlert className='size-4 text-muted-foreground mt-0.5 shrink-0' strokeWidth={1.5} />
-          <div>
-            <h4 className='text-13 font-semibold text-foreground tracking-tight'>Managed by external provider</h4>
-            <p className='text-12 text-muted-foreground mt-0.5'>
+        <div className="rounded-md border border-border bg-muted/30 p-4 flex items-start gap-3">
+          <ShieldAlert className="size-4 text-muted-foreground mt-0.5 shrink-0" strokeWidth={1.5} />
+          <div className="space-y-0.5">
+            <h4 className="text-13 font-semibold text-foreground tracking-tight">
+              Managed by external provider
+            </h4>
+            <p className="text-12 text-muted-foreground leading-normal">
               Your account is authenticated via Google or GitHub. Password changes are managed directly with your identity provider.
             </p>
           </div>
         </div>
       ) : (
-        <div className='rounded-md border border-border bg-card overflow-hidden'>
-          <div className='px-5 py-3.5 border-b border-border bg-card'>
-            <h3 className='text-13 font-semibold text-foreground tracking-tight'>Password Management</h3>
-            <p className='text-12 text-muted-foreground mt-0.5'>
-              Ensure your account is using a long, random password to stay secure.
-            </p>
+        <div className="space-y-6">
+          {/* ── Section Header (No subtitle as per Plane.so design & user request) ── */}
+          <div className="pb-3 border-b border-border">
+            <h3 className="text-14 font-semibold text-foreground tracking-tight">
+              Password Management
+            </h3>
           </div>
 
-          <div className='p-5'>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
-                <FormField
-                  control={form.control}
-                  name="currentPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className='text-12 font-medium text-foreground'>Current password</FormLabel>
-                      <FormControl>
-                        <div className='relative max-w-md'>
-                          <Input
-                            type={showCurrent ? 'text' : 'password'}
-                            placeholder='Enter current password'
-                            className='h-8 text-13 pr-9 shadow-2xs'
-                            {...field}
-                          />
-                          <button
-                            type='button'
-                            onClick={() => setShowCurrent(!showCurrent)}
-                            className='absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer'
-                          >
-                            {showCurrent ? <EyeOff className='size-3.5 shrink-0' strokeWidth={1.5} /> : <Eye className='size-3.5 shrink-0' strokeWidth={1.5} />}
-                          </button>
-                        </div>
-                      </FormControl>
-                      <FormMessage className='text-11' />
-                    </FormItem>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-w-md">
+              {/* Current Password Field */}
+              <FormField
+                control={form.control}
+                name="currentPassword"
+                render={({ field }) => (
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-12 font-medium text-foreground">
+                      Current password
+                    </FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type={showCurrent ? 'text' : 'password'}
+                          placeholder="Enter current password"
+                          autoComplete="current-password"
+                          className="h-8 text-13 px-3 pr-9 border-border bg-background hover:border-foreground/30 focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-border transition-colors shadow-none"
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={() => setShowCurrent(!showCurrent)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none"
+                          aria-label={showCurrent ? 'Hide current password' : 'Show current password'}
+                        >
+                          {showCurrent ? (
+                            <EyeOff className="size-3.5 shrink-0" strokeWidth={1.5} />
+                          ) : (
+                            <Eye className="size-3.5 shrink-0" strokeWidth={1.5} />
+                          )}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage className="text-11 text-destructive font-medium" />
+                  </FormItem>
+                )}
+              />
+
+              {/* New Password Field */}
+              <FormField
+                control={form.control}
+                name="newPassword"
+                render={({ field }) => (
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-12 font-medium text-foreground">
+                      New password
+                    </FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type={showNew ? 'text' : 'password'}
+                          placeholder="Enter new password"
+                          autoComplete="new-password"
+                          className="h-8 text-13 px-3 pr-9 border-border bg-background hover:border-foreground/30 focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-border transition-colors shadow-none"
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={() => setShowNew(!showNew)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none"
+                          aria-label={showNew ? 'Hide new password' : 'Show new password'}
+                        >
+                          {showNew ? (
+                            <EyeOff className="size-3.5 shrink-0" strokeWidth={1.5} />
+                          ) : (
+                            <Eye className="size-3.5 shrink-0" strokeWidth={1.5} />
+                          )}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage className="text-11 text-destructive font-medium" />
+                  </FormItem>
+                )}
+              />
+
+              {/* Confirm Password Field */}
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-12 font-medium text-foreground">
+                      Confirm password
+                    </FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type={showConfirm ? 'text' : 'password'}
+                          placeholder="Confirm password"
+                          autoComplete="new-password"
+                          className="h-8 text-13 px-3 pr-9 border-border bg-background hover:border-foreground/30 focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-border transition-colors shadow-none"
+                          {...field}
+                        />
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={() => setShowConfirm(!showConfirm)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none"
+                          aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
+                        >
+                          {showConfirm ? (
+                            <EyeOff className="size-3.5 shrink-0" strokeWidth={1.5} />
+                          ) : (
+                            <Eye className="size-3.5 shrink-0" strokeWidth={1.5} />
+                          )}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage className="text-11 text-destructive font-medium" />
+                  </FormItem>
+                )}
+              />
+
+              {/* Action Row / Footer (Zero extraneous text at bottom left) */}
+              <div className="pt-2 flex items-center justify-start">
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={changePasswordMutation.isPending}
+                  className="h-8 px-3.5 text-12 font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground transition-colors cursor-pointer shadow-none"
+                >
+                  {changePasswordMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-1.5 size-3.5 animate-spin shrink-0" />
+                      <span>Updating...</span>
+                    </>
+                  ) : (
+                    'Update password'
                   )}
-                />
-
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl'>
-                  <FormField
-                    control={form.control}
-                    name="newPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className='text-12 font-medium text-foreground'>New password</FormLabel>
-                        <FormControl>
-                          <div className='relative'>
-                            <Input
-                              type={showNew ? 'text' : 'password'}
-                              placeholder='Enter new password'
-                              className='h-8 text-13 pr-9 shadow-2xs'
-                              {...field}
-                            />
-                            <button
-                              type='button'
-                              onClick={() => setShowNew(!showNew)}
-                              className='absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer'
-                            >
-                              {showNew ? <EyeOff className='size-3.5 shrink-0' strokeWidth={1.5} /> : <Eye className='size-3.5 shrink-0' strokeWidth={1.5} />}
-                            </button>
-                          </div>
-                        </FormControl>
-                        <FormMessage className='text-11' />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className='text-12 font-medium text-foreground'>Confirm password</FormLabel>
-                        <FormControl>
-                          <div className='relative'>
-                            <Input
-                              type={showConfirm ? 'text' : 'password'}
-                              placeholder='Confirm password'
-                              className='h-8 text-13 pr-9 shadow-2xs'
-                              {...field}
-                            />
-                            <button
-                              type='button'
-                              onClick={() => setShowConfirm(!showConfirm)}
-                              className='absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer'
-                            >
-                              {showConfirm ? <EyeOff className='size-3.5 shrink-0' strokeWidth={1.5} /> : <Eye className='size-3.5 shrink-0' strokeWidth={1.5} />}
-                            </button>
-                          </div>
-                        </FormControl>
-                        <FormMessage className='text-11' />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className='pt-2 flex justify-start'>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    className='h-8 px-4 text-13 font-medium bg-primary hover:bg-primary-hover text-primary-foreground shadow-none cursor-pointer'
-                    disabled={!form.formState.isDirty || changePasswordMutation.isPending}
-                  >
-                    {changePasswordMutation.isPending ? 'Updating...' : 'Update password'}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </div>
+                </Button>
+              </div>
+            </form>
+          </Form>
         </div>
       )}
     </div>

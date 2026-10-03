@@ -38,7 +38,7 @@ export const defaultQueryOptions: DefaultOptions = {
         ) {
           return;
         }
-        const message = getErrorMessage(error) || 'Đã xảy ra lỗi khi thực hiện thao tác';
+        const message = getErrorMessage(error) || 'An error occurred while processing your request.';
         toast.error(message);
       }
     },

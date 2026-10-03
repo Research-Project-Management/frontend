@@ -101,10 +101,34 @@ export function useCopilot({
           );
         }
 
+        let finalCitations = citationsCaptured;
+        if (finalCitations.length === 0 && accumulatedText) {
+          const pageRegex = /\[p\.?\s*(\d+)\]|\(p\.?\s*(\d+)\)|\[trang\s*(\d+)\]|\[page\s*(\d+)\]/gi;
+          const foundPages = new Set<number>();
+          let match: RegExpExecArray | null;
+          while ((match = pageRegex.exec(accumulatedText)) !== null) {
+            const numStr = match[1] || match[2] || match[3] || match[4];
+            const pageNum = parseInt(numStr, 10);
+            if (!isNaN(pageNum) && pageNum > 0 && pageNum < 500) {
+              foundPages.add(pageNum);
+            }
+          }
+          if (foundPages.size > 0) {
+            finalCitations = Array.from(foundPages)
+              .sort((a, b) => a - b)
+              .map((pageNumber) => ({ pageNumber }));
+          }
+        }
+
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMessageId
-              ? { ...msg, isStreaming: false, citations: citationsCaptured.length > 0 ? citationsCaptured : msg.citations }
+              ? {
+                  ...msg,
+                  isStreaming: false,
+                  citations:
+                    finalCitations.length > 0 ? finalCitations : msg.citations,
+                }
               : msg,
           ),
         );

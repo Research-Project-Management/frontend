@@ -267,7 +267,7 @@ export function DuplicatesPage() {
           ) : (
             <div className="max-w-5xl mx-auto p-6 space-y-6">
               {/* Header Overview Banner */}
-              <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-md border border-border bg-card shadow-2xs">
+              <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-md border border-border bg-card">
                 <div className="flex items-center gap-3">
                   <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center text-primary">
                     <Layers className="h-4 w-4" />
@@ -297,9 +297,9 @@ export function DuplicatesPage() {
                       key={groupKey}
                       onClick={() => setSelectedGroupKey(groupKey)}
                       className={cn(
-                        'rounded-md border bg-card overflow-hidden shadow-2xs transition-colors cursor-pointer',
+                        'rounded-md border bg-card overflow-hidden transition-colors cursor-pointer',
                         isSelectedGroup
-                          ? 'border-primary/80 ring-1 ring-primary/30 shadow-xs'
+                          ? 'border-primary/80 ring-1 ring-primary/30'
                           : 'border-border hover:border-foreground/30',
                       )}
                     >

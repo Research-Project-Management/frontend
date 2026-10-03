@@ -5,10 +5,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, LayoutGroup } from 'framer-motion';
 import {
-  Layers,
   Settings,
 } from 'lucide-react';
-import { LibraryIcon, StorageIcon } from '@/shared/components/icons';
+import { ProjectsIcon, LibraryIcon, StorageIcon } from '@/shared/components/icons';
 import { cn } from "@/shared/lib/utils";
 import { useAiCompanionStore } from '@/features/ai/store';
 import {
@@ -24,7 +23,7 @@ const StickyDock = dynamic(() => import('./StickyDock'), {
 });
 
 const NAV_ITEMS_LEFT = [
-  { label: 'Projects', icon: Layers, to: '/home' },
+  { label: 'Projects', icon: ProjectsIcon, to: '/home' },
   { label: 'Library', icon: LibraryIcon, to: '/library' },
 ] as const;
 
@@ -100,7 +99,7 @@ export default function Sidebar() {
         aria-label='Main Navigation'
         className='order-2 relative flex h-14 shrink-0 items-center justify-between bg-transparent px-2 py-1 md:order-1 md:h-full md:w-11 md:flex-col md:justify-start md:gap-3 md:rounded-none md:border-t-0 md:border-r-0 md:bg-muted md:p-0 md:py-2 select-none z-30'
       >
-        {/* ── Mobile Real Scooped Notch Background & Border (Khoét rãnh chuẩn, rộng rãi không bị móp) ── */}
+        {/* ── Mobile Real Scooped Notch Background & Border (Precise scooped notch cutout) ── */}
         <div className='md:hidden absolute inset-0 pointer-events-none overflow-visible -z-10'>
           {/* Left panel */}
           <div className='absolute left-0 top-0 w-[calc(50%-44px)] h-full bg-muted border-t border-border' />

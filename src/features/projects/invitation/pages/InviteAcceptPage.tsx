@@ -51,7 +51,7 @@ export function InviteAcceptPage({ token }: InviteAcceptPageProps) {
 
   return (
     <div className="min-h-dvh w-full flex flex-col items-center justify-center bg-background px-4 py-8">
-      <div className="w-full max-w-md rounded-lg border border-border bg-card p-8 text-center space-y-6 shadow-sm">
+      <div className="w-full max-w-md rounded-lg border border-border bg-card p-8 text-center space-y-6">
         <div className="size-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto border border-primary/20">
           {isSuccess ? (
             <CheckCircle2 className="size-7 shrink-0 text-green-600" />

@@ -230,7 +230,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2 sm:px-2.5 text-xs gap-1 sm:gap-1.5 text-destructive hover:bg-destructive/10 cursor-pointer shrink-0 rounded-md"
+                className="h-8 px-2 sm:px-2.5 text-xs gap-1 sm:gap-1.5 text-destructive hover:bg-muted cursor-pointer shrink-0 rounded-md"
                 onClick={() => setIsDeleteModalOpen(true)}
                 disabled={isPermanentDeleting}
                 title="Delete selected items permanently"
@@ -244,7 +244,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 px-2 sm:px-2.5 text-xs gap-1 sm:gap-1.5 text-destructive hover:bg-destructive/10 cursor-pointer shrink-0 rounded-md"
+              className="h-8 px-2 sm:px-2.5 text-xs gap-1 sm:gap-1.5 text-destructive hover:bg-muted cursor-pointer shrink-0 rounded-md"
               onClick={() => setIsDeleteModalOpen(true)}
               disabled={isDeleting}
               title="Move selected items to trash"

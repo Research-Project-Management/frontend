@@ -587,7 +587,7 @@ export default function UnifiedCodeMirrorEditor({
           'flex-1 w-full h-full overflow-hidden [&_.cm-editor]:h-full [&_.cm-scroller]:h-full',
           '[&_.cm-editor]:outline-none [&_.cm-editor.cm-focused]:outline-none [&_.cm-scroller]:outline-none [&_.cm-content]:outline-none',
           '[&_.cm-ySelectionCaret]:border-l-2 [&_.cm-ySelectionCaret]:border-r-0 [&_.cm-ySelectionCaret]:transition-all',
-          '[&_.cm-ySelectionInfo]:font-sans [&_.cm-ySelectionInfo]:rounded-xs [&_.cm-ySelectionInfo]:px-1.5 [&_.cm-ySelectionInfo]:py-0.5 [&_.cm-ySelectionInfo]:text-[10px] [&_.cm-ySelectionInfo]:font-semibold [&_.cm-ySelectionInfo]:shadow-xs [&_.cm-ySelectionInfo]:tracking-normal',
+          '[&_.cm-ySelectionInfo]:font-sans [&_.cm-ySelectionInfo]:rounded-xs [&_.cm-ySelectionInfo]:px-1.5 [&_.cm-ySelectionInfo]:py-0.5 [&_.cm-ySelectionInfo]:text-[10px] [&_.cm-ySelectionInfo]:font-semibold [&_.cm-ySelectionInfo]:tracking-normal',
           editorMode === 'visual' &&
             'max-w-4xl mx-auto w-full px-6 py-4 [&_.cm-content]:font-sans [&_.cm-content]:text-base'
         )}

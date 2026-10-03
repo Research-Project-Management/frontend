@@ -97,7 +97,7 @@ export default function FileMenu() {
 
   return (
     <MenubarMenu>
-      <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-sm">
+      <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md">
         File
       </MenubarTrigger>
       <MenubarContent className="min-w-48 text-xs z-[9999]">

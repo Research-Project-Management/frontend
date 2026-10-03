@@ -17,7 +17,6 @@ import {
 } from '@/features/editor/store';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
-import { toast } from 'sonner';
 import { Lock, Search } from 'lucide-react';
 import { OverleafSearchIcon } from '@/features/editor/sub-features/code-editor/components/OverleafToolbarIcons';
 import { useTheme } from '@/shared/providers';
@@ -345,12 +344,6 @@ export default function Editor({ page }: EditorProps) {
         const current = useSettingsStore.getState().editorMode;
         const next = current === 'code' ? 'visual' : 'code';
         useSettingsStore.getState().setEditorMode(next);
-        toast.info(
-          next === 'visual'
-            ? 'Switched to Visual (Rich Text) mode'
-            : 'Switched to Source (Code) mode',
-          { duration: 1500 },
-        );
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -506,8 +499,8 @@ export default function Editor({ page }: EditorProps) {
                 type="button"
                 onClick={() => setIsFindOpen((prev) => !prev)}
                 className={cn(
-                  'flex size-7 items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer outline-none select-none',
-                  isFindOpen && 'bg-muted text-foreground font-semibold shadow-2xs',
+                  'flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none',
+                  isFindOpen && 'bg-muted text-foreground font-semibold',
                 )}
                 aria-label="Search and Replace (Ctrl+F)"
               >
@@ -517,7 +510,7 @@ export default function Editor({ page }: EditorProps) {
             <TooltipContent side="bottom" className="text-xs">
               <div className="flex items-center gap-1.5">
                 <span>Search and Replace</span>
-                <kbd className="px-1 py-0.5 text-10 rounded bg-muted text-muted-foreground font-mono">
+                <kbd className="px-1 py-0.5 text-11 rounded bg-muted text-muted-foreground font-mono">
                   Ctrl+F
                 </kbd>
               </div>
@@ -556,9 +549,9 @@ export default function Editor({ page }: EditorProps) {
                 type="button"
                 onClick={() => setTrackChangesViewMode('changes')}
                 className={cn(
-                  'px-1.5 py-0.5 rounded-sm text-11 transition-colors cursor-pointer',
+                  'px-1.5 py-0.5 rounded-sm text-11 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                   trackChangesViewMode === 'changes'
-                    ? 'bg-amber-600 text-white font-semibold shadow-2xs'
+                    ? 'bg-amber-600 text-white font-semibold'
                     : 'text-amber-900/80 dark:text-amber-300/80 hover:text-amber-900 hover:bg-amber-500/20',
                 )}
                 title="Diff view"
@@ -569,9 +562,9 @@ export default function Editor({ page }: EditorProps) {
                 type="button"
                 onClick={() => setTrackChangesViewMode('clean')}
                 className={cn(
-                  'px-1.5 py-0.5 rounded-sm text-11 transition-colors cursor-pointer',
+                  'px-1.5 py-0.5 rounded-sm text-11 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                   trackChangesViewMode === 'clean'
-                    ? 'bg-amber-600 text-white font-semibold shadow-2xs'
+                    ? 'bg-amber-600 text-white font-semibold'
                     : 'text-amber-900/80 dark:text-amber-300/80 hover:text-amber-900 hover:bg-amber-500/20',
                 )}
                 title="Clean preview"
@@ -582,9 +575,9 @@ export default function Editor({ page }: EditorProps) {
                 type="button"
                 onClick={() => setTrackChangesViewMode('original')}
                 className={cn(
-                  'px-1.5 py-0.5 rounded-sm text-11 transition-colors cursor-pointer',
+                  'px-1.5 py-0.5 rounded-sm text-11 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                   trackChangesViewMode === 'original'
-                    ? 'bg-amber-600 text-white font-semibold shadow-2xs'
+                    ? 'bg-amber-600 text-white font-semibold'
                     : 'text-amber-900/80 dark:text-amber-300/80 hover:text-amber-900 hover:bg-amber-500/20',
                 )}
                 title="Original view"
@@ -610,14 +603,14 @@ export default function Editor({ page }: EditorProps) {
                   description: '',
                 });
               }}
-              className="px-2 py-0.5 rounded-sm text-11 font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 transition-colors cursor-pointer shadow-2xs"
+              className="px-2 py-0.5 rounded-sm text-11 font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               New suggestion
             </button>
             <button
               type="button"
               onClick={() => toggleReviewMode()}
-              className="px-2 py-0.5 rounded-sm text-11 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="px-2 py-0.5 rounded-sm text-11 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
               title="Exit Review mode"
             >
               Exit
@@ -627,7 +620,7 @@ export default function Editor({ page }: EditorProps) {
       )}
 
       {/* Editor surface area */}
-      <div className="flex-1 w-full relative min-h-0 flex flex-col">
+      <div id="editor-surface" className="flex-1 w-full relative min-h-0 flex flex-col">
         <div className="flex-1 w-full relative min-h-0">
           <UnifiedCodeMirrorEditor
             value={currentContent}

@@ -89,17 +89,17 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
       {/* Badges / Quick specs */}
       <div className="flex flex-wrap items-center gap-1.5 pt-1">
         {paper.itemType && (
-          <Badge variant="outline" className="text-10 font-mono capitalize px-1.5 py-0 border-border bg-background shadow-2xs text-foreground">
+          <Badge variant="outline" className="text-10 font-mono capitalize px-1.5 py-0 border-border bg-background text-foreground">
             {paper.itemType}
           </Badge>
         )}
         {paper.year && (
-          <Badge variant="outline" className="text-10 font-mono px-1.5 py-0 border-border bg-background shadow-2xs text-foreground">
+          <Badge variant="outline" className="text-10 font-mono px-1.5 py-0 border-border bg-background text-foreground">
             {paper.year}
           </Badge>
         )}
         {paper.citationCount !== undefined && paper.citationCount > 0 && (
-          <Badge variant="outline" className="text-10 font-mono px-1.5 py-0 border-border bg-background shadow-2xs text-foreground">
+          <Badge variant="outline" className="text-10 font-mono px-1.5 py-0 border-border bg-background text-foreground">
             {paper.citationCount} citations
           </Badge>
         )}
@@ -118,7 +118,7 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
           <span className="text-11 font-mono text-foreground">
             Abstract
           </span>
-          <div className="rounded-md bg-background shadow-2xs p-2.5 border border-border text-foreground/90 leading-relaxed">
+          <div className="rounded-md bg-background p-2.5 border border-border text-foreground/90 leading-relaxed">
             <p className={!isAbstractExpanded && isLongAbstract ? 'line-clamp-4' : ''}>
               {abstractText}
             </p>
@@ -140,7 +140,7 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
         <span className="text-11 font-mono text-foreground">
           Publication Details
         </span>
-        <div className="divide-y divide-border/40 rounded-md border border-border bg-background shadow-2xs">
+        <div className="divide-y divide-border/40 rounded-md border border-border bg-background">
           {(paper.journal || paper.publicationTitle) && (
             <div className="flex items-start justify-between gap-3 px-3 py-2">
               <span className="text-foreground shrink-0 flex items-center gap-1.5">

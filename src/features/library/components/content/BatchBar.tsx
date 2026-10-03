@@ -270,7 +270,7 @@ export function BatchBar({
                   <span>{retractedSelected.length} retracted</span>
                 </span>
               </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-1 rounded-md border border-destructive/30 bg-popover text-foreground shadow-xs">
+              <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-1 rounded-md border border-destructive/30 bg-popover text-foreground shadow-md">
                 Warning: {retractedSelected.length} selected item(s) have retraction notices
               </TooltipContent>
             </Tooltip>

@@ -8,8 +8,8 @@ import {
   FolderOpen,
   FileText,
   X,
+  Library,
 } from 'lucide-react';
-import { LibraryIcon } from '@/shared/components/icons';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -171,7 +171,7 @@ export default function ImportFromPersonalModal({
         <DialogHeader className="px-5 py-3.5 border-b border-border flex flex-row items-center justify-between shrink-0 bg-background">
           <div>
             <div className="flex items-center gap-2">
-              <LibraryIcon className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
               <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
                 Import from My Library
               </DialogTitle>
@@ -204,7 +204,7 @@ export default function ImportFromPersonalModal({
                 )}
               >
                 <div className="flex items-center gap-2 truncate">
-                  <LibraryIcon className="size-3.5 shrink-0" strokeWidth={1.5} />
+                  <Library className="size-3.5 shrink-0" strokeWidth={1.5} />
                   <span className="truncate">All References</span>
                 </div>
                 <span className="text-10 font-mono text-muted-foreground tabular-nums shrink-0">
@@ -296,7 +296,7 @@ export default function ImportFromPersonalModal({
                   variant="outline"
                   size="sm"
                   onClick={toggleSelectAll}
-                  className="h-8 text-12 font-medium whitespace-nowrap cursor-pointer hover:bg-muted rounded-md shadow-2xs"
+                  className="h-8 text-12 font-medium whitespace-nowrap cursor-pointer hover:bg-muted rounded-md"
                 >
                   {isAllSelectableSelected ? 'Deselect All' : `Select All (${selectableItems.length})`}
                 </Button>
@@ -312,7 +312,7 @@ export default function ImportFromPersonalModal({
                 </div>
               ) : filteredItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground px-4">
-                  <LibraryIcon className="size-6 mb-2 opacity-60" strokeWidth={1.5} />
+                  <Library className="size-6 mb-2 opacity-60" strokeWidth={1.5} />
                   <p className="text-12 font-medium text-foreground">No references found</p>
                   <p className="text-11 text-muted-foreground mt-0.5 max-w-xs">
                     {search.trim()
@@ -389,7 +389,7 @@ export default function ImportFromPersonalModal({
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="h-8 text-12 font-medium cursor-pointer hover:bg-muted rounded-md shadow-2xs"
+              className="h-8 text-12 font-medium cursor-pointer hover:bg-muted rounded-md"
             >
               Cancel
             </Button>

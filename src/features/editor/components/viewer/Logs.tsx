@@ -48,6 +48,7 @@ import {
   type AuxFileItem,
 } from '@/features/editor/services/compiler.service';
 import { CompileButton } from '../../sub-features/compiler/components/CompileButton';
+import { EditorEmptyState } from '../shared';
 
 export interface LogEntry {
   message: string;
@@ -203,7 +204,7 @@ function EntryRow({
                   onSuggestFix(entry);
                 }}
                 className={cn(
-                  'flex items-center gap-1 text-10 px-2 py-0.5 rounded-sm font-medium shrink-0 transition-colors border cursor-pointer',
+                  'flex items-center gap-1 text-10 px-2 py-0.5 rounded-sm font-medium shrink-0 transition-colors border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                   fixResult || isFixLoading
                     ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
                     : 'bg-primary/10 text-primary border-primary/25 hover:bg-primary/20'
@@ -240,11 +241,11 @@ function EntryRow({
       {(isFixLoading || fixResult) && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="ml-6 mt-1.5 p-3 rounded-md bg-muted/40 border border-border shadow-2xs text-xs space-y-2 select-text"
+          className="ml-6 mt-1.5 p-3 rounded-md bg-muted/40 border border-border text-xs space-y-2 select-text"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 font-semibold text-foreground">
-              <Sparkles className="size-3.5 text-amber-500 shrink-0" />
+              <Sparkles className="size-3.5 text-ai shrink-0" />
               <span>AI Error Assist</span>
             </div>
             {fixResult && (
@@ -269,13 +270,13 @@ function EntryRow({
               <div className="rounded-md border border-border bg-background overflow-hidden font-mono text-11 my-1.5">
                 {fixResult.originalSnippet && (
                   <div className="bg-destructive/10 text-destructive px-2.5 py-1.5 border-b border-border/60 whitespace-pre-wrap">
-                    <span className="select-none font-bold mr-2 text-destructive">-</span>
+                    <span className="select-none font-semibold mr-2 text-destructive">-</span>
                     {fixResult.originalSnippet}
                   </div>
                 )}
                 {fixResult.fixedSnippet && (
                   <div className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1.5 whitespace-pre-wrap">
-                    <span className="select-none font-bold mr-2 text-emerald-500">+</span>
+                    <span className="select-none font-semibold mr-2 text-emerald-500">+</span>
                     {fixResult.fixedSnippet}
                   </div>
                 )}
@@ -287,10 +288,10 @@ function EntryRow({
                   disabled={isFixApplied}
                   onClick={() => onApplyFix?.(entry, fixResult)}
                   className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-colors cursor-pointer',
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                     isFixApplied
                       ? 'bg-muted text-muted-foreground border border-border cursor-not-allowed'
-                      : 'bg-primary hover:bg-primary-hover text-primary-foreground shadow-2xs'
+                      : 'bg-primary hover:bg-primary-hover text-primary-foreground'
                   )}
                 >
                   {isFixApplied ? (
@@ -507,7 +508,7 @@ export default function Logs({
             type="button"
             onClick={onClose}
             aria-label="Back to PDF"
-            className="px-3 py-1 rounded-full border border-border bg-background hover:bg-muted text-foreground text-xs font-medium transition-colors cursor-pointer select-none shadow-2xs"
+            className="px-3 py-1 rounded-md border border-border bg-background hover:bg-muted text-foreground text-xs font-medium transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             Back to PDF
           </button>
@@ -520,7 +521,7 @@ export default function Logs({
           type="button"
           onClick={() => setActiveTab('all')}
           className={cn(
-            'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2',
+            'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-primary',
             activeTab === 'all'
               ? 'border-primary text-foreground font-semibold'
               : 'border-transparent text-muted-foreground hover:text-foreground font-medium'
@@ -536,7 +537,7 @@ export default function Logs({
           type="button"
           onClick={() => setActiveTab('errors')}
           className={cn(
-            'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2',
+            'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-primary',
             activeTab === 'errors'
               ? 'border-primary text-foreground font-semibold'
               : 'border-transparent text-muted-foreground hover:text-foreground font-medium'
@@ -545,7 +546,7 @@ export default function Logs({
           <span>Errors</span>
           <span
             className={cn(
-              'px-1.5 py-0.2 rounded-full text-10 font-mono font-bold',
+              'px-1.5 py-0.2 rounded-full text-10 font-mono font-semibold',
               parsed.errors.length > 0 ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground font-medium'
             )}
           >
@@ -557,7 +558,7 @@ export default function Logs({
           type="button"
           onClick={() => setActiveTab('warnings')}
           className={cn(
-            'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2',
+            'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-primary',
             activeTab === 'warnings'
               ? 'border-primary text-foreground font-semibold'
               : 'border-transparent text-muted-foreground hover:text-foreground font-medium'
@@ -566,7 +567,7 @@ export default function Logs({
           <span>Warnings</span>
           <span
             className={cn(
-              'px-1.5 py-0.2 rounded-full text-10 font-mono font-bold',
+              'px-1.5 py-0.2 rounded-full text-10 font-mono font-semibold',
               parsed.warnings.length > 0 ? 'bg-amber-500 text-white' : 'bg-muted text-muted-foreground font-medium'
             )}
           >
@@ -578,7 +579,7 @@ export default function Logs({
           type="button"
           onClick={() => setActiveTab('info')}
           className={cn(
-            'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2',
+            'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-primary',
             activeTab === 'info'
               ? 'border-primary text-foreground font-semibold'
               : 'border-transparent text-muted-foreground hover:text-foreground font-medium'
@@ -594,11 +595,11 @@ export default function Logs({
       {/* ── Main Body ── */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-background">
         {/* Collapsible: > Raw logs accordion (Overleaf 1:1 Match) */}
-        <div className="rounded-md border border-border bg-card overflow-hidden shadow-2xs">
+        <div className="rounded-md border border-border bg-background overflow-hidden">
           <button
             type="button"
             onClick={() => setIsRawLogsOpen((prev) => !prev)}
-            className="w-full flex items-center gap-2 px-3 py-2 text-left font-medium text-xs text-foreground hover:bg-muted/60 transition-colors cursor-pointer select-none"
+            className="w-full flex items-center gap-2 px-3 py-2 text-left font-medium text-xs text-foreground hover:bg-muted/60 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <ChevronRight
               className={cn('size-3.5 text-muted-foreground transition-transform duration-150', isRawLogsOpen && 'rotate-90')}
@@ -615,7 +616,7 @@ export default function Logs({
         </div>
 
         {/* Diagnostic Entries List */}
-        <div className="rounded-md border border-border bg-card overflow-hidden shadow-2xs">
+        <div className="rounded-md border border-border bg-background overflow-hidden">
           {/* Errors */}
           {(activeTab === 'all' || activeTab === 'errors') &&
             parsed.errors.map((e, i) => {
@@ -675,8 +676,13 @@ export default function Logs({
             </div>
           )}
           {activeTab === 'all' && totalLogsCount === 0 && (
-            <div className="py-8 text-center text-xs text-muted-foreground font-medium">
-              No logs, errors, or warnings reported.
+            <div className="py-8 px-4">
+              <EditorEmptyState
+                variant="review"
+                isCompact
+                title="No compilation issues"
+                description="Your document compiled cleanly with zero errors or warnings."
+              />
             </div>
           )}
         </div>
@@ -688,7 +694,7 @@ export default function Logs({
         <button
           type="button"
           onClick={onClearCacheAndCompile}
-          className="h-7.5 px-3 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none shadow-2xs"
+          className="h-7.5 px-3 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-destructive"
         >
           <Trash2 className="size-3.5 shrink-0" />
           <span>Clear cached files</span>
@@ -699,7 +705,7 @@ export default function Logs({
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="h-7.5 px-3 rounded-full bg-background hover:bg-muted border border-border text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none shadow-2xs"
+              className="h-7.5 px-3 rounded-md bg-background hover:bg-muted border border-border text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <span>Other logs and files</span>
               <ChevronUp className="size-3.5 shrink-0 text-muted-foreground" />
@@ -720,20 +726,21 @@ export default function Logs({
                   key={file}
                   type="button"
                   onClick={() => handleDownloadFile(file)}
-                  className="w-full text-left px-3.5 py-1.5 text-xs font-mono text-foreground hover:bg-muted transition-colors cursor-pointer flex items-center justify-between group"
+                  className="w-full text-left px-3.5 py-1.5 text-xs font-mono text-foreground hover:bg-muted transition-colors cursor-pointer flex items-center justify-between group outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
                 >
                   <span>{file}</span>
                   <Download className="size-3 text-muted-foreground group-hover:text-foreground" />
                 </button>
               ))}
             </div>
-            <div
+            <button
+              type="button"
               onClick={handleDownloadAll}
-              className="px-3.5 py-2 text-xs font-medium text-foreground hover:bg-muted border-t border-border bg-muted/20 transition-colors cursor-pointer flex items-center justify-between"
+              className="w-full px-3.5 py-2 text-xs font-medium text-foreground hover:bg-muted border-t border-border bg-muted/20 transition-colors cursor-pointer flex items-center justify-between outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
             >
               <span>Download all ({outputFiles.length})</span>
               <Download className="size-3.5 text-muted-foreground" />
-            </div>
+            </button>
           </PopoverContent>
         </Popover>
       </footer>

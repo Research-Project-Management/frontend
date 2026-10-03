@@ -47,6 +47,7 @@ import { EDITOR_THEMES } from '../editor/editor-themes';
 import { useTheme } from '@/shared/providers';
 import { filesQuery } from '@/features/editor/hooks/use-core';
 import { useQuery } from '@tanstack/react-query';
+import { EditorEventBus } from '@/features/editor/utils/editor.util';
 
 type SettingsTab =
   | 'editor'
@@ -243,7 +244,7 @@ export default function ProjectSettingsModal() {
       <DialogContent className="max-w-3xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-300 rounded-lg text-foreground select-none flex flex-col max-h-[85vh] h-[580px]">
         {/* ── Dialog Header (Overleaf 1:1) ──────────────────────────────────── */}
         <div className="flex items-center justify-between px-6 py-3.5 border-b border-border bg-background shrink-0">
-          <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
+          <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">
             Settings
           </DialogTitle>
           <DialogDescription className="sr-only">
@@ -253,7 +254,7 @@ export default function ProjectSettingsModal() {
             type="button"
             onClick={() => setSettingsPanelOpen(false)}
             aria-label="Close"
-            className="size-7 rounded-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <X className="size-4.5" />
           </button>
@@ -262,7 +263,7 @@ export default function ProjectSettingsModal() {
         {/* ── 2-Column Split: Sidebar Navigation & Content Panel ────────────── */}
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Left Navigation Sidebar */}
-          <div className="w-56 shrink-0 border-r border-border p-3 flex flex-col gap-1 overflow-y-auto bg-muted/15">
+          <div className="w-56 shrink-0 border-r border-border p-3 flex flex-col gap-1 overflow-y-auto bg-muted/15" role="tablist">
             {navTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -270,9 +271,11 @@ export default function ProjectSettingsModal() {
                 <button
                   key={tab.id}
                   type="button"
+                  role="tab"
+                  aria-selected={isActive}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    'flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors text-left cursor-pointer w-full outline-none',
+                    'flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors text-left cursor-pointer w-full outline-none focus-visible:ring-1 focus-visible:ring-primary',
                     isActive
                       ? 'bg-primary/10 text-primary font-semibold'
                       : 'text-foreground/80 hover:text-foreground hover:bg-muted/60 font-normal'
@@ -289,6 +292,20 @@ export default function ProjectSettingsModal() {
               );
             })}
 
+            {/* Project Functions / Actions (Overleaf Parity) */}
+            <div className="h-px bg-border/60 my-1.5" />
+            <button
+              type="button"
+              onClick={() => {
+                setSettingsPanelOpen(false);
+                EditorEventBus.emit('flux:open-word-count');
+              }}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors text-left cursor-pointer w-full outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            >
+              <FileText className="size-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">Word count</span>
+            </button>
+
             {/* Separator before external links */}
             <div className="h-px bg-border/60 my-1.5" />
 
@@ -297,7 +314,7 @@ export default function ProjectSettingsModal() {
               href="/settings"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors group cursor-pointer outline-none"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors group cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Settings className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
               <span className="flex-1 truncate">Account settings</span>
@@ -309,7 +326,7 @@ export default function ProjectSettingsModal() {
               href="/settings/billing"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors group cursor-pointer outline-none"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground/80 hover:text-foreground hover:bg-muted/60 transition-colors group cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Landmark className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
               <span className="flex-1 truncate">Subscription</span>
@@ -591,12 +608,12 @@ export default function ProjectSettingsModal() {
                       placeholder="Add a custom word..."
                       value={newWordInput}
                       onChange={(e) => setNewWordInput(e.target.value)}
-                      className="flex-1 h-8 px-2.5 text-xs rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="flex-1 h-8 px-2.5 text-xs rounded-md border border-border bg-background outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     />
                     <button
                       type="submit"
                       disabled={!newWordInput.trim()}
-                      className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium inline-flex items-center gap-1 hover:bg-primary-hover disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed transition-colors"
+                      className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium inline-flex items-center gap-1 hover:bg-primary-hover disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     >
                       <Plus className="size-3.5 shrink-0" />
                       <span>Add word</span>
@@ -607,21 +624,21 @@ export default function ProjectSettingsModal() {
                   <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 border border-border/40 rounded-md bg-muted/20">
                     {userWords.length === 0 && projectWords.length === 0 ? (
                       <span className="text-xs text-muted-foreground/80 italic p-1">
-                        No learned words in your dictionary yet.
+                         No learned words in your dictionary yet.
                       </span>
                     ) : (
                       <>
                         {userWords.map((word) => (
                           <span
                             key={`user-${word}`}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-background border border-border text-foreground shadow-2xs group"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-background border border-border text-foreground group"
                           >
                             <span>{word}</span>
                             <button
                               type="button"
                               onClick={() => handleRemoveWord(word, false)}
                               title={`Remove "${word}" from dictionary`}
-                              className="size-3.5 rounded-full inline-flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                              className="size-3.5 rounded-full inline-flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-destructive"
                             >
                               <X className="size-2.5" />
                             </button>
@@ -630,7 +647,7 @@ export default function ProjectSettingsModal() {
                         {projectWords.map((word) => (
                           <span
                             key={`proj-${word}`}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 border border-primary/20 text-primary shadow-2xs group"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 border border-primary/20 text-primary group"
                             title="Project dictionary word"
                           >
                             <span>{word}</span>
@@ -638,7 +655,7 @@ export default function ProjectSettingsModal() {
                               type="button"
                               onClick={() => handleRemoveWord(word, true)}
                               title={`Remove "${word}" from project dictionary`}
-                              className="size-3.5 rounded-full inline-flex items-center justify-center text-primary/70 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                              className="size-3.5 rounded-full inline-flex items-center justify-center text-primary/70 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-destructive"
                             >
                               <X className="size-2.5" />
                             </button>

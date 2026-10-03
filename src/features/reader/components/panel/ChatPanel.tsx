@@ -66,7 +66,7 @@ function CitationPill({
         if (onClick) onClick(citation.pageNumber);
       }}
       title={citation.quote ? `Quote: "${citation.quote}"` : `Jump to Page ${citation.pageNumber}`}
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-11 font-mono text-foreground border border-border bg-background shadow-2xs hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer select-none"
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-11 font-mono text-foreground border border-border bg-background hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer select-none"
     >
       <BookOpen className="size-3 text-foreground shrink-0" />
       <span className="tabular-nums">p.{citation.pageNumber}</span>
@@ -195,7 +195,7 @@ export default function ChatPanel({
                   key={item.id}
                   type="button"
                   onClick={() => sendMessage(item.prompt)}
-                  className="w-full text-left py-1.5 px-2.5 rounded-md text-xs text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors border border-border bg-background shadow-2xs cursor-pointer flex items-center justify-between group"
+                  className="w-full text-left py-1.5 px-2.5 rounded-md text-xs text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors border border-border bg-background cursor-pointer flex items-center justify-between group"
                 >
                   <span className="truncate">{item.title}</span>
                   <ArrowRight className="size-3 text-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -219,7 +219,7 @@ export default function ChatPanel({
                     'p-2.5 rounded-md leading-relaxed text-xs max-w-[95%]',
                     isUser
                       ? 'bg-muted text-foreground'
-                      : 'border border-border bg-background text-foreground shadow-2xs',
+                      : 'border border-border bg-background text-foreground',
                   )}
                 >
                   <div className="select-text overflow-hidden">
@@ -285,7 +285,7 @@ export default function ChatPanel({
           onSubmit={handleSubmit(onSubmit)}
           className="p-2 border-t border-border bg-background shrink-0"
         >
-          <div className="flex items-center gap-1 rounded-md border border-border bg-background shadow-2xs focus-within:ring-1 focus-within:ring-ring px-2 py-1">
+          <div className="flex items-center gap-1 rounded-md border border-border bg-background focus-within:ring-1 focus-within:ring-ring px-2 py-1">
             <textarea
               {...register('message')}
               onKeyDown={handleKeyDown}

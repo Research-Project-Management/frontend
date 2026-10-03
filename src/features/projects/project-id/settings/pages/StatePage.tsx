@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/components/ui";
-import TopBar from '../components/layout/TopBar';
+import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
 import {
   Plus,
   Pencil,
@@ -226,10 +226,10 @@ export default function StatePage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-full w-full bg-background">
-        <TopBar title="States" Icon={CircleDot} />
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto p-5 md:p-8 space-y-4">
+      <PageLayout>
+        <PageHeader title="States" icon={CircleDot} />
+        <PageContent maxWidth="md">
+          <div className="space-y-4">
             <Skeleton className="h-8 w-48 rounded-md" />
             <Skeleton className="h-4 w-96 rounded-md" />
             <div className="pt-4 space-y-4">
@@ -238,26 +238,17 @@ export default function StatePage() {
               ))}
             </div>
           </div>
-        </div>
-      </div>
+        </PageContent>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="flex flex-col h-full w-full bg-background">
-      {/* Topbar: clean, no description, no top action buttons */}
-      <TopBar title="States" Icon={CircleDot} />
+    <PageLayout>
+      <PageHeader title="States" icon={CircleDot} />
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto p-5 md:p-8 space-y-6">
-          {/* Header section matching Linear style without Docs link */}
-          <div className="space-y-1">
-            <h1 className="text-xl font-semibold text-foreground tracking-tight">States</h1>
-            <p className="text-xs text-muted-foreground">
-              States show where each work item is in its lifecycle from start to done. Customize them for this project.
-            </p>
-          </div>
-
+      <PageContent maxWidth="md">
+        <div className="space-y-6">
           {/* Groups list */}
           <div className="space-y-4">
             {STATE_GROUPS.map((groupKey) => {
@@ -269,7 +260,7 @@ export default function StatePage() {
               return (
                 <div
                   key={groupKey}
-                  className="rounded-xl border border-border/80 bg-card/50 p-3.5 sm:p-4 space-y-2.5 transition-colors"
+                  className="rounded-xl border border-border bg-background p-3.5 sm:p-4 space-y-2.5 transition-colors"
                 >
                   {/* Group Header: Arrow toggle + Icon + Name on left; ONLY Plus button on right */}
                   <div className="flex items-center justify-between">
@@ -307,7 +298,7 @@ export default function StatePage() {
                     <div className="space-y-2 pt-1">
                       {/* Inline State Creation Card (Image 4) */}
                       {isAdding && (
-                        <div className="rounded-lg border border-border bg-background p-3 space-y-2.5 shadow-xs">
+                        <div className="rounded-lg border border-border bg-background p-3 space-y-2.5">
                           {/* Top row: Color picker trigger + State name input */}
                           <div className="space-y-1">
                             <div className="flex items-center gap-2.5">
@@ -315,7 +306,7 @@ export default function StatePage() {
                                 <PopoverTrigger asChild>
                                   <button
                                     type="button"
-                                    className="size-7 rounded-md shrink-0 border border-border/70 shadow-2xs hover:scale-105 transition-transform cursor-pointer"
+                                    className="size-7 rounded-md shrink-0 border border-border/70 hover:scale-105 transition-transform cursor-pointer"
                                     style={{ backgroundColor: inlineColor }}
                                     aria-label="Pick state color"
                                   />
@@ -419,7 +410,7 @@ export default function StatePage() {
                             return (
                               <div
                                 key={s.id}
-                                className="rounded-lg border border-border bg-background p-3 space-y-2.5 shadow-xs"
+                                className="rounded-lg border border-border bg-background p-3 space-y-2.5"
                               >
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2.5">
@@ -427,7 +418,7 @@ export default function StatePage() {
                                       <PopoverTrigger asChild>
                                         <button
                                           type="button"
-                                          className="size-7 rounded-md shrink-0 border border-border/70 shadow-2xs hover:scale-105 transition-transform cursor-pointer"
+                                          className="size-7 rounded-md shrink-0 border border-border/70 hover:scale-105 transition-transform cursor-pointer"
                                           style={{ backgroundColor: editColor }}
                                           aria-label="Pick state color"
                                         />
@@ -572,7 +563,7 @@ export default function StatePage() {
             })}
           </div>
         </div>
-      </div>
+      </PageContent>
 
       {/* Delete State Modal with Safe Migration Port */}
       <Dialog
@@ -644,6 +635,6 @@ export default function StatePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   );
 }

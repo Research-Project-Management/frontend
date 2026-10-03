@@ -396,7 +396,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 onRestoreSelected?.();
               }}
               disabled={isUpdating}
-              className="h-8 px-3 text-13 font-medium rounded-md bg-background border border-border hover:bg-muted text-foreground shadow-2xs cursor-pointer"
+              className="h-8 px-3 text-13 font-medium rounded-md bg-background border border-border hover:bg-muted text-foreground cursor-pointer"
             >
               {isUpdating ? 'Restoring...' : `Restore ${count} Items`}
             </Button>
@@ -433,7 +433,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 onArchiveSelected?.();
               }}
               disabled={isUpdating}
-              className="h-8 px-3 text-13 font-medium rounded-md bg-background border border-border hover:bg-muted text-foreground shadow-2xs cursor-pointer"
+              className="h-8 px-3 text-13 font-medium rounded-md bg-background border border-border hover:bg-muted text-foreground cursor-pointer"
             >
               {isUpdating ? 'Archiving...' : `Archive ${count} Items`}
             </Button>

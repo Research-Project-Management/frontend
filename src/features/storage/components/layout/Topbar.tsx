@@ -321,7 +321,7 @@ export default function Topbar({
                       {view === v && (
                         <motion.div
                           layoutId="view-toggle"
-                          className="absolute inset-0 bg-background rounded-md shadow-xs"
+                          className="absolute inset-0 bg-background rounded-md border border-border"
                           transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
                         />
                       )}

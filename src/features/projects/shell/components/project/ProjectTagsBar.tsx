@@ -68,7 +68,7 @@ export function ProjectTagsBar({
         className={cn(
           'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer shrink-0 border',
           selectedTagId === null
-            ? 'bg-background text-foreground border-border shadow-2xs font-semibold'
+            ? 'bg-background text-foreground border-border font-semibold'
             : 'bg-transparent text-muted-foreground border-transparent hover:bg-muted hover:text-foreground'
         )}
       >
@@ -91,7 +91,7 @@ export function ProjectTagsBar({
             className={cn(
               'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium transition-all cursor-pointer shrink-0 border',
               isSelected
-                ? 'bg-background text-foreground border-border shadow-2xs font-semibold ring-1'
+                ? 'bg-background text-foreground border-border font-semibold ring-1'
                 : 'bg-transparent text-muted-foreground border-border/40 hover:bg-muted hover:text-foreground hover:border-border'
             )}
             style={

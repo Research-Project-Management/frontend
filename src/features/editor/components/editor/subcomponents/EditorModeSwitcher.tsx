@@ -92,10 +92,10 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
         >
           <PenLine className={cn('size-4 mt-0.5 shrink-0', !reviewMode ? 'text-primary' : 'text-muted-foreground')} />
           <div className="flex-1 min-w-0">
-            <div className={cn('font-semibold text-xs leading-none text-foreground')}>
+            <div className={cn('font-semibold text-13 leading-snug text-foreground')}>
               Editing
             </div>
-            <div className={cn('text-11 leading-tight mt-1 text-muted-foreground')}>
+            <div className={cn('text-12 leading-normal mt-0.5 text-muted-foreground')}>
               Edit content directly
             </div>
           </div>
@@ -112,10 +112,10 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
         >
           <MessageSquareQuote className={cn('size-4 mt-0.5 shrink-0', reviewMode ? 'text-primary' : 'text-muted-foreground')} />
           <div className="flex-1 min-w-0">
-            <div className={cn('font-semibold text-xs leading-none text-foreground')}>
+            <div className={cn('font-semibold text-13 leading-snug text-foreground')}>
               Reviewing
             </div>
-            <div className={cn('text-11 leading-tight mt-1 text-muted-foreground')}>
+            <div className={cn('text-12 leading-normal mt-0.5 text-muted-foreground')}>
               Edits become suggestions
             </div>
           </div>

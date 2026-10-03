@@ -102,7 +102,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
         : '');
 
     return (
-      <div className="mb-3 rounded-md border border-amber-200/60 dark:border-amber-900/40 bg-gradient-to-r from-amber-50/70 to-orange-50/40 dark:from-amber-950/20 dark:to-orange-950/10 p-2.5 text-xs shadow-xs transition-colors">
+      <div className="mb-3 rounded-md border border-amber-200/60 dark:border-amber-900/40 bg-gradient-to-r from-amber-50/70 to-orange-50/40 dark:from-amber-950/20 dark:to-orange-950/10 p-2.5 text-xs transition-colors">
         <div className="flex items-center justify-between gap-2">
           <div
             className="flex items-center gap-2 cursor-pointer select-none flex-1 min-w-0"
@@ -123,7 +123,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
                   ({formatRemainingTime(remainingSecs)})
                 </span>
               </div>
-              <p className="text-11 text-amber-700/80 dark:text-amber-400/80 truncate">
+              <p className="text-12 text-amber-700/80 dark:text-amber-400/80 truncate leading-normal">
                 From {authorsText} · 10m Overleaf digest window
               </p>
             </div>
@@ -134,7 +134,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
               type="button"
               disabled={flushBundle.isPending}
               onClick={handleFlushNow}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-11 font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-100 transition-colors disabled:opacity-50 cursor-pointer"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-12 font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-100 transition-colors disabled:opacity-50 cursor-pointer leading-normal"
               title="Flush digest immediately to collaborators"
             >
               {flushBundle.isPending ? (
@@ -166,7 +166,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
             {items.map((item: BundledNotificationItem) => (
               <div
                 key={item.id}
-                className="flex items-start gap-2 p-1.5 rounded-sm bg-background/60 dark:bg-background/40 border border-border/40 text-11"
+                className="flex items-start gap-2 p-1.5 rounded-sm bg-background/60 dark:bg-background/40 border border-border/40 text-12"
               >
                 {getEventIcon(item.type)}
                 <div className="flex-1 min-w-0">
@@ -174,7 +174,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
                     <span className="font-semibold text-foreground truncate">
                       {item.authorName}
                     </span>
-                    <span className="text-10 text-muted-foreground uppercase">
+                    <span className="text-10 text-muted-foreground capitalize">
                       {item.type}
                     </span>
                   </div>

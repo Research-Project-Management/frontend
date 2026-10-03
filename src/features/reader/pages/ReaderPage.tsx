@@ -327,7 +327,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
   return (
     <div className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background ${isResizingPanel ? 'select-none' : ''}`}>
-      {/* 1. ZOTERO 7 MULTI-PAPER TAB BAR (Hàng 1) - Hidden in Reading Mode */}
+      {/* 1. ZOTERO 7 MULTI-PAPER TAB BAR (Row 1) - Hidden in Reading Mode */}
       {!isReadingMode && (
         <Topbar
           paper={paper}
@@ -342,7 +342,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         />
       )}
 
-      {/* 2. ZOTERO 7 DEDICATED READER TOOLBAR (Hàng 2) */}
+      {/* 2. ZOTERO 7 DEDICATED READER TOOLBAR (Row 2) */}
       {paperUrl && (
         <ReaderToolbar
           isSidebarOpen={isSidebarOpen}
@@ -391,10 +391,10 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
       {/* 2.1 RETRACTION WARNING BANNER (Zotero-style alert) */}
       {(paper as any)?.isRetracted && (
-        <div className="bg-rose-600 text-white px-4 py-2 flex items-center justify-between text-xs shadow-sm z-30 shrink-0 border-b border-rose-700 select-none">
+        <div className="bg-rose-600 text-white px-4 py-2 flex items-center justify-between text-xs z-30 shrink-0 border-b border-rose-700 select-none">
           <div className="flex items-center gap-2 min-w-0">
             <ShieldAlert className="size-4 shrink-0 text-white animate-pulse" />
-            <span className="font-bold tracking-normal">
+            <span className="font-semibold tracking-normal">
               {(paper as any).retractionNature === 'expression_of_concern'
                 ? 'Expression of Concern'
                 : (paper as any).retractionNature === 'correction'
@@ -447,7 +447,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
             </div>
           ) : !paper ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center max-w-sm mx-auto">
-              <div className="size-10 rounded-md bg-background border border-border shadow-2xs flex items-center justify-center text-foreground">
+              <div className="size-10 rounded-md bg-background border border-border flex items-center justify-center text-foreground">
                 <FileQuestion className="size-5 text-foreground" strokeWidth={1.5} />
               </div>
               <div className="space-y-1">
@@ -460,7 +460,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 variant="outline"
                 size="sm"
                 onClick={goBack}
-                className="h-8 px-3 mt-1 text-12 font-medium rounded-md shadow-2xs cursor-pointer border border-border bg-background text-foreground hover:bg-muted"
+                className="h-8 px-3 mt-1 text-12 font-medium rounded-md cursor-pointer border border-border bg-background text-foreground hover:bg-muted"
               >
                 <ChevronLeft className="size-3.5 mr-1 shrink-0 text-foreground" strokeWidth={1.5} />
                 Return to Library
@@ -575,7 +575,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsInspectorOpen(true)}
-                className="h-8 px-3 text-12 font-medium rounded-md shadow-2xs cursor-pointer border border-border bg-background text-foreground hover:bg-muted"
+                className="h-8 px-3 text-12 font-medium rounded-md cursor-pointer border border-border bg-background text-foreground hover:bg-muted"
               >
                 Open Details
               </Button>

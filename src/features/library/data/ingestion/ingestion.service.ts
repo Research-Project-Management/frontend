@@ -326,7 +326,7 @@ export const QualityService = {
         year: it.year || null,
         citationKey: it.citationKey || '',
         collectionId: it.collectionId || null,
-      })) as any,
+      })) as unknown as Item[],
     }));
 
     return {

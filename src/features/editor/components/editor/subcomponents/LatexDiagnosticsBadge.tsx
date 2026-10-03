@@ -177,7 +177,7 @@ export function LatexDiagnosticsBadge() {
                 type="button"
                 disabled={isAutoFixing}
                 onClick={handleAutoFix}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-11 font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-11 font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 transition-colors disabled:opacity-50 cursor-pointer"
                 title="Auto-fix syntax"
               >
                 {isAutoFixing ? (
@@ -266,7 +266,7 @@ export function LatexDiagnosticsBadge() {
                   href={selectedExplanation.documentationUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-11 text-primary hover:underline pt-1"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline pt-1"
                 >
                   <span>Learn more in LaTeX docs</span>
                   <ExternalLink className="size-3" />

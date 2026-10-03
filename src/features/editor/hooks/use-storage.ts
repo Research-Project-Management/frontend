@@ -13,19 +13,40 @@ import { toast } from 'sonner';
 import { StorageService, type EditorStorageItem } from '../services/storage.service';
 import { usePageStore } from '../store';
 
-export function useEditorStorage(pageId?: string | null, parentId?: string | null) {
+export function useEditorStorage(
+  pageIdOrProjectId?: string | null,
+  parentId?: string | null,
+  explicitProjectId?: string | null,
+) {
   const queryClient = useQueryClient();
   const currentPage = usePageStore((s) => s.currentPage);
-  const effectiveProjectId = currentPage?.projectId || pageId || '';
+  const storeProjectId = usePageStore((s) => s.projectId);
+
+  // Derive genuine project ID from explicit param, page store, or currentPage
+  const resolvedProjectId =
+    explicitProjectId ||
+    (typeof currentPage?.projectId === 'string'
+      ? currentPage.projectId
+      : (currentPage?.projectId as any)?.id) ||
+    storeProjectId ||
+    '';
+
+  // If pageIdOrProjectId matches storeProjectId or explicitProjectId, it is definitely a projectId
+  const effectiveProjectId =
+    resolvedProjectId ||
+    (pageIdOrProjectId && pageIdOrProjectId === storeProjectId ? pageIdOrProjectId : '');
 
   const {
     data: items = [],
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ['editor-storage-files', effectiveProjectId, pageId, parentId],
+    queryKey: ['editor-storage-files', effectiveProjectId, pageIdOrProjectId, parentId],
     queryFn: async (): Promise<EditorStorageItem[]> => {
-      const targetId = pageId || effectiveProjectId;
+      if (effectiveProjectId) {
+        return await StorageService.getProjectFiles(effectiveProjectId, parentId);
+      }
+      const targetId = pageIdOrProjectId || '';
       if (!targetId) return [];
       try {
         const files = await StorageService.getPageFiles(targetId, parentId);
@@ -35,7 +56,7 @@ export function useEditorStorage(pageId?: string | null, parentId?: string | nul
         return [];
       }
     },
-    enabled: !!(effectiveProjectId || pageId),
+    enabled: Boolean(effectiveProjectId || pageIdOrProjectId),
   });
 
   const uploadFileMutation = useMutation({
@@ -50,8 +71,15 @@ export function useEditorStorage(pageId?: string | null, parentId?: string | nul
       pageId?: string;
       parentId?: string | null;
     }): Promise<EditorStorageItem> => {
-      const targetId = targetPageId || projectId || pageId || effectiveProjectId;
-      return await StorageService.uploadPageFile(targetId, file, targetParentId ?? parentId);
+      const pid = projectId || effectiveProjectId;
+      const targetId = targetPageId || pageIdOrProjectId || pid || '';
+      return await StorageService.uploadPageFile(
+        targetId,
+        file,
+        targetParentId ?? parentId,
+        undefined,
+        pid || undefined,
+      );
     },
     onSuccess: (newItem) => {
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
@@ -75,7 +103,11 @@ export function useEditorStorage(pageId?: string | null, parentId?: string | nul
       projectId?: string;
       pageId?: string;
     }): Promise<any> => {
-      const targetId = targetPageId || targetProjectId || pageId || effectiveProjectId;
+      const pid = targetProjectId || effectiveProjectId;
+      if (pid) {
+        return await StorageService.createProjectFolder(pid, name, targetParentId ?? parentId);
+      }
+      const targetId = targetPageId || pageIdOrProjectId || '';
       return await StorageService.createPageFolder(targetId, name, targetParentId ?? parentId);
     },
     onSuccess: () => {

@@ -229,7 +229,7 @@ export default function CitationPickerModal({
         showCloseButton={false}
         className="sm:max-w-xl p-0 gap-0 overflow-hidden rounded-xl border border-border shadow-raised-400 bg-background"
       >
-        {/* ── Modal Header (Không có line, chỉ chứa text Citation và icon X) ── */}
+        {/* ── Modal Header (Flat, minimal header with Citation title) ── */}
         <div className="flex items-center justify-between px-5 pt-4 pb-2 bg-background">
           <DialogTitle className="text-13 font-semibold text-foreground tracking-tight">
             Citation
@@ -237,15 +237,15 @@ export default function CitationPickerModal({
           <DialogClose asChild>
             <button
               type="button"
-              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-              aria-label="Đóng"
+              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              aria-label="Close"
             >
               <X className="size-4" />
             </button>
           </DialogClose>
         </div>
 
-        {/* ── Search Input & Dropdown Menu (Độ rộng vừa phải, text đen) ── */}
+        {/* ── Search Input & Dropdown Menu ── */}
         <div className="flex items-center gap-2 px-5 pb-3">
           <div className="relative w-72 sm:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/70 pointer-events-none" />
@@ -258,7 +258,7 @@ export default function CitationPickerModal({
               }}
               onKeyDown={handleKeyDown}
               placeholder="Search citations..."
-              className="pl-9 pr-8 h-9 text-xs bg-background border-border/80 text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-1 focus-visible:ring-primary shadow-2xs rounded-md"
+              className="pl-9 pr-8 h-9 text-xs bg-background border-border/80 text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-1 focus-visible:ring-primary rounded-md"
             />
             {search && (
               <button
@@ -268,21 +268,21 @@ export default function CitationPickerModal({
                   setSelectedIndex(0);
                   searchInputRef.current?.focus();
                 }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                aria-label="Xóa từ khóa tìm kiếm"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                aria-label="Clear search"
               >
                 <X className="size-3.5" />
               </button>
             )}
           </div>
 
-          {/* Dropdown Menu cho kiểu trích dẫn (Text màu đen/foreground, không có tiêu đề thừa) */}
+          {/* Citation style dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="h-9 px-3 flex items-center gap-1.5 rounded-md border border-border/80 bg-background hover:bg-muted text-xs font-mono text-foreground shadow-2xs transition-colors shrink-0 cursor-pointer"
-                title="Chọn kiểu trích dẫn"
+                className="h-9 px-3 flex items-center gap-1.5 rounded-md border border-border/80 bg-background hover:bg-muted text-xs font-mono text-foreground transition-colors shrink-0 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                title="Select citation style"
               >
                 <span className="font-medium text-foreground">{selectedOption.label}</span>
                 <ChevronDown className="size-3.5 text-muted-foreground opacity-70" />
@@ -324,7 +324,7 @@ export default function CitationPickerModal({
               type="button"
               onClick={handleResolveIdentifier}
               disabled={isResolving}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm bg-primary text-primary-foreground text-xs font-medium cursor-pointer hover:bg-primary-hover disabled:opacity-50 transition-colors shrink-0 shadow-2xs"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm bg-primary text-primary-foreground text-xs font-medium cursor-pointer hover:bg-primary-hover disabled:opacity-50 transition-colors shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               {isResolving ? (
                 <>
@@ -341,7 +341,7 @@ export default function CitationPickerModal({
           </div>
         )}
 
-        {/* ── Citation Entries List (Không có footer ở dưới) ── */}
+        {/* ── Citation Entries List (Borderless footerless container) ── */}
         <div
           ref={listRef}
           className="max-h-[320px] min-h-[160px] overflow-y-auto px-5 pt-1 pb-4 space-y-1 sidebar-scrollbar"
@@ -349,7 +349,7 @@ export default function CitationPickerModal({
           {isSearchingServer && (
             <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
               <Loader2 className="size-4 animate-spin text-muted-foreground" />
-              <span className="text-xs">Đang tìm kiếm trích dẫn…</span>
+              <span className="text-xs">Searching citations...</span>
             </div>
           )}
 
@@ -358,11 +358,11 @@ export default function CitationPickerModal({
               <div className="size-9 rounded-full bg-muted/60 flex items-center justify-center mb-1 text-muted-foreground/80">
                 <SearchX className="size-4" />
               </div>
-              <p className="text-xs font-medium text-foreground">Không tìm thấy trích dẫn phù hợp</p>
+              <p className="text-xs font-medium text-foreground">No citations found</p>
               <p className="text-11 text-muted-foreground max-w-xs">
                 {search
-                  ? `Không có mục nào khớp với "${search}".`
-                  : 'Chưa có mục trích dẫn nào trong các tệp .bib của dự án.'}
+                  ? `No entries match "${search}".`
+                  : 'No citation entries found in project .bib files.'}
               </p>
             </div>
           )}
@@ -377,11 +377,19 @@ export default function CitationPickerModal({
               return (
                 <div
                   key={entry.key}
+                  role="button"
+                  tabIndex={0}
                   data-index={idx}
                   onClick={() => handleSelectItem(entry)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleSelectItem(entry);
+                    }
+                  }}
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={cn(
-                    'group flex items-start justify-between gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors border',
+                    'group flex items-start justify-between gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors border outline-none focus-visible:ring-1 focus-visible:ring-primary',
                     isSelected
                       ? 'bg-muted border-border/80'
                       : 'border-transparent hover:bg-muted/60',
@@ -404,7 +412,7 @@ export default function CitationPickerModal({
                   <div className="shrink-0 flex items-center gap-1.5 self-center">
                     <Badge
                       variant="outline"
-                      className="font-mono text-10 px-1.5 py-0.5 border-border bg-background text-foreground shadow-2xs"
+                      className="font-mono text-10 px-1.5 py-0.5 border-border bg-background text-foreground"
                     >
                       {entry.key}
                     </Badge>
@@ -423,8 +431,8 @@ export default function CitationPickerModal({
                         navigator.clipboard.writeText(entry.key);
                         toast.success(`Copied key "${entry.key}"`);
                       }}
-                      className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer"
-                      title="Copy mã trích dẫn"
+                      className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      title="Copy citation key"
                     >
                       <Copy className="size-3" />
                     </button>

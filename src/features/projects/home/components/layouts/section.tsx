@@ -12,7 +12,7 @@ export function Section({
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-semibold text-foreground select-none">
+        <h2 className="text-[17px] font-semibold tracking-tight text-foreground select-none">
           {title}
         </h2>
         {action && <div>{action}</div>}

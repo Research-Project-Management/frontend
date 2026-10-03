@@ -122,6 +122,11 @@ export const PdfToolbar = React.memo(function PdfToolbar({
   onJumpToPage,
   invertColors,
   onToggleInvertColors,
+  isSpreadView,
+  onToggleSpreadView,
+  onOpenPresentationMode,
+  onPopout,
+  isPoppedOut,
   pdfUrl,
   showLog,
   onToggleLog,
@@ -169,7 +174,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
               onClick={onToggleLog}
               aria-label="Logs and output files"
               className={cn(
-                'size-7 relative flex items-center justify-center rounded-md text-xs font-semibold transition-colors cursor-pointer border select-none',
+                'size-7 relative flex items-center justify-center rounded-md text-xs font-semibold transition-colors cursor-pointer border select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
                 showLog
                   ? 'bg-primary/10 border-primary/40 text-primary'
                   : errorCount > 0
@@ -181,11 +186,11 @@ export const PdfToolbar = React.memo(function PdfToolbar({
             >
               <FileText className="size-3.5 shrink-0" />
               {errorCount > 0 ? (
-                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-10 font-bold text-destructive-foreground shadow-xs">
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-10 font-semibold text-destructive-foreground">
                   {errorCount}
                 </span>
               ) : warningCount > 0 ? (
-                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-10 font-bold text-white shadow-xs">
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-10 font-semibold text-white">
                   {warningCount}
                 </span>
               ) : null}
@@ -208,7 +213,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
               onClick={onDownload}
               disabled={!pdfUrl}
               aria-label="Download PDF"
-              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer select-none"
+              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Download className="size-3.5 shrink-0" />
             </button>
@@ -221,86 +226,120 @@ export const PdfToolbar = React.memo(function PdfToolbar({
 
       {/* 2. Right section: Controls + adaptive 3-dot utility menu */}
       <div className="flex items-center gap-1 shrink-0 select-none">
-        {/* Invert colors (Dark mode PDF) */}
-        {onToggleInvertColors && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={onToggleInvertColors}
-                aria-label={invertColors ? 'Normal PDF view' : 'Dark mode (Invert PDF colors)'}
-                className={cn(
-                  'size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer',
-                  invertColors
-                    ? 'bg-primary/10 text-primary font-medium'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted',
-                )}
-              >
-                <InvertColorsIcon className="size-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              {invertColors ? 'Normal PDF view' : 'Dark mode (Invert PDF colors)'}
-            </TooltipContent>
-          </Tooltip>
-        )}
-
-        {/* Wide state: Inline pagination + zoom buttons */}
-        {!isCompact && (
-          <PdfPaginationControls
-            pageNumber={pageNumber}
-            numPages={numPages}
-            onPrevPage={onPrevPage}
-            onNextPage={onNextPage}
-            onJumpToPage={onJumpToPage}
-            onZoomIn={onZoomIn}
-            onZoomOut={onZoomOut}
-            className="px-0.5"
-          />
-        )}
-
-        {/* Zoom preset dropdown: 61% ▾ / Fit Width ▾ */}
-        <PdfZoomControls
-          scale={scale}
-          autoFit={autoFit}
-          compact={true}
-          onToggleAutoFit={onToggleAutoFit}
-          onZoomIn={onZoomIn}
-          onZoomOut={onZoomOut}
-          onSetScale={onSetScale}
-        />
-
-        {/* Shrunk state: [...] button appears only when compact (< 370px) and holds collapsed pagination/zoom controls */}
-        {isCompact && (
-          <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-            <Tooltip open={isMenuOpen ? false : undefined}>
+        {isPoppedOut ? (
+          /* When viewer is detached to an external window, only show the Reattach button (eliminating dormant pagination/zoom controls) */
+          onPopout && (
+            <Tooltip>
               <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onPopout}
+                  aria-label="Reattach viewer"
+                  className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                >
+                  <Minimize2 className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                Reattach viewer
+              </TooltipContent>
+            </Tooltip>
+          )
+        ) : (
+          <>
+            {/* Invert colors (Dark mode PDF) */}
+            {onToggleInvertColors && (
+              <Tooltip>
+                <TooltipTrigger asChild>
                   <button
                     type="button"
-                    aria-label="More options"
+                    onClick={onToggleInvertColors}
+                    aria-label={invertColors ? 'Normal PDF view' : 'Dark mode (Invert PDF colors)'}
                     className={cn(
-                      'size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer',
-                      isMenuOpen
-                        ? 'bg-muted text-foreground'
+                      'size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                      invertColors
+                        ? 'bg-primary/10 text-primary font-medium'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted',
                     )}
                   >
-                    <MoreHorizontal className="size-4" />
+                    <InvertColorsIcon className="size-4" />
                   </button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                More options
-              </TooltipContent>
-            </Tooltip>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  {invertColors ? 'Normal PDF view' : 'Dark mode (Invert PDF colors)'}
+                </TooltipContent>
+              </Tooltip>
+            )}
 
-            <PopoverContent
-              align="end"
-              sideOffset={6}
-              onOpenAutoFocus={(e) => e.preventDefault()}
-              className="w-auto p-1 bg-popover text-popover-foreground border border-border shadow-md rounded-md z-50 text-xs"
-            >
+            {/* Two-page spread */}
+            {onToggleSpreadView && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onToggleSpreadView}
+                    aria-label={isSpreadView ? 'Single page view' : 'Two-page spread view'}
+                    className={cn(
+                      'size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                      isSpreadView
+                        ? 'bg-primary/10 text-primary font-medium'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+                    )}
+                  >
+                    <BookOpen className="size-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  {isSpreadView ? 'Single page view' : 'Two-page spread view'}
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Presentation mode */}
+            {onOpenPresentationMode && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onOpenPresentationMode}
+                    disabled={!pdfUrl}
+                    aria-label="Presentation mode (F5)"
+                    className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  >
+                    <Presentation className="size-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  Presentation mode (F5)
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Popout detached window */}
+            {onPopout && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onPopout}
+                    aria-label={isPoppedOut ? 'Reattach viewer' : 'Detach viewer to new window'}
+                    className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  >
+                    {isPoppedOut ? (
+                      <Minimize2 className="size-4" />
+                    ) : (
+                      <ExternalLink className="size-4" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  {isPoppedOut ? 'Reattach viewer' : 'Detach viewer to new window'}
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Wide state: Inline pagination + zoom buttons */}
+            {!isCompact && (
               <PdfPaginationControls
                 pageNumber={pageNumber}
                 numPages={numPages}
@@ -309,9 +348,65 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                 onJumpToPage={onJumpToPage}
                 onZoomIn={onZoomIn}
                 onZoomOut={onZoomOut}
+                className="px-0.5"
               />
-            </PopoverContent>
-          </Popover>
+            )}
+
+            {/* Zoom preset dropdown: 61% ▾ / Fit Width ▾ */}
+            <PdfZoomControls
+              scale={scale}
+              autoFit={autoFit}
+              compact={true}
+              onToggleAutoFit={onToggleAutoFit}
+              onZoomIn={onZoomIn}
+              onZoomOut={onZoomOut}
+              onSetScale={onSetScale}
+            />
+
+            {/* Shrunk state: [...] button appears only when compact (< 370px) and holds collapsed pagination/zoom controls */}
+            {isCompact && (
+              <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                <Tooltip open={isMenuOpen ? false : undefined}>
+                  <TooltipTrigger asChild>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="More options"
+                        className={cn(
+                          'size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                          isMenuOpen
+                            ? 'bg-muted text-foreground'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+                        )}
+                      >
+                        <MoreHorizontal className="size-4" />
+                      </button>
+                    </PopoverTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    More options
+                  </TooltipContent>
+                </Tooltip>
+
+                <PopoverContent
+                  align="end"
+                  sideOffset={6}
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                  className="w-auto p-1 bg-popover text-popover-foreground border border-border shadow-md rounded-md z-50 text-xs"
+                >
+                  <PdfPaginationControls
+                    pageNumber={pageNumber}
+                    numPages={numPages}
+                    onPrevPage={onPrevPage}
+                    onNextPage={onNextPage}
+                    onJumpToPage={onJumpToPage}
+                    onZoomIn={onZoomIn}
+                    onZoomOut={onZoomOut}
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -99,7 +99,7 @@ export function useQuickCopyShortcuts({
         let text = '';
         if (itemIds.length === 1) {
           const res = await CitationService.formatCitation(scopeId, itemIds[0], style);
-          text = res.inText || (res as any).citation || '';
+          text = res.inText || (res as { citation?: string }).citation || '';
         } else {
           const res = await CitationService.batchFormat(scopeId, itemIds, style);
           const inTexts = res.citations
@@ -143,7 +143,7 @@ export function useQuickCopyShortcuts({
   useEffect(() => {
     // Compute once per effect registration — platform never changes during session
     const isMac = typeof navigator !== 'undefined'
-      ? /mac/i.test(navigator.userAgent) || /mac/i.test((navigator as any).userAgentData?.platform ?? '')
+      ? /mac/i.test(navigator.userAgent) || /mac/i.test((navigator as { userAgentData?: { platform?: string } }).userAgentData?.platform ?? '')
       : false;
 
     const handleKeyDown = (e: KeyboardEvent) => {

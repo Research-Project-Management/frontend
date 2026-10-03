@@ -26,8 +26,8 @@ export default function Stickies() {
     );
   }, [notes, searchQuery]);
 
-  const preview = useMemo(() => Array.isArray(filteredNotes) ? filteredNotes.slice(0, 7) : [], [filteredNotes]);
-  const hasMore = filteredNotes.length > 3;
+  const preview = useMemo(() => Array.isArray(filteredNotes) ? filteredNotes.slice(0, 8) : [], [filteredNotes]);
+  const hasMore = filteredNotes.length > 4;
 
   const handleAdd = () => {
     if (mutations.create.isPending) return;
@@ -37,7 +37,7 @@ export default function Stickies() {
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-4 px-1">
-        <h2 className="text-xs font-semibold text-foreground select-none">
+        <h2 className="text-[17px] font-semibold tracking-tight text-foreground select-none">
           Stickies
         </h2>
         <div className="flex items-center gap-4">
@@ -116,11 +116,12 @@ export default function Stickies() {
         </div>
       ) : (
         <div className="relative">
-          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${hasMore ? 'max-h-[800px] overflow-hidden' : ''}`}>
+          <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3.5 ${hasMore ? 'max-h-[560px] overflow-hidden' : ''}`}>
             {preview.map((note) => (
-              <div key={note.id} className="min-h-[220px] flex flex-col">
+              <div key={note.id} className="h-[250px] flex flex-col">
                 <Card
                   sticky={note}
+                  className="h-full"
                   onUpdate={(id, updates) => mutations.update.mutate({ stickyId: id, updates })}
                   onDelete={(id) => mutations.remove.mutate(id)}
                 />

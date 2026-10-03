@@ -8,7 +8,7 @@
  */
 
 import { EditorView } from '@codemirror/view';
-import { Extension } from '@codemirror/state';
+import type { Extension } from '@codemirror/state';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
 
@@ -33,22 +33,76 @@ export const fluxLightTheme = EditorView.theme(
     },
 
     '.cm-gutters': {
-      backgroundColor: 'var(--muted, #f8fafc)',
-      color: '#94a3b8',
-      borderRight: '1px solid var(--border, #e2e8f0)',
+      backgroundColor: 'var(--background, #ffffff)',
+      color: 'var(--text-muted, #94a3b8)',
+      borderRight: 'none',
       userSelect: 'none',
-      paddingRight: '8px',
+      minHeight: '100%',
+    },
+    '.cm-lineNumbers .cm-gutterElement': {
+      padding: '0 8px 0 12px',
+      minWidth: '36px',
+      textAlign: 'right',
     },
     '.cm-activeLineGutter': {
-      backgroundColor: 'var(--accent, #e2e8f0)',
-      color: '#1e293b',
+      backgroundColor: 'rgba(0, 0, 0, 0.035)',
+      color: 'var(--primary, #0969DA)',
       fontWeight: '600',
     },
     '.cm-activeLine': {
-      backgroundColor: 'rgba(226, 232, 240, 0.4)',
+      backgroundColor: 'rgba(0, 0, 0, 0.035)',
+    },
+    '.cm-foldGutter, .cm-lint-gutter': {
+      backgroundColor: 'transparent',
+    },
+    '.cm-lint-gutter': {
+      width: '18px',
+    },
+    '.cm-lint-gutter .cm-gutterElement': {
+      padding: '0 2px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    '.cm-tooltip': {
+      backgroundColor: 'var(--popover, #ffffff)',
+      color: 'var(--popover-foreground, #0f172a)',
+      border: '1px solid var(--border, #e2e8f0)',
+      borderRadius: '8px',
+      boxShadow: '0 4px 16px -2px rgba(0, 0, 0, 0.1), 0 2px 6px -1px rgba(0, 0, 0, 0.06)',
+    },
+    '.cm-tooltip.cm-tooltip-lint': {
+      marginLeft: '24px',
+      marginTop: '4px',
+      borderRadius: '8px',
+      border: '1px solid var(--border, #e2e8f0)',
+      overflow: 'hidden',
+      maxWidth: '460px',
+    },
+    '.cm-diagnostic': {
+      padding: '8px 12px',
+      fontSize: '12.5px',
+      lineHeight: '1.5',
+      display: 'block',
+      whiteSpace: 'pre-wrap',
+    },
+    '.cm-diagnostic-error': {
+      borderLeft: '4px solid #ef4444',
+      backgroundColor: 'rgba(239, 68, 68, 0.04)',
+    },
+    '.cm-diagnostic-warning': {
+      borderLeft: '4px solid #f59e0b',
+      backgroundColor: 'rgba(245, 158, 11, 0.04)',
+    },
+    '.cm-diagnosticSource': {
+      fontSize: '11px',
+      color: 'var(--text-muted, #64748b)',
+      marginTop: '4px',
+      display: 'block',
+      fontWeight: '500',
     },
     '.cm-cursor': {
-      borderLeftColor: '#2563eb',
+      borderLeftColor: 'var(--foreground, #0f172a)',
       borderLeftWidth: '2px',
     },
     '.cm-selectionBackground, ::selection': {
@@ -99,22 +153,76 @@ export const fluxDarkTheme = EditorView.theme(
     },
 
     '.cm-gutters': {
-      backgroundColor: 'var(--muted, #0f172a)',
-      color: '#64748b',
-      borderRight: '1px solid var(--border, #1e293b)',
+      backgroundColor: 'var(--background, #090d16)',
+      color: 'rgba(255, 255, 255, 0.4)',
+      borderRight: 'none',
       userSelect: 'none',
-      paddingRight: '8px',
+      minHeight: '100%',
+    },
+    '.cm-lineNumbers .cm-gutterElement': {
+      padding: '0 8px 0 12px',
+      minWidth: '36px',
+      textAlign: 'right',
     },
     '.cm-activeLineGutter': {
-      backgroundColor: 'var(--accent, #1e293b)',
-      color: '#93c5fd',
+      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+      color: '#60a5fa',
       fontWeight: '600',
     },
     '.cm-activeLine': {
-      backgroundColor: 'rgba(30, 41, 59, 0.5)',
+      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    },
+    '.cm-foldGutter, .cm-lint-gutter': {
+      backgroundColor: 'transparent',
+    },
+    '.cm-lint-gutter': {
+      width: '18px',
+    },
+    '.cm-lint-gutter .cm-gutterElement': {
+      padding: '0 2px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    '.cm-tooltip': {
+      backgroundColor: 'var(--popover, #0f172a)',
+      color: 'var(--popover-foreground, #f8fafc)',
+      border: '1px solid var(--border, #1e293b)',
+      borderRadius: '8px',
+      boxShadow: '0 4px 16px -2px rgba(0, 0, 0, 0.4), 0 2px 6px -1px rgba(0, 0, 0, 0.2)',
+    },
+    '.cm-tooltip.cm-tooltip-lint': {
+      marginLeft: '24px',
+      marginTop: '4px',
+      borderRadius: '8px',
+      border: '1px solid var(--border, #1e293b)',
+      overflow: 'hidden',
+      maxWidth: '460px',
+    },
+    '.cm-diagnostic': {
+      padding: '8px 12px',
+      fontSize: '12.5px',
+      lineHeight: '1.5',
+      display: 'block',
+      whiteSpace: 'pre-wrap',
+    },
+    '.cm-diagnostic-error': {
+      borderLeft: '4px solid #ef4444',
+      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    },
+    '.cm-diagnostic-warning': {
+      borderLeft: '4px solid #f59e0b',
+      backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    },
+    '.cm-diagnosticSource': {
+      fontSize: '11px',
+      color: 'rgba(255, 255, 255, 0.45)',
+      marginTop: '4px',
+      display: 'block',
+      fontWeight: '500',
     },
     '.cm-cursor': {
-      borderLeftColor: '#60a5fa',
+      borderLeftColor: 'var(--foreground, #f8fafc)',
       borderLeftWidth: '2px',
     },
     '.cm-selectionBackground, ::selection': {

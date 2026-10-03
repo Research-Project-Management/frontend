@@ -15,7 +15,7 @@ export function ProjectHeaderCard({ project }: ProjectHeaderCardProps) {
   const isLongDescription = description && description.length > 200;
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <div className="relative overflow-hidden rounded-xl border border-border bg-card">
       {/* Cover / Gradient Header */}
       <div
         className="h-28 sm:h-36 w-full bg-gradient-to-r from-primary/10 via-primary/5 to-muted border-b border-border/40 relative"
@@ -36,7 +36,7 @@ export function ProjectHeaderCard({ project }: ProjectHeaderCardProps) {
       <div className="px-5 pb-5 pt-0 -mt-10 sm:-mt-12 relative flex flex-col gap-3">
         <div className="flex items-end justify-between gap-3">
           {/* Avatar Icon */}
-          <div className="size-16 sm:size-20 rounded-xl border-4 border-card bg-muted flex items-center justify-center text-primary shadow-sm font-semibold text-xl sm:text-2xl select-none shrink-0 overflow-hidden">
+          <div className="size-16 sm:size-20 rounded-xl border-4 border-card bg-muted flex items-center justify-center text-primary font-semibold text-xl sm:text-2xl select-none shrink-0 overflow-hidden">
             {project.avatar ? (
               <img
                 src={project.avatar}
@@ -61,7 +61,7 @@ export function ProjectHeaderCard({ project }: ProjectHeaderCardProps) {
 
         {/* Title and Charter/Description */}
         <div className="flex flex-col gap-1.5 mt-1">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
             {project.name}
           </h1>
 

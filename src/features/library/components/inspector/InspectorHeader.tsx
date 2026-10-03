@@ -63,7 +63,7 @@ export function InspectorHeader({
   return (
     <div className="sticky top-0 z-10 flex flex-col shrink-0 select-none bg-background">
       {/* ── Title Header: EXACTLY h-11 (44px) with border-b matching LibraryTopbar and InspectorTabs ── */}
-      <div className="h-11 px-3 flex items-center w-full min-w-0 border-b border-border bg-background shrink-0">
+      <div className="h-11 px-1 sm:px-1.5 flex items-center gap-1 w-full min-w-0 border-b border-border bg-background shrink-0">
         <input
           type="text"
           value={titleDraft}
@@ -84,11 +84,11 @@ export function InspectorHeader({
             }
           }}
           className={cn(
-            "w-full h-8 text-13 font-semibold tracking-tight text-foreground font-sans select-text rounded-md outline-none truncate transition-colors",
-            "px-2 border",
+            "flex-1 min-w-0 h-8 text-13 font-semibold tracking-tight text-foreground font-sans select-text rounded-md outline-none truncate transition-colors",
+            "px-1.5 border",
             canEdit ? [
               "cursor-pointer hover:bg-muted/40 hover:border-border/60",
-              "border-transparent focus:cursor-text focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary focus:hover:bg-background",
+              "border-transparent focus:cursor-text focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary/25 focus:hover:bg-background",
             ] : [
               "border-transparent cursor-default",
             ]
@@ -99,7 +99,7 @@ export function InspectorHeader({
           <button
             type="button"
             onClick={onClose}
-            className="md:hidden size-7 ml-1 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+            className="md:hidden size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
             title="Close inspector"
             aria-label="Close inspector"
           >

@@ -23,6 +23,7 @@ import {
   HardDrive,
   BookOpen,
   Upload,
+  Database,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -44,6 +45,7 @@ import {
 } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
+import { useAiCompanionStore } from '../../store/ai-companion.store';
 import { uploadDocument, type UploadDocumentProgress } from '../../services/chat.service';
 import dynamic from 'next/dynamic';
 
@@ -54,6 +56,11 @@ const LibraryPickerModal = dynamic(
 
 const StoragePickerModal = dynamic(
   () => import('./StoragePickerModal').then((m) => m.StoragePickerModal),
+  { ssr: false }
+);
+
+const UploadedDocumentsModal = dynamic(
+  () => import('./UploadedDocumentsModal').then((m) => m.UploadedDocumentsModal),
   { ssr: false }
 );
 
@@ -183,6 +190,7 @@ export function CompanionInput({
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false);
   const [isStorageModalOpen, setIsStorageModalOpen] = useState(false);
+  const [isUploadedDocsModalOpen, setIsUploadedDocsModalOpen] = useState(false);
   const [scopeOpen, setScopeOpen] = useState(false);
   const [projectSearch, setProjectSearch] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
@@ -362,8 +370,8 @@ export function CompanionInput({
         const isIndexing = uploadingFiles.some((f) => f.stage === 'processing');
         toast.info(
           isIndexing
-            ? 'Tài liệu đang được lập chỉ mục vector, vui lòng đợi trong giây lát...'
-            : 'Tài liệu đang được tải lên, vui lòng đợi hoàn tất...'
+            ? 'Documents are being indexed into the vector store. Please wait a moment...'
+            : 'Documents are currently uploading. Please wait for completion...'
         );
         return;
       }
@@ -376,8 +384,8 @@ export function CompanionInput({
       const isIndexing = uploadingFiles.some((f) => f.stage === 'processing');
       toast.info(
         isIndexing
-          ? 'Tài liệu đang được lập chỉ mục vector, vui lòng đợi trong giây lát...'
-          : 'Tài liệu đang được tải lên, vui lòng đợi hoàn tất...'
+          ? 'Documents are being indexed into the vector store. Please wait a moment...'
+          : 'Documents are currently uploading. Please wait for completion...'
       );
       return;
     }
@@ -414,7 +422,7 @@ export function CompanionInput({
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         className={cn(
-          'relative flex flex-col rounded-2xl border border-border bg-background shadow-2xs transition-all px-3 py-2',
+          'relative flex flex-col rounded-2xl border border-border bg-background transition-all px-3 py-2',
           isDragging && 'border-primary/70 ring-2 ring-primary/20 bg-primary/[0.02]'
         )}
       >
@@ -444,8 +452,8 @@ export function CompanionInput({
                 <PopoverTrigger asChild>
                   <button
                     type='button'
-                    className='inline-flex h-6 max-w-[220px] items-center gap-1.5 rounded-lg border border-border bg-background hover:bg-muted px-2 text-11 text-foreground transition-colors cursor-pointer outline-none shadow-2xs shrink-0'
-                    aria-label='Phạm vi ngữ cảnh dự án'
+                    className='inline-flex h-6 max-w-[220px] items-center gap-1.5 rounded-lg border border-border bg-background hover:bg-muted px-2 text-11 text-foreground transition-colors cursor-pointer outline-none shrink-0'
+                    aria-label='Project context scope'
                   >
                     <Folder className='size-3 text-foreground shrink-0' />
                     <span className='truncate font-medium'>{currentProjectName}</span>
@@ -454,7 +462,7 @@ export function CompanionInput({
                 </PopoverTrigger>
               </TooltipTrigger>
               <TooltipContent side='top' sideOffset={4}>
-                Phạm vi ngữ cảnh dự án
+                Project context scope
               </TooltipContent>
             </Tooltip>
             <PopoverContent
@@ -465,7 +473,7 @@ export function CompanionInput({
             >
               {/* Search input if multiple projects */}
               {activeProjects.length > 3 && (
-                <div className='flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1 shadow-2xs'>
+                <div className='flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1'>
                   <Search className='size-3 text-foreground shrink-0' />
                   <input
                     value={projectSearch}
@@ -562,7 +570,7 @@ export function CompanionInput({
             return (
               <Tooltip key={up.id}>
                 <TooltipTrigger asChild>
-                  <div className='inline-flex h-6.5 items-center gap-1.5 px-2 rounded-md border border-border/70 bg-muted/40 text-11 text-foreground transition-all shadow-2xs select-none max-w-[240px] cursor-default'>
+                  <div className='inline-flex h-6.5 items-center gap-1.5 px-2 rounded-md border border-border/70 bg-muted/40 text-11 text-foreground transition-all select-none max-w-[240px] cursor-default'>
                     <Loader2 className='size-3 animate-spin text-primary shrink-0' />
                     <span className='truncate max-w-[120px] font-medium'>{up.name}</span>
                     <span className='text-10 text-muted-foreground font-mono shrink-0'>
@@ -574,8 +582,8 @@ export function CompanionInput({
                   <p className='font-medium truncate'>{up.name}</p>
                   <p className='text-10 text-muted-foreground'>
                     {isProcessing
-                      ? 'Đang trích xuất nội dung & lập chỉ mục vector...'
-                      : `Đang tải lên: ${up.progress}%`}
+                      ? 'Extracting content & indexing vector store...'
+                      : `Uploading: ${up.progress}%`}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -589,7 +597,7 @@ export function CompanionInput({
             return (
               <div
                 key={file.id}
-                className='group relative inline-flex h-6.5 items-center gap-1.5 px-2 rounded-md border border-border bg-card hover:bg-muted/50 text-11 text-foreground transition-all shadow-2xs select-none max-w-[240px]'
+                className='group relative inline-flex h-6.5 items-center gap-1.5 px-2 rounded-md border border-border bg-background hover:bg-muted/50 text-11 text-foreground transition-all select-none max-w-[240px]'
               >
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -609,7 +617,7 @@ export function CompanionInput({
                     <p className='font-medium truncate'>{file.name}</p>
                     {meta.sizeText && (
                       <p className='text-10 text-muted-foreground'>
-                        {meta.sizeText} • Đã sẵn sàng cho AI
+                        {meta.sizeText} • Ready for AI
                       </p>
                     )}
                   </TooltipContent>
@@ -627,7 +635,7 @@ export function CompanionInput({
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side='top' sideOffset={4}>
-                    Gỡ tài liệu
+                    Remove document
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -669,7 +677,7 @@ export function CompanionInput({
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
                 <TooltipContent side='top' sideOffset={4}>
-                  Thêm tài liệu hoặc công cụ
+                  Add documents or tools
                 </TooltipContent>
               </Tooltip>
               <DropdownMenuContent
@@ -687,13 +695,13 @@ export function CompanionInput({
                   <span>Upload from device</span>
                 </DropdownMenuItem>
 
-                {/* 2. Upload from Storage */}
+                {/* 2. Import from Storage */}
                 <DropdownMenuItem
                   onClick={() => setIsStorageModalOpen(true)}
                   className='flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground'
                 >
                   <HardDrive className='size-4 text-foreground shrink-0' />
-                  <span>Upload from storage</span>
+                  <span>Import from Storage</span>
                 </DropdownMenuItem>
 
                 {/* 3. Import from Library */}
@@ -703,6 +711,15 @@ export function CompanionInput({
                 >
                   <BookOpen className='size-4 text-foreground shrink-0' />
                   <span>Import from Library</span>
+                </DropdownMenuItem>
+
+                {/* 4. Uploaded AI Documents */}
+                <DropdownMenuItem
+                  onClick={() => setIsUploadedDocsModalOpen(true)}
+                  className='flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground'
+                >
+                  <Database className='size-4 text-foreground shrink-0' />
+                  <span>Uploaded documents</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator className='my-1' />
@@ -727,7 +744,7 @@ export function CompanionInput({
                   >
                     <span
                       className={cn(
-                        'pointer-events-none inline-block size-3 rounded-full bg-white shadow-xs transform ring-0 transition duration-200 ease-in-out',
+                        'pointer-events-none inline-block size-3 rounded-full bg-white transform ring-0 transition duration-200 ease-in-out',
                         webSearchEnabled ? 'translate-x-3' : 'translate-x-0'
                       )}
                     />
@@ -765,7 +782,7 @@ export function CompanionInput({
                   <button
                     type='button'
                     onClick={onStop}
-                    className='flex size-7 items-center justify-center rounded-full bg-primary text-white hover:bg-primary-hover transition-all active:scale-95 shadow-2xs cursor-pointer'
+                    className='flex size-7 items-center justify-center rounded-full bg-primary text-white hover:bg-primary-hover transition-all active:scale-95 cursor-pointer'
                     aria-label='Stop generating'
                   >
                     <Square className='size-3 fill-current' />
@@ -783,7 +800,7 @@ export function CompanionInput({
                     onClick={handleSubmit}
                     disabled={(!text.trim() && attachedFiles.length === 0) || isUploading}
                     className={cn(
-                      'flex size-7 items-center justify-center rounded-full p-0 transition-all shadow-2xs select-none',
+                      'flex size-7 items-center justify-center rounded-full p-0 transition-all select-none',
                       isUploading
                         ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
                         : (!text.trim() && attachedFiles.length === 0)
@@ -792,8 +809,8 @@ export function CompanionInput({
                     )}
                     aria-label={
                       isUploading
-                        ? 'Đang xử lý tài liệu...'
-                        : 'Gửi tin nhắn'
+                        ? 'Processing documents...'
+                        : 'Send message'
                     }
                   >
                     {isUploading ? (
@@ -806,9 +823,9 @@ export function CompanionInput({
                 <TooltipContent side='top' sideOffset={4}>
                   {isUploading
                     ? uploadingFiles.some((f) => f.stage === 'processing')
-                      ? 'Đang lập chỉ mục tài liệu, vui lòng đợi...'
-                      : 'Đang tải lên tài liệu, vui lòng đợi...'
-                    : 'Gửi tin nhắn'}
+                      ? 'Indexing documents, please wait...'
+                      : 'Uploading documents, please wait...'
+                    : 'Send message'}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -818,7 +835,7 @@ export function CompanionInput({
 
       {/* Plane Style Disclaimer Footer */}
       {showDisclaimer && (
-        <p className='text-11 text-muted-foreground/75 text-center select-none pt-1.5 pb-0.5 leading-tight'>
+        <p className='text-12 text-muted-foreground text-center select-none pt-1.5 pb-0.5 leading-normal'>
           Flux AI can make mistakes, please double-check responses.
         </p>
       )}
@@ -850,6 +867,28 @@ export function CompanionInput({
         <StoragePickerModal
           isOpen={isStorageModalOpen}
           onClose={() => setIsStorageModalOpen(false)}
+          projectId={selectedProject}
+          onSelectItems={(items) => {
+            setAttachedFiles((prev) => {
+              const existingIds = new Set(prev.map((f) => f.id));
+              const fresh = items.filter((f) => !existingIds.has(f.id));
+              return [...prev, ...fresh];
+            });
+          }}
+          onSelectItem={(item) => {
+            setAttachedFiles((prev) => {
+              if (prev.some((f) => f.id === item.id)) return prev;
+              return [...prev, item];
+            });
+          }}
+        />
+      )}
+
+      {/* Uploaded Documents Modal */}
+      {isUploadedDocsModalOpen && (
+        <UploadedDocumentsModal
+          isOpen={isUploadedDocsModalOpen}
+          onClose={() => setIsUploadedDocsModalOpen(false)}
           projectId={selectedProject}
           onSelectItems={(items) => {
             setAttachedFiles((prev) => {

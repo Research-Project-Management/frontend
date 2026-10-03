@@ -80,7 +80,7 @@ export default function GridView({
 
   return (
     <div className="space-y-6 select-none pb-6">
-      {/* â”€â”€ FOLDERS SECTION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── FOLDERS SECTION ─────────────────────────────────── */}
       {folders.length > 0 && (
         <div className="space-y-2.5">
           {files.length > 0 && (
@@ -275,7 +275,7 @@ export default function GridView({
                       {/* Overlay actions (top-right) */}
                       {!isReadOnly && (
                         <div className="absolute top-1.5 right-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10">
-                          <div className="bg-background/85 backdrop-blur-sm rounded-md shadow-2xs">
+                          <div className="bg-background/90 backdrop-blur-sm rounded-md border border-border/60">
                             <ItemActions
                               item={file}
                               onToggleStar={onToggleStar}

@@ -28,7 +28,7 @@ export const Sortable = React.memo(({
   };
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} className="w-full h-[340px]">
       <Card
         sticky={sticky}
         onUpdate={onUpdate}

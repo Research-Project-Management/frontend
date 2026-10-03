@@ -102,7 +102,7 @@ export function ProjectStatusCard({
 
   return (
     <>
-      <div className="rounded-xl border border-border bg-card p-5 shadow-sm flex flex-col gap-4">
+      <div className="rounded-xl border border-border bg-card p-5 flex flex-col gap-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -156,7 +156,7 @@ export function ProjectStatusCard({
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <div className={`p-1.5 rounded-md bg-background/80 shadow-xs ${config.iconColor}`}>
+                <div className={`p-1.5 rounded-md bg-background/80 ${config.iconColor}`}>
                   <config.icon className="size-5" />
                 </div>
                 <div>

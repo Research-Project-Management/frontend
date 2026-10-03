@@ -77,7 +77,7 @@ export default function PaperBibtexDialog({
         <DialogHeader className="p-4 pb-3 border-b border-border bg-background">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="size-8 rounded-md bg-background flex items-center justify-center text-foreground border border-border shadow-2xs">
+              <div className="size-8 rounded-md bg-background flex items-center justify-center text-foreground border border-border">
                 <FileJson className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
               </div>
               <div>
@@ -96,7 +96,7 @@ export default function PaperBibtexDialog({
                 className={cn(
                   'px-2.5 py-1 text-12 font-medium rounded-sm transition-colors cursor-pointer',
                   format === 'bibtex'
-                    ? 'bg-background text-foreground font-medium shadow-2xs border border-border/50'
+                    ? 'bg-background text-foreground font-medium border border-border/50'
                     : 'text-foreground hover:bg-muted',
                 )}
               >
@@ -108,7 +108,7 @@ export default function PaperBibtexDialog({
                 className={cn(
                   'px-2.5 py-1 text-12 font-medium rounded-sm transition-colors cursor-pointer',
                   format === 'ris'
-                    ? 'bg-background text-foreground font-medium shadow-2xs border border-border/50'
+                    ? 'bg-background text-foreground font-medium border border-border/50'
                     : 'text-foreground hover:bg-muted',
                 )}
               >
@@ -120,7 +120,7 @@ export default function PaperBibtexDialog({
 
         <div className="p-4 bg-background">
           <div className="relative group">
-            <pre className="p-3.5 bg-muted/30 border border-border rounded-md font-mono text-11 overflow-x-auto max-h-[340px] text-foreground leading-relaxed select-all shadow-2xs">
+            <pre className="p-3.5 bg-muted/30 border border-border rounded-md font-mono text-11 overflow-x-auto max-h-[340px] text-foreground leading-relaxed select-all">
               {contentString}
             </pre>
           </div>
@@ -148,7 +148,7 @@ export default function PaperBibtexDialog({
               variant="outline"
               size="sm"
               onClick={handleCopy}
-              className="h-8 px-3 text-12 font-medium gap-1.5 shadow-2xs border-border bg-background text-foreground hover:bg-muted cursor-pointer rounded-md focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+              className="h-8 px-3 text-12 font-medium gap-1.5 border-border bg-background text-foreground hover:bg-muted cursor-pointer rounded-md focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
             >
               {isCopied() ? <Check className="size-3.5 text-primary shrink-0" strokeWidth={1.5} /> : <Copy className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />}
               <span>{isCopied() ? 'Copied' : 'Copy'}</span>
@@ -156,7 +156,7 @@ export default function PaperBibtexDialog({
             <Button
               size="sm"
               onClick={handleDownload}
-              className="h-8 px-3 text-12 font-medium gap-1.5 shadow-2xs cursor-pointer rounded-md focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+              className="h-8 px-3 text-12 font-medium gap-1.5 cursor-pointer rounded-md focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
             >
               <Download className="size-3.5 shrink-0" strokeWidth={1.5} />
               <span>Download .{format === 'bibtex' ? 'bib' : 'ris'}</span>

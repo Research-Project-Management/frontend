@@ -65,7 +65,7 @@ export function DeleteModal({
               variant="outline"
               onClick={onClose}
               disabled={loading}
-              className="cursor-pointer shadow-2xs"
+              className="cursor-pointer"
             >
               {cancelText}
             </Button>
@@ -74,7 +74,7 @@ export function DeleteModal({
               variant="destructive"
               onClick={onConfirm}
               disabled={loading}
-              className="cursor-pointer shadow-2xs"
+              className="cursor-pointer"
             >
               {confirmText}
             </Button>

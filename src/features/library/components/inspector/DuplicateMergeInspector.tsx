@@ -215,7 +215,7 @@ export function DuplicateMergeInspector({
             size="sm"
             onClick={handleConfirmMerge}
             disabled={isMerging || !masterPaper}
-            className="w-full h-8 text-12 font-medium gap-1.5 rounded-md shadow-xs bg-primary text-primary-foreground hover:bg-primary/90"
+            className="w-full h-8 text-12 font-medium gap-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {isMerging ? (
               <Loader2 className="size-3.5 animate-spin shrink-0" />
@@ -290,12 +290,12 @@ export function DuplicateMergeInspector({
                   className={cn(
                     'p-2.5 rounded-md border transition-colors cursor-pointer relative text-left',
                     isMaster
-                      ? 'border-primary/60 bg-primary/5 ring-1 ring-primary/20 shadow-2xs'
+                      ? 'border-primary/60 bg-primary/5 ring-1 ring-primary/20'
                       : 'border-border/60 bg-background hover:bg-muted/40 hover:border-border',
                   )}
                 >
                   <div className="flex items-center justify-between gap-1 mb-1">
-                    <span className="text-10 font-mono text-muted-foreground uppercase tracking-wider">
+                    <span className="text-10 font-mono text-muted-foreground">
                       Version {idx + 1}
                     </span>
                     {isMaster ? (

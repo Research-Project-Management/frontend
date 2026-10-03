@@ -14,7 +14,6 @@ import { parseSyncTeX, type SyncTeXMap } from '@/features/editor/utils/viewer.ut
 import Toolbar from '../components/viewer/Toolbar';
 import Surface, { type SurfaceHandle } from '../components/viewer/Surface';
 import Logs, { parseLatexLog } from '../components/viewer/Logs';
-import Status from '../components/viewer/Status';
 import type { CompileStatus, LaTeXEngine } from '@/features/editor/store';
 
 export default function StandaloneViewerPage() {
@@ -281,15 +280,6 @@ export default function StandaloneViewerPage() {
 
         {showLog && compileLog && <Logs log={compileLog} onClose={() => setShowLog(false)} />}
       </div>
-
-      {/* Status Bar */}
-      <Status
-        compileStatus={compileStatus}
-        lastCompiledAt={lastCompiledAt}
-        pdfUrl={pdfUrl}
-        parsedLog={parsedLog}
-        onToggleLog={() => setShowLog((p) => !p)}
-      />
     </div>
   );
 }

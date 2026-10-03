@@ -211,7 +211,7 @@ export function ItemContextMenu({
                 <ContextMenuSeparator className="mx-1.5 my-1" />
                 <ContextMenuItem
                   onClick={onDelete}
-                  className="gap-2 text-12 py-1.5 px-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+                  className="gap-2 text-12 py-1.5 px-2 cursor-pointer text-destructive focus:text-destructive focus:bg-muted"
                 >
                   <Trash2 className="size-3.5 text-destructive" />
                   Move to Trash
@@ -236,7 +236,7 @@ export function ItemContextMenu({
                 <ContextMenuSeparator className="mx-1.5 my-1" />
                 <ContextMenuItem
                   onClick={onPurge}
-                  className="gap-2 text-12 py-1.5 px-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+                  className="gap-2 text-12 py-1.5 px-2 cursor-pointer text-destructive focus:text-destructive focus:bg-muted"
                 >
                   <Trash2 className="size-3.5 text-destructive" />
                   Delete Permanently

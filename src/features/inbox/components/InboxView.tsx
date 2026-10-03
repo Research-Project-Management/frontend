@@ -110,7 +110,7 @@ export default function InboxView() {
             <button
               type="button"
               onClick={() => markAllAsRead()}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium text-foreground hover:bg-muted transition-colors shadow-2xs cursor-pointer"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <CheckCheck className="size-3.5 text-muted-foreground" />
               <span>Mark all as read</span>
@@ -121,7 +121,7 @@ export default function InboxView() {
           <button
             type="button"
             onClick={() => refresh()}
-            className="size-8 flex items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-2xs cursor-pointer"
+            className="size-8 flex items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
             title="Refresh inbox"
           >
             <RotateCw className={cn('size-3.5', isLoading && 'animate-spin')} />

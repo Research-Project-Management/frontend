@@ -618,8 +618,8 @@ export function LibraryInspector({
           ) : (
             /* Empty State */
             <>
-              <div className="sticky top-0 z-10 h-11 px-3 flex items-center justify-between border-b border-border bg-background shrink-0 select-none">
-                <span className="text-12 font-semibold text-foreground">Inspector</span>
+              <div className="sticky top-0 z-10 h-11 px-2.5 flex items-center justify-between gap-1.5 border-b border-border bg-background shrink-0 select-none">
+                <span className="text-12 font-semibold text-foreground px-1">Inspector</span>
                 {isMobile && (
                   <button
                     type="button"

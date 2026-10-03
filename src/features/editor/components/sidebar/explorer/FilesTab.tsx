@@ -5,6 +5,7 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useMemo,
 } from 'react';
 import { useParams, useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -36,6 +37,8 @@ import {
   usePageActions,
   useFileActions,
 } from '@/features/editor/hooks/use-core';
+import { pageService } from '@/features/editor/services/core.service';
+import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import type { AddFilesTab } from '@/features/editor/components/modals/AddFilesModal';
 
@@ -61,6 +64,7 @@ import { FileOutlineSection } from './FileOutlineSection';
 import { FileTreeToolbar } from './FileTreeToolbar';
 import { TexFileRow, displayName } from './TexFileRow';
 import { useFileUpload } from './useFileUpload';
+import { EditorEmptyState } from '../../shared';
 
 const sanitizeTitle = (raw: string) => {
   const trimmed = raw.trim();
@@ -161,7 +165,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     isLoading: projectFilesLoading,
     uploadFile,
     createFolder,
-  } = useEditorStorage(parentPageId || null, undefined);
+  } = useEditorStorage(parentPageId || null, undefined, projectId || null);
 
   const queryClient = useQueryClient();
 
@@ -305,6 +309,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         onSuccess: (file: any) => {
           setIsCreatingFile(false);
           setNewFileName('');
+          queryClient.invalidateQueries({ queryKey: filesQuery(parentPageId).queryKey });
           setSearchParams({ file: file.id });
         },
       },
@@ -391,6 +396,49 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     engine.focus();
   };
 
+  const handleDownloadTex = useCallback(
+    async (file: { id: string; title: string }) => {
+      try {
+        let rawContent: unknown = '';
+        if (currentPage && currentPage.id === file.id && currentPage.content) {
+          rawContent = currentPage.content;
+        } else {
+          const doc = await pageService.getById(file.id);
+          rawContent = doc?.content ?? '';
+        }
+        const textContent =
+          typeof rawContent === 'string'
+            ? rawContent
+            : (rawContent as any)?.source ||
+              (rawContent as any)?.text ||
+              (rawContent as any)?.content ||
+              '';
+        const blob = new Blob([textContent], { type: 'text/x-tex;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = displayName(file.title);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success(`Downloaded ${displayName(file.title)}`);
+      } catch {
+        toast.error('Failed to download file');
+      }
+    },
+    [currentPage],
+  );
+
+  const handleCopyTexCommand = useCallback((title: string) => {
+    const full = displayName(title);
+    const base = full.replace(/\.[a-z0-9]+$/i, '');
+    const ext = full.split('.').pop()?.toLowerCase();
+    const snippet = ext === 'bib' ? `\\bibliography{${base}}` : `\\input{${base}}`;
+    navigator.clipboard.writeText(snippet);
+    toast.success(`Copied ${snippet} to clipboard`);
+  }, []);
+
   // Build unified file tree items
   type UnifiedItem =
     | { kind: 'folder'; data: StorageItem }
@@ -400,39 +448,87 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         data: { id: string; title: string; updatedAt: string };
       };
 
-  const items: UnifiedItem[] = [];
+  const items = useMemo(() => {
+    const list: UnifiedItem[] = [];
+    const existingTexNames = new Set<string>();
 
-  // Folders first
-  projectFiles?.forEach((f: any) => {
-    if (f.isFolder) items.push({ kind: 'folder', data: f });
-  });
-
-  // Then tex files and non-tex files, sorted alphabetically
-  const fileItems: UnifiedItem[] = [];
-  files?.forEach((f: any) => fileItems.push({ kind: 'tex', data: f }));
-  projectFiles?.forEach((f: any) => {
-    if (!f.isFolder) fileItems.push({ kind: 'asset', data: f });
-  });
-  fileItems.sort((a, b) => {
-    const nameA = a.kind === 'tex' ? a.data.title : a.data.filename;
-    const nameB = b.kind === 'tex' ? b.data.title : b.data.filename;
-    return nameA.localeCompare(nameB);
-  });
-
-  items.push(...fileItems);
-
-  const trimmedFilter = fileFilter.trim().toLowerCase();
-  const displayItems = trimmedFilter
-    ? items.filter((item) => {
-        if (item.kind === 'folder') {
-          return item.data.filename.toLowerCase().includes(trimmedFilter);
+    projectFiles?.forEach((f: any) => {
+      if (f.isFolder) {
+        if (f.id !== projectId && f.id !== parentPageId) {
+          list.push({ kind: 'folder', data: f });
         }
-        if (item.kind === 'asset') {
-          return item.data.filename.toLowerCase().includes(trimmedFilter);
-        }
-        return item.data.title.toLowerCase().includes(trimmedFilter);
-      })
-    : items;
+      }
+    });
+
+    const fileItems: UnifiedItem[] = [];
+    files?.forEach((f: any) => {
+      fileItems.push({ kind: 'tex', data: f });
+      existingTexNames.add(displayName(f.title).toLowerCase());
+    });
+
+    // Ensure parentPage is always visible in the tree even before child files are created or fetched
+    if (parentPage && !fileItems.some((f) => f.data.id === parentPage.id)) {
+      fileItems.unshift({
+        kind: 'tex',
+        data: {
+          id: parentPage.id,
+          title: parentPage.title || 'main.tex',
+          updatedAt: parentPage.updatedAt || new Date().toISOString(),
+        },
+      });
+      existingTexNames.add(displayName(parentPage.title || 'main.tex').toLowerCase());
+    }
+
+    projectFiles?.forEach((f: any) => {
+      if (f.isFolder) return;
+      const fname = (f.filename || '').trim();
+
+      // Filter out root buckets, placeholders, or invalid items without extension
+      if (
+        f.id === projectId ||
+        f.id === parentPageId ||
+        fname.toLowerCase() === 'flux' ||
+        fname === '.keep' ||
+        fname.startsWith('.')
+      ) {
+        return;
+      }
+
+      if (!fname.includes('.') && (!f.size || f.size === 0) && !f.url) {
+        return;
+      }
+
+      // If storage has a file matching an existing .tex document, skip storage duplicate
+      if (existingTexNames.has(fname.toLowerCase())) {
+        return;
+      }
+
+      fileItems.push({ kind: 'asset', data: f });
+    });
+
+    fileItems.sort((a, b) => {
+      const nameA = a.kind === 'tex' ? a.data.title : a.data.filename;
+      const nameB = b.kind === 'tex' ? b.data.title : b.data.filename;
+      return nameA.localeCompare(nameB);
+    });
+
+    list.push(...fileItems);
+    return list;
+  }, [projectFiles, files, parentPage, projectId, parentPageId]);
+
+  const displayItems = useMemo(() => {
+    const trimmedFilter = fileFilter.trim().toLowerCase();
+    if (!trimmedFilter) return items;
+    return items.filter((item) => {
+      if (item.kind === 'folder') {
+        return item.data.filename.toLowerCase().includes(trimmedFilter);
+      }
+      if (item.kind === 'asset') {
+        return item.data.filename.toLowerCase().includes(trimmedFilter);
+      }
+      return item.data.title.toLowerCase().includes(trimmedFilter);
+    });
+  }, [items, fileFilter]);
 
   return (
     <>
@@ -478,11 +574,11 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           >
             {/* Drag-over overlay */}
             {isDragging && (
-              <div className="absolute inset-1 z-10 flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-primary/50 bg-primary/5 pointer-events-none backdrop-blur-[1px]">
-                <div className="p-2.5 rounded-full bg-primary/10">
-                  <Upload className="size-5 text-primary shrink-0" />
+              <div className="absolute inset-1.5 z-10 flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-primary/40 bg-primary/5 pointer-events-none backdrop-blur-[1px]">
+                <div className="p-2 rounded-full bg-primary/10">
+                  <Upload className="size-5 text-primary shrink-0" strokeWidth={1.5} />
                 </div>
-                <span className="text-xs font-medium text-primary">Drop files to upload</span>
+                <span className="text-12 font-medium text-primary">Drop files to upload</span>
               </div>
             )}
 
@@ -514,12 +610,12 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
             {/* Loading skeleton */}
             {(isLoading || projectFilesLoading) && (
-              <div className="flex flex-col">
-                {[60, 75, 45, 82, 55].map((w, i) => (
-                  <div key={i} className="flex h-8 items-center gap-2 px-5">
-                    <div className="size-3 rounded-sm bg-muted animate-pulse shrink-0" />
+              <div className="flex flex-col py-1 space-y-0.5">
+                {[65, 80, 45, 75, 55].map((w, i) => (
+                  <div key={i} className="flex h-8 items-center gap-2 px-3">
+                    <div className="size-4 rounded-md bg-muted animate-pulse shrink-0" />
                     <div
-                      className="h-2.5 rounded-sm bg-muted animate-pulse"
+                      className="h-3 rounded-md bg-muted animate-pulse"
                       style={{ width: `${w}%` }}
                     />
                   </div>
@@ -529,9 +625,9 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
             {/* Uploading indicator */}
             {uploadingCount > 0 && (
-              <div className="flex h-8 items-center gap-2 px-5">
-                <Loader2 className="size-3 animate-spin text-muted-foreground shrink-0" />
-                <span className="text-xs text-muted-foreground">
+              <div className="flex h-8 items-center gap-2 px-3 text-12 text-muted-foreground select-none">
+                <Loader2 className="size-3.5 animate-spin text-primary shrink-0" />
+                <span>
                   Uploading {uploadingCount} file{uploadingCount > 1 ? 's' : ''}…
                 </span>
               </div>
@@ -541,38 +637,40 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
             {!isLoading && !projectFilesLoading && (
               <>
                 {items.length > 0 && displayItems.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center gap-1.5 px-4 py-8 text-muted-foreground text-center">
-                    <Search className="size-5 opacity-30 shrink-0" />
-                    <p className="text-xs font-medium text-foreground/80">
-                      No files match &quot;{fileFilter}&quot;
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setFileFilter('')}
-                      className="text-11 text-primary hover:underline cursor-pointer"
-                    >
-                      Clear filter
-                    </button>
+                  <div className="py-6 px-2">
+                    <EditorEmptyState
+                      variant="search"
+                      isCompact
+                      title="No files match"
+                      description={`No files found matching "${fileFilter}".`}
+                      action={
+                        <button
+                          type="button"
+                          onClick={() => setFileFilter('')}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-12 font-medium bg-muted hover:bg-muted/80 text-foreground transition-colors cursor-pointer"
+                        >
+                          Clear filter
+                        </button>
+                      }
+                    />
                   </div>
                 ) : items.length === 0 && !isCreatingFile && !isCreatingFolder ? (
-                  <div className="flex flex-col items-center gap-2 px-5 py-8 text-muted-foreground">
-                    <FileText className="size-6 opacity-20 shrink-0" />
-                    <span className="text-xs text-center">
-                      No files yet.{' '}
-                      <button
-                        onClick={handleStartCreate}
-                        className="text-primary hover:underline"
-                      >
-                        Create a file
-                      </button>
-                      {' or '}
-                      <button
-                        onClick={handleUpload}
-                        className="text-primary hover:underline"
-                      >
-                        upload
-                      </button>
-                    </span>
+                  <div className="py-6 px-2">
+                    <EditorEmptyState
+                      variant="files"
+                      isCompact
+                      title="No files yet"
+                      description="Create your first document or upload files to begin editing."
+                      action={
+                        <button
+                          type="button"
+                          onClick={handleStartCreate}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-12 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+                        >
+                          Create file
+                        </button>
+                      }
+                    />
                   </div>
                 ) : (
                   displayItems.map((item) => {
@@ -598,6 +696,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
                           depth={0}
                           onInsertAsset={handleInsertAsset}
                           onPreview={handleOpenPreview}
+                          projectId={projectId}
                         />
                       );
                     }
@@ -625,6 +724,8 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
                         onCancelRename={() => setRenamingId(null)}
                         onDelete={handleDelete}
                         onSetMain={handleSetMain}
+                        onDownload={handleDownloadTex}
+                        onCopyCommand={handleCopyTexCommand}
                       />
                     );
                   })

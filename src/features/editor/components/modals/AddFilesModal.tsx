@@ -479,7 +479,7 @@ export default function AddFilesModal({
             type="button"
             onClick={() => onOpenChange(false)}
             aria-label="Close"
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <X className="size-4" />
           </button>
@@ -488,18 +488,20 @@ export default function AddFilesModal({
         {/* Modal Body: Left sidebar + Right form pane */}
         <div className="flex min-h-[420px]">
           {/* Left Navigation Sidebar */}
-          <div className="w-56 shrink-0 border-r border-border bg-muted/20 p-2.5 flex flex-col gap-1">
+          <div className="w-56 shrink-0 border-r border-border bg-muted/20 p-2.5 flex flex-col gap-1" role="tablist">
             {tabs.map(({ id, label, icon: Icon }) => {
               const isActive = activeTab === id;
               return (
                 <button
                   key={id}
                   type="button"
+                  role="tab"
+                  aria-selected={isActive}
                   onClick={() => setActiveTab(id)}
                   className={cn(
-                    'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium text-left transition-colors cursor-pointer',
+                    'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium text-left transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                     isActive
-                      ? 'bg-background text-foreground shadow-2xs font-semibold border border-border/60'
+                      ? 'bg-background text-foreground font-semibold border border-border/60'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',
                   )}
                 >
@@ -556,14 +558,14 @@ export default function AddFilesModal({
                   <button
                     type="button"
                     onClick={() => onOpenChange(false)}
-                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs"
+                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={!newFileName.trim() || isCreatingNewFile}
-                    className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   >
                     {isCreatingNewFile && (
                       <Loader2 className="size-3.5 animate-spin" />
@@ -622,14 +624,14 @@ export default function AddFilesModal({
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="h-8 px-3.5 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium transition-colors cursor-pointer"
+                        className="h-8 px-3.5 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       >
                         Select files
                       </button>
                       <button
                         type="button"
                         onClick={() => folderInputRef.current?.click()}
-                        className="h-8 px-3.5 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs"
+                        className="h-8 px-3.5 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       >
                         Select a folder
                       </button>
@@ -641,7 +643,7 @@ export default function AddFilesModal({
                   <button
                     type="button"
                     onClick={() => onOpenChange(false)}
-                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs"
+                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   >
                     Cancel
                   </button>
@@ -771,7 +773,7 @@ export default function AddFilesModal({
                   <button
                     type="button"
                     onClick={() => onOpenChange(false)}
-                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs"
+                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   >
                     Cancel
                   </button>
@@ -783,7 +785,7 @@ export default function AddFilesModal({
                       isCopyingFromProject
                     }
                     onClick={handleCopyFromProject}
-                    className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   >
                     {isCopyingFromProject && (
                       <Loader2 className="size-3.5 animate-spin" />
@@ -843,7 +845,7 @@ export default function AddFilesModal({
                   <button
                     type="button"
                     onClick={() => onOpenChange(false)}
-                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs"
+                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   >
                     Cancel
                   </button>
@@ -851,7 +853,7 @@ export default function AddFilesModal({
                     type="button"
                     disabled={!fetchUrl.trim() || isFetchingUrl}
                     onClick={handleFetchFromUrl}
-                    className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   >
                     {isFetchingUrl && (
                       <Loader2 className="size-3.5 animate-spin" />
@@ -990,7 +992,7 @@ export default function AddFilesModal({
                   <button
                     type="button"
                     onClick={() => onOpenChange(false)}
-                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs"
+                    className="h-8 px-4 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   >
                     Cancel
                   </button>
@@ -998,7 +1000,7 @@ export default function AddFilesModal({
                     type="button"
                     disabled={selectedItemIds.size === 0 || isExportingBib}
                     onClick={handleExportFromLibrary}
-                    className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="h-8 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   >
                     {isExportingBib && (
                       <Loader2 className="size-3.5 animate-spin" />

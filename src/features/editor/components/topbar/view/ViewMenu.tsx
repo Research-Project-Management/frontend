@@ -146,13 +146,13 @@ export default function ViewMenu() {
 
   return (
     <MenubarMenu>
-      <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-sm">
+      <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md">
         View
       </MenubarTrigger>
 
       <MenubarContent className="min-w-60 text-xs z-[9999]">
         {/* ── Section 1: Layout options ── */}
-        <div className="text-11 font-semibold text-muted-foreground px-2.5 py-1.5 select-none">
+        <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none">
           Layout options
         </div>
 
@@ -236,7 +236,7 @@ export default function ViewMenu() {
             <Scan className="size-4 opacity-70" strokeWidth={1.8} />
           </div>
           <span className="flex-1 text-xs">Focus mode</span>
-          <span className="text-11 text-muted-foreground ml-auto">Ctrl Shift M</span>
+          <kbd className="text-11 font-mono text-muted-foreground ml-auto">Ctrl Shift M</kbd>
         </MenubarItem>
 
         {/* ── Section 2: Editing mode ── */}
@@ -277,7 +277,7 @@ export default function ViewMenu() {
         </MenubarSub>
 
         {/* ── Section 3: Editor settings ── */}
-        <div className="text-11 font-semibold text-muted-foreground px-2.5 py-1.5 select-none">
+        <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none">
           Editor settings
         </div>
 
@@ -318,7 +318,7 @@ export default function ViewMenu() {
         <MenubarSeparator />
 
         {/* ── Section 4: PDF preview ── */}
-        <div className="text-11 font-semibold text-muted-foreground px-2.5 py-1.5 select-none">
+        <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none">
           PDF preview
         </div>
 

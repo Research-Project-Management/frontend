@@ -290,7 +290,7 @@ export function Activities({
             className={cn(
               "px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer",
               activeTab === "all"
-                ? "bg-background text-foreground font-semibold shadow-2xs"
+                ? "bg-background text-foreground font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
             )}
           >
@@ -302,7 +302,7 @@ export function Activities({
             className={cn(
               "px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer flex items-center gap-1",
               activeTab === "activity"
-                ? "bg-background text-foreground font-semibold shadow-2xs"
+                ? "bg-background text-foreground font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
             )}
           >
@@ -317,7 +317,7 @@ export function Activities({
             className={cn(
               "px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer flex items-center gap-1",
               activeTab === "comments"
-                ? "bg-background text-foreground font-semibold shadow-2xs"
+                ? "bg-background text-foreground font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
             )}
           >
@@ -332,7 +332,7 @@ export function Activities({
             className={cn(
               "px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer",
               activeTab === "history"
-                ? "bg-background text-foreground font-semibold shadow-2xs"
+                ? "bg-background text-foreground font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
             )}
           >
@@ -500,7 +500,7 @@ export function Activities({
                               {renderCommentContent(item.content, attachmentLinks)}
                             </div>
                             {item.reactionEmoji ? (
-                              <div className="inline-flex items-center rounded-md border border-border bg-background px-1.5 py-0.5 text-11 shadow-xs">
+                              <div className="inline-flex items-center rounded-md border border-border bg-background px-1.5 py-0.5 text-11">
                                 {item.reactionEmoji}
                               </div>
                             ) : null}

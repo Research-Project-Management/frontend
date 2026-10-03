@@ -116,7 +116,7 @@ export function TrashModal({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={loading}
-            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md hover:bg-muted shadow-2xs"
+            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md hover:bg-muted"
           >
             Cancel
           </Button>

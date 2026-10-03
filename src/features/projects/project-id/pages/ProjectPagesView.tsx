@@ -12,6 +12,7 @@ import { GridView } from './components/views/GridView';
 import { ListView } from './components/views/ListView';
 import type { PagesViewMode } from './types/page.types';
 import { useProjectLabels } from '../settings/hooks/use-label';
+import { PageLayout, PageContent } from '@/shared/components/layout';
 
 export function ProjectPagesView({ projectId: propProjectId }: { projectId?: string } = {}) {
   const params = useParams() as { projectId?: string };
@@ -82,7 +83,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
   };
 
   return (
-    <div className="flex flex-col h-full bg-background select-none">
+    <PageLayout>
       <Topbar
         viewMode={viewMode}
         setViewMode={setViewMode}
@@ -91,7 +92,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
         onSearchChange={setSearchQuery}
       />
 
-      <main className="flex-1 min-h-0 flex flex-col h-full overflow-y-auto">
+      <PageContent maxWidth="full" noPadding>
         {projectLabels.length > 0 && !isError && !isLoading && (
           <div className="px-6 pt-4 pb-2 flex flex-wrap gap-2 items-center shrink-0">
             {projectLabels.map((label: any) => {
@@ -168,7 +169,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
         ) : (
           <ListView pages={filteredPages} />
         )}
-      </main>
+      </PageContent>
 
       <CreateModal
         isOpen={isCreateModalOpen}
@@ -178,7 +179,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
         handleCreate={handleCreate}
         isCreating={createPage.isPending}
       />
-    </div>
+    </PageLayout>
   );
 }
 

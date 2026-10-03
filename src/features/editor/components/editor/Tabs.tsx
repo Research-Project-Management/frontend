@@ -38,6 +38,8 @@ const TabItem = React.memo(function TabItem({ tab, isActive, onActivate, onClose
   return (
     <div
       role="tab"
+      id={`editor-tab-${tab.id}`}
+      aria-controls="editor-surface"
       aria-selected={isActive}
       aria-label={`Tab: ${tab.title}`}
       tabIndex={isActive ? 0 : -1}
@@ -45,7 +47,7 @@ const TabItem = React.memo(function TabItem({ tab, isActive, onActivate, onClose
       onAuxClick={handleAuxClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        'group/tab relative flex items-center gap-1.5 h-full px-3 cursor-pointer select-none outline-none',
+        'group/tab relative flex items-center gap-1.5 h-full px-3 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset',
         'border-r border-border min-w-0 max-w-[200px] shrink-0 transition-colors',
         isActive
           ? 'bg-background text-foreground font-medium border-t-2 border-t-primary'
@@ -56,7 +58,7 @@ const TabItem = React.memo(function TabItem({ tab, isActive, onActivate, onClose
       <FileText className="size-3.5 shrink-0 opacity-70" />
 
       {/* Title */}
-      <span className="text-xs font-mono truncate leading-none">{tab.title}</span>
+      <span className="text-12 font-mono truncate leading-normal">{tab.title}</span>
 
       {/* Close button */}
       <button
@@ -68,7 +70,7 @@ const TabItem = React.memo(function TabItem({ tab, isActive, onActivate, onClose
         }}
         onAuxClick={(e) => e.preventDefault()}
         className={cn(
-          'relative ml-auto shrink-0 size-4 min-w-[16px] min-h-[16px] flex items-center justify-center rounded-xs transition-colors outline-none cursor-pointer',
+          'relative ml-auto shrink-0 size-4 min-w-[16px] min-h-[16px] flex items-center justify-center rounded-sm transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer',
           'after:absolute after:-inset-1.5 after:content-[""]',
           isActive
             ? 'opacity-60 hover:opacity-100 hover:bg-muted hover:text-foreground'
@@ -83,6 +85,8 @@ const TabItem = React.memo(function TabItem({ tab, isActive, onActivate, onClose
 
 // ── Main Tabs Component (Only File Tabs - Clean Overleaf style) ───────────────
 
+const EMPTY_TABS: EditorTab[] = [];
+
 export interface TabsProps {
   rootPageId: string;
   activeFileId: string;
@@ -94,7 +98,7 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
   const pathname = usePathname();
   const tabListRef = useRef<HTMLDivElement>(null);
 
-  const tabs = useTabsStore((s) => s.tabsByProject[rootPageId] ?? []);
+  const tabs = useTabsStore((s) => s.tabsByProject[rootPageId] ?? EMPTY_TABS);
   const closeTab = useTabsStore((s) => s.closeTab);
 
   const updateQueryParams = useCallback((newFile: string | null) => {

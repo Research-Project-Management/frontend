@@ -131,7 +131,7 @@ export function FloatingAiAssistant({
           className={cn(
             'flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer',
             activeAction === 'academic-tone'
-              ? 'bg-primary text-primary-foreground shadow-2xs font-semibold'
+              ? 'bg-primary text-primary-foreground font-semibold'
               : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80',
           )}
         >
@@ -146,7 +146,7 @@ export function FloatingAiAssistant({
           className={cn(
             'flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer',
             activeAction === 'make-concise'
-              ? 'bg-primary text-primary-foreground shadow-2xs font-semibold'
+              ? 'bg-primary text-primary-foreground font-semibold'
               : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80',
           )}
         >
@@ -161,7 +161,7 @@ export function FloatingAiAssistant({
           className={cn(
             'flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer',
             activeAction === 'fix-grammar'
-              ? 'bg-primary text-primary-foreground shadow-2xs font-semibold'
+              ? 'bg-primary text-primary-foreground font-semibold'
               : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80',
           )}
         >
@@ -176,7 +176,7 @@ export function FloatingAiAssistant({
           className={cn(
             'flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer',
             activeAction === 'translate-english'
-              ? 'bg-primary text-primary-foreground shadow-2xs font-semibold'
+              ? 'bg-primary text-primary-foreground font-semibold'
               : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80',
           )}
         >
@@ -202,7 +202,7 @@ export function FloatingAiAssistant({
           type="button"
           onClick={() => handleExecute('custom', customPrompt)}
           disabled={isLoading || !customPrompt.trim()}
-          className="size-6 rounded-sm bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-40 flex items-center justify-center shrink-0 transition-colors cursor-pointer shadow-2xs"
+          className="size-6 rounded-sm bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-40 flex items-center justify-center shrink-0 transition-colors cursor-pointer"
         >
           <ArrowRight className="size-3.5" />
         </button>
@@ -279,7 +279,7 @@ export function FloatingAiAssistant({
             onClick={() => handleApply('replace')}
             disabled={!result || isLoading}
             title="Replace selection in editor"
-            className="flex items-center gap-1 px-2.5 py-1 rounded-sm bg-primary hover:bg-primary-hover text-primary-foreground text-11 font-semibold transition-colors cursor-pointer shadow-2xs disabled:opacity-40"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-sm bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-semibold transition-colors cursor-pointer disabled:opacity-40"
           >
             <Check className="size-3.5" />
             <span>Replace Selection</span>

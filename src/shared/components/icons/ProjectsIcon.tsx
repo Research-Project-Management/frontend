@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { cn } from '@/shared/lib/utils';
 
-import { Layers } from 'lucide-react';
+import { Folder } from 'lucide-react';
 
 export interface ProjectsIconProps extends React.SVGProps<SVGSVGElement> {
   className?: string;
@@ -10,7 +10,7 @@ export interface ProjectsIconProps extends React.SVGProps<SVGSVGElement> {
 
 /**
  * ProjectsIcon
- * Biểu tượng gốc ban đầu của Projects: Lucide Layers.
+ * Primary icon for Projects: Lucide Folder (Clean single research project folder).
  */
 export function ProjectsIcon({
   className,
@@ -18,7 +18,7 @@ export function ProjectsIcon({
   ...props
 }: ProjectsIconProps) {
   return (
-    <Layers
+    <Folder
       size={size}
       className={cn('size-4 shrink-0 text-current', className)}
       {...props}

@@ -332,7 +332,7 @@ export function ArchivePage() {
             className={cn(
               'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors',
               activeTab === 'work-items'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
+                ? 'bg-background text-foreground font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -351,7 +351,7 @@ export function ArchivePage() {
             className={cn(
               'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors',
               activeTab === 'projects'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
+                ? 'bg-background text-foreground font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -370,7 +370,7 @@ export function ArchivePage() {
             className={cn(
               'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors',
               activeTab === 'pages'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
+                ? 'bg-background text-foreground font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -389,7 +389,7 @@ export function ArchivePage() {
             className={cn(
               'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors',
               activeTab === 'trash'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
+                ? 'bg-background text-foreground font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >

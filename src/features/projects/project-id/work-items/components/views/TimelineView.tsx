@@ -883,7 +883,7 @@ function TimelineBar({
         backgroundColor: accentColor,
       }}
       className={cn(
-        'absolute z-10 rounded-md flex items-center px-2 text-white select-none transition-all outline-none shadow-xs',
+        'absolute z-10 rounded-md flex items-center px-2 text-white select-none transition-all outline-none',
         dragging ? 'opacity-90 ring-2 ring-primary cursor-grabbing' : 'cursor-pointer hover:brightness-105',
         isConnectTarget && 'ring-2 ring-primary ring-offset-2 scale-[1.02] shadow-md',
         isConnecting && 'ring-2 ring-primary opacity-80'

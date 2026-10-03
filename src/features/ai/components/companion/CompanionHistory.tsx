@@ -12,9 +12,16 @@ import {
   Loader2,
   FolderKanban,
   Globe,
+  MoreHorizontal,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
 import type { ChatSession } from '../../types/chat.types';
 import {
   listChatSessions,
@@ -120,14 +127,14 @@ export function CompanionHistory({
             <button
               type='button'
               onClick={onNewChat}
-              className='size-7.5 shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground flex items-center justify-center cursor-pointer transition-colors shadow-2xs outline-none focus-visible:ring-1 focus-visible:ring-primary'
+              className='size-7.5 shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary'
               aria-label='New chat'
               title='New chat'
             >
               <SquarePen className='size-3.5 text-foreground/80' />
             </button>
 
-            <div className='flex-1 relative flex items-center h-7.5 rounded-md border border-border bg-background focus-within:border-border px-2 transition-all shadow-2xs'>
+            <div className='flex-1 relative flex items-center h-7.5 rounded-none border border-border bg-background focus-within:border-border px-2 transition-all'>
               <Search className='size-3.5 text-foreground/70 shrink-0 mr-1.5' />
               <input
                 type='text'
@@ -161,7 +168,7 @@ export function CompanionHistory({
             <button
               type='button'
               onClick={onNewChat}
-              className='flex-1 h-7.5 px-2.5 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground text-12 font-normal flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-2xs outline-none focus-visible:ring-1 focus-visible:ring-primary'
+              className='flex-1 h-7.5 px-2.5 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground text-12 font-normal flex items-center justify-center gap-1.5 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary'
               aria-label='New chat'
             >
               <SquarePen className='size-3.5 text-foreground/80' />
@@ -171,7 +178,7 @@ export function CompanionHistory({
             <button
               type='button'
               onClick={() => setIsSearchOpen(true)}
-              className='size-7.5 shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground/80 flex items-center justify-center cursor-pointer transition-colors shadow-2xs outline-none focus-visible:ring-1 focus-visible:ring-primary'
+              className='size-7.5 shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground/80 flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary'
               title='Search chats'
               aria-label='Search chats'
             >
@@ -191,7 +198,7 @@ export function CompanionHistory({
               className={cn(
                 'flex-1 flex items-center justify-center gap-1.5 py-1 rounded transition-colors cursor-pointer',
                 scopeFilter === 'project'
-                  ? 'bg-background text-foreground shadow-2xs font-medium'
+                  ? 'bg-background text-foreground font-medium'
                   : 'hover:text-foreground'
               )}
             >
@@ -204,7 +211,7 @@ export function CompanionHistory({
               className={cn(
                 'flex-1 flex items-center justify-center gap-1.5 py-1 rounded transition-colors cursor-pointer',
                 scopeFilter === 'all'
-                  ? 'bg-background text-foreground shadow-2xs font-medium'
+                  ? 'bg-background text-foreground font-medium'
                   : 'hover:text-foreground'
               )}
             >
@@ -287,7 +294,7 @@ export function CompanionHistory({
                       )}
                     </div>
 
-                    <div className='flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-within:opacity-100 transition-opacity shrink-0'>
+                    <div className='flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity shrink-0'>
                       {isEditing ? (
                         <>
                           <button
@@ -313,26 +320,41 @@ export function CompanionHistory({
                           </button>
                         </>
                       ) : (
-                        <>
-                          <button
-                            type='button'
-                            onClick={(e) => handleStartRename(e, chat)}
-                            className='size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary'
-                            title='Rename conversation'
-                            aria-label={`Rename ${chat.title || 'conversation'}`}
-                          >
-                            <Pencil className='size-3.5' />
-                          </button>
-                          <button
-                            type='button'
-                            onClick={(e) => handleDelete(e, chat.id)}
-                            className='size-6 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary'
-                            title='Delete conversation'
-                            aria-label={`Delete ${chat.title || 'conversation'}`}
-                          >
-                            <Trash2 className='size-3.5' />
-                          </button>
-                        </>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type='button'
+                              onClick={(e) => e.stopPropagation()}
+                              className='size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary'
+                              title='More actions'
+                              aria-label='More actions'
+                            >
+                              <MoreHorizontal className='size-3.5' />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align='end' className='w-36 p-1'>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartRename(e, chat);
+                              }}
+                              className='flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm cursor-pointer'
+                            >
+                              <Pencil className='size-3.5 text-muted-foreground' />
+                              <span>Rename</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(e, chat.id);
+                              }}
+                              className='flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer'
+                            >
+                              <Trash2 className='size-3.5' />
+                              <span>Delete</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
                     </div>
                   </div>

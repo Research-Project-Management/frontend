@@ -48,7 +48,7 @@ export function AnalyticsModal() {
                 <FileCheck className="size-3.5 text-success" />
                 <span className="text-[11px] font-medium uppercase tracking-wider">Citation Fidelity</span>
               </div>
-              <p className="text-xl font-bold text-foreground">98.4%</p>
+              <p className="text-xl font-semibold text-foreground">98.4%</p>
               <span className="text-[11px] text-muted-foreground">Anchored to peer papers</span>
             </div>
 
@@ -57,7 +57,7 @@ export function AnalyticsModal() {
                 <Brain className="size-3.5 text-primary" />
                 <span className="text-[11px] font-medium uppercase tracking-wider">Reasoning Depth</span>
               </div>
-              <p className="text-xl font-bold text-foreground">High</p>
+              <p className="text-xl font-semibold text-foreground">High</p>
               <span className="text-[11px] text-muted-foreground">Chain-of-thought active</span>
             </div>
           </div>

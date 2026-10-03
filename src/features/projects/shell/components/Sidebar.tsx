@@ -455,7 +455,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <aside className="flex flex-col h-full w-60 shrink-0 overflow-hidden border-r border-border bg-background p-2 py-3 select-none">
+    <aside className="flex flex-col h-full w-full shrink-0 overflow-hidden bg-transparent p-2 py-3 select-none">
       {/* Header */}
       <div className="mb-2 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground shrink-0">
         <span className="text-14 font-semibold text-foreground">Projects</span>
@@ -481,7 +481,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         <button
           type="button"
           onClick={() => setIsCreateWorkItemOpen(true)}
-          className="flex h-8 w-full items-center gap-2 rounded-md border border-border bg-background px-2.5 text-13 font-medium text-foreground cursor-pointer shadow-2xs outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className="flex h-8 w-full items-center gap-2 rounded-md border border-border bg-background px-2.5 text-13 font-medium text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
         >
           <AddWorkItemIcon className="size-4 shrink-0 text-foreground" />
           <span className="tracking-tight">New work item</span>

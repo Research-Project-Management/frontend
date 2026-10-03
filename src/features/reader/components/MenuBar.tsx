@@ -148,7 +148,7 @@ export function MenuBar() {
             <MenubarTrigger className="h-5 px-2 py-0 text-11 font-medium text-foreground hover:bg-muted rounded-sm cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-muted data-[state=open]:bg-muted data-[state=open]:text-foreground">
               File
             </MenubarTrigger>
-            <MenubarContent align="start" className="min-w-[14rem] p-1 text-12 bg-popover border border-border shadow-2xs rounded-md">
+            <MenubarContent align="start" className="min-w-[14rem] p-1 text-12 bg-popover border border-border shadow-md rounded-md">
               <MenubarItem onClick={() => router.push('/library')} className="text-11 cursor-pointer">
                 New Collection…
                 <MenubarShortcut>Ctrl+Shift+N</MenubarShortcut>
@@ -199,7 +199,7 @@ export function MenuBar() {
             <MenubarTrigger className="h-5 px-2 py-0 text-11 font-medium text-foreground hover:bg-muted rounded-sm cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-muted data-[state=open]:bg-muted data-[state=open]:text-foreground">
               Edit
             </MenubarTrigger>
-            <MenubarContent align="start" className="min-w-[14rem] p-1 text-12 bg-popover border border-border shadow-2xs rounded-md">
+            <MenubarContent align="start" className="min-w-[14rem] p-1 text-12 bg-popover border border-border shadow-md rounded-md">
               <MenubarItem
                 onClick={() => {
                   if (typeof document !== 'undefined') document.execCommand('undo');
@@ -279,7 +279,7 @@ export function MenuBar() {
             <MenubarTrigger className="h-5 px-2 py-0 text-11 font-medium text-foreground hover:bg-muted rounded-sm cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-muted data-[state=open]:bg-muted data-[state=open]:text-foreground">
               View
             </MenubarTrigger>
-            <MenubarContent align="start" className="min-w-[14rem] p-1 text-12 bg-popover border border-border shadow-2xs rounded-md">
+            <MenubarContent align="start" className="min-w-[14rem] p-1 text-12 bg-popover border border-border shadow-md rounded-md">
               <MenubarItem
                 onClick={() => setIsOpen(!isOpen)}
                 className="text-11 cursor-pointer"
@@ -353,7 +353,7 @@ export function MenuBar() {
             <MenubarTrigger className="h-5 px-2 py-0 text-11 font-medium text-foreground hover:bg-muted rounded-sm cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-muted data-[state=open]:bg-muted data-[state=open]:text-foreground">
               Go
             </MenubarTrigger>
-            <MenubarContent align="start" className="min-w-[14rem] p-1 text-12 bg-popover border border-border shadow-2xs rounded-md">
+            <MenubarContent align="start" className="min-w-[14rem] p-1 text-12 bg-popover border border-border shadow-md rounded-md">
               <MenubarItem onClick={handleGoLibrary} className="text-11 cursor-pointer font-medium">
                 My Library
                 <MenubarShortcut>Alt+Home</MenubarShortcut>

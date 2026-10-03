@@ -26,6 +26,7 @@ export const useRegister = () => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [oauthError, setOauthError] = useState<string | null>(null);
 
   const form = useForm<RegisterSchema>({
     resolver: zodResolver(registerSchema),
@@ -60,6 +61,23 @@ export const useRegister = () => {
       toast.error(message);
     },
   });
+
+  // Check URL search params for OAuth error messages
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlErr = params.get('error');
+      if (urlErr) {
+        if (urlErr === 'google_token_failed') {
+          setOauthError('Failed to authenticate with Google. Please try again.');
+        } else if (urlErr === 'oauth_error') {
+          setOauthError('OAuth authentication error occurred. Please try again.');
+        } else {
+          setOauthError(`Authentication failed: ${urlErr}`);
+        }
+      }
+    }
+  }, []);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -99,8 +117,9 @@ export const useRegister = () => {
     setShowPassword,
     showConfirmPassword,
     setShowConfirmPassword,
+    oauthError,
     isPending: registerMutation.isPending,
-    error: (registerMutation.error as { message?: string })?.message ?? null,
+    error: (registerMutation.error as { message?: string })?.message ?? oauthError,
     handleOAuthLogin,
     handleSubmit: form.handleSubmit(onSubmit),
   };

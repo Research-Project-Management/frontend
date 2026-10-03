@@ -926,7 +926,7 @@ export function DetailModal({
 
   // Modern Action Button Style
   const actionBtnClass =
-    'h-7 px-2.5 text-xs font-medium rounded-md bg-background hover:bg-muted text-foreground border border-border shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0';
+    'h-7 px-2.5 text-xs font-medium rounded-md bg-background hover:bg-muted text-foreground border border-border flex items-center gap-1.5 transition-colors cursor-pointer shrink-0';
 
   const renderStatusSelector = () => {
     const activeCol = columns.find((c) => resolveColumnId(c) === columnId);
@@ -936,7 +936,7 @@ export function DetailModal({
           <button
             type="button"
             className={cn(
-              'h-7 px-2.5 text-xs font-medium rounded-md bg-background hover:bg-muted text-foreground border border-border shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 outline-none',
+              'h-7 px-2.5 text-xs font-medium rounded-md bg-background hover:bg-muted text-foreground border border-border flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 outline-none',
               isReadOnly && 'opacity-60 cursor-not-allowed'
             )}
           >
@@ -1071,7 +1071,7 @@ export function DetailModal({
               <button
                 type="button"
                 onClick={handleCopyIdentifier}
-                className="font-mono text-xs font-semibold text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-md border border-border bg-background hover:bg-muted shadow-2xs transition-colors cursor-pointer flex items-center gap-1 shrink-0 truncate max-w-[140px]"
+                className="font-mono text-xs font-semibold text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-md border border-border bg-background hover:bg-muted transition-colors cursor-pointer flex items-center gap-1 shrink-0 truncate max-w-[140px]"
                 title="Click to copy identifier"
               >
                 <span>{card.identifier}</span>
@@ -1387,7 +1387,7 @@ export function DetailModal({
                 {selectedLabelsList.map((l: any) => (
                   <span
                     key={l.id}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium text-white shadow-xs"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium text-white"
                     style={{ backgroundColor: l.color }}
                   >
                     {l.name}

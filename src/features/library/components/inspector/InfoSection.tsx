@@ -58,13 +58,15 @@ export const DIRECT_METADATA_FIELDS = new Set([
 /** Filter out empty, null, undefined, or junk placeholder string values */
 export function isValidValue(val?: any): boolean {
   if (val === null || val === undefined) return false;
-  if (typeof val === 'number') return !isNaN(val) && Number.isFinite(val);
+  if (typeof val === 'number') return !isNaN(val) && Number.isFinite(val) && val !== 0;
   if (typeof val === 'boolean') return true;
   if (typeof val === 'string') {
     const str = val.trim();
     if (!str) return false;
     const lower = str.toLowerCase();
     return (
+      lower !== '0' &&
+      lower !== '0000' &&
       lower !== 'null' &&
       lower !== 'undefined' &&
       lower !== 'n/a' &&
@@ -74,7 +76,6 @@ export function isValidValue(val?: any): boolean {
       lower !== '{}' &&
       lower !== '[]' &&
       lower !== '[object object]' &&
-      lower !== '0000' &&
       lower !== 'unknown'
     );
   }
@@ -184,7 +185,7 @@ export default function InfoSection({
 
       if (keyLower === 'date' || keyLower === 'publicationdate') {
         const rawDate =
-          p.publicationDate || (p.year ? String(p.year) : '') || p.date || ef.date || ef.publicationDate;
+          p.publicationDate || (p.year && Number(p.year) > 0 ? String(p.year) : '') || p.date || ef.date || ef.publicationDate;
         if (!rawDate) return '';
         const isoMatch = String(rawDate).match(/^(\d{4}-\d{2}-\d{2})T/);
         if (isoMatch) return isoMatch[1];
@@ -207,7 +208,7 @@ export default function InfoSection({
         );
       }
       if (keyLower === 'accessdate' || keyLower === 'accessedat') {
-        return cleanValue(p.accessDate || (p.accessedAt ? formatAuditDate(p.accessedAt as any) : '') || ef.accessDate);
+        return cleanValue(p.accessDate || (p.accessedAt ? formatAuditDate(String(p.accessedAt)) : '') || ef.accessDate);
       }
       if (keyLower === 'doi') {
         return cleanValue(displayDoi || p.doi || p.DOI || ef.doi);
@@ -370,11 +371,15 @@ export default function InfoSection({
       }
       if (keyLower === 'citationcount') {
         const currentCitationCount = p.citationCount ?? ef.citationCount;
-        return cleanValue(currentCitationCount);
+        return currentCitationCount != null && Number(currentCitationCount) > 0
+          ? String(currentCitationCount)
+          : '';
       }
       if (keyLower === 'referencecount') {
         const currentReferenceCount = p.referenceCount ?? ef.referenceCount;
-        return cleanValue(currentReferenceCount);
+        return currentReferenceCount != null && Number(currentReferenceCount) > 0
+          ? String(currentReferenceCount)
+          : '';
       }
 
       return cleanValue((p as Record<string, any>)[fieldKey] ?? (ef as Record<string, any>)[fieldKey] ?? (p.customFields as Record<string, any> | undefined)?.[fieldKey]);
@@ -695,9 +700,12 @@ export default function InfoSection({
           fieldDef.field.toLowerCase() === 'rights' ||
           fieldDef.field.toLowerCase() === 'license';
 
+        const isReferences = fieldDef.field.toLowerCase() === 'referencecount';
         const val =
           isCitations && rawVal && !isNaN(Number(rawVal))
-            ? new Intl.NumberFormat('en-US').format(Number(rawVal))
+            ? Number(rawVal) > 0 ? new Intl.NumberFormat('en-US').format(Number(rawVal)) : ''
+            : isReferences && rawVal && !isNaN(Number(rawVal))
+            ? Number(rawVal) > 0 ? new Intl.NumberFormat('en-US').format(Number(rawVal)) : ''
             : isCitationKey
             ? cleanValue(paper.citationKey || generateCitationKey(paper))
             : isRights
@@ -707,7 +715,7 @@ export default function InfoSection({
                   (paper.extraFields?.rights as string) ??
                   (paper.extraFields?.license as string),
               )
-            : rawVal;
+            : cleanValue(rawVal);
 
         const onSaveField = (newVal: string) => {
           if (isCitationKey) {

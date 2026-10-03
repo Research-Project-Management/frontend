@@ -967,7 +967,7 @@ export function WorkItemPage({
               variant="outline"
               size="sm"
               onClick={() => setShowArchived(false)}
-              className="gap-2 rounded-md h-8 px-3 text-13 font-medium bg-background border border-border text-foreground hover:bg-muted shadow-2xs cursor-pointer"
+              className="gap-2 rounded-md h-8 px-3 text-13 font-medium bg-background border border-border text-foreground hover:bg-muted shadow-none cursor-pointer"
             >
               <span>Back to active items</span>
             </Button>
@@ -1207,7 +1207,7 @@ export function WorkItemPage({
                 value={newViewName}
                 onChange={(e) => setNewViewName(e.target.value)}
                 autoFocus
-                className="h-8 text-13 bg-background border-border shadow-2xs"
+                className="h-8 text-13 bg-background border-border"
               />
             </div>
 

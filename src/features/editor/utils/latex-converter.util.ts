@@ -1,4 +1,5 @@
 import katex from 'katex';
+import 'katex/contrib/mhchem';
 import { escapeLatex } from './smart-paste.util';
 
 /**
@@ -82,6 +83,21 @@ export function renderMathHtml(mathCode: string, displayMode: boolean): string {
     return displayMode
       ? `<pre class="math-error">$$${esc}$$</pre>`
       : `<code class="math-error">$${esc}$</code>`;
+  }
+}
+
+/**
+ * Safely renders LaTeX chemical formula using KaTeX mhchem into an HTML string with fallback.
+ */
+export function renderChemHtml(chemCode: string): string {
+  try {
+    return katex.renderToString(`\\ce{${chemCode}}`, {
+      displayMode: false,
+      throwOnError: false,
+    });
+  } catch {
+    const esc = escapeHtml(chemCode);
+    return `<code class="chem-error font-mono text-11 px-1 py-0.5 rounded bg-muted/60">\\ce{${esc}}</code>`;
   }
 }
 

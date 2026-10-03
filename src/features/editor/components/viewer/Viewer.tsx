@@ -25,7 +25,6 @@ import { useEditorInstance } from '@/features/editor/core/context/editor-instanc
 import Toolbar from './Toolbar';
 import Surface, { type SurfaceHandle } from './Surface';
 import Logs, { parseLatexLog } from './Logs';
-import Status from './Status';
 import DetachedViewerPlaceholder from './DetachedViewerPlaceholder';
 import dynamic from 'next/dynamic';
 
@@ -158,6 +157,15 @@ export default function Viewer() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [pdfUrl, isPresentationOpen]);
 
+  // Auto-switch to Logs panel on compile error and back to PDF on success (Overleaf parity)
+  useEffect(() => {
+    if (compileStatus === 'error') {
+      setShowLog(true);
+    } else if (compileStatus === 'done' && pdfUrl) {
+      setShowLog(false);
+    }
+  }, [compileStatus, pdfUrl]);
+
   const parsedLog = useMemo(
     () => (compileLog ? parseLatexLog(compileLog) : null),
     [compileLog],
@@ -210,7 +218,7 @@ export default function Viewer() {
   // If detached, show placeholder with toolbar controls
   if (isViewerPoppedOut) {
     return (
-      <div className="h-full flex flex-col bg-background select-none relative overflow-hidden">
+      <div className="h-full flex flex-col bg-background select-none relative min-h-0">
         <Toolbar
           compileStatus={compileStatus}
           engine={engine}
@@ -257,20 +265,12 @@ export default function Viewer() {
           onReattach={handleReattach}
           onFocusWindow={handleFocusPopout}
         />
-        <Status
-          compileStatus={compileStatus}
-          lastCompiledAt={lastCompiledAt}
-          pdfUrl={pdfUrl}
-          parsedLog={parsedLog}
-          onToggleLog={handleToggleLog}
-          onJumpToFirstError={handleJumpToFirstError}
-        />
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-background select-none relative overflow-hidden">
+    <div className="h-full flex flex-col bg-background select-none relative min-h-0">
       {showLog ? (
         <Logs
           log={compileLog || ''}
@@ -329,7 +329,7 @@ export default function Viewer() {
           <a ref={downloadRef} className="hidden" aria-hidden="true" />
 
           {/* PDF Viewer Surface */}
-          <div ref={pdfContainerRef} className="flex-1 overflow-hidden relative flex flex-col">
+          <div ref={pdfContainerRef} className="flex-1 min-h-0 relative flex flex-col">
             <Surface
               ref={pdfSurfaceRef}
               pdfUrl={pdfUrl}
@@ -348,16 +348,6 @@ export default function Viewer() {
               isSpreadView={pdfSpreadView}
             />
           </div>
-
-          {/* Bottom Status Bar */}
-          <Status
-            compileStatus={compileStatus}
-            lastCompiledAt={lastCompiledAt}
-            pdfUrl={pdfUrl}
-            parsedLog={parsedLog}
-            onToggleLog={handleToggleLog}
-            onJumpToFirstError={handleJumpToFirstError}
-          />
         </>
       )}
 

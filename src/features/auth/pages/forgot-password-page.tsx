@@ -22,10 +22,10 @@ const ForgotPasswordPage = () => {
 
   if (isSubmitted) {
     return (
-      <div className='flex min-h-dvh items-center justify-center bg-background px-4 py-8' suppressHydrationWarning>
+      <main className='flex min-h-dvh items-center justify-center bg-background px-4 py-8' suppressHydrationWarning>
         <div className='mx-auto w-full max-w-sm flex flex-col gap-5'>
           <div className='flex flex-col items-center gap-3 text-center'>
-            <Link className="shrink-0" href='/'>
+            <Link className="shrink-0" href='/' aria-label='Flux home'>
               <img src='/Flux.svg' alt='Flux' className='w-12 h-12' />
             </Link>
             <h1 className='text-2xl font-semibold tracking-tight text-foreground text-center'>Check your email</h1>
@@ -40,7 +40,7 @@ const ForgotPasswordPage = () => {
               <button
                 type='button'
                 onClick={handleTryAgain}
-                className='text-primary font-semibold hover:underline cursor-pointer'
+                className='text-primary font-semibold hover:underline cursor-pointer touch-manipulation py-0.5'
               >
                 try again
               </button>
@@ -50,15 +50,15 @@ const ForgotPasswordPage = () => {
             <Link href='/login'>Return to sign in</Link>
           </Button>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className='flex min-h-dvh items-center justify-center bg-background px-4 py-8' suppressHydrationWarning>
+    <main className='flex min-h-dvh items-center justify-center bg-background px-4 py-8' suppressHydrationWarning>
       <div className='mx-auto w-full max-w-sm flex flex-col gap-5'>
         <div className='flex flex-col items-center gap-3 text-center'>
-          <Link className="shrink-0" href='/'>
+          <Link className="shrink-0" href='/' aria-label='Flux home'>
             <img src='/Flux.svg' alt='Flux' className='w-12 h-12' />
           </Link>
           <h1 className='text-2xl font-semibold tracking-tight text-foreground text-center'>Reset your password</h1>
@@ -69,13 +69,13 @@ const ForgotPasswordPage = () => {
 
         <form onSubmit={handleSubmit} className='flex flex-col gap-3.5'>
           <div className='flex flex-col gap-1.5'>
-            <label htmlFor='email' className='text-13 font-medium text-foreground'>
+            <label htmlFor='email' className='sr-only'>
               Email
             </label>
             <Input
               id='email'
               type='email'
-              placeholder='name@example.com'
+              placeholder='Email'
               autoComplete='email'
               aria-invalid={Boolean(errors.email)}
               aria-describedby={errors.email ? 'email-error' : undefined}
@@ -117,7 +117,7 @@ const ForgotPasswordPage = () => {
           </Link>
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 

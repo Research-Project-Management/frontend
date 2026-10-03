@@ -501,7 +501,7 @@ export default function TemplateGalleryModal() {
                   placeholder="Search templates..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-background border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground"
+                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-background border border-border rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary text-foreground placeholder:text-muted-foreground"
                 />
               </div>
             </div>
@@ -524,11 +524,19 @@ export default function TemplateGalleryModal() {
                   return (
                     <div
                       key={tpl.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => handleSelectTemplate(tpl)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleSelectTemplate(tpl);
+                        }
+                      }}
                       className={cn(
-                        'p-3 rounded-md border transition-all cursor-pointer text-left',
+                        'p-3 rounded-md border transition-all cursor-pointer text-left outline-none focus-visible:ring-1 focus-visible:ring-primary',
                         isSelected
-                          ? 'bg-primary/10 border-primary shadow-2xs'
+                          ? 'bg-primary/10 border-primary'
                           : 'border-border/60 hover:border-border hover:bg-muted/40'
                       )}
                     >
@@ -578,9 +586,9 @@ export default function TemplateGalleryModal() {
                     type="button"
                     onClick={() => setPreviewTab('main')}
                     className={cn(
-                      'px-2 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer',
+                      'px-2 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                       previewTab === 'main'
-                        ? 'bg-background text-foreground shadow-2xs font-semibold'
+                        ? 'bg-background text-foreground font-semibold'
                         : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
@@ -591,9 +599,9 @@ export default function TemplateGalleryModal() {
                       type="button"
                       onClick={() => setPreviewTab('bib')}
                       className={cn(
-                        'px-2 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer',
+                        'px-2 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                         previewTab === 'bib'
-                          ? 'bg-background text-foreground shadow-2xs font-semibold'
+                          ? 'bg-background text-foreground font-semibold'
                           : 'text-muted-foreground hover:text-foreground'
                       )}
                     >
@@ -606,7 +614,7 @@ export default function TemplateGalleryModal() {
                   type="button"
                   onClick={handleCopyCode}
                   title="Copy code"
-                  className="size-7 rounded-sm flex items-center justify-center border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground shadow-2xs transition-colors cursor-pointer"
+                  className="size-7 rounded-md flex items-center justify-center border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
                   <Copy className="size-3.5" />
                 </button>
@@ -630,14 +638,14 @@ export default function TemplateGalleryModal() {
                 <button
                   type="button"
                   onClick={() => setIsTemplateModalOpen(false)}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted text-foreground shadow-2xs transition-colors cursor-pointer"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleApplyTemplate}
-                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-medium bg-primary hover:bg-primary-hover text-primary-foreground shadow-2xs transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-medium bg-primary hover:bg-primary-hover text-primary-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
                   <FileCheck className="size-3.5" />
                   Use this template

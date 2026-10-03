@@ -119,7 +119,7 @@ export function WorkspacePagesPage() {
               placeholder="Search pages..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 w-44 md:w-56 pl-8 pr-7 text-xs rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground outline-none focus:border-border transition-colors shadow-2xs"
+              className="h-8 w-44 md:w-56 pl-8 pr-7 text-xs rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground outline-none focus:border-border transition-colors"
             />
             {searchQuery && (
               <button

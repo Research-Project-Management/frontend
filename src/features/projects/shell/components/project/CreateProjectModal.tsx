@@ -391,7 +391,7 @@ export function CreateProjectModal({
                       type="button"
                       variant="secondary"
                       size="sm"
-                      className="h-7 px-2.5 text-11 font-medium bg-background text-foreground hover:bg-background/95 shadow-xs border border-border/40 rounded-md cursor-pointer"
+                      className="h-7 px-2.5 text-11 font-medium bg-background text-foreground hover:bg-background/95 border border-border/40 rounded-md cursor-pointer"
                     >
                       Change cover
                     </Button>
@@ -406,7 +406,7 @@ export function CreateProjectModal({
                   <button
                     type="button"
                     title="Change project icon or emoji"
-                    className="size-12 rounded-lg border border-border bg-background hover:bg-muted shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="size-12 rounded-lg border border-border bg-background hover:bg-muted flex items-center justify-center transition-all active:scale-95 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   >
                     <ProjectAvatar avatar={avatar} name={name} size="xl" className="size-full" />
                   </button>
@@ -495,11 +495,11 @@ export function CreateProjectModal({
                 <div className="flex items-center flex-wrap gap-2 pt-1">
                   {/* 1. Initial State Indicator */}
                   <div
-                    title="Giai đoạn khởi tạo mặc định cho đề tài mới"
+                    title="Default initial stage for new projects"
                     className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-muted/40 text-12 font-medium text-foreground select-none cursor-default"
                   >
                     <span className="size-2 rounded-full shrink-0 bg-sky-500" />
-                    <span>Thuyết minh đề cương</span>
+                    <span>Proposal Draft</span>
                   </div>
 
                   {/* 2. Priority Popover */}

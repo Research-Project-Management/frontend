@@ -49,33 +49,33 @@ interface AiTabProps {
 const QUICK_ACTIONS = [
   {
     id: 'polish',
-    label: 'Viết lại học thuật',
+    label: 'Academic Polish',
     prompt:
-      'Hãy viết lại đoạn văn bản này theo phong cách học thuật chuẩn mực, súc tích và trang trọng hơn bằng LaTeX.',
+      'Rewrite this text in a rigorous, concise, and formal academic style using standard LaTeX.',
   },
   {
     id: 'fix_latex',
-    label: 'Sửa lỗi LaTeX',
+    label: 'Fix LaTeX Errors',
     prompt:
-      'Hãy kiểm tra cú pháp LaTeX trong đoạn này, sửa lại các lỗi cú pháp/công thức toán và giải thích ngắn gọn.',
+      'Inspect the LaTeX syntax in this selection, fix any syntax or math formula issues, and briefly explain the changes.',
   },
   {
     id: 'explain',
-    label: 'Giải thích nội dung',
+    label: 'Explain Content',
     prompt:
-      'Hãy giải thích chi tiết ý nghĩa toán học / thuật toán hoặc khái niệm trong đoạn mã LaTeX này.',
+      'Provide a detailed explanation of the mathematical derivation, algorithm, or theoretical concept in this LaTeX snippet.',
   },
   {
     id: 'abstract',
-    label: 'Soạn tóm tắt Abstract',
+    label: 'Draft Abstract',
     prompt:
-      'Dựa trên nội dung tài liệu hiện tại, hãy viết một phần tóm tắt (Abstract) học thuật cô đọng khoảng 150-250 từ.',
+      'Based on the current document context, compose a concise, publication-ready academic abstract between 150-250 words.',
   },
   {
     id: 'bibtex',
-    label: 'Gợi ý trích dẫn BibTeX',
+    label: 'BibTeX Suggestions',
     prompt:
-      'Hãy đề xuất các tài liệu tham khảo kinh điển hoặc định dạng mục \\bibitem / BibTeX phù hợp cho chủ đề này.',
+      'Suggest classic references and properly formatted BibTeX citation entries appropriate for this topic.',
   },
 ];
 
@@ -222,7 +222,7 @@ export default function AiTab({ onClose }: AiTabProps) {
     if (!query || isStreaming) return;
 
     const userMessageContent = selectionContext
-      ? `[Ngữ cảnh được chọn]:\n\`\`\`latex\n${selectionContext}\n\`\`\`\n\n${query}`
+      ? `[Selected context]:\n\`\`\`latex\n${selectionContext}\n\`\`\`\n\n${query}`
       : query;
 
     const newMessages: ChatMessage[] = [
@@ -318,29 +318,29 @@ export default function AiTab({ onClose }: AiTabProps) {
                   type="button"
                   onClick={() => handleCopyCode(codeString, blockId)}
                   className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-muted-foreground hover:bg-background hover:text-foreground transition-colors cursor-pointer"
-                  title="Sao chép mã"
+                  title="Copy code"
                 >
                   {isCopied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
-                  <span>{isCopied ? 'Đã chép' : 'Chép'}</span>
+                  <span>{isCopied ? 'Copied' : 'Copy'}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleInsertAtCursor(codeString)}
                   className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-primary hover:bg-background hover:text-primary transition-colors cursor-pointer font-medium"
-                  title="Chèn mã tại vị trí con trỏ"
+                  title="Insert code at cursor"
                 >
                   <ArrowDownToLine className="size-3" />
-                  <span>Chèn</span>
+                  <span>Insert</span>
                 </button>
                 {selectionContext && (
                   <button
                     type="button"
                     onClick={() => handleReplaceSelection(codeString)}
                     className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-amber-600 dark:text-amber-400 hover:bg-background transition-colors cursor-pointer font-medium"
-                    title="Thay thế đoạn bôi đen bằng mã này"
+                    title="Replace selection with this code"
                   >
                     <Replace className="size-3" />
-                    <span>Thay</span>
+                    <span>Replace</span>
                   </button>
                 )}
               </div>
@@ -353,7 +353,7 @@ export default function AiTab({ onClose }: AiTabProps) {
       }
 
       return (
-        <code className="rounded-sm bg-muted px-1 py-0.5 font-mono text-11 text-primary" {...props}>
+        <code className="rounded-sm bg-muted px-1 py-0.5 font-mono text-xs text-primary" {...props}>
           {children}
         </code>
       );
@@ -374,7 +374,7 @@ export default function AiTab({ onClose }: AiTabProps) {
             type="button"
             onClick={onClose}
             className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
-            title="Đóng bảng AI"
+            title="Close AI panel"
           >
             <X className="size-3.5" />
           </button>
@@ -386,18 +386,18 @@ export default function AiTab({ onClose }: AiTabProps) {
         <div className="shrink-0 border-b border-border bg-primary/5 px-3 py-1.5 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
             <Wand2 className="size-3 text-primary shrink-0" />
-            <span className="text-11 font-medium text-primary truncate">
-              Vùng chọn: &ldquo;{selectionContext.slice(0, 32)}
+            <span className="text-xs font-medium text-primary truncate">
+              Selection: &ldquo;{selectionContext.slice(0, 32)}
               {selectionContext.length > 32 ? '...' : ''}&rdquo;
             </span>
           </div>
           <button
             type="button"
             onClick={() => setSelectionContext(null)}
-            className="text-muted-foreground hover:text-foreground text-11 px-1 py-0.5 rounded-sm hover:bg-muted transition-colors cursor-pointer"
-            title="Hủy vùng chọn"
+            className="text-muted-foreground hover:text-foreground text-xs px-1 py-0.5 rounded-sm hover:bg-muted transition-colors cursor-pointer"
+            title="Clear selection"
           >
-            Bỏ chọn
+            Clear
           </button>
         </div>
       )}
@@ -414,7 +414,7 @@ export default function AiTab({ onClose }: AiTabProps) {
         {isLoadingHistory && (
           <div className="flex items-center justify-center py-6 text-xs text-muted-foreground gap-2">
             <RefreshCw className="size-3.5 animate-spin" />
-            <span>Đang tải lịch sử...</span>
+            <span>Loading history...</span>
           </div>
         )}
 
@@ -424,16 +424,16 @@ export default function AiTab({ onClose }: AiTabProps) {
               <Bot className="size-5" />
             </div>
             <div className="space-y-1 max-w-[240px]">
-              <h3 className="text-xs font-semibold text-foreground">Trợ lý Nghiên cứu & LaTeX</h3>
+              <h3 className="text-xs font-semibold text-foreground">Research & LaTeX Assistant</h3>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Hỏi đáp cú pháp, viết lại đoạn văn chuẩn IEEE/ACM, chỉnh sửa lỗi biên dịch hoặc giải thích công thức.
+                Ask syntax questions, polish text to IEEE/ACM standards, fix compile errors, or explain formulas.
               </p>
             </div>
 
             {/* Quick Action Pills */}
             <div className="w-full pt-1.5 flex flex-col gap-1.5 text-left">
-              <span className="text-11 font-medium text-muted-foreground/80 px-1">
-                Tác vụ nhanh:
+              <span className="text-xs font-medium text-muted-foreground/80 px-1">
+                Quick actions:
               </span>
               {QUICK_ACTIONS.map((act) => (
                 <button
@@ -461,10 +461,10 @@ export default function AiTab({ onClose }: AiTabProps) {
                 isUser ? 'items-end' : 'items-start',
               )}
             >
-              <div className="flex items-center gap-1.5 text-11 text-muted-foreground px-1">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground px-1">
                 {isUser ? (
                   <>
-                    <span>Bạn</span>
+                    <span>You</span>
                     <User className="size-3" />
                   </>
                 ) : (
@@ -502,9 +502,9 @@ export default function AiTab({ onClose }: AiTabProps) {
         {/* Streaming In-Progress Assistant Bubble */}
         {streamingMessage && (
           <div className="flex flex-col gap-1 items-start text-xs">
-            <div className="flex items-center gap-1.5 text-11 text-primary px-1">
+            <div className="flex items-center gap-1.5 text-xs text-primary px-1">
               <Bot className="size-3 animate-pulse" />
-              <span className="font-medium">AI đang soạn câu trả lời...</span>
+              <span className="font-medium">AI is drafting a response...</span>
             </div>
 
             <div className="rounded-lg rounded-tl-xs px-3 py-2 max-w-[95%] bg-muted/80 text-foreground border border-border/70 leading-relaxed">
@@ -534,7 +534,7 @@ export default function AiTab({ onClose }: AiTabProps) {
                 type="button"
                 onClick={() => handleSendMessage(act.prompt)}
                 disabled={isStreaming}
-                className="shrink-0 rounded-sm border border-border bg-background px-2.5 py-0.5 text-11 font-medium text-foreground hover:bg-muted/80 hover:border-primary/40 transition-colors disabled:opacity-40 cursor-pointer shadow-2xs"
+                className="shrink-0 rounded-sm border border-border bg-background px-2.5 py-0.5 text-xs font-medium text-foreground hover:bg-muted/80 hover:border-primary/40 transition-colors disabled:opacity-40 cursor-pointer"
               >
                 {act.label}
               </button>
@@ -542,7 +542,7 @@ export default function AiTab({ onClose }: AiTabProps) {
           </div>
         )}
 
-        <div className="relative flex items-end gap-1.5 rounded-md border border-border bg-background p-1.5 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/40 shadow-2xs transition-all">
+        <div className="relative flex items-end gap-1.5 rounded-md border border-border bg-background p-1.5 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/40 transition-all">
           <textarea
             ref={textareaRef}
             rows={1}
@@ -556,8 +556,8 @@ export default function AiTab({ onClose }: AiTabProps) {
             }}
             placeholder={
               selectionContext
-                ? 'Hỏi AI về đoạn văn bản đã chọn...'
-                : 'Hỏi AI về bài báo, sửa LaTeX, định lý...'
+                ? 'Ask AI about the selected text...'
+                : 'Ask AI about paper, LaTeX syntax, theorem...'
             }
             disabled={isStreaming}
             className="flex-1 max-h-[140px] resize-none bg-transparent px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/60 outline-none leading-relaxed"
@@ -569,14 +569,14 @@ export default function AiTab({ onClose }: AiTabProps) {
                 <button
                   type="button"
                   onClick={handleStopStreaming}
-                  className="flex size-7 items-center justify-center rounded-sm bg-primary text-primary-foreground hover:bg-primary-hover transition-colors cursor-pointer shrink-0 shadow-2xs"
-                  aria-label="Dừng sinh phản hồi"
+                  className="flex size-7 items-center justify-center rounded-sm bg-primary text-primary-foreground hover:bg-primary-hover transition-colors cursor-pointer shrink-0"
+                  aria-label="Stop generating"
                 >
                   <Square className="size-3.5 fill-current" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={4}>
-                Dừng sinh phản hồi
+                Stop generating
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -586,14 +586,14 @@ export default function AiTab({ onClose }: AiTabProps) {
                   type="button"
                   onClick={() => handleSendMessage()}
                   disabled={!inputPrompt.trim()}
-                  className="flex size-7 items-center justify-center rounded-sm bg-primary text-primary-foreground hover:bg-primary-hover transition-colors disabled:opacity-40 cursor-pointer shrink-0 shadow-2xs"
-                  aria-label="Gửi câu hỏi"
+                  className="flex size-7 items-center justify-center rounded-sm bg-primary text-primary-foreground hover:bg-primary-hover transition-colors disabled:opacity-40 cursor-pointer shrink-0"
+                  aria-label="Send message"
                 >
                   <Send className="size-3.5" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={4}>
-                Gửi câu hỏi (Enter)
+                Send message (Enter)
               </TooltipContent>
             </Tooltip>
           )}

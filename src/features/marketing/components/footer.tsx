@@ -119,7 +119,8 @@ function FooterLink({
           href={href}
           target='_blank'
           rel='noopener noreferrer'
-          className='inline-flex items-center py-1 text-13 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm'
+          aria-label={`${label} (opens in new tab)`}
+          className='inline-flex items-center py-2 sm:py-1 text-13 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm'
         >
           {label}
         </a>
@@ -131,7 +132,7 @@ function FooterLink({
     <li>
       <Link
         href={href}
-        className='inline-flex items-center py-1 text-13 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm'
+        className='inline-flex items-center py-2 sm:py-1 text-13 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm'
       >
         {label}
       </Link>

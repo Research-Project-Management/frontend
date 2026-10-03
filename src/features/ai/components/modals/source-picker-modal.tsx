@@ -29,7 +29,9 @@ import {
   type Collection,
   type Paper,
 } from '@/features/library';
+import { LibraryEmptyState } from '@/features/library/components/content/LibraryEmptyState';
 import { storageFileService, type StorageItem } from '@/features/storage';
+import { StorageEmptyState } from '@/features/storage/components/layout/StorageEmptyState';
 import { uploadDocument } from '../../services/chat.service';
 
 export interface SourcePickerModalProps {
@@ -412,9 +414,11 @@ export function SourcePickerModal({
                     <Loader2 className="size-5 animate-spin text-primary shrink-0" />
                   </div>
                 ) : activePapers.length === 0 ? (
-                  <div className="p-8 text-center text-12 text-muted-foreground">
-                    No indexed papers found in this collection.
-                  </div>
+                  <LibraryEmptyState
+                    collectionId={selectedCollectionId}
+                    canEdit={false}
+                    className="min-h-0 py-8 px-4"
+                  />
                 ) : (
                   activePapers.map((paper) => {
                     const checked =
@@ -528,9 +532,10 @@ export function SourcePickerModal({
                     <Loader2 className="size-5 animate-spin text-primary shrink-0" />
                   </div>
                 ) : filteredStorageFiles.length === 0 ? (
-                  <div className="p-6 text-center text-12 text-muted-foreground">
-                    No files found in storage. Upload files above to attach them.
-                  </div>
+                  <StorageEmptyState
+                    searchQuery={storageSearch}
+                    className="min-h-0 py-8 px-4"
+                  />
                 ) : (
                   filteredStorageFiles.map((file) => {
                     const checked =

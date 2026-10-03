@@ -131,6 +131,8 @@ function Avatar({
   );
 }
 
+import { EditorEmptyState } from '../../shared';
+
 // ── Empty Review State (Overleaf Parity) ─────────────────────────────────────
 function EmptyReviewState({
   title = 'No comments or suggestions',
@@ -142,21 +144,13 @@ function EmptyReviewState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center select-none">
-      {/* Clean circular icon badge */}
-      <div className="size-16 rounded-full bg-muted border border-border flex items-center justify-center mb-4 shadow-2xs">
-        <OverleafReviewSolidIcon className="size-8 text-muted-foreground" />
-      </div>
-      {/* Title */}
-      <h3 className="text-foreground font-semibold text-base mb-1 leading-snug">
-        {title}
-      </h3>
-      {/* Subtitle */}
-      <p className="text-muted-foreground text-xs leading-relaxed max-w-[220px]">
-        {subtitle}
-      </p>
-      {action && <div className="mt-4">{action}</div>}
-    </div>
+    <EditorEmptyState
+      variant="review"
+      isCompact
+      title={title}
+      description={subtitle}
+      action={action}
+    />
   );
 }
 
@@ -248,7 +242,7 @@ const CommentCard = React.memo(function CommentCard({
     <div
       id={`comment-${comment.id}`}
       className={cn(
-        'rounded-lg border p-3 bg-card text-card-foreground shadow-2xs mb-2.5 transition-colors duration-150',
+        'rounded-lg border p-3 bg-card text-card-foreground mb-2.5 transition-colors duration-150',
         isHighlighted
           ? 'border-primary ring-1 ring-primary/40'
           : 'border-border hover:border-border/80',
@@ -319,7 +313,7 @@ const CommentCard = React.memo(function CommentCard({
       </div>
 
       {/* Row 2: Overleaf Timestamp */}
-      <div className="text-[11px] text-muted-foreground mt-0.5">
+      <div className="text-12 text-muted-foreground mt-0.5 leading-normal">
         {formatOverleafDate(comment.createdAt)}
       </div>
 
@@ -423,7 +417,7 @@ const ReplyRow = React.memo(function ReplyRow({
             className="size-2 rounded-[2px] shrink-0"
             style={{ backgroundColor: authorDisplay.color }}
           />
-          <span className="font-semibold text-foreground truncate text-11">
+          <span className="font-semibold text-foreground truncate text-12 leading-normal">
             {authorDisplay.name}
           </span>
           <span className="text-10 text-muted-foreground">
@@ -496,7 +490,7 @@ const SuggestionCard = React.memo(function SuggestionCard({
     <div
       id={`suggestion-${suggestion.id}`}
       className={cn(
-        'mb-2.5 rounded-lg border border-border bg-card p-3 space-y-2.5 transition-colors duration-150 text-xs text-card-foreground shadow-2xs',
+        'mb-2.5 rounded-lg border border-border bg-card p-3 space-y-2.5 transition-colors duration-150 text-xs text-card-foreground',
         isHighlighted && 'ring-1 ring-primary/40 border-primary',
         !isPending && 'opacity-70',
       )}
@@ -553,7 +547,7 @@ const SuggestionCard = React.memo(function SuggestionCard({
 
       {/* Note / Description if any */}
       {suggestion.description && (
-        <p className="text-muted-foreground text-[11px] italic">
+        <p className="text-muted-foreground text-12 italic leading-normal">
           "{suggestion.description}"
         </p>
       )}
@@ -574,7 +568,7 @@ const SuggestionCard = React.memo(function SuggestionCard({
             type="button"
             onClick={() => onAccept(suggestion.id)}
             disabled={isAccepting || isRejecting}
-            className="flex items-center gap-1 px-2.5 py-1 rounded text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium transition-colors disabled:opacity-50 shadow-xs cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 rounded text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium transition-colors disabled:opacity-50 cursor-pointer"
           >
             <CheckCircle2 className="size-3.5 shrink-0" />
             <span>Accept</span>
@@ -655,7 +649,7 @@ const OverviewFileGroup = React.memo(function OverviewFileGroup({
           <FileText className="size-3.5 text-muted-foreground shrink-0" />
           <span className="text-xs font-semibold text-foreground truncate">{file.title}</span>
         </div>
-        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-background text-foreground border border-border">
+        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-background text-foreground border border-border">
           {totalVisibleCount}
         </span>
       </div>
@@ -1109,7 +1103,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
                       className={cn(
                         'px-2 py-0.5 rounded-sm capitalize transition-colors cursor-pointer text-[11px]',
                         trackChangesViewMode === m
-                          ? 'bg-background text-foreground shadow-2xs font-semibold'
+                          ? 'bg-background text-foreground font-semibold'
                           : 'text-muted-foreground hover:text-foreground',
                       )}
                       title={
@@ -1132,7 +1126,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
                     type="button"
                     onClick={() => pageId && rejectAllMutation.mutate({ pageId })}
                     disabled={rejectAllMutation.isPending}
-                    className="px-2 py-0.5 rounded text-11 text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                    className="px-2 py-0.5 rounded text-12 text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 transition-colors cursor-pointer leading-normal"
                   >
                     Reject All
                   </button>
@@ -1140,7 +1134,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
                     type="button"
                     onClick={() => pageId && acceptAllMutation.mutate({ pageId })}
                     disabled={acceptAllMutation.isPending}
-                    className="px-2 py-0.5 rounded text-11 bg-primary text-primary-foreground hover:bg-primary/90 font-medium transition-colors cursor-pointer shadow-xs"
+                    className="px-2 py-0.5 rounded text-12 bg-primary text-primary-foreground hover:bg-primary/90 font-medium transition-colors cursor-pointer leading-normal"
                   >
                     Accept All
                   </button>
@@ -1179,7 +1173,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="flex items-center gap-1 rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 cursor-pointer shadow-xs"
+                      className="flex items-center gap-1 rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
                     >
                       <Send className="size-3" />
                       Post
@@ -1282,7 +1276,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
             <div className="absolute top-0 inset-x-0 h-[2px] bg-primary" />
           )}
           <FileText className="size-3.5 shrink-0" />
-          <span className="text-[11px] leading-none">Current file</span>
+          <span className="text-12 leading-normal">Current file</span>
         </button>
 
         {/* Tab 2: Overview */}
@@ -1298,7 +1292,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
             <div className="absolute top-0 inset-x-0 h-[2px] bg-primary" />
           )}
           <List className="size-3.5 shrink-0" />
-          <span className="text-[11px] leading-none">Overview</span>
+          <span className="text-12 leading-normal">Overview</span>
         </button>
       </nav>
     </div>

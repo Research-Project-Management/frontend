@@ -2,20 +2,19 @@
 
 import React from 'react';
 import { SlidersHorizontal } from 'lucide-react';
-import { TopBar } from '../components/layout/TopBar';
+import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
 import PreferencesTab from '@/features/account/components/PreferencesTab';
 
 export default function PreferencesPage() {
   return (
-    <div className="flex h-full w-full flex-col bg-background">
-      <TopBar
+    <PageLayout>
+      <PageHeader
         title="Preferences"
-        description="Customize interface appearance, localization, and editing controls."
-        Icon={SlidersHorizontal}
+        icon={SlidersHorizontal}
       />
-      <div className="flex-1 overflow-y-auto">
+      <PageContent maxWidth="full" noPadding>
         <PreferencesTab />
-      </div>
-    </div>
+      </PageContent>
+    </PageLayout>
   );
 }

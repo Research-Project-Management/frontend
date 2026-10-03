@@ -151,7 +151,7 @@ function SubmenuSearchBar({
 }) {
   return (
     <div className="p-1 pb-1.5 border-b border-border/50 mb-1" onClick={(e) => e.stopPropagation()}>
-      <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-background border border-border text-12 text-foreground shadow-2xs">
+      <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-background border border-border text-12 text-foreground">
         <Search className="size-3.5 text-foreground shrink-0" />
         <input
           type="text"
@@ -340,7 +340,7 @@ export function FilterDropdown({
               type="button"
               size="icon"
               className={cn(
-                'size-8 rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors relative shrink-0 shadow-2xs',
+                'size-8 rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors relative shrink-0',
                 isOpen && 'bg-muted',
               )}
               aria-label="Filters"
@@ -356,11 +356,11 @@ export function FilterDropdown({
 
       <DropdownMenuContent
         align="start"
-        className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-none max-h-[85vh] overflow-y-auto"
+        className="w-56 p-1 rounded-md border-border bg-popover text-12 shadow-md max-h-[85vh] overflow-y-auto"
       >
         {/* Main Search Header */}
         <div className="p-1 pb-1.5 border-b border-border/50 mb-1" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-background border border-border text-12 text-foreground shadow-2xs">
+          <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-background border border-border text-12 text-foreground">
             <Search className="size-3.5 text-foreground shrink-0" />
             <input
               type="text"

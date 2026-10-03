@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   sourceItemSchema,
+  messageAttachmentSchema,
   workItemItemSchema,
   workItemOverviewWidgetSchema,
   metricSummaryWidgetSchema,
@@ -16,6 +17,7 @@ import {
 // ── Inferred Types from Zod ───────────────────────────────────────────────────
 
 export type SourceItem = z.infer<typeof sourceItemSchema>;
+export type MessageAttachment = z.infer<typeof messageAttachmentSchema>;
 export type WorkItemItem = z.infer<typeof workItemItemSchema>;
 export type WorkItemOverviewWidget = z.infer<typeof workItemOverviewWidgetSchema>;
 export type MetricSummaryWidget = z.infer<typeof metricSummaryWidgetSchema>;
@@ -26,6 +28,17 @@ export type ChatSessionDetail = z.infer<typeof chatSessionDetailSchema>;
 export type CreateChatSessionInput = z.infer<typeof createChatSessionSchema>;
 export type AgentAction = z.infer<typeof agentActionSchema>;
 export type AgentId = z.infer<typeof agentIdSchema>;
+
+export interface DocumentItem {
+  id: string;
+  title: string;
+  chunk_count: number;
+  tags: string[];
+  type?: string;
+  created_at?: string;
+  user_id?: string;
+  chat_id?: string;
+}
 
 // ── Domain Specific Interfaces ───────────────────────────────────────────────
 

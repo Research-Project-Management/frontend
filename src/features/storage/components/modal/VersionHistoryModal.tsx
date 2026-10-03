@@ -130,7 +130,7 @@ export default function VersionHistoryModal({
         {/* Modal Header */}
         <DialogHeader className="px-6 py-4.5 pr-14 border-b border-border/70 bg-muted/20 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 shadow-2xs">
+            <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
               <History className="size-5" />
             </div>
             <div className="min-w-0 flex-1">
@@ -177,7 +177,7 @@ export default function VersionHistoryModal({
               </Badge>
             </button>
           ) : (
-            <div className="p-4.5 rounded-2xl border border-primary/30 bg-primary/[0.04] space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-200 shadow-2xs">
+            <div className="p-4.5 rounded-2xl border border-primary/30 bg-primary/[0.04] space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-semibold text-primary">
                   <FileUp className="size-4" />
@@ -204,7 +204,7 @@ export default function VersionHistoryModal({
                 onClick={() => fileInputRef.current?.click()}
                 className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-150 ${
                   selectedFile
-                    ? 'border-primary bg-primary/10 shadow-2xs'
+                    ? 'border-primary bg-primary/10'
                     : 'border-border/80 bg-background/80 hover:border-primary/50 hover:bg-primary/[0.02]'
                 }`}
               >
@@ -281,7 +281,7 @@ export default function VersionHistoryModal({
                   size="sm"
                   disabled={!selectedFile || isUploading}
                   onClick={handleUploadSubmit}
-                  className="h-8 text-xs gap-1.5 font-medium cursor-pointer shadow-2xs"
+                  className="h-8 text-xs gap-1.5 font-medium cursor-pointer"
                 >
                   {isUploading ? (
                     <>
@@ -332,7 +332,7 @@ export default function VersionHistoryModal({
                     >
                       {/* Timeline Node Badge on Left */}
                       <div
-                        className={`absolute -left-7 top-3.5 size-6 rounded-full flex items-center justify-center text-10 font-bold font-mono ring-4 ring-background shadow-xs transition-colors ${
+                        className={`absolute -left-7 top-3.5 size-6 rounded-full flex items-center justify-center text-10 font-semibold font-mono ring-4 ring-background transition-colors ${
                           isCurrent
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-muted text-muted-foreground border border-border'
@@ -345,14 +345,14 @@ export default function VersionHistoryModal({
                       <div
                         className={`p-4 rounded-xl border transition-all duration-150 ${
                           isCurrent
-                            ? 'border-primary/40 bg-primary/[0.02] ring-1 ring-primary/10 shadow-2xs'
-                            : 'border-border/70 bg-card hover:border-border hover:shadow-2xs'
+                            ? 'border-primary/40 bg-primary/[0.02] ring-1 ring-primary/10'
+                            : 'border-border/70 bg-card hover:border-border'
                         }`}
                       >
                         {/* Top Info & Actions Bar */}
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-bold text-foreground">
+                            <span className="text-xs font-semibold text-foreground">
                               Version {ver.versionNumber}
                             </span>
                             {isCurrent && (
@@ -375,7 +375,7 @@ export default function VersionHistoryModal({
                               variant="outline"
                               size="sm"
                               onClick={() => handleDownloadVersion(ver.versionNumber)}
-                              className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer shadow-2xs gap-1"
+                              className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer gap-1"
                               title="Download this version"
                             >
                               <Download className="size-3.5" />
@@ -447,7 +447,7 @@ export default function VersionHistoryModal({
                                 size="sm"
                                 disabled={isReverting}
                                 onClick={() => handleRevertConfirm(ver.versionNumber)}
-                                className="h-7 text-xs font-medium bg-amber-600 hover:bg-amber-700 text-white gap-1 shadow-2xs"
+                                className="h-7 text-xs font-medium bg-amber-600 hover:bg-amber-700 text-white gap-1"
                               >
                                 {isReverting ? (
                                   <Loader2 className="size-3 animate-spin" />
@@ -478,7 +478,7 @@ export default function VersionHistoryModal({
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="h-8 px-4 font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs"
+            className="h-8 px-4 font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
           >
             Close
           </Button>

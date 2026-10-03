@@ -99,7 +99,7 @@ export default function CreateCollectionModal({
                 placeholder="Collection name"
                 autoFocus
                 onFocus={(e) => e.target.select()}
-                className="h-8 text-13 text-foreground bg-white dark:bg-card shadow-2xs hover:border-foreground/30 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-md border-border placeholder:text-foreground/50"
+                className="h-8 text-13 text-foreground bg-background hover:border-foreground/30 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-md border-border placeholder:text-foreground/50"
                 {...register('name')}
               />
               {errors.name && (
@@ -120,7 +120,7 @@ export default function CreateCollectionModal({
                     value={field.value || 'root'}
                     onValueChange={(val) => field.onChange(val === 'root' ? null : val)}
                   >
-                    <SelectTrigger className="w-full h-8 text-13 text-foreground justify-between rounded-md border-border bg-white dark:bg-card shadow-2xs hover:border-foreground/30">
+                    <SelectTrigger className="w-full h-8 text-13 text-foreground justify-between rounded-md border-border bg-background hover:border-foreground/30">
                       <SelectValue placeholder="Select location" />
                     </SelectTrigger>
                     <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">

@@ -79,7 +79,7 @@ export default function Recent() {
                 )}
                 
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <span className='text-11 font-medium text-muted-foreground shrink-0 min-w-12 truncate'>
+                  <span className='font-mono text-11 font-medium text-muted-foreground shrink-0 min-w-12 truncate'>
                     {item.project?.identifier || item.project?.name?.substring(0, 6) || ''}
                   </span>
                   <Link
@@ -88,7 +88,7 @@ export default function Recent() {
                   >
                     {item.title || item.name}
                   </Link>
-                  <span className='text-xs font-normal text-muted-foreground whitespace-nowrap shrink-0'>
+                  <span className='font-mono text-11 font-normal text-muted-foreground whitespace-nowrap shrink-0'>
                     {item.updatedAt ? formatDistanceToNow(new Date(item.updatedAt), { addSuffix: true }) : ''}
                   </span>
                 </div>
@@ -108,7 +108,7 @@ export default function Recent() {
           })}
         </div>
       ) : (
-        <div className='p-8 bg-muted border border-dashed border-border rounded-lg text-center text-xs text-muted-foreground'>
+        <div className='py-8 px-4 text-center text-13 text-foreground/80'>
           No recent items
         </div>
       )}

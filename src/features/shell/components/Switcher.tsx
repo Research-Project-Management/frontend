@@ -351,7 +351,7 @@ export function Switcher({
                 setIsOpen(false);
                 logout();
               }}
-              className='flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors w-full text-left outline-none'
+              className='flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer text-sm font-medium text-destructive hover:bg-muted transition-colors w-full text-left outline-none'
             >
               <LogOut className='size-4 text-destructive shrink-0' />
               <span className='text-destructive'>Sign out</span>

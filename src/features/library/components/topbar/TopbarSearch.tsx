@@ -107,7 +107,7 @@ export function TopbarSearch({
       className={cn(
         'relative flex items-center transition-colors duration-150 h-8 rounded-md overflow-hidden group focus-visible:ring-1 focus-visible:ring-ring select-none',
         active
-          ? 'w-40 sm:w-52 border border-border bg-white dark:bg-card shadow-2xs hover:border-foreground/30'
+          ? 'w-40 sm:w-52 border border-border bg-background hover:border-foreground/30'
           : 'w-8 hover:bg-muted cursor-pointer',
         className
       )}

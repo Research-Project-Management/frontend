@@ -218,7 +218,7 @@ export function ItemActions({
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+            className="size-7 text-destructive hover:text-destructive hover:bg-muted cursor-pointer"
             onClick={() => setIsDeleteModalOpen(true)}
             title="Delete Permanently"
           >

@@ -5,6 +5,7 @@ import type {
   CreateChatSessionInput,
   SourceItem,
   AgentAction,
+  DocumentItem,
 } from '../types/chat.types';
 import {
   apiGet,
@@ -115,7 +116,11 @@ export async function* streamChatResponse(
   options?: StreamChatOptions,
 ): AsyncGenerator<string, void, unknown> {
   const { signal, onMeta, onAction, ...cleanOptions } = options ?? {};
-  const aiMessages = messages.map(({ role, content }) => ({ role, content }));
+  const aiMessages = messages.map(({ role, content, attachments }) => ({
+    role,
+    content,
+    ...(attachments && attachments.length > 0 ? { attachments } : {}),
+  }));
   const response = await apiRawFetch('/api/ai/chat', 'POST', {
     messages: aiMessages,
     project_id: cleanOptions.projectId ?? null,
@@ -514,14 +519,43 @@ export async function fetchDocumentsBulk(
 export async function fetchDocumentContent(
   docId: string,
 ): Promise<{ text: string }> {
-  const data = await apiGet<{ text?: string; data?: { text?: string } | string }>(
-    `/api/ai/documents/${docId}/content`,
-  );
+  const data = await apiGet<{
+    text?: string;
+    content?: string;
+    data?: { text?: string; content?: string } | string;
+  }>(`/api/ai/documents/${docId}/content`);
+
+  const rawData = data.data;
+  const contentStr =
+    data.text ||
+    data.content ||
+    (typeof rawData === 'object' && rawData ? rawData.text || rawData.content : '') ||
+    (typeof rawData === 'string' ? rawData : '') ||
+    '';
+
   return {
-    text:
-      data.text ||
-      (data.data as { text?: string })?.text ||
-      (typeof data.data === 'string' ? data.data : '') ||
-      '',
+    text: contentStr,
   };
 }
+
+export async function fetchDocuments(
+  projectId?: string,
+): Promise<DocumentItem[]> {
+  const qs = projectId && projectId !== 'all' ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  const res = await apiGet<DocumentItem[] | { data?: DocumentItem[] }>(
+    `/api/ai/documents${qs}`,
+  );
+  if (Array.isArray(res)) return res;
+  if (Array.isArray((res as any)?.data)) return (res as any).data;
+  return [];
+}
+
+export async function deleteDocument(
+  docId: string,
+  projectId?: string,
+): Promise<boolean> {
+  const qs = projectId && projectId !== 'all' ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  await apiDelete(`/api/ai/documents/${docId}${qs}`);
+  return true;
+}
+

@@ -99,7 +99,7 @@ export default function Quicklinks() {
                     >
                       {getDisplayTitle(link.title, link.url)}
                     </a>
-                    <span className="text-xs font-normal text-muted-foreground truncate mt-0.5">
+                    <span className="font-mono text-11 text-muted-foreground truncate mt-0.5">
                       {formatDistanceToNow(new Date(link.createdAt))} ago
                     </span>
                   </div>
@@ -140,11 +140,12 @@ export default function Quicklinks() {
           })}
         </div>
         ) : (
-          <div className="flex flex-col items-center justify-center p-8 bg-muted border border-dashed border-border rounded-lg mt-3">
-            <p className="text-sm text-muted-foreground mb-2">No quicklinks added yet</p>
+          <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+            <p className="text-13 text-foreground/80 mb-2">No quicklinks added yet</p>
             <button
+              type="button"
               onClick={handleAddClick}
-              className="text-xs font-medium text-primary hover:underline cursor-pointer"
+              className="text-12 font-medium text-primary hover:underline cursor-pointer"
             >
               Add your first quicklink
             </button>

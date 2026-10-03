@@ -161,10 +161,18 @@ export default function QuickOpenModal({ open, onOpenChange }: QuickOpenModalPro
               return (
                 <div
                   key={file.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleSelectFile(file)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleSelectFile(file);
+                    }
+                  }}
                   onMouseEnter={() => setSelectedIndex(index)}
                   className={cn(
-                    'flex items-center justify-between px-3 py-2 rounded-md text-xs cursor-pointer transition-colors',
+                    'flex items-center justify-between px-3 py-2 rounded-md text-xs cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary',
                     isSelected
                       ? 'bg-sidebar-hover text-foreground'
                       : 'text-foreground/80 hover:bg-muted/50'

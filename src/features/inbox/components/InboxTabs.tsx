@@ -81,7 +81,7 @@ export default function InboxTabs({
             className={cn(
               'group relative flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-all outline-none cursor-pointer',
               isActive
-                ? 'bg-muted text-foreground shadow-2xs font-semibold'
+                ? 'bg-muted text-foreground font-semibold'
                 : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
             )}
           >

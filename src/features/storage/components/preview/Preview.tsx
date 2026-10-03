@@ -238,7 +238,7 @@ export default function Preview() {
               className="flex flex-col items-center gap-2.5 py-6 px-4 cursor-pointer hover:bg-muted/40 rounded-lg transition-all group"
               title="Click to view data table & source code"
             >
-              <div className="size-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-105 transition-transform shadow-xs">
+              <div className="size-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-105 transition-transform">
                 {ext === 'csv' || ext === 'tsv' ? (
                   <FileSpreadsheet className="size-6" />
                 ) : (

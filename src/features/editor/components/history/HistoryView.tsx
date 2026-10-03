@@ -61,6 +61,7 @@ import {
 } from '@/features/editor/services/history.service';
 import { useProjectExport } from '@/features/editor/hooks/use-export';
 import { toast } from 'sonner';
+import { EditorEmptyState } from '../shared';
 
 // ── Date Formatting Helpers ───────────────────────────────────────────────────
 
@@ -638,7 +639,7 @@ export default function HistoryView() {
                     <FileText className="size-3.5 shrink-0" />
                     <span className="truncate">{activeRevision?.fileName || 'main.tex'}</span>
                   </div>
-                  <span className="text-11 font-mono font-medium px-1.5 py-0.5 rounded-md bg-primary-foreground/20 text-primary-foreground leading-none">
+                  <span className="text-11 font-mono font-medium px-1.5 py-0.5 rounded-md bg-primary-foreground/20 text-primary-foreground leading-tight">
                     Edited
                   </span>
                 </div>
@@ -673,7 +674,7 @@ export default function HistoryView() {
                       <div className="flex items-center gap-1 shrink-0 ml-1.5">
                         <span
                           className={cn(
-                            'text-11 font-mono font-medium px-1.5 py-0.5 rounded-md leading-none shrink-0',
+                            'text-11 font-mono font-medium px-1.5 py-0.5 rounded-md leading-tight shrink-0',
                             isActive
                               ? 'bg-primary-foreground/20 text-primary-foreground'
                               : 'bg-muted text-muted-foreground',
@@ -741,7 +742,7 @@ export default function HistoryView() {
                             <span className="truncate">{file.title || 'deleted_file.tex'}</span>
                           </div>
                           <div className="flex items-center gap-1 shrink-0 ml-1.5">
-                            <span className="text-11 font-mono font-medium px-1.5 py-0.5 rounded-md leading-none bg-destructive/15 text-destructive">
+                            <span className="text-11 font-mono font-medium px-1.5 py-0.5 rounded-md leading-tight bg-destructive/15 text-destructive">
                               Deleted
                             </span>
                             <button
@@ -786,7 +787,7 @@ export default function HistoryView() {
                   className={cn(
                     'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer',
                     viewMode === 'diff'
-                      ? 'bg-background text-foreground font-semibold shadow-xs'
+                      ? 'bg-background text-foreground font-semibold'
                       : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
@@ -798,7 +799,7 @@ export default function HistoryView() {
                   className={cn(
                     'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer',
                     viewMode === 'snapshot'
-                      ? 'bg-background text-foreground font-semibold shadow-xs'
+                      ? 'bg-background text-foreground font-semibold'
                       : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
@@ -810,7 +811,7 @@ export default function HistoryView() {
                   className={cn(
                     'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer flex items-center gap-1',
                     viewMode === 'timeline'
-                      ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
+                      ? 'bg-primary text-primary-foreground font-semibold'
                       : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
@@ -908,7 +909,7 @@ export default function HistoryView() {
                   <button
                     type="button"
                     onClick={handleRestore}
-                    className="flex items-center gap-1.5 h-7 px-3 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-11 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shadow-xs"
+                    className="flex items-center gap-1.5 h-7 px-3 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-11 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     title="Restore all project files to this revision"
                     aria-label="Restore entire project to this revision"
                   >
@@ -1082,7 +1083,7 @@ export default function HistoryView() {
                   className={cn(
                     'flex-1 py-1 px-2.5 rounded-sm text-12 font-medium transition-colors cursor-pointer text-center',
                     timelineTab === 'all'
-                      ? 'bg-background text-foreground font-semibold shadow-xs'
+                      ? 'bg-background text-foreground font-semibold'
                       : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
@@ -1094,13 +1095,13 @@ export default function HistoryView() {
                   className={cn(
                     'flex-1 py-1 px-2.5 rounded-sm text-12 font-medium transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5',
                     timelineTab === 'labels'
-                      ? 'bg-background text-foreground font-semibold shadow-xs'
+                      ? 'bg-background text-foreground font-semibold'
                       : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
                   <span>Labels</span>
                   {labeledCount > 0 && (
-                    <span className="text-11 px-1.5 py-0.5 rounded-full bg-muted-foreground/20 text-foreground font-mono leading-none">
+                    <span className="text-11 px-1.5 py-0.5 rounded-full bg-muted-foreground/20 text-foreground font-mono leading-tight">
                       {labeledCount}
                     </span>
                   )}
@@ -1116,20 +1117,17 @@ export default function HistoryView() {
                   <span>Loading revision history…</span>
                 </div>
               ) : groupedTimeline.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 text-muted-foreground text-12 text-center p-4">
-                  {timelineTab === 'labels' ? (
-                    <Tag className="size-8 opacity-25 mb-2 text-primary" />
-                  ) : (
-                    <Clock className="size-8 opacity-25 mb-2" />
-                  )}
-                  <p className="font-semibold text-foreground text-13">
-                    {timelineTab === 'labels' ? 'No labeled versions' : 'No revisions found'}
-                  </p>
-                  <p className="text-12 text-muted-foreground mt-1.5 leading-relaxed">
-                    {timelineTab === 'labels'
-                      ? 'Label milestone revisions (e.g. "Draft v1", "Submitted to arXiv") to bookmark key checkpoints.'
-                      : 'Changes will automatically be checkpointed as you compile and edit.'}
-                  </p>
+                <div className="py-8 px-2">
+                  <EditorEmptyState
+                    variant="history"
+                    isCompact
+                    title={timelineTab === 'labels' ? 'No labeled versions' : 'No revisions found'}
+                    description={
+                      timelineTab === 'labels'
+                        ? 'Label milestone revisions (e.g. "Draft v1", "Submitted to arXiv") to bookmark key checkpoints.'
+                        : 'Changes will automatically be checkpointed as you compile and edit.'
+                    }
+                  />
                 </div>
               ) : (
                 groupedTimeline.map(({ groupName, items }) => (

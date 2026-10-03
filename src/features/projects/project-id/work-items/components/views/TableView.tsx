@@ -258,7 +258,7 @@ export function TableColumnPropertiesPopover({
           </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-64 p-2 border-border bg-popover shadow-2xs z-100 rounded-md">
+      <PopoverContent align="end" className="w-64 p-2 border-border bg-popover shadow-md z-100 rounded-md">
         <div className="flex items-center justify-between pb-2 mb-2 border-b border-border px-1">
           <span className="text-xs font-semibold text-foreground">Display properties</span>
         </div>
@@ -269,7 +269,7 @@ export function TableColumnPropertiesPopover({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search properties..."
-            className="h-7 pl-7 text-xs bg-background border-border shadow-2xs placeholder:text-foreground/70 text-foreground rounded-md"
+            className="h-7 pl-7 text-xs bg-background border-border placeholder:text-foreground/70 text-foreground rounded-md"
           />
         </div>
 
@@ -770,7 +770,7 @@ export function TableRowItem({
               onChange={(e) => setTitleValue(e.target.value)}
               onBlur={handleSaveTitle}
               onKeyDown={handleKeyDownTitle}
-              className="w-full bg-background border border-primary px-1.5 py-0.5 rounded-md text-xs text-foreground outline-none shadow-2xs"
+              className="w-full bg-background border border-primary px-1.5 py-0.5 rounded-md text-xs text-foreground outline-none"
             />
           </div>
         ) : (

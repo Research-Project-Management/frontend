@@ -8,7 +8,7 @@ export interface StorageIconProps extends React.SVGProps<SVGSVGElement> {
 }
 
 /**
- * StorageIcon - Academic Research Data Repository (Ngân hàng Dữ liệu & Lưu trữ Nghiên cứu)
+ * StorageIcon - Academic Research Data Repository
  */
 export function StorageIcon({
   className,

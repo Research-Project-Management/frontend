@@ -112,16 +112,8 @@ function downloadFile(filename: string, content: string, mimeType = 'text/plain;
  */
 function sanitizeCslHtml(html?: string): string {
   if (!html) return '';
-  if (typeof window === 'undefined') return html;
-
   try {
-    const rawDOMPurify = (DOMPurify as any)?.default || DOMPurify;
-    const purify = typeof rawDOMPurify?.sanitize === 'function'
-      ? rawDOMPurify
-      : typeof rawDOMPurify === 'function'
-        ? rawDOMPurify(window)
-        : (typeof (window as any)?.DOMPurify?.sanitize === 'function' ? (window as any).DOMPurify : null);
-
+    const purify = (DOMPurify as any)?.default || DOMPurify;
     if (purify && typeof purify.sanitize === 'function') {
       const sanitized = purify.sanitize(html, {
         ALLOWED_TAGS: ['i', 'b', 'em', 'strong', 'span', 'a', 'div', 'p', 'sub', 'sup'],
@@ -136,7 +128,7 @@ function sanitizeCslHtml(html?: string): string {
   return html;
 }
 
-
+// ─── CiteSection Component ───────────────────────────────────────────────────
 export default function CiteSection({ paper, scopeId, projectId }: CiteSectionProps) {
   const [activeFormat, setActiveFormat] = useState<CitationFormat>('apa-7th');
   const [copied, setCopied] = useState(false);

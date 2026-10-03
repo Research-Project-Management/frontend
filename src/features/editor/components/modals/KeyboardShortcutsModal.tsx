@@ -217,7 +217,7 @@ export default function KeyboardShortcutsModal({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <X className="size-4" />
           </button>
@@ -243,9 +243,9 @@ export default function KeyboardShortcutsModal({
                 type="button"
                 onClick={() => setActiveCategory(cat)}
                 className={cn(
-                  'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer whitespace-nowrap',
+                  'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-primary',
                   activeCategory === cat
-                    ? 'bg-background text-foreground shadow-2xs font-semibold'
+                    ? 'bg-background text-foreground font-semibold'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -286,7 +286,7 @@ export default function KeyboardShortcutsModal({
                 <div className="flex items-center gap-1 shrink-0 font-mono text-xs">
                   {s.keys.map((k, i) => (
                     <React.Fragment key={k}>
-                      <kbd className="px-2 py-0.5 rounded-sm bg-muted border border-border shadow-2xs text-11 font-semibold text-foreground">
+                      <kbd className="px-2 py-0.5 rounded-sm bg-muted border border-border text-11 font-semibold text-foreground">
                         {k}
                       </kbd>
                       {i < s.keys.length - 1 && (
@@ -306,7 +306,7 @@ export default function KeyboardShortcutsModal({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="px-3 py-1 text-xs font-medium rounded-md hover:bg-muted transition-colors cursor-pointer text-foreground"
+            className="px-3 py-1 text-xs font-medium rounded-md hover:bg-muted transition-colors cursor-pointer text-foreground border border-border outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             Close
           </button>

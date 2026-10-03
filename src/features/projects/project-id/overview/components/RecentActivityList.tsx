@@ -32,7 +32,7 @@ function formatVerb(activity: RecentActivity): string {
 
 export function RecentActivityList({ activities }: RecentActivityListProps) {
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-sm flex flex-col gap-3">
+    <div className="rounded-xl border border-border bg-card p-5 flex flex-col gap-3">
       {/* Header */}
       <div className="flex items-center gap-2">
         <Activity className="size-4 text-primary" />

@@ -61,11 +61,12 @@ export default memo(function Content({
         padding: '8px 16px 12px',
         lineHeight: '1.5',
         caretColor: 'currentColor',
-        minHeight: '200px',
+        minHeight: '100px',
       },
       '.cm-scroller': {
         overflow: 'auto',
         fontFamily: 'inherit',
+        height: '100%',
       },
       '&.cm-focused': {
         outline: 'none',
@@ -240,8 +241,8 @@ export default memo(function Content({
     <div
       ref={containerRef}
       className={cn(
-        'w-full overflow-y-auto overflow-x-hidden focus:outline-none',
-        editorClassName || 'min-h-[220px] max-h-[380px]',
+        'w-full flex-1 min-h-0 overflow-y-auto overflow-x-hidden focus:outline-none',
+        editorClassName || 'min-h-[100px]',
         isOverlay ? 'pointer-events-none' : ''
       )}
       onBlur={() => {

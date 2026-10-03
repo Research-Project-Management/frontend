@@ -227,7 +227,7 @@ export default function InboxItem({
               type="button"
               disabled={isActing}
               onClick={handleAcceptInvite}
-              className="inline-flex h-7 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground shadow-2xs hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="inline-flex h-7 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               {isActing ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
               <span>Accept</span>

@@ -68,10 +68,13 @@ export async function getAttachment(
   scopeId: string,
   attachmentId: string,
 ): Promise<AttachmentDto> {
-  const response = await apiGet<{ attachment: AttachmentDto }>(
+  const response = await apiGet<{ attachment?: AttachmentDto } | AttachmentDto>(
     getAttachmentUrl(scopeId, attachmentId),
   );
-  return (response as any).attachment ?? response;
+  if (response && typeof response === 'object' && 'attachment' in response && response.attachment) {
+    return response.attachment;
+  }
+  return response as AttachmentDto;
 }
 
 
@@ -145,8 +148,19 @@ export async function uploadLibraryAttachment(
   const uploadUrl = isProject
     ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library/attachments/upload`
     : `/api/v1/library/attachments/upload`;
-  const response = await apiPost<any>(uploadUrl, formData);
-  const data = (response as any)?.data || response;
+
+  interface UploadPayload {
+    fileId?: string;
+    id?: string;
+    url?: string;
+    filename?: string;
+    size?: number;
+    mimeType?: string;
+    data?: UploadPayload;
+  }
+
+  const response = await apiPost<UploadPayload>(uploadUrl, formData);
+  const data = response?.data || response;
   return {
     fileId: String(data?.fileId || data?.id || ''),
     url: String(data?.url || ''),

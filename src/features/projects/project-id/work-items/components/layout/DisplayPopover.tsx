@@ -126,7 +126,7 @@ export function DisplayPopover({
         <Button
           type="button"
           size="sm"
-          className="h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shadow-2xs shrink-0"
+          className="h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shrink-0"
           aria-label="Display options"
         >
           <span>Display</span>
@@ -135,7 +135,7 @@ export function DisplayPopover({
 
       <PopoverContent
         align="end"
-        className="w-68 sm:w-72 max-h-[85vh] overflow-y-auto p-2 rounded-md text-12 border-border bg-popover shadow-none space-y-2"
+        className="w-68 sm:w-72 max-h-[85vh] overflow-y-auto p-2 rounded-md text-12 border-border bg-popover shadow-md space-y-2"
       >
         {/* 1. Display Properties */}
         <div>

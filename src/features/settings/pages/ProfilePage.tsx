@@ -2,20 +2,19 @@
 
 import React from 'react';
 import { User } from 'lucide-react';
-import { TopBar } from '../components/layout/TopBar';
+import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
 import ProfileTab from '@/features/account/components/ProfileTab';
 
 export default function ProfilePage() {
   return (
-    <div className="flex h-full w-full flex-col bg-background">
-      <TopBar
+    <PageLayout>
+      <PageHeader
         title="Profile"
-        description="Manage your public identity, display name, and account details."
-        Icon={User}
+        icon={User}
       />
-      <div className="flex-1 overflow-y-auto">
+      <PageContent maxWidth="full" noPadding>
         <ProfileTab />
-      </div>
-    </div>
+      </PageContent>
+    </PageLayout>
   );
 }

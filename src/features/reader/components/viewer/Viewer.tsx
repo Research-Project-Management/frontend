@@ -798,7 +798,7 @@ export default function Viewer({
       >
         {/* Floating In-Document Search Bar (Ctrl+F) */}
         {isSearchOpen && (
-          <div className="absolute top-3 right-4 z-40 flex items-center gap-1.5 rounded-md border border-border bg-background p-1.5 shadow-2xs text-12 font-sans select-none animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="absolute top-3 right-4 z-40 flex items-center gap-1.5 rounded-md border border-border bg-background p-1.5 text-12 font-sans select-none animate-in fade-in slide-in-from-top-2 duration-150">
             <Search className="size-3.5 text-foreground ml-1 shrink-0" strokeWidth={1.5} />
             <input
               ref={searchInputRef}
@@ -869,7 +869,7 @@ export default function Viewer({
                 <button
                   type="button"
                   onClick={onRetry}
-                  className="px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary-hover focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors shadow-2xs cursor-pointer"
+                  className="px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary-hover focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer"
                 >
                   Retry
                 </button>
@@ -905,38 +905,51 @@ export default function Viewer({
             }
           >
             {(() => {
-              const renderPageCard = (pageNum: number) => (
-                <div
-                  key={pageNum}
-                  data-page-num={pageNum}
-                  ref={(el) => {
-                    if (el) pageRefs.current.set(pageNum, el);
-                    else pageRefs.current.delete(pageNum);
-                  }}
-                  onClick={(e) => handlePageClick(e, pageNum)}
-                  onMouseDown={(e) => handlePageMouseDown(e, pageNum)}
-                  onMouseMove={(e) => handlePageMouseMove(e, pageNum)}
-                  onMouseUp={(e) => handlePageMouseUp(e, pageNum)}
-                  className={cn(
-                    "bg-card border border-border rounded-md overflow-hidden transition-all shadow-xs relative shrink-0",
-                    themeMode === 'dark' && "invert-[0.9] hue-rotate-180 contrast-90 brightness-95",
-                    themeMode === 'sepia' && "sepia-[0.3] contrast-95 brightness-95",
-                    (activeTool === 'area' || activeTool === 'note') && "cursor-crosshair select-none",
-                    activeTool === 'text' && "cursor-text"
-                  )}
-                >
-                  <Page
-                    pageNumber={pageNum}
-                    width={effectivePageWidth}
-                    rotate={rotation}
-                    renderTextLayer={true}
-                    renderAnnotationLayer={true}
-                    loading={<DocumentPageSkeleton width={effectivePageWidth} />}
-                    customTextRenderer={customTextRenderer}
-                  />
+              const isPageInWindow = (pageNum: number) => {
+                if (numPages <= 6 || viewMode === 'single') return true;
+                if (targetPage && targetPage.pageNumber === pageNum) return true;
+                if (areaSelection?.pageNum === pageNum || inlineTextInput?.pageNum === pageNum) return true;
+                return Math.abs(pageNum - visiblePage) <= 2;
+              };
 
-                  {/* INLINE TEXT TOOL INPUT (Zotero 7 parity) */}
-                  {inlineTextInput && inlineTextInput.pageNum === pageNum && (
+              const renderPageCard = (pageNum: number) => {
+                const inWindow = isPageInWindow(pageNum);
+                return (
+                  <div
+                    key={pageNum}
+                    data-page-num={pageNum}
+                    ref={(el) => {
+                      if (el) pageRefs.current.set(pageNum, el);
+                      else pageRefs.current.delete(pageNum);
+                    }}
+                    onClick={(e) => handlePageClick(e, pageNum)}
+                    onMouseDown={(e) => handlePageMouseDown(e, pageNum)}
+                    onMouseMove={(e) => handlePageMouseMove(e, pageNum)}
+                    onMouseUp={(e) => handlePageMouseUp(e, pageNum)}
+                    className={cn(
+                      "bg-card border border-border rounded-md overflow-hidden transition-all relative shrink-0",
+                      themeMode === 'dark' && "invert-[0.9] hue-rotate-180 contrast-90 brightness-95",
+                      themeMode === 'sepia' && "sepia-[0.3] contrast-95 brightness-95",
+                      (activeTool === 'area' || activeTool === 'note') && "cursor-crosshair select-none",
+                      activeTool === 'text' && "cursor-text"
+                    )}
+                  >
+                    {inWindow ? (
+                      <Page
+                        pageNumber={pageNum}
+                        width={effectivePageWidth}
+                        rotate={rotation}
+                        renderTextLayer={true}
+                        renderAnnotationLayer={true}
+                        loading={<DocumentPageSkeleton width={effectivePageWidth} />}
+                        customTextRenderer={customTextRenderer}
+                      />
+                    ) : (
+                      <DocumentPageSkeleton width={effectivePageWidth} />
+                    )}
+
+                    {/* INLINE TEXT TOOL INPUT (Zotero 7 parity) */}
+                    {inWindow && inlineTextInput && inlineTextInput.pageNum === pageNum && (
                     <div
                       className="absolute z-40 bg-background/95 backdrop-blur-xs border border-border shadow-md rounded-md p-1.5 flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-100"
                       style={{
@@ -996,7 +1009,7 @@ export default function Viewer({
                   )}
 
                   {/* VISUAL HIGHLIGHTS / UNDERLINE / TEXT OVERLAY */}
-                  {pageAnnotationsMap[pageNum] && pageAnnotationsMap[pageNum].length > 0 && (
+                  {inWindow && pageAnnotationsMap[pageNum] && pageAnnotationsMap[pageNum].length > 0 && (
                     <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
                       {pageAnnotationsMap[pageNum].map((ann: ReaderAnnotation) => {
                         const rects = (Array.isArray(ann.rects) ? ann.rects : []) as AnnotationRect[];
@@ -1030,11 +1043,11 @@ export default function Viewer({
                               }}
                             >
                               <div
-                                className="size-5 rounded shadow-sm flex items-center justify-center border border-black/15 transition-all hover:shadow-md"
+                                className="size-5 rounded flex items-center justify-center border border-black/15 transition-all"
                                 style={{ backgroundColor: colorHex }}
                                 title={ann.comment || 'Sticky Note'}
                               >
-                                <StickyNote className="size-3 text-white fill-white/20 drop-shadow-xs" strokeWidth={2} />
+                                <StickyNote className="size-3 text-white fill-white/20" strokeWidth={2} />
                               </div>
                             </div>
                           );
@@ -1049,7 +1062,7 @@ export default function Viewer({
                               id={`annotation-${ann.id}`}
                               data-annotation-id={ann.id}
                               className={cn(
-                                "absolute pointer-events-auto cursor-pointer text-11 font-sans font-medium px-1.5 py-0.5 rounded shadow-xs bg-background/95 border backdrop-blur-xs flex items-center gap-1 z-20 transition-all",
+                                "absolute pointer-events-auto cursor-pointer text-11 font-sans font-medium px-1.5 py-0.5 rounded bg-background/95 border backdrop-blur-xs flex items-center gap-1 z-20 transition-all",
                                 isPulsing && "ring-4 ring-primary ring-offset-1 animate-pulse"
                               )}
                               style={{
@@ -1102,7 +1115,7 @@ export default function Viewer({
                             >
                               {isRect && (
                                 <span
-                                  className="absolute -top-3.5 left-0 px-1 py-0.2 text-9 font-mono uppercase rounded text-white font-semibold pointer-events-none tracking-wide"
+                                  className="absolute -top-3.5 left-0 px-1 py-0.2 text-9 font-mono rounded text-white font-semibold pointer-events-none"
                                   style={{ backgroundColor: colorHex }}
                                 >
                                   Area
@@ -1136,7 +1149,8 @@ export default function Viewer({
                     </div>
                   )}
                 </div>
-              );
+                );
+              };
 
               if (viewMode === 'spread') {
                 return (
@@ -1322,7 +1336,7 @@ export default function Viewer({
         {/* Floating selection action menu: highlight colors, note, ask AI, cite, copy */}
         {showFloatingMenu && selectedText && (
           <div
-            className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1.5 bg-background text-foreground px-2 py-1 rounded-md border border-border shadow-2xs duration-150 select-none"
+            className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1.5 bg-background text-foreground px-2 py-1 rounded-md border border-border shadow-md duration-150 select-none"
             style={{
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,

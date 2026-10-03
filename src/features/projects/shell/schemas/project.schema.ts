@@ -2,10 +2,10 @@ import { z } from 'zod';
 
 /**
  * Valid Project Roles in Flux:
- * - owner: Principal Investigator / Team Lead (Toàn quyền quản trị dự án & nhân sự)
- * - coordinator: Coordinator / Project Manager (Điều phối viên - quản lý cycles, work items)
- * - contributor: Researcher (Thành viên nghiên cứu - tạo/sửa work items, tài liệu, upload paper)
- * - reviewer: Advisor / Reviewer (GVHD / Hội đồng phản biện - xem, comment & suggestion)
+ * - owner: Principal Investigator / Team Lead (Full administrative & member control)
+ * - coordinator: Coordinator / Project Manager (Manages cycles, roadmaps, and work items)
+ * - contributor: Researcher (Creates and edits work items, papers, documents, uploads assets)
+ * - reviewer: Advisor / Reviewer (Views, comments, and provides review feedback)
  */
 export const ProjectRoleEnum = z.enum(['owner', 'coordinator', 'contributor', 'reviewer']);
 

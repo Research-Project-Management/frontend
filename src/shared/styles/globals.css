@@ -10,26 +10,26 @@
    -------------------------------------------------------------------------- */
 
 @theme {
-  --font-heading: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, var(--font-inter);
-  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, var(--font-inter);
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, var(--font-inter);
+  --font-heading: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-body: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-serif: Georgia, Cambria, "Times New Roman", Times, serif;
   --font-code: var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --font-mono: var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
-  /* Plane.so Font Weights */
+  /* Plane.so Font Weights (Strict 600 Weight Cap Rule per DESIGN.md & PRODUCT.md) */
   --font-weight-light: 300;
   --font-weight-regular: 450;
   --font-weight-normal: 450;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
-  --font-weight-bold: 700;
-  --font-weight-heavy: 800;
+  --font-weight-bold: 600;
+  --font-weight-heavy: 600;
 
   /* Plane.so Golden Line Heights */
   --leading-none: 1;
   --leading-tight: 1.2;
-  --leading-snug: 1.3;
+  --leading-snug: 1.375;
   --leading-normal: 1.54;
   --leading-body: 1.54;
   --leading-relaxed: 1.625;
@@ -63,13 +63,21 @@
   --text-40: 2.5rem;
   --text-40--line-height: 3rem;
 
+  /* Single Source of Truth Scale Aliases */
+  --text-xs: var(--text-12);
+  --text-xs--line-height: var(--text-12--line-height);
+  --text-sm: var(--text-13);
+  --text-sm--line-height: var(--text-13--line-height);
+  --text-base: var(--text-16);
+  --text-base--line-height: var(--text-16--line-height);
+
   /* Legacy Scale Aliases for Compatibility */
-  --text-micro: 0.6875rem;
-  --text-micro--line-height: 1rem;
-  --text-caption: 0.75rem;
-  --text-caption--line-height: 1rem;
-  --text-dense: 0.8125rem;
-  --text-dense--line-height: 1.125rem;
+  --text-micro: var(--text-11);
+  --text-micro--line-height: var(--text-11--line-height);
+  --text-caption: var(--text-12);
+  --text-caption--line-height: var(--text-12--line-height);
+  --text-dense: var(--text-13);
+  --text-dense--line-height: var(--text-13--line-height);
   --text-sub: 0.9375rem;
   --text-sub--line-height: 1.375rem;
 
@@ -156,6 +164,65 @@
     opacity: 1;
     transform: scale(1.1);
   }
+}
+
+@keyframes orb-aura-pulse {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.85;
+  }
+}
+
+@keyframes orbit-ring-1 {
+  0% {
+    transform: perspective(800px) rotateX(68deg) rotateY(-22deg) rotateZ(0deg);
+  }
+  100% {
+    transform: perspective(800px) rotateX(68deg) rotateY(-22deg) rotateZ(360deg);
+  }
+}
+
+@keyframes orbit-ring-2 {
+  0% {
+    transform: perspective(800px) rotateX(66deg) rotateY(24deg) rotateZ(360deg);
+  }
+  100% {
+    transform: perspective(800px) rotateX(66deg) rotateY(24deg) rotateZ(0deg);
+  }
+}
+
+@keyframes orbit-ring-3 {
+  0% {
+    transform: perspective(800px) rotateX(78deg) rotateY(0deg) rotateZ(0deg);
+  }
+  100% {
+    transform: perspective(800px) rotateX(78deg) rotateY(0deg) rotateZ(360deg);
+  }
+}
+
+.animate-orb-aura {
+  animation: orb-aura-pulse 4.8s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.animate-orbit-1 {
+  animation: orbit-ring-1 18s linear infinite;
+  will-change: transform;
+}
+
+.animate-orbit-2 {
+  animation: orbit-ring-2 14s linear infinite;
+  will-change: transform;
+}
+
+.animate-orbit-3 {
+  animation: orbit-ring-3 26s linear infinite;
+  will-change: transform;
 }
 
 @theme inline {
@@ -295,8 +362,8 @@
   --foreground: #212121;
   --text-primary: #212121;
   --text-secondary: #595959;
-  --text-muted: #6E6E6E;
-  --muted-foreground: #6E6E6E;
+  --text-muted: #525252;
+  --muted-foreground: #525252;
   --text-placeholder: #BDBDBD;
 
   /* System Blue (The Dual-Engine Separation Rule) */
@@ -409,17 +476,17 @@
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
 
-  /* Shadows (Flat-by-Default with Hairline Exception) */
-  --shadow-hairline: 0 1px rgb(0 0 0 / 0.05);
+  /* Shadows (Flat-by-Default on Pages, Tokenized Elevation for Floating Overlays) */
+  --shadow-hairline: none;
   --shadow-raised: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px 0 rgb(0 0 0 / 0.03);
   --shadow-overlay: 0 4px 12px 0 rgb(0 0 0 / 0.08), 0 2px 4px 0 rgb(0 0 0 / 0.04);
-  --shadow-2xs: 0 1px rgb(0 0 0 / 0.05);
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.06);
+  --shadow-2xs: none;
+  --shadow-xs: none;
   --shadow-sm: none;
-  --shadow-md: none;
-  --shadow-lg: none;
-  --shadow-xl: none;
-  --shadow-2xl: none;
+  --shadow-md: 0 4px 12px 0 rgb(0 0 0 / 0.08), 0 2px 4px 0 rgb(0 0 0 / 0.04);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
   --shadow-raised-200: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px 0 rgb(0 0 0 / 0.03);
 }
 
@@ -459,14 +526,17 @@
   --ai-subtle: rgba(188, 140, 255, 0.15);
   --ai-border: rgba(188, 140, 255, 0.3);
 
-  /* Work Item State Colors (Dark Shift) */
+  /* Work Item State Colors (Dark Shift - DESIGN.md) */
+  --state-backlog: #6B7280;
+  --state-unstarted: #94A3B8;
   --state-started: #FBBF24;
   --state-completed: #3FB950;
+  --state-cancelled: #6B7280;
 
   /* Semantic Feedback */
   --success: #3FB950;
   --success-foreground: #0D1117;
-  --warning: #FBBF24;
+  --warning: #D29922;
   --warning-foreground: #0D1117;
   --destructive: #F85149;
   --destructive-hover: #FF7B72;
@@ -503,17 +573,17 @@
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
 
-  /* Shadows */
-  --shadow-hairline: 0 1px rgb(255 255 255 / 0.04);
+  /* Shadows (Flat-by-Default on Pages, Tokenized Elevation for Floating Overlays - Dark) */
+  --shadow-hairline: none;
   --shadow-raised: 0 1px 3px 0 rgb(0 0 0 / 0.3);
   --shadow-overlay: 0 4px 12px 0 rgb(0 0 0 / 0.4);
-  --shadow-2xs: 0 1px rgb(255 255 255 / 0.04);
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.35);
+  --shadow-2xs: none;
+  --shadow-xs: none;
   --shadow-sm: none;
-  --shadow-md: none;
-  --shadow-lg: none;
-  --shadow-xl: none;
-  --shadow-2xl: none;
+  --shadow-md: 0 4px 12px 0 rgb(0 0 0 / 0.4), 0 2px 4px 0 rgb(0 0 0 / 0.2);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.4);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.7);
   --shadow-raised-200: 0 1px 3px 0 rgb(0 0 0 / 0.3);
 }
 
@@ -722,6 +792,20 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Explicitly allow gentle ambient AI 3D orbital animations requested by user */
+  .animate-orb-aura {
+    animation: orb-aura-pulse 4.8s ease-in-out infinite !important;
+  }
+  .animate-orbit-1 {
+    animation: orbit-ring-1 18s linear infinite !important;
+  }
+  .animate-orbit-2 {
+    animation: orbit-ring-2 14s linear infinite !important;
+  }
+  .animate-orbit-3 {
+    animation: orbit-ring-3 26s linear infinite !important;
   }
 }
 
@@ -1282,6 +1366,16 @@
 [data-height-wrapper] {
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease !important;
   transition-property: transform, opacity !important;
+}
+
+/* --------------------------------------------------------------------------
+   SONNER TOAST REFLOW SUPPRESSION (IMPECCABLE CRAFT FLOOR)
+   Replaces layout property animation (transition: height) with transform/opacity
+   to eliminate layout thrashing during toast dismissal.
+   -------------------------------------------------------------------------- */
+[data-sonner-toast] {
+  transition: transform 350ms cubic-bezier(0.16, 1, 0.3, 1), opacity 300ms ease, box-shadow 200ms ease !important;
+  transition-property: transform, opacity, box-shadow !important;
 }
 
 /* --------------------------------------------------------------------------

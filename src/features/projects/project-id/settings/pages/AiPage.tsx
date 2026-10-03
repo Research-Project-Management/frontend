@@ -5,11 +5,11 @@ import { useParams } from 'next/navigation';
 import { Sparkles, Check } from 'lucide-react';
 import { Button, Textarea, Switch, Skeleton } from "@/shared/components/ui";
 import { toast } from 'sonner';
-import TopBar from '../components/layout/TopBar';
+import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
 import { useProjectDetails, useUpdateProject } from '@/features/projects/shell/hooks/use-project';
 
 const DEFAULT_SYSTEM_PROMPT =
-  'Bạn là trợ lý ảo hỗ trợ nghiên cứu khoa học chuyên sâu. Trả lời chính xác, bám sát phương pháp luận, luôn trích dẫn nguồn tài liệu tham khảo và định dạng công thức rõ ràng.';
+  'You are an AI assistant specialized in in-depth scientific research. Provide precise answers adhering strictly to research methodology, always cite reference sources, and format formulas clearly.';
 
 export default function AiPage() {
   const params = useParams<{ projectId: string }>();
@@ -80,32 +80,28 @@ export default function AiPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-full w-full bg-background">
-        <TopBar
-          title="AI Assistant"
-          Icon={Sparkles}
-        />
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
+      <PageLayout>
+        <PageHeader title="AI Assistant" icon={Sparkles} />
+        <PageContent maxWidth="md">
+          <div className="space-y-6">
             <Skeleton className="h-44 w-full rounded-md" />
             <Skeleton className="h-44 w-full rounded-md" />
           </div>
-        </div>
-      </div>
+        </PageContent>
+      </PageLayout>
     );
   }
 
   if (isError || !project) {
     return (
-      <div className="flex flex-col h-full w-full bg-background">
-        <TopBar
-          title="AI Assistant"
-          Icon={Sparkles}
-        />
-        <div className="flex-1 p-5 md:p-6 text-sm text-muted-foreground">
-          Error loading project AI settings.
-        </div>
-      </div>
+      <PageLayout>
+        <PageHeader title="AI Assistant" icon={Sparkles} />
+        <PageContent maxWidth="md">
+          <div className="text-sm text-muted-foreground">
+            Error loading project AI settings.
+          </div>
+        </PageContent>
+      </PageLayout>
     );
   }
 
@@ -121,20 +117,20 @@ export default function AiPage() {
   );
 
   return (
-    <div className="flex flex-col h-full w-full bg-background">
-      <TopBar
+    <PageLayout>
+      <PageHeader
         title="AI Assistant"
-        Icon={Sparkles}
+        icon={Sparkles}
         actions={topBarActions}
       />
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
+      <PageContent maxWidth="md">
+        <div className="space-y-6">
           {/* ── Section 1: Research System Prompt ── */}
-          <div className="rounded-md border border-border bg-card p-5 space-y-4">
-            <div>
-              <h2 className="text-sm font-semibold text-foreground">Research Context & System Prompt</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
+          <div className="space-y-4">
+            <div className="pb-3 border-b border-border">
+              <h2 className="text-14 font-semibold text-foreground">Research Context & System Prompt</h2>
+              <p className="text-12 text-muted-foreground mt-0.5">
                 Instruct the assistant on domain terminology, research scope, and preferred citation style.
               </p>
             </div>
@@ -153,7 +149,7 @@ export default function AiPage() {
                 <button
                   key={scope}
                   type="button"
-                  onClick={() => setSystemPrompt((prev) => `${prev} Phạm vi nghiên cứu: ${scope}.`)}
+                  onClick={() => setSystemPrompt((prev) => `${prev} Research scope: ${scope}.`)}
                   className="text-11 px-2 py-0.5 rounded border border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer"
                 >
                   + {scope}
@@ -163,10 +159,10 @@ export default function AiPage() {
           </div>
 
           {/* ── Section 2: Model & Reasoning Engine ── */}
-          <div className="rounded-md border border-border bg-card p-5 space-y-4">
-            <div>
-              <h2 className="text-sm font-semibold text-foreground">Model & Inference Engine</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
+          <div className="space-y-4 pt-6">
+            <div className="pb-3 border-b border-border">
+              <h2 className="text-14 font-semibold text-foreground">Model & Inference Engine</h2>
+              <p className="text-12 text-muted-foreground mt-0.5">
                 Choose the foundation LLM suited for paper analysis and technical synthesis.
               </p>
             </div>
@@ -213,15 +209,15 @@ export default function AiPage() {
           </div>
 
           {/* ── Section 3: Role-based AI Permissions ── */}
-          <div className="rounded-md border border-border bg-card p-5 space-y-4">
-            <div>
-              <h2 className="text-sm font-semibold text-foreground">Role Permissions for Virtual Assistant</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
+          <div className="space-y-4 pt-6">
+            <div className="pb-3 border-b border-border">
+              <h2 className="text-14 font-semibold text-foreground">Role Permissions for Virtual Assistant</h2>
+              <p className="text-12 text-muted-foreground mt-0.5">
                 Define what capabilities each actor role can invoke with the AI assistant.
               </p>
             </div>
 
-            <div className="divide-y divide-border/60">
+            <div className="divide-y divide-border">
               <div className="flex items-center justify-between py-3">
                 <div className="space-y-0.5 pr-4">
                   <span className="text-13 font-medium text-foreground">
@@ -260,7 +256,7 @@ export default function AiPage() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </PageContent>
+    </PageLayout>
   );
 }

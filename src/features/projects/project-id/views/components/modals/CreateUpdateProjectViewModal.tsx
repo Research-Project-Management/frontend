@@ -195,7 +195,7 @@ export const CreateUpdateProjectViewModal: React.FC<CreateUpdateProjectViewModal
                       className={cn(
                         'flex flex-col items-center justify-center p-2.5 rounded-lg border text-xs font-medium transition-colors cursor-pointer gap-1.5',
                         isSelected
-                          ? 'border-primary bg-primary/10 text-primary shadow-xs'
+                          ? 'border-primary bg-primary/10 text-primary'
                           : 'border-border bg-card hover:bg-accent/50 text-muted-foreground hover:text-foreground'
                       )}
                     >

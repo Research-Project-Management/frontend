@@ -26,6 +26,7 @@ import { generateCitationKey } from '@/features/library';
 import { filesQuery } from '@/features/editor/hooks/use-core';
 import { parseBibContent, type BibEntry } from '@/features/editor/utils/bib-parser.util';
 import { extractCitationKeys } from '@/features/editor/utils/citation.util';
+import { EditorEmptyState } from '../../shared';
 
 interface CitationTabProps {
   onClose?: () => void;
@@ -279,7 +280,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
         </div>
       </div>
 
-      {/* ── Search Bar (White background, shadow-2xs) ── */}
+      {/* ── Search Bar ── */}
       <div className="p-2 border-b border-border shrink-0 bg-background">
         <div className="relative">
           <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none shrink-0" />
@@ -288,7 +289,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
             placeholder="Search citations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 pl-8 pr-7 text-xs bg-white dark:bg-card border border-border rounded-md shadow-2xs placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary w-full transition-colors"
+            className="h-8 pl-8 pr-7 text-xs bg-background border border-border rounded-md placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary w-full transition-colors"
           />
           {searchQuery && (
             <button
@@ -342,28 +343,32 @@ export default function CitationTab({ onClose }: CitationTabProps) {
             {/* Resolved Cited Items */}
             {filteredCitedEntries.length === 0 && missingKeys.length === 0 ? (
               searchQuery ? (
-                <div className="py-10 px-4 text-center text-11 text-muted-foreground">
-                  No citations matching &ldquo;{searchQuery}&rdquo;
+                <div className="py-6 px-2">
+                  <EditorEmptyState
+                    variant="search"
+                    isCompact
+                    title="No citations found"
+                    description={`No citations matching "${searchQuery}"`}
+                  />
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                  <div className="size-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground mb-2.5">
-                    <BookMarked className="size-5 stroke-[1.5]" />
-                  </div>
-                  <p className="text-12 font-medium text-foreground">No citations in document</p>
-                  <p className="text-xs text-muted-foreground mt-1 max-w-[200px] leading-relaxed">
-                    Citations added with{' '}
-                    <span className="font-mono text-foreground font-medium">\cite&#123;...&#125;</span> will appear
-                    here.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={openPickerModal}
-                    className="mt-3.5 h-7 px-3 rounded-md border border-border bg-background hover:bg-muted text-11 font-medium text-foreground shadow-2xs inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Plus className="size-3.5 shrink-0" />
-                    <span>Insert Citation</span>
-                  </button>
+                <div className="py-6 px-2">
+                  <EditorEmptyState
+                    variant="citations"
+                    isCompact
+                    title="No citations in document"
+                    description="Citations added with \cite{...} will appear here."
+                    action={
+                      <button
+                        type="button"
+                        onClick={openPickerModal}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-12 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                      >
+                        <Plus className="size-3.5" />
+                        <span>Insert Citation</span>
+                      </button>
+                    }
+                  />
                 </div>
               )
             ) : (
@@ -376,7 +381,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                   >
                     <div className="flex items-center justify-between gap-1.5 min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="font-mono text-11 font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-xs truncate shrink-0 max-w-[150px]">
+                        <span className="font-mono text-xs font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-xs truncate shrink-0 max-w-[150px]">
                           {item.key}
                         </span>
                         {item.source === 'bib' && (
@@ -402,7 +407,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                     </p>
 
                     {/* Quick actions on hover */}
-                    <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-background/95 backdrop-blur-xs p-0.5 rounded-md border border-border shadow-2xs">
+                    <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-background/95 backdrop-blur-xs p-0.5 rounded-md border border-border">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -444,26 +449,32 @@ export default function CitationTab({ onClose }: CitationTabProps) {
               </div>
             ) : filteredAvailableEntries.length === 0 ? (
               searchQuery ? (
-                <div className="py-10 px-4 text-center text-11 text-muted-foreground">
-                  No citations matching &ldquo;{searchQuery}&rdquo;
+                <div className="py-6 px-2">
+                  <EditorEmptyState
+                    variant="search"
+                    isCompact
+                    title="No citations found"
+                    description={`No citations matching "${searchQuery}"`}
+                  />
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                  <div className="size-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground mb-2.5">
-                    <Library className="size-5 stroke-[1.5]" />
-                  </div>
-                  <p className="text-12 font-medium text-foreground">Workspace library is empty</p>
-                  <p className="text-xs text-muted-foreground mt-1 max-w-[200px] leading-relaxed">
-                    Add papers to your workspace library or create a .bib file in this project.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={openPickerModal}
-                    className="mt-3.5 h-7 px-3 rounded-md border border-border bg-background hover:bg-muted text-11 font-medium text-foreground shadow-2xs inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Plus className="size-3.5 shrink-0" />
-                    <span>Search References</span>
-                  </button>
+                <div className="py-6 px-2">
+                  <EditorEmptyState
+                    variant="citations"
+                    isCompact
+                    title="Workspace library is empty"
+                    description="Add papers to your workspace library or create a .bib file in this project."
+                    action={
+                      <button
+                        type="button"
+                        onClick={openPickerModal}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-12 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                      >
+                        <Plus className="size-3.5" />
+                        <span>Search References</span>
+                      </button>
+                    }
+                  />
                 </div>
               )
             ) : (
@@ -476,7 +487,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                   >
                     <div className="flex items-center justify-between gap-1.5 min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="font-mono text-11 font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-xs truncate shrink-0 max-w-[150px]">
+                        <span className="font-mono text-xs font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-xs truncate shrink-0 max-w-[150px]">
                           {item.key}
                         </span>
                         {item.source === 'bib' && (
@@ -502,7 +513,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                     </p>
 
                     {/* Quick actions on hover */}
-                    <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-background/95 backdrop-blur-xs p-0.5 rounded-md border border-border shadow-2xs">
+                    <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-background/95 backdrop-blur-xs p-0.5 rounded-md border border-border">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -555,7 +566,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
             <div className="absolute top-0 inset-x-0 h-[2px] bg-primary" />
           )}
           <FileText className="size-3.5 shrink-0" />
-          <span className="text-11 leading-none">In Document</span>
+          <span className="text-12 leading-normal">In Document</span>
         </button>
 
         {/* Tab 2: Library */}
@@ -573,7 +584,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
             <div className="absolute top-0 inset-x-0 h-[2px] bg-primary" />
           )}
           <Library className="size-3.5 shrink-0" />
-          <span className="text-11 leading-none">Library</span>
+          <span className="text-12 leading-normal">Library</span>
         </button>
       </nav>
     </div>

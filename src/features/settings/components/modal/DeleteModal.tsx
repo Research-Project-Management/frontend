@@ -62,7 +62,7 @@ export function DeleteModal({
             size="sm"
             onClick={onClose}
             disabled={loading}
-            className="h-8 text-12 cursor-pointer shadow-2xs"
+            className="h-8 text-12 cursor-pointer"
           >
             {cancelText}
           </Button>
@@ -72,7 +72,7 @@ export function DeleteModal({
             size="sm"
             onClick={onConfirm}
             disabled={loading}
-            className="h-8 text-12 cursor-pointer shadow-2xs"
+            className="h-8 text-12 cursor-pointer"
           >
             {confirmText}
           </Button>

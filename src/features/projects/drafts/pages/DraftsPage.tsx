@@ -11,13 +11,15 @@ import {
   usePublishDraft,
   useDeleteDraft,
 } from '../hooks/use-drafts';
-import { Topbar } from '../components/layout/Topbar';
 import { EmptyState } from '../components/layout/EmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { ListView } from '../components/views/ListView';
 import { EditorModal } from '../components/modals/EditorModal';
 import { MoveToProjectModal } from '../components/modals/MoveToProjectModal';
 import { DeleteModal } from '../components/modals/DeleteModal';
+import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
+import { DraftsIcon } from '@/shared/components/icons';
+import { Button } from '@/shared/components/ui';
 import type { WorkItemDraft } from '../types/draft.types';
 import type { WorkItemPriority } from '@/features/projects/project-id/work-items/types/work-item.types';
 
@@ -124,15 +126,28 @@ export default function DraftsPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      {/* Top Bar with DraftsIcon & Draft a work item button */}
-      <Topbar
-        totalDrafts={total}
-        onCreateDraft={handleOpenCreate}
+    <PageLayout>
+      <PageHeader
+        title="Drafts"
+        icon={DraftsIcon}
+        actions={
+          <div className="flex items-center gap-2">
+            {total !== undefined && total > 0 && (
+              <span className="px-1.5 py-0.5 rounded text-11 font-mono font-medium text-muted-foreground bg-muted">
+                {total}
+              </span>
+            )}
+            <Button
+              onClick={handleOpenCreate}
+              size="sm"
+            >
+              Draft a work item
+            </Button>
+          </div>
+        }
       />
 
-      {/* Main Content */}
-      <main className="flex-1 min-h-0 flex flex-col h-full overflow-y-auto">
+      <PageContent maxWidth="full" noPadding>
         {isLoading ? (
           <div className="flex flex-col divide-y divide-border border-b border-border">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -167,7 +182,7 @@ export default function DraftsPage() {
             onDelete={handleOpenDelete}
           />
         )}
-      </main>
+      </PageContent>
 
       {/* Create / Edit Draft Modal matching Image 3 */}
       <EditorModal
@@ -197,6 +212,6 @@ export default function DraftsPage() {
         onConfirm={handleConfirmDelete}
         isDeleting={deleteDraft.isPending}
       />
-    </div>
+    </PageLayout>
   );
 }

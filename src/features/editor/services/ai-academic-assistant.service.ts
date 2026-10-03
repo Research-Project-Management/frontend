@@ -3,11 +3,11 @@
  *
  * Overleaf AI (2024-2026) Inline Floating Assistant & Academic Rephrase Service.
  * Provides 1-click academic enhancement operations on highlighted text:
- * - Academic Tone (Chuyển sang văn phong học thuật chuyên sâu)
- * - Make Concise (Rút gọn, súc tích hóa câu từ)
- * - Fix Grammar & Flow (Sửa lỗi ngữ pháp và tăng tính liên kết)
- * - Translate to English (Dịch nháp sang tiếng Anh học thuật)
- * - Custom Prompt (Yêu cầu riêng biệt)
+ * - Academic Tone (Elevate to rigorous academic prose)
+ * - Make Concise (Tighten and remove redundancies)
+ * - Fix Grammar & Flow (Correct grammar and smooth out transitions)
+ * - Translate to English (Translate draft into formal academic English)
+ * - Custom Prompt (User-specified instruction)
  *
  * Guarantees 100% preservation of LaTeX macros: \cite{}, \ref{}, \label{}, and Math blocks ($...$).
  */

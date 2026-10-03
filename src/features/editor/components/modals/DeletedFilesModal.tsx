@@ -199,7 +199,7 @@ export default function DeletedFilesModal({
                       variant="outline"
                       disabled={isRestoring}
                       onClick={() => handleRestore(file.id)}
-                      className="h-7 text-xs gap-1.5 shrink-0 cursor-pointer rounded-md border-border hover:bg-muted shadow-2xs"
+                      className="h-7 text-xs gap-1.5 shrink-0 cursor-pointer rounded-md border-border hover:bg-muted"
                     >
                       {isRestoring ? (
                         <Loader2 className="size-3.5 animate-spin" />
@@ -224,7 +224,7 @@ export default function DeletedFilesModal({
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="h-7 text-xs rounded-md border-border bg-background hover:bg-muted text-foreground shadow-2xs"
+            className="h-7 text-xs rounded-md border-border bg-background hover:bg-muted text-foreground"
           >
             Close
           </Button>

@@ -91,13 +91,14 @@ export default function RawLogModal({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search logs..."
-                className="h-7 w-40 sm:w-56 pl-7 pr-2 rounded-md border border-input bg-background text-xs outline-none focus:ring-1 focus:ring-ring"
+                className="h-7 w-40 sm:w-56 pl-7 pr-2 rounded-md border border-input bg-background text-xs outline-none focus-visible:ring-1 focus-visible:ring-primary"
               />
             </div>
 
             <button
+              type="button"
               onClick={handleCopy}
-              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium border border-border bg-background hover:bg-muted transition-colors cursor-pointer text-foreground shadow-2xs"
+              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium border border-border bg-background hover:bg-muted transition-colors cursor-pointer text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
               title="Copy to Clipboard"
             >
               {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
@@ -105,8 +106,9 @@ export default function RawLogModal({
             </button>
 
             <button
+              type="button"
               onClick={handleDownload}
-              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium border border-border bg-background hover:bg-muted transition-colors cursor-pointer text-foreground shadow-2xs"
+              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium border border-border bg-background hover:bg-muted transition-colors cursor-pointer text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
               title="Download Log File"
             >
               <Download className="size-3.5" />
@@ -114,8 +116,9 @@ export default function RawLogModal({
             </button>
 
             <button
+              type="button"
               onClick={() => onOpenChange(false)}
-              className="h-7 w-7 inline-flex items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+              className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <X className="size-4" />
             </button>

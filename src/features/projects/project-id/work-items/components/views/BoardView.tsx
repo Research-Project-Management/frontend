@@ -318,7 +318,7 @@ export function CardUI({
       }}
       aria-label={`Work item: ${card.title}`}
       className={cn(
-        'group relative min-w-0 rounded-md border border-border/70 dark:border-border/60 bg-card p-3 shadow-2xs hover:shadow-xs hover:border-border transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none',
+        'group relative min-w-0 rounded-md border border-border/70 dark:border-border/60 bg-card p-3 shadow-none hover:border-border transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none',
         isDragging && 'opacity-40',
         isSelected && 'ring-1 ring-ring border-ring bg-muted/40'
       )}
@@ -914,7 +914,7 @@ export function Column({
       {/* Cards List */}
       <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2.5 min-h-[60px]">
         {isQuickAdding && (
-          <form onSubmit={handleQuickAddSubmit} className="p-3 bg-card rounded-md border border-border shadow-2xs space-y-2.5">
+          <form onSubmit={handleQuickAddSubmit} className="p-3 bg-card rounded-md border border-border shadow-none space-y-2.5">
             <input
               ref={inputRef}
               value={quickTitle}
@@ -1229,7 +1229,7 @@ export function BoardView({
               return (
                 <div
                   key={lane.id}
-                  className="rounded-md border border-border/50 bg-card/40 overflow-hidden shadow-2xs"
+                  className="rounded-md border border-border/50 bg-card/40 overflow-hidden shadow-none"
                 >
                   {/* Swimlane Header */}
                   <div

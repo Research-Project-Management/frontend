@@ -264,7 +264,7 @@ export function MergeModal({
                   variant="outline"
                   size="sm"
                   onClick={handleAutoRecommend}
-                  className="h-7 px-2 text-11 gap-1 font-medium rounded-md border-border text-foreground hover:bg-muted shadow-2xs"
+                  className="h-7 px-2 text-11 gap-1 font-medium rounded-md border-border text-foreground hover:bg-muted"
                   title="Auto-select the most complete values (longest abstract, full author names, canonical DOI)"
                 >
                   <Sparkles className="size-3 text-primary shrink-0" />
@@ -272,7 +272,7 @@ export function MergeModal({
                 </Button>
               )}
 
-              <div className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-border bg-background shadow-2xs">
+              <div className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-border bg-background">
                 <SlidersHorizontal className="size-3 text-muted-foreground shrink-0" />
                 <Label htmlFor="diff-filter-toggle" className="text-11 font-medium cursor-pointer text-foreground select-none">
                   Conflicts only ({inspection.conflictCount})
@@ -316,7 +316,7 @@ export function MergeModal({
                     onClick={() => handleSelectMaster(item.id)}
                     className={`relative p-3 rounded-md border transition-colors cursor-pointer select-none flex flex-col justify-between gap-2 ${
                       isMaster
-                        ? 'border-primary/70 bg-primary/5 ring-1 ring-primary/20 shadow-2xs'
+                        ? 'border-primary/70 bg-primary/5 ring-1 ring-primary/20'
                         : 'border-border bg-background hover:bg-muted/40 hover:border-border'
                     }`}
                   >
@@ -477,7 +477,7 @@ export function MergeModal({
                               <div
                                 className={`p-2 rounded-md border text-12 transition-colors flex flex-col justify-between gap-1.5 min-h-[44px] ${
                                   isSelected
-                                    ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/20 shadow-2xs'
+                                    ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/20'
                                     : 'border-border/60 bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground'
                                 }`}
                               >
@@ -554,7 +554,7 @@ export function MergeModal({
               size="sm"
               onClick={() => onOpenChange(false)}
               disabled={isMerging}
-              className="h-8 px-3 text-12 font-medium text-foreground rounded-md border-border shadow-2xs hover:bg-muted"
+              className="h-8 px-3 text-12 font-medium text-foreground rounded-md border-border hover:bg-muted"
             >
               Cancel
             </Button>

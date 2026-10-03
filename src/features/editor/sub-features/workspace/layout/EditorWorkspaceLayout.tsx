@@ -509,7 +509,7 @@ export function EditorWorkspaceLayout() {
               className={cn(
                 "px-3 py-1 rounded-sm transition-colors cursor-pointer",
                 mobileTab === 'editor'
-                  ? "bg-background text-foreground shadow-2xs font-semibold"
+                  ? "bg-background text-foreground font-semibold"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -521,7 +521,7 @@ export function EditorWorkspaceLayout() {
               className={cn(
                 "px-3 py-1 rounded-sm transition-colors cursor-pointer",
                 mobileTab === 'viewer'
-                  ? "bg-background text-foreground shadow-2xs font-semibold"
+                  ? "bg-background text-foreground font-semibold"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >

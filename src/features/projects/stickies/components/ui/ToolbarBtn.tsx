@@ -24,7 +24,7 @@ export const ToolbarBtn = React.forwardRef<HTMLButtonElement, ToolbarBtnProps>(f
       title={title}
       aria-label={title}
       className={cn(
-        "flex items-center justify-center w-11 h-11 sm:w-8 sm:h-8 rounded-md transition-colors disabled:opacity-30",
+        "flex items-center justify-center w-8 h-8 sm:w-7 sm:h-7 rounded-md transition-colors disabled:opacity-30",
         danger
           ? "text-current opacity-50 hover:opacity-100 hover:bg-destructive/10"
           : cn(

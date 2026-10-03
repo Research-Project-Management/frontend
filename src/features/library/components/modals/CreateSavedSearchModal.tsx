@@ -522,7 +522,7 @@ export function CreateSavedSearchModal({
                     className={cn(
                       'px-2 py-0.5 rounded text-11 transition-colors cursor-pointer',
                       conjunction === 'AND'
-                        ? 'bg-background text-foreground font-medium shadow-2xs'
+                        ? 'bg-background text-foreground font-medium'
                         : 'text-muted-foreground hover:text-foreground',
                     )}
                   >
@@ -534,7 +534,7 @@ export function CreateSavedSearchModal({
                     className={cn(
                       'px-2 py-0.5 rounded text-11 transition-colors cursor-pointer',
                       conjunction === 'OR'
-                        ? 'bg-background text-foreground font-medium shadow-2xs'
+                        ? 'bg-background text-foreground font-medium'
                         : 'text-muted-foreground hover:text-foreground',
                     )}
                   >

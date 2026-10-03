@@ -107,6 +107,26 @@ export default function RelatedSection({
   const [selectedCollectionFilter, setSelectedCollectionFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Calculate item counts for collections
+  const collectionCounts = useMemo(() => {
+    const all = (allItemsRes as any)?.items || [];
+    const counts: Record<string, number> = {
+      all: all.length,
+    };
+    for (const it of all) {
+      if (it.collectionId) {
+        counts[it.collectionId] = (counts[it.collectionId] || 0) + 1;
+      }
+      if (Array.isArray(it.collections)) {
+        for (const c of it.collections) {
+          const cid = typeof c === 'string' ? c : (c as any)?.id;
+          if (cid) counts[cid] = (counts[cid] || 0) + 1;
+        }
+      }
+    }
+    return counts;
+  }, [(allItemsRes as any)?.items]);
+
   const relatedList: RelatedItem[] = relatedItems;
 
   const selectOnly = useReaderViewStore((s) => s.selectOnly);
@@ -353,12 +373,12 @@ export default function RelatedSection({
           className="sm:max-w-[780px] w-[95vw] bg-background text-foreground p-0 gap-0 border border-border rounded-xl shadow-raised-200 overflow-hidden flex flex-col h-[580px] max-h-[85vh]"
         >
           {/* Header */}
-          <DialogHeader className="px-5 py-3 border-b border-border bg-background space-y-0.5 shrink-0">
+          <DialogHeader className="px-5 py-3.5 border-b border-border/60 bg-background space-y-1 shrink-0">
             <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
               Add Related References
             </DialogTitle>
             <DialogDescription className="text-11 text-muted-foreground leading-normal flex items-center gap-1.5 min-w-0">
-              <span className="shrink-0">Linking with:</span>
+              <span className="shrink-0 text-muted-foreground/80">Linking with:</span>
               <span
                 className="font-medium text-foreground truncate max-w-[500px]"
                 title={currentPaperCleanTitle}
@@ -370,9 +390,9 @@ export default function RelatedSection({
 
           {/* Body: Left Sidebar (Collections) + Right Main Panel (References) */}
           <div className="flex-1 flex min-h-0 overflow-hidden">
-            {/* Left Sidebar: Collections */}
-            <div className="w-48 sm:w-52 shrink-0 border-r border-border bg-background flex flex-col min-h-0 select-none">
-              <div className="px-3 pt-3 pb-1.5 text-11 font-semibold text-muted-foreground">
+            {/* Left Sidebar: Collections with soft surface tint and live counts */}
+            <div className="w-52 sm:w-56 shrink-0 border-r border-border/50 bg-muted/20 flex flex-col min-h-0 select-none">
+              <div className="px-3 pt-3 pb-1.5 text-11 font-medium text-muted-foreground">
                 Collections
               </div>
 
@@ -382,19 +402,27 @@ export default function RelatedSection({
                   type="button"
                   onClick={() => setSelectedCollectionFilter('all')}
                   className={cn(
-                    'w-full text-left px-2.5 py-1.5 rounded-md text-12 flex items-center gap-2 cursor-pointer transition-colors select-none',
+                    'w-full text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none',
                     selectedCollectionFilter === 'all'
-                      ? 'bg-secondary text-secondary-foreground font-medium'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/40',
+                      ? 'bg-muted text-foreground font-medium'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 font-normal',
                   )}
                 >
-                  <Library className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
-                  <span className="truncate">All Items</span>
+                  <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
+                    <Library className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+                    <span className="truncate">All Items</span>
+                  </div>
+                  {collectionCounts.all > 0 && (
+                    <span className="text-10 font-mono text-muted-foreground tabular-nums shrink-0">
+                      {collectionCounts.all}
+                    </span>
+                  )}
                 </button>
 
                 {/* Individual Collections */}
                 {collections.map((col: any) => {
                   const isSelected = selectedCollectionFilter === col.id;
+                  const count = collectionCounts[col.id] || 0;
 
                   return (
                     <button
@@ -402,48 +430,58 @@ export default function RelatedSection({
                       type="button"
                       onClick={() => setSelectedCollectionFilter(col.id)}
                       className={cn(
-                        'w-full text-left px-2.5 py-1.5 rounded-md text-12 flex items-center gap-2 cursor-pointer transition-colors select-none',
+                        'w-full text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none',
                         isSelected
-                          ? 'bg-secondary text-secondary-foreground font-medium'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/40',
+                          ? 'bg-muted text-foreground font-medium'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 font-normal',
                       )}
                       title={col.name}
+                      aria-label={col.name}
                     >
-                      <Folder
-                        className="size-3.5 shrink-0"
-                        style={{ color: col.color || 'var(--muted-foreground)' }}
-                        strokeWidth={1.5}
-                      />
-                      <span className="truncate">{col.name}</span>
+                      <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
+                        <Folder
+                          className="size-3.5 shrink-0"
+                          style={{ color: col.color || 'var(--muted-foreground)' }}
+                          strokeWidth={1.5}
+                        />
+                        <span className="truncate">{col.name}</span>
+                      </div>
+                      {count > 0 && (
+                        <span className="text-10 font-mono text-muted-foreground tabular-nums shrink-0">
+                          {count}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Right Main Panel: Full Search + References List */}
+            {/* Right Main Panel: Command Search + Inset Divider + References List */}
             <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-background">
-              {/* Clean Search Bar */}
-              <div className="p-2.5 border-b border-border bg-background flex items-center gap-2 shrink-0">
-                <div className="relative flex-1 flex items-center">
+              {/* Seamless Command Search Bar: no full-bleed harsh line */}
+              <div className="px-3.5 pt-3 pb-2 flex items-center shrink-0">
+                <div className="relative w-full max-w-md flex items-center">
                   <Search
-                    className="absolute left-2.5 size-3.5 text-muted-foreground pointer-events-none shrink-0"
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/60 pointer-events-none"
                     strokeWidth={1.5}
                   />
-                  <Input
+                  <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search by title, author, venue, year..."
-                    className="w-full pl-8 pr-7 text-12 bg-muted/20 hover:bg-muted/30 focus:bg-background text-foreground placeholder:text-muted-foreground rounded-md border-border h-8 shadow-none focus-visible:ring-1 focus-visible:ring-ring transition-colors"
+                    aria-label="Search references"
+                    className="w-full h-8.5 pl-9 pr-8 text-13 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/35 focus:bg-background focus:border-border text-foreground placeholder:text-muted-foreground/60 outline-none transition-all shadow-none"
                     autoFocus
                   />
                   {searchQuery && (
                     <button
                       type="button"
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-2 p-0.5 rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center text-muted-foreground/60 hover:text-foreground cursor-pointer transition-colors"
                       title="Clear search"
+                      aria-label="Clear search"
                     >
                       <X className="size-3" strokeWidth={1.5} />
                     </button>
@@ -451,9 +489,11 @@ export default function RelatedSection({
                 </div>
               </div>
 
+              {/* Inset non-touching divider line between search and list */}
+              <div className="mx-3.5 border-b border-border/40 shrink-0" />
 
               {/* Scrollable References List */}
-              <div className="flex-1 overflow-y-auto px-2.5 py-2 min-h-0 thin-scrollbar space-y-0.5">
+              <div className="flex-1 overflow-y-auto px-2.5 py-2 min-h-0 thin-scrollbar">
                 {availableItems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground space-y-2 text-center px-4">
                     <div className="size-9 rounded-full bg-muted flex items-center justify-center">
@@ -483,69 +523,82 @@ export default function RelatedSection({
                     )}
                   </div>
                 ) : (
-                  availableItems.map((targetItem: Item) => {
-                    const isChecked = selectedTargetIds.has(targetItem.id);
-                    const cleanTitle = cleanAcademicText(targetItem.title) || 'Untitled Reference';
+                  <div className="space-y-0.5">
+                    {availableItems.map((targetItem: Item, index: number) => {
+                      const isChecked = selectedTargetIds.has(targetItem.id);
+                      const cleanTitle = cleanAcademicText(targetItem.title) || 'Untitled Reference';
 
-                    return (
-                      <div
-                        key={targetItem.id}
-                        onClick={() => handleToggleSelect(targetItem.id)}
-                        className={cn(
-                          'w-full text-left px-2.5 py-1.5 rounded-md text-13 flex items-center gap-2.5 cursor-pointer transition-colors duration-150 select-none group',
-                          isChecked
-                            ? 'bg-accent/40 text-foreground ring-1 ring-border'
-                            : 'text-foreground hover:bg-muted/40',
-                        )}
-                      >
-                        {/* Checkbox with click propagation stop */}
-                        <div
-                          className="shrink-0 flex items-center"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Checkbox
-                            checked={isChecked}
-                            onCheckedChange={() => handleToggleSelect(targetItem.id)}
-                            className="size-4 rounded border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                            aria-label={`Select ${cleanTitle}`}
-                          />
-                        </div>
-
-                        {/* Title only */}
-                        <div className="min-w-0 flex-1">
-                          <p
+                      return (
+                        <React.Fragment key={targetItem.id}>
+                          {index > 0 && <div className="mx-3 my-0.5 border-b border-border/30" />}
+                          <div
+                            role="checkbox"
+                            aria-checked={isChecked}
+                            tabIndex={0}
+                            onClick={() => handleToggleSelect(targetItem.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === ' ' || e.key === 'Enter') {
+                                e.preventDefault();
+                                handleToggleSelect(targetItem.id);
+                              }
+                            }}
                             className={cn(
-                              'text-13 leading-normal line-clamp-1 break-words',
-                              isChecked ? 'text-foreground font-semibold' : 'text-foreground font-medium',
+                              'group relative w-full text-left px-3 py-2 rounded-md text-13 flex items-center gap-2.5 cursor-pointer transition-colors duration-150 select-none focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring',
+                              isChecked
+                                ? 'bg-primary/[0.06] text-primary'
+                                : 'hover:bg-muted/60 text-foreground',
                             )}
-                            title={cleanTitle}
                           >
-                            {cleanTitle}
-                          </p>
-                        </div>
+                            {/* Checkbox with click propagation stop */}
+                            <div
+                              className="shrink-0 flex items-center"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={() => handleToggleSelect(targetItem.id)}
+                                className="size-4 rounded border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                aria-label={`Select ${cleanTitle}`}
+                              />
+                            </div>
 
-                        {/* Right: Year in black/foreground text */}
-                        {targetItem.year ? (
-                          <div className="shrink-0 pl-3">
-                            <span className="font-mono text-12 text-foreground font-medium tabular-nums">
-                              {targetItem.year}
-                            </span>
+                            {/* Title only */}
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className={cn(
+                                  'text-13 leading-snug line-clamp-1 break-words',
+                                  isChecked ? 'font-medium text-primary' : 'font-normal text-foreground',
+                                )}
+                                title={cleanTitle}
+                              >
+                                {cleanTitle}
+                              </p>
+                            </div>
+
+                            {/* Right: Year Badge */}
+                            {targetItem.year ? (
+                              <div className="shrink-0 pl-2">
+                                <span className="px-1.5 py-0.5 rounded text-11 font-mono text-muted-foreground bg-muted/40 border border-border/30 tabular-nums">
+                                  {targetItem.year}
+                                </span>
+                              </div>
+                            ) : null}
                           </div>
-                        ) : null}
-                      </div>
-                    );
-                  })
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </div>
           </div>
 
           {/* Footer Actions across full modal width */}
-          <div className="px-5 py-3 border-t border-border bg-background flex items-center justify-end gap-2 shrink-0">
+          <div className="px-5 py-3 border-t border-border/60 bg-background flex items-center justify-end gap-2 shrink-0 select-none">
             <Button
               size="sm"
               variant="outline"
-              className="h-8 px-3 text-12 text-foreground hover:bg-muted cursor-pointer rounded-md border-border/80"
+              className="h-8 px-3 text-12 font-medium rounded-md border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer shadow-none"
               onClick={() => {
                 setModalOpen(false);
                 setSelectedTargetIds(new Set());
@@ -560,7 +613,7 @@ export default function RelatedSection({
               variant="default"
               disabled={selectedTargetIds.size === 0 || isLinking}
               onClick={handleLinkConfirm}
-              className="h-8 px-4 text-12 cursor-pointer font-medium rounded-md shadow-2xs flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
+              className="h-8 px-4 text-12 font-medium rounded-md cursor-pointer shadow-none flex items-center gap-1.5 disabled:opacity-50 disabled:bg-muted disabled:text-muted-foreground disabled:border-transparent disabled:pointer-events-none"
             >
               {isLinking && <Loader2 className="size-3.5 animate-spin shrink-0" strokeWidth={1.5} />}
               <span>

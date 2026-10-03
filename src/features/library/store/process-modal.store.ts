@@ -7,7 +7,7 @@ import {
   itemKeys,
   invalidateCollections,
 } from '../data';
-import type { ProcessModalState } from '../data';
+import type { ProcessModalState, IngestionProgressItem } from '../data';
 
 export interface ProcessingFileItem {
   id: string;
@@ -36,6 +36,8 @@ export interface ProcessBatchUploadOptions {
 export interface ProcessModalStore {
   state: ProcessModalState;
   processingItems: ProcessingFileItem[];
+  addProcessingItem: (item: ProcessingFileItem) => void;
+  updateProcessingItem: (id: string, updates: Partial<ProcessingFileItem>) => void;
   dismissProcessingItem: (id: string) => void;
   startBatchUpload: (
     files: File[],
@@ -72,6 +74,23 @@ export function cleanFilenameToTitle(filename: string): string {
 export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
   state: initialModalState,
   processingItems: [],
+
+  addProcessingItem: (item: ProcessingFileItem) => {
+    set((s) => ({
+      processingItems: [
+        ...s.processingItems.filter((p) => p.id !== item.id),
+        item,
+      ],
+    }));
+  },
+
+  updateProcessingItem: (id: string, updates: Partial<ProcessingFileItem>) => {
+    set((s) => ({
+      processingItems: s.processingItems.map((p) =>
+        p.id === id ? { ...p, ...updates } : p,
+      ),
+    }));
+  },
 
   dismissProcessingItem: (id: string) => {
     set((s) => ({
@@ -157,7 +176,7 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
           currentTitle: files[0]?.name || title,
           items: files.map((f, idx) => ({
             title: f.name,
-            status: (idx === 0 ? 'UPLOADING' : 'PENDING') as any,
+            status: (idx === 0 ? 'UPLOADING' : 'PENDING') as IngestionProgressItem['status'],
           })),
           startedAt: new Date().toISOString(),
         },

@@ -153,7 +153,7 @@ export function DynamicInspectorField({
                 align="start"
                 sideOffset={6}
                 alignOffset={2}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
               >
                 Open DOI
               </TooltipContent>
@@ -184,7 +184,7 @@ export function DynamicInspectorField({
                 align="start"
                 sideOffset={6}
                 alignOffset={2}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
               >
                 Copy citation key
               </TooltipContent>
@@ -216,7 +216,7 @@ export function DynamicInspectorField({
                 align="start"
                 sideOffset={6}
                 alignOffset={2}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
               >
                 Open in PubMed
               </TooltipContent>
@@ -244,7 +244,7 @@ export function DynamicInspectorField({
                 align="start"
                 sideOffset={6}
                 alignOffset={2}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
               >
                 Open in arXiv
               </TooltipContent>
@@ -277,7 +277,7 @@ export function DynamicInspectorField({
                   align="start"
                   sideOffset={6}
                   alignOffset={2}
-                  className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                  className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
                 >
                   Open {fieldDef.label.toLowerCase()} link
                 </TooltipContent>

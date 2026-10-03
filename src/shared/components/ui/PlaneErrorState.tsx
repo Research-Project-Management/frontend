@@ -375,7 +375,7 @@ export function PlaneErrorState({
           </div>
 
           {isDetailsOpen && (
-            <div className="mt-3 w-full overflow-hidden rounded-md border border-border/80 bg-muted/40 backdrop-blur-xs text-left shadow-2xs animate-in fade-in-50 zoom-in-98 duration-150">
+            <div className="mt-3 w-full overflow-hidden rounded-md border border-border/80 bg-muted/40 backdrop-blur-xs text-left animate-in fade-in-50 zoom-in-98 duration-150">
               <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/60 bg-muted/60 text-10 font-mono text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <span className="size-1.5 rounded-full bg-destructive/80" />

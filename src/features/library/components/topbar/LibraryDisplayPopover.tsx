@@ -110,7 +110,7 @@ export function LibraryDisplayPopover({
           type="button"
           size="sm"
           className={cn(
-            "h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shadow-2xs shrink-0 select-none inline-flex items-center justify-center",
+            "h-8 px-3 text-13 font-medium bg-background text-foreground hover:bg-muted rounded-md border border-border cursor-pointer transition-colors shrink-0 select-none inline-flex items-center justify-center",
             open && "bg-muted",
             className
           )}

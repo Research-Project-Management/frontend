@@ -277,7 +277,7 @@ export default function NotesSection({
       {potentialCommentText && !hasCommentInNotes && canEdit && (
         <div className="flex items-center justify-between gap-2 p-2 bg-muted/40 rounded-md border border-border/50 text-xs">
           <div className="space-y-0.5 min-w-0 flex-1">
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider block">
+            <span className="text-[10px] font-medium text-muted-foreground block">
               Publication Comment
             </span>
             <p className="text-11 text-foreground/80 line-clamp-1 italic select-text">

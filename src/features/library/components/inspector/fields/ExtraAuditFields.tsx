@@ -14,13 +14,15 @@ export interface ExtraAuditFieldsProps {
 
 function isValidValue(val?: any): boolean {
   if (val === null || val === undefined) return false;
-  if (typeof val === 'number') return !isNaN(val) && Number.isFinite(val);
+  if (typeof val === 'number') return !isNaN(val) && Number.isFinite(val) && val !== 0;
   if (typeof val === 'boolean') return true;
   if (typeof val === 'string') {
     const str = val.trim();
     if (!str) return false;
     const lower = str.toLowerCase();
     return (
+      lower !== '0' &&
+      lower !== '0000' &&
       lower !== 'null' &&
       lower !== 'undefined' &&
       lower !== 'n/a' &&
@@ -30,7 +32,6 @@ function isValidValue(val?: any): boolean {
       lower !== '{}' &&
       lower !== '[]' &&
       lower !== '[object object]' &&
-      lower !== '0000' &&
       lower !== 'unknown'
     );
   }

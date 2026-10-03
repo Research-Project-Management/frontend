@@ -200,7 +200,7 @@ export const ProjectSelectorPopover: React.FC<ProjectSelectorPopoverProps> = ({
         sideOffset={4}
         className="w-64 p-1.5 rounded-md border border-border bg-popover z-100 flex flex-col"
       >
-        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-background mb-1 shadow-2xs">
+        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-background mb-1">
           <Search className="size-3.5 text-foreground shrink-0" />
           <input
             value={search}
@@ -301,7 +301,7 @@ export const StatePopover: React.FC<StatePopoverProps> = ({
         sideOffset={6}
         className="w-48 p-1.5 rounded-md border border-border bg-popover z-100 flex flex-col"
       >
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1 shadow-2xs">
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1">
           <Search className="size-3.5 text-foreground shrink-0" />
           <input
             value={searchQuery}
@@ -388,7 +388,7 @@ export const PriorityPopover: React.FC<PriorityPopoverProps> = ({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs shrink-0',
+            'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shrink-0',
             actionBtnClass
           )}
         >
@@ -615,7 +615,7 @@ export function MemberPopover({
         sideOffset={4}
         className="w-64 p-1.5 rounded-md border border-border bg-popover z-100 flex flex-col"
       >
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1 shadow-2xs">
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1">
           <Search className="size-3.5 text-foreground shrink-0" />
           <input
             value={searchQuery}
@@ -731,7 +731,7 @@ export function LabelPopover({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs shrink-0',
+            'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shrink-0',
             actionBtnClass,
             isOpen && 'bg-muted border-border',
             labels.length > 0 && 'font-medium'
@@ -747,7 +747,7 @@ export function LabelPopover({
         sideOffset={4}
         className="w-56 p-1.5 rounded-md border border-border bg-popover z-100 flex flex-col"
       >
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1 shadow-2xs">
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1">
           <Search className="size-3.5 text-foreground shrink-0" />
           <input
             placeholder="Search labels..."

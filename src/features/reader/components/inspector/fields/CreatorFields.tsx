@@ -516,7 +516,7 @@ export function CreatorFields({
                     align="start"
                     sideOffset={6}
                     alignOffset={2}
-                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
                   >
                     Short name
                   </TooltipContent>
@@ -541,7 +541,7 @@ export function CreatorFields({
                     align="start"
                     sideOffset={6}
                     alignOffset={2}
-                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
                   >
                     Add {roleLabel.toLowerCase()}
                   </TooltipContent>
@@ -564,7 +564,7 @@ export function CreatorFields({
                       align="start"
                       sideOffset={6}
                       alignOffset={2}
-                      className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                      className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
                     >
                       Remove {roleLabel.toLowerCase()}
                     </TooltipContent>

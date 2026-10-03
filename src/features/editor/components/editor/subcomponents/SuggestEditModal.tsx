@@ -79,7 +79,7 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
                 className={cn(
                   'px-2.5 py-1 rounded-sm capitalize font-medium transition-colors cursor-pointer',
                   suggestModal.type === t
-                    ? 'bg-background text-foreground shadow-2xs'
+                    ? 'bg-background text-foreground'
                     : 'text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -159,7 +159,7 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
             type="button"
             onClick={onSubmit}
             disabled={isPending}
-            className="px-4 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-2xs cursor-pointer"
+            className="px-4 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50 transition-colors cursor-pointer"
           >
             {isPending ? 'Submitting...' : 'Submit Suggestion'}
           </button>

@@ -50,7 +50,7 @@ export function UsageModal() {
                 <Zap className="size-3.5 text-primary" />
                 <span className="text-[11px] font-medium uppercase tracking-wider">Tokens Used</span>
               </div>
-              <p className="text-lg font-bold text-foreground">248,512</p>
+              <p className="text-lg font-semibold text-foreground">248,512</p>
               <span className="text-[11px] text-muted-foreground">In active cycle</span>
             </div>
 
@@ -59,7 +59,7 @@ export function UsageModal() {
                 <TrendingUp className="size-3.5 text-success" />
                 <span className="text-[11px] font-medium uppercase tracking-wider">Queries</span>
               </div>
-              <p className="text-lg font-bold text-foreground">142</p>
+              <p className="text-lg font-semibold text-foreground">142</p>
               <span className="text-[11px] text-success font-medium">99.8% Success</span>
             </div>
 
@@ -68,7 +68,7 @@ export function UsageModal() {
                 <Clock className="size-3.5 text-warning" />
                 <span className="text-[11px] font-medium uppercase tracking-wider">Avg Latency</span>
               </div>
-              <p className="text-lg font-bold text-foreground">412ms</p>
+              <p className="text-lg font-semibold text-foreground">412ms</p>
               <span className="text-[11px] text-muted-foreground">Stream TTFT</span>
             </div>
           </div>

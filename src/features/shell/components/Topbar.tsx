@@ -40,7 +40,7 @@ export default function Topbar() {
         <button
           type='button'
           onClick={() => window.dispatchEvent(new CustomEvent('open-quick-search'))}
-          className='pointer-events-auto group flex h-8 w-full items-center gap-2 rounded-md border border-border bg-white dark:bg-card px-2.5 text-13 text-foreground shadow-2xs transition-colors hover:border-foreground/30 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
+          className='pointer-events-auto group flex h-8 w-full items-center gap-2 rounded-md border border-border bg-background px-2.5 text-13 text-foreground transition-colors hover:border-foreground/30 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
           aria-label='Search'
         >
           <Search className='size-3.5 text-foreground shrink-0' />

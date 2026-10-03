@@ -78,7 +78,7 @@ export function AnalyticsDrawer({
             </Badge>
           </div>
           <SheetDescription className="text-xs text-muted-foreground">
-            Hiệu suất và tổng quan tiến độ các công việc trong dự án theo thời gian thực.
+            Real-time performance and work item progress overview.
           </SheetDescription>
         </SheetHeader>
 
@@ -93,7 +93,7 @@ export function AnalyticsDrawer({
               <div className="text-xl font-semibold text-foreground font-mono">
                 {isLoading ? <Skeleton className="h-7 w-12" /> : totalItems}
               </div>
-              <p className="text-10 text-muted-foreground">Toàn bộ work items</p>
+              <p className="text-10 text-muted-foreground">Total work items</p>
             </div>
 
             <div className="p-3 rounded-md border border-border bg-card space-y-1">
@@ -105,7 +105,7 @@ export function AnalyticsDrawer({
                 {isLoading ? <Skeleton className="h-7 w-16" /> : `${completionRate}%`}
               </div>
               <p className="text-10 text-muted-foreground">
-                {completedItems}/{totalItems} hoàn thành
+                {completedItems}/{totalItems} completed
               </p>
             </div>
           </div>
@@ -113,7 +113,7 @@ export function AnalyticsDrawer({
           {/* Status Breakdown */}
           <div className="p-4 rounded-md border border-border bg-card space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-foreground">Phân bổ theo trạng thái</span>
+              <span className="text-xs font-semibold text-foreground">Status distribution</span>
               <span className="text-10 text-muted-foreground font-mono">Workflow distribution</span>
             </div>
             <div className="space-y-2.5 pt-1">
@@ -158,7 +158,7 @@ export function AnalyticsDrawer({
           {analytics?.priority && Object.keys(analytics.priority).length > 0 && (
             <div className="p-4 rounded-md border border-border bg-card space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-foreground">Phân bổ theo mức độ ưu tiên</span>
+                <span className="text-xs font-semibold text-foreground">Priority distribution</span>
                 <span className="text-10 text-muted-foreground font-mono">Priority breakdown</span>
               </div>
               <div className="space-y-2 pt-1">
@@ -186,7 +186,7 @@ export function AnalyticsDrawer({
           {/* Workload by Member */}
           <div className="p-4 rounded-md border border-border bg-card space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-foreground">Phân công công việc</span>
+              <span className="text-xs font-semibold text-foreground">Workload by Member</span>
               <Users className="size-3.5 text-foreground shrink-0" />
             </div>
             {isLoading ? (
@@ -234,7 +234,7 @@ export function AnalyticsDrawer({
               </div>
             ) : (
               <p className="text-xs text-muted-foreground py-2 text-center">
-                Chưa có dữ liệu phân công công việc.
+                No workload assignment data available.
               </p>
             )}
           </div>

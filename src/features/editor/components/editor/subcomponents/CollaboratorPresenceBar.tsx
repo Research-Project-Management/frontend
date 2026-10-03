@@ -75,7 +75,7 @@ export const CollaboratorPresenceBar = React.memo(function CollaboratorPresenceB
                     />
                   ) : (
                     <div
-                      className="size-6 rounded-full flex items-center justify-center text-11 font-bold font-mono ring-2 ring-background shrink-0 shadow-2xs"
+                      className="size-6 rounded-full flex items-center justify-center text-11 font-semibold font-mono ring-2 ring-background shrink-0"
                       style={{ backgroundColor: color, color: textColor }}
                     >
                       {initials}

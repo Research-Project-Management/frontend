@@ -117,7 +117,7 @@ export default function LayoutSwitcher() {
         <button
           type="button"
           aria-label="Layout options"
-          className="flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent data-[state=open]:text-foreground transition-colors outline-none cursor-pointer select-none"
+          className="flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent data-[state=open]:text-foreground transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer select-none"
         >
           <Columns2 className="size-3.5 shrink-0" strokeWidth={1.8} />
           <span>Layout</span>
@@ -130,7 +130,7 @@ export default function LayoutSwitcher() {
         className="w-60 p-1 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md text-xs z-[9999]"
       >
         {/* Header */}
-        <div className="text-11 font-semibold text-muted-foreground px-2.5 py-1.5 select-none">
+        <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none">
           Layout options
         </div>
 
@@ -217,7 +217,7 @@ export default function LayoutSwitcher() {
             <Scan className="size-4 opacity-70" strokeWidth={1.8} />
           </div>
           <span className="flex-1 text-xs">Focus mode</span>
-          <span className="text-11 text-muted-foreground ml-auto">Ctrl Shift M</span>
+          <kbd className="text-11 font-mono text-muted-foreground ml-auto">Ctrl Shift M</kbd>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

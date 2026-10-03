@@ -38,6 +38,7 @@ import {
   FileSpreadsheet,
   FileCode,
   File,
+  Database,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from "@/shared/lib/utils";
@@ -46,7 +47,8 @@ import { useChatMode } from '../../hooks/use-chat-mode';
 import { useAiUIStore } from '../../store';
 import { uploadDocument } from '../../services/chat.service';
 import { SourcePickerModal } from '../modals/source-picker-modal';
-import type { AgentId } from '../../types/chat.types';
+import { DocumentLibraryModal } from '../modals/document-library-modal';
+import type { AgentId, MessageAttachment } from '../../types/chat.types';
 
 const ACCEPTED_TYPES = '.pdf,.doc,.docx,.txt,.md,.csv,.xls,.xlsx,.png,.jpg,.jpeg,.json,.ts,.tsx,.js,.py';
 
@@ -147,6 +149,7 @@ export interface ChatInputProps {
     projectId?: string,
     webSearchSites?: string[],
     intentHint?: string,
+    attachments?: MessageAttachment[],
   ) => void;
   disabled?: boolean;
   initialProject?: string;
@@ -170,6 +173,7 @@ export function ChatInput({
     addSource,
     removeSource,
     toggleSource,
+    clearSources,
     setFluxDataEnabled,
   } = useChatMode();
   const { isSourcesOpen, toggleSources } = useAiUIStore();
@@ -179,6 +183,7 @@ export function ChatInput({
   const [selectedProject, setSelectedProject] = useState<string>(initialProject || 'all');
   const [scopeOpen, setScopeOpen] = useState(false);
   const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
+  const [documentLibraryOpen, setDocumentLibraryOpen] = useState(false);
   const [modalTab, setModalTab] = useState<'library' | 'storage'>('library');
   const [uploadingFiles, setUploadingFiles] = useState<
     Array<{
@@ -383,20 +388,35 @@ export function ChatInput({
       const isIndexing = uploadingFiles.some((f) => f.stage === 'processing');
       toast.info(
         isIndexing
-          ? 'Tài liệu đang được lập chỉ mục vector, vui lòng đợi trong giây lát...'
-          : 'Tài liệu đang được tải lên, vui lòng đợi hoàn tất...'
+          ? 'Documents are being indexed into the vector store. Please wait a moment...'
+          : 'Documents are currently uploading. Please wait for completion...'
       );
       return;
     }
     if (!message.trim() || disabled) return;
     const finalProjectId = selectedProject === 'all' || !selectedProject ? undefined : selectedProject;
+
+    // Attach active sources to this user message
+    const attachedFiles: MessageAttachment[] = sources
+      .filter((s) => s.enabled)
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        size: s.size,
+        type: s.name.split('.').pop() || '',
+        sourceType: (s.sourceType as any) || 'upload',
+      }));
+
     onSend?.(
       message.trim(),
       finalProjectId,
       webSearch ? (webSites.length > 0 ? webSites : ['*']) : undefined,
+      undefined,
+      attachedFiles.length > 0 ? attachedFiles : undefined,
     );
     setMessage('');
-  }, [message, disabled, isUploading, uploadingFiles, selectedProject, onSend, webSearch, webSites]);
+    clearSources();
+  }, [message, disabled, isUploading, uploadingFiles, selectedProject, onSend, webSearch, webSites, sources, clearSources]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -421,6 +441,13 @@ export function ChatInput({
         initialTab={modalTab}
       />
 
+      {/* Document Knowledge Base Modal */}
+      <DocumentLibraryModal
+        open={documentLibraryOpen}
+        onOpenChange={setDocumentLibraryOpen}
+        projectId={selectedProject === 'all' ? undefined : selectedProject}
+      />
+
       {/* Main chat input container with Drag & Drop */}
       <div
         onDragEnter={handleDragEnter}
@@ -428,14 +455,14 @@ export function ChatInput({
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         className={cn(
-          "relative rounded-lg border border-border bg-background shadow-2xs transition-all p-3 sm:p-3.5",
+          "relative rounded-lg border border-border bg-background transition-all p-3 sm:p-3.5",
           isDragging && "border-primary/70 ring-2 ring-primary/20 bg-primary/[0.02]"
         )}
       >
         {/* Drag & Drop Visual Overlay */}
         {isDragging && (
           <div className="absolute inset-0 z-30 rounded-lg bg-background/95 backdrop-blur-xs border-2 border-dashed border-primary flex flex-col items-center justify-center gap-2 pointer-events-none transition-all">
-            <div className="size-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shadow-xs">
+            <div className="size-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
               <FileUp className="size-5 transition-transform duration-300 ease-out animate-pulse motion-reduce:animate-none" />
             </div>
             <p className="text-12 font-medium text-foreground">Drop files here to attach</p>
@@ -449,7 +476,7 @@ export function ChatInput({
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-background hover:bg-muted px-2 py-1 text-12 font-medium text-foreground transition-colors cursor-pointer outline-none shadow-2xs"
+                className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-background hover:bg-muted px-2 py-1 text-12 font-medium text-foreground transition-colors cursor-pointer outline-none"
               >
                 <Folder className="size-3.5 text-muted-foreground shrink-0" />
                 <span className="max-w-44 truncate">{currentProjName}</span>
@@ -530,7 +557,7 @@ export function ChatInput({
               return (
                 <Tooltip key={up.id}>
                   <TooltipTrigger asChild>
-                    <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/70 bg-muted/40 max-w-[240px] shadow-2xs cursor-default">
+                    <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/70 bg-muted/40 max-w-[240px] cursor-default">
                       <div className="size-7 rounded-md flex items-center justify-center shrink-0 border border-border/50 bg-background text-primary">
                         <Loader2 className="size-3.5 animate-spin text-primary" />
                       </div>
@@ -549,8 +576,8 @@ export function ChatInput({
                     <p className="font-medium truncate">{up.name}</p>
                     <p className="text-10 text-muted-foreground">
                       {isProcessing
-                        ? 'Đang trích xuất nội dung & lập chỉ mục vector...'
-                        : `Đang tải lên: ${up.progress}%`}
+                        ? 'Extracting content & indexing vector store...'
+                        : `Uploading: ${up.progress}%`}
                     </p>
                   </TooltipContent>
                 </Tooltip>
@@ -565,7 +592,7 @@ export function ChatInput({
                 <div
                   key={src.id}
                   className={cn(
-                    "group relative flex items-center gap-2.5 px-3 py-1.5 rounded-md border text-left cursor-pointer transition-all max-w-[240px] shadow-2xs select-none",
+                    "group relative flex items-center gap-2.5 px-3 py-1.5 rounded-md border text-left cursor-pointer transition-all max-w-[240px] select-none",
                     src.enabled
                       ? "bg-card hover:bg-muted/50 border-border"
                       : "bg-muted/30 border-border/40 opacity-55 hover:opacity-80"
@@ -611,8 +638,8 @@ export function ChatInput({
                       <p className="font-medium truncate">{src.name}</p>
                       <p className="text-10 text-muted-foreground">
                         {src.enabled
-                          ? 'Đang kích hoạt trong ngữ cảnh AI (nhấn để tắt)'
-                          : 'Đã tắt (nhấn để kích hoạt)'}
+                          ? 'Active in AI context (click to disable)'
+                          : 'Disabled (click to activate)'}
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -633,7 +660,7 @@ export function ChatInput({
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="top" sideOffset={4}>
-                      Gỡ tài liệu
+                      Remove document
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -683,7 +710,7 @@ export function ChatInput({
                     >
                       <Plus className="size-4 shrink-0 text-foreground" />
                       {sources.length > 0 && (
-                        <span className="absolute -top-1 -right-1 size-3.5 rounded-full bg-primary text-white text-9 font-medium flex items-center justify-center shadow-2xs">
+                        <span className="absolute -top-1 -right-1 size-3.5 rounded-full bg-primary text-white text-9 font-medium flex items-center justify-center">
                           {sources.length}
                         </span>
                       )}
@@ -710,7 +737,7 @@ export function ChatInput({
                   <span>Upload from device</span>
                 </DropdownMenuItem>
 
-                {/* 2. Upload from Storage */}
+                {/* 2. Import from Storage */}
                 <DropdownMenuItem
                   onClick={() => {
                     setModalTab('storage');
@@ -719,7 +746,7 @@ export function ChatInput({
                   className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
                 >
                   <HardDrive className="size-4 text-foreground shrink-0" />
-                  <span>Upload from storage</span>
+                  <span>Import from Storage</span>
                 </DropdownMenuItem>
 
                 {/* 3. Import from Library */}
@@ -732,6 +759,15 @@ export function ChatInput({
                 >
                   <BookOpen className="size-4 text-foreground shrink-0" />
                   <span>Import from Library</span>
+                </DropdownMenuItem>
+
+                {/* 4. Document Knowledge Base */}
+                <DropdownMenuItem
+                  onClick={() => setDocumentLibraryOpen(true)}
+                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
+                >
+                  <Database className="size-4 text-foreground shrink-0" />
+                  <span>Uploaded documents</span>
                 </DropdownMenuItem>
 
                 {/* 4. Sources Panel */}
@@ -768,7 +804,7 @@ export function ChatInput({
                   >
                     <span
                       className={cn(
-                        'pointer-events-none inline-block size-3 rounded-full bg-white shadow-xs transform ring-0 transition duration-200 ease-in-out',
+                        'pointer-events-none inline-block size-3 rounded-full bg-white transform ring-0 transition duration-200 ease-in-out',
                         webSearch ? 'translate-x-3' : 'translate-x-0'
                       )}
                     />
@@ -800,7 +836,7 @@ export function ChatInput({
                   onClick={handleSend}
                   disabled={(!message.trim() && !disabled) || isUploading}
                   className={cn(
-                    "size-8 rounded-full flex items-center justify-center p-0 transition-all shrink-0 shadow-2xs select-none",
+                    "size-8 rounded-full flex items-center justify-center p-0 transition-all shrink-0 select-none",
                     isUploading
                       ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
                       : disabled
@@ -809,7 +845,7 @@ export function ChatInput({
                   )}
                   aria-label={
                     isUploading
-                      ? "Đang xử lý tài liệu..."
+                      ? "Processing documents..."
                       : disabled
                         ? "Stop generating"
                         : "Send message"
@@ -827,8 +863,8 @@ export function ChatInput({
               <TooltipContent side="top" sideOffset={4}>
                 {isUploading
                   ? uploadingFiles.some((f) => f.stage === 'processing')
-                    ? "Đang lập chỉ mục tài liệu, vui lòng đợi..."
-                    : "Đang tải lên tài liệu, vui lòng đợi..."
+                    ? "Indexing documents, please wait..."
+                    : "Uploading documents, please wait..."
                   : disabled
                     ? "Stop generating"
                     : "Send message"}

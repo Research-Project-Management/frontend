@@ -147,7 +147,7 @@ export function IconPicker({
             className={cn(
               'h-7 text-xs rounded-md transition-colors duration-150 cursor-pointer flex items-center justify-center gap-1.5',
               tab === 'emoji'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
+                ? 'bg-background text-foreground font-semibold'
                 : 'text-muted-foreground hover:text-foreground font-medium'
             )}
           >
@@ -159,7 +159,7 @@ export function IconPicker({
             className={cn(
               'h-7 text-xs rounded-md transition-colors duration-150 cursor-pointer flex items-center justify-center gap-1.5',
               tab === 'icon'
-                ? 'bg-background text-foreground shadow-xs font-semibold'
+                ? 'bg-background text-foreground font-semibold'
                 : 'text-muted-foreground hover:text-foreground font-medium'
             )}
           >
@@ -228,7 +228,7 @@ export function IconPicker({
           ) : (
             <div className="relative shrink-0">
               <div
-                className="size-8 rounded-md bg-muted/60 border border-border/60 flex items-center justify-center shadow-2xs transition-colors"
+                className="size-8 rounded-md bg-muted/60 border border-border/60 flex items-center justify-center transition-colors"
                 title="Selected icon preview"
               >
                 {(() => {
@@ -327,7 +327,7 @@ export function IconPicker({
                   title={c.label}
                 >
                   {selectedColor === c.hex && (
-                    <Check className="size-3 text-white drop-shadow-xs shrink-0" />
+                    <Check className="size-3 text-white shrink-0" />
                   )}
                 </button>
               ))}

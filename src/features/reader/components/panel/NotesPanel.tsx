@@ -68,7 +68,7 @@ function NoteEditForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit(onSave)} className="space-y-2 rounded-md border border-border p-2 bg-background shadow-2xs">
+      <form onSubmit={handleSubmit(onSave)} className="space-y-2 rounded-md border border-border p-2 bg-background">
         <div className="flex items-center gap-1 border-b border-border/50 pb-1 text-foreground">
           <button
             type="button"
@@ -129,7 +129,7 @@ function NoteEditForm({
             type="button"
             variant="outline"
             size="sm"
-            className="h-6 text-xs px-2 cursor-pointer rounded-md border-border bg-background shadow-2xs text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+            className="h-6 text-xs px-2 cursor-pointer rounded-md border-border bg-background text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
             onClick={onCancel}
           >
             Cancel
@@ -137,7 +137,7 @@ function NoteEditForm({
           <Button
             type="submit"
             size="sm"
-            className="h-6 text-xs px-2.5 font-medium cursor-pointer rounded-md shadow-2xs focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+            className="h-6 text-xs px-2.5 font-medium cursor-pointer rounded-md focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
             disabled={isSaving}
           >
             {isSaving ? <Loader2 className="size-3 animate-spin shrink-0" /> : 'Save'}
@@ -325,7 +325,7 @@ export default function NotesPanel({
         <Form {...newNoteForm}>
           <form
             onSubmit={handleSubmitNewNote(handleAddNote)}
-            className="rounded-md border border-border bg-background shadow-2xs focus-within:ring-1 focus-within:ring-ring p-2 space-y-1.5"
+            className="rounded-md border border-border bg-background focus-within:ring-1 focus-within:ring-ring p-2 space-y-1.5"
           >
             <div className="flex items-center gap-1 border-b border-border/50 pb-1 text-foreground">
               <button
@@ -386,7 +386,7 @@ export default function NotesPanel({
                 type="submit"
                 size="sm"
                 disabled={!currentNewNoteContent?.trim() || isBusy}
-                className="h-6 text-xs px-2.5 font-medium cursor-pointer rounded-md shadow-2xs focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+                className="h-6 text-xs px-2.5 font-medium cursor-pointer rounded-md focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
               >
                 {isCreating ? (
                   <Loader2 className="size-3 animate-spin mr-1 shrink-0" />
@@ -407,7 +407,7 @@ export default function NotesPanel({
           </div>
         ) : displayNotes.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center px-4 py-8">
-            <div className="flex size-9 items-center justify-center rounded-md border border-border bg-background shadow-2xs">
+            <div className="flex size-9 items-center justify-center rounded-md border border-border bg-background">
               <FileText className="size-4 text-foreground shrink-0" />
             </div>
             <p className="mt-2 text-xs font-medium text-foreground">No notes recorded</p>
@@ -524,7 +524,7 @@ export default function NotesPanel({
                             {note.tags.map((t) => (
                               <span
                                 key={t}
-                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm text-10 font-mono bg-background text-foreground border border-border shadow-2xs"
+                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm text-10 font-mono bg-background text-foreground border border-border"
                               >
                                 <Tag className="size-2.5 text-foreground shrink-0" />
                                 <span>{t}</span>

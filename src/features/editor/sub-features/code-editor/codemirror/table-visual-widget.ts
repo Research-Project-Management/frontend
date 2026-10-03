@@ -313,8 +313,7 @@ export class TableWidget extends WidgetType {
 
       // Container for Visual Table
       const container = document.createElement('div');
-      container.className =
-        'relative bg-background rounded-md border border-border/80 p-2 shadow-xs transition-shadow hover:shadow-md';
+      container.className = 'relative my-2';
 
       // 1. Floating Action Toolbar (Overleaf 1:1 Parity)
       const toolbar = this.buildToolbar(view, render);
@@ -350,14 +349,14 @@ export class TableWidget extends WidgetType {
   private buildToolbar(view: EditorView, rerender: () => void): HTMLElement {
     const bar = document.createElement('div');
     bar.className =
-      'flex flex-wrap items-center gap-1.5 p-1.5 mb-2 bg-popover text-popover-foreground border border-border/70 rounded-md shadow-raised-200 text-xs select-none';
+      'flex flex-wrap items-center gap-1.5 p-1.5 mb-2 bg-muted/40 text-foreground border border-border/60 rounded-md text-xs select-none';
 
     // ── 1. Caption Dropdown ──
     const captionBtn = document.createElement('button');
     captionBtn.type = 'button';
     captionBtn.className =
       'h-7 px-2.5 rounded border border-border/60 hover:bg-muted font-medium flex items-center gap-1.5 transition-colors cursor-pointer text-11 text-foreground/80';
-    captionBtn.innerHTML = `<span>${this.parsed.caption ? `Caption: "${this.parsed.caption.slice(0, 14)}..."` : 'No caption'}</span><span class="text-[10px] text-muted-foreground">▾</span>`;
+    captionBtn.innerHTML = `<span>${this.parsed.caption ? `Caption: "${this.parsed.caption.slice(0, 14)}..."` : 'No caption'}</span><span class="text-[11px] text-muted-foreground">▾</span>`;
     captionBtn.title = 'Edit table caption';
     captionBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -438,7 +437,7 @@ export class TableWidget extends WidgetType {
     widthBtn.className =
       'h-7 px-2 rounded border border-border/60 hover:bg-muted font-medium flex items-center gap-1 transition-colors cursor-pointer text-11 text-foreground/80';
     const activeWidth = this.selectedCol !== null ? this.parsed.colWidths[this.selectedCol] : null;
-    widthBtn.innerHTML = `<span>⟷ ${activeWidth ? activeWidth : 'Auto'}</span><span class="text-[10px] text-muted-foreground">▾</span>`;
+    widthBtn.innerHTML = `<span>⟷ ${activeWidth ? activeWidth : 'Auto'}</span><span class="text-[11px] text-muted-foreground">▾</span>`;
     widthBtn.title = 'Set column width (Stretch vs Fixed width e.g. 8cm)';
     widthBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -457,7 +456,7 @@ export class TableWidget extends WidgetType {
     const codeBtn = document.createElement('button');
     codeBtn.type = 'button';
     codeBtn.className =
-      'h-7 px-2 rounded border border-border/60 hover:bg-muted font-mono font-bold flex items-center justify-center text-11 text-foreground/80 transition-colors cursor-pointer';
+      'h-7 px-2 rounded border border-border/60 hover:bg-muted font-mono font-semibold flex items-center justify-center text-11 text-foreground/80 transition-colors cursor-pointer';
     codeBtn.innerHTML = '{ }';
     codeBtn.title = 'View LaTeX code for this table';
     codeBtn.addEventListener('click', (e) => {
@@ -471,7 +470,7 @@ export class TableWidget extends WidgetType {
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
     addBtn.className =
-      'h-7 px-2 rounded border border-border/60 hover:bg-muted font-bold flex items-center justify-center text-12 text-foreground/80 transition-colors cursor-pointer';
+      'h-7 px-2 rounded border border-border/60 hover:bg-muted font-semibold flex items-center justify-center text-12 text-foreground/80 transition-colors cursor-pointer';
     addBtn.innerHTML = '+';
     addBtn.title = 'Add row or column';
     addBtn.addEventListener('click', (e) => {
@@ -522,7 +521,7 @@ export class TableWidget extends WidgetType {
     const delSubBtn = document.createElement('button');
     delSubBtn.type = 'button';
     delSubBtn.className =
-      'size-6 rounded border border-border/60 hover:bg-destructive/20 hover:text-destructive text-muted-foreground flex items-center justify-center text-[10px] transition-colors cursor-pointer';
+      'size-6 rounded border border-border/60 hover:bg-destructive/20 hover:text-destructive text-muted-foreground flex items-center justify-center text-[11px] transition-colors cursor-pointer';
     delSubBtn.innerHTML = '🗑️';
     delSubBtn.title = 'Delete selected row or column';
     delSubBtn.addEventListener('click', (e) => {
@@ -551,7 +550,7 @@ export class TableWidget extends WidgetType {
     const helpBtn = document.createElement('button');
     helpBtn.type = 'button';
     helpBtn.className =
-      'size-6 rounded-full border border-border/60 hover:bg-muted text-muted-foreground flex items-center justify-center text-[11px] font-bold transition-colors cursor-pointer';
+      'size-6 rounded-full border border-border/60 hover:bg-muted text-muted-foreground flex items-center justify-center text-[11px] font-semibold transition-colors cursor-pointer';
     helpBtn.innerHTML = '?';
     helpBtn.title = 'Table shortcuts & tips';
     helpBtn.addEventListener('click', (e) => {
@@ -587,7 +586,7 @@ export class TableWidget extends WidgetType {
       if (widthVal || isSelected) {
         const pill = document.createElement('div');
         pill.className =
-          'mb-0.5 px-1.5 py-0.5 rounded text-[10px] font-mono bg-muted text-foreground border border-border/80 shadow-2xs font-semibold whitespace-nowrap';
+          'mb-0.5 px-1.5 py-0.5 rounded text-[11px] font-mono bg-muted text-foreground border border-border font-semibold whitespace-nowrap';
         pill.textContent = `|→ ${widthVal || 'auto'}`;
         colWrap.appendChild(pill);
       }
@@ -741,13 +740,13 @@ export class TableWidget extends WidgetType {
   private buildCodeView(view: EditorView, rerender: () => void): HTMLElement {
     const wrap = document.createElement('div');
     wrap.className =
-      'p-3 bg-muted/40 border border-border rounded-md font-mono text-xs flex flex-col gap-2 shadow-xs';
+      'p-3 bg-muted/40 border border-border rounded-md font-mono text-xs flex flex-col gap-2';
 
     const header = document.createElement('div');
     header.className = 'flex items-center justify-between pb-1.5 border-b border-border/60 text-11 text-muted-foreground select-none';
     header.innerHTML = `
       <div class="flex items-center gap-1.5 font-semibold text-foreground">
-        <span class="text-primary font-bold">{ }</span>
+        <span class="text-primary font-semibold">{ }</span>
         <span>Raw LaTeX Table Source</span>
       </div>
     `;

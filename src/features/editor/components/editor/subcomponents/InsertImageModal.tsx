@@ -98,7 +98,7 @@ export function InsertImageModal({
                   className={cn(
                     'px-2.5 py-1 rounded-sm text-xs font-mono font-medium border transition-colors cursor-pointer',
                     width === preset.value
-                      ? 'bg-primary text-primary-foreground border-primary shadow-2xs'
+                      ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-background hover:bg-muted text-foreground border-border',
                   )}
                 >

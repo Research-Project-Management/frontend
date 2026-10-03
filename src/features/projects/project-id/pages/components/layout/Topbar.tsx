@@ -67,7 +67,7 @@ export function Topbar({
           className={cn(
             'relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-md overflow-hidden group focus-visible:ring-2 focus-visible:ring-ring',
             isSearching
-              ? 'w-48 sm:w-64 border border-border bg-background shadow-2xs'
+              ? 'w-48 sm:w-64 border border-border bg-background'
               : 'w-8 hover:bg-muted cursor-pointer'
           )}
           onClick={() => {
@@ -130,7 +130,7 @@ export function Topbar({
           <div
             role="tablist"
             aria-label="View mode"
-            className="flex items-center bg-muted/70 p-0.5 rounded-md shrink-0 gap-0.5 h-8 border border-border/40 shadow-2xs"
+            className="flex items-center bg-muted/70 p-0.5 rounded-md shrink-0 gap-0.5 h-8 border border-border/40"
           >
             {VIEW_OPTIONS.map((opt) => {
               const IconComp = opt.icon;
@@ -154,7 +154,7 @@ export function Topbar({
                       {isSelected && (
                         <motion.div
                           layoutId="pages-view-toggle"
-                          className="absolute inset-0 bg-background rounded-md shadow-2xs border border-border/50"
+                          className="absolute inset-0 bg-background rounded-md border border-border/50"
                           transition={{ type: 'spring', bounce: 0.15, duration: 0.4 }}
                         />
                       )}

@@ -42,14 +42,14 @@ function getDisplayName(user: { name: string; email?: string }): string {
 function getRoleLabel(role: string): string {
   switch (role.toLowerCase()) {
     case 'owner':
-      return 'Owner (Trưởng nhóm)';
+      return 'Owner';
     case 'coordinator':
-      return 'Coordinator (Điều phối viên)';
+      return 'Coordinator';
     case 'contributor':
-      return 'Contributor (Thành viên)';
+      return 'Contributor';
     case 'reviewer':
     case 'commenter':
-      return 'Reviewer (Phản biện)';
+      return 'Reviewer';
     default:
       return role.charAt(0).toUpperCase() + role.slice(1);
   }
@@ -132,17 +132,17 @@ export function Item({
                     value="owner"
                     className="text-xs cursor-pointer text-amber-600 dark:text-amber-400 font-medium"
                   >
-                    Owner (Chuyển quyền chủ sở hữu)
+                    Owner (Transfer ownership)
                   </DropdownMenuRadioItem>
                 )}
                 <DropdownMenuRadioItem value="coordinator" className="text-xs cursor-pointer">
-                  Coordinator (Điều phối viên)
+                  Coordinator
                 </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="contributor" className="text-xs cursor-pointer">
-                  Contributor (Thành viên)
+                  Contributor
                 </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="reviewer" className="text-xs cursor-pointer">
-                  Reviewer (GVHD / Phản biện)
+                  Reviewer (Advisor / Reviewer)
                 </DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
@@ -174,7 +174,7 @@ export function Item({
               {isOwner && onTransferOwnership && (
                 <DropdownMenuItem
                   onClick={onTransferOwnership}
-                  className="text-xs font-medium cursor-pointer rounded-md flex items-center gap-2 text-amber-600 dark:text-amber-400 focus:text-amber-600 focus:bg-amber-500/10"
+                  className="text-xs font-medium cursor-pointer rounded-md flex items-center gap-2 text-amber-600 dark:text-amber-400 focus:text-amber-600 focus:bg-muted"
                 >
                   <Crown className="size-3.5 shrink-0" />
                   <span>Transfer ownership</span>
@@ -182,7 +182,7 @@ export function Item({
               )}
               <DropdownMenuItem
                 onClick={onRemove}
-                className="text-xs font-medium cursor-pointer rounded-md flex items-center gap-2 text-destructive focus:text-destructive focus:bg-destructive/10"
+                className="text-xs font-medium cursor-pointer rounded-md flex items-center gap-2 text-destructive focus:text-destructive focus:bg-muted"
               >
                 <Trash2 className="size-3.5 shrink-0" />
                 <span>Remove member</span>

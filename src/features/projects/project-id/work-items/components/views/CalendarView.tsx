@@ -453,7 +453,7 @@ export function CalendarView({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="w-44 p-1 rounded-md border border-border bg-popover shadow-2xs z-50"
+                className="w-44 p-1 rounded-md border border-border bg-popover shadow-md z-50"
               >
                 <DropdownMenuItem
                   onClick={() => setLayoutMode("month")}
@@ -812,7 +812,7 @@ const CalendarDayCell = memo(({
       {/* Day number header row - perfectly positioned top right */}
       <div className="flex items-center justify-end px-3 pt-2 pb-1 text-right select-none">
         {isThisToday ? (
-          <span className="inline-flex size-5.5 items-center justify-center rounded-full bg-primary text-11 font-semibold text-primary-foreground shadow-xs">
+          <span className="inline-flex size-5.5 items-center justify-center rounded-full bg-primary text-11 font-semibold text-primary-foreground">
             {format(day, "d")}
           </span>
         ) : (
@@ -893,7 +893,7 @@ const CalendarDayCell = memo(({
 
         {isQuickAdding && (
           <div className="mt-2 flex flex-col gap-2">
-            <div className="relative flex w-full items-center rounded-md border border-border bg-background focus-within:border-ring shadow-2xs">
+            <div className="relative flex w-full items-center rounded-md border border-border bg-background focus-within:border-ring">
               <input
                 type="text"
                 autoFocus
@@ -1014,7 +1014,7 @@ const CalendarSpanningBar = memo(function CalendarSpanningBar({
               "group relative flex w-full items-center gap-1.5 h-6 px-2 text-left text-11 font-medium leading-tight transition-colors cursor-pointer border select-none",
               isContinuedFromPrev ? "rounded-l-none border-l-0" : "rounded-l-md",
               isContinuedToNext ? "rounded-r-none border-r-0" : "rounded-r-md",
-              "border-border bg-card hover:bg-muted text-foreground shadow-2xs",
+              "border-border bg-card hover:bg-muted text-foreground",
               isDragging && "z-50 opacity-40 border-primary"
             )}
             style={{

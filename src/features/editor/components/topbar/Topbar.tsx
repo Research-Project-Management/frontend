@@ -80,24 +80,24 @@ export default function Topbar() {
   }, []);
 
   return (
-    <nav
-      aria-label="Editor toolbar"
-      className="flex h-11 items-center justify-between gap-2 px-3 py-1 bg-muted border-b border-border shrink-0 z-10 select-none"
-    >
-      {/* ── Left: Logo (Back to project / Home), Main Menubar ── */}
-      <div className="flex items-center min-w-0 shrink-0 gap-1">
-        {/* Mobile sidebar drawer trigger */}
-        <button
-          type="button"
-          onClick={() => EditorEventBus.emit('flux:toggle-sidebar')}
-          title="Open Explorer & Tools"
-          aria-label="Open Explorer & Tools"
-          className="md:hidden flex items-center justify-center p-1.5 rounded-sm text-foreground hover:bg-sidebar-hover transition-colors mr-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-        >
-          <PanelLeft className="size-4 shrink-0" />
-        </button>
+    <TooltipProvider delayDuration={150}>
+      <nav
+        aria-label="Editor toolbar"
+        className="flex h-11 items-center justify-between gap-2 px-3 py-1 bg-muted shrink-0 z-10 select-none"
+      >
+        {/* ── Left: Logo (Back to project / Home), Main Menubar ── */}
+        <div className="flex items-center min-w-0 shrink-0 gap-1">
+          {/* Mobile sidebar drawer trigger */}
+          <button
+            type="button"
+            onClick={() => EditorEventBus.emit('flux:toggle-sidebar')}
+            title="Open Explorer & Tools"
+            aria-label="Open Explorer & Tools"
+            className="md:hidden relative flex items-center justify-center p-1.5 rounded-md text-foreground hover:bg-sidebar-hover transition-colors mr-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
+          >
+            <PanelLeft className="size-4 shrink-0" />
+          </button>
 
-        <TooltipProvider delayDuration={150}>
           {/* Single Logo button: click to go back to project, hover transforms to Home icon */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -121,51 +121,54 @@ export default function Topbar() {
               Back to your project
             </TooltipContent>
           </Tooltip>
-        </TooltipProvider>
 
-        <Menubar className="h-8 border-none bg-transparent p-0 gap-0.5 shadow-none">
-          {/* Sub-menu Tabs */}
-          <FileMenu />
-          <EditMenu />
-          <InsertMenu />
-          <ViewMenu />
-          <FormatMenu />
-        </Menubar>
-      </div>
+          <Menubar className="h-8 border-none bg-transparent p-0 gap-0.5 shadow-none">
+            {/* Sub-menu Tabs */}
+            <FileMenu />
+            <EditMenu />
+            <InsertMenu />
+            <ViewMenu />
+            <FormatMenu />
+          </Menubar>
+        </div>
 
-      {/* ── Right: Save Status, Review, History, Quick Layout Switcher & Settings Trigger ── */}
-      <div className="flex items-center gap-1.5 shrink-0">
-        {/* Save Status Indicator: only show when actively saving */}
-        {isSaving && (
-          <div className="flex items-center shrink-0 mr-0.5">
-            <span
-              className="flex items-center gap-1 text-11 font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full select-none"
-              title="Saving..."
-            >
-              <Loader2 className="size-3 animate-spin shrink-0" />
-              <span className="hidden sm:inline">Saving...</span>
-            </span>
-          </div>
-        )}
-
-
-        <button
-          type="button"
-          onClick={toggleHistory}
-          title="History (Revisions)"
-          aria-label="History"
-          className={cn(
-            "flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer outline-none select-none",
-            isHistoryOpen
-              ? "bg-background text-foreground font-semibold"
-              : "text-foreground/80 hover:text-foreground hover:bg-sidebar-hover"
+        {/* ── Right: Save Status, Review, History, Quick Layout Switcher & Settings Trigger ── */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Save Status Indicator: only show when actively saving */}
+          {isSaving && (
+            <div className="flex items-center shrink-0 mr-0.5">
+              <span
+                className="flex items-center justify-center size-6 text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-full select-none"
+                title="Saving..."
+              >
+                <Loader2 className="size-3 animate-spin shrink-0" />
+              </span>
+            </div>
           )}
-        >
-          <History className="size-3.5 shrink-0" />
-          <span className="hidden sm:inline">History</span>
-        </button>
 
-        <LayoutSwitcher />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={toggleHistory}
+                aria-label="History (Revisions)"
+                className={cn(
+                  "flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none",
+                  isHistoryOpen
+                    ? "bg-background text-foreground font-semibold"
+                    : "text-foreground/80 hover:text-foreground hover:bg-sidebar-hover"
+                )}
+              >
+                <History className="size-3.5 shrink-0" />
+                <span className="hidden sm:inline">History</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6}>
+              History (Revisions)
+            </TooltipContent>
+          </Tooltip>
+
+          <LayoutSwitcher />
 
         {isTemplateModalOpen && <TemplateGalleryModal />}
         {isShortcutsOpen && (
@@ -182,5 +185,6 @@ export default function Topbar() {
         )}
       </div>
     </nav>
+  </TooltipProvider>
   );
 }

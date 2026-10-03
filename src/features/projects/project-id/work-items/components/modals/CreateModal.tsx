@@ -864,7 +864,7 @@ export function CreateModal({
               size="sm"
               onClick={handleDiscard}
               disabled={isSubmitting}
-              className="h-8 text-13 px-3 font-medium cursor-pointer rounded-md border border-border bg-background hover:bg-muted text-foreground shadow-2xs"
+              className="h-8 text-13 px-3 font-medium cursor-pointer rounded-md border border-border bg-background hover:bg-muted text-foreground"
             >
               Discard
             </Button>

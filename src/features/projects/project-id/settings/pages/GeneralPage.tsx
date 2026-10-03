@@ -4,7 +4,7 @@ import React from 'react';
 import { useParams } from 'next/navigation';
 import { Settings } from 'lucide-react';
 import { Skeleton } from "@/shared/components/ui";
-import TopBar from '../components/layout/TopBar';
+import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
 import { GeneralBanner } from '../components/general/Banner';
 import { GeneralDetails } from '../components/general/Details';
 import { GeneralDanger } from '../components/general/Danger';
@@ -48,46 +48,39 @@ export default function GeneralPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-full w-full bg-background">
-        <TopBar
-          title="General"
-          Icon={Settings}
-        />
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
+      <PageLayout>
+        <PageHeader title="General" icon={Settings} />
+        <PageContent maxWidth="md">
+          <div className="space-y-6">
             <Skeleton className="h-44 w-full rounded-md" />
             <Skeleton className="h-10 w-full rounded-md" />
             <Skeleton className="h-28 w-full rounded-md" />
             <Skeleton className="h-10 w-full rounded-md" />
           </div>
-        </div>
-      </div>
+        </PageContent>
+      </PageLayout>
     );
   }
 
   if (isError || !project) {
     return (
-      <div className="flex flex-col h-full w-full bg-background">
-        <TopBar
-          title="General"
-          Icon={Settings}
-        />
-        <div className="flex-1 p-5 md:p-6 text-sm text-muted-foreground">
-          Error loading project details.
-        </div>
-      </div>
+      <PageLayout>
+        <PageHeader title="General" icon={Settings} />
+        <PageContent maxWidth="md">
+          <div className="text-sm text-muted-foreground">
+            Error loading project details.
+          </div>
+        </PageContent>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="flex flex-col h-full w-full bg-background">
-      <TopBar
-        title="General"
-        Icon={Settings}
-      />
+    <PageLayout>
+      <PageHeader title="General" icon={Settings} />
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
+      <PageContent maxWidth="md">
+        <div className="space-y-6">
           {/* ── Visual Banner & Icon ── */}
           <GeneralBanner
             name={name}
@@ -125,7 +118,7 @@ export default function GeneralPage() {
             isDeleting={isDeleting}
           />
         </div>
-      </div>
-    </div>
+      </PageContent>
+    </PageLayout>
   );
 }

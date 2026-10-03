@@ -189,7 +189,7 @@ export function Card({ project, onArchive, onManageTags }: CardProps) {
       </div>
 
       {/* Avatar Icon Badge (overlapping banner bottom) */}
-      <div className="absolute top-16 left-4 size-10 rounded-lg bg-background border border-border flex items-center justify-center shrink-0 overflow-hidden shadow-xs">
+      <div className="absolute top-16 left-4 size-10 rounded-lg bg-background border border-border flex items-center justify-center shrink-0 overflow-hidden">
         <ProjectAvatar avatar={project.avatar} name={project.name} id={projectId} size="lg" />
       </div>
 

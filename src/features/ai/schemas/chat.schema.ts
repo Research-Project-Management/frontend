@@ -75,9 +75,18 @@ export const agentActionSchema = z.object({
   success: z.boolean().optional(),
 });
 
+export const messageAttachmentSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  size: z.number().optional(),
+  type: z.string().optional(),
+  sourceType: z.enum(['upload', 'library', 'storage']).optional(),
+});
+
 export const chatMessageSchema = z.object({
   role: z.enum(['user', 'assistant']),
   content: z.string(),
+  attachments: z.array(messageAttachmentSchema).optional(),
   sources: z.array(sourceItemSchema).optional(),
   widgets: z.array(responseWidgetSchema).optional(),
   actions: z.array(agentActionSchema).optional(),

@@ -13,6 +13,7 @@ import {
   FolderUp,
   FolderPlus,
   FolderInput,
+  PanelLeft,
   PanelRight,
   Wand2,
   Book,
@@ -98,6 +99,8 @@ export interface TopbarProps {
   onImportFromPersonal?: () => void;
   isSubcollection?: boolean;
   onNavigateCrumb?: (crumbId?: string) => void;
+  showSidebarToggle?: boolean;
+  onToggleSidebar?: () => void;
   showInspectorToggle?: boolean;
   onToggleInspector?: () => void;
   canEdit?: boolean;
@@ -121,6 +124,8 @@ export function LibraryTopbar({
   search,
   onSearchChange,
   searchPlaceholder = 'Search references...',
+  showSidebarToggle = true,
+  onToggleSidebar,
   showFilter = true,
   showDisplay = true,
   displayOptions: propDisplayOptions,
@@ -145,7 +150,14 @@ export function LibraryTopbar({
   children,
   className,
 }: TopbarProps) {
-  const { isInspectorOpen, toggleInspector, activeScope } = useLibrarySidebarStore();
+  const {
+    isOpen,
+    toggle,
+    isInspectorOpen,
+    toggleInspector,
+    activeScope,
+  } = useLibrarySidebarStore();
+  const handleToggleSidebar = onToggleSidebar || toggle;
   const isEffectiveCanEdit =
     canEdit &&
     (activeScope.type === 'personal' ||
@@ -213,6 +225,34 @@ export function LibraryTopbar({
     >
       {/* Left Section: Breadcrumbs / Title */}
       <div className="flex items-center gap-2.5 min-w-0 shrink-0 mr-2">
+        {showSidebarToggle && !isOpen && (
+          <div className="flex items-center gap-1.5 -ml-1 mr-0.5">
+            <Tooltip delayDuration={700}>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleToggleSidebar}
+                  className="size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0"
+                  aria-label="Expand sidebar"
+                >
+                  <PanelLeft className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                align="start"
+                sideOffset={6}
+                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+              >
+                Expand sidebar
+              </TooltipContent>
+            </Tooltip>
+            <div className="h-4 w-px bg-border shrink-0" aria-hidden="true" />
+          </div>
+        )}
+
         {breadcrumbs && breadcrumbs.length > 0 ? (
           <nav aria-label="Breadcrumbs" className="flex items-center gap-1.5 sm:gap-2 min-w-0 overflow-hidden">
             {breadcrumbs.map((crumb, idx) => {
@@ -524,7 +564,7 @@ export function LibraryTopbar({
                 side="bottom"
                 align="end"
                 sideOffset={6}
-                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
               >
                 Expand panel
               </TooltipContent>

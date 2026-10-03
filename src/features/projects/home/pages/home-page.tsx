@@ -117,14 +117,16 @@ export default function HomePage() {
               </div>
             ) : (
               <>
-                <h2 className="text-3xl font-semibold tracking-tight text-foreground leading-tight">
+                <h1 className="text-24 md:text-26 font-semibold tracking-tight text-foreground leading-tight">
                   {greeting.text}{fullName ? `, ${fullName}` : ""}
-                </h2>
+                </h1>
                 <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mt-1.5" suppressHydrationWarning>
                   <span className="text-base">
                     {greeting.icon}
                   </span>
-                  <span suppressHydrationWarning>{mounted ? format(now, "EEEE, MMMM do, h:mm a") : ""}</span>
+                  <span className="font-mono text-11 text-muted-foreground" suppressHydrationWarning>
+                    {mounted ? format(now, "EEEE, MMMM do, h:mm a") : ""}
+                  </span>
                 </div>
               </>
             )}
@@ -140,19 +142,20 @@ export default function HomePage() {
               <Comp key={id} />
             ))
           ) : mounted ? (
-            <div className="flex flex-col items-center justify-center p-12 text-center rounded-lg border-2 border-dashed border-border bg-muted mx-6 mb-6">
-              <div className="size-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-5">
-                <Shapes className="size-6 shrink-0" />
+            <div className="flex flex-col items-center justify-center py-12 px-6 text-center mx-auto max-w-md">
+              <div className="size-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4">
+                <Shapes className="size-5 shrink-0" />
               </div>
               <h3 className="text-base font-semibold text-foreground mb-1">
                 It's Quiet Without Widgets
               </h3>
-              <p className="text-sm text-muted-foreground max-w-[350px]">
+              <p className="text-13 text-foreground/75 max-w-[350px]">
                 It looks like all your widgets are turned off. Enable them now to enhance your experience.
               </p>
               <button
+                type="button"
                 onClick={() => setSettingsOpen(true)}
-                className="mt-6 px-5 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary-hover text-sm font-medium transition-colors shadow-none"
+                className="mt-5 px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary-hover text-13 font-medium transition-colors cursor-pointer shadow-none"
               >
                 Enable Widgets
               </button>

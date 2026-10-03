@@ -239,7 +239,7 @@ export function ProjectViewListItem({
             <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem
               onClick={() => onDelete(view)}
-              className="flex items-center gap-2 text-xs cursor-pointer px-2 py-1.5 rounded-sm text-destructive focus:text-destructive focus:bg-destructive/10"
+              className="flex items-center gap-2 text-xs cursor-pointer px-2 py-1.5 rounded-sm text-destructive focus:text-destructive focus:bg-muted"
             >
               <Trash2 className="size-3.5" />
               <span>Delete view</span>

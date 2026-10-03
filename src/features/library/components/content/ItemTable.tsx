@@ -19,6 +19,7 @@ import {
 import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
   type LibraryDisplayOptions,
+  type LibraryOrderBy,
 } from '../topbar/LibraryDisplayPopover';
 import { sortLibraryItems } from '../../utils/sort-items';
 import { ItemTableHeader } from './ItemTableHeader';
@@ -184,7 +185,7 @@ export const ItemTable = React.memo(function ItemTable({
       // Client-sort mode: update store so Topbar reflects the active sort column
       setStoreDisplayOptions?.((prev) => ({
         ...prev,
-        orderBy: columnKey as any,
+        orderBy: columnKey as LibraryOrderBy,
         orderDirection: nextDir,
       }));
     }

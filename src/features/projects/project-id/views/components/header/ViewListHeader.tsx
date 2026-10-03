@@ -117,7 +117,7 @@ export function ViewListHeader({
           ) : (
             <div
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-background transition-all duration-200 shadow-sm w-60'
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-background transition-all duration-200 w-60'
               )}
             >
               <Search className="size-3.5 text-muted-foreground shrink-0" />
@@ -151,7 +151,7 @@ export function ViewListHeader({
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-2.5 text-xs font-normal rounded-md border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
+              className="h-8 px-2.5 text-xs font-normal rounded-md border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shrink-0"
             >
               {sortBy === 'asc' ? <SortAscendingIcon /> : <SortDescendingIcon />}
               <span>{activeSortLabel}</span>
@@ -208,7 +208,7 @@ export function ViewListHeader({
               variant="outline"
               size="sm"
               className={cn(
-                'h-8 px-2.5 text-xs font-normal rounded-md border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0',
+                'h-8 px-2.5 text-xs font-normal rounded-md border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shrink-0',
                 isFiltersApplied && 'bg-muted border-primary/40 font-medium'
               )}
             >

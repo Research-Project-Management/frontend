@@ -6,6 +6,10 @@ import {
   Brain,
   ExternalLink,
   FileText,
+  FileImage,
+  FileSpreadsheet,
+  FileCode,
+  File,
   Quote,
   CornerDownRight,
   ArrowDown,
@@ -13,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import type { ChatMessage, SourceItem, AgentId, AgentAction } from '../types/chat.types';
+import type { ChatMessage, SourceItem, AgentId, AgentAction, MessageAttachment } from '../types/chat.types';
 import { renderMarkdown } from '../utils/render-markdown';
 import { ChatInput } from '../components/chat/chat-input';
 import { ActionCardsGroup } from '../components/chat/action-card';
@@ -161,10 +165,64 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
   );
 }
 
+function formatBytes(bytes?: number) {
+  if (!bytes || isNaN(bytes)) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getAttachmentVisuals(name: string, sourceType?: string, size?: number) {
+  const parts = (name || '').split('.');
+  const ext = (parts.length > 1 ? parts.pop() || '' : '').toLowerCase();
+  const extLabel = ext ? ext.toUpperCase() : 'FILE';
+  const sizeText = size ? formatBytes(size) : '';
+
+  if (ext === 'pdf') {
+    return {
+      typeLabel: 'PDF',
+      sizeText,
+      icon: FileText,
+      iconColor: 'text-destructive bg-destructive/10 border-destructive/20',
+    };
+  }
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) {
+    return {
+      typeLabel: extLabel,
+      sizeText,
+      icon: FileImage,
+      iconColor: 'text-primary bg-primary/10 border-primary/20',
+    };
+  }
+  if (['xls', 'xlsx', 'csv'].includes(ext)) {
+    return {
+      typeLabel: 'Spreadsheet',
+      sizeText,
+      icon: FileSpreadsheet,
+      iconColor: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
+    };
+  }
+  if (['ts', 'tsx', 'js', 'jsx', 'json', 'py', 'java', 'cpp', 'c', 'go', 'rs', 'md', 'txt'].includes(ext)) {
+    return {
+      typeLabel: extLabel,
+      sizeText,
+      icon: FileCode,
+      iconColor: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
+    };
+  }
+  return {
+    typeLabel: extLabel,
+    sizeText,
+    icon: File,
+    iconColor: 'text-muted-foreground bg-muted border-border',
+  };
+}
+
 const MessageBubble = memo(function MessageBubble({
   content,
   role,
   isStreaming = false,
+  attachments,
   sources,
   actions,
   widgets,
@@ -172,6 +230,7 @@ const MessageBubble = memo(function MessageBubble({
   content: string;
   role: 'user' | 'assistant';
   isStreaming?: boolean;
+  attachments?: MessageAttachment[];
   sources?: SourceItem[];
   actions?: AgentAction[];
   widgets?: ChatMessage['widgets'];
@@ -192,7 +251,41 @@ const MessageBubble = memo(function MessageBubble({
         }`}
       >
         {isUser ? (
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
+          <div>
+            {attachments && attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {attachments.map((att, attIdx) => {
+                  const visuals = getAttachmentVisuals(att.name, att.sourceType, att.size);
+                  const Icon = visuals.icon;
+                  return (
+                    <div
+                      key={att.id || attIdx}
+                      className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-background/90 dark:bg-background/70 border border-border/80 shadow-xs max-w-xs select-none"
+                    >
+                      <div className={cn("size-7 rounded-md flex items-center justify-center shrink-0 border", visuals.iconColor)}>
+                        <Icon className="size-3.5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-11 font-medium text-foreground truncate" title={att.name}>
+                          {att.name}
+                        </p>
+                        <div className="flex items-center gap-1.5 text-10 text-muted-foreground">
+                          <span>{visuals.typeLabel}</span>
+                          {visuals.sizeText && (
+                            <>
+                              <span>•</span>
+                              <span>{visuals.sizeText}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
+          </div>
         ) : (
           <div className="text-sm leading-relaxed space-y-0.5">
             {(() => {
@@ -373,6 +466,7 @@ export function ChatPage() {
                 key={i}
                 content={msg.content}
                 role={msg.role}
+                attachments={msg.attachments}
                 sources={msg.sources}
                 actions={msg.actions}
                 widgets={msg.widgets}

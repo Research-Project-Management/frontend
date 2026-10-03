@@ -126,7 +126,7 @@ export function Sidebar({
               value={outlineFilter}
               onChange={(e) => setOutlineFilter(e.target.value)}
               placeholder="Filter outline..."
-              className="w-full h-7 pl-7 pr-6 text-11 bg-background border border-border rounded-md shadow-2xs text-foreground placeholder:text-foreground/70 outline-none focus:border-primary transition-colors font-sans"
+              className="w-full h-7 pl-7 pr-6 text-11 bg-background border border-border rounded-md text-foreground placeholder:text-foreground/70 outline-none focus:border-primary transition-colors font-sans"
             />
             {outlineFilter && (
               <button

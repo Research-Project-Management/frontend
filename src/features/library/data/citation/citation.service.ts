@@ -5,6 +5,18 @@ import { cleanDoi, isProjectScope } from '../../domain';
 
 export type { ReferenceData, CslStyleMetadata };
 
+function extractReferenceData(response: unknown): ReferenceData | null {
+  if (!response || typeof response !== 'object') return null;
+  const res = response as Record<string, any>;
+  if (res.found === false) return null;
+  const candidate = (res.metadata || res.work || res.data || res) as Partial<ReferenceData> | undefined;
+  if (!candidate || typeof candidate !== 'object') return null;
+  return {
+    ...candidate,
+    title: candidate.title || '',
+  } as ReferenceData;
+}
+
 export async function fetchReferenceByDoi(
   doi: string,
   _scopeId?: string,
@@ -17,22 +29,12 @@ export async function fetchReferenceByDoi(
   const resolveUrl = `/api/v1/library/citation/resolve`;
 
   try {
-    const referenceResponse = await apiPost<{
-      work?: ReferenceData;
-      data?: ReferenceData;
-      metadata?: ReferenceData;
-      found?: boolean;
-    } | ReferenceData>(
+    const referenceResponse = await apiPost<unknown>(
       resolveUrl,
       { doi: normalizedDoi },
       { silent: true },
     );
-    const res = referenceResponse as any;
-    if (res?.found === false) return null;
-    if (res?.metadata) return res.metadata as ReferenceData;
-    if (res?.work) return res.work as ReferenceData;
-    if (res?.data) return res.data as ReferenceData;
-    return referenceResponse as ReferenceData;
+    return extractReferenceData(referenceResponse);
   } catch (error: any) {
     if (error?.statusCode === 404 || error?.response?.status === 404) {
       return null;
@@ -40,21 +42,11 @@ export async function fetchReferenceByDoi(
     // Fallback: GET by encoded DOI
     try {
       const doiUrl = `/api/v1/library/citation/doi/${encodeURIComponent(normalizedDoi)}`;
-      const fallback = await apiGet<{
-        work?: ReferenceData;
-        data?: ReferenceData;
-        metadata?: ReferenceData;
-        found?: boolean;
-      } | ReferenceData>(
+      const fallback = await apiGet<unknown>(
         doiUrl,
         { silent: true },
       );
-      const fb = fallback as any;
-      if (fb?.found === false) return null;
-      if (fb?.metadata) return fb.metadata as ReferenceData;
-      if (fb?.work) return fb.work as ReferenceData;
-      if (fb?.data) return fb.data as ReferenceData;
-      return fallback as ReferenceData;
+      return extractReferenceData(fallback);
     } catch (fallbackError: any) {
       if (
         fallbackError?.statusCode === 404 ||
@@ -162,13 +154,13 @@ export const CitationService = {
    * Upload custom CSL XML style (POST /citation/styles/custom)
    */
   uploadCustomStyle: (xml: string, title?: string) => {
-    return apiPost<{ styleId: string; id: string; title: string; message: string }>(
+    return apiPost<{ styleId?: string; id?: string; title: string; message: string }>(
       `/api/v1/library/citation/styles/custom`,
       { xml, title },
     ).then((res) => ({
       ...res,
-      id: (res as any)?.id || (res as any)?.styleId || '',
-      styleId: (res as any)?.styleId || (res as any)?.id || '',
+      id: res.id || res.styleId || '',
+      styleId: res.styleId || res.id || '',
     }));
   },
 

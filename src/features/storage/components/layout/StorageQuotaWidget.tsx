@@ -113,7 +113,7 @@ export function StorageQuotaWidget({
   return (
     <div
       className={cn(
-        'group relative flex flex-col gap-2 rounded-lg border border-border/70 bg-card/60 p-3 text-card-foreground shadow-xs transition-colors hover:border-border select-none',
+        'group relative flex flex-col gap-2 rounded-lg border border-border/70 bg-card/60 p-3 text-card-foreground transition-colors hover:border-border select-none',
         className
       )}
     >

@@ -178,7 +178,7 @@ export default function FigureWizardModal({
               size="sm"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadFile.isPending}
-              className="gap-1.5 h-7 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-2xs"
+              className="gap-1.5 h-7 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground"
             >
               {uploadFile.isPending ? (
                 <Loader2 className="size-3 animate-spin text-primary" />
@@ -211,11 +211,19 @@ export default function FigureWizardModal({
                 return (
                   <div
                     key={img.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleSelectImage(img.filename)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleSelectImage(img.filename);
+                      }
+                    }}
                     className={cn(
-                      'group relative rounded-md border p-1.5 flex flex-col items-center gap-1.5 cursor-pointer transition-all',
+                      'group relative rounded-md border p-1.5 flex flex-col items-center gap-1.5 cursor-pointer transition-all outline-none focus-visible:ring-1 focus-visible:ring-primary',
                       isSelected
-                        ? 'bg-primary/10 border-primary shadow-2xs'
+                        ? 'bg-primary/10 border-primary'
                         : 'bg-background border-border hover:border-border hover:bg-muted/40'
                     )}
                   >
@@ -235,7 +243,7 @@ export default function FigureWizardModal({
                     </span>
 
                     {isSelected && (
-                      <div className="absolute top-1 right-1 size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-2xs">
+                      <div className="absolute top-1 right-1 size-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
                         <Check className="size-2.5" strokeWidth={3} />
                       </div>
                     )}
@@ -260,10 +268,10 @@ export default function FigureWizardModal({
                   type="button"
                   onClick={() => setWidth(p.id)}
                   className={cn(
-                    'h-7 px-2 text-11 font-medium rounded-sm border truncate text-center transition-colors cursor-pointer',
+                    'h-7 px-2 text-11 font-medium rounded-sm border truncate text-center transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                     width === p.id
                       ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background border-border text-foreground hover:bg-muted shadow-2xs'
+                      : 'bg-background border-border text-foreground hover:bg-muted'
                   )}
                 >
                   {p.label}
@@ -311,10 +319,10 @@ export default function FigureWizardModal({
                     type="button"
                     onClick={() => setPlacement(spec)}
                     className={cn(
-                      'px-2 py-0.5 text-11 font-mono rounded-sm border transition-colors cursor-pointer',
+                      'px-2 py-0.5 text-11 font-mono rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                       placement === spec
                         ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background border-border text-foreground hover:bg-muted shadow-2xs'
+                        : 'bg-background border-border text-foreground hover:bg-muted'
                     )}
                   >
                     [{spec}]
@@ -352,7 +360,7 @@ export default function FigureWizardModal({
             variant="outline"
             size="sm"
             onClick={handleCopyCode}
-            className="gap-1.5 h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-2xs"
+            className="gap-1.5 h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <Copy className="size-3.5" />
             Copy Code
@@ -364,7 +372,7 @@ export default function FigureWizardModal({
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-2xs"
+              className="h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               Cancel
             </Button>
@@ -373,7 +381,7 @@ export default function FigureWizardModal({
               variant="default"
               size="sm"
               onClick={handleInsert}
-              className="gap-1.5 h-8 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-2xs cursor-pointer"
+              className="gap-1.5 h-8 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Check className="size-3.5" />
               Insert Figure

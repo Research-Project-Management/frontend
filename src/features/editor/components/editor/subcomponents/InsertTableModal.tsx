@@ -133,7 +133,7 @@ ${hasHeader ? `    ${headerCols} \\\\\n    \\hline\n` : ''}${bodyRows}    \\hlin
                       className={cn(
                         'size-5 rounded-xs border transition-all duration-100 cursor-pointer',
                         isSelected
-                          ? 'bg-primary border-primary text-primary-foreground shadow-2xs'
+                          ? 'bg-primary border-primary text-primary-foreground'
                           : 'bg-background/80 border-border/80 hover:border-primary/50',
                       )}
                       onMouseEnter={() => {
@@ -189,7 +189,7 @@ ${hasHeader ? `    ${headerCols} \\\\\n    \\hline\n` : ''}${bodyRows}    \\hlin
                     className={cn(
                       'px-2.5 py-0.5 rounded-sm text-xs font-mono font-medium transition-colors cursor-pointer',
                       alignment === mode
-                        ? 'bg-background text-foreground shadow-2xs'
+                        ? 'bg-background text-foreground'
                         : 'text-muted-foreground hover:text-foreground',
                     )}
                   >

@@ -26,7 +26,7 @@ const DeleteModal = dynamic(
     ),
   { ssr: false }
 );
-import TopBar from '../components/layout/TopBar';
+import { PageLayout, PageHeader, PageContent, PageToolbar, EmptyState } from '@/shared/components/layout';
 import {
   Tag,
   Search,
@@ -374,83 +374,71 @@ export default function LabelPage() {
 
   if (isLoadingLabels || isLoadingProject) {
     return (
-      <div className="flex flex-col h-full w-full bg-background">
-        <TopBar title="Labels" Icon={Tag} />
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto p-6 md:p-8 space-y-6">
+      <PageLayout>
+        <PageHeader title="Labels" icon={Tag} />
+        <PageContent maxWidth="md">
+          <div className="space-y-6">
             <Skeleton className="h-8 w-48 rounded" />
             <Skeleton className="h-4 w-80 rounded" />
             <div className="flex justify-between gap-4">
-              <Skeleton className="h-8.5 w-64 rounded-md" />
-              <Skeleton className="h-8.5 w-24 rounded-md" />
+              <Skeleton className="h-8 w-64 rounded-md" />
+              <Skeleton className="h-8 w-24 rounded-md" />
             </div>
             <Skeleton className="h-48 w-full rounded-lg" />
           </div>
-        </div>
-      </div>
+        </PageContent>
+      </PageLayout>
     );
   }
 
   if (isError || !project) {
     return (
-      <div className="flex flex-col h-full w-full bg-background">
-        <TopBar title="Labels" Icon={Tag} />
-        <div className="flex-1 p-6 md:p-8 text-sm text-muted-foreground">
-          Error loading project.
-        </div>
-      </div>
+      <PageLayout>
+        <PageHeader title="Labels" icon={Tag} />
+        <PageContent maxWidth="md">
+          <div className="text-sm text-muted-foreground">
+            Error loading project.
+          </div>
+        </PageContent>
+      </PageLayout>
     );
   }
 
   const hasLabels = rawLabels.length > 0;
 
   return (
-    <div className="flex flex-col h-full w-full bg-background">
-      {/* ── TopBar: only icon + title as in screenshots ── */}
-      <TopBar title="Labels" Icon={Tag} />
+    <PageLayout>
+      <PageHeader title="Labels" icon={Tag} />
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto p-6 md:p-8 space-y-6">
-          {/* ── Page Header ── */}
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Labels
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
-              <span>Labels help you group and filter work items in this project.</span>{' '}
-              <a
-                href="https://support.atlassian.com/jira-software-cloud/docs/label-and-tag-issues/"
-                target="_blank"
-                rel="noreferrer"
-                className="text-foreground font-medium hover:underline inline-flex items-center gap-0.5 ml-0.5"
-              >
-                Docs <ArrowUpRight className="size-3.5 inline" />
-              </a>
-            </p>
-          </div>
+      <PageContent maxWidth="md">
+        <div className="space-y-6">
 
           {/* ── Toolbar: Search & Add Label Button ── */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative w-64 sm:w-72">
-              <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0" />
-              <Input
-                placeholder="Search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8.5 pl-9 text-xs sm:text-sm rounded-md border-border bg-background"
-              />
-            </div>
-            <Button
-              type="button"
-              onClick={() => {
-                setIsCreating(true);
-                setEditingLabelId(null);
-              }}
-              className="h-8.5 px-3.5 text-xs sm:text-sm font-medium cursor-pointer shadow-none"
-            >
-              Add label
-            </Button>
-          </div>
+          <PageToolbar
+            left={
+              <div className="relative w-64 sm:w-72">
+                <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0" />
+                <Input
+                  placeholder="Search labels..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-8 pl-8 text-xs rounded-md border-border bg-background"
+                />
+              </div>
+            }
+            right={
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setIsCreating(true);
+                  setEditingLabelId(null);
+                }}
+              >
+                Add label
+              </Button>
+            }
+          />
 
           {/* ── Main Content Area ── */}
           {!hasLabels && !isCreating ? (
@@ -471,7 +459,7 @@ export default function LabelPage() {
             </div>
           ) : !hasLabels && isCreating ? (
             /* ── Image 2: Inline Form when creating first label ── */
-            <div className="rounded-lg border border-border/80 bg-card p-3.5 sm:p-4 shadow-2xs">
+            <div className="rounded-lg border border-border bg-background p-3.5 sm:p-4">
               <LabelInlineForm
                 initialName=""
                 initialColor="#0c66e4"
@@ -483,7 +471,7 @@ export default function LabelPage() {
             </div>
           ) : (
             /* ── Image 3 & 4: Labels List ── */
-            <div className="rounded-lg border border-border/80 bg-card p-3 sm:p-4 space-y-2 shadow-2xs">
+            <div className="rounded-lg border border-border bg-background p-3 sm:p-4 space-y-2">
               {/* If user clicked "Add label" while labels exist, show inline form at top */}
               {isCreating && (
                 <div className="rounded-md border border-border/70 bg-background p-2.5 px-3.5 mb-2">
@@ -571,7 +559,7 @@ export default function LabelPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => setDeletingLabel(label)}
-                            className="cursor-pointer gap-2 text-xs py-1.5 text-destructive focus:text-destructive focus:bg-destructive/10"
+                            className="cursor-pointer gap-2 text-xs py-1.5 text-destructive focus:text-destructive focus:bg-muted"
                           >
                             <Trash2 className="size-3.5 text-destructive" />
                             <span>Delete label</span>
@@ -585,7 +573,7 @@ export default function LabelPage() {
             </div>
           )}
         </div>
-      </div>
+      </PageContent>
 
       {/* ── Delete Confirmation Modal ── */}
       {Boolean(deletingLabel) && (
@@ -600,6 +588,6 @@ export default function LabelPage() {
           cancelText="Cancel"
         />
       )}
-    </div>
+    </PageLayout>
   );
 }

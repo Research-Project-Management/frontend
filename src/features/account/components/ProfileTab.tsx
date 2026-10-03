@@ -38,7 +38,7 @@ function ProfileAvatarDisplay({ control, fallbackName }: ProfileAvatarDisplayPro
   const initials = currentName.substring(0, 2).toUpperCase() || 'U';
 
   return (
-    <Avatar className='size-16 rounded-full border border-border bg-muted text-lg font-semibold shrink-0 shadow-2xs'>
+    <Avatar className='size-16 rounded-full border border-border bg-muted text-lg font-semibold shrink-0'>
       {avatar ? <AvatarImage src={avatar} alt={currentName} referrerPolicy="no-referrer" /> : null}
       <AvatarFallback>{initials}</AvatarFallback>
     </Avatar>
@@ -161,7 +161,7 @@ export default function ProfileTab() {
               className="cursor-pointer group relative block shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-full"
               title="Upload new picture"
             >
-              <div className="size-16 sm:size-18 rounded-full border-2 border-white/85 bg-background flex items-center justify-center overflow-hidden shadow-md">
+              <div className="size-16 sm:size-18 rounded-full border-2 border-white/85 bg-background flex items-center justify-center overflow-hidden">
                 <ProfileAvatarDisplay control={form.control} fallbackName={user.name || ''} />
               </div>
               <div className="absolute inset-0 rounded-full bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs text-white font-medium">
@@ -170,7 +170,7 @@ export default function ProfileTab() {
             </button>
 
             <div className="min-w-0 text-white">
-              <h2 className="text-base sm:text-lg font-semibold truncate leading-tight tracking-tight text-white drop-shadow-xs">
+              <h2 className="text-base sm:text-lg font-semibold truncate leading-tight tracking-tight text-white">
                 {user.name || 'User'}
               </h2>
               <p className="text-xs text-white/85 font-medium mt-0.5 tracking-wide truncate">
@@ -188,7 +188,7 @@ export default function ProfileTab() {
           >
             <button
               type="button"
-              className="h-8 px-3 rounded-md border border-white/20 bg-background/90 hover:bg-background text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 shadow-sm backdrop-blur-xs"
+              className="h-8 px-3 rounded-md border border-white/20 bg-background/90 hover:bg-background text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 backdrop-blur-xs"
             >
               <ImageIcon className="size-3.5 text-foreground shrink-0" />
               <span>Change cover</span>
@@ -209,18 +209,17 @@ export default function ProfileTab() {
       </div>
 
       {/* ── Section 2: Personal Information Form ── */}
-      <div className='rounded-md border border-border bg-card overflow-hidden'>
-        <div className='px-5 py-3.5 border-b border-border bg-card'>
-          <h3 className='text-13 font-semibold text-foreground tracking-tight'>Personal Details</h3>
-          <p className='text-12 text-muted-foreground mt-0.5'>
+      <div className='space-y-6'>
+        <div className='pb-4 border-b border-border'>
+          <h3 className='text-14 font-semibold text-foreground tracking-tight'>Personal Details</h3>
+          <p className='text-12 text-muted-foreground mt-1'>
             Manage your personal profile and display credentials across research projects.
           </p>
         </div>
 
-        <div className='p-5'>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
-              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4 max-w-2xl'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
               <FormField
                 control={form.control}
                 name="firstName"
@@ -288,7 +287,7 @@ export default function ProfileTab() {
               </p>
             </div>
 
-            <div className='flex items-center justify-end pt-2'>
+            <div className='flex items-center justify-start pt-2'>
               <Button
                 type='submit'
                 size='sm'
@@ -307,7 +306,6 @@ export default function ProfileTab() {
             </div>
           </form>
         </Form>
-        </div>
       </div>
 
       {/* ── Section 3: Account Deactivation (Danger Zone) ── */}
@@ -324,7 +322,7 @@ export default function ProfileTab() {
         <Button
           variant='outline'
           size='sm'
-          className='h-8 text-12 font-medium text-destructive border-destructive/30 hover:bg-destructive/10 shadow-2xs shrink-0 cursor-pointer'
+          className='h-8 text-12 font-medium text-destructive border-destructive/30 hover:bg-destructive/10 shrink-0 cursor-pointer'
         >
           Deactivate account
         </Button>

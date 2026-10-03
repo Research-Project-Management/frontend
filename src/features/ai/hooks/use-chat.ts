@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import type { ChatMessage, SourceItem, AgentAction } from '../types/chat.types';
+import type { ChatMessage, SourceItem, AgentAction, MessageAttachment } from '../types/chat.types';
 import {
   streamChatResponse,
   getChatSession,
@@ -129,11 +129,16 @@ export function useChat() {
       .then((session) => {
         setSessionTitle(session.title || 'Chat');
         setMessages(
-          session.messages.map(({ role, content, sources, widgets }) => ({
-            role,
-            content,
-            sources,
-            widgets,
+          session.messages.map((m: any) => ({
+            role: m.role,
+            content: m.content,
+            attachments:
+              m.attachments ||
+              (m.role === 'user' && Array.isArray(m.sources) && m.sources.length > 0
+                ? m.sources
+                : undefined),
+            sources: m.role === 'assistant' ? m.sources : undefined,
+            widgets: m.widgets,
           })),
         );
         if (session.projectId) {
@@ -237,10 +242,20 @@ export function useChat() {
 
   // Send message implementation
   const sendMessage = useCallback(
-    async (text: string, projectId?: string, webSearchSites?: string[], intentHint?: string) => {
+    async (
+      text: string,
+      projectId?: string,
+      webSearchSites?: string[],
+      intentHint?: string,
+      attachments?: MessageAttachment[],
+    ) => {
       if (isStreaming || !text.trim()) return;
 
-      const userMsg: ChatMessage = { role: 'user', content: text.trim() };
+      const userMsg: ChatMessage = {
+        role: 'user',
+        content: text.trim(),
+        attachments: attachments && attachments.length > 0 ? attachments : undefined,
+      };
       const newMessages = [...messagesRef.current, userMsg];
       setMessages(newMessages);
       streamRef.current = '';

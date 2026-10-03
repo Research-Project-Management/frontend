@@ -18,6 +18,8 @@ export interface StorageEmptyStateProps {
   isReadOnly?: boolean;
   isTrash?: boolean;
   className?: string;
+  title?: string;
+  description?: string;
 }
 
 type StorageEmptyVariant =
@@ -44,6 +46,8 @@ export function StorageEmptyState({
   searchQuery = '',
   isTrash = false,
   className,
+  title,
+  description,
 }: StorageEmptyStateProps) {
   const pathname = usePathname();
   const isSearchActive = Boolean(searchQuery.trim());
@@ -59,6 +63,14 @@ export function StorageEmptyState({
   })();
 
   const getConfig = (): StorageEmptyConfig => {
+    if (title) {
+      return {
+        illustration: isSearchActive ? StorageSearchStackIllustration : StorageFilesStackIllustration,
+        title,
+        description: description ?? (isSearchActive ? `No files found matching "${searchQuery}".` : 'This folder is currently empty.'),
+      };
+    }
+
     switch (variant) {
       case 'search':
         return {

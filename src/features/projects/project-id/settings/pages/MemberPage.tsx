@@ -14,7 +14,7 @@ import { Input } from "@/shared/components/ui";
 import { Skeleton } from "@/shared/components/ui";
 import { DeleteModal } from '@/features/settings/components/modal/DeleteModal';
 import { toast } from 'sonner';
-import TopBar from '../components/layout/TopBar';
+import { PageLayout, PageHeader, PageContent, PageToolbar } from '@/shared/components/layout';
 import { Assignee } from '../components/member/Assignee';
 import { Item } from '../components/member/Item';
 import { Filter } from '../components/member/Filter';
@@ -161,33 +161,29 @@ export default function MemberPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-full w-full bg-background">
-        <TopBar
-          title="Members"
-          Icon={Users}
-        />
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
+      <PageLayout>
+        <PageHeader title="Members" icon={Users} />
+        <PageContent maxWidth="md">
+          <div className="space-y-6">
             <Skeleton className="h-10 w-full rounded-md" />
             <Skeleton className="h-10 w-full rounded-md" />
             <Skeleton className="h-64 w-full rounded-md" />
           </div>
-        </div>
-      </div>
+        </PageContent>
+      </PageLayout>
     );
   }
 
   if (isError || !project) {
     return (
-      <div className="flex flex-col h-full w-full bg-background">
-        <TopBar
-          title="Members"
-          Icon={Users}
-        />
-        <div className="flex-1 p-5 md:p-6 text-sm text-muted-foreground">
-          Error loading project members.
-        </div>
-      </div>
+      <PageLayout>
+        <PageHeader title="Members" icon={Users} />
+        <PageContent maxWidth="md">
+          <div className="text-sm text-muted-foreground">
+            Error loading project members.
+          </div>
+        </PageContent>
+      </PageLayout>
     );
   }
 
@@ -215,15 +211,15 @@ export default function MemberPage() {
   );
 
   return (
-    <div className="flex flex-col h-full w-full bg-background">
-      <TopBar
+    <PageLayout>
+      <PageHeader
         title="Members"
-        Icon={Users}
+        icon={Users}
         actions={topBarActions}
       />
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
+      <PageContent maxWidth="md">
+        <div className="space-y-6">
           {/* Top Settings: Default Assignee */}
           <Assignee
             members={members}
@@ -254,7 +250,7 @@ export default function MemberPage() {
             </div>
 
             {/* Table */}
-            <div className="rounded-md border border-border overflow-hidden bg-card">
+            <div className="rounded-md border border-border overflow-hidden bg-background">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
@@ -326,7 +322,7 @@ export default function MemberPage() {
             </div>
           </div>
         </div>
-      </div>
+      </PageContent>
 
       {/* Add Member Dialog */}
       <AddMemberDialog
@@ -359,6 +355,6 @@ export default function MemberPage() {
         cancelText="Cancel"
         loading={isTransferringOwnership}
       />
-    </div>
+    </PageLayout>
   );
 }

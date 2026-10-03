@@ -49,16 +49,16 @@ const markdownComponents: Components = {
     return <em className="italic">{children}</em>;
   },
   h1({ children }) {
-    return <h2 className="mt-4 mb-2 text-base font-semibold text-foreground">{children}</h2>;
+    return <h2 className="mt-4 mb-2 text-18 font-semibold text-foreground tracking-tight">{children}</h2>;
   },
   h2({ children }) {
-    return <h3 className="mt-4 mb-1.5 text-sm font-semibold text-foreground">{children}</h3>;
+    return <h3 className="mt-4 mb-1.5 text-16 font-semibold text-foreground tracking-tight">{children}</h3>;
   },
   h3({ children }) {
-    return <h4 className="mt-4 mb-1.5 text-sm font-semibold text-foreground">{children}</h4>;
+    return <h4 className="mt-3.5 mb-1.5 text-14 font-semibold text-foreground">{children}</h4>;
   },
   h4({ children }) {
-    return <h5 className="mt-3 mb-1 text-xs font-semibold text-foreground/90">{children}</h5>;
+    return <h5 className="mt-3 mb-1 text-12 font-medium text-foreground/90">{children}</h5>;
   },
   ul({ children }) {
     return <ul className="my-1.5 ml-4 list-disc space-y-1 marker:text-primary/60">{children}</ul>;
@@ -90,24 +90,24 @@ const markdownComponents: Components = {
   },
   table({ children }) {
     return (
-      <div className="my-3 overflow-x-auto rounded-lg border border-border bg-background">
-        <table className="w-full min-w-max border-collapse text-sm">{children}</table>
+      <div className="my-3 overflow-x-auto p-1 rounded-md">
+        <table className="w-full min-w-max border-collapse text-xs">{children}</table>
       </div>
     );
   },
   thead({ children }) {
-    return <thead className="bg-muted">{children}</thead>;
+    return <thead className="border-b border-border bg-muted/50">{children}</thead>;
   },
   th({ children }) {
     return (
-      <th className="border-b border-border px-3 py-2 text-left text-xs font-semibold text-muted-foreground">
+      <th className="px-3 py-2 text-left text-xs font-semibold text-foreground">
         {children}
       </th>
     );
   },
   td({ children }) {
     return (
-      <td className="border-b border-border px-3 py-2 align-top text-xs leading-relaxed text-foreground/75">
+      <td className="border-b border-border/40 px-3 py-2 align-top text-xs leading-relaxed text-foreground/85">
         {children}
       </td>
     );
@@ -117,7 +117,7 @@ const markdownComponents: Components = {
   },
   code({ className, children }) {
     return (
-      <code className={`${className ?? ""} rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs text-primary`}>
+      <code className={`${className ?? ""} rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs font-medium text-foreground`}>
         {children}
       </code>
     );
@@ -236,7 +236,7 @@ export function formatInline(text: string): React.ReactNode {
       parts.push(
         <code
           key={`c${key++}`}
-          className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs text-primary"
+          className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs font-medium text-foreground"
         >
           {codeMatch[1]}
         </code>,

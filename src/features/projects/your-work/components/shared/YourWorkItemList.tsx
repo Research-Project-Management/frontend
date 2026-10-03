@@ -229,7 +229,7 @@ export function YourWorkItemList({
                 className={cn(
                   'flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs font-medium transition-colors',
                   groupBy === 'state'
-                    ? 'bg-background text-foreground shadow-xs font-semibold'
+                    ? 'bg-background text-foreground shadow-none font-semibold'
                     : 'text-muted-foreground hover:text-foreground',
                 )}
                 title="Group by State Group"

@@ -6,14 +6,6 @@ import { cn } from '@/shared/lib/utils';
 import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import { parseDocumentOutline, OUTLINE_INDENT } from '@/features/editor/utils/pdf-outline.util';
 
-const OUTLINE_COLORS: Record<number, string> = {
-  0: 'font-medium text-foreground',
-  1: 'text-foreground/90',
-  2: 'text-muted-foreground',
-  3: 'text-muted-foreground/80',
-  4: 'text-muted-foreground/70',
-};
-
 export interface FileOutlineSectionProps {
   isFileTreeOpen: boolean;
   docContent: string;
@@ -63,87 +55,91 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
   }, []);
 
   return (
-    <>
-      {/* ── File outline Accordion with integrated clean resize border ── */}
-      <div
-        className={cn(
-          'bg-background flex flex-col select-none relative border-t border-border',
-          !isFileTreeOpen && isOutlineOpen ? 'flex-1 min-h-0' : 'shrink-0',
-        )}
+    <div
+      className={cn(
+        'flex flex-col select-none relative border-t border-border bg-background',
+        !isFileTreeOpen && isOutlineOpen ? 'flex-1 min-h-0' : 'shrink-0',
+      )}
+    >
+      {/* Invisible row resize handle on top edge when both tree and outline are open */}
+      {isOutlineOpen && isFileTreeOpen && (
+        <div
+          onMouseDown={startResizeOutline}
+          className="absolute -top-1 inset-x-0 h-2 z-10 cursor-row-resize bg-transparent"
+          title="Resize outline section"
+        />
+      )}
+
+      {/* Accordion header: matching Library & Sticky styling */}
+      <button
+        type="button"
+        onClick={() => setIsOutlineOpen((value) => !value)}
+        aria-expanded={isOutlineOpen}
+        aria-label={isOutlineOpen ? 'Collapse file outline' : 'Expand file outline'}
+        className="flex h-9 w-full items-center justify-between px-3 text-left text-13 font-semibold tracking-tight text-foreground transition-colors hover:bg-muted/50 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
       >
-        {/* Invisible row resize handle on top edge when both tree and outline are open */}
-        {isOutlineOpen && isFileTreeOpen && (
-          <div
-            onMouseDown={startResizeOutline}
-            className="absolute -top-1 inset-x-0 h-2 z-10 cursor-row-resize bg-transparent"
-            title="Resize section"
-          />
-        )}
-        <button
-          type="button"
-          onClick={() => setIsOutlineOpen((value) => !value)}
-          className="flex h-8 w-full items-center gap-1.5 px-3 text-left text-xs font-semibold text-foreground transition-colors hover:bg-sidebar-hover cursor-pointer select-none"
-        >
+        <div className="flex items-center gap-1.5 min-w-0">
           <ChevronRight
             className={cn(
-              'size-3.5 shrink-0 transition-transform text-muted-foreground',
+              'size-3.5 shrink-0 transition-transform duration-150 text-muted-foreground',
               isOutlineOpen && 'rotate-90',
             )}
+            strokeWidth={1.75}
           />
-          <span className="min-w-0 flex-1 truncate">File outline</span>
-          {outline.length > 0 && (
-            <span className="rounded-full bg-sidebar-accent px-1.5 py-0.2 text-10 font-mono font-medium text-muted-foreground">
-              {outline.length}
-            </span>
-          )}
-        </button>
-        {isOutlineOpen && (
-          <div
-            style={isFileTreeOpen ? { height: `${outlineHeight}px` } : undefined}
-            className={cn(
-              'overflow-y-auto pb-1',
-              !isFileTreeOpen && 'flex-1 min-h-0',
-            )}
-          >
-            {outline.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center px-4 py-8 select-none">
-                <p className="text-xs text-foreground/80 font-medium">
-                  We can&apos;t find any sections or subsections in this file.
-                </p>
-                <span className="text-11 text-primary hover:underline mt-1.5 cursor-pointer">
-                  Find out more about the file outline
-                </span>
-              </div>
-            ) : (
-              outline.map((entry, index) => (
-                <button
-                  key={`${entry.line}-${index}`}
-                  type="button"
-                  onClick={() => handleOutlineClick(entry.line)}
-                  style={{
-                    paddingLeft: `${24 + OUTLINE_INDENT[entry.level]}px`,
-                  }}
-                  className={cn(
-                    'flex h-7 w-full items-center gap-1.5 pr-2 text-left text-xs transition-colors hover:bg-sidebar-hover cursor-pointer',
-                    OUTLINE_COLORS[entry.level],
-                  )}
-                >
-                  <ChevronRight
-                    className={cn(
-                      'shrink-0 text-muted-foreground',
-                      entry.level === 0 ? 'size-3.5' : 'size-3',
-                    )}
-                  />
-                  <span className="min-w-0 flex-1 truncate">{entry.title}</span>
-                  <span className="shrink-0 text-11 font-mono text-muted-foreground">
-                    :{entry.line}
-                  </span>
-                </button>
-              ))
-            )}
-          </div>
+          <span className="truncate">File outline</span>
+        </div>
+        {outline.length > 0 && (
+          <span className="rounded-full bg-muted px-1.5 py-0.2 text-10 font-mono font-medium text-muted-foreground">
+            {outline.length}
+          </span>
         )}
-      </div>
-    </>
+      </button>
+
+      {/* Outline content list */}
+      {isOutlineOpen && (
+        <div
+          style={isFileTreeOpen ? { height: `${outlineHeight}px` } : undefined}
+          className={cn(
+            'overflow-y-auto pb-1',
+            !isFileTreeOpen && 'flex-1 min-h-0',
+          )}
+        >
+          {outline.length === 0 ? (
+            <div className="flex flex-col items-center justify-center text-center px-4 py-8 select-none">
+              <p className="text-12 text-muted-foreground font-normal">
+                No sections or subsections found in this document.
+              </p>
+            </div>
+          ) : (
+            outline.map((entry, index) => (
+              <button
+                key={`${entry.line}-${index}`}
+                type="button"
+                onClick={() => handleOutlineClick(entry.line)}
+                style={{
+                  paddingLeft: `${16 + OUTLINE_INDENT[entry.level]}px`,
+                }}
+                className={cn(
+                  'flex h-7.5 w-full items-center gap-2 pr-2 text-left text-13 tracking-tight transition-colors hover:bg-muted/60 cursor-pointer outline-none focus-visible:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset text-foreground',
+                  entry.level === 0 ? 'font-medium' : 'font-normal text-foreground/90',
+                )}
+              >
+                <ChevronRight
+                  className={cn(
+                    'shrink-0 text-muted-foreground',
+                    entry.level === 0 ? 'size-3.5' : 'size-3',
+                  )}
+                  strokeWidth={1.5}
+                />
+                <span className="min-w-0 flex-1 truncate">{entry.title}</span>
+                <span className="shrink-0 text-11 font-mono text-muted-foreground">
+                  :{entry.line}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
   );
 });

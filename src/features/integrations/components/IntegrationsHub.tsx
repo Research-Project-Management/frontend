@@ -6,7 +6,7 @@ import { Blocks } from 'lucide-react';
 import { useIntegrations } from '../hooks/use-integrations';
 import { IntegrationCard } from './IntegrationCard';
 import { IntegrationDetailView } from './IntegrationDetailView';
-import { TopBar } from '@/features/settings/components/layout/TopBar';
+import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 
 export function IntegrationsHub() {
@@ -33,12 +33,11 @@ export function IntegrationsHub() {
     : null;
 
   return (
-    <div className="flex h-full w-full flex-col bg-background">
-      {/* TopBar aligned with Settings Layout */}
-      <TopBar title="Integrations" Icon={Blocks} />
+    <PageLayout>
+      <PageHeader title="Integrations" icon={Blocks} />
 
-      <div className="flex-1 overflow-y-auto">
-        {selectedItem ? (
+      {selectedItem ? (
+        <PageContent maxWidth="full" noPadding>
           <IntegrationDetailView
             item={selectedItem}
             onBack={() => setSelectedProvider(null)}
@@ -46,18 +45,10 @@ export function IntegrationsHub() {
             onDisconnect={disconnect}
             isConnecting={isConnecting}
           />
-        ) : (
-          <div className="w-full max-w-5xl mx-auto p-6 md:p-8 space-y-6">
-            {/* Main Title & Subtitle */}
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                Integrations
-              </h1>
-              <p className="text-13 text-foreground font-normal mt-1">
-                Connect third-party apps to Flux to sync references, collections, and researcher profiles.
-              </p>
-            </div>
-
+        </PageContent>
+      ) : (
+        <PageContent maxWidth="lg">
+          <div className="space-y-4">
             {/* List of Integration Cards (Rows) - Strictly backend-supported */}
             {isLoading ? (
               <div className="space-y-3">
@@ -80,8 +71,8 @@ export function IntegrationsHub() {
               </div>
             )}
           </div>
-        )}
-      </div>
-    </div>
+        </PageContent>
+      )}
+    </PageLayout>
   );
 }

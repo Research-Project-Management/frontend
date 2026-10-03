@@ -32,7 +32,7 @@ export default function Navbar() {
     <nav
       className={`fixed top-0 z-50 w-full border-b border-border transition-colors duration-150 ${
         isScrolled
-          ? 'bg-card/85 backdrop-blur-md shadow-2xs'
+          ? 'bg-card/85 backdrop-blur-md'
           : 'bg-background/80 backdrop-blur-sm'
       }`}
       aria-label='Main navigation'
@@ -69,7 +69,7 @@ export default function Navbar() {
             </Link>
             <Link
               href='/register'
-              className='group flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-13 font-medium text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0 shadow-2xs'
+              className='group flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-13 font-medium text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0'
             >
               Get started
               <ArrowRight
@@ -79,9 +79,9 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu Button (44x44px touch target) */}
           <button
-            className='flex items-center justify-center w-10 h-10 rounded-md transition-colors hover:bg-muted md:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer'
+            className='flex items-center justify-center size-11 rounded-md transition-colors hover:bg-muted md:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer'
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={isMenuOpen}
@@ -114,7 +114,7 @@ export default function Navbar() {
                 </Link>
                 <Link
                   href='/register'
-                  className='flex items-center justify-center gap-1.5 h-9 rounded-md bg-primary px-4 text-13 font-medium text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0 shadow-2xs'
+                  className='flex items-center justify-center gap-1.5 h-9 rounded-md bg-primary px-4 text-13 font-medium text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0'
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Get started

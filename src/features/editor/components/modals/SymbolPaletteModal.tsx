@@ -275,10 +275,10 @@ export default function SymbolPaletteModal({
                       onClick={() => handleSymbolClick(sym)}
                       title={`${sym.command} (${sym.name})`}
                       className={cn(
-                        'group flex flex-col items-center justify-center h-12 rounded-sm border transition-all cursor-pointer',
+                        'group flex flex-col items-center justify-center h-12 rounded-sm border transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset',
                         isRecent
-                          ? 'bg-primary/15 border-primary text-primary font-bold shadow-2xs'
-                          : 'bg-background border-border hover:border-primary/50 hover:bg-primary/5 text-foreground shadow-2xs'
+                          ? 'bg-primary/15 border-primary text-primary font-semibold'
+                          : 'bg-background border-border hover:border-primary/50 hover:bg-primary/5 text-foreground'
                       )}
                     >
                       <span className="text-base leading-none font-serif">
@@ -316,7 +316,7 @@ export default function SymbolPaletteModal({
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-2xs"
+            className="h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             Close
           </Button>

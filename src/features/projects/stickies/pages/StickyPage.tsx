@@ -18,7 +18,7 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { Sortable } from '../components/card/Sortable';
-
+import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
 import TopBar from '../components/layout/TopBar';
 import EmptyState from '../components/layout/EmptyState';
 
@@ -45,22 +45,20 @@ export default function StickyPage() {
 
   if (state.status.isLoading) {
     return (
-      <div className="flex flex-col h-full">
-        <div className="shrink-0 border-b border-border px-5 h-13 flex items-center">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm">{copy.title}</span>
+      <PageLayout>
+        <PageHeader title={copy.title} icon={StickiesIcon} />
+        <PageContent maxWidth="full">
+          <div className="flex-1 flex items-center justify-center gap-3 text-muted-foreground py-20">
+            <Loader2 className="h-5 w-5 animate-spin shrink-0" />
+            <span className="text-sm">{copy.loading}</span>
           </div>
-        </div>
-        <div className="flex-1 flex items-center justify-center gap-3 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin shrink-0" />
-          <span className="text-sm">{copy.loading}</span>
-        </div>
-      </div>
+        </PageContent>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <PageLayout>
       <TopBar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -69,7 +67,7 @@ export default function StickyPage() {
         addLabel={copy.addLabel}
       />
 
-      <main className="flex-1 overflow-auto p-5">
+      <PageContent maxWidth="full" noPadding className="p-5">
         {state.items.length === 0 ? (
           <EmptyState searchQuery={searchQuery} />
         ) : (
@@ -83,7 +81,7 @@ export default function StickyPage() {
               items={state.items.map((sticky: Sticky) => sticky.id)}
               strategy={rectSortingStrategy}
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 min-[1200px]:grid-cols-5 xl:grid-cols-5 gap-4 items-start">
                 {state.items.map((sticky: Sticky) => (
                   <Sortable
                     key={sticky.id}
@@ -114,7 +112,7 @@ export default function StickyPage() {
                           (n: any) => n.id === state.activeId,
                         );
                         return sticky ? (
-                          <div className="rotate-1 scale-105 cursor-grabbing">
+                          <div className="w-[240px] h-[340px] rotate-1 scale-105 cursor-grabbing">
                             <Card
                               sticky={sticky}
                               onUpdate={actions.update}
@@ -130,7 +128,7 @@ export default function StickyPage() {
               )}
           </DndContext>
         )}
-      </main>
-    </div>
+      </PageContent>
+    </PageLayout>
   );
 }

@@ -14,6 +14,8 @@ import { AlertCircle, FileText, Loader2, Play } from 'lucide-react';
 import { LatexCompilerEngine, type SyncTeXMap } from '@/features/editor/utils/viewer.util';
 import { useIntersectionObserver } from "@/shared/hooks";
 import { logger, cn } from "@/shared/lib/utils";
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
+import { EditorEmptyState } from '../shared';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -107,7 +109,7 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
       onClickCapture={handleClickCapture}
       onDoubleClickCapture={handleDoubleClick}
       title="Double-click or Ctrl+Click anywhere to jump to LaTeX source"
-      className="bg-white rounded-sm border border-border/60 shadow-sm relative overflow-hidden flex items-center justify-center cursor-text"
+      className="bg-canvas rounded-sm border border-border relative flex items-center justify-center cursor-text"
       style={{
         width: 595 * scale,
         minHeight: isVisible ? undefined : estimatedHeight,
@@ -154,14 +156,14 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
         >
           {clickIndicator.w && clickIndicator.h ? (
             <div className="relative w-full h-full">
-              <div className="absolute inset-0 rounded-sm bg-primary/20 border-y-2 border-primary shadow-sm shadow-primary/30 animate-pulse" />
-              <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-2 rounded-full bg-primary ring-2 ring-background shadow" />
+              <div className="absolute inset-0 rounded-sm bg-primary/20 border-y-2 border-primary animate-pulse" />
+              <div className="absolute -left-2 top-1/2 -translate-y-1/2 size-2 rounded-full bg-primary ring-2 ring-background" />
             </div>
           ) : (
             <span className="relative flex size-9 items-center justify-center">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500/60 opacity-80" />
-              <span className="absolute inline-flex size-6 rounded-full border-2 border-emerald-500 bg-emerald-500/20 shadow-lg" />
-              <span className="relative inline-flex size-2 rounded-full bg-emerald-600 shadow" />
+              <span className="absolute inline-flex size-6 rounded-full border-2 border-emerald-500 bg-emerald-500/20" />
+              <span className="relative inline-flex size-2 rounded-full bg-emerald-600" />
             </span>
           )}
         </div>
@@ -330,29 +332,10 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
       )}
     >
       {!pdfUrl ? (
-        /* Clean, minimal Overleaf-style Empty State (no duplicate compile button) */
-        <div className="flex flex-col items-center justify-center h-full w-full select-none text-muted-foreground">
-          <div className="flex flex-col items-center justify-center text-center max-w-xs p-6 gap-3">
-            <div className={cn(
-              "size-10 rounded-full flex items-center justify-center transition-colors",
-              invertColors ? "bg-neutral-900 text-neutral-400" : "bg-muted/60 text-muted-foreground/80"
-            )}>
-              <FileText className="size-5" />
-            </div>
-            <div>
-              <p className={cn("text-sm font-medium transition-colors", invertColors ? "text-neutral-200" : "text-foreground")}>
-                No PDF preview
-              </p>
-              <p className={cn("text-xs mt-1.5 leading-relaxed transition-colors", invertColors ? "text-neutral-400" : "text-muted-foreground")}>
-                Click <strong className={cn("font-semibold", invertColors ? "text-neutral-200" : "text-foreground")}>Recompile</strong> on the toolbar or press{' '}
-                <kbd className={cn("px-1.5 py-0.5 text-11 font-mono font-medium rounded border transition-colors", invertColors ? "bg-neutral-900 border-neutral-800 text-neutral-300" : "bg-muted border-border text-foreground")}>
-                  Ctrl+Enter
-                </kbd>{' '}
-                to build your document.
-              </p>
-            </div>
-          </div>
-        </div>
+        <EditorEmptyState
+          variant="preview"
+          className={invertColors ? "bg-neutral-950 text-neutral-100" : undefined}
+        />
       ) : (
         /* PDF Document Canvas */
         <Document
@@ -367,21 +350,11 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
             </div>
           }
           error={
-            <div className="flex flex-col items-center justify-center h-full select-none">
-              <div className="flex flex-col items-center justify-center gap-3 p-6 text-center bg-card rounded-lg border border-border shadow-2xs max-w-sm">
-                <AlertCircle className="size-6 text-destructive shrink-0" />
-                <p className="text-sm font-medium text-foreground">Failed to load PDF file.</p>
-                {onCompile && (
-                  <button
-                    type="button"
-                    onClick={onCompile}
-                    className="px-3 py-1.5 text-xs rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-2xs mt-1 font-medium transition-colors cursor-pointer"
-                  >
-                    Compile again
-                  </button>
-                )}
-              </div>
-            </div>
+            <PlaneErrorState
+              title="Failed to load PDF file"
+              description="An issue occurred while rendering the compiled document canvas."
+              error={new Error('The compiled PDF document could not be decoded by the viewer engine.')}
+            />
           }
         >
           {scrollMode ? (
@@ -443,7 +416,7 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
                 handleDoubleClickPage(pageNumber, clickFraction, ptX, ptY, clickX, clickY);
               }}
               title="Double-click anywhere to jump to LaTeX source"
-              className="bg-white rounded-sm border border-border/60 shadow-sm relative overflow-hidden flex items-center justify-center cursor-text transition-[filter] duration-200"
+              className="bg-canvas rounded-sm border border-border relative flex items-center justify-center cursor-text transition-[filter] duration-200"
               style={invertColors ? { filter: 'invert(0.9) hue-rotate(180deg) contrast(1.25)' } : undefined}
             >
               <Page

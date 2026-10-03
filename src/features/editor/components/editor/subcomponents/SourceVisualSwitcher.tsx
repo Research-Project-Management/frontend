@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import { useSettingsStore } from '@/features/editor/store';
 
@@ -13,25 +12,26 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
     (mode: 'code' | 'visual') => {
       if (editorMode === mode) return;
       setEditorMode(mode);
-      toast.info(
-        mode === 'visual'
-          ? 'Switched to Visual (Rich Text) mode'
-          : 'Switched to Code mode',
-        { duration: 1500 },
-      );
     },
     [editorMode, setEditorMode],
   );
 
   return (
-    <div className="inline-flex items-center rounded-full bg-muted p-0.5 border border-border select-none shrink-0">
+    <div
+      role="radiogroup"
+      aria-label="Editor display mode"
+      className="inline-flex items-center rounded-md bg-muted/80 p-0.5 select-none shrink-0"
+    >
       <button
         type="button"
+        role="radio"
+        aria-checked={editorMode === 'code'}
+        aria-label="Code mode"
         onClick={() => handleSwitchMode('code')}
         className={cn(
-          'px-2.5 py-1 rounded-full text-xs transition-colors duration-150 cursor-pointer select-none leading-none',
+          'px-2.5 py-1 rounded-sm text-12 transition-colors duration-150 cursor-pointer select-none leading-normal outline-none focus-visible:ring-1 focus-visible:ring-primary',
           editorMode === 'code'
-            ? 'bg-background text-foreground shadow-2xs font-semibold'
+            ? 'bg-background text-foreground font-semibold'
             : 'text-muted-foreground hover:text-foreground font-medium',
         )}
         title="Code mode (Ctrl+Shift+V)"
@@ -40,11 +40,14 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
       </button>
       <button
         type="button"
+        role="radio"
+        aria-checked={editorMode === 'visual'}
+        aria-label="Visual mode"
         onClick={() => handleSwitchMode('visual')}
         className={cn(
-          'px-2.5 py-1 rounded-full text-xs transition-colors duration-150 cursor-pointer select-none leading-none',
+          'px-2.5 py-1 rounded-sm text-12 transition-colors duration-150 cursor-pointer select-none leading-normal outline-none focus-visible:ring-1 focus-visible:ring-primary',
           editorMode === 'visual'
-            ? 'bg-background text-foreground shadow-2xs font-semibold'
+            ? 'bg-background text-foreground font-semibold'
             : 'text-muted-foreground hover:text-foreground font-medium',
         )}
         title="Visual mode (Ctrl+Shift+V)"

@@ -5,7 +5,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Form, Input, Skeleton, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/components/ui";
 import { DeleteModal } from '@/features/settings/components/modal/DeleteModal';
-import { TopBar } from '../components/layout/TopBar';
+import { PageLayout, PageContent, PageHeader, PageToolbar, EmptyState } from '@/shared/components/layout';
 import {
   Tag,
   Search,
@@ -223,86 +223,89 @@ export default function LabelsPage() {
 
   if (isLoadingLabels) {
     return (
-      <div className="flex h-full w-full flex-col bg-background">
-        <TopBar title="Labels" Icon={Tag} />
-        <div className="flex-1 overflow-y-auto px-6 md:px-10 lg:px-12 py-8 md:py-10">
-          <div className="w-full max-w-5xl mx-auto space-y-6">
+      <PageLayout>
+        <PageHeader title="Labels" icon={Tag} />
+        <PageContent maxWidth="lg">
+          <div className="space-y-6">
             <Skeleton className="h-8 w-44 rounded-md" />
             <Skeleton className="h-48 w-full rounded-md" />
           </div>
-        </div>
-      </div>
+        </PageContent>
+      </PageLayout>
     );
   }
 
   if (isError) {
     return (
-      <div className="flex h-full w-full flex-col bg-background">
-        <TopBar title="Labels" Icon={Tag} />
-        <div className="flex-1 flex items-center justify-center text-muted-foreground">
-          Error loading labels.
-        </div>
-      </div>
+      <PageLayout>
+        <PageHeader title="Labels" icon={Tag} />
+        <PageContent maxWidth="lg">
+          <EmptyState
+            icon={Tag}
+            title="Error loading labels"
+            body="An error occurred while fetching labels. Please try again."
+          />
+        </PageContent>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="flex h-full w-full flex-col bg-background">
-      <TopBar
+    <PageLayout>
+      <PageHeader
         title="Labels"
-        description="Organize, categorize, and group research projects across your account."
-        Icon={Tag}
+        icon={Tag}
+        actions={
+          <Button
+            size="sm"
+            onClick={() => openCreateModal()}
+          >
+            <Plus className="size-3.5 shrink-0" />
+            Add label
+          </Button>
+        }
       />
 
-      <div className="flex-1 overflow-y-auto p-6 md:p-8">
-        <div className="w-full max-w-4xl mx-auto space-y-5">
+      <PageContent maxWidth="lg">
+        <div className="space-y-5">
           {/* ── Toolbar ── */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative w-full max-w-xs">
-              <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-foreground pointer-events-none shrink-0" strokeWidth={1.5} />
-              <Input
-                placeholder="Search labels..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8 pl-8 text-13 rounded-md border-border bg-white dark:bg-card shadow-2xs hover:border-foreground/30 transition-colors"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-12 text-muted-foreground mr-1 hidden sm:inline-block">
+          <PageToolbar
+            left={
+              <div className="relative w-full max-w-xs">
+                <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-foreground pointer-events-none shrink-0" strokeWidth={1.5} />
+                <Input
+                  placeholder="Search labels..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-8 pl-8 text-13 rounded-md border-border bg-background hover:border-foreground/30 transition-colors"
+                />
+              </div>
+            }
+            right={
+              <span className="text-12 text-muted-foreground hidden sm:inline-block">
                 {allLabelsCount} {allLabelsCount === 1 ? 'label' : 'labels'}
               </span>
-              <Button
-                size="sm"
-                onClick={() => openCreateModal()}
-                className="h-8 text-12 font-medium px-3 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-2xs gap-1.5"
-              >
-                <Plus className="size-3.5 shrink-0" />
-                <span>Add label</span>
-              </Button>
-            </div>
-          </div>
+            }
+          />
 
           {/* ── Labels Hierarchical List ── */}
           {filteredRoots.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-12 text-center rounded-md border border-dashed border-border bg-card">
-              <Tag className="size-8 text-muted-foreground/60 mb-2.5 shrink-0" />
-              <h3 className="text-13 font-medium text-foreground">No labels found</h3>
-              <p className="text-12 text-muted-foreground mt-1 max-w-sm">
-                {searchQuery
-                  ? `No labels matching "${searchQuery}".`
-                  : 'Create labels to categorize, differentiate, and group research projects across your account.'}
-              </p>
-              {!searchQuery && (
-                <Button
-                  size="sm"
-                  onClick={() => openCreateModal()}
-                  className="mt-4 h-8 text-12 font-medium px-3.5 rounded-md bg-primary text-primary-foreground shadow-2xs cursor-pointer"
-                >
-                  Create your first label
-                </Button>
-              )}
-            </div>
+            <EmptyState
+              icon={Tag}
+              title={searchQuery ? `No labels matching "${searchQuery}"` : 'No labels yet'}
+              body={
+                searchQuery
+                  ? undefined
+                  : 'Create labels to categorize, differentiate, and group research projects across your account.'
+              }
+              action={
+                !searchQuery ? (
+                  <Button size="sm" onClick={() => openCreateModal()}>
+                    Create your first label
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : (
             <div className="space-y-2">
               {filteredRoots.map((root) => {
@@ -313,7 +316,7 @@ export default function LabelsPage() {
                 return (
                   <div
                     key={root.id}
-                    className="rounded-md border border-border bg-card overflow-hidden transition-colors shadow-none"
+                    className="rounded-md border border-border bg-background overflow-hidden transition-colors shadow-none"
                   >
                     {/* Root Row */}
                     <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 hover:bg-muted/40 transition-colors group">
@@ -476,7 +479,7 @@ export default function LabelsPage() {
                       maxLength={255}
                       autoFocus
                       className={cn(
-                        "h-8 text-12 bg-background border-border shadow-2xs",
+                        "h-8 text-12 bg-background border-border",
                         errors.name && "border-destructive focus-visible:ring-destructive/30"
                       )}
                     />
@@ -511,7 +514,7 @@ export default function LabelsPage() {
                         value={formColor}
                         onChange={(e) => setValue('color', e.target.value, { shouldValidate: true })}
                         className={cn(
-                          "h-7 w-28 text-12 font-mono bg-background border-border shadow-2xs",
+                          "h-7 w-28 text-12 font-mono bg-background border-border",
                           errors.color && "border-destructive"
                         )}
                         placeholder="#000000"
@@ -529,7 +532,7 @@ export default function LabelsPage() {
                       placeholder="Context or criteria for applying this label"
                       {...register('description')}
                       maxLength={1000}
-                      className="h-8 text-12 bg-background border-border shadow-2xs"
+                      className="h-8 text-12 bg-background border-border"
                     />
                   </div>
 
@@ -540,7 +543,7 @@ export default function LabelsPage() {
                       value={formParentId || ''}
                       onChange={(e) => setValue('parentId', e.target.value || null)}
                       disabled={Boolean(editingLabel && childMap[editingLabel.id]?.length > 0)}
-                      className="w-full h-8 text-12 rounded-md border border-border bg-background px-3 text-foreground outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 shadow-2xs"
+                      className="w-full h-8 text-12 rounded-md border border-border bg-background px-3 text-foreground outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                     >
                       <option value="">None (Independent Root Label)</option>
                       {rootLabels
@@ -598,7 +601,7 @@ export default function LabelsPage() {
             cancelText="Cancel"
           />
         </div>
-      </div>
-    </div>
+      </PageContent>
+    </PageLayout>
   );
 }

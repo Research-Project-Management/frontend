@@ -542,22 +542,22 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
     batchDeleteItems: async (ids: string[]) => {
       if (!ids.length) return;
       const toastId = toast.loading(`Moving ${ids.length} item(s) to trash...`, { id: 'batch-trash' });
-      const results = await Promise.allSettled(ids.map((id) => deleteMutation.mutateAsync({ id, silent: true })));
-      const failed = results.filter((r) => r.status === 'rejected').length;
-      const succeeded = results.length - failed;
-      if (failed === 0) {
+      try {
+        if (ids.length === 1) {
+          await deleteMutation.mutateAsync({ id: ids[0], silent: true });
+        } else {
+          await ItemService.bulkTrash(targetScope, ids);
+          queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
+          queryClient.invalidateQueries({ queryKey: itemKeys.trash(targetScope) });
+          invalidateCollections(queryClient, targetScope);
+        }
         toast.success('Moved to trash', {
-          description: `${succeeded} document(s) moved to trash.`,
+          description: `${ids.length} document(s) moved to trash.`,
           id: toastId,
         });
-      } else if (succeeded === 0) {
+      } catch (err: unknown) {
         toast.error('Failed to delete items', {
-          description: 'Could not move selected documents to trash.',
-          id: toastId,
-        });
-      } else {
-        toast.error(`Failed to delete ${failed} of ${ids.length} items`, {
-          description: `${succeeded} item(s) moved to trash; ${failed} could not be deleted.`,
+          description: err instanceof Error ? err.message : 'Could not move selected documents to trash.',
           id: toastId,
         });
       }
@@ -1187,7 +1187,11 @@ export function useDeleteLibraryItemsMutation(scopeId?: string) {
   return useMutation({
     mutationFn: async (itemIds: string[] | string) => {
       const ids = Array.isArray(itemIds) ? itemIds : [itemIds];
-      await Promise.all(ids.map((id) => ItemService.delete(effectiveScope, id)));
+      if (ids.length === 1) {
+        await ItemService.delete(effectiveScope, ids[0]);
+      } else if (ids.length > 1) {
+        await ItemService.bulkTrash(effectiveScope, ids);
+      }
       return ids;
     },
     onSuccess: (ids) => {
@@ -1212,7 +1216,11 @@ export function useBatchRestoreItemsMutation(scopeId?: string) {
   return useMutation({
     mutationFn: async (itemIds: string[] | string) => {
       const ids = Array.isArray(itemIds) ? itemIds : [itemIds];
-      await Promise.all(ids.map((id) => ItemService.restore(effectiveScope, id)));
+      if (ids.length === 1) {
+        await ItemService.restore(effectiveScope, ids[0]);
+      } else if (ids.length > 1) {
+        await ItemService.bulkRestore(effectiveScope, ids);
+      }
       return ids;
     },
     onSuccess: (ids) => {
@@ -1475,7 +1483,7 @@ export function useItemStateQuery(scopeId?: string, itemId?: string) {
     queryKey: stateKeys.item(scopeId, itemId),
     queryFn: async () => {
       const res = await StateService.getState(scopeId || 'user', itemId || '');
-      return (res as any)?.data ?? res ?? null;
+      return res ?? null;
     },
     enabled: Boolean(itemId),
     staleTime: 1000 * 60 * 5,

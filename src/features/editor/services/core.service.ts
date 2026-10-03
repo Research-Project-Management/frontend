@@ -33,15 +33,25 @@ export const documentService = pageService;
 // ─── 2. Child Files ──────────────────────────────────────────────────────────
 
 export const fileService = {
-  getByPageId: manuscriptService.docs.getFiles,
-
-  getDeletedByPageId: async (pageId: string): Promise<PageFile[]> => {
+  getByPageId: async (pageId: string): Promise<PageFile[]> => {
     try {
-      const res = await api.apiGet<{ files: PageFile[] }>(`/api/pages/${pageId}/deleted-files`);
-      return res.files || [];
+      const res = await api.apiGet<{ files: any[] }>(`/api/v1/manuscripts/docs/${pageId}/files`);
+      return (res.files || []).map((f) => ({
+        id: f.id,
+        pageId: f.pageId || pageId,
+        title: f.title || f.name || 'untitled.tex',
+        content: f.content || '',
+        createdAt: f.createdAt || new Date().toISOString(),
+        updatedAt: f.updatedAt || new Date().toISOString(),
+      }));
     } catch {
       return [];
     }
+  },
+
+  getDeletedByPageId: async (_pageId: string): Promise<PageFile[]> => {
+    // Deleted files endpoint is not exposed as a standalone /api/pages route; return empty list safely
+    return [];
   },
 
   create: async ({
@@ -54,28 +64,44 @@ export const fileService = {
     content?: string;
   }): Promise<PageFile> => {
     try {
-      const node: any = await manuscriptService.structure.createNode(parentPageId, {
-        name: title,
-        type: 'doc',
-        content: content || '',
-      });
+      const res = await api.apiPost<{ file: any; files?: any[] }>(
+        `/api/v1/manuscripts/docs/${parentPageId}/files`,
+        { title, content: content || '' }
+      );
+      const node = res.file || (Array.isArray(res.files) ? res.files[0] : res);
       return {
         id: node.id || node._id || `file-${Date.now()}`,
         pageId: parentPageId,
-        title: node.name || title,
+        title: node.title || node.name || title,
         content: content || '',
         createdAt: node.createdAt || new Date().toISOString(),
         updatedAt: node.updatedAt || new Date().toISOString(),
       };
     } catch {
-      return {
-        id: `file-${Date.now()}`,
-        pageId: parentPageId,
-        title,
-        content: content || '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      try {
+        const node: any = await manuscriptService.structure.createNode(parentPageId, {
+          name: title,
+          type: 'DOC',
+          content: content || '',
+        });
+        return {
+          id: node.id || node._id || `file-${Date.now()}`,
+          pageId: parentPageId,
+          title: node.name || title,
+          content: content || '',
+          createdAt: node.createdAt || new Date().toISOString(),
+          updatedAt: node.updatedAt || new Date().toISOString(),
+        };
+      } catch {
+        return {
+          id: `file-${Date.now()}`,
+          pageId: parentPageId,
+          title,
+          content: content || '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      }
     }
   },
 

@@ -299,7 +299,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         {/* Year */}
         {columns.year !== false && (
           <td className="px-2 h-8 py-0 align-middle text-center text-13 font-mono tabular-nums text-foreground font-normal">
-            {item.year ||
+            {(item.year && item.year > 0 ? item.year : null) ||
               (item.publicationDate || item.date || '').match(/\b(1[7-9]\d{2}|20\d{2})\b/)?.[1] ||
               '—'}
           </td>
@@ -325,7 +325,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
 
         {/* Item Type Label */}
         {columns.itemType && (
-          <td className="px-3 h-8 py-0 align-middle truncate text-12 font-mono uppercase tracking-wide text-muted-foreground font-normal">
+          <td className="px-3 h-8 py-0 align-middle truncate text-12 font-mono text-muted-foreground font-normal">
             {item.itemType || '—'}
           </td>
         )}
@@ -359,7 +359,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         {/* Citations Count */}
         {columns.citations && (
           <td className="px-2 h-8 py-0 align-middle text-center text-13 font-mono tabular-nums text-foreground font-normal">
-            {item.citationCount ?? '—'}
+            {item.citationCount != null && Number(item.citationCount) > 0 ? item.citationCount : '—'}
           </td>
         )}
 

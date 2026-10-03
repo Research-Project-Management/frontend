@@ -11,6 +11,8 @@ import { useCollaborationStream } from '../../../hooks/use-collaboration';
 
 const Editor = dynamic(() => import('../../../components/editor/Editor'), { ssr: false });
 
+import { EditorEmptyState } from '../../../components/shared';
+
 interface EmptyEditorStateProps {
   onOpenDefaultFile?: () => void;
   fileName?: string;
@@ -18,27 +20,23 @@ interface EmptyEditorStateProps {
 
 function EmptyEditorState({ onOpenDefaultFile, fileName = 'main.tex' }: EmptyEditorStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-3 select-none bg-background px-4">
-      <div className="size-14 rounded-lg bg-muted border border-border flex items-center justify-center">
-        <FileCode2 className="size-7 text-muted-foreground/50 shrink-0" />
-      </div>
-      <div className="text-center space-y-1">
-        <p className="text-sm font-medium text-foreground">No file open</p>
-        <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
-          Select a document from the Files explorer or reopen the default manuscript to start writing.
-        </p>
-      </div>
-      {onOpenDefaultFile && (
-        <button
-          type="button"
-          onClick={onOpenDefaultFile}
-          className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border transition-colors cursor-pointer"
-        >
-          <FileCode2 className="size-3.5 shrink-0 opacity-70" />
-          <span>Open {fileName}</span>
-        </button>
-      )}
-    </div>
+    <EditorEmptyState
+      variant="document"
+      title="No file open"
+      description="Select a document from the Files explorer or reopen the default manuscript to start writing."
+      action={
+        onOpenDefaultFile ? (
+          <button
+            type="button"
+            onClick={onOpenDefaultFile}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border transition-colors cursor-pointer"
+          >
+            <FileCode2 className="size-3.5 shrink-0 opacity-70" />
+            <span>Open {fileName}</span>
+          </button>
+        ) : undefined
+      }
+    />
   );
 }
 

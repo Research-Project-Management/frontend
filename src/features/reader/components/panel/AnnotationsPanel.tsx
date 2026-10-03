@@ -95,7 +95,7 @@ function AnnotationEditForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-2 rounded-md border border-border p-2 bg-background shadow-2xs">
+      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-2 rounded-md border border-border p-2 bg-background">
         <input
           {...register('quoteText')}
           aria-label="Quote text"
@@ -121,7 +121,7 @@ function AnnotationEditForm({
             type="button"
             variant="outline"
             size="sm"
-            className="h-6 text-11 px-2 cursor-pointer rounded-md border-border bg-background shadow-2xs text-foreground hover:bg-muted"
+            className="h-6 text-11 px-2 cursor-pointer rounded-md border-border bg-background text-foreground hover:bg-muted"
             onClick={onCancel}
           >
             Cancel
@@ -129,7 +129,7 @@ function AnnotationEditForm({
           <Button
             type="submit"
             size="sm"
-            className="h-6 text-11 px-2.5 font-medium cursor-pointer rounded-md shadow-2xs"
+            className="h-6 text-11 px-2.5 font-medium cursor-pointer rounded-md"
             disabled={isSaving}
           >
             {isSaving ? <Loader2 className="size-3 animate-spin shrink-0" strokeWidth={1.5} /> : 'Save'}
@@ -262,7 +262,7 @@ export function AnnotationsPanel({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search highlights..."
-                className="h-6 w-full rounded-md border border-border bg-background pl-6 pr-6 text-11 text-foreground placeholder:text-foreground/70 shadow-2xs focus:outline-none focus:ring-1 focus:ring-primary font-sans"
+                className="h-6 w-full rounded-md border border-border bg-background pl-6 pr-6 text-11 text-foreground placeholder:text-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary font-sans"
               />
               {searchQuery && (
                 <button
@@ -280,7 +280,7 @@ export function AnnotationsPanel({
               size="sm"
               onClick={() => importExternal()}
               disabled={isImporting}
-              className="h-6 gap-1 px-1.5 text-11 font-medium rounded-md shrink-0 cursor-pointer border border-border bg-background shadow-2xs text-foreground hover:bg-muted"
+              className="h-6 gap-1 px-1.5 text-11 font-medium rounded-md shrink-0 cursor-pointer border border-border bg-background text-foreground hover:bg-muted"
               title="Import embedded annotations from PDF (/Annots dictionary)"
             >
               {isImporting ? (
@@ -296,7 +296,7 @@ export function AnnotationsPanel({
               size="sm"
               onClick={() => extractNotes(paper.id)}
               disabled={isExtracting || annotations.length === 0}
-              className="h-6 gap-1 px-2 text-11 font-medium rounded-md shrink-0 cursor-pointer border border-border bg-background shadow-2xs text-foreground hover:bg-muted"
+              className="h-6 gap-1 px-2 text-11 font-medium rounded-md shrink-0 cursor-pointer border border-border bg-background text-foreground hover:bg-muted"
               title="Extract all highlights into a Literature Note"
             >
               {isExtracting ? (
@@ -320,7 +320,7 @@ export function AnnotationsPanel({
                     type="button"
                     onClick={() => setSelectedColor(filter.id)}
                     className={cn(
-                      'inline-flex h-4 items-center gap-1 rounded-md px-1.5 text-10 font-medium transition-colors shrink-0 cursor-pointer shadow-2xs',
+                      'inline-flex h-4 items-center gap-1 rounded-md px-1.5 text-10 font-medium transition-colors shrink-0 cursor-pointer',
                       active
                         ? 'bg-foreground text-background font-semibold'
                         : 'bg-background border border-border text-foreground hover:bg-muted',
@@ -347,7 +347,7 @@ export function AnnotationsPanel({
                     <button
                       type="button"
                       className={cn(
-                        "h-4.5 px-1.5 flex items-center gap-1 rounded-md text-10 font-sans border border-border bg-background shadow-2xs text-foreground hover:bg-muted cursor-pointer transition-colors",
+                        "h-4.5 px-1.5 flex items-center gap-1 rounded-md text-10 font-sans border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors",
                         authorFilter !== 'all' && "border-primary/50 text-foreground font-medium"
                       )}
                       title="Filter by Author"
@@ -356,7 +356,7 @@ export function AnnotationsPanel({
                       <span>{authorFilter === 'all' ? 'All' : 'Author'}</span>
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-32 text-xs p-1 bg-popover border border-border shadow-2xs rounded-md">
+                  <DropdownMenuContent align="end" className="w-32 text-xs p-1 bg-popover border border-border shadow-md rounded-md">
                     <DropdownMenuItem
                       onClick={() => setAuthorFilter('all')}
                       className="cursor-pointer text-11 flex items-center justify-between text-foreground"
@@ -383,14 +383,14 @@ export function AnnotationsPanel({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="h-4.5 px-1.5 flex items-center gap-1 rounded-md text-10 font-sans border border-border bg-background shadow-2xs text-foreground hover:bg-muted cursor-pointer transition-colors"
+                    className="h-4.5 px-1.5 flex items-center gap-1 rounded-md text-10 font-sans border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors"
                     title="Sort annotations"
                   >
                     <ArrowUpDown className="size-2.5 text-foreground shrink-0" strokeWidth={1.5} />
                     <span className="capitalize">{sortBy}</span>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-36 text-xs p-1 bg-popover border border-border shadow-2xs rounded-md">
+                <DropdownMenuContent align="end" className="w-36 text-xs p-1 bg-popover border border-border shadow-md rounded-md">
                   <DropdownMenuItem
                     onClick={() => setSortBy('position')}
                     className="cursor-pointer text-11 flex items-center justify-between text-foreground"
@@ -447,7 +447,7 @@ export function AnnotationsPanel({
               variant="outline"
               size="sm"
               onClick={() => { setSearchQuery(''); setSelectedColor('all'); }}
-              className="h-6 text-11 gap-1 rounded-md border-border bg-background shadow-2xs text-foreground hover:bg-muted cursor-pointer"
+              className="h-6 text-11 gap-1 rounded-md border-border bg-background text-foreground hover:bg-muted cursor-pointer"
             >
               <RotateCcw className="size-2.5" strokeWidth={1.5} />
               Reset filters
@@ -467,8 +467,8 @@ export function AnnotationsPanel({
                   className={cn(
                     "group rounded-md border p-2 text-12 transition-colors relative",
                     isSelected
-                      ? "border-primary/60 bg-primary/5 shadow-2xs"
-                      : "border-border hover:border-border/80 bg-background shadow-2xs"
+                      ? "border-primary/60 bg-primary/5"
+                      : "border-border hover:border-border/80 bg-background"
                   )}
                 >
                   {isEditing ? (
@@ -593,7 +593,7 @@ export function AnnotationsPanel({
                           {annotation.tags.map((tag) => (
                             <span
                               key={tag}
-                              className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-10 font-mono bg-background text-foreground border border-border shadow-2xs"
+                              className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-10 font-mono bg-background text-foreground border border-border"
                             >
                               #{tag}
                             </span>

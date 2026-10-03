@@ -215,7 +215,7 @@ export default function DocumentNavDrawer({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={`Filter ${activeTab}...`}
-            className="h-8 pl-8 text-12 bg-background border border-border rounded-md shadow-2xs text-foreground placeholder:text-foreground/70 focus-visible:ring-1 focus-visible:ring-primary"
+            className="h-8 pl-8 text-12 bg-background border border-border rounded-md text-foreground placeholder:text-foreground/70 focus-visible:ring-1 focus-visible:ring-primary"
           />
           {searchQuery ? (
             <button
@@ -401,7 +401,7 @@ export default function DocumentNavDrawer({
                       </button>
 
                       {isExpanded ? (
-                        <div className="mt-2 overflow-x-auto border border-border rounded-md shadow-2xs bg-card text-11">
+                        <div className="mt-2 overflow-x-auto border border-border rounded-md bg-card text-11">
                           <table className="w-full border-collapse text-left">
                             {tab.headers && tab.headers.length > 0 ? (
                               <thead>

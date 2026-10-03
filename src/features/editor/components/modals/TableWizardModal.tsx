@@ -265,7 +265,7 @@ export default function TableWizardModal({
               <div className="space-y-1">
                 <span className="text-xs font-semibold text-foreground">
                   Dimension:{' '}
-                  <span className="text-primary font-mono font-bold">
+                  <span className="text-primary font-mono font-semibold">
                     {hoverRows || rows} rows × {hoverCols || cols} columns
                   </span>
                 </span>
@@ -355,7 +355,7 @@ export default function TableWizardModal({
                 onChange={(e) => setPastedText(e.target.value)}
                 placeholder={'First Name\tLast Name\tScore\nAlice\tSmith\t95\nBob\tJohnson\t88'}
                 rows={5}
-                className="w-full p-2.5 rounded-md border border-border bg-background text-xs font-mono resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full p-2.5 rounded-md border border-border bg-background text-xs font-mono resize-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
               />
             </div>
 
@@ -429,10 +429,10 @@ export default function TableWizardModal({
                     type="button"
                     onClick={() => setTableStyle(s.id as TableStyle)}
                     className={cn(
-                      'h-7 px-2 text-11 font-medium rounded-sm border transition-colors cursor-pointer',
+                      'h-7 px-2 text-11 font-medium rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                       tableStyle === s.id
                         ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background border-border text-foreground hover:bg-muted shadow-2xs'
+                        : 'bg-background border-border text-foreground hover:bg-muted'
                     )}
                   >
                     {s.label}
@@ -459,10 +459,10 @@ export default function TableWizardModal({
                       type="button"
                       onClick={() => setDefaultAlign(a.id as ColAlign)}
                       className={cn(
-                        'h-7 px-2 text-11 font-medium rounded-sm border flex items-center justify-center gap-1 transition-colors cursor-pointer',
+                        'h-7 px-2 text-11 font-medium rounded-sm border flex items-center justify-center gap-1 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                         defaultAlign === a.id
                           ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-background border-border text-foreground hover:bg-muted shadow-2xs'
+                          : 'bg-background border-border text-foreground hover:bg-muted'
                       )}
                     >
                       <Icon className="size-3" />
@@ -514,7 +514,7 @@ export default function TableWizardModal({
             variant="outline"
             size="sm"
             onClick={handleCopyCode}
-            className="gap-1.5 h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-2xs"
+            className="gap-1.5 h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <Copy className="size-3.5" />
             Copy Code
@@ -526,7 +526,7 @@ export default function TableWizardModal({
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-2xs"
+              className="h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               Cancel
             </Button>
@@ -535,7 +535,7 @@ export default function TableWizardModal({
               variant="default"
               size="sm"
               onClick={handleInsert}
-              className="gap-1.5 h-8 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-2xs cursor-pointer"
+              className="gap-1.5 h-8 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Check className="size-3.5" />
               Insert Table

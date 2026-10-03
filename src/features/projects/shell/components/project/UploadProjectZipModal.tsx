@@ -297,7 +297,7 @@ export function UploadProjectZipModal({
             /* Selected & Analyzed Project View */
             <div className="space-y-4">
               {/* Archive Info Card */}
-              <div className="rounded-lg border border-border bg-card p-4 space-y-3 shadow-sm">
+              <div className="rounded-lg border border-border bg-card p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="size-8 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">

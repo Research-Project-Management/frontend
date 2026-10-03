@@ -60,7 +60,7 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
             onClick={onPrevPage}
             disabled={pageNumber <= 1}
             aria-label="Previous page"
-            className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <ChevronUp className="size-3.5" />
           </button>
@@ -78,7 +78,7 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
             onClick={onNextPage}
             disabled={pageNumber >= numPages}
             aria-label="Next page"
-            className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <ChevronDown className="size-3.5" />
           </button>
@@ -99,7 +99,7 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
             if (e.key === 'Escape') setInputPage(String(pageNumber));
           }}
           onBlur={handlePageCommit}
-          className="w-7 h-5 text-center text-xs font-mono bg-transparent border border-muted-foreground/30 focus:border-primary rounded-sm text-foreground focus:outline-none"
+          className="w-7 h-5 text-center text-xs font-mono bg-transparent border border-muted-foreground/30 focus:border-primary rounded-md text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
           aria-label="Current page"
         />
         <span>/ {numPages || 1}</span>
@@ -115,7 +115,7 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
                 type="button"
                 onClick={onZoomOut}
                 aria-label="Zoom out"
-                className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 <Minus className="size-3.5" />
               </button>
@@ -131,7 +131,7 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
                 type="button"
                 onClick={onZoomIn}
                 aria-label="Zoom in"
-                className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 <Plus className="size-3.5" />
               </button>

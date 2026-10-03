@@ -26,7 +26,43 @@ export interface EditorStorageItem {
 }
 
 export const StorageService = {
+  getProjectFiles: async (projectId: string, parentId?: string | null): Promise<EditorStorageItem[]> => {
+    if (!projectId) return [];
+    try {
+      const endpoint = parentId
+        ? `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes?parentId=${parentId}`
+        : `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`;
+      const nodes = await apiGet<any[]>(endpoint);
+      if (Array.isArray(nodes)) {
+        return nodes.map((n) => ({
+          id: n.id,
+          filename: n.name,
+          isFolder: n.type === 'FOLDER',
+          parentId: n.parentId,
+          size: n.sizeBytes,
+          createdAt: n.createdAt,
+          updatedAt: n.updatedAt,
+        }));
+      }
+    } catch {
+      return [];
+    }
+    return [];
+  },
+
   getPageFiles: async (pageId: string, parentId?: string | null): Promise<EditorStorageItem[]> => {
+    if (!pageId) return [];
+    const legacyEndpoint = parentId
+      ? `/api/files/page/${pageId}?parentId=${parentId}`
+      : `/api/files/page/${pageId}`;
+    try {
+      const data = await apiGet<{ files: EditorStorageItem[] }>(legacyEndpoint);
+      if (data?.files && data.files.length > 0) {
+        return data.files;
+      }
+    } catch {
+      // Fallback to project structure nodes if pageId happens to be or resolve to a project
+    }
     try {
       const endpoint = parentId
         ? `${MANUSCRIPTS_API_BASE}/projects/${pageId}/structure/nodes?parentId=${parentId}`
@@ -44,17 +80,9 @@ export const StorageService = {
         }));
       }
     } catch {
-      // Fallback to legacy endpoint if project not found
-    }
-    const legacyEndpoint = parentId
-      ? `/api/files/page/${pageId}?parentId=${parentId}`
-      : `/api/files/page/${pageId}`;
-    try {
-      const data = await apiGet<{ files: EditorStorageItem[] }>(legacyEndpoint);
-      return data.files || [];
-    } catch {
       return [];
     }
+    return [];
   },
 
   uploadPageFile: async (
@@ -62,14 +90,16 @@ export const StorageService = {
     file: File,
     parentId?: string | null,
     onProgress?: (progress: number) => void,
+    projectId?: string,
   ): Promise<EditorStorageItem> => {
+    const targetProjectId = projectId || pageId;
     // ── 1. Attempt Direct-to-R2 Presigned Upload (Bypasses backend network/memory) ──
     try {
       const presignRes = await presignUpload({
         filename: file.name,
         mimeType: file.type || 'application/octet-stream',
         size: file.size,
-        projectId: pageId,
+        projectId: targetProjectId,
       });
 
       const uploadUrl = presignRes?.uploadUrl || presignRes?.signedUrl;
@@ -101,7 +131,7 @@ export const StorageService = {
           filename: file.name,
           size: file.size,
           mimeType: file.type || 'application/octet-stream',
-          projectId: pageId,
+          projectId: targetProjectId,
           parentId: parentId || null,
         });
 

@@ -105,7 +105,7 @@ export default function DeleteModal({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isDeleting}
-            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md hover:bg-muted shadow-2xs"
+            className="h-8 px-3 text-12 font-medium cursor-pointer rounded-md hover:bg-muted"
           >
             {cancelLabel}
           </Button>

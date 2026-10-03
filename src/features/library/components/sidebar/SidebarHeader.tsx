@@ -41,7 +41,7 @@ export function SidebarHeader({
   return (
     <div className="mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground select-none">
       {isSearchExpanded || searchQuery ? (
-        <div className="relative flex items-center transition-all duration-300 ease-in-out w-full h-8 rounded-md border border-border bg-white dark:bg-card shadow-2xs overflow-hidden group font-normal text-11 hover:border-foreground/30">
+        <div className="relative flex items-center transition-all duration-300 ease-in-out w-full h-8 rounded-md border border-border bg-background overflow-hidden group font-normal text-11 hover:border-foreground/30">
           <Search className="absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 left-2 translate-x-0 text-foreground pointer-events-none shrink-0" strokeWidth={1.5} />
           <Input
             ref={searchInputRef}

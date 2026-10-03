@@ -72,7 +72,7 @@ export function usePdf(url: string | null): UsePdfReturn {
         }
         if (active) {
           console.error('[usePdf] PDF load error:', err);
-          setError(getErrorMessage(err) || 'Không thể tải tài liệu PDF.');
+          setError(getErrorMessage(err) || 'Unable to load PDF document.');
           setBlobUrl(null);
           setIsLoading(false);
         }

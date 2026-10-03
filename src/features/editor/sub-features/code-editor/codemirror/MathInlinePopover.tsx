@@ -86,7 +86,7 @@ export function MathInlinePopover({ trigger, onApply, onClose }: MathInlinePopov
         <div className="flex items-center gap-1.5 text-primary">
           <Sigma className="size-3.5" />
           <span>Edit LaTeX Math (In-place)</span>
-          <span className="text-10 text-muted-foreground font-normal">
+          <span className="text-11 text-muted-foreground font-normal">
             {trigger.isDisplay ? '$$ Display $$' : '$ Inline $'}
           </span>
         </div>
@@ -108,7 +108,7 @@ export function MathInlinePopover({ trigger, onApply, onClose }: MathInlinePopov
           value={formula}
           onChange={(e) => setFormula(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="w-full px-2.5 py-1.5 rounded-md border border-input bg-background font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
+          className="w-full px-2.5 py-1.5 rounded-md border border-input bg-background font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           placeholder="e.g. \frac{a}{b} + c^2 = d"
         />
       </div>
@@ -120,7 +120,7 @@ export function MathInlinePopover({ trigger, onApply, onClose }: MathInlinePopov
             key={m.label}
             type="button"
             onClick={() => setFormula((prev) => `${prev} ${m.snippet}`.trim())}
-            className="px-1.5 py-0.5 rounded-sm bg-muted/60 hover:bg-muted text-10 font-mono text-muted-foreground hover:text-foreground shrink-0 cursor-pointer transition-colors"
+            className="px-1.5 py-0.5 rounded-sm bg-muted/60 hover:bg-muted text-11 font-mono text-muted-foreground hover:text-foreground shrink-0 cursor-pointer transition-colors"
           >
             {m.label}
           </button>
@@ -128,7 +128,7 @@ export function MathInlinePopover({ trigger, onApply, onClose }: MathInlinePopov
       </div>
 
       {/* Live Preview Box */}
-      <div className="my-2 p-2.5 rounded-md bg-muted/30 border border-border/40 min-h-[44px] flex items-center justify-center overflow-x-auto text-sm">
+      <div className="my-2 py-2.5 px-3 rounded-md bg-muted/25 min-h-[44px] flex items-center justify-center overflow-x-auto text-sm">
         <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
       </div>
 
@@ -146,7 +146,7 @@ export function MathInlinePopover({ trigger, onApply, onClose }: MathInlinePopov
           <button
             type="button"
             onClick={handleSave}
-            className="px-2.5 py-1 rounded-sm bg-primary text-primary-foreground hover:bg-primary-hover font-medium flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+            className="px-2.5 py-1 rounded-sm bg-primary text-primary-foreground hover:bg-primary-hover font-medium flex items-center gap-1 transition-colors cursor-pointer"
           >
             <Check className="size-3" />
             <span>Apply</span>

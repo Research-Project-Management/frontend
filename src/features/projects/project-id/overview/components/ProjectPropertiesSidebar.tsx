@@ -69,7 +69,7 @@ export function ProjectPropertiesSidebar({
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-sm flex flex-col gap-5">
+    <div className="rounded-xl border border-border bg-card p-5 flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold tracking-tight text-foreground">
           Project Details
@@ -133,7 +133,7 @@ export function ProjectPropertiesSidebar({
           </span>
           {project.lead ? (
             <div className="flex items-center gap-1.5">
-              <div className="size-5 rounded-full bg-muted flex items-center justify-center text-10 font-bold overflow-hidden">
+              <div className="size-5 rounded-full bg-muted flex items-center justify-center text-10 font-semibold overflow-hidden">
                 {project.lead.avatar ? (
                   <img
                     src={project.lead.avatar}

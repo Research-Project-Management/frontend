@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Plus, Minus, Check, ChevronDown, ChevronUp, Building2, User } from 'lucide-react';
+import { Plus, Minus, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import type { Item, CreatorCredit } from '@/features/library/types/library.types';
@@ -373,19 +373,6 @@ export function CreatorFields({
     syncCreatorsToParent(updatedCreators);
   };
 
-  const handleToggleFieldMode = (targetIndex: number) => {
-    const currentCreator = localCreators[targetIndex];
-    if (!currentCreator) return;
-    const nextMode = currentCreator.fieldMode === 1 ? 0 : 1;
-    const updatedCreators = [...localCreators];
-    updatedCreators[targetIndex] = {
-      ...currentCreator,
-      fieldMode: nextMode,
-    };
-    setLocalCreators(updatedCreators);
-    syncCreatorsToParent(updatedCreators);
-  };
-
   const handleAddCreator = (afterIndex?: number) => {
     toast.dismiss('item-update');
     const primaryRoleDef =
@@ -559,45 +546,13 @@ export function CreatorFields({
                     align="start"
                     sideOffset={6}
                     alignOffset={2}
-                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
                   >
                     Short name
                   </TooltipContent>
                 </Tooltip>
               )}
 
-              {/* Field Mode Toggle Button (Person vs Institution) */}
-              <Tooltip delayDuration={300}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleFieldMode(originalIndex)}
-                    className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none shrink-0"
-                    aria-label={
-                      creatorEntry.fieldMode === 1
-                        ? 'Switch to two fields (person name)'
-                        : 'Switch to single field (institution/organization)'
-                    }
-                  >
-                    {creatorEntry.fieldMode === 1 ? (
-                      <Building2 className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                    ) : (
-                      <User className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  align="start"
-                  sideOffset={6}
-                  alignOffset={2}
-                  className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
-                >
-                  {creatorEntry.fieldMode === 1
-                    ? 'Single-field mode (institution). Click to switch to person'
-                    : 'Person mode. Click to switch to institution (single-field)'}
-                </TooltipContent>
-              </Tooltip>
 
               {/* Action Buttons (Add, Remove) - only visible on hover */}
               <div className="invisible group-hover:visible flex items-center gap-0.5 shrink-0">
@@ -617,7 +572,7 @@ export function CreatorFields({
                     align="start"
                     sideOffset={6}
                     alignOffset={2}
-                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
                   >
                     Add {roleLabel.toLowerCase()}
                   </TooltipContent>
@@ -640,7 +595,7 @@ export function CreatorFields({
                       align="start"
                       sideOffset={6}
                       alignOffset={2}
-                      className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-sm"
+                      className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
                     >
                       Remove {roleLabel.toLowerCase()}
                     </TooltipContent>

@@ -1492,7 +1492,10 @@ const structure = {
   },
 
   createNode: async (projectId: string, dto: any) => {
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, dto);
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, {
+      ...dto,
+      type: typeof dto?.type === 'string' ? dto.type.toUpperCase() : (dto?.type || 'DOC'),
+    });
   },
 
   moveNode: async (projectId: string, nodeId: string, dto: any) => {

@@ -2,20 +2,19 @@
 
 import React from 'react';
 import { Lock } from 'lucide-react';
-import { TopBar } from '../components/layout/TopBar';
+import { PageLayout, PageHeader, PageContent } from '@/shared/components/layout';
 import SecurityTab from '@/features/account/components/SecurityTab';
 
 export default function SecurityPage() {
   return (
-    <div className="flex h-full w-full flex-col bg-background">
-      <TopBar
+    <PageLayout>
+      <PageHeader
         title="Security"
-        description="Manage account credentials, authentication methods, and security settings."
-        Icon={Lock}
+        icon={Lock}
       />
-      <div className="flex-1 overflow-y-auto">
+      <PageContent maxWidth="full" noPadding>
         <SecurityTab />
-      </div>
-    </div>
+      </PageContent>
+    </PageLayout>
   );
 }

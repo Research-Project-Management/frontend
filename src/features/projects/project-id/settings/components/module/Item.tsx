@@ -20,8 +20,8 @@ export function Item({ mod, active, disabled, onToggle }: ItemProps) {
       className={cn(
         'flex items-center justify-between gap-4 rounded-md border p-4 transition-colors',
         active
-          ? 'border-border bg-card'
-          : 'border-border bg-card/60 opacity-60',
+          ? 'border-border bg-background hover:bg-muted/30'
+          : 'border-border/60 bg-muted/20 opacity-60',
         mod.locked && 'opacity-70',
       )}
     >

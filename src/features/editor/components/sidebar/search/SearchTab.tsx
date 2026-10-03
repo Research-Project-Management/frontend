@@ -21,6 +21,7 @@ import { EditorEventBus } from "@/features/editor/utils/editor.util";
 import { documentSearchService } from "@/features/editor/services/search.service";
 import { useEditorInstance } from "@/features/editor/core/context/editor-instance.context";
 import { editorCommandBus } from "@/features/editor/core/command-bus/editor-command-bus";
+import { EditorEmptyState } from "../../shared";
 
 interface MatchEntry {
   line: number;
@@ -328,7 +329,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             title="Close search"
             aria-label="Close search"
             onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors hover:bg-sidebar-hover cursor-pointer"
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors hover:bg-sidebar-hover cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <X className="size-3.5 shrink-0" />
           </button>
@@ -337,50 +338,44 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
 
       {/* Search Input Controls */}
       <div className="border-b border-border px-3 pb-3 pt-1 space-y-2 bg-background select-none">
-        {/* Row 1: Search Input + Green Capsule Search Button */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 min-w-0">
-            <Input
-              ref={searchInputRef}
-              value={query}
-              onChange={(e) => {
-                setInstantQuery(null);
-                setQuery(e.target.value);
+        {/* Row 1: Search Input with integrated Search Icon */}
+        <div className="relative w-full">
+          <SearchIcon
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-foreground pointer-events-none shrink-0"
+            strokeWidth={1.5}
+          />
+          <Input
+            ref={searchInputRef}
+            value={query}
+            onChange={(e) => {
+              setInstantQuery(null);
+              setQuery(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSearch();
+              }
+            }}
+            placeholder="Search all project files..."
+            className="h-8 pl-8 pr-8 text-xs bg-background border-border/80 focus-visible:ring-1 focus-visible:ring-primary rounded-md w-full placeholder:text-muted-foreground"
+          />
+          {isFetching ? (
+            <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 animate-spin text-muted-foreground pointer-events-none shrink-0" />
+          ) : query ? (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setInstantQuery("");
+                searchInputRef.current?.focus();
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleSearch();
-                }
-              }}
-              placeholder="Search all project files..."
-              className="h-8 px-3 text-xs bg-background border-border/80 focus-visible:ring-1 focus-visible:ring-primary rounded-md w-full placeholder:text-muted-foreground"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery("");
-                  setInstantQuery("");
-                  searchInputRef.current?.focus();
-                }}
-                aria-label="Clear search"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground outline-none cursor-pointer"
-              >
-                <X className="size-3.5 shrink-0" />
-              </button>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={handleSearch}
-            disabled={isFetching}
-            className="h-8 px-3.5 rounded-full bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-xs font-semibold cursor-pointer shrink-0 transition-colors shadow-2xs flex items-center justify-center gap-1.5"
-          >
-            {isFetching && <Loader2 className="size-3 animate-spin shrink-0" />}
-            <span>Search</span>
-          </button>
+              aria-label="Clear search"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-xs cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
+            >
+              <X className="size-3.5 shrink-0" />
+            </button>
+          ) : null}
         </div>
 
         {/* Row 2: Search Options (Aa, [.*], W) */}
@@ -392,9 +387,9 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             aria-label="Match Case"
             aria-pressed={caseSensitive}
             className={cn(
-              "size-7 rounded-full text-xs font-medium transition-colors flex items-center justify-center cursor-pointer select-none",
+              "size-7 rounded-md text-xs font-medium transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary",
               caseSensitive
-                ? "bg-muted text-foreground font-semibold shadow-2xs"
+                ? "bg-muted text-foreground font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
             )}
           >
@@ -408,9 +403,9 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             aria-label="Regular Expression"
             aria-pressed={useRegex}
             className={cn(
-              "size-7 rounded-full text-xs font-mono transition-colors flex items-center justify-center cursor-pointer select-none",
+              "size-7 rounded-md text-xs font-mono transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary",
               useRegex
-                ? "bg-muted text-foreground font-semibold shadow-2xs"
+                ? "bg-muted text-foreground font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
             )}
           >
@@ -424,9 +419,9 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             aria-label="Whole Word"
             aria-pressed={wholeWord}
             className={cn(
-              "size-7 rounded-full text-xs font-semibold transition-colors flex items-center justify-center cursor-pointer select-none",
+              "size-7 rounded-md text-xs font-semibold transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary",
               wholeWord
-                ? "bg-muted text-foreground font-semibold shadow-2xs"
+                ? "bg-muted text-foreground font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
             )}
           >
@@ -461,7 +456,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                 onClick={handleReplaceAllEverywhere}
                 disabled={!effectiveQuery || isReplacingAll}
                 aria-label="Replace all in project"
-                className="h-7 rounded-md bg-primary px-2.5 text-11 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer shadow-2xs"
+                className="h-7 rounded-md bg-primary px-2.5 text-11 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
                 title="Replace all matches across all project files"
               >
                 {isReplacingAll ? "Replacing..." : "All Files"}
@@ -547,7 +542,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                                 </span>
                                 <span className="truncate font-mono text-xs text-foreground/80 leading-snug">
                                   {match.text.slice(0, match.matchStart)}
-                                  <span className="bg-amber-400/30 dark:bg-amber-400/20 text-foreground font-semibold rounded-xs px-0.5">
+                                  <span className="bg-amber-400/30 dark:bg-amber-400/20 text-foreground font-semibold rounded-sm px-0.5">
                                     {match.text.slice(match.matchStart, match.matchEnd)}
                                   </span>
                                   {match.text.slice(match.matchEnd)}
@@ -562,16 +557,26 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                 })}
               </ul>
             ) : (
-              <div className="flex h-40 flex-col items-center justify-center gap-1.5 text-center text-muted-foreground px-4">
-                <SearchIcon className="size-6 opacity-30 shrink-0" />
-                <p className="text-xs font-medium">No results found for &ldquo;{effectiveQuery}&rdquo;</p>
-                <p className="text-xs text-muted-foreground/80">
-                  No matching text found across project files.
-                </p>
+              <div className="py-8 px-2">
+                <EditorEmptyState
+                  variant="search"
+                  isCompact
+                  title="No results found"
+                  description={`No matching text found for "${effectiveQuery}".`}
+                />
               </div>
             )}
           </>
-        ) : null}
+        ) : (
+          <div className="py-12 px-2">
+            <EditorEmptyState
+              variant="search"
+              isCompact
+              title="Search project files"
+              description="Type a query above to search or replace across all documents in this project."
+            />
+          </div>
+        )}
       </div>
     </div>
   );

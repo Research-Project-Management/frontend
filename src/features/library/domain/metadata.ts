@@ -555,7 +555,7 @@ export function formatExtraDisplay(paper: Item): string {
   if (fields && typeof fields === 'object') {
     const parts: string[] = [];
     for (const [k, v] of Object.entries(fields)) {
-      if (v !== null && v !== undefined && v !== '') {
+      if (v !== null && v !== undefined && v !== '' && v !== 0 && v !== '0' && v !== '0000') {
         const valStr = typeof v === 'object' ? JSON.stringify(v) : String(v);
         const keyLabel = k
           .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -594,7 +594,7 @@ export function formatAndSanitizeExtraMetadata(
               if (value === null || value === undefined) continue;
               if (typeof value === 'object') continue;
               const strVal = String(value).trim();
-              if (!strVal) continue;
+              if (!strVal || value === 0 || strVal === '0' || strVal === '0000') continue;
               if (normKey === 'arxiv' || normKey === 'arxivid' || normKey === 'archiveid') {
                 const cleanVal = strVal.replace(/^arxiv:\s*/i, '');
                 customLines.push(`arXiv: ${cleanVal}`);
@@ -678,6 +678,8 @@ export function formatAndSanitizeExtraMetadata(
     if (genericKvMatch) {
       const rawKey = genericKvMatch[1].trim();
       const normKey = rawKey.toLowerCase().replace(/[\s_-]+/g, '');
+      const rawVal = genericKvMatch[2].trim();
+      if (rawVal === '0' || rawVal === '0000' || rawVal === 'null' || rawVal === 'undefined') continue;
       const dedicatedFormFields = new Set([
         'edition', 'eventplace', 'conferencename', 'proceedingstitle',
         'booktitle', 'websitetitle', 'websitetype', 'blogtitle',
@@ -687,6 +689,7 @@ export function formatAndSanitizeExtraMetadata(
         'issue', 'section', 'publisher', 'place', 'series', 'seriestitle',
         'seriesnumber', 'seriestext', 'journalabbr', 'journalabbreviation',
         'publicationtitle', 'date', 'publicationdate', 'accessedat', 'accessdate',
+        'citationcount', 'referencecount', 'citations', 'references',
       ]);
       if (dedicatedFormFields.has(normKey)) continue;
     }

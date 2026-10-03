@@ -69,8 +69,8 @@ export default function Switcher({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          'group flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 transition-colors cursor-pointer border border-border/70 bg-card hover:bg-muted',
-          open && 'bg-muted border-border',
+          'group flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 transition-colors cursor-pointer border border-border/70 bg-background/60 hover:bg-background',
+          open && 'bg-background border-border',
         )}
       >
         <ProjectAvatar

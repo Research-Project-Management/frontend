@@ -23,6 +23,7 @@ import type { ChatMessage, SourceItem, AgentAction } from '../../types/chat.type
 import { renderMarkdown } from '../../utils/render-markdown';
 import { ActionCardsGroup } from '../chat/action-card';
 import { ResponseWidgets } from '../chat/response-widgets';
+import { CompanionHero } from './CompanionHero';
 
 interface CompanionMessagesProps {
   messages: ChatMessage[];
@@ -218,29 +219,34 @@ export function CompanionMessages({
       className='flex-1 overflow-y-auto min-h-0 pl-3 pr-1.5 py-3 space-y-3 select-text custom-scrollbar'
     >
       {isEmpty ? (
-        <div className='flex flex-col justify-end h-full px-1 pb-1 select-none'>
-          {/* Suggestions Header */}
-          <div className='mb-2 px-1'>
-            <span className='text-13 font-medium text-muted-foreground'>
-              Suggestions
-            </span>
-          </div>
+        <div className='flex flex-col justify-between h-full px-1 pb-1 select-none'>
+          {/* 3D Animated AI Hero with background aura, floating levitation, and title */}
+          <CompanionHero />
 
-          {/* Suggestions List */}
-          <div className='divide-y divide-border/60 border-t border-border/40'>
-            {SUGGESTIONS.map((item) => (
-              <button
-                key={item.id}
-                type='button'
-                onClick={() => onSelectPrompt(item.prompt)}
-                className='w-full flex items-start gap-3 py-3 px-1 text-left text-13 text-foreground hover:bg-muted/40 rounded-md transition-colors cursor-pointer group'
-              >
-                <CornerDownRight className='size-4 text-foreground shrink-0 mt-0.5' />
-                <span className='leading-snug text-13 font-normal text-foreground'>
-                  {item.text}
-                </span>
-              </button>
-            ))}
+          {/* Suggestions Section */}
+          <div>
+            <div className='mb-2 px-1'>
+              <span className='text-13 font-medium text-muted-foreground'>
+                Suggestions
+              </span>
+            </div>
+
+            {/* Suggestions List */}
+            <div className='divide-y divide-border/60 border-t border-border/40'>
+              {SUGGESTIONS.map((item) => (
+                <button
+                  key={item.id}
+                  type='button'
+                  onClick={() => onSelectPrompt(item.prompt)}
+                  className='w-full flex items-start gap-3 py-3 px-1 text-left text-13 text-foreground hover:bg-muted/40 rounded-md transition-colors cursor-pointer group'
+                >
+                  <CornerDownRight className='size-4 text-foreground shrink-0 mt-0.5' />
+                  <span className='leading-snug text-13 font-normal text-foreground'>
+                    {item.text}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       ) : (

@@ -5,23 +5,14 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   SquarePen,
   History,
-  MoreHorizontal,
   X,
-  Maximize2,
-  ExternalLink,
-  PanelRightClose,
+  ChevronRight,
 } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
 import { useAiCompanionStore } from '../../store/ai-companion.store';
 import { useCompanionChat } from '../../hooks/use-companion-chat';
@@ -58,9 +49,12 @@ export function AiCompanionSidebar() {
 
   const [promptToFill, setPromptToFill] = useState('');
   const [isResizing, setIsResizing] = useState(false);
+  const [liveWidth, setLiveWidth] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(width);
+  const latestClientXRef = useRef(0);
+  const rafIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -76,6 +70,7 @@ export function AiCompanionSidebar() {
       setIsResizing(true);
       startXRef.current = e.clientX;
       startWidthRef.current = width;
+      latestClientXRef.current = e.clientX;
       document.body.style.userSelect = 'none';
       document.body.style.cursor = 'col-resize';
     },
@@ -85,45 +80,64 @@ export function AiCompanionSidebar() {
   useEffect(() => {
     if (!isResizing) return;
 
-    let rafId: number | null = null;
-
     const handleMouseMove = (e: MouseEvent) => {
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        const delta = startXRef.current - e.clientX;
-        const newWidth = Math.min(Math.max(startWidthRef.current + delta, 320), 720);
-        setWidth(newWidth);
-        rafId = null;
-      });
+      latestClientXRef.current = e.clientX;
+      if (rafIdRef.current === null) {
+        rafIdRef.current = requestAnimationFrame(() => {
+          rafIdRef.current = null;
+          const delta = startXRef.current - latestClientXRef.current;
+          const rawWidth = startWidthRef.current + delta;
+          // Provide live visual feedback down to 240px while dragging towards collapse threshold
+          const liveClamped = Math.min(Math.max(rawWidth, 240), 640);
+          setLiveWidth(liveClamped);
+        });
+      }
     };
 
     const handleMouseUp = () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
       }
       setIsResizing(false);
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
+
+      const delta = startXRef.current - latestClientXRef.current;
+      const rawWidth = startWidthRef.current + delta;
+
+      // If dragged past collapse threshold (< 200px), smoothly collapse sidebar
+      if (rawWidth < 200) {
+        setOpen(false);
+        setLiveWidth(null);
+        setWidth(380);
+      } else {
+        const finalWidth = Math.min(Math.max(rawWidth, 280), 640);
+        setWidth(finalWidth);
+        setLiveWidth(null);
+      }
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mousemove', handleMouseMove, { capture: true });
+    window.addEventListener('mouseup', handleMouseUp, { capture: true });
 
     return () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
       }
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', handleMouseMove, { capture: true });
+      window.removeEventListener('mouseup', handleMouseUp, { capture: true });
     };
-  }, [isResizing, setWidth]);
+  }, [isResizing, setOpen, setWidth]);
 
   const pathname = usePathname();
   const router = useRouter();
 
   // If closed or currently on the full /ai page, do not render companion sidebar
   if (!isOpen || pathname?.startsWith('/ai')) return null;
+
+  const currentWidth = liveWidth ?? width;
 
   // Derive topbar title: default 'Flux AI', switch to chat title if user has chatted or session exists
   const firstUserMessage = messages.find((m) => m.role === 'user')?.content;
@@ -152,30 +166,78 @@ export function AiCompanionSidebar() {
         aria-hidden="true"
       />
 
+      {/* Global drag overlay to prevent pointer capture or text selection during drag */}
+      {isResizing && (
+        <div
+          className="fixed inset-0 z-[9999] cursor-col-resize select-none pointer-events-auto"
+          style={{ userSelect: 'none', cursor: 'col-resize' }}
+        />
+      )}
+
       <aside
-        style={isMobile ? undefined : { width: `${width}px` }}
+        style={isMobile ? undefined : { width: `${currentWidth}px` }}
         aria-label="Flux AI Companion Sidebar"
         className={cn(
-          "flex flex-col bg-background overflow-hidden relative pb-[env(safe-area-inset-bottom)]",
+          "flex flex-col bg-background relative pb-[env(safe-area-inset-bottom)]",
           // Mobile: slide-over sheet drawer
-          "fixed inset-y-0 right-0 z-50 w-full sm:max-w-md shadow-2xl border-l border-border animate-in slide-in-from-right duration-200",
-          // Desktop: in-flow resizable column
-          "md:static md:inset-auto md:z-auto md:order-3 md:h-full md:shrink-0 md:rounded-md md:border md:border-border md:shadow-none"
+          "fixed inset-y-0 right-0 z-50 w-full sm:max-w-md shadow-2xl border-l border-border animate-in slide-in-from-right duration-200 overflow-hidden",
+          // Desktop: in-flow resizable column with visible overflow so edge resize and collapse controls aren't clipped
+          "md:relative md:inset-auto md:z-auto md:order-3 md:h-full md:shrink-0 md:rounded-md md:border md:border-border md:shadow-none md:animate-none md:overflow-visible",
+          isResizing && "transition-none select-none"
         )}
       >
         {/* Resizer handle on left border (desktop only) */}
         <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-valuenow={currentWidth}
+          aria-valuemin={280}
+          aria-valuemax={640}
+          aria-label="Drag to resize, double-click to reset (380px)"
+          tabIndex={0}
           onMouseDown={handleMouseDown}
+          onDoubleClick={() => {
+            setWidth(380);
+            setLiveWidth(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowLeft') {
+              e.preventDefault();
+              setWidth(Math.min(640, width + 20));
+            } else if (e.key === 'ArrowRight') {
+              e.preventDefault();
+              setWidth(Math.max(280, width - 20));
+            } else if (e.key === 'Home') {
+              e.preventDefault();
+              setWidth(280);
+            } else if (e.key === 'End') {
+              e.preventDefault();
+              setWidth(640);
+            } else if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setWidth(380);
+            }
+          }}
           className={cn(
-            "hidden md:block absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-20",
-            isResizing && "bg-primary"
+            "hidden md:flex absolute -left-1.5 top-0 bottom-0 w-3 cursor-col-resize items-center justify-center z-30 select-none group focus-visible:outline-none",
+            isResizing && "pointer-events-auto"
           )}
-          title="Drag to resize sidebar"
-        />
+        >
+          {/* Visual vertical highlight line aligned directly with the card border */}
+          <div
+            className={cn(
+              "w-0.5 h-full transition-colors duration-150 bg-transparent group-hover:bg-primary/60",
+              isResizing && "bg-primary"
+            )}
+          />
+        </div>
+
+        {/* Inner container to clip internal content (header, messages, input) without clipping edge handles */}
+        <div className="flex flex-col h-full w-full min-h-0 overflow-hidden rounded-[inherit]">
 
       {/* Header */}
       {isHistoryView ? (
-        <div className='flex h-11 items-center justify-between px-3 border-b border-border bg-background shrink-0 select-none'>
+        <header className='flex h-11 items-center justify-between px-2.5 sm:px-3 border-b border-border bg-transparent shrink-0 select-none'>
           <span className='font-semibold text-13 text-foreground tracking-tight'>
             Chat history
           </span>
@@ -185,25 +247,20 @@ export function AiCompanionSidebar() {
                 type='button'
                 onClick={() => setHistoryView(false)}
                 className='flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
-                aria-label='Close chat history'
+                aria-label='Back to chat'
               >
-                <PanelRightClose className='size-4 shrink-0 text-foreground' />
+                <ChevronRight className='size-4 shrink-0 text-foreground' />
               </button>
             </TooltipTrigger>
             <TooltipContent side='bottom' sideOffset={4}>
               Back to chat
             </TooltipContent>
           </Tooltip>
-        </div>
+        </header>
       ) : (
-        <div className='flex h-11 items-center justify-between px-3 border-b border-border bg-background shrink-0 select-none'>
-          {/* Left: Logo & Title */}
+        <header className='flex h-11 items-center justify-between px-2.5 sm:px-3 border-b border-border bg-transparent shrink-0 select-none'>
+          {/* Left: Title */}
           <div className='flex items-center gap-2 min-w-0 flex-1 mr-2'>
-            <img
-              src='/Chat.svg'
-              alt='Flux AI'
-              className='size-4.5 shrink-0 object-contain'
-            />
             <span
               className='font-semibold text-13 text-foreground tracking-tight truncate'
               title={displayTitle}
@@ -212,7 +269,7 @@ export function AiCompanionSidebar() {
             </span>
           </div>
 
-          {/* Right: Actions (New Chat, History, Menu, Close) */}
+          {/* Right: Actions (New Chat, History, Close) */}
           <div className='flex items-center gap-0.5 shrink-0'>
             {/* New Chat */}
             <Tooltip>
@@ -224,13 +281,13 @@ export function AiCompanionSidebar() {
                     setHistoryView(false);
                   }}
                   className='flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
-                  aria-label='New Chat'
+                  aria-label='New chat'
                 >
                   <SquarePen className='size-3.5 shrink-0 text-foreground' />
                 </button>
               </TooltipTrigger>
               <TooltipContent side='bottom' sideOffset={4}>
-                New Chat
+                New chat
               </TooltipContent>
             </Tooltip>
 
@@ -244,49 +301,15 @@ export function AiCompanionSidebar() {
                     'flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                     isHistoryView && 'bg-muted'
                   )}
-                  aria-label='Chat History'
+                  aria-label='Chat history'
                 >
                   <History className='size-3.5 shrink-0 text-foreground' />
                 </button>
               </TooltipTrigger>
               <TooltipContent side='bottom' sideOffset={4}>
-                Chat History
+                Chat history
               </TooltipContent>
             </Tooltip>
-
-            {/* More Options Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type='button'
-                  className='flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
-                  aria-label='More options'
-                >
-                  <MoreHorizontal className='size-3.5 shrink-0 text-foreground' />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align='end' className='w-44 rounded-md p-1 shadow-md'>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setOpen(false);
-                    router.push('/ai');
-                  }}
-                  className='rounded-md py-1.5 text-xs cursor-pointer text-foreground'
-                >
-                  <Maximize2 className='size-3.5 mr-2 text-foreground' />
-                  <span>Open full screen</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    window.open('/ai', '_blank');
-                  }}
-                  className='rounded-md py-1.5 text-xs cursor-pointer text-foreground'
-                >
-                  <ExternalLink className='size-3.5 mr-2 text-foreground' />
-                  <span>Open in new tab</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
 
             {/* Close Sidebar */}
             <Tooltip>
@@ -295,20 +318,20 @@ export function AiCompanionSidebar() {
                   type='button'
                   onClick={() => setOpen(false)}
                   className='flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
-                  aria-label='Close sidebar'
+                  aria-label='Collapse (Ctrl+J)'
                 >
                   <X className='size-3.5 shrink-0 text-foreground' />
                 </button>
               </TooltipTrigger>
               <TooltipContent side='bottom' sideOffset={4}>
-                Close
+                Collapse (Ctrl+J)
               </TooltipContent>
             </Tooltip>
           </div>
-        </div>
+        </header>
       )}
 
-      {/* Body: Switch between History and Messages */}
+      {/* Body: Switch between History, Documents, and Messages */}
       {isHistoryView ? (
         <CompanionHistory
           currentProjectId={currentProjectId}
@@ -343,7 +366,9 @@ export function AiCompanionSidebar() {
           />
         </>
       )}
+        </div>
     </aside>
+
   </>
   );
 }

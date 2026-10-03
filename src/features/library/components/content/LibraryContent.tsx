@@ -28,6 +28,7 @@ import {
 } from '../../store';
 import { useQuickCopyShortcuts } from '../../hooks/use-quick-copy';
 import type { Item, Collection } from '../../types';
+import type { LibraryOrderBy } from '../topbar/LibraryDisplayPopover';
 
 /** Fields requested from the server for the list view — kept at module scope to avoid inline array allocation. */
 const ITEM_LIST_FIELDS = [
@@ -346,7 +347,7 @@ export function LibraryContent({
   const handleSortChange = (columnKey: string, direction: 'asc' | 'desc') => {
     setDisplayOptions((prev) => ({
       ...prev,
-      orderBy: columnKey as any,
+      orderBy: columnKey as LibraryOrderBy,
       orderDirection: direction,
     }));
   };
@@ -390,7 +391,7 @@ export function LibraryContent({
     >
       {isDragOver && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/85 backdrop-blur-sm border-2 border-dashed border-primary pointer-events-none animate-in fade-in-50 duration-150">
-          <UploadCloud className="size-10 text-primary animate-bounce mb-2" strokeWidth={1.5} />
+          <UploadCloud className="size-10 text-primary animate-pulse mb-2" strokeWidth={1.5} />
           <p className="text-14 font-semibold text-foreground">Drop files to upload</p>
           <p className="text-12 text-muted-foreground">PDF, BibTeX, RIS will be uploaded directly</p>
         </div>

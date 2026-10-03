@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from "react";
-import { Plus, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { StickiesIcon } from "@/shared/components/icons";
 import { Button } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
@@ -103,9 +103,8 @@ export default function TopBar({
           size="sm"
           onClick={onAddSticky}
           disabled={isAddingSticky}
-          className="h-8 gap-1.5 rounded-md px-3 text-xs cursor-pointer"
+          className="h-8 rounded-md px-3 text-xs font-medium cursor-pointer"
         >
-          <Plus className="size-3.5 text-primary-foreground shrink-0" />
           {addLabel}
         </Button>
       </div>

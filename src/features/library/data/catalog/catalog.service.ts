@@ -250,14 +250,17 @@ export const ItemsService = {
     const formattedParams = params
       ? {
           ...params,
-          fields: Array.isArray((params as any).fields)
-            ? (params as any).fields.join(',')
-            : (params as any).fields,
+          fields: Array.isArray(params.fields)
+            ? params.fields.join(',')
+            : params.fields,
+          tags: Array.isArray(params.tags)
+            ? params.tags.join(',')
+            : params.tags,
         }
       : undefined;
     return apiGet<PaginatedItemsResponse>(
       getItemUrl(scopeId),
-      { params: formattedParams as any },
+      { params: formattedParams as Record<string, string | number | boolean | null | undefined> },
     ).then((res) => {
       const items: Item[] = Array.isArray(res)
         ? res
@@ -336,8 +339,8 @@ export const ItemsService = {
     const payload = sanitizeItemPayload(data as Record<string, unknown>);
     const resolvedVersion =
       expectedVersion ??
-      (data as any)?.expectedVersion ??
-      (data as any)?.version;
+      (data as { expectedVersion?: number })?.expectedVersion ??
+      data.version;
     if (resolvedVersion !== undefined && typeof resolvedVersion === 'number') {
       payload.expectedVersion = resolvedVersion;
     }
@@ -358,8 +361,8 @@ export const ItemsService = {
     const payload = sanitizeItemPayload(data as Record<string, unknown>);
     const resolvedVersion =
       expectedVersion ??
-      (data as any)?.expectedVersion ??
-      (data as any)?.version;
+      (data as { expectedVersion?: number })?.expectedVersion ??
+      data.version;
     if (resolvedVersion !== undefined && typeof resolvedVersion === 'number') {
       payload.expectedVersion = resolvedVersion;
     }
@@ -415,6 +418,18 @@ export const ItemsService = {
   bulkPurge: (scopeId: string, itemIds: string[]) =>
     apiPost<{ success: boolean; count: number; purgedIds: string[] }>(
       getItemUrl(scopeId, 'bulk-purge'),
+      { itemIds },
+    ),
+
+  bulkTrash: (scopeId: string, itemIds: string[]) =>
+    apiPost<{ success: boolean; count: number; trashedIds: string[] }>(
+      getItemUrl(scopeId, 'bulk-trash'),
+      { itemIds },
+    ),
+
+  bulkRestore: (scopeId: string, itemIds: string[]) =>
+    apiPost<{ success: boolean; count: number; restoredIds: string[] }>(
+      getItemUrl(scopeId, 'bulk-restore'),
       { itemIds },
     ),
 

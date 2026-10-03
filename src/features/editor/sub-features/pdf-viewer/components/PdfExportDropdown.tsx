@@ -80,7 +80,7 @@ export const PdfExportDropdown = React.memo(function PdfExportDropdown({
               type="button"
               disabled={!pdfUrl}
               aria-label="Download options"
-              className="size-7 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Download className="size-4" />
             </button>
@@ -92,7 +92,7 @@ export const PdfExportDropdown = React.memo(function PdfExportDropdown({
       </Tooltip>
 
       <DropdownMenuContent align="end" className="w-56 text-xs">
-        <DropdownMenuLabel className="text-11 font-semibold text-muted-foreground tracking-normal">
+        <DropdownMenuLabel className="text-12 font-medium text-muted-foreground tracking-normal">
           Download Output
         </DropdownMenuLabel>
         <DropdownMenuItem
@@ -106,7 +106,7 @@ export const PdfExportDropdown = React.memo(function PdfExportDropdown({
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuLabel className="text-11 font-semibold text-muted-foreground tracking-normal">
+        <DropdownMenuLabel className="text-12 font-medium text-muted-foreground tracking-normal">
           Source & Submission
         </DropdownMenuLabel>
         <DropdownMenuItem onClick={handleExportZip} className="flex items-center gap-2 cursor-pointer">
@@ -120,7 +120,7 @@ export const PdfExportDropdown = React.memo(function PdfExportDropdown({
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuLabel className="text-11 font-semibold text-muted-foreground tracking-normal">
+        <DropdownMenuLabel className="text-12 font-medium text-muted-foreground tracking-normal">
           Convert Format
         </DropdownMenuLabel>
         <DropdownMenuItem onClick={handleExportWord} className="flex items-center gap-2 cursor-pointer">

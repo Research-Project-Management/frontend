@@ -4,7 +4,6 @@ import React from 'react';
 import { ArrowRight, AlertCircle } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
-import { Card } from '@/shared/components/ui/card';
 import {
   ZoteroIcon,
   MendeleyIcon,
@@ -39,7 +38,7 @@ export function IntegrationCard({ item, onConfigure }: IntegrationCardProps) {
   const needsReconnect = item.needsReconnect;
 
   return (
-    <Card className="flex flex-row items-center justify-between p-4 py-4 gap-0 rounded-lg hover:border-border/80 transition-colors">
+    <div className="flex flex-row items-center justify-between p-4 py-3.5 gap-0 rounded-lg border border-border bg-background hover:bg-muted/30 transition-colors">
       <div className="flex items-center gap-3.5 min-w-0 flex-1 mr-4">
         {/* App Icon occupies the full icon boundary directly without outer box */}
         <Icon className="size-11 shrink-0" />
@@ -90,6 +89,6 @@ export function IntegrationCard({ item, onConfigure }: IntegrationCardProps) {
         <span>Configure</span>
         <ArrowRight className="size-3.5" />
       </Button>
-    </Card>
+    </div>
   );
 }

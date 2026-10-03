@@ -61,8 +61,8 @@ class MathWidget extends WidgetType {
   override toDOM(view: EditorView): HTMLElement {
     const wrap = document.createElement(this.isDisplay ? 'div' : 'span');
     wrap.className = this.isDisplay
-      ? 'cm-math-widget-display my-3 p-3 bg-muted/40 hover:bg-muted/70 rounded-md border border-border/60 text-center cursor-pointer transition-all hover:border-[#00853D]/50 relative group'
-      : 'cm-math-widget-inline px-1.5 py-0.5 mx-0.5 bg-muted/30 hover:bg-muted/60 rounded-sm inline-block cursor-pointer transition-all hover:border-[#00853D]/50 border border-transparent hover:border-border';
+      ? 'cm-math-widget-display my-3 p-3 bg-muted/40 hover:bg-muted/70 rounded-md border border-border/60 text-center cursor-pointer transition-all hover:border-primary/50 relative group'
+      : 'cm-math-widget-inline px-1.5 py-0.5 mx-0.5 bg-muted/30 hover:bg-muted/60 rounded-sm inline-block cursor-pointer transition-all hover:border-primary/50 border border-transparent hover:border-border';
 
     wrap.title = 'Click to edit LaTeX math formula in-place (Overleaf style)';
     wrap.innerHTML = renderMathHtml(this.math, this.isDisplay);
@@ -156,7 +156,7 @@ class CitationWidget extends WidgetType {
   override toDOM(view: EditorView): HTMLElement {
     const chip = document.createElement('span');
     chip.className =
-      'cm-citation-chip inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 rounded-sm bg-[#00853D]/10 text-[#00853D] border border-[#00853D]/20 text-xs font-sans font-medium hover:bg-[#00853D]/20 cursor-pointer select-none transition-colors';
+      'cm-citation-chip inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 rounded-sm bg-muted text-foreground border border-border text-xs font-mono font-normal hover:bg-muted/80 cursor-pointer select-none transition-colors';
     chip.title = `Citation: ${this.citeKey} (Click to select)`;
     chip.innerHTML = `<span class="opacity-70 text-[10px]">📖</span><span>[${this.citeKey}]</span>`;
     chip.addEventListener('click', (e) => {

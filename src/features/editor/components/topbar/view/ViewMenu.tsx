@@ -182,13 +182,13 @@ export default function ViewMenu() {
           className={cn(
             'flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm cursor-pointer transition-colors text-xs font-medium select-none',
             layout === 'editor-only'
-              ? 'bg-[#00853D] text-white font-medium focus:bg-[#00853D] focus:text-white'
+              ? 'bg-muted text-foreground font-medium focus:bg-muted focus:text-foreground'
               : 'text-foreground hover:bg-muted focus:bg-muted focus:text-foreground',
           )}
         >
           <div className="size-4 flex items-center justify-center shrink-0">
             {layout === 'editor-only' ? (
-              <Check className="size-4 text-white stroke-[2.5]" />
+              <Check className="size-4 text-primary stroke-[2.5]" />
             ) : (
               <PenIcon className="size-3.5 opacity-70" />
             )}
@@ -202,13 +202,13 @@ export default function ViewMenu() {
           className={cn(
             'flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm cursor-pointer transition-colors text-xs font-medium select-none',
             layout === 'viewer-only'
-              ? 'bg-[#00853D] text-white font-medium focus:bg-[#00853D] focus:text-white'
+              ? 'bg-muted text-foreground font-medium focus:bg-muted focus:text-foreground'
               : 'text-foreground hover:bg-muted focus:bg-muted focus:text-foreground',
           )}
         >
           <div className="size-4 flex items-center justify-center shrink-0">
             {layout === 'viewer-only' ? (
-              <Check className="size-4 text-white stroke-[2.5]" />
+              <Check className="size-4 text-primary stroke-[2.5]" />
             ) : (
               <PdfDocIcon className="size-4 opacity-70" />
             )}
@@ -250,12 +250,12 @@ export default function ViewMenu() {
               className={cn(
                 'flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm cursor-pointer transition-colors text-xs font-medium select-none',
                 !reviewMode
-                  ? 'bg-[#00853D] text-white font-medium focus:bg-[#00853D] focus:text-white'
+                  ? 'bg-muted text-foreground font-medium focus:bg-muted focus:text-foreground'
                   : 'text-foreground hover:bg-muted focus:bg-muted focus:text-foreground',
               )}
             >
               <div className="size-4 flex items-center justify-center shrink-0">
-                <PenIcon className="size-3.5 opacity-70" />
+                <PenIcon className={cn('size-3.5', !reviewMode ? 'text-primary' : 'opacity-70')} />
               </div>
               <span className="flex-1 text-xs">Editing</span>
             </MenubarItem>
@@ -264,12 +264,12 @@ export default function ViewMenu() {
               className={cn(
                 'flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm cursor-pointer transition-colors text-xs font-medium select-none',
                 reviewMode
-                  ? 'bg-[#00853D] text-white font-medium focus:bg-[#00853D] focus:text-white'
+                  ? 'bg-muted text-foreground font-medium focus:bg-muted focus:text-foreground'
                   : 'text-foreground hover:bg-muted focus:bg-muted focus:text-foreground',
               )}
             >
               <div className="size-4 flex items-center justify-center shrink-0">
-                <CommentPenIcon className="size-3.5 opacity-70" />
+                <CommentPenIcon className={cn('size-3.5', reviewMode ? 'text-primary' : 'opacity-70')} />
               </div>
               <span className="flex-1 text-xs">Reviewing</span>
             </MenubarItem>

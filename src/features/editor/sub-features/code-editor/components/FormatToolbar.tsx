@@ -571,7 +571,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                 }}
                 className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-2.5 transition-colors outline-none"
               >
-                <Sparkles className="size-4 text-[#00853D] shrink-0" />
+                <Sparkles className="size-4 text-ai shrink-0" />
                 <span>From text or image</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="my-1" />
@@ -1006,7 +1006,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                         }}
                         className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-2.5 transition-colors outline-none"
                       >
-                        <Sparkles className="size-4 text-[#00853D] shrink-0" />
+                        <Sparkles className="size-4 text-ai shrink-0" />
                         <span>From text or image</span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator className="my-1" />

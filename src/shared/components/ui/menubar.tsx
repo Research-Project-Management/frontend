@@ -129,7 +129,7 @@ function MenubarCheckboxItem({
     >
       <span className='pointer-events-none absolute left-2 flex size-3.5 items-center justify-center'>
         <MenubarPrimitive.ItemIndicator>
-          <CheckIcon className='size-4 shrink-0' />
+          <CheckIcon className='size-4 text-primary shrink-0' />
         </MenubarPrimitive.ItemIndicator>
       </span>
       {children}
@@ -153,7 +153,7 @@ function MenubarRadioItem({
     >
       <span className='pointer-events-none absolute left-2 flex size-3.5 items-center justify-center'>
         <MenubarPrimitive.ItemIndicator>
-          <CircleIcon className='size-2 fill-current shrink-0' />
+          <CircleIcon className='size-2 fill-current text-primary shrink-0' />
         </MenubarPrimitive.ItemIndicator>
       </span>
       {children}

@@ -388,7 +388,7 @@ export function MathSymbolPalette({ onInsert, trigger }: MathSymbolPaletteProps)
                           <span className="text-xs font-mono text-foreground truncate">
                             {item.latex}
                           </span>
-                          <span className="text-10 text-muted-foreground truncate">
+                          <span className="text-11 text-muted-foreground truncate">
                             {item.name}
                           </span>
                         </div>

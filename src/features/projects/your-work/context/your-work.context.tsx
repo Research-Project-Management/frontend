@@ -47,6 +47,9 @@ export interface YourWorkContextType {
   isLoadingWorkItems: boolean;
   isLoadingProjects: boolean;
   isRefetching: boolean;
+  isError: boolean;
+  error: any;
+  isEmpty: boolean;
   refetch: () => Promise<unknown>;
   invalidate: () => void;
 }
@@ -173,6 +176,9 @@ export function YourWorkProvider({ children }: { children: React.ReactNode }) {
       isLoadingWorkItems: base.isLoadingWorkItems,
       isLoadingProjects: base.isLoadingProjects,
       isRefetching: base.isRefetching,
+      isError: base.isError,
+      error: base.error,
+      isEmpty: base.isEmpty,
       refetch: base.refetch,
       invalidate: base.invalidate,
     }),
@@ -199,6 +205,9 @@ export function YourWorkProvider({ children }: { children: React.ReactNode }) {
       base.isLoadingWorkItems,
       base.isLoadingProjects,
       base.isRefetching,
+      base.isError,
+      base.error,
+      base.isEmpty,
       base.refetch,
       base.invalidate,
     ],

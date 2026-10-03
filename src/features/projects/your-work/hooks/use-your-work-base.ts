@@ -20,7 +20,11 @@ import {
 export function useYourWork(projectId?: string) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { projects = [], isLoading: isLoadingProjects } = useProjects();
+  const {
+    projects = [],
+    isLoading: isLoadingProjects,
+    isError: isProjectsError,
+  } = useProjects();
 
   const currentUserId = user?.id;
 
@@ -29,6 +33,8 @@ export function useYourWork(projectId?: string) {
     isLoading: isLoadingYourWork,
     isRefetching,
     refetch,
+    isError: isYourWorkError,
+    error: yourWorkError,
   } = useQuery({
     queryKey: ['your-work', projectId || 'me'],
     queryFn: async ({ signal }) => {
@@ -40,6 +46,11 @@ export function useYourWork(projectId?: string) {
     enabled: Boolean(user),
     staleTime: 30_000,
   });
+
+  const isError = isYourWorkError || isProjectsError;
+  const error =
+    yourWorkError ||
+    (isProjectsError ? new Error('Failed to load projects') : null);
 
   // Transparently normalize rawData whether directly returned or enveloped
   const payload = useMemo(() => {
@@ -166,6 +177,18 @@ export function useYourWork(projectId?: string) {
     [assigned, created, subscribed, statusBreakdown, priorityBreakdown],
   );
 
+  const isEmpty = useMemo(() => {
+    if (isLoadingYourWork || isLoadingProjects) return false;
+    if (payload?.isEmpty !== undefined) return Boolean(payload.isEmpty);
+    return allWorkItems.length === 0 && activities.length === 0;
+  }, [
+    isLoadingYourWork,
+    isLoadingProjects,
+    payload?.isEmpty,
+    allWorkItems.length,
+    activities.length,
+  ]);
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['your-work'] });
   };
@@ -190,6 +213,9 @@ export function useYourWork(projectId?: string) {
     isLoadingWorkItems: isLoadingYourWork,
     isLoadingProjects,
     isRefetching,
+    isError,
+    error,
+    isEmpty,
     refetch,
     invalidate,
   };

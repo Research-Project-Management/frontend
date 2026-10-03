@@ -112,6 +112,9 @@ export default function HistoryCodeMirrorViewer({
         '.cm-content': {
           outline: 'none !important',
         },
+        '.cm-mergeViewEditor': {
+          overflow: 'visible !important',
+        },
       }),
     ];
 
@@ -159,7 +162,7 @@ export default function HistoryCodeMirrorViewer({
     <div className="w-full h-full relative min-h-0 bg-background">
       <div
         ref={containerRef}
-        className="w-full h-full cm-history-wrapper [&_.cm-mergeView]:h-full [&_.cm-mergeViewEditors]:h-full [&_.cm-mergeViewEditor]:h-full [&_.cm-editor]:h-full"
+        className="w-full h-full cm-history-wrapper [&_.cm-mergeView]:h-full [&_.cm-mergeViewEditors]:h-full [&_.cm-mergeViewEditor]:h-full [&_.cm-mergeViewEditor]:overflow-visible [&_.cm-editor]:h-full"
       />
     </div>
   );

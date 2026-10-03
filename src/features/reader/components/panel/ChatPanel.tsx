@@ -112,6 +112,17 @@ export default function ChatPanel({
     return () => window.removeEventListener('clear-reader-chat', handleClear);
   }, [clearMessages]);
 
+  useEffect(() => {
+    const handleAsk = (e: Event) => {
+      const customEvent = e as CustomEvent<{ text: string }>;
+      if (customEvent.detail?.text) {
+        sendMessage(`Explain this excerpt from the paper:\n\n"${customEvent.detail.text}"`);
+      }
+    };
+    window.addEventListener('reader-ask-ai', handleAsk);
+    return () => window.removeEventListener('reader-ask-ai', handleAsk);
+  }, [sendMessage]);
+
   const form = useForm<ChatMessageFormData>({
     resolver: zodResolver(chatMessageFormSchema),
     defaultValues: {

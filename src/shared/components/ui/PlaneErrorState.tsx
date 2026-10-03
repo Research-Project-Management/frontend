@@ -288,6 +288,9 @@ export function PlaneErrorState({
       if ('message' in error && typeof error.message === 'string' && error.message.trim()) {
         return error.message;
       }
+      if ('response' in error && (error as any).response?.data?.error?.message) {
+        return String((error as any).response.data.error.message);
+      }
       if ('response' in error && (error as any).response?.data?.message) {
         return String((error as any).response.data.message);
       }

@@ -365,8 +365,8 @@ export default function AiTab({ onClose }: AiTabProps) {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground select-none">
-      {/* ── Top Header ── */}
-      <header className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-background">
+      {/* ── Top Header (Clean flat toolbar, eliminates nested card tell) ── */}
+      <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-3 bg-transparent">
         <span className="text-xs font-semibold text-foreground truncate">AI Assistant</span>
 
         {onClose && (
@@ -379,7 +379,7 @@ export default function AiTab({ onClose }: AiTabProps) {
             <X className="size-3.5" />
           </button>
         )}
-      </header>
+      </div>
 
       {/* ── Selection Context Banner ── */}
       {selectionContext && (
@@ -394,7 +394,7 @@ export default function AiTab({ onClose }: AiTabProps) {
           <button
             type="button"
             onClick={() => setSelectionContext(null)}
-            className="text-muted-foreground hover:text-foreground text-10 px-1 py-0.5 rounded-sm hover:bg-muted transition-colors cursor-pointer"
+            className="text-muted-foreground hover:text-foreground text-11 px-1 py-0.5 rounded-sm hover:bg-muted transition-colors cursor-pointer"
             title="Hủy vùng chọn"
           >
             Bỏ chọn
@@ -403,7 +403,14 @@ export default function AiTab({ onClose }: AiTabProps) {
       )}
 
       {/* ── Messages Scroll Area ── */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3.5 select-text">
+      <div
+        className={cn(
+          'flex-1 p-3 select-text',
+          messages.length === 0 && !streamingMessage
+            ? 'overflow-hidden flex flex-col justify-center'
+            : 'overflow-y-auto sidebar-scrollbar space-y-3.5',
+        )}
+      >
         {isLoadingHistory && (
           <div className="flex items-center justify-center py-6 text-xs text-muted-foreground gap-2">
             <RefreshCw className="size-3.5 animate-spin" />
@@ -412,11 +419,11 @@ export default function AiTab({ onClose }: AiTabProps) {
         )}
 
         {messages.length === 0 && !streamingMessage && !isLoadingHistory && (
-          <div className="flex flex-col items-center justify-center h-full py-8 text-center text-muted-foreground space-y-3">
-            <div className="flex size-12 items-center justify-center rounded-md bg-muted/80 text-primary/80">
-              <Bot className="size-6" />
+          <div className="flex flex-col items-center justify-center my-auto text-center text-muted-foreground space-y-2.5 w-full">
+            <div className="flex size-10 items-center justify-center rounded-lg bg-muted/80 text-primary/80">
+              <Bot className="size-5" />
             </div>
-            <div className="space-y-1 max-w-[250px]">
+            <div className="space-y-1 max-w-[240px]">
               <h3 className="text-xs font-semibold text-foreground">Trợ lý Nghiên cứu & LaTeX</h3>
               <p className="text-xs leading-relaxed text-muted-foreground">
                 Hỏi đáp cú pháp, viết lại đoạn văn chuẩn IEEE/ACM, chỉnh sửa lỗi biên dịch hoặc giải thích công thức.
@@ -424,8 +431,8 @@ export default function AiTab({ onClose }: AiTabProps) {
             </div>
 
             {/* Quick Action Pills */}
-            <div className="w-full pt-3 flex flex-col gap-1.5 text-left">
-              <span className="text-10 font-medium text-muted-foreground/80 px-1">
+            <div className="w-full pt-1.5 flex flex-col gap-1.5 text-left">
+              <span className="text-11 font-medium text-muted-foreground/80 px-1">
                 Tác vụ nhanh:
               </span>
               {QUICK_ACTIONS.map((act) => (
@@ -454,7 +461,7 @@ export default function AiTab({ onClose }: AiTabProps) {
                 isUser ? 'items-end' : 'items-start',
               )}
             >
-              <div className="flex items-center gap-1.5 text-10 text-muted-foreground px-1">
+              <div className="flex items-center gap-1.5 text-11 text-muted-foreground px-1">
                 {isUser ? (
                   <>
                     <span>Bạn</span>
@@ -495,7 +502,7 @@ export default function AiTab({ onClose }: AiTabProps) {
         {/* Streaming In-Progress Assistant Bubble */}
         {streamingMessage && (
           <div className="flex flex-col gap-1 items-start text-xs">
-            <div className="flex items-center gap-1.5 text-10 text-primary px-1">
+            <div className="flex items-center gap-1.5 text-11 text-primary px-1">
               <Bot className="size-3 animate-pulse" />
               <span className="font-medium">AI đang soạn câu trả lời...</span>
             </div>
@@ -517,7 +524,7 @@ export default function AiTab({ onClose }: AiTabProps) {
       </div>
 
       {/* ── Chat Input Area ── */}
-      <div className="shrink-0 border-t border-border bg-muted p-2.5">
+      <div className="shrink-0 border-t border-border bg-background p-2.5">
         {/* Quick action chips above textarea if conversation is active */}
         {messages.length > 0 && (
           <div className="flex items-center gap-1 overflow-x-auto pb-2 scrollbar-none">
@@ -527,7 +534,7 @@ export default function AiTab({ onClose }: AiTabProps) {
                 type="button"
                 onClick={() => handleSendMessage(act.prompt)}
                 disabled={isStreaming}
-                className="shrink-0 rounded-sm border border-border bg-muted px-2.5 py-0.5 text-10 font-medium text-foreground hover:bg-muted/80 hover:border-primary/40 transition-colors disabled:opacity-40 cursor-pointer shadow-2xs"
+                className="shrink-0 rounded-sm border border-border bg-background px-2.5 py-0.5 text-11 font-medium text-foreground hover:bg-muted/80 hover:border-primary/40 transition-colors disabled:opacity-40 cursor-pointer shadow-2xs"
               >
                 {act.label}
               </button>
@@ -535,7 +542,7 @@ export default function AiTab({ onClose }: AiTabProps) {
           </div>
         )}
 
-        <div className="relative flex items-end gap-1.5 rounded-md border border-border bg-muted/40 p-1.5 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/40 transition-all">
+        <div className="relative flex items-end gap-1.5 rounded-md border border-border bg-background p-1.5 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/40 shadow-2xs transition-all">
           <textarea
             ref={textareaRef}
             rows={1}
@@ -590,12 +597,6 @@ export default function AiTab({ onClose }: AiTabProps) {
               </TooltipContent>
             </Tooltip>
           )}
-        </div>
-        <div className="flex items-center justify-between px-1 pt-1.5 text-9 text-muted-foreground/70">
-          <span>Enter để gửi, Shift+Enter xuống dòng</span>
-          <span className="truncate max-w-[120px]">
-            {currentPage?.title || 'main.tex'}
-          </span>
         </div>
       </div>
     </div>

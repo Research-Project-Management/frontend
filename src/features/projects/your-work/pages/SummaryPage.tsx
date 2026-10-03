@@ -4,6 +4,8 @@ import React from 'react';
 import { Skeleton } from "@/shared/components/ui";
 import { useSummaryWork } from '../hooks/use-summary-work';
 import { useWorkItemModal } from '../hooks/use-work-item-modal';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
+import { YourWorkEmptyState } from '../components/shared/YourWorkEmptyState';
 import { OverviewCards } from '../components/summary/OverviewCards';
 import { WorkloadCards } from '../components/summary/WorkloadCards';
 import { PriorityBreakdown } from '../components/summary/PriorityBreakdown';
@@ -19,6 +21,9 @@ export function SummaryPage() {
     categorizedWorkItems,
     workItemProjectMap,
     isLoading,
+    isError,
+    error,
+    isEmpty,
   } = state;
 
   const { selectedWorkItem, handleOpenWorkItem, handleCloseWorkItem } = useWorkItemModal(workItems);
@@ -47,6 +52,26 @@ export function SummaryPage() {
           <Skeleton className="h-44 rounded-md" />
           <Skeleton className="h-44 rounded-md" />
         </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="max-w-6xl mx-auto p-6">
+        <PlaneErrorState
+          title="Unable to load summary workload"
+          description="An issue occurred while loading your work summary. Other features remain unaffected."
+          error={error || new Error('Internal Server Error')}
+        />
+      </div>
+    );
+  }
+
+  if (isEmpty || (workItems.length === 0 && activities.length === 0)) {
+    return (
+      <div className="max-w-6xl mx-auto p-6">
+        <YourWorkEmptyState variant="summary" />
       </div>
     );
   }

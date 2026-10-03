@@ -7,11 +7,13 @@ import { YourWorkPageLayout } from '../components/shared/YourWorkPageLayout';
 
 export function SubscribedPage() {
   const { state } = useSubscribedWork();
-  const { allWorkItems, subscribedWorkItems, workItemProjectMap, isLoading } = state;
+  const { allWorkItems, subscribedWorkItems, workItemProjectMap, isLoading, isError, error } = state;
 
   return (
     <YourWorkPageLayout
       isLoading={isLoading}
+      isError={isError}
+      error={error}
       allWorkItems={allWorkItems}
       renderList={(handleOpenItem) => (
         <SubscribedWorkItemList

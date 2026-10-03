@@ -13,6 +13,7 @@ import {
 } from '../hooks/use-drafts';
 import { Topbar } from '../components/layout/Topbar';
 import { EmptyState } from '../components/layout/EmptyState';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { ListView } from '../components/views/ListView';
 import { EditorModal } from '../components/modals/EditorModal';
 import { MoveToProjectModal } from '../components/modals/MoveToProjectModal';
@@ -34,7 +35,7 @@ export default function DraftsPage() {
   const [deletingDraft, setDeletingDraft] = useState<WorkItemDraft | null>(null);
 
   // Queries & Mutations
-  const { data, isLoading } = useDrafts();
+  const { data, isLoading, isError, error, refetch } = useDrafts();
   const drafts = data?.drafts || [];
   const total = data?.total ?? drafts.length;
 
@@ -131,7 +132,7 @@ export default function DraftsPage() {
       />
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto">
+      <main className="flex-1 min-h-0 flex flex-col h-full overflow-y-auto">
         {isLoading ? (
           <div className="flex flex-col divide-y divide-border border-b border-border">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -148,6 +149,13 @@ export default function DraftsPage() {
               </div>
             ))}
           </div>
+        ) : isError ? (
+          <PlaneErrorState
+            title="Failed to load drafts"
+            description="We encountered an issue fetching your drafts. Please check your connection or try again."
+            error={error}
+            reset={() => refetch()}
+          />
         ) : drafts.length === 0 ? (
           <EmptyState onCreateDraft={handleOpenCreate} />
         ) : (
@@ -159,7 +167,7 @@ export default function DraftsPage() {
             onDelete={handleOpenDelete}
           />
         )}
-      </div>
+      </main>
 
       {/* Create / Edit Draft Modal matching Image 3 */}
       <EditorModal

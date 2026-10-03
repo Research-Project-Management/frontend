@@ -137,7 +137,19 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   } = useReaderStore();
 
   // Reader Inspector UI Store
-  const { isInspectorOpen, setIsInspectorOpen, activeScope } = useReaderUIStore();
+  const { isInspectorOpen, setIsInspectorOpen, setActiveInspectorTab, activeScope } = useReaderUIStore();
+
+  const handleAskAiWithInspector = useCallback(
+    (text: string) => {
+      handleAskAi(text);
+      setIsInspectorOpen(true);
+      setActiveInspectorTab('ai');
+      window.dispatchEvent(
+        new CustomEvent('reader-ask-ai', { detail: { text } }),
+      );
+    },
+    [handleAskAi, setIsInspectorOpen, setActiveInspectorTab],
+  );
 
   // In-Document Search & Academic Entities Drawer
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(Boolean(initialSearchQuery));
@@ -461,7 +473,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 isLoading={pdfLoading}
                 error={pdfError}
                 onRetry={handleRetryPdf}
-                onAskAi={handleAskAi}
+                onAskAi={handleAskAiWithInspector}
                 onAddToNote={handleAddToNote}
                 onAnnotate={handleAnnotateWithLock}
                 annotations={annotations}
@@ -497,7 +509,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                     isLoading={pdfLoading}
                     error={pdfError}
                     onRetry={handleRetryPdf}
-                    onAskAi={handleAskAi}
+                    onAskAi={handleAskAiWithInspector}
                     onAddToNote={handleAddToNote}
                     onAnnotate={handleAnnotateWithLock}
                     annotations={annotations}
@@ -529,7 +541,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                     isLoading={pdfLoading}
                     error={pdfError}
                     onRetry={handleRetryPdf}
-                    onAskAi={handleAskAi}
+                    onAskAi={handleAskAiWithInspector}
                     onAddToNote={handleAddToNote}
                     onAnnotate={handleAnnotateWithLock}
                     annotations={annotations}

@@ -23,7 +23,7 @@ export default defineConfig({
     setupFiles: [path.resolve(__dirname, './tests/unit/setup.ts')],
     include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
     passWithNoTests: true,
-    pool: 'vmThreads',
+    pool: 'threads',
     isolate: false,
     testTimeout: 120000,
     hookTimeout: 120000,

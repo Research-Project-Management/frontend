@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Button } from '@/shared/components/ui/button';
-import { Plus } from 'lucide-react';
+import { cn } from '@/shared/lib/utils';
 
 const ILLUSTRATION_COLOR_TOKEN_MAP = {
   fill: {
@@ -289,7 +288,8 @@ export function DraftVerticalStackIllustration({ className }: TIllustrationAsset
 }
 
 export interface EmptyStateProps {
-  onCreateDraft: () => void;
+  onCreateDraft?: () => void;
+  className?: string;
 }
 
 const illustrationStyles = `
@@ -314,11 +314,16 @@ const illustrationStyles = `
   }
 `;
 
-export const EmptyState: React.FC<EmptyStateProps> = ({
-  onCreateDraft,
-}) => {
+export const EmptyState: React.FC<EmptyStateProps> = ({ className }) => {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[440px] p-8 text-center animate-in fade-in-50 select-none">
+    <div
+      role="region"
+      aria-label="Empty drafts state"
+      className={cn(
+        'flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200 bg-background',
+        className,
+      )}
+    >
       <style dangerouslySetInnerHTML={{ __html: illustrationStyles }} />
 
       {/* Official Plane.so Isometric Draft Vertical Stack Illustration */}
@@ -326,27 +331,15 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         <DraftVerticalStackIllustration />
       </div>
 
-      {/* Heading matching Plane official empty state */}
-      <h3 className="text-14 font-semibold text-foreground tracking-tight">
+      {/* Heading matching Plane official empty state & Design System standards */}
+      <h3 className="text-16 font-semibold text-foreground mb-2 tracking-tight">
         Half-written work items
       </h3>
 
       {/* Subtitle matching Plane official copy */}
-      <p className="mt-1.5 max-w-sm text-13 text-muted-foreground leading-relaxed">
-        To try this out, start adding a work item and leave it mid-way or create your first draft below. 😉
+      <p className="text-13 text-muted-foreground max-w-[420px] leading-relaxed font-normal">
+        To try this out, start adding a work item and leave it mid-way or create your first draft. 😉
       </p>
-
-      {/* CTA Button */}
-      <div className="mt-5">
-        <Button
-          onClick={onCreateDraft}
-          size="sm"
-          className="h-7 px-3 rounded-md font-medium text-12 bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-none cursor-pointer gap-1.5"
-        >
-          <Plus className="size-3.5 shrink-0 text-primary-foreground" />
-          <span>Create draft work item</span>
-        </Button>
-      </div>
     </div>
   );
 };

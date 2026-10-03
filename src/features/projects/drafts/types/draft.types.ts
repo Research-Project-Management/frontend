@@ -82,11 +82,14 @@ export interface DraftQueryFilter {
   search?: string;
   page?: number;
   limit?: number;
+  forceEmpty?: string;
+  forceError?: string;
 }
 
 export interface DraftListResponse {
   total: number;
   drafts: WorkItemDraft[];
+  isEmpty?: boolean;
 }
 
 export type DraftsViewMode = 'list' | 'grid';

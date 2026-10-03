@@ -21,6 +21,9 @@ export function useAssignedWork() {
       isLoading: source.isLoading,
       isLoadingWorkItems: source.isLoadingWorkItems,
       isLoadingProjects: source.isLoadingProjects,
+      isError: source.isError,
+      error: source.error,
+      isEmpty: source.isEmpty,
     },
     actions: {
       refetch: source.refetch,

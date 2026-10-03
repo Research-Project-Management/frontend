@@ -472,7 +472,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           title="Collapse sidebar"
           className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
         >
-          <PanelLeft className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+          <PanelLeft className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.5} />
         </button>
       </div>
 

@@ -7,11 +7,13 @@ import { YourWorkPageLayout } from '../components/shared/YourWorkPageLayout';
 
 export function AssignedPage() {
   const { state } = useAssignedWork();
-  const { allWorkItems, assignedWorkItems, workItemProjectMap, isLoading } = state;
+  const { allWorkItems, assignedWorkItems, workItemProjectMap, isLoading, isError, error } = state;
 
   return (
     <YourWorkPageLayout
       isLoading={isLoading}
+      isError={isError}
+      error={error}
       allWorkItems={allWorkItems}
       renderList={(handleOpenItem) => (
         <AssignedWorkItemList

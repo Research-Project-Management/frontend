@@ -162,13 +162,13 @@ export default function ViewMenu() {
           className={cn(
             'flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm cursor-pointer transition-colors text-xs font-medium select-none',
             layout === 'split'
-              ? 'bg-[#00853D] text-white font-medium focus:bg-[#00853D] focus:text-white'
+              ? 'bg-muted text-foreground font-medium focus:bg-muted focus:text-foreground'
               : 'text-foreground hover:bg-muted focus:bg-muted focus:text-foreground',
           )}
         >
           <div className="size-4 flex items-center justify-center shrink-0">
             {layout === 'split' ? (
-              <Check className="size-4 text-white stroke-[2.5]" />
+              <Check className="size-4 text-primary stroke-[2.5]" />
             ) : (
               <Columns2 className="size-4 opacity-70" strokeWidth={1.8} />
             )}

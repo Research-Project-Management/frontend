@@ -5,20 +5,39 @@ import { toast } from 'sonner';
 
 export const pageKeys = {
   all: ['pages'] as const,
-  project: (projectId: string, status?: string, search?: string) =>
-    [...pageKeys.all, 'project', projectId, { status, search }] as const,
+  project: (
+    projectId: string,
+    status?: string,
+    search?: string,
+    forceEmpty?: string,
+    forceError?: string,
+  ) => [...pageKeys.all, 'project', projectId, { status, search, forceEmpty, forceError }] as const,
   detail: (pageId: string) => [...pageKeys.all, 'detail', pageId] as const,
 };
 
-export const projectPagesQueryOptions = (projectId: string, status?: string, search?: string) =>
+export const projectPagesQueryOptions = (
+  projectId: string,
+  status?: string,
+  search?: string,
+  forceEmpty?: string,
+  forceError?: string,
+) =>
   queryOptions({
-    queryKey: pageKeys.project(projectId, status, search),
-    queryFn: () => PageService.getProjectPages(projectId, status, search),
+    queryKey: pageKeys.project(projectId, status, search, forceEmpty, forceError),
+    queryFn: () =>
+      PageService.getProjectPages(projectId, status, search, forceEmpty, forceError),
     enabled: !!projectId,
+    staleTime: 30_000,
   });
 
-export const useProjectPages = (projectId: string, status?: string, search?: string) =>
-  useQuery(projectPagesQueryOptions(projectId, status, search));
+export const useProjectPages = (
+  projectId: string,
+  status?: string,
+  search?: string,
+  forceEmpty?: string,
+  forceError?: string,
+) =>
+  useQuery(projectPagesQueryOptions(projectId, status, search, forceEmpty, forceError));
 
 export const usePageActions = () => {
   const queryClient = useQueryClient();

@@ -6,7 +6,6 @@ import { useQuery } from '@tanstack/react-query';
 import {
   FileText,
   Search,
-  Plus,
   ChevronDown,
   Check,
   ExternalLink,
@@ -42,6 +41,7 @@ export function WorkspacePagesPage() {
     isLoading: isPagesLoading,
     isError: isPagesError,
     error: pagesError,
+    refetch: refetchPages,
   } = useQuery({
     queryKey: ['workspace-pages', targetProjectId],
     queryFn: () => (targetProjectId ? PageService.getProjectPages(targetProjectId) : Promise.resolve([])),
@@ -136,9 +136,8 @@ export function WorkspacePagesPage() {
           </div>
 
           {targetProjectId && (
-            <Button asChild size="sm" className="h-8 px-3 text-xs gap-1.5 cursor-pointer shadow-none">
+            <Button asChild size="sm" className="h-8 px-3 text-xs cursor-pointer shadow-none">
               <Link href={`/projects/${targetProjectId}/pages`}>
-                <Plus className="size-3.5 shrink-0" />
                 <span>New Page</span>
               </Link>
             </Button>
@@ -147,15 +146,21 @@ export function WorkspacePagesPage() {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto flex flex-col p-6 md:p-8">
+      <main
+        className={cn(
+          'flex-1 min-h-0 flex flex-col h-full overflow-y-auto',
+          !isPagesError && !isPagesLoading && filteredPages.length > 0 && 'p-6 md:p-8',
+        )}
+      >
         {isPagesError ? (
           <PlaneErrorState
             title="Unable to load workspace pages"
             description="An issue occurred while loading documents for this project. Other workspaces remain safe."
-            error={pagesError || new Error('Internal Server Error')}
+            error={pagesError}
+            reset={() => refetchPages()}
           />
         ) : isPagesLoading ? (
-          <div className="space-y-6">
+          <div className="p-6 md:p-8 space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-semibold text-muted-foreground tracking-normal">
                 Documents & Knowledge Pages
@@ -217,7 +222,7 @@ export function WorkspacePagesPage() {
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

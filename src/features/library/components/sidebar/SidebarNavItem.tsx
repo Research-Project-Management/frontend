@@ -90,7 +90,10 @@ export function SidebarNavItem({
           transition={{ type: 'spring', stiffness: 500, damping: 35 }}
         />
       )}
-      <Icon className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+      <Icon
+          className="relative z-10 size-4 shrink-0 text-foreground"
+          strokeWidth={1.5}
+        />
       <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
         {label}
       </span>

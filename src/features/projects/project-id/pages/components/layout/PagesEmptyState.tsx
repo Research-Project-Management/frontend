@@ -3,6 +3,7 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
+import { Button } from '@/shared/components/ui/button';
 import {
   pagesIllustrationStyles,
   PagesStackIllustration,
@@ -41,7 +42,9 @@ interface PagesEmptyConfig {
  */
 export function PagesEmptyState({
   searchQuery = '',
+  onClearSearch,
   labelName,
+  onClearFilter,
   variant: propVariant,
   className,
 }: PagesEmptyStateProps) {
@@ -103,9 +106,11 @@ export function PagesEmptyState({
 
   return (
     <div
+      role="region"
+      aria-label="Empty pages state"
       className={cn(
         'flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200 bg-background',
-        className
+        className,
       )}
     >
       <style dangerouslySetInnerHTML={{ __html: pagesIllustrationStyles }} />
@@ -121,9 +126,36 @@ export function PagesEmptyState({
       </h2>
 
       {/* Description */}
-      <p className="text-13 text-foreground/80 dark:text-muted-foreground max-w-[420px] leading-relaxed font-normal">
+      <p className="text-13 text-muted-foreground max-w-[420px] leading-relaxed font-normal">
         {config.description}
       </p>
+
+      {/* Optional Search / Filter Reset Controls */}
+      {variant === 'search' && onClearSearch && (
+        <div className="mt-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onClearSearch}
+            className="h-7 px-3 text-12 font-medium text-muted-foreground hover:text-foreground cursor-pointer shadow-none"
+          >
+            Clear search
+          </Button>
+        </div>
+      )}
+
+      {variant === 'label' && onClearFilter && (
+        <div className="mt-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onClearFilter}
+            className="h-7 px-3 text-12 font-medium text-muted-foreground hover:text-foreground cursor-pointer shadow-none"
+          >
+            Clear label filter
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

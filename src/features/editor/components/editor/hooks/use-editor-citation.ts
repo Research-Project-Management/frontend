@@ -7,7 +7,6 @@ import { parseBibContent, type BibEntry } from '@/features/editor/utils/bib-pars
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 
 export interface UseEditorCitationOptions {
-  editorRef?: React.MutableRefObject<any>;
   /** All page files in the project (from useQuery filesQuery) */
   pageFiles?: Array<{ name?: string; title?: string; filename?: string; content?: string; url?: string }>;
   /** Optional library items from the project / personal scope */

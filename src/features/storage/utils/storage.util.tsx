@@ -2,6 +2,7 @@ import React from 'react';
 import { Folder, FileText, Video, Music, Archive, Image as ImageIcon, File as FileIcon } from 'lucide-react';
 import { downloadFileUrl } from "@/shared/lib/file-client";
 import { cn } from "@/shared/lib/utils";
+import { formatBytes } from "@/shared/utils/format";
 import type { FileType, StorageItem } from '../types/storage.types';
 
 export function getFileType(item: StorageItem): FileType {
@@ -89,12 +90,21 @@ export function getFileColor(type: FileType): string {
   }
 }
 
+export function getFileColorClass(type: FileType): string {
+  switch (type) {
+    case 'folder':   return 'text-blue-500';
+    case 'document': return 'text-rose-500';
+    case 'image':    return 'text-emerald-500';
+    case 'video':    return 'text-purple-500';
+    case 'audio':    return 'text-pink-500';
+    case 'archive':  return 'text-amber-500';
+    default:         return 'text-muted-foreground';
+  }
+}
+
 export function formatFileSize(bytes?: number): string {
-  if (!bytes) return '—';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  if (bytes === undefined || bytes === null || Number.isNaN(bytes)) return '—';
+  return formatBytes(bytes);
 }
 
 export function formatMimeType(item: StorageItem): string {
@@ -114,12 +124,16 @@ export function formatMimeType(item: StorageItem): string {
   return item.mimeType || 'Unknown';
 }
 
-export function formatDate(dateString: string): string {
+export function formatDate(dateString?: string | null): string {
+  if (!dateString) return '—';
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '—';
+
   const now = new Date();
   const diff = now.getTime() - date.getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (diff < 0) return date.toLocaleDateString();
 
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   if (days === 0) return 'Today';
   if (days === 1) return 'Yesterday';
   if (days < 7) return `${days} days ago`;
@@ -135,3 +149,4 @@ export async function downloadStorageItem(item: StorageItem): Promise<void> {
     window.open(item.url, '_blank');
   }
 }
+

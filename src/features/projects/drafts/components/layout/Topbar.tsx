@@ -3,7 +3,6 @@
 import React from 'react';
 import { DraftsIcon } from '@/shared/components/icons';
 import { Button } from '@/shared/components/ui/button';
-import { Plus } from 'lucide-react';
 
 export interface TopbarProps {
   totalDrafts?: number;
@@ -36,9 +35,8 @@ export const Topbar: React.FC<TopbarProps> = ({
       <Button
         onClick={onCreateDraft}
         size="sm"
-        className="h-7 px-2.5 rounded-md font-medium text-12 bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-none shrink-0 cursor-pointer gap-1.5"
+        className="h-7 px-2.5 rounded-md font-medium text-12 bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-none shrink-0 cursor-pointer"
       >
-        <Plus className="size-3.5 shrink-0 text-primary-foreground" />
         <span>Draft a work item</span>
       </Button>
     </header>

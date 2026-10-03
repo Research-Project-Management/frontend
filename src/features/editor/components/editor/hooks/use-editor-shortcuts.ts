@@ -38,7 +38,6 @@ export interface MenuAction {
 }
 
 export interface UseEditorShortcutsOptions {
-  editorRef?: React.MutableRefObject<any>;
   closeMenu: () => void;
   openRenameDialog: () => void;
   openCitationModal: () => void;
@@ -56,7 +55,6 @@ export interface UseEditorShortcutsOptions {
 }
 
 export function useEditorShortcuts({
-  editorRef,
   closeMenu,
   openRenameDialog,
   openCitationModal,

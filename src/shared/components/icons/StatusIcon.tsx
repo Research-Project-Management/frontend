@@ -49,16 +49,16 @@ export function TodoStatusIcon({ className, color }: { className?: string; color
 }
 
 /**
- * In Progress / Started: Concentric double circle (bullseye) in orange/amber
+ * In Progress / Started: Concentric double circle (bullseye) in state-started amber
  */
 export function InProgressStatusIcon({ className, color }: { className?: string; color?: string }) {
   return (
     <svg
       viewBox="0 0 16 16"
       fill="none"
-      stroke={color || "#f59e0b"}
+      stroke={color || "currentColor"}
       strokeWidth="1.5"
-      className={cn("size-3.5 shrink-0", !color && "text-amber-500", className)}
+      className={cn("size-3.5 shrink-0", !color && "text-state-started", className)}
       aria-label="In Progress"
     >
       <circle cx="8" cy="8" r="6.25" />
@@ -68,17 +68,17 @@ export function InProgressStatusIcon({ className, color }: { className?: string;
 }
 
 /**
- * Done / Completed: Solid emerald green circle with white checkmark
+ * Done / Completed: Solid circle with white checkmark in state-completed green
  */
 export function DoneStatusIcon({ className, color }: { className?: string; color?: string }) {
   return (
     <svg
       viewBox="0 0 16 16"
       fill="none"
-      className={cn("size-3.5 shrink-0", className)}
+      className={cn("size-3.5 shrink-0", !color && "text-state-completed", className)}
       aria-label="Done"
     >
-      <circle cx="8" cy="8" r="7" fill={color || "#10b981"} />
+      <circle cx="8" cy="8" r="7" fill={color || "currentColor"} />
       <path
         d="M4.75 8.25L7 10.5L11.5 5.75"
         stroke="#ffffff"
@@ -91,18 +91,17 @@ export function DoneStatusIcon({ className, color }: { className?: string; color
 }
 
 /**
- * Cancelled: Solid red circle with white cross ('x')
+ * Cancelled: Solid muted gray circle with white cross ('x') per DESIGN.md (never red)
  */
 export function CancelledStatusIcon({ className, color }: { className?: string; color?: string }) {
-  const finalColor = color && color !== '#8A9093' && color !== '#8a9093' ? color : '#EF4444';
   return (
     <svg
       viewBox="0 0 16 16"
       fill="none"
-      className={cn("size-3.5 shrink-0", className)}
+      className={cn("size-3.5 shrink-0", !color && "text-muted-foreground", className)}
       aria-label="Cancelled"
     >
-      <circle cx="8" cy="8" r="7" fill={finalColor} />
+      <circle cx="8" cy="8" r="7" fill={color || "currentColor"} />
       <path
         d="M5.5 5.5L10.5 10.5M10.5 5.5L5.5 10.5"
         stroke="#ffffff"
@@ -185,8 +184,7 @@ export function StatusIcon({
     normalizedTitle.includes('rejected') ||
     normalizedId.includes('cancel')
   ) {
-    const finalColor = color && color !== '#8A9093' && color !== '#8a9093' ? color : '#EF4444';
-    return <CancelledStatusIcon className={className} color={finalColor} />;
+    return <CancelledStatusIcon className={className} color={color} />;
   }
 
   // Fallback: custom state using accentColor

@@ -35,7 +35,7 @@ import {
   getFileColor,
   formatFileSize,
   formatDate,
-} from '../../utils/file';
+} from '../../utils/storage.util';
 import { useStorageSelectionStore } from '../../store/use-selection-store';
 import { createFolderDropHandlers } from '../../utils/drag-drop.util';
 
@@ -58,7 +58,10 @@ function FileIconItem({ item }: { item: StorageItem }) {
   }
 
   return (
-    <div className={`flex items-center justify-center shrink-0 ${getFileColor(fileType)}`}>
+    <div
+      className="flex items-center justify-center shrink-0"
+      style={{ color: getFileColor(fileType) }}
+    >
       {item.isFolder ? (
         <Folder className="size-5 fill-amber-500/20 text-amber-500 shrink-0" />
       ) : (

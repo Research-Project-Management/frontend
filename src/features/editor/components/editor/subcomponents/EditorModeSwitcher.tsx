@@ -86,16 +86,16 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
           className={cn(
             'flex items-start gap-2.5 p-2 rounded-md cursor-pointer transition-colors outline-none',
             !reviewMode
-              ? 'bg-[#00853D] text-white focus:bg-[#00853D] focus:text-white'
+              ? 'bg-muted text-foreground font-medium'
               : 'hover:bg-muted text-foreground/90',
           )}
         >
-          <PenLine className={cn('size-4 mt-0.5 shrink-0', !reviewMode ? 'text-white' : 'text-muted-foreground')} />
+          <PenLine className={cn('size-4 mt-0.5 shrink-0', !reviewMode ? 'text-primary' : 'text-muted-foreground')} />
           <div className="flex-1 min-w-0">
-            <div className={cn('font-semibold text-xs leading-none', !reviewMode ? 'text-white' : 'text-foreground')}>
+            <div className={cn('font-semibold text-xs leading-none text-foreground')}>
               Editing
             </div>
-            <div className={cn('text-11 leading-tight mt-1', !reviewMode ? 'text-white/80' : 'text-muted-foreground')}>
+            <div className={cn('text-11 leading-tight mt-1 text-muted-foreground')}>
               Edit content directly
             </div>
           </div>
@@ -106,16 +106,16 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
           className={cn(
             'flex items-start gap-2.5 p-2 mt-1 rounded-md cursor-pointer transition-colors outline-none',
             reviewMode
-              ? 'bg-[#00853D] text-white focus:bg-[#00853D] focus:text-white'
+              ? 'bg-muted text-foreground font-medium'
               : 'hover:bg-muted text-foreground/90',
           )}
         >
-          <MessageSquareQuote className={cn('size-4 mt-0.5 shrink-0', reviewMode ? 'text-white' : 'text-muted-foreground')} />
+          <MessageSquareQuote className={cn('size-4 mt-0.5 shrink-0', reviewMode ? 'text-primary' : 'text-muted-foreground')} />
           <div className="flex-1 min-w-0">
-            <div className={cn('font-semibold text-xs leading-none', reviewMode ? 'text-white' : 'text-foreground')}>
+            <div className={cn('font-semibold text-xs leading-none text-foreground')}>
               Reviewing
             </div>
-            <div className={cn('text-11 leading-tight mt-1', reviewMode ? 'text-white/80' : 'text-muted-foreground')}>
+            <div className={cn('text-11 leading-tight mt-1 text-muted-foreground')}>
               Edits become suggestions
             </div>
           </div>

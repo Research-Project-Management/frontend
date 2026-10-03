@@ -12,7 +12,8 @@ export type InspectorSectionId =
   | 'tags'
   | 'collections'
   | 'cite'
-  | 'relations';
+  | 'relations'
+  | 'ai';
 
 export interface ReaderUIState {
   // Sidebar / Navigation state

@@ -29,6 +29,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
     isLoading,
     isError,
     error,
+    refetch,
   } = useQuery(projectPagesQueryOptions(projectId));
 
   const { data: projectLabels = [] } = useProjectLabels(projectId);
@@ -81,7 +82,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
   };
 
   return (
-    <div className="flex flex-col h-full bg-transparent">
+    <div className="flex flex-col h-full bg-background select-none">
       <Topbar
         viewMode={viewMode}
         setViewMode={setViewMode}
@@ -90,9 +91,9 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
         onSearchChange={setSearchQuery}
       />
 
-      <div className="flex-1 overflow-y-auto flex flex-col">
-        {projectLabels.length > 0 && !isError && (
-          <div className="px-6 pt-4 pb-2 flex flex-wrap gap-2 items-center">
+      <main className="flex-1 min-h-0 flex flex-col h-full overflow-y-auto">
+        {projectLabels.length > 0 && !isError && !isLoading && (
+          <div className="px-6 pt-4 pb-2 flex flex-wrap gap-2 items-center shrink-0">
             {projectLabels.map((label: any) => {
               const isSelected = selectedLabelId === label.id;
               return (
@@ -119,26 +120,55 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
           </div>
         )}
 
-        {isError ? (
+        {isLoading ? (
+          viewMode === 'grid' ? (
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-36 rounded-md border border-border bg-card p-4 flex flex-col justify-between animate-pulse"
+                >
+                  <div className="space-y-2.5">
+                    <div className="h-3.5 w-32 rounded bg-muted" />
+                    <div className="h-3 w-44 rounded bg-muted/60" />
+                  </div>
+                  <div className="h-3 w-20 rounded bg-muted/60" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="divide-y divide-border border-b border-border">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-11 px-4 flex items-center justify-between gap-4 animate-pulse">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="size-4 rounded bg-muted shrink-0" />
+                    <div className="h-3.5 w-48 rounded bg-muted" />
+                  </div>
+                  <div className="h-3 w-24 rounded bg-muted shrink-0" />
+                </div>
+              ))}
+            </div>
+          )
+        ) : isError ? (
           <PlaneErrorState
             title="Unable to load pages"
             description="An issue occurred while loading documents for this project. Other features and workspaces remain safe."
-            error={error || new Error('Internal Server Error')}
+            error={error}
+            reset={() => refetch()}
           />
-        ) : !isLoading && filteredPages.length === 0 ? (
+        ) : filteredPages.length === 0 ? (
           <PagesEmptyState
             searchQuery={searchQuery}
             onClearSearch={() => setSearchQuery('')}
             labelName={selectedLabel?.name}
             onClearFilter={() => setSelectedLabelId(null)}
-            onCreateClick={() => setIsCreateModalOpen(true)}
           />
         ) : viewMode === 'grid' ? (
           <GridView pages={filteredPages} />
         ) : (
           <ListView pages={filteredPages} />
         )}
-      </div>
+      </main>
 
       <CreateModal
         isOpen={isCreateModalOpen}

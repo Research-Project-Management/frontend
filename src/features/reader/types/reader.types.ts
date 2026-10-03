@@ -177,7 +177,8 @@ export type InspectorSectionId =
   | 'tags'
   | 'collections'
   | 'cite'
-  | 'relations';
+  | 'relations'
+  | 'ai';
 
 export interface TagWithCount {
   id: string;

@@ -34,7 +34,7 @@ import { useViewItems } from '@/features/library';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 
 // Subcomponents & internal seams
-import Format from './Format';
+import { FormatToolbar } from '@/features/editor/sub-features/code-editor/components/FormatToolbar';
 import UnifiedCodeMirrorEditor from './UnifiedCodeMirrorEditor';
 import { EditorModeSwitcher } from './subcomponents/EditorModeSwitcher';
 import { SourceVisualSwitcher } from './subcomponents/SourceVisualSwitcher';
@@ -43,16 +43,13 @@ import { EditorSearchPanel } from './subcomponents/EditorSearchPanel';
 import type { SelFloating } from './subcomponents/EditorFloatingBar';
 import type { RenameDialogState } from './subcomponents/RenameSymbolDialog';
 import type { SuggestModalState } from './subcomponents/SuggestEditModal';
+import type { GlyphTooltipData } from './subcomponents/GlyphTooltip';
+import type { InlineSuggestionWidgetData } from './subcomponents/InlineSuggestionWidget';
 
 import { useEditorSave } from './hooks/use-editor-save';
-import { useEditorDecorations } from './hooks/use-editor-decorations';
 import { useEditorShortcuts } from './hooks/use-editor-shortcuts';
 import { useEditorCitation } from './hooks/use-editor-citation';
 import { useEditorCollaborators } from './hooks/use-editor-collaborators';
-import { useEditorVim } from './hooks/use-editor-vim';
-import { useEditorEmacs } from './hooks/use-editor-emacs';
-import { useSpellChecker } from './hooks/use-spell-checker';
-import { useSmartPaste } from './hooks/use-smart-paste';
 
 import { EditorFloatingOverlay } from '../../sub-features/code-editor/ui/EditorFloatingOverlay';
 import { EditorModals } from '../../sub-features/code-editor/ui/EditorModals';
@@ -67,8 +64,6 @@ type CtxPos = { x: number; y: number };
 
 export default function Editor({ page }: EditorProps) {
   const { engine, setEngine } = useEditorInstance();
-  const editorRef = useRef<any>(null);
-  const monacoRef = useRef<any>(null);
 
   const editorTheme = useSettingsStore((s) => s.editorTheme);
   const fontSize = useSettingsStore((s) => s.fontSize);
@@ -207,55 +202,14 @@ export default function Editor({ page }: EditorProps) {
   }, []);
 
   const vimStatusRef = useRef<HTMLDivElement>(null);
-
-  const handleSaveAndCompile = useCallback(() => {
-    editorCommandBus.dispatch({ type: 'compiler:trigger' });
-  }, []);
-
-  const { isVimActive } = useEditorVim({
-    editor: editorMounted ? editorRef.current : null,
-    keybinding,
-    statusNodeRef: vimStatusRef,
-    onSave: handleSaveAndCompile,
-  });
-
   const emacsStatusRef = useRef<HTMLDivElement>(null);
-  const { isEmacsActive, emacsStatus } = useEditorEmacs({
-    editor: editorMounted ? editorRef.current : null,
-    keybinding,
-    statusNodeRef: emacsStatusRef,
-    onSave: handleSaveAndCompile,
-  });
 
-  // Spell checker — WebWorker
-  const spellCheckLanguage = useSettingsStore((s) => s.spellCheckLanguage ?? 'en_US');
-  const spellCheckEnabled = useSettingsStore((s) => s.spellCheck ?? true);
-  useSpellChecker({
-    editorRef,
-    monacoRef,
-    language: spellCheckLanguage,
-    enabled: spellCheckEnabled && editorMounted,
-  });
+  const isVimActive = keybinding === 'vim';
+  const isEmacsActive = keybinding === 'emacs';
+  const emacsStatus = 'Ready';
 
-  // Smart Paste
-  useSmartPaste({
-    editorRef,
-    monacoRef,
-    pageId: page?.id,
-    enabled: editorMounted,
-  });
-
-  const {
-    glyphTooltip,
-    activeSuggestionWidgetData,
-    setActiveSuggestionWidgetData,
-  } = useEditorDecorations({
-    editorRef,
-    monacoRef,
-    comments,
-    suggestions,
-    editorMounted,
-  });
+  const [glyphTooltip, setGlyphTooltip] = useState<GlyphTooltipData | null>(null);
+  const [activeSuggestionWidgetData, setActiveSuggestionWidgetData] = useState<InlineSuggestionWidgetData | null>(null);
 
   const acceptSuggestionMutation = useAcceptSuggestion();
   const rejectSuggestionMutation = useRejectSuggestion();
@@ -296,7 +250,6 @@ export default function Editor({ page }: EditorProps) {
     setCitationModalOpen,
     handleInsertCitationSnippet,
   } = useEditorCitation({
-    editorRef,
     pageFiles,
     libraryItems,
     projectId: projectScopeId,
@@ -323,41 +276,15 @@ export default function Editor({ page }: EditorProps) {
 
   const handleApplyAiEdit = useCallback(
     (newText: string, mode: 'replace' | 'insert-below') => {
-      const editor = editorRef.current;
-      if (!editor) return;
-
-      const sel = editor.getSelection();
-      if (!sel) return;
-
+      if (!engine) return;
       if (mode === 'replace') {
-        editor.executeEdits('overleaf-ai-assist', [
-          {
-            range: sel,
-            text: newText,
-            forceMoveMarkers: true,
-          },
-        ]);
+        engine.insertText(newText);
       } else {
-        const endLine = sel.endLineNumber;
-        const model = editor.getModel();
-        const maxCol = model ? model.getLineMaxColumn(endLine) : 1;
-        const insertRange = {
-          startLineNumber: endLine,
-          startColumn: maxCol,
-          endLineNumber: endLine,
-          endColumn: maxCol,
-        };
-        editor.executeEdits('overleaf-ai-assist', [
-          {
-            range: insertRange,
-            text: '\n\n' + newText,
-            forceMoveMarkers: true,
-          },
-        ]);
+        engine.insertText('\n\n' + newText);
       }
-      editor.focus();
+      engine.focus();
     },
-    [editorRef],
+    [engine],
   );
 
   const [renameDialog, setRenameDialog] = useState<RenameDialogState | null>(null);
@@ -376,14 +303,11 @@ export default function Editor({ page }: EditorProps) {
   const closeMenu = useCallback(() => setCtxMenu(null), []);
 
   const openRenameDialog = useCallback(() => {
-    const ed = editorRef.current;
-    if (!ed) return;
-    const pos = ed.getPosition();
-    const word = pos ? ed.getModel()?.getWordAtPosition(pos) : null;
+    const word = engine?.getSelectedText()?.trim();
     if (!word) return;
     closeMenu();
-    setRenameDialog({ word: word.word, newName: word.word });
-  }, [closeMenu, editorRef]);
+    setRenameDialog({ word, newName: word });
+  }, [closeMenu, engine]);
 
   const handleOpenCitationModal = useCallback(() => setCitationModalOpen(true), [setCitationModalOpen]);
 
@@ -391,7 +315,6 @@ export default function Editor({ page }: EditorProps) {
     menuGroups,
     applyRename,
   } = useEditorShortcuts({
-    editorRef,
     closeMenu,
     openRenameDialog,
     openCitationModal: handleOpenCitationModal,
@@ -412,20 +335,7 @@ export default function Editor({ page }: EditorProps) {
         setIsFindOpen(true);
       } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
         e.preventDefault();
-        const ed = editorRef.current;
-        let query: string | undefined;
-        if (ed) {
-          const sel = ed.getSelection();
-          if (sel && !sel.isEmpty()) {
-            query = ed.getModel()?.getValueInRange(sel) || undefined;
-          } else {
-            const pos = ed.getPosition();
-            if (pos) {
-              const word = ed.getModel()?.getWordAtPosition(pos);
-              if (word) query = word.word;
-            }
-          }
-        }
+        const query = engine?.getSelectedText()?.trim() || undefined;
         EditorEventBus.emit('flux:open-panel', { panel: 'Search', query });
       } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'K' || e.key === 'k')) {
         e.preventDefault();
@@ -445,7 +355,7 @@ export default function Editor({ page }: EditorProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editorRef]);
+  }, [engine]);
 
   // Adjust context menu position to viewport
   useLayoutEffect(() => {
@@ -485,40 +395,6 @@ export default function Editor({ page }: EditorProps) {
     }
   }, [renameDialog]);
 
-  const hasComments = (comments?.length ?? 0) > 0;
-  useEffect(() => {
-    editorRef.current?.updateOptions({
-      fontSize,
-      lineHeight: Math.round(fontSize * 1.65),
-      wordWrap: wordWrap ? 'on' : 'off',
-      lineNumbers: lineNumbers ? 'on' : 'off',
-      lineNumbersMinChars: 3,
-      lineDecorationsWidth: 0,
-      glyphMargin: hasComments,
-      folding: false,
-      renderLineHighlight: 'all',
-      renderLineHighlightOnlyWhenFocus: false,
-      scrollBeyondLastLine: false,
-      smoothScrolling: true,
-      minimap: { enabled: false },
-      overviewRulerBorder: false,
-      overviewRulerLanes: 0,
-      hideCursorInOverviewRuler: true,
-      scrollbar: {
-        vertical: 'auto',
-        horizontal: 'auto',
-        verticalScrollbarSize: 8,
-        horizontalScrollbarSize: 8,
-        verticalSliderSize: 6,
-        horizontalSliderSize: 6,
-        useShadows: false,
-        verticalHasArrows: false,
-        horizontalHasArrows: false,
-        alwaysConsumeMouseWheel: false,
-      },
-    });
-  }, [fontSize, wordWrap, lineNumbers, hasComments, editorRef]);
-
   useEffect(() => {
     return () => {
       setEngine(null);
@@ -528,16 +404,11 @@ export default function Editor({ page }: EditorProps) {
   // SyncTeX forward jump event listener
   useEffect(() => {
     return EditorEventBus.on('flux:synctex-forward', () => {
-      const inst = editorRef.current;
-      if (!inst) return;
-      const pos = inst.getPosition();
-      const line =
-        pos?.lineNumber ??
-        inst.getVisibleRanges()?.[0]?.startLineNumber ??
-        1;
+      const sel = engine?.getSelection();
+      const line = sel?.startLine ?? 1;
       editorCommandBus.dispatch({ type: 'viewer:jump-to-line', line });
     });
-  }, [editorRef]);
+  }, [engine]);
 
   const handleSuggestionSubmit = useCallback(async () => {
     if (!suggestModal) return;
@@ -619,7 +490,7 @@ export default function Editor({ page }: EditorProps) {
       {/* Header format bar & mode switches (Overleaf 1:1 Parity) */}
       <div className="h-9 flex items-center justify-between border-b border-border bg-background pl-1 pr-2 shrink-0 overflow-hidden gap-1.5">
         <div className="flex-1 min-w-0 overflow-hidden">
-          <Format />
+          <FormatToolbar />
         </div>
         <div className="flex items-center gap-1.5 shrink-0 select-none">
           <div className="h-4 w-px bg-border/60 mx-1 shrink-0" />
@@ -725,12 +596,11 @@ export default function Editor({ page }: EditorProps) {
             <button
               type="button"
               onClick={() => {
-                const ed = editorRef.current;
-                const sel = ed?.getSelection();
-                const hasSel = sel && !sel.isEmpty();
-                const startL = hasSel ? sel.startLineNumber : (ed?.getPosition()?.lineNumber ?? 1);
-                const endL = hasSel ? sel.endLineNumber : startL;
-                const text = hasSel ? (ed?.getModel()?.getValueInRange(sel) ?? '') : '';
+                const sel = engine?.getSelection();
+                const text = engine?.getSelectedText() ?? '';
+                const hasSel = Boolean(text);
+                const startL = sel?.startLine ?? 1;
+                const endL = sel?.endLine ?? startL;
                 setSuggestModal({
                   originalText: text,
                   suggestedText: text,

@@ -120,6 +120,7 @@ export const yourWorkSummaryResponseSchema = z.object({
   priorityBreakdown: z.record(z.string(), z.number()).optional(),
   projectBreakdown: z.array(projectWorkloadBreakdownSchema).optional().default([]),
   userData: userProfileDataSchema.optional(),
+  isEmpty: z.boolean().optional(),
   success: z.boolean().optional(),
 });
 

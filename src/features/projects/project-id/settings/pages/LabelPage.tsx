@@ -231,7 +231,7 @@ function LabelInlineForm({
         type="submit"
         size="sm"
         disabled={!name.trim() || isSubmitting}
-        className="h-8.5 px-4 text-xs sm:text-sm font-medium bg-[#0c66e4] hover:bg-[#0052cc] text-white rounded-md cursor-pointer disabled:opacity-50 shadow-none transition-colors"
+        className="h-8.5 px-4 text-xs sm:text-sm font-medium cursor-pointer shadow-none"
       >
         {submitLabel}
       </Button>
@@ -446,7 +446,7 @@ export default function LabelPage() {
                 setIsCreating(true);
                 setEditingLabelId(null);
               }}
-              className="h-8.5 px-3.5 text-xs sm:text-sm font-medium bg-[#0c66e4] hover:bg-[#0052cc] text-white rounded-md cursor-pointer transition-colors shadow-none"
+              className="h-8.5 px-3.5 text-xs sm:text-sm font-medium cursor-pointer shadow-none"
             >
               Add label
             </Button>
@@ -464,7 +464,7 @@ export default function LabelPage() {
               <Button
                 type="button"
                 onClick={() => setIsCreating(true)}
-                className="mt-4 h-8.5 px-3.5 text-xs sm:text-sm font-medium bg-[#0c66e4] hover:bg-[#0052cc] text-white rounded-md cursor-pointer shadow-none transition-colors"
+                className="mt-4 h-8.5 px-3.5 text-xs sm:text-sm font-medium cursor-pointer shadow-none"
               >
                 Create your first label
               </Button>

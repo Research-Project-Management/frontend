@@ -113,11 +113,15 @@ function formatRevisionDate(dateStr?: string | Date): { group: string; time: str
 
 export default function HistoryView() {
   const params = useParams<{ projectId?: string; pageId?: string }>();
-  const { currentPage, activeFilePage } = usePageStore();
-  const { engine, getContent } = useEditorInstance();
-  const { setIsHistoryOpen, editorTheme } = useSettingsStore();
+  const storeProjectId = usePageStore((s) => s.projectId);
+  const currentPage = usePageStore((s) => s.currentPage);
+  const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const { engine } = useEditorInstance();
+  const setIsHistoryOpen = useSettingsStore((s) => s.setIsHistoryOpen);
+  const editorTheme = useSettingsStore((s) => s.editorTheme);
 
-  const rootPageId = params?.pageId || params?.projectId || '';
+  const projectId = params?.projectId || storeProjectId || '';
+  const rootPageId = params?.pageId || projectId;
   const [timelineTab, setTimelineTab] = useState<'all' | 'labels'>('all');
 
   // Responsive sidebar visibility
@@ -125,7 +129,7 @@ export default function HistoryView() {
   const [isRightPaneOpen, setIsRightPaneOpen] = useState(true);
 
   // Load project history events & versions
-  const { history: events = [], isLoading: eventsLoading } = useProjectHistory(rootPageId);
+  const { history: events = [], isLoading: eventsLoading } = useProjectHistory(projectId || rootPageId);
   const { data: pageFiles = [] } = useQuery({
     ...filesQuery(rootPageId),
     enabled: !!rootPageId,
@@ -272,8 +276,8 @@ export default function HistoryView() {
     const f =
       pageFiles.find((p: any) => p.id === activeFileId) ||
       deletedFiles.find((p: any) => p.id === activeFileId);
-    return f?.content || getContent() || '';
-  }, [pageFiles, deletedFiles, activeFileId, getContent]);
+    return f?.content || '';
+  }, [pageFiles, deletedFiles, activeFileId]);
 
   // Default active file
   useEffect(() => {
@@ -353,10 +357,10 @@ export default function HistoryView() {
       setIsLoadingContent(true);
       try {
         // 1. Try project snapshot from backend
-        if ((activeRevision as any)?.versionNumber && rootPageId) {
+        if ((activeRevision as any)?.versionNumber && (projectId || rootPageId)) {
           try {
             const snap = await historyService.getProjectSnapshot(
-              rootPageId,
+              projectId || rootPageId,
               (activeRevision as any).versionNumber,
             );
             if (snap && snap.files) {
@@ -404,7 +408,7 @@ export default function HistoryView() {
           pageFiles.find((f: any) => f.id === activeFileId) ||
           deletedFiles.find((f: any) => f.id === activeFileId);
         if (!isCancelled) {
-          setPreviewContent(activeFile?.content || getContent() || '');
+          setPreviewContent(activeFile?.content || '');
           setIsLoadingContent(false);
         }
       } catch {
@@ -422,7 +426,7 @@ export default function HistoryView() {
     return () => {
       isCancelled = true;
     };
-  }, [activeFileId, selectedVersionId, selectedEventId, pageFiles, deletedFiles, getContent, activeRevision, rootPageId]);
+  }, [activeFileId, selectedVersionId, selectedEventId, pageFiles, deletedFiles, activeRevision, projectId, rootPageId]);
 
   // Server-computed visual diff with TanStack Query caching
   const { data: serverDiffData, isLoading: isDiffLoading } = useVersionDiff(
@@ -561,7 +565,7 @@ export default function HistoryView() {
   const formattedDate = formatRevisionDate(activeRevision?.date);
 
   return (
-    <div className="flex flex-col h-dvh w-full bg-background text-foreground select-none z-50 animate-in fade-in duration-150 motion-reduce:animate-none font-sans">
+    <div className="flex flex-col h-dvh w-full bg-background text-foreground select-none z-50 animate-in fade-in duration-150 motion-reduce:animate-none">
       {/* ── 1. Top Navigation Bar ───────────────────────────────────────── */}
       <header className="h-11 border-b border-border bg-background flex items-center justify-between px-3 shrink-0 text-foreground">
         {/* Left: Back to Editor Button & Left Pane Toggle */}
@@ -591,10 +595,10 @@ export default function HistoryView() {
         </div>
 
         {/* Center: Project Title */}
-        <div className="flex items-center gap-1.5 text-12 font-semibold text-foreground/90 truncate max-w-md">
+        <div className="flex items-center gap-1.5 text-13 font-heading font-semibold text-foreground/90 truncate max-w-md">
           <GitBranch className="size-3.5 text-primary shrink-0" />
           <span className="truncate">{currentPage?.title || 'Project History'}</span>
-          <span className="text-11 font-normal text-muted-foreground shrink-0 hidden md:inline">/ Version History</span>
+          <span className="text-11 font-mono font-normal text-muted-foreground shrink-0 hidden md:inline">/ Version History</span>
         </div>
 
         {/* Right: Right Pane Toggle & Status */}
@@ -622,7 +626,7 @@ export default function HistoryView() {
             aria-label="Project files list"
             className="w-56 shrink-0 border-r border-border bg-background flex flex-col min-h-0 animate-in fade-in duration-150 motion-reduce:animate-none"
           >
-            <div className="px-3 py-2 border-b border-border text-11 font-semibold text-muted-foreground select-none">
+            <div className="px-3 py-2 border-b border-border text-11 font-heading font-semibold text-muted-foreground select-none uppercase tracking-wide">
               Project Files
             </div>
             <div className="flex-1 overflow-y-auto py-2 px-1.5 space-y-1">
@@ -630,11 +634,11 @@ export default function HistoryView() {
                 <div
                   className="flex items-center justify-between h-8 px-2.5 rounded-md text-12 font-medium cursor-pointer transition-colors bg-primary text-primary-foreground"
                 >
-                  <div className="flex items-center gap-2 truncate">
+                  <div className="flex items-center gap-2 truncate font-mono text-12">
                     <FileText className="size-3.5 shrink-0" />
                     <span className="truncate">{activeRevision?.fileName || 'main.tex'}</span>
                   </div>
-                  <span className="text-10 font-mono font-medium px-1.5 py-0.5 rounded-md bg-primary-foreground/20 text-primary-foreground leading-none">
+                  <span className="text-11 font-mono font-medium px-1.5 py-0.5 rounded-md bg-primary-foreground/20 text-primary-foreground leading-none">
                     Edited
                   </span>
                 </div>
@@ -662,14 +666,14 @@ export default function HistoryView() {
                           : 'text-foreground/85 hover:bg-muted hover:text-foreground',
                       )}
                     >
-                      <div className="flex items-center gap-2 truncate min-w-0">
+                      <div className="flex items-center gap-2 truncate min-w-0 font-mono text-12">
                         <FileText className="size-3.5 shrink-0" />
                         <span className="truncate">{file.title || 'untitled.tex'}</span>
                       </div>
                       <div className="flex items-center gap-1 shrink-0 ml-1.5">
                         <span
                           className={cn(
-                            'text-10 font-mono font-medium px-1.5 py-0.5 rounded-md leading-none shrink-0',
+                            'text-11 font-mono font-medium px-1.5 py-0.5 rounded-md leading-none shrink-0',
                             isActive
                               ? 'bg-primary-foreground/20 text-primary-foreground'
                               : 'bg-muted text-muted-foreground',
@@ -704,7 +708,7 @@ export default function HistoryView() {
                       <Trash2 className="size-3 shrink-0" />
                       <span>Deleted Files</span>
                     </div>
-                    <span className="px-1.5 py-0.5 rounded-md bg-destructive/15 text-destructive font-mono text-10 font-medium">
+                    <span className="px-1.5 py-0.5 rounded-md bg-destructive/15 text-destructive font-mono text-11 font-medium">
                       {deletedFiles.length}
                     </span>
                   </div>
@@ -732,12 +736,12 @@ export default function HistoryView() {
                               : 'text-muted-foreground hover:bg-muted hover:text-foreground line-through decoration-destructive/50',
                           )}
                         >
-                          <div className="flex items-center gap-2 truncate min-w-0">
+                          <div className="flex items-center gap-2 truncate min-w-0 font-mono text-12">
                             <FileX className="size-3.5 shrink-0 text-destructive" />
                             <span className="truncate">{file.title || 'deleted_file.tex'}</span>
                           </div>
                           <div className="flex items-center gap-1 shrink-0 ml-1.5">
-                            <span className="text-10 font-mono font-medium px-1.5 py-0.5 rounded-md leading-none bg-destructive/15 text-destructive">
+                            <span className="text-11 font-mono font-medium px-1.5 py-0.5 rounded-md leading-none bg-destructive/15 text-destructive">
                               Deleted
                             </span>
                             <button
@@ -767,20 +771,20 @@ export default function HistoryView() {
         <main className="flex-1 flex flex-col min-w-0 min-h-0 bg-background">
           {/* Subheader Banner matching Overleaf */}
           <div className="h-10 px-3 border-b border-border bg-muted/30 flex items-center justify-between text-12 shrink-0 select-none gap-2">
-            <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-              <span className="font-semibold text-foreground/90 truncate shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0 overflow-hidden">
+              <span className="font-mono text-12 font-medium text-foreground/90 truncate shrink-0">
                 {viewMode === 'timeline'
                   ? `Time Machine: ${new Date(scrubTimestamp).toLocaleTimeString()} (${new Date(scrubTimestamp).toLocaleDateString()})`
                   : `Viewing ${formattedDate.full}`}
               </span>
 
               {/* View mode toggle: Compare Diff vs Snapshot vs Time Machine */}
-              <div className="inline-flex items-center rounded-md bg-muted p-0.5 text-11 shrink-0">
+              <div className="inline-flex items-center rounded-md bg-muted p-1 gap-1 text-11 shrink-0">
                 <button
                   type="button"
                   onClick={() => setViewMode('diff')}
                   className={cn(
-                    'px-2 py-0.5 rounded-md text-11 font-medium transition-colors cursor-pointer',
+                    'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer',
                     viewMode === 'diff'
                       ? 'bg-background text-foreground font-semibold shadow-xs'
                       : 'text-muted-foreground hover:text-foreground',
@@ -792,7 +796,7 @@ export default function HistoryView() {
                   type="button"
                   onClick={() => setViewMode('snapshot')}
                   className={cn(
-                    'px-2 py-0.5 rounded-md text-11 font-medium transition-colors cursor-pointer',
+                    'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer',
                     viewMode === 'snapshot'
                       ? 'bg-background text-foreground font-semibold shadow-xs'
                       : 'text-muted-foreground hover:text-foreground',
@@ -804,7 +808,7 @@ export default function HistoryView() {
                   type="button"
                   onClick={() => setViewMode('timeline')}
                   className={cn(
-                    'px-2 py-0.5 rounded-md text-11 font-medium transition-colors cursor-pointer flex items-center gap-1',
+                    'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer flex items-center gap-1',
                     viewMode === 'timeline'
                       ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
                       : 'text-muted-foreground hover:text-foreground',
@@ -817,7 +821,7 @@ export default function HistoryView() {
 
               {diffMode && (
                 <div className="hidden sm:flex items-center gap-1.5 shrink-0">
-                  <label htmlFor="compare-target-select" className="text-11 text-muted-foreground shrink-0">
+                  <label htmlFor="compare-target-select" className="text-11 text-muted-foreground shrink-0 font-mono">
                     Compare against:
                   </label>
                   <select
@@ -825,7 +829,7 @@ export default function HistoryView() {
                     aria-label="Compare against revision"
                     value={compareTargetId}
                     onChange={(e) => setCompareTargetId(e.target.value)}
-                    className="h-6 px-1.5 text-11 font-medium rounded-md border border-border bg-background text-foreground cursor-pointer outline-none focus:ring-1 focus:ring-primary"
+                    className="h-6.5 px-2 text-11 font-mono font-medium rounded-md border border-border bg-background text-foreground cursor-pointer outline-none focus:ring-1 focus:ring-primary"
                   >
                     <option value="current">Current Document</option>
                     {timelineItems
@@ -844,11 +848,11 @@ export default function HistoryView() {
 
               {/* Diff Stats Badge */}
               {diffMode && diffData?.stats && (
-                <div className="hidden md:flex items-center gap-1 text-10 font-mono shrink-0">
-                  <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-500/30">
+                <div className="hidden md:flex items-center gap-1.5 text-11 font-mono shrink-0">
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-500/30">
                     +{diffData.stats.addedLines}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded-md bg-destructive/15 text-destructive font-semibold border border-destructive/30">
+                  <span className="px-2 py-0.5 rounded-md bg-destructive/15 text-destructive font-semibold border border-destructive/30">
                     -{diffData.stats.deletedLines}
                   </span>
                 </div>
@@ -1071,12 +1075,12 @@ export default function HistoryView() {
           >
             {/* Top Switcher: [ All history | Labels ] */}
             <div className="p-3 border-b border-border shrink-0">
-              <div className="inline-flex w-full items-center rounded-md bg-muted p-0.5 text-12">
+              <div className="inline-flex w-full items-center rounded-md bg-muted p-1 gap-1 text-12">
                 <button
                   type="button"
                   onClick={() => setTimelineTab('all')}
                   className={cn(
-                    'flex-1 py-1 rounded-md text-12 font-medium transition-colors cursor-pointer text-center',
+                    'flex-1 py-1 px-2.5 rounded-sm text-12 font-medium transition-colors cursor-pointer text-center',
                     timelineTab === 'all'
                       ? 'bg-background text-foreground font-semibold shadow-xs'
                       : 'text-muted-foreground hover:text-foreground',
@@ -1088,7 +1092,7 @@ export default function HistoryView() {
                   type="button"
                   onClick={() => setTimelineTab('labels')}
                   className={cn(
-                    'flex-1 py-1 rounded-md text-12 font-medium transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5',
+                    'flex-1 py-1 px-2.5 rounded-sm text-12 font-medium transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5',
                     timelineTab === 'labels'
                       ? 'bg-background text-foreground font-semibold shadow-xs'
                       : 'text-muted-foreground hover:text-foreground',
@@ -1096,7 +1100,7 @@ export default function HistoryView() {
                 >
                   <span>Labels</span>
                   {labeledCount > 0 && (
-                    <span className="text-10 px-1.5 py-0.2 rounded-full bg-muted-foreground/20 text-foreground font-mono leading-none">
+                    <span className="text-11 px-1.5 py-0.5 rounded-full bg-muted-foreground/20 text-foreground font-mono leading-none">
                       {labeledCount}
                     </span>
                   )}
@@ -1118,10 +1122,10 @@ export default function HistoryView() {
                   ) : (
                     <Clock className="size-8 opacity-25 mb-2" />
                   )}
-                  <p className="font-semibold text-foreground">
+                  <p className="font-semibold text-foreground text-13">
                     {timelineTab === 'labels' ? 'No labeled versions' : 'No revisions found'}
                   </p>
-                  <p className="text-11 text-muted-foreground mt-1 leading-relaxed">
+                  <p className="text-12 text-muted-foreground mt-1.5 leading-relaxed">
                     {timelineTab === 'labels'
                       ? 'Label milestone revisions (e.g. "Draft v1", "Submitted to arXiv") to bookmark key checkpoints.'
                       : 'Changes will automatically be checkpointed as you compile and edit.'}
@@ -1130,7 +1134,7 @@ export default function HistoryView() {
               ) : (
                 groupedTimeline.map(({ groupName, items }) => (
                   <div key={groupName} className="space-y-1.5">
-                    <div className="text-11 font-medium text-muted-foreground tracking-normal px-1">
+                    <div className="text-11 font-mono font-medium text-muted-foreground tracking-normal px-1 uppercase">
                       {groupName}
                     </div>
 
@@ -1161,7 +1165,7 @@ export default function HistoryView() {
                         >
                           {/* Header: Timestamp & Actions */}
                           <div className="flex items-center justify-between gap-1">
-                            <span className={cn('text-12 font-semibold truncate', isSelected ? 'text-primary' : 'text-foreground')}>
+                            <span className={cn('text-12 font-mono font-semibold truncate', isSelected ? 'text-primary' : 'text-foreground')}>
                               {dateMeta.full}
                             </span>
 
@@ -1222,12 +1226,12 @@ export default function HistoryView() {
                                 ? 'Restored Version'
                                 : 'Edited'}
                           </div>
-                          <div className="text-10 text-muted-foreground font-mono truncate mt-0.5">
+                          <div className="text-11 text-muted-foreground font-mono truncate mt-0.5">
                             {item.fileName}
                           </div>
 
                           {/* Author Tag */}
-                          <div className="flex items-center gap-1.5 mt-2 text-10 text-muted-foreground">
+                          <div className="flex items-center gap-1.5 mt-2 text-11 font-mono text-muted-foreground">
                             <span className="size-1.5 rounded-full bg-primary shrink-0" />
                             <span>{item.author}</span>
                           </div>

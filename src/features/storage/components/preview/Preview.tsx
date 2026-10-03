@@ -40,7 +40,7 @@ import {
   getFileColor,
   formatFileSize,
   formatMimeType,
-} from '../../utils/file';
+} from '../../utils/storage.util';
 import {
   formatDetailedSize,
   formatFileLocation,

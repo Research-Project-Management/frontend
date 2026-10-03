@@ -29,6 +29,7 @@ import {
   type StateGroup,
 } from '../../utils/workload.util';
 import type { YourWorkItem } from '../../schemas/your-work.schema';
+import { YourWorkEmptyState } from './YourWorkEmptyState';
 
 const PRIORITY_BADGES: Record<
   string,
@@ -258,16 +259,26 @@ export function YourWorkItemList({
       {/* List content */}
       <div className="space-y-3">
         {filteredWorkItems.length === 0 ? (
-          <div className="text-center py-14 bg-muted/30 rounded-md shadow-none">
-            <div className="size-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
-              <EmptyIcon className="size-5 text-muted-foreground shrink-0" />
-            </div>
-            <p className="text-muted-foreground text-xs font-medium">
-              {searchQuery
-                ? 'No work items match your filter.'
-                : emptyMessage}
-            </p>
-          </div>
+          searchQuery ? (
+            <YourWorkEmptyState
+              variant="search"
+              searchQuery={searchQuery}
+              onClearSearch={() => setSearchQuery('')}
+            />
+          ) : (
+            <YourWorkEmptyState
+              variant={
+                title.toLowerCase().includes('assigned')
+                  ? 'assigned'
+                  : title.toLowerCase().includes('created')
+                    ? 'created'
+                    : title.toLowerCase().includes('subscribed')
+                      ? 'subscribed'
+                      : 'default'
+              }
+              title={emptyMessage}
+            />
+          )
         ) : groupBy === 'state' ? (
           /* Render by State Groups */
           stateGroups.map((group) => {

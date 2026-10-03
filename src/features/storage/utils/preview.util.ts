@@ -1,5 +1,5 @@
 import type { StorageItem } from '../types/storage.types';
-import { formatFileSize, formatDate } from './file';
+import { formatFileSize, formatDate } from './storage.util';
 
 /**
  * Formats full byte count for Google Drive style details (e.g. "2.4 MB (2,541,200 bytes)").

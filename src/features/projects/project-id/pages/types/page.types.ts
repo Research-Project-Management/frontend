@@ -10,6 +10,14 @@ export type PagesViewMode = 'grid' | 'list';
 export type GetPagesParams = {
   status?: string;
   search?: string;
+  forceEmpty?: string;
+  forceError?: string;
+};
+
+export type PagesListResponse = {
+  pages: Page[];
+  total?: number;
+  isEmpty?: boolean;
 };
 
 export type CreatePageResponse = {

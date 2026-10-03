@@ -23,6 +23,12 @@ export const DraftService = {
     if (filter?.limit) {
       params.limit = String(filter.limit);
     }
+    if (filter?.forceEmpty) {
+      params.forceEmpty = filter.forceEmpty;
+    }
+    if (filter?.forceError) {
+      params.forceError = filter.forceError;
+    }
 
     const res = await apiGet<DraftListResponse>('/api/work-items/drafts', { params });
     return res;

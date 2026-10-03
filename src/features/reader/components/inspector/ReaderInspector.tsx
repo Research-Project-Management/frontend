@@ -35,6 +35,7 @@ export const INSPECTOR_LEVELS_FROM_BOTTOM: InspectorSectionId[] = [
   'tags',
   'collections',
   'notes',
+  'ai',
   'files',
   'info',
 ];
@@ -54,6 +55,7 @@ import NotesSection from './NotesSection';
 import TagsSection from './TagsSection';
 import CollectionsSection from './CollectionsSection';
 import RelatedSection from './RelatedSection';
+import ChatPanel from '../panel/ChatPanel';
 
 import { cn } from '@/shared/lib/utils';
 import type { Item, Collection } from '../../types/reader.types';
@@ -302,6 +304,7 @@ export function LibraryInspector({
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     info: true,
     files: false,
+    ai: false,
     notes: false,
     collections: false,
     tags: false,
@@ -317,6 +320,13 @@ export function LibraryInspector({
   const attachmentsAddRef = useRef<(() => void) | null>(null);
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [isAddingTag, setIsAddingTag] = useState(false);
+
+  // Auto-expand AI Copilot section when user navigates to AI tab
+  useEffect(() => {
+    if (activeInspectorTab === 'ai') {
+      setExpandedSections((prev) => ({ ...prev, ai: true }));
+    }
+  }, [activeInspectorTab]);
 
   // When pending text is passed from PDF viewer (e.g. "Add to Note"), open inspector and activate notes tab
   useEffect(() => {
@@ -468,6 +478,25 @@ export function LibraryInspector({
                       onRegisterAdd={(fn) => {
                         attachmentsAddRef.current = fn;
                       }}
+                    />
+                  </InspectorSection>
+                )}
+
+                {/* 3. Paper AI Copilot (Interactive Document Q&A) */}
+                {visibleSectionIds.has('ai') && (
+                  <InspectorSection
+                    id="ai"
+                    title="Paper AI Copilot"
+                    isExpanded={expandedSections.ai}
+                    onToggleExpand={() => toggleSection('ai')}
+                    contentClassName="p-0 flex flex-col h-[520px] w-full min-w-0"
+                    canEdit={canEdit}
+                  >
+                    <ChatPanel
+                      paperId={effectiveItem.id}
+                      paperTitle={effectiveItem.title}
+                      onNavigateToPage={onNavigateToAnnotation}
+                      className="h-full border-none"
                     />
                   </InspectorSection>
                 )}

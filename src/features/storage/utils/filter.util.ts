@@ -1,5 +1,5 @@
 import type { StorageItem } from '../types/storage.types';
-import { getFileType } from './file';
+import { getFileType } from './storage.util';
 import type { StorageFilterOptions, StorageTypeFilter } from '../types/filter.types';
 
 function matchSingleType(item: StorageItem, type: StorageTypeFilter): boolean {

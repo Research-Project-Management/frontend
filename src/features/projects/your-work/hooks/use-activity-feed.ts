@@ -20,6 +20,9 @@ export function useActivityFeed() {
       isLoadingActivity: source.isLoadingYourWork,
       isLoadingWorkItems: source.isLoadingYourWork,
       isLoadingProjects: source.isLoadingProjects,
+      isError: source.isError,
+      error: source.error,
+      isEmpty: source.isEmpty,
     },
     actions: {
       refetch: source.refetch,

@@ -3,12 +3,23 @@ import { MANUSCRIPTS_API_BASE } from '@/features/editor/services/manuscript.serv
 import type { Page, CreatePageInput, CreatePageResponse } from '../types/page.types';
 
 export const PageService = {
-  getProjectPages: async (projectId: string, status?: string, search?: string) => {
+  getProjectPages: async (
+    projectId: string,
+    status?: string,
+    search?: string,
+    forceEmpty?: string,
+    forceError?: string,
+  ) => {
     const params: Record<string, string> = {};
     if (status && status !== 'all') params.status = status;
-    if (search) params.search = search;
-    const res = await apiGet<{ pages: Page[] }>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs`, { params });
-    return res.pages;
+    if (search && search.trim()) params.search = search.trim();
+    if (forceEmpty) params.forceEmpty = forceEmpty;
+    if (forceError) params.forceError = forceError;
+    const res = await apiGet<{ pages: Page[]; total?: number; isEmpty?: boolean }>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs`,
+      { params },
+    );
+    return res?.pages ?? [];
   },
 
   create: async (input: CreatePageInput) => {

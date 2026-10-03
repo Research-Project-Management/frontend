@@ -7,7 +7,7 @@ import { resolveFileUrl } from "@/shared/lib/file-client";
 import { useInfiniteSentinel } from '../../hooks/use-infinite-sentinel';
 import { Button } from "@/shared/components/ui";
 import type { StorageItem } from '@/features/storage/types/storage.types';
-import { getFileType, getFileIcon, getFileColor, formatFileSize } from '../../utils/file';
+import { getFileType, getFileIcon, getFileColor, formatFileSize } from '../../utils/storage.util';
 import { ItemActions, type StorageViewProps } from './ListView';
 import { useStorageSelectionStore } from '../../store/use-selection-store';
 import { createFolderDropHandlers } from '../../utils/drag-drop.util';
@@ -32,7 +32,10 @@ function GridFileIconItem({ item }: { item: StorageItem }) {
   }
 
   return (
-    <div className={`transition-transform duration-300 group-hover:scale-110 ${getFileColor(fileType)}`}>
+    <div
+      className="transition-transform duration-300 group-hover:scale-110 flex items-center justify-center"
+      style={{ color: getFileColor(fileType) }}
+    >
       {getFileIcon(fileType, 12)}
     </div>
   );

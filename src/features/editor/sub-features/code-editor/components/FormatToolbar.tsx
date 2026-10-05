@@ -106,10 +106,10 @@ const ToolbarButton = React.memo(function ToolbarButton({
           onClick={onClick}
           aria-label={tooltip}
           className={cn(
-            'flex size-7 items-center justify-center rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary select-none',
+            'relative flex size-7 items-center justify-center rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary select-none after:absolute after:-inset-1 after:content-[\'\']',
             active
               ? 'bg-muted text-foreground font-semibold'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95',
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 motion-reduce:transform-none',
             className,
           )}
         >
@@ -1063,6 +1063,8 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
       </div>
 
       <input
+        id="format-toolbar-image-upload"
+        name="imageUpload"
         ref={fileInputRef}
         type="file"
         accept="image/*"

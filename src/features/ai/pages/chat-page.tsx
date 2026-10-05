@@ -26,12 +26,12 @@ import { useChat } from '../hooks/use-chat';
 
 const AGENT_LABELS: Record<string, { label: string; color: string }> = {
   chat: { label: 'General Chat', color: 'bg-secondary/80 text-muted-foreground' },
-  rag: { label: 'Document Search', color: 'bg-primary/10 text-primary' },
+  rag: { label: 'Document Search', color: 'bg-ai/10 text-ai' },
   analyze: { label: 'Analysis', color: 'bg-success/15 text-success' },
   latex: { label: 'LaTeX', color: 'bg-warning/15 text-warning' },
   work_item: { label: 'Work Item Planning', color: 'bg-destructive/10 text-destructive' },
-  web_search: { label: 'Web Search', color: 'bg-primary/15 text-primary' },
-  action: { label: 'Workspace Agent', color: 'bg-primary/10 text-primary' },
+  web_search: { label: 'Web Search', color: 'bg-ai/15 text-ai' },
+  action: { label: 'Workspace Agent', color: 'bg-ai/10 text-ai' },
 };
 
 function AgentBadge({ agent }: { agent: string }) {
@@ -120,7 +120,7 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
             target="_blank"
             rel="noopener noreferrer"
             title={[s.authors, s.snippet].filter(Boolean).join('\n')}
-            className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors max-w-55 truncate"
+            className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-ai/10 text-ai hover:bg-ai/20 transition-colors max-w-55 truncate"
           >
             <ExternalLink className="size-2.5 shrink-0" />
             <span className="truncate">{s.title || s.url}</span>
@@ -131,14 +131,14 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
           s.snippet ? (
             <Popover key={i}>
               <PopoverTrigger asChild>
-                <button type="button" className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary max-w-55 truncate cursor-pointer hover:bg-primary/20 transition-colors">
+                <button type="button" className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-ai/10 text-ai max-w-55 truncate cursor-pointer hover:bg-ai/20 transition-colors">
                   <FileText className="size-2.5 shrink-0" />
                   <span className="truncate">{s.source}</span>
                 </button>
               </PopoverTrigger>
               <PopoverContent side="top" align="start" className="w-80 p-0 overflow-hidden">
                 <div className="px-3 py-2 border-b border-border bg-secondary/60 flex items-center gap-2">
-                  <Quote className="size-3 text-primary shrink-0" />
+                  <Quote className="size-3 text-ai shrink-0" />
                   <span className="text-xs font-semibold text-foreground/80 truncate">
                     {s.source}
                   </span>
@@ -153,7 +153,7 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
           ) : (
             <span
               key={i}
-              className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary max-w-55 truncate cursor-default"
+              className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-ai/10 text-ai max-w-55 truncate cursor-default"
             >
               <FileText className="size-2.5 shrink-0" />
               <span className="truncate">{s.source}</span>
@@ -300,7 +300,7 @@ const MessageBubble = memo(function MessageBubble({
                   <ResponseWidgets widgets={widgets} />
                   {answer && !hasWidgets && renderMarkdown(answer)}
                   {isStreaming && !isThinkingOpen && (
-                    <span className="inline-block w-0.5 h-4 bg-primary animate-pulse ml-0.5 align-text-bottom" />
+                    <span className="inline-block w-0.5 h-4 bg-ai animate-pulse ml-0.5 align-text-bottom" />
                   )}
                   {!isStreaming && sources && sources.length > 0 && <SourcesList sources={sources} />}
                 </>
@@ -449,7 +449,7 @@ export function ChatPage() {
               {[0, 1, 2].map((i) => (
                 <span
                   key={i}
-                  className="size-2 rounded-full bg-primary/40 animate-typing-dot motion-reduce:animate-none"
+                  className="size-2 rounded-full bg-ai/40 animate-typing-dot motion-reduce:animate-none"
                   style={{
                     animationDelay: `${i * 0.2}s`,
                   }}
@@ -497,7 +497,7 @@ export function ChatPage() {
                 ) : activeActions.length === 0 && (
                   <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
                     <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/30 border border-border">
-                      <Loader2 className="size-3.5 animate-spin text-primary shrink-0" />
+                      <Loader2 className="size-3.5 animate-spin text-ai shrink-0" />
                       <span className="text-xs text-muted-foreground">Thinking…</span>
                     </div>
                   </div>

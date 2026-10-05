@@ -274,16 +274,25 @@ export function lintSpecialCharacters(text: string): LatexLintDiagnostic[] {
     while ((pctMatch = unescapedPercentRegex.exec(lineText)) !== null) {
       const matchIndex = pctMatch.index + pctMatch[1].length + pctMatch[2].length;
       if (lineText[matchIndex - 1] !== '\\') {
-        diagnostics.push({
-          startLineNumber: lineNum,
-          startColumn: matchIndex + 1,
-          endLineNumber: lineNum,
-          endColumn: matchIndex + 2,
-          message: "Unescaped '%' comments out the rest of this line. Did you mean '\\%'?",
-          severity: 'warning',
-          code: 'UNESCAPED_PERCENT',
-          suggestions: ['\\%'],
-        });
+        const restOfLine = lineText.slice(matchIndex + 1).trim();
+        const isPrecededByDigit = /[0-9]/.test(pctMatch[1]);
+        // In LaTeX, '%' at the end of a line (e.g. "Author%" or "\macro%") is a standard
+        // whitespace-swallowing comment. We only warn if it's explicitly a numeric percentage
+        // (e.g. "95%") or if there is actual non-comment text after '%' on the same line.
+        if (isPrecededByDigit || restOfLine.length > 0) {
+          diagnostics.push({
+            startLineNumber: lineNum,
+            startColumn: matchIndex + 1,
+            endLineNumber: lineNum,
+            endColumn: matchIndex + 2,
+            message: restOfLine.length > 0
+              ? "Unescaped '%' comments out the rest of this line. Did you mean '\\%'?"
+              : "Unescaped '%' used after a number. Did you mean '\\%'?",
+            severity: 'warning',
+            code: 'UNESCAPED_PERCENT',
+            suggestions: ['\\%'],
+          });
+        }
       }
     }
 

@@ -21,6 +21,9 @@ import {
   Link2,
 } from 'lucide-react';
 import { Document, Page, pdfjs } from 'react-pdf';
+import { setupPdfWorker } from '@/shared/lib/pdfjs-worker';
+
+setupPdfWorker();
 import {
   Button,
   DropdownMenu,

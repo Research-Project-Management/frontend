@@ -18,8 +18,7 @@ import {
   Check,
 } from 'lucide-react';
 import {
-  ItemsService,
-  CollectionsService,
+  libraryServices,
   isProjectScope,
   type Item,
   type Collection,
@@ -76,7 +75,7 @@ export function LibraryPickerModal({
 
     const targetScope = projectId && isProjectScope(projectId) ? projectId : 'user';
 
-    CollectionsService.getAll(targetScope)
+    libraryServices.collections.getAll(targetScope)
       .then((res: any) => {
         if (!isMounted) return;
         const list =
@@ -106,7 +105,7 @@ export function LibraryPickerModal({
       setLoading(true);
       setError(null);
       const targetScope = projectId && isProjectScope(projectId) ? projectId : 'user';
-      const res = await ItemsService.getAll(targetScope, {
+      const res = await libraryServices.items.getAll(targetScope, {
         search: search.trim() || undefined,
         collectionId: selectedCollectionId || undefined,
         limit: 100,
@@ -340,7 +339,7 @@ export function LibraryPickerModal({
                         className={cn(
                           'group relative flex items-center gap-2.5 px-3 py-2 rounded-md transition-colors cursor-pointer select-none',
                           isSelected
-                            ? 'bg-primary/[0.06] text-primary'
+                            ? 'bg-ai/[0.06] text-ai'
                             : 'hover:bg-muted/60 text-foreground'
                         )}
                       >
@@ -349,7 +348,7 @@ export function LibraryPickerModal({
                           className={cn(
                             'size-4 rounded border flex items-center justify-center shrink-0 transition-colors',
                             isSelected
-                              ? 'border-primary bg-primary text-primary-foreground'
+                              ? 'border-ai bg-ai text-white'
                               : 'border-border bg-background group-hover:border-foreground/40'
                           )}
                         >
@@ -360,7 +359,7 @@ export function LibraryPickerModal({
                         <span
                           className={cn(
                             'text-13 truncate flex-1 leading-normal',
-                            isSelected ? 'font-medium text-primary' : 'font-normal text-foreground'
+                            isSelected ? 'font-medium text-ai' : 'font-normal text-foreground'
                           )}
                           title={item.title || 'Untitled Document'}
                         >
@@ -396,7 +395,7 @@ export function LibraryPickerModal({
             size="sm"
             onClick={handleConfirm}
             disabled={selectedItems.size === 0}
-            className="h-8 px-3.5 text-12 font-medium rounded-md cursor-pointer shadow-none"
+            className="h-8 px-3.5 text-12 font-medium rounded-md cursor-pointer shadow-none bg-ai text-white hover:bg-ai-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Attach
           </Button>

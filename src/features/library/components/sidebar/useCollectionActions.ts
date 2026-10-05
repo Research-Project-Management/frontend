@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { CollectionService, useCollections } from '../../data';
+import { libraryServices, useCollections } from '../../data';
 import type { MoveToTrashTarget } from '../modals/TrashModal';
 import type { Collection, CollectionInput } from '../../types/library.types';
 
@@ -114,7 +114,7 @@ export function useCollectionActions({
   const handleExportBibtex = async (collectionId: string, name: string) => {
     const toastId = toast.loading(`Exporting BibTeX for "${name}"...`, { id: 'collection-export' });
     try {
-      const res = await CollectionService.exportBibtex(effectiveScopeId, collectionId);
+      const res = await libraryServices.collections.exportBibtex(effectiveScopeId, collectionId);
       const bibtex = res?.bibtex;
       if (!bibtex) {
         toast.warning('No citations found in this collection.', { id: toastId });
@@ -140,7 +140,7 @@ export function useCollectionActions({
   const handleExportBundle = async (collectionId: string, name: string) => {
     const toastId = toast.loading(`Preparing bundle for "${name}"...`, { id: 'bundle-export' });
     try {
-      const data = await CollectionService.exportBundle(effectiveScopeId, collectionId);
+      const data = await libraryServices.collections.exportBundle(effectiveScopeId, collectionId);
       if (!data) {
         toast.error('Failed to export bundle', { id: toastId });
         return;

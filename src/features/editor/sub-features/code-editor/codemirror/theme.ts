@@ -15,67 +15,95 @@ import { tags as t } from '@lezer/highlight';
 export const fluxLightTheme = EditorView.theme(
   {
     '&': {
-      backgroundColor: 'var(--background, #ffffff)',
-      color: 'var(--foreground, #0f172a)',
+      backgroundColor: 'var(--background, #FAFAF9)',
+      color: 'var(--foreground, #212121)',
       fontSize: '14px',
       height: '100%',
     },
     '&.cm-focused': {
-      outline: 'none !important',
+      outline: 'none',
     },
     '.cm-scroller': {
       fontFamily: 'var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)',
       lineHeight: '1.65',
-      outline: 'none !important',
+      outline: 'none',
+      overflowX: 'auto',
     },
     '.cm-content': {
-      outline: 'none !important',
+      outline: 'none',
+      width: '100%',
+      minWidth: '0',
+      flexGrow: 1,
+      boxSizing: 'border-box',
+      padding: '0',
+    },
+    '.cm-line': {
+      width: '100%',
+      boxSizing: 'border-box',
+      padding: '0 8px',
+    },
+    '.cm-lineWrapping': {
+      wordBreak: 'break-word',
+      overflowWrap: 'break-word',
     },
 
     '.cm-gutters': {
-      backgroundColor: 'var(--background, #ffffff)',
-      color: 'var(--text-muted, #94a3b8)',
+      backgroundColor: 'rgba(9, 105, 218, 0.055)',
+      color: 'var(--muted-foreground, #6E6E6E)',
       borderRight: 'none',
       userSelect: 'none',
       minHeight: '100%',
     },
+    '.cm-lineNumbers': {
+      order: 0,
+      backgroundColor: 'transparent',
+    },
     '.cm-lineNumbers .cm-gutterElement': {
-      padding: '0 8px 0 12px',
-      minWidth: '36px',
+      padding: '0 6px 0 2px',
+      minWidth: '22px',
       textAlign: 'right',
+      color: 'var(--muted-foreground, #6E6E6E)',
     },
     '.cm-activeLineGutter': {
-      backgroundColor: 'rgba(0, 0, 0, 0.035)',
+      backgroundColor: 'rgba(9, 105, 218, 0.12)',
       color: 'var(--primary, #0969DA)',
       fontWeight: '600',
     },
     '.cm-activeLine': {
-      backgroundColor: 'rgba(0, 0, 0, 0.035)',
+      backgroundColor: 'var(--primary-subtle, rgba(9, 105, 218, 0.08))',
+      width: '100%',
     },
-    '.cm-foldGutter, .cm-lint-gutter': {
+    '.cm-foldGutter': {
+      order: 1,
       backgroundColor: 'transparent',
     },
-    '.cm-lint-gutter': {
-      width: '18px',
+    '.cm-gutter-lint, .cm-lint-gutter': {
+      order: -1,
+      width: '12px',
+      backgroundColor: 'transparent',
     },
-    '.cm-lint-gutter .cm-gutterElement': {
-      padding: '0 2px',
+    '.cm-gutter-lint .cm-gutterElement, .cm-lint-gutter .cm-gutterElement': {
+      padding: '0 1px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
     },
+    '.cm-lint-marker': {
+      width: '8px',
+      height: '8px',
+    },
     '.cm-tooltip': {
-      backgroundColor: 'var(--popover, #ffffff)',
-      color: 'var(--popover-foreground, #0f172a)',
-      border: '1px solid var(--border, #e2e8f0)',
+      backgroundColor: 'var(--popover, #FCFCFB)',
+      color: 'var(--popover-foreground, #212121)',
+      border: '1px solid var(--border, #E4E4E4)',
       borderRadius: '8px',
-      boxShadow: '0 4px 16px -2px rgba(0, 0, 0, 0.1), 0 2px 6px -1px rgba(0, 0, 0, 0.06)',
+      boxShadow: 'var(--shadow-overlay, 0 4px 12px 0 rgb(0 0 0 / 0.08))',
     },
     '.cm-tooltip.cm-tooltip-lint': {
       marginLeft: '24px',
       marginTop: '4px',
       borderRadius: '8px',
-      border: '1px solid var(--border, #e2e8f0)',
+      border: '1px solid var(--border, #E4E4E4)',
       overflow: 'hidden',
       maxWidth: '460px',
     },
@@ -87,43 +115,43 @@ export const fluxLightTheme = EditorView.theme(
       whiteSpace: 'pre-wrap',
     },
     '.cm-diagnostic-error': {
-      borderLeft: '4px solid #ef4444',
+      borderLeft: '2px solid hsl(var(--destructive, #ef4444))',
       backgroundColor: 'rgba(239, 68, 68, 0.04)',
     },
     '.cm-diagnostic-warning': {
-      borderLeft: '4px solid #f59e0b',
+      borderLeft: '2px solid hsl(var(--warning, #f59e0b))',
       backgroundColor: 'rgba(245, 158, 11, 0.04)',
     },
     '.cm-diagnosticSource': {
       fontSize: '11px',
-      color: 'var(--text-muted, #64748b)',
+      color: 'var(--text-muted, #6E6E6E)',
       marginTop: '4px',
       display: 'block',
       fontWeight: '500',
     },
     '.cm-cursor': {
-      borderLeftColor: 'var(--foreground, #0f172a)',
+      borderLeftColor: 'var(--foreground, #212121)',
       borderLeftWidth: '2px',
     },
     '.cm-selectionBackground, ::selection': {
-      backgroundColor: 'rgba(59, 130, 246, 0.2) !important',
+      backgroundColor: 'rgba(9, 105, 218, 0.15)',
     },
     '.cm-synctex-flash': {
-      backgroundColor: 'rgba(234, 179, 8, 0.35) !important',
-      transition: 'background-color 1s ease-out',
+      backgroundColor: 'rgba(234, 179, 8, 0.35)',
+      transition: 'background-color 0.8s ease-out',
     },
     '.cm-error-line': {
-      backgroundColor: 'rgba(239, 68, 68, 0.15) !important',
+      backgroundColor: 'rgba(239, 68, 68, 0.15)',
       textDecoration: 'underline wavy #ef4444',
     },
     '.cm-comment-highlight': {
-      backgroundColor: '#fae29c !important',
-      color: '#0f172a !important',
+      backgroundColor: '#fae29c',
+      color: '#0f172a',
       borderRadius: '2px',
       cursor: 'pointer',
     },
     '.cm-comment-highlight-active': {
-      backgroundColor: '#fcd34d !important',
+      backgroundColor: '#fcd34d',
       outline: '1.5px solid #3b82f6',
       borderRadius: '2px',
       cursor: 'pointer',
@@ -135,67 +163,95 @@ export const fluxLightTheme = EditorView.theme(
 export const fluxDarkTheme = EditorView.theme(
   {
     '&': {
-      backgroundColor: 'var(--background, #090d16)',
-      color: 'var(--foreground, #f8fafc)',
+      backgroundColor: 'var(--background, #111118)',
+      color: 'var(--foreground, #F0F0F0)',
       fontSize: '14px',
       height: '100%',
     },
     '&.cm-focused': {
-      outline: 'none !important',
+      outline: 'none',
     },
     '.cm-scroller': {
       fontFamily: 'var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)',
       lineHeight: '1.65',
-      outline: 'none !important',
+      outline: 'none',
+      overflowX: 'auto',
     },
     '.cm-content': {
-      outline: 'none !important',
+      outline: 'none',
+      width: '100%',
+      minWidth: '0',
+      flexGrow: 1,
+      boxSizing: 'border-box',
+      padding: '0',
+    },
+    '.cm-line': {
+      width: '100%',
+      boxSizing: 'border-box',
+      padding: '0 8px',
+    },
+    '.cm-lineWrapping': {
+      wordBreak: 'break-word',
+      overflowWrap: 'break-word',
     },
 
     '.cm-gutters': {
-      backgroundColor: 'var(--background, #090d16)',
-      color: 'rgba(255, 255, 255, 0.4)',
+      backgroundColor: 'rgba(56, 139, 253, 0.08)',
+      color: 'var(--muted-foreground, #8A8A8E)',
       borderRight: 'none',
       userSelect: 'none',
       minHeight: '100%',
     },
+    '.cm-lineNumbers': {
+      order: 0,
+      backgroundColor: 'transparent',
+    },
     '.cm-lineNumbers .cm-gutterElement': {
-      padding: '0 8px 0 12px',
-      minWidth: '36px',
+      padding: '0 6px 0 2px',
+      minWidth: '22px',
       textAlign: 'right',
+      color: 'var(--muted-foreground, #8A8A8E)',
     },
     '.cm-activeLineGutter': {
-      backgroundColor: 'rgba(255, 255, 255, 0.04)',
-      color: '#60a5fa',
+      backgroundColor: 'rgba(56, 139, 253, 0.18)',
+      color: 'var(--primary, #58A6FF)',
       fontWeight: '600',
     },
     '.cm-activeLine': {
-      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+      backgroundColor: 'rgba(56, 139, 253, 0.15)',
+      width: '100%',
     },
-    '.cm-foldGutter, .cm-lint-gutter': {
+    '.cm-foldGutter': {
+      order: 1,
       backgroundColor: 'transparent',
     },
-    '.cm-lint-gutter': {
-      width: '18px',
+    '.cm-gutter-lint, .cm-lint-gutter': {
+      order: -1,
+      width: '12px',
+      backgroundColor: 'transparent',
     },
-    '.cm-lint-gutter .cm-gutterElement': {
-      padding: '0 2px',
+    '.cm-gutter-lint .cm-gutterElement, .cm-lint-gutter .cm-gutterElement': {
+      padding: '0 1px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
     },
+    '.cm-lint-marker': {
+      width: '8px',
+      height: '8px',
+    },
     '.cm-tooltip': {
-      backgroundColor: 'var(--popover, #0f172a)',
-      color: 'var(--popover-foreground, #f8fafc)',
-      border: '1px solid var(--border, #1e293b)',
+      backgroundColor: 'var(--popover, #1A1A22)',
+      color: 'var(--popover-foreground, #F0F0F0)',
+      border: '1px solid var(--border, #2D2D31)',
       borderRadius: '8px',
-      boxShadow: '0 4px 16px -2px rgba(0, 0, 0, 0.4), 0 2px 6px -1px rgba(0, 0, 0, 0.2)',
+      boxShadow: 'var(--shadow-overlay, 0 4px 12px 0 rgb(0 0 0 / 0.4))',
     },
     '.cm-tooltip.cm-tooltip-lint': {
       marginLeft: '24px',
       marginTop: '4px',
       borderRadius: '8px',
-      border: '1px solid var(--border, #1e293b)',
+      border: '1px solid var(--border, #2D2D31)',
       overflow: 'hidden',
       maxWidth: '460px',
     },
@@ -207,42 +263,42 @@ export const fluxDarkTheme = EditorView.theme(
       whiteSpace: 'pre-wrap',
     },
     '.cm-diagnostic-error': {
-      borderLeft: '4px solid #ef4444',
+      borderLeft: '2px solid hsl(var(--destructive, #ef4444))',
       backgroundColor: 'rgba(239, 68, 68, 0.1)',
     },
     '.cm-diagnostic-warning': {
-      borderLeft: '4px solid #f59e0b',
+      borderLeft: '2px solid hsl(var(--warning, #f59e0b))',
       backgroundColor: 'rgba(245, 158, 11, 0.1)',
     },
     '.cm-diagnosticSource': {
       fontSize: '11px',
-      color: 'rgba(255, 255, 255, 0.45)',
+      color: 'var(--text-muted, #8A8A8E)',
       marginTop: '4px',
       display: 'block',
       fontWeight: '500',
     },
     '.cm-cursor': {
-      borderLeftColor: 'var(--foreground, #f8fafc)',
+      borderLeftColor: 'var(--foreground, #F0F0F0)',
       borderLeftWidth: '2px',
     },
     '.cm-selectionBackground, ::selection': {
-      backgroundColor: 'rgba(59, 130, 246, 0.3) !important',
+      backgroundColor: 'rgba(88, 166, 255, 0.22)',
     },
     '.cm-synctex-flash': {
-      backgroundColor: 'rgba(234, 179, 8, 0.35) !important',
-      transition: 'background-color 1s ease-out',
+      backgroundColor: 'rgba(234, 179, 8, 0.35)',
+      transition: 'background-color 0.8s ease-out',
     },
     '.cm-error-line': {
-      backgroundColor: 'rgba(239, 68, 68, 0.2) !important',
+      backgroundColor: 'rgba(239, 68, 68, 0.2)',
       textDecoration: 'underline wavy #ef4444',
     },
     '.cm-comment-highlight': {
-      backgroundColor: 'rgba(250, 226, 156, 0.4) !important',
+      backgroundColor: 'rgba(250, 226, 156, 0.4)',
       borderRadius: '2px',
       cursor: 'pointer',
     },
     '.cm-comment-highlight-active': {
-      backgroundColor: 'rgba(250, 226, 156, 0.65) !important',
+      backgroundColor: 'rgba(250, 226, 156, 0.65)',
       outline: '1.5px solid #3b82f6',
       borderRadius: '2px',
       cursor: 'pointer',
@@ -251,20 +307,40 @@ export const fluxDarkTheme = EditorView.theme(
   { dark: true }
 );
 
-export const fluxHighlightStyle = HighlightStyle.define([
-  { tag: t.keyword, color: '#9333ea', fontWeight: 'bold' }, // \begin, \end, \section
-  { tag: t.controlKeyword, color: '#7c3aed', fontWeight: 'bold' },
-  { tag: t.definition(t.variableName), color: '#0284c7' }, // labels
+export const fluxLightHighlightStyle = HighlightStyle.define([
+  { tag: t.keyword, color: '#7c3aed', fontWeight: 'bold' }, // \begin, \end, \section
+  { tag: t.controlKeyword, color: '#6d28d9', fontWeight: 'bold' },
+  { tag: t.definition(t.variableName), color: '#0369a1' }, // labels
   { tag: t.variableName, color: '#0284c7' },
   { tag: t.comment, color: '#64748b', fontStyle: 'italic' }, // % comments
-  { tag: t.string, color: '#16a34a' },
-  { tag: t.special(t.string), color: '#d97706' }, // math expressions
-  { tag: t.macroName, color: '#2563eb', fontWeight: '600' }, // \textbf, \textit, \cite
-  { tag: t.bracket, color: '#f59e0b' }, // {}, []
-  { tag: t.operator, color: '#ea580c' },
-  { tag: t.heading, color: '#1d4ed8', fontWeight: 'bold' },
+  { tag: t.string, color: '#15803d' },
+  { tag: t.special(t.string), color: '#b45309' }, // math expressions
+  { tag: t.macroName, color: '#1d4ed8', fontWeight: '600' }, // \textbf, \textit, \cite
+  { tag: t.bracket, color: '#d97706' }, // {}, []
+  { tag: t.operator, color: '#c2410c' },
+  { tag: t.heading, color: '#1e40af', fontWeight: 'bold' },
 ]);
 
+export const fluxDarkHighlightStyle = HighlightStyle.define([
+  { tag: t.keyword, color: '#c084fc', fontWeight: 'bold' }, // \begin, \end, \section (~8.5:1 on dark)
+  { tag: t.controlKeyword, color: '#d8b4fe', fontWeight: 'bold' },
+  { tag: t.definition(t.variableName), color: '#38bdf8' }, // labels (~9.8:1)
+  { tag: t.variableName, color: '#38bdf8' },
+  { tag: t.comment, color: '#94a3b8', fontStyle: 'italic' }, // % comments (~7.2:1)
+  { tag: t.string, color: '#4ade80' }, // (~10.5:1)
+  { tag: t.special(t.string), color: '#fde047' }, // math expressions (~13:1)
+  { tag: t.macroName, color: '#60a5fa', fontWeight: '600' }, // \textbf, \textit (~8.2:1)
+  { tag: t.bracket, color: '#fbbf24' }, // {}, [] (~10:1)
+  { tag: t.operator, color: '#fb923c' }, // (~8.7:1)
+  { tag: t.heading, color: '#93c5fd', fontWeight: 'bold' }, // (~11.5:1)
+]);
+
+// Backward compatibility alias
+export const fluxHighlightStyle = fluxLightHighlightStyle;
+
 export function getEditorTheme(isDark: boolean): Extension {
-  return [isDark ? fluxDarkTheme : fluxLightTheme, syntaxHighlighting(fluxHighlightStyle)];
+  return [
+    isDark ? fluxDarkTheme : fluxLightTheme,
+    syntaxHighlighting(isDark ? fluxDarkHighlightStyle : fluxLightHighlightStyle),
+  ];
 }

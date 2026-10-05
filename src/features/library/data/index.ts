@@ -8,7 +8,7 @@
 export * from './query-keys';
 
 // ── Unified Library Client SDK ────────────────────────────────────────────────
-export * from './library.service';
+export * from './library-services';
 
 // ── 6 Bounded Context Sub-Domains ─────────────────────────────────────────────
 export * from './catalog';

@@ -32,6 +32,7 @@ import { formatInTextCitation } from '../../utils/reader.util';
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import { copyToClipboard, cn } from "@/shared/lib/utils";
+import { setupPdfWorker } from '@/shared/lib/pdfjs-worker';
 
 export const ZOTERO_COLORS = [
   { id: 'yellow', label: 'Yellow', hex: '#ffd400' },
@@ -45,13 +46,7 @@ export const ZOTERO_COLORS = [
 ] as const;
 
 // Configure worker matching exact react-pdf bundled pdfjs-dist version
-if (typeof window !== 'undefined' && pdfjs && typeof pdfjs === 'object' && 'GlobalWorkerOptions' in pdfjs && pdfjs.GlobalWorkerOptions) {
-  try {
-    pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
-  } catch {
-    // Ignore worker assignment error
-  }
-}
+setupPdfWorker();
 
 export function DocumentPageSkeleton({ width }: { width?: number }) {
   const w = width || 600;

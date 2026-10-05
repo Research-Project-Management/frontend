@@ -32,13 +32,13 @@ export interface DisplayPopoverProps {
 }
 
 const DISPLAY_PROPERTY_ITEMS: Array<{ key: DisplayPropertyKey; label: string }> = [
-  { key: 'id', label: 'ID' },
-  { key: 'assignee', label: 'Assignee' },
-  { key: 'startDate', label: 'Start date' },
-  { key: 'dueDate', label: 'Due date' },
-  { key: 'labels', label: 'Labels' },
-  { key: 'priority', label: 'Priority' },
   { key: 'state', label: 'State' },
+  { key: 'id', label: 'ID' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'dueDate', label: 'Due date' },
+  { key: 'startDate', label: 'Start date' },
+  { key: 'assignee', label: 'Assignee' },
+  { key: 'labels', label: 'Labels' },
   { key: 'childWorkItemCount', label: 'Sub-work item count' },
   { key: 'attachmentCount', label: 'Attachment count' },
   { key: 'link', label: 'Link' },

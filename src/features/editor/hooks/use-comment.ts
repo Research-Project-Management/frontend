@@ -18,19 +18,19 @@ export const commentKeys = {
 };
 
 export const usePageComments = (pageId: string | null, status?: CommentStatus) => {
+  const isDemo = !pageId || pageId === 'demo' || pageId.startsWith('demo-') || pageId.startsWith('mock-');
   return useQuery({
     queryKey: commentKeys.byPage(pageId, status),
     queryFn: async (): Promise<PageComment[]> => {
-      if (!pageId) return [];
+      if (isDemo) return [];
       try {
         const comments = await commentService.getComments(pageId, status);
         return comments || [];
-      } catch (err) {
-        console.error('[usePageComments] Failed to load comments:', err);
+      } catch {
         return [];
       }
     },
-    enabled: !!pageId,
+    enabled: Boolean(pageId && !isDemo),
   });
 };
 

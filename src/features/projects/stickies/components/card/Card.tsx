@@ -1,7 +1,6 @@
 'use client';
 
-import { type Sticky } from '@/features/projects/stickies/types/sticky.types';
-import { STICKY_COLOR_MAP } from '@/features/projects/stickies/types/sticky.types';
+import { type Sticky, getStickyColorConfig } from '@/features/projects/stickies/types/sticky.types';
 import Content, { type StickiesEditorHandle } from "./Content";
 import Toolbar from "./Toolbar";
 import React, { useState, memo } from "react";
@@ -28,7 +27,7 @@ const Card = memo(
     isOverlay,
     className,
   }: CardProps) {
-    const colorConfig = STICKY_COLOR_MAP[sticky.color];
+    const colorConfig = getStickyColorConfig(sticky?.color);
     const [editor, setEditor] = useState<StickiesEditorHandle | null>(null);
     const [activeModal, setActiveModal] = useState<string | null>(null);
 

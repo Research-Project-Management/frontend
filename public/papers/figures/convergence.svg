@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 380" width="100%" height="100%" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <rect width="600" height="380" fill="#ffffff" rx="8" />
+  <!-- Title -->
+  <text x="300" y="28" text-anchor="middle" font-size="14" font-weight="600" fill="#1e293b">Training Loss vs. Iterations (Logistic Regression on MNIST)</text>
+  
+  <!-- Grid Lines -->
+  <g stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3,3">
+    <line x1="70" y1="50" x2="560" y2="50" />
+    <line x1="70" y1="110" x2="560" y2="110" />
+    <line x1="70" y1="170" x2="560" y2="170" />
+    <line x1="70" y1="230" x2="560" y2="230" />
+    <line x1="70" y1="290" x2="560" y2="290" />
+    
+    <line x1="70" y1="50" x2="70" y2="290" />
+    <line x1="192" y1="50" x2="192" y2="290" />
+    <line x1="315" y1="50" x2="315" y2="290" />
+    <line x1="437" y1="50" x2="437" y2="290" />
+    <line x1="560" y1="50" x2="560" y2="290" />
+  </g>
+
+  <!-- Axes -->
+  <line x1="70" y1="290" x2="560" y2="290" stroke="#475569" stroke-width="1.5" />
+  <line x1="70" y1="50" x2="70" y2="290" stroke="#475569" stroke-width="1.5" />
+
+  <!-- Y-Axis Labels -->
+  <text x="60" y="294" text-anchor="end" font-size="11" fill="#64748b">0.0</text>
+  <text x="60" y="234" text-anchor="end" font-size="11" fill="#64748b">0.2</text>
+  <text x="60" y="174" text-anchor="end" font-size="11" fill="#64748b">0.4</text>
+  <text x="60" y="114" text-anchor="end" font-size="11" fill="#64748b">0.6</text>
+  <text x="60" y="54" text-anchor="end" font-size="11" fill="#64748b">0.8</text>
+  <text x="25" y="170" text-anchor="middle" font-size="12" font-weight="500" fill="#334155" transform="rotate(-90 25 170)">Negative Log Likelihood</text>
+
+  <!-- X-Axis Labels -->
+  <text x="70" y="310" text-anchor="middle" font-size="11" fill="#64748b">0</text>
+  <text x="192" y="310" text-anchor="middle" font-size="11" fill="#64748b">10k</text>
+  <text x="315" y="310" text-anchor="middle" font-size="11" fill="#64748b">20k</text>
+  <text x="437" y="310" text-anchor="middle" font-size="11" fill="#64748b">30k</text>
+  <text x="560" y="310" text-anchor="middle" font-size="11" fill="#64748b">40k</text>
+  <text x="315" y="335" text-anchor="middle" font-size="12" font-weight="500" fill="#334155">Iterations</text>
+
+  <!-- Curves -->
+  <!-- SGD with Momentum (Green) -->
+  <path d="M 70 70 Q 120 180 200 205 T 350 220 T 560 226" fill="none" stroke="#10b981" stroke-width="2.5" />
+
+  <!-- AdaGrad (Orange) -->
+  <path d="M 70 70 Q 110 130 180 185 T 350 215 T 560 218" fill="none" stroke="#f59e0b" stroke-width="2.5" />
+
+  <!-- RMSProp (Purple) -->
+  <path d="M 70 70 Q 100 190 170 215 T 320 238 T 560 248" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-dasharray="5,3" />
+
+  <!-- Adam (Blue - Best) -->
+  <path d="M 70 70 Q 95 210 150 240 T 280 262 T 560 273" fill="none" stroke="#2563eb" stroke-width="3" />
+
+  <!-- Legend -->
+  <g transform="translate(380, 60)">
+    <rect width="170" height="95" fill="#f8fafc" stroke="#cbd5e1" rx="6" />
+    <!-- Adam -->
+    <line x1="12" y1="20" x2="36" y2="20" stroke="#2563eb" stroke-width="3" />
+    <text x="45" y="24" font-size="11" font-weight="600" fill="#1e293b">Adam (proposed)</text>
+    <!-- RMSProp -->
+    <line x1="12" y1="42" x2="36" y2="42" stroke="#8b5cf6" stroke-width="2.5" stroke-dasharray="5,3" />
+    <text x="45" y="46" font-size="11" fill="#334155">RMSProp</text>
+    <!-- AdaGrad -->
+    <line x1="12" y1="64" x2="36" y2="64" stroke="#f59e0b" stroke-width="2.5" />
+    <text x="45" y="68" font-size="11" fill="#334155">AdaGrad</text>
+    <!-- SGD Nesterov -->
+    <line x1="12" y1="84" x2="36" y2="84" stroke="#10b981" stroke-width="2.5" />
+    <text x="45" y="88" font-size="11" fill="#334155">SGD + Nesterov</text>
+  </g>
+</svg>

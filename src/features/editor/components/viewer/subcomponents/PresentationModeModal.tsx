@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Document, Page } from 'react-pdf';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Document as PdfDocument, Page as PdfPage } from 'react-pdf';
 import {
   ChevronLeft,
   ChevronRight,
@@ -13,6 +13,9 @@ import {
   Maximize2,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import { setupPdfWorker } from '@/shared/lib/pdfjs-worker';
+
+setupPdfWorker();
 
 export interface PresentationModeModalProps {
   pdfUrl: string | null;
@@ -45,6 +48,19 @@ export function PresentationModeModal({
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const hideControlsTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  setupPdfWorker();
+  useEffect(() => {
+    setupPdfWorker();
+  }, []);
+
+  const documentOptions = useMemo(
+    () => ({
+      cMapUrl: 'https://unpkg.com/pdfjs-dist@5.4.296/cmaps/',
+      standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@5.4.296/standard_fonts/',
+    }),
+    [],
+  );
 
   // Sync initial page when modal opens
   useEffect(() => {
@@ -241,8 +257,9 @@ export function PresentationModeModal({
       {/* ── Slide Canvas ────────────────────────────────────────── */}
       <div className="relative flex items-center justify-center max-w-full max-h-full">
         {pdfUrl ? (
-          <Document
+          <PdfDocument
             file={pdfUrl}
+            options={documentOptions}
             loading={
               <div className="flex flex-col items-center gap-3 text-white/70">
                 <Loader2 className="size-8 animate-spin" />
@@ -255,12 +272,12 @@ export function PresentationModeModal({
               </div>
             }
           >
-            <Page
+            <PdfPage
               pageNumber={currentPage}
               scale={calculatedScale}
               renderTextLayer={false}
               renderAnnotationLayer={false}
-              onLoadSuccess={(page) => {
+              onLoadSuccess={(page: any) => {
                 setPageSize({
                   width: page.originalWidth,
                   height: page.originalHeight,
@@ -268,7 +285,7 @@ export function PresentationModeModal({
               }}
               className="shadow-[0_12px_48px_rgba(0,0,0,0.8)] rounded-sm overflow-hidden"
             />
-          </Document>
+          </PdfDocument>
         ) : (
           <div className="text-white/60 text-sm">No PDF available to present.</div>
         )}

@@ -25,14 +25,19 @@ export interface EditorStorageItem {
   [key: string]: unknown;
 }
 
+const isMockOrDemoStorage = (id?: string | null): boolean => {
+  if (!id) return true;
+  return id === 'demo' || id === 'adam-research' || id === 'default' || id.startsWith('mock-');
+};
+
 export const StorageService = {
   getProjectFiles: async (projectId: string, parentId?: string | null): Promise<EditorStorageItem[]> => {
-    if (!projectId) return [];
+    if (isMockOrDemoStorage(projectId)) return [];
     try {
       const endpoint = parentId
         ? `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes?parentId=${parentId}`
         : `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`;
-      const nodes = await apiGet<any[]>(endpoint);
+      const nodes = await apiGet<any[]>(endpoint, { silent: true });
       if (Array.isArray(nodes)) {
         return nodes.map((n) => ({
           id: n.id,
@@ -52,11 +57,12 @@ export const StorageService = {
 
   getPageFiles: async (pageId: string, parentId?: string | null): Promise<EditorStorageItem[]> => {
     if (!pageId) return [];
+    if (isMockOrDemoStorage(pageId)) return [];
     const legacyEndpoint = parentId
       ? `/api/files/page/${pageId}?parentId=${parentId}`
       : `/api/files/page/${pageId}`;
     try {
-      const data = await apiGet<{ files: EditorStorageItem[] }>(legacyEndpoint);
+      const data = await apiGet<{ files: EditorStorageItem[] }>(legacyEndpoint, { silent: true });
       if (data?.files && data.files.length > 0) {
         return data.files;
       }
@@ -67,7 +73,7 @@ export const StorageService = {
       const endpoint = parentId
         ? `${MANUSCRIPTS_API_BASE}/projects/${pageId}/structure/nodes?parentId=${parentId}`
         : `${MANUSCRIPTS_API_BASE}/projects/${pageId}/structure/nodes`;
-      const nodes = await apiGet<any[]>(endpoint);
+      const nodes = await apiGet<any[]>(endpoint, { silent: true });
       if (Array.isArray(nodes)) {
         return nodes.map((n) => ({
           id: n.id,
@@ -295,8 +301,9 @@ export const StorageService = {
   },
 
   getRootDoc: async (projectId: string) => {
+    if (isMockOrDemoStorage(projectId)) return null;
     try {
-      return await apiGet<any>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc`);
+      return await apiGet<any>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc`, { silent: true });
     } catch {
       return null;
     }

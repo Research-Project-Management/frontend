@@ -143,8 +143,8 @@ export default function Sidebar() {
               aria-label='Ask Flux AI'
               title='Ask Flux AI'
               className={cn(
-                'relative flex size-10 shrink-0 -translate-y-4 items-center justify-center rounded-full bg-background border border-border/80 shadow-md transition-[transform,border-color,box-shadow] duration-200 cursor-pointer outline-none hover:scale-105 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary select-none overflow-hidden z-20',
-                isOpen && 'border-foreground/30 shadow-lg'
+                'relative flex size-10 shrink-0 -translate-y-4 items-center justify-center rounded-full bg-background shadow-md transition-[transform,box-shadow] duration-200 cursor-pointer outline-none hover:scale-105 active:scale-95 focus-visible:ring-2 focus-visible:ring-ai select-none overflow-hidden z-20',
+                isOpen && 'shadow-lg'
               )}
             >
               <img
@@ -164,7 +164,7 @@ export default function Sidebar() {
         </div>
 
         {/* Desktop Tool Support Cluster at bottom of Left Rail: Sticky Dock + Chat AI */}
-        <div className='hidden md:flex w-full mt-auto flex-col items-center gap-2 relative shrink-0 pt-2 pb-1 border-t border-border/40'>
+        <div className='hidden md:flex w-full mt-auto flex-col items-center gap-2 relative shrink-0 pt-2 pb-1'>
           <StickyDock />
 
           <Tooltip>
@@ -173,8 +173,8 @@ export default function Sidebar() {
                 type='button'
                 onClick={toggleOpen}
                 className={cn(
-                  'group relative flex size-8 shrink-0 items-center justify-center rounded-md transition-colors duration-200 outline-none select-none cursor-pointer focus-visible:ring-2 focus-visible:ring-primary text-foreground hover:bg-sidebar-hover',
-                  isOpen && 'bg-sidebar-accent text-primary'
+                  'group relative flex size-8 shrink-0 items-center justify-center rounded-md transition-colors duration-200 outline-none select-none cursor-pointer focus-visible:ring-2 focus-visible:ring-ai text-foreground hover:bg-sidebar-hover',
+                  isOpen && 'bg-sidebar-accent text-ai'
                 )}
                 aria-label='AI Assistant (Ctrl+J)'
               >

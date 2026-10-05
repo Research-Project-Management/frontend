@@ -29,31 +29,31 @@ export const STATE_GROUP_CONFIG: Record<
   backlog: {
     label: 'Backlog',
     color: 'bg-muted-foreground/60',
-    hex: '#94a3b8',
+    hex: '#6B7280',
     description: 'Items awaiting prioritization',
   },
   unstarted: {
     label: 'Not started',
     color: 'bg-muted-foreground',
-    hex: '#525866',
+    hex: '#94A3B8',
     description: 'Items ready to be worked on',
   },
   started: {
     label: 'Working on',
     color: 'bg-amber-500',
-    hex: '#f59e0b',
+    hex: '#D97706',
     description: 'Items actively in progress or review',
   },
   completed: {
     label: 'Completed',
-    color: 'bg-emerald-500',
-    hex: '#22c55e',
+    color: 'bg-emerald-600',
+    hex: '#1A7F37',
     description: 'Items completed and accepted',
   },
   cancelled: {
     label: 'Cancelled',
-    color: 'bg-rose-500',
-    hex: '#ef4444',
+    color: 'bg-muted-foreground/50',
+    hex: '#9CA3AF',
     description: 'Items abandoned or rejected',
   },
 };

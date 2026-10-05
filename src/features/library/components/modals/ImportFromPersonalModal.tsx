@@ -22,7 +22,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
-import { useViewItems, useCollections, ItemService } from '../../data';
+import { useViewItems, useCollections, libraryServices } from '../../data';
 import { formatCreatorCompact, normalizeAuthors } from '../../domain';
 import type { Item, Collection } from '../../types/library.types';
 
@@ -139,7 +139,7 @@ export default function ImportFromPersonalModal({
     if (!selectedIds.length || !projectId) return;
     setIsImporting(true);
     try {
-      const res = await ItemService.importFromPersonal(projectId, selectedIds);
+      const res = await libraryServices.items.importFromPersonal(projectId, selectedIds);
       toast.success(
         `Imported ${res.importedCount ?? selectedIds.length} reference(s) into ${projectName}`,
         { id: 'import-personal-refs' }

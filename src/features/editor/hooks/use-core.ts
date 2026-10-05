@@ -15,6 +15,7 @@ import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/r
 import { pageService, fileService } from '../services/core.service';
 import { manuscriptService } from '../services/manuscript.service';
 import { usePageStore, useTabsStore, useSettingsStore } from '../store';
+import { getDemoManuscript } from '../mock/demo-dataset';
 import { toast } from 'sonner';
 import type { Page, PageFile } from '../types';
 
@@ -35,10 +36,15 @@ export const pageQuery = (pageId: string) =>
   queryOptions({
     queryKey: pageKeys.detail(pageId),
     queryFn: async () => {
+      if (!pageId || pageId === 'demo' || pageId.startsWith('demo-') || pageId.startsWith('mock-')) {
+        return getDemoManuscript(pageId || 'demo').page;
+      }
       try {
-        return await pageService.getById(pageId);
+        const page = await pageService.getById(pageId);
+        if (page && (page.content || page.title)) return page;
+        return getDemoManuscript(pageId).page;
       } catch {
-        return null;
+        return getDemoManuscript(pageId).page;
       }
     },
   });
@@ -47,10 +53,15 @@ export const filesQuery = (pageId: string) =>
   queryOptions({
     queryKey: pageKeys.files(pageId),
     queryFn: async () => {
+      if (!pageId || pageId === 'demo' || pageId.startsWith('demo-') || pageId.startsWith('mock-')) {
+        return getDemoManuscript(pageId || 'demo').files;
+      }
       try {
-        return await fileService.getByPageId(pageId);
+        const files = await fileService.getByPageId(pageId);
+        if (files && files.length > 0) return files;
+        return getDemoManuscript(pageId).files;
       } catch {
-        return [];
+        return getDemoManuscript(pageId).files;
       }
     },
   });
@@ -73,31 +84,6 @@ export const pageDeletedFilesQueryOptions = deletedFilesQuery;
 
 // ── 3. Active Document Session Hook ──────────────────────────────────────────
 
-const DEFAULT_SAMPLE_LATEX = `\\documentclass{article}
-\\usepackage{graphicx}
-
-\\title{Overleaf Research Document}
-\\author{Researcher}
-\\date{\\today}
-
-\\begin{document}
-
-\\maketitle
-
-\\section{Introduction}
-Welcome to your LaTeX manuscript editor. This workspace is ready for writing, reviewing, and compiling LaTeX documents.
-
-\\section{Formulas}
-Here is a sample equation:
-\\begin{equation}
-  E = mc^2
-\\end{equation}
-
-\\section{Conclusion}
-Start editing on the left and see the real-time compiled PDF on the right.
-
-\\end{document}`;
-
 export function useActiveDocument() {
   const router = useRouter();
   const pathname = usePathname();
@@ -119,55 +105,40 @@ export function useActiveDocument() {
     enabled: !!pageId,
   });
 
-  const fallbackPage: Page = useMemo(
-    () => ({
-      id: pageId || 'main-page',
-      title: 'main.tex',
-      content: DEFAULT_SAMPLE_LATEX,
-      projectId: projectId || 'current-project',
-      status: 'published',
-      author: {
-        id: 'me',
-        name: 'Researcher',
-      },
-      views: 1,
-      lastAccessedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }),
+  const demoData = useMemo(
+    () => getDemoManuscript(pageId || 'demo', projectId || 'adam-research'),
     [pageId, projectId],
   );
 
-  const fallbackFiles: PageFile[] = useMemo(
-    () => [
-      {
-        id: pageId || 'main-file',
-        pageId: pageId || 'main-page',
-        title: 'main.tex',
-        content: DEFAULT_SAMPLE_LATEX,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ],
-    [pageId],
-  );
+  const fallbackPage: Page = demoData.page;
+  const fallbackFiles: PageFile[] = demoData.files;
 
   const parentPage = serverPage || fallbackPage;
-  const childFiles = serverFiles.length > 0 ? serverFiles : fallbackFiles;
-  const activeFile = childFiles.find((f) => f.id === fileId);
+  const childFiles = serverFiles && serverFiles.length > 0 ? serverFiles : fallbackFiles;
 
-  const pageStore = usePageStore();
-  const {
-    setCurrentPage,
-    setFileHierarchy,
-    setActivePageId,
-    setParentPageId,
-    setProjectId,
-    activePageId,
-  } = pageStore;
+  const isMainFile = !fileId || fileId === pageId || fileId === parentPage?.id;
 
-  const tabsStore = useTabsStore();
-  const { openTab, setActive } = tabsStore;
+  const activeFile = useMemo(() => {
+    if (!fileId || isMainFile) return undefined;
+    const direct = childFiles.find((f) => f.id === fileId || f.title === fileId);
+    if (direct) return direct;
+    const idxMatch = fileId.match(/-file-(\d+)$/);
+    if (idxMatch) {
+      const idx = parseInt(idxMatch[1], 10) - 1;
+      if (idx >= 0 && idx < childFiles.length) return childFiles[idx];
+    }
+    return undefined;
+  }, [fileId, isMainFile, childFiles]);
+
+  const setCurrentPage = usePageStore((s) => s.setCurrentPage);
+  const setFileHierarchy = usePageStore((s) => s.setFileHierarchy);
+  const setActivePageId = usePageStore((s) => s.setActivePageId);
+  const setParentPageId = usePageStore((s) => s.setParentPageId);
+  const setProjectId = usePageStore((s) => s.setProjectId);
+  const activePageId = usePageStore((s) => s.activePageId);
+
+  const openTab = useTabsStore((s) => s.openTab);
+  const setActive = useTabsStore((s) => s.setActive);
   const parentProjectId =
     typeof parentPage?.projectId === 'object'
       ? parentPage?.projectId?.id
@@ -188,7 +159,7 @@ export function useActiveDocument() {
   useEffect(() => {
     if (!parentPage) return;
 
-    if (!fileId) {
+    if (isMainFile) {
       const mainId =
         typeof parentPage.mainFile === 'string'
           ? parentPage.mainFile
@@ -204,14 +175,14 @@ export function useActiveDocument() {
       if (pageId) {
         openTab(pageId, {
           id: targetPage.id,
-          title: targetPage.title,
+          title: targetPage.title || 'main.tex',
         });
         setActive(pageId, targetPage.id);
       }
       if (projectId && projectId !== pageId) {
         openTab(projectId, {
           id: targetPage.id,
-          title: targetPage.title,
+          title: targetPage.title || 'main.tex',
         });
         setActive(projectId, targetPage.id);
       }
@@ -235,6 +206,7 @@ export function useActiveDocument() {
       }
     }
   }, [
+    isMainFile,
     fileId,
     pageId,
     projectId,
@@ -249,21 +221,23 @@ export function useActiveDocument() {
 
   const selectFile = useCallback((targetFileId: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (targetFileId === pageId) {
+    if (targetFileId === pageId || targetFileId === parentPage?.id) {
       params.delete('file');
     } else {
       params.set('file', targetFileId);
     }
     const query = params.toString();
     router.push(`${pathname}${query ? `?${query}` : ''}`);
-  }, [searchParams, pageId, router, pathname]);
+  }, [searchParams, pageId, parentPage?.id, router, pathname]);
 
-  const activeTabId =
-    (pageId ? tabsStore.getActive(pageId) : null) ||
-    (projectId ? tabsStore.getActive(projectId) : null);
+  const activeTabId = useTabsStore((s) =>
+    (pageId ? s.activeByProject[pageId] : null) ||
+    (projectId ? s.activeByProject[projectId] : null) ||
+    null
+  );
   const selectedAsset = usePageStore((s) => s.selectedAsset);
   const isAssetTab = activeTabId?.startsWith('asset:') || false;
-  const activePage = fileId ? activeFile : parentPage;
+  const activePage = (isMainFile ? parentPage : activeFile) || parentPage;
   const displayPage = isAssetTab ? null : activePage;
 
   return {

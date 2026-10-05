@@ -22,6 +22,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Document, Page, pdfjs } from 'react-pdf';
+import { setupPdfWorker } from '@/shared/lib/pdfjs-worker';
+
+setupPdfWorker();
 import {
   Button,
   DropdownMenu,

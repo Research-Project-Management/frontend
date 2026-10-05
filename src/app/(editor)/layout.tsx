@@ -47,7 +47,9 @@ export default function EditorLayout({
       featureName="Document Editor"
       description="An issue occurred while rendering the document editor."
     >
-      {children}
+      <div className="h-dvh max-h-dvh w-full overflow-hidden flex flex-col">
+        {children}
+      </div>
     </ErrorBoundary>
   );
 }

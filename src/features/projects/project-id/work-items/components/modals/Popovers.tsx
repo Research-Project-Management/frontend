@@ -685,6 +685,8 @@ export interface LabelPopoverProps {
   onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
   isReadOnly?: boolean;
+  iconOnly?: boolean;
+  children?: React.ReactNode;
 }
 
 export function LabelPopover({
@@ -695,6 +697,8 @@ export function LabelPopover({
   onOpenChange,
   disabled = false,
   isReadOnly = false,
+  iconOnly = false,
+  children,
 }: LabelPopoverProps) {
   const { projectId } = useParams() as { projectId?: string };
   const [internalOpen, setInternalOpen] = useState(false);
@@ -732,13 +736,15 @@ export function LabelPopover({
           size="sm"
           className={cn(
             'h-7 px-2.5 text-xs font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shrink-0',
+            iconOnly && 'size-6 p-0 justify-center gap-0',
             actionBtnClass,
             isOpen && 'bg-muted border-border',
             labels.length > 0 && 'font-medium'
           )}
+          title={labels.length > 0 ? `Labels (${labels.length})` : 'Labels'}
         >
-          <LabelTagIcon />
-          <span>{labels.length > 0 ? `Labels (${labels.length})` : 'Labels'}</span>
+          {children ? children : <LabelTagIcon className="size-3.5 shrink-0" />}
+          {!iconOnly && <span>{labels.length > 0 ? `Labels (${labels.length})` : 'Labels'}</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -805,6 +811,9 @@ export interface DatePopoverProps {
     dueDate: string | null;
   }) => void;
   actionBtnClass?: string;
+  label?: React.ReactNode;
+  children?: React.ReactNode;
+  isReadOnly?: boolean;
 }
 
 export function DatePopover({
@@ -814,6 +823,9 @@ export function DatePopover({
   dueDate,
   onApplyDates,
   actionBtnClass,
+  label,
+  children,
+  isReadOnly = false,
 }: DatePopoverProps) {
   const [selectedRange, setSelectedRange] = useState<{
     from: Date | undefined;
@@ -852,11 +864,20 @@ export function DatePopover({
     let finalDue: string | null = null;
 
     if (hasStartDate && selectedRange.from) {
-      finalStart = selectedRange.from.toISOString();
+      const d = selectedRange.from;
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      finalStart = `${year}-${month}-${day}`;
     }
     if (hasDueDate && (selectedRange.to || selectedRange.from)) {
       const targetDate = selectedRange.to || selectedRange.from;
-      finalDue = targetDate ? targetDate.toISOString() : null;
+      if (targetDate) {
+        const year = targetDate.getFullYear();
+        const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+        const day = String(targetDate.getDate()).padStart(2, '0');
+        finalDue = `${year}-${month}-${day}`;
+      }
     }
 
     onApplyDates({
@@ -876,19 +897,23 @@ export function DatePopover({
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(
-            'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
-            actionBtnClass,
-            open && 'bg-muted border-border'
-          )}
-        >
-          <Clock className="size-3.5 shrink-0 text-foreground" />
-          <span>Dates</span>
-        </Button>
+      <PopoverTrigger asChild disabled={isReadOnly}>
+        {children ? (
+          children
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(
+              'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+              actionBtnClass,
+              open && 'bg-muted border-border'
+            )}
+          >
+            <DateCalendarIcon />
+            <span>{label || 'Dates'}</span>
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent
         align="start"
@@ -1070,10 +1095,12 @@ export function SingleDatePopover({
 }: SingleDatePopoverProps) {
   const selectedDate = date ? new Date(date) : undefined;
 
-  const formattedLabel =
-    selectedDate && !Number.isNaN(selectedDate.getTime())
-      ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(selectedDate)
-      : label;
+  const formattedLabel = useMemo(() => {
+    if (!selectedDate || Number.isNaN(selectedDate.getTime())) {
+      return label;
+    }
+    return ItemHelpers.formatDate(selectedDate);
+  }, [selectedDate, label]);
 
   const isDisabled = disabled || isReadOnly;
 

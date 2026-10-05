@@ -55,6 +55,8 @@ import { EditorModals } from '../../sub-features/code-editor/ui/EditorModals';
 import { useEditorInstance } from '../../core/context/editor-instance.context';
 import { editorCommandBus } from '../../core/command-bus/editor-command-bus';
 
+const EMPTY_LIBRARY_ITEMS: unknown[] = [];
+
 interface EditorProps {
   page: Page | PageFile;
 }
@@ -241,7 +243,7 @@ export default function Editor({ page }: EditorProps) {
     projectScopeId || 'me',
     'all',
   );
-  const libraryItems = (libraryData as { items?: unknown[] })?.items ?? [];
+  const libraryItems = (libraryData as { items?: unknown[] })?.items ?? EMPTY_LIBRARY_ITEMS;
 
   const {
     bibEntries,
@@ -479,7 +481,7 @@ export default function Editor({ page }: EditorProps) {
   const isReadOnly = Boolean(isPageLocked || isDocumentLocked);
 
   return (
-    <div className="h-full w-full flex flex-col min-h-0">
+    <div className="flex-1 w-full h-full flex flex-col min-h-0 overflow-hidden">
       {/* Header format bar & mode switches (Overleaf 1:1 Parity) */}
       <div className="h-9 flex items-center justify-between border-b border-border bg-background pl-1 pr-2 shrink-0 overflow-hidden gap-1.5">
         <div className="flex-1 min-w-0 overflow-hidden">
@@ -620,9 +622,13 @@ export default function Editor({ page }: EditorProps) {
       )}
 
       {/* Editor surface area */}
-      <div id="editor-surface" className="flex-1 w-full relative min-h-0 flex flex-col">
-        <div className="flex-1 w-full relative min-h-0">
+      <div
+        id="editor-surface"
+        className="flex-1 w-full relative min-h-0 flex flex-col overflow-hidden bg-background focus-within:ring-1 focus-within:ring-primary/40 focus-within:ring-inset transition-shadow duration-150"
+      >
+        <div className="flex-1 w-full h-full relative min-h-0 overflow-hidden bg-background">
           <UnifiedCodeMirrorEditor
+            key={page.id}
             value={currentContent}
             onChange={handleContentChange}
             isDarkTheme={isDarkTheme}
@@ -746,7 +752,7 @@ export default function Editor({ page }: EditorProps) {
       <WordCountDialog
         open={wordCountOpen}
         onClose={() => setWordCountOpen(false)}
-        content={currentContent || ''}
+        content={engine?.getContent() || currentContent || ''}
       />
     </div>
   );

@@ -51,13 +51,29 @@ export function usePdfZoom({
     };
   }, [containerRef, pdfUrl]);
 
-  // Ideal scale to fit full page width comfortably inside the viewport
+  // Ideal scale to fit full page width comfortably inside the viewport (full width, no padding gutters)
   const fittedScale = useMemo(() => {
-    const available = containerWidth - 48;
+    const available = containerWidth;
     const targetWidth = pdfSpreadView ? 595 * 2 + 16 : 595;
     const s = available / targetWidth;
     return Math.max(0.3, Math.min(s, 2.5));
   }, [containerWidth, pdfSpreadView]);
+
+  // When a new PDF is compiled or compile finishes, auto-fit full width
+  useEffect(() => {
+    const unsub = EditorEventBus.on('flux:compile-finished', (data) => {
+      if (data?.success) {
+        setAutoFit(true);
+      }
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (pdfUrl) {
+      setAutoFit(true);
+    }
+  }, [pdfUrl]);
 
   useEffect(() => {
     if (autoFit) {

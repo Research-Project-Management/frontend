@@ -20,7 +20,7 @@ import {
   SelectItem,
 } from '@/shared/components/ui/select';
 import { cn } from '@/shared/lib/utils';
-import { useItemTypes, SavedSearchService } from '../../data';
+import { useItemTypes, libraryServices } from '../../data';
 import {
   mapRegistryItemTypes,
   ALL_ITEM_TYPES_FLAT,
@@ -357,7 +357,7 @@ export function CreateSavedSearchModal({
           conditions: payloadConditions,
         };
 
-        const res = await SavedSearchService.preview(scopeId, conditionGroup);
+        const res = await libraryServices.savedSearches.preview(scopeId, conditionGroup);
         setPreviewCount(res.count ?? 0);
         setPreviewSamples(res.sampleItems || []);
       } catch {

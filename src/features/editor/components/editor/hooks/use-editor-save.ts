@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import type { Page, PageFile } from '@/features/editor/types';
 import { useCompileStore, useSettingsStore, usePageStore } from '@/features/editor/store';
-import { useDebounce } from '@/shared/hooks';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 
@@ -24,52 +23,83 @@ export interface UseEditorSaveOptions {
 export function useEditorSave({ page }: UseEditorSaveOptions) {
   const markDirty = useCompileStore((s) => s.markDirty);
   const clearDirty = useCompileStore((s) => s.clearDirty);
-  const autoCompile = useSettingsStore((s) => s.autoCompile);
   const setCurrentPage = usePageStore((s) => s.setCurrentPage);
 
   const pageRef = useRef(page);
   pageRef.current = page;
   const activePageIdRef = useRef(page.id);
 
-  const [contentPayload, setContentPayload] = useState<{
-    pageId: string;
-    text: string;
-  }>({
-    pageId: page.id,
-    text: extractStringContent(page.content),
-  });
+  const initialText = extractStringContent(page.content);
+  const [currentContent, setCurrentContent] = useState<string>(initialText);
 
-  const latestPayloadRef = useRef(contentPayload);
-  latestPayloadRef.current = contentPayload;
+  const latestTextRef = useRef<string>(initialText);
+  const isDirtyRef = useRef(false);
+  const lastCompiledContentRef = useRef<string>(initialText);
 
-  const debouncedPayload = useDebounce(contentPayload, 800);
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const compileTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Sync to local page store & persist to backend database when content settles
-  useEffect(() => {
+  // Flush pending save immediately to store and backend
+  const flushSave = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
     const currentPage = pageRef.current;
-    if (debouncedPayload.pageId !== activePageIdRef.current) return;
-    if (debouncedPayload.pageId !== currentPage.id) return;
-
-    const currentSavedText = extractStringContent(currentPage.content);
-    if (debouncedPayload.text !== currentSavedText) {
+    const targetText = latestTextRef.current;
+    const savedText = extractStringContent(currentPage.content);
+    if (targetText !== savedText) {
       if (typeof setCurrentPage === 'function') {
         setCurrentPage({
           ...currentPage,
-          content: debouncedPayload.text,
+          content: targetText,
         });
       }
       clearDirty(currentPage.id);
-
-      // Persist changes to PostgreSQL via Manuscript Docs API
+      isDirtyRef.current = false;
       manuscriptService.docs
-        .updateContent(currentPage.id, debouncedPayload.text)
+        .updateContent(currentPage.id, targetText)
         .catch((err) => {
-          console.error('[useEditorSave] Auto-save failed:', err);
+          console.error('[useEditorSave] Flush-save failed:', err);
         });
     }
-  }, [debouncedPayload, clearDirty, setCurrentPage]);
+  }, [clearDirty, setCurrentPage]);
 
-  // Listen for real-time document content updates from collaborating peers
+  // Synchronous compile listener: flushes pending text before compilation starts
+  useEffect(() => {
+    return EditorEventBus.on('flux:compile-started', () => {
+      flushSave();
+      lastCompiledContentRef.current = latestTextRef.current;
+    });
+  }, [flushSave]);
+
+  // Page switch & external doc synchronization
+  useEffect(() => {
+    if (activePageIdRef.current !== page.id) {
+      flushSave();
+      if (compileTimerRef.current) {
+        clearTimeout(compileTimerRef.current);
+        compileTimerRef.current = null;
+      }
+      activePageIdRef.current = page.id;
+      const pageText = extractStringContent(page.content);
+      latestTextRef.current = pageText;
+      lastCompiledContentRef.current = pageText;
+      isDirtyRef.current = false;
+      setCurrentContent(pageText);
+      useCompileStore.getState().setPendingCompile(false);
+    } else {
+      // Same page: external content update (e.g. data reloaded)
+      const pageText = extractStringContent(page.content);
+      if (!isDirtyRef.current && pageText !== latestTextRef.current) {
+        latestTextRef.current = pageText;
+        lastCompiledContentRef.current = pageText;
+        setCurrentContent(pageText);
+      }
+    }
+  }, [page.id, page.content, flushSave]);
+
+  // Real-time remote document updates from collaborating peers
   useEffect(() => {
     const handleRemoteUpdate = (event: Event) => {
       const customEvent = event as CustomEvent;
@@ -78,21 +108,20 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
 
       const currentPage = pageRef.current;
       const currentSavedText = extractStringContent(currentPage.content);
-      const isLocallyDirty = latestPayloadRef.current.text !== currentSavedText;
+      const isLocallyDirty = isDirtyRef.current || (latestTextRef.current !== currentSavedText);
 
       // If local user has no unsaved keystrokes, update safely to collaborator's version
       if (!isLocallyDirty && typeof detail.content === 'string') {
+        latestTextRef.current = detail.content;
+        lastCompiledContentRef.current = detail.content;
+        setCurrentContent(detail.content);
         if (typeof setCurrentPage === 'function') {
           setCurrentPage({
             ...currentPage,
             content: detail.content,
           });
         }
-        setContentPayload({
-          pageId: page.id,
-          text: detail.content,
-        });
-      } else if (isLocallyDirty && detail.content && detail.content !== latestPayloadRef.current.text) {
+      } else if (isLocallyDirty && detail.content && detail.content !== latestTextRef.current) {
         // Broadcast non-destructive collision alert so user can choose to merge or overwrite
         if (typeof window !== 'undefined') {
           window.dispatchEvent(
@@ -100,7 +129,7 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
               detail: {
                 docId: page.id,
                 remoteContent: detail.content,
-                localContent: latestPayloadRef.current.text,
+                localContent: latestTextRef.current,
               },
             }),
           );
@@ -114,65 +143,89 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
     };
   }, [page.id, setCurrentPage]);
 
-  // Auto-Compile on Typing with 2.5s Idle Debounce
-  const AUTO_COMPILE_IDLE_DELAY = 2500;
-  const debouncedAutoCompileText = useDebounce(contentPayload.text, AUTO_COMPILE_IDLE_DELAY);
-  const lastCompiledContentRef = useRef<string>(contentPayload.text);
-
+  // Clean up timers on unmount
   useEffect(() => {
-    lastCompiledContentRef.current = extractStringContent(page.content);
-  }, [page.id]);
-
-  useEffect(() => {
-    return EditorEventBus.on('flux:compile-started', () => {
-      lastCompiledContentRef.current = latestPayloadRef.current.text;
-    });
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      if (compileTimerRef.current) {
+        clearTimeout(compileTimerRef.current);
+        compileTimerRef.current = null;
+      }
+    };
   }, []);
 
-  useEffect(() => {
-    if (!autoCompile) return;
-    if (debouncedAutoCompileText === lastCompiledContentRef.current) return;
-
-    const { compileStatus, setPendingCompile } = useCompileStore.getState();
-    const isBusy =
-      compileStatus === 'compiling' ||
-      compileStatus === 'flushing' ||
-      compileStatus === 'syncing';
-
-    if (isBusy) {
-      setPendingCompile(true);
-      return;
-    }
-
-    lastCompiledContentRef.current = debouncedAutoCompileText;
-    editorCommandBus.dispatch({ type: 'compiler:trigger' });
-  }, [debouncedAutoCompileText, autoCompile]);
-
-  // Page switch handler
-  useEffect(() => {
-    activePageIdRef.current = page.id;
-    useCompileStore.getState().setPendingCompile(false);
-    const pageText = extractStringContent(page.content);
-    lastCompiledContentRef.current = pageText;
-    setContentPayload({
-      pageId: page.id,
-      text: pageText,
-    });
-  }, [page.id, page.content]);
-
+  // Per-keystroke handler: 0ms main thread delay, NO React re-renders during typing
   const handleContentChange = useCallback((value: string | undefined) => {
     const text = value || '';
-    setContentPayload({
-      pageId: pageRef.current.id,
-      text,
-    });
+    latestTextRef.current = text;
+    isDirtyRef.current = true;
     markDirty(pageRef.current.id, text);
-  }, [markDirty]);
 
-  const currentContent =
-    contentPayload.pageId === page.id
-      ? contentPayload.text
-      : extractStringContent(page.content);
+    // 1. Debounced Auto-save (800ms idle)
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      const currentPage = pageRef.current;
+      const targetText = latestTextRef.current;
+      const savedText = extractStringContent(currentPage.content);
+      if (targetText !== savedText) {
+        if (typeof setCurrentPage === 'function') {
+          setCurrentPage({
+            ...currentPage,
+            content: targetText,
+          });
+        }
+        clearDirty(currentPage.id);
+        isDirtyRef.current = false;
+        manuscriptService.docs
+          .updateContent(currentPage.id, targetText)
+          .catch((err) => {
+            console.error('[useEditorSave] Auto-save failed:', err);
+          });
+      } else {
+        clearDirty(currentPage.id);
+        isDirtyRef.current = false;
+      }
+    }, 800);
+
+    // 2. Debounced Auto-compile (2500ms idle, Overleaf pattern)
+    if (compileTimerRef.current) {
+      clearTimeout(compileTimerRef.current);
+    }
+    compileTimerRef.current = setTimeout(() => {
+      compileTimerRef.current = null;
+      if (!useSettingsStore.getState().autoCompile) return;
+      const targetText = latestTextRef.current;
+      if (targetText === lastCompiledContentRef.current) return;
+
+      const { compileStatus, setPendingCompile } = useCompileStore.getState();
+      const isBusy =
+        compileStatus === 'compiling' ||
+        compileStatus === 'flushing' ||
+        compileStatus === 'syncing';
+
+      if (isBusy) {
+        setPendingCompile(true);
+        return;
+      }
+
+      lastCompiledContentRef.current = targetText;
+      editorCommandBus.dispatch({ type: 'compiler:trigger' });
+    }, 2500);
+  }, [markDirty, clearDirty, setCurrentPage]);
+
+  const contentPayload = useMemo(
+    () => ({
+      pageId: page.id,
+      text: currentContent,
+    }),
+    [page.id, currentContent]
+  );
 
   const updateMutation = {
     mutate: (params: { pageId?: string; content: string }, opts?: any) => {
@@ -192,9 +245,10 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
 
   return {
     contentPayload,
-    setContentPayload,
+    setContentPayload: () => {},
     currentContent,
     handleContentChange,
+    flushSave,
     updateMutation: updateMutation as any,
   };
 }

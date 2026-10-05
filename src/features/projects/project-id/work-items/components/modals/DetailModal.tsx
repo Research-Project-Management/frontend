@@ -1387,7 +1387,7 @@ export function DetailModal({
                 {selectedLabelsList.map((l: any) => (
                   <span
                     key={l.id}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium text-white"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none text-xs font-medium text-white"
                     style={{ backgroundColor: l.color }}
                   >
                     {l.name}
@@ -1411,9 +1411,9 @@ export function DetailModal({
                   <div className="flex items-center gap-1.5 bg-muted/60 rounded-md px-2 py-0.5 text-xs font-medium text-foreground border border-border">
                     <Clock className="size-3.5 shrink-0 text-muted-foreground" />
                     <span>
-                      {startDate && new Date(startDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}
+                      {startDate && ItemHelpers.formatDate(startDate)}
                       {startDate && dueDate ? ' - ' : ''}
-                      {dueDate && new Date(dueDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}
+                      {dueDate && ItemHelpers.formatDate(dueDate)}
                     </span>
                     {!isReadOnly && (
                       <button
@@ -1674,6 +1674,7 @@ export function DetailModal({
                 <div className="divide-y divide-border rounded-md border border-border bg-background overflow-hidden">
                   {subItems.map((sub: any, sIdx: number) => {
                     const isSubDone = Boolean(sub.completed || sub.stateGroup === 'completed' || sub.state?.group === 'completed' || sub.columnId === 'done');
+                    const isSubCancelled = Boolean(sub.columnId === 'cancelled' || sub.stateGroup === 'cancelled' || sub.state?.group === 'cancelled');
                     return (
                       <div key={sub.id || sIdx} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-muted/50 transition-colors group">
                         <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -1702,7 +1703,7 @@ export function DetailModal({
                           >
                             {isSubDone && <Check className="size-3 shrink-0" />}
                           </button>
-                          <span className={cn("font-medium text-xs", isSubDone ? 'line-through text-muted-foreground' : 'text-foreground')}>
+                          <span className={cn("font-medium text-xs", isSubCancelled ? 'line-through text-muted-foreground' : isSubDone ? 'text-muted-foreground' : 'text-foreground')}>
                             {sub.title}
                           </span>
                         </div>

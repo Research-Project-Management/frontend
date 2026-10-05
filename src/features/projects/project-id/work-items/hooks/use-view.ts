@@ -357,7 +357,7 @@ export function useCard({
 
     const due = rawDue ? new Date(rawDue) : null;
     const isOverdue = due ? due.getTime() < Date.now() && card.columnId !== 'done' : false;
-    const display = due ? due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : null;
+    const display = due ? ItemHelpers.formatDate(due) : null;
 
     return { display, isOverdue };
   }, [card]);

@@ -16,15 +16,30 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
     [editorMode, setEditorMode],
   );
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'Home') {
+        e.preventDefault();
+        handleSwitchMode('code');
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'End') {
+        e.preventDefault();
+        handleSwitchMode('visual');
+      }
+    },
+    [handleSwitchMode],
+  );
+
   return (
     <div
       role="radiogroup"
       aria-label="Editor display mode"
+      onKeyDown={handleKeyDown}
       className="inline-flex items-center rounded-md bg-muted/80 p-0.5 select-none shrink-0"
     >
       <button
         type="button"
         role="radio"
+        tabIndex={editorMode === 'code' ? 0 : -1}
         aria-checked={editorMode === 'code'}
         aria-label="Code mode"
         onClick={() => handleSwitchMode('code')}
@@ -41,6 +56,7 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
       <button
         type="button"
         role="radio"
+        tabIndex={editorMode === 'visual' ? 0 : -1}
         aria-checked={editorMode === 'visual'}
         aria-label="Visual mode"
         onClick={() => handleSwitchMode('visual')}

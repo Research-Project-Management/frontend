@@ -25,7 +25,13 @@ export const PageService = {
   create: async (input: CreatePageInput) => {
     const res = await apiPost<{ page: Page; mainFile?: { id: string; [key: string]: unknown } | string | null }>(
       `${MANUSCRIPTS_API_BASE}/projects/${input.projectId}/docs`,
-      { title: input.title, content: input.content, status: input.status },
+      {
+        title: input.title,
+        content: input.content,
+        status: input.status,
+        labels: input.labels,
+        labelIds: input.labels,
+      },
     );
     const mainFile = res.mainFile || null;
     const mainFileId = typeof mainFile === 'object' && mainFile !== null

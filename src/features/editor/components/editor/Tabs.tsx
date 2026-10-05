@@ -103,23 +103,27 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
 
   const updateQueryParams = useCallback((newFile: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (newFile) {
+    if (newFile && newFile !== rootPageId) {
       params.set('file', newFile);
     } else {
       params.delete('file');
     }
-    router.replace(`${pathname}?${params.toString()}`);
-  }, [pathname, router, searchParams]);
+    const query = params.toString();
+    router.replace(`${pathname}${query ? `?${query}` : ''}`);
+  }, [pathname, router, searchParams, rootPageId]);
 
   const handleTabActivate = useCallback((tabId: string) => {
-    if (tabId !== activeFileId) {
-      updateQueryParams(tabId);
+    const isRoot = tabId === rootPageId;
+    const currentParam = searchParams.get('file');
+    const isCurrentActive = tabId === activeFileId || (isRoot && !currentParam);
+    if (!isCurrentActive) {
+      updateQueryParams(isRoot ? null : tabId);
     }
-  }, [activeFileId, updateQueryParams]);
+  }, [activeFileId, rootPageId, searchParams, updateQueryParams]);
 
   const handleTabClose = useCallback((tabId: string) => {
     closeTab(rootPageId, tabId, (nextId) => {
-      if (nextId) {
+      if (nextId && nextId !== rootPageId) {
         updateQueryParams(nextId);
       } else {
         updateQueryParams(null);
@@ -157,7 +161,7 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
   if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-center h-8 bg-background select-none border-b border-border">
+    <div className="flex items-stretch h-9 bg-background select-none border-b border-border">
       {/* ── File tabs ── */}
       <LayoutGroup id={`tab-bar-${rootPageId}`}>
         <div
@@ -166,18 +170,23 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
           aria-label="Open document tabs"
           onKeyDown={handleTabListKeyDown}
           onWheel={handleWheel}
-          className="flex h-full overflow-x-auto shrink min-w-0 scrollbar-none items-center"
+          className="flex h-full overflow-x-auto shrink min-w-0 scrollbar-none items-stretch"
         >
-          {tabs.map((tab) => (
-            <TabItem
-              key={tab.id}
-              tab={tab}
-              isActive={tab.id === activeFileId}
-              rootPageId={rootPageId}
-              onActivate={() => handleTabActivate(tab.id)}
-              onCloseTab={() => handleTabClose(tab.id)}
-            />
-          ))}
+          {tabs.map((tab) => {
+            const isRoot = tab.id === rootPageId || tab.title === 'main.tex';
+            const currentParam = searchParams.get('file');
+            const isTabActive = tab.id === activeFileId || (isRoot && (!currentParam || currentParam === rootPageId));
+            return (
+              <TabItem
+                key={tab.id}
+                tab={tab}
+                isActive={isTabActive}
+                rootPageId={rootPageId}
+                onActivate={() => handleTabActivate(tab.id)}
+                onCloseTab={() => handleTabClose(tab.id)}
+              />
+            );
+          })}
         </div>
       </LayoutGroup>
     </div>

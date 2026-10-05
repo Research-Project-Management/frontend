@@ -226,8 +226,8 @@ export function AiCompanionSidebar() {
           {/* Visual vertical highlight line aligned directly with the card border */}
           <div
             className={cn(
-              "w-0.5 h-full transition-colors duration-150 bg-transparent group-hover:bg-primary/60",
-              isResizing && "bg-primary"
+              "w-0.5 h-full transition-colors duration-150 bg-transparent group-hover:bg-ai/60",
+              isResizing && "bg-ai"
             )}
           />
         </div>
@@ -246,7 +246,7 @@ export function AiCompanionSidebar() {
               <button
                 type='button'
                 onClick={() => setHistoryView(false)}
-                className='flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
+                className='flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai'
                 aria-label='Back to chat'
               >
                 <ChevronRight className='size-4 shrink-0 text-foreground' />
@@ -280,7 +280,7 @@ export function AiCompanionSidebar() {
                     startNewChat();
                     setHistoryView(false);
                   }}
-                  className='flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
+                  className='flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai'
                   aria-label='New chat'
                 >
                   <SquarePen className='size-3.5 shrink-0 text-foreground' />
@@ -298,7 +298,7 @@ export function AiCompanionSidebar() {
                   type='button'
                   onClick={toggleHistoryView}
                   className={cn(
-                    'flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                    'flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai',
                     isHistoryView && 'bg-muted'
                   )}
                   aria-label='Chat history'
@@ -317,7 +317,7 @@ export function AiCompanionSidebar() {
                 <button
                   type='button'
                   onClick={() => setOpen(false)}
-                  className='flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
+                  className='flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai'
                   aria-label='Collapse (Ctrl+J)'
                 >
                   <X className='size-3.5 shrink-0 text-foreground' />

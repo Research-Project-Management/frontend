@@ -22,6 +22,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [title, setTitle] = useState('');
+  const [createSelectedLabelIds, setCreateSelectedLabelIds] = useState<string[]>([]);
   const [selectedLabelId, setSelectedLabelId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -58,6 +59,12 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
 
   const { createPage } = usePageActions();
 
+  const handleToggleCreateLabel = (labelId: string) => {
+    setCreateSelectedLabelIds((prev) =>
+      prev.includes(labelId) ? prev.filter((id) => id !== labelId) : [...prev, labelId]
+    );
+  };
+
   const handleCreate = async () => {
     const trimmedTitle = title.trim();
     if (!trimmedTitle || !projectId) return;
@@ -66,9 +73,11 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
       const data = await createPage.mutateAsync({
         projectId,
         title: trimmedTitle,
+        labels: createSelectedLabelIds,
       });
       setIsCreateModalOpen(false);
       setTitle('');
+      setCreateSelectedLabelIds([]);
       const mainFileId =
         data.mainFileId ||
         (typeof data.mainFile === 'string'
@@ -87,40 +96,18 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
       <Topbar
         viewMode={viewMode}
         setViewMode={setViewMode}
-        onCreateClick={() => setIsCreateModalOpen(true)}
+        onCreateClick={() => {
+          setCreateSelectedLabelIds([]);
+          setIsCreateModalOpen(true);
+        }}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        projectLabels={projectLabels}
+        selectedLabelId={selectedLabelId}
+        onSelectLabelId={setSelectedLabelId}
       />
 
       <PageContent maxWidth="full" noPadding>
-        {projectLabels.length > 0 && !isError && !isLoading && (
-          <div className="px-6 pt-4 pb-2 flex flex-wrap gap-2 items-center shrink-0">
-            {projectLabels.map((label: any) => {
-              const isSelected = selectedLabelId === label.id;
-              return (
-                <button
-                  key={label.id}
-                  onClick={() => setSelectedLabelId(isSelected ? null : label.id)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors hover:opacity-80 cursor-pointer"
-                  style={{
-                    backgroundColor: isSelected
-                      ? `${label.color ?? '#3b82f6'}25`
-                      : 'transparent',
-                    borderColor: `${label.color ?? '#3b82f6'}40`,
-                    color: label.color ?? '#3b82f6',
-                  }}
-                >
-                  <span
-                    className="size-2 rounded-full shrink-0"
-                    style={{ backgroundColor: label.color ?? '#3b82f6' }}
-                  />
-                  {label.name}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
         {isLoading ? (
           viewMode === 'grid' ? (
             <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -178,6 +165,10 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
         setTitle={setTitle}
         handleCreate={handleCreate}
         isCreating={createPage.isPending}
+        projectLabels={projectLabels}
+        selectedLabelIds={createSelectedLabelIds}
+        onToggleLabel={handleToggleCreateLabel}
+        onClearLabels={() => setCreateSelectedLabelIds([])}
       />
     </PageLayout>
   );

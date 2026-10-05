@@ -249,7 +249,7 @@ function EntryRow({
               <span>AI Error Assist</span>
             </div>
             {fixResult && (
-              <span className="text-10 px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium capitalize">
+              <span className="text-10 px-1.5 py-0.5 rounded-full bg-success/10 text-success font-medium capitalize">
                 {fixResult.confidence} confidence
               </span>
             )}
@@ -275,8 +275,8 @@ function EntryRow({
                   </div>
                 )}
                 {fixResult.fixedSnippet && (
-                  <div className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1.5 whitespace-pre-wrap">
-                    <span className="select-none font-semibold mr-2 text-emerald-500">+</span>
+                  <div className="bg-success/10 text-success px-2.5 py-1.5 whitespace-pre-wrap">
+                    <span className="select-none font-semibold mr-2 text-success">+</span>
                     {fixResult.fixedSnippet}
                   </div>
                 )}
@@ -496,7 +496,7 @@ export default function Logs({
   return (
     <div className="h-full w-full flex flex-col bg-background text-foreground select-none overflow-hidden">
       {/* ── Top Header Toolbar (Overleaf 1:1 Parity) ── */}
-      <header className="h-10 px-3 bg-muted/60 border-b border-border flex items-center justify-between gap-2 shrink-0">
+      <header className="h-9 px-3 bg-background border-b border-border flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2">
           {onCompile && (
             <CompileButton
@@ -508,7 +508,7 @@ export default function Logs({
             type="button"
             onClick={onClose}
             aria-label="Back to PDF"
-            className="px-3 py-1 rounded-md border border-border bg-background hover:bg-muted text-foreground text-xs font-medium transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="h-7 px-3 flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted text-foreground text-xs font-medium transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             Back to PDF
           </button>
@@ -516,9 +516,15 @@ export default function Logs({
       </header>
 
       {/* ── Filter Tabs (All logs, Errors, Warnings, Info) ── */}
-      <nav aria-label="Log categories" className="h-9 px-3 bg-background border-b border-border flex items-center gap-4 shrink-0 overflow-x-auto no-scrollbar">
+      <nav
+        role="tablist"
+        aria-label="Log filter categories"
+        className="h-9 px-3 bg-background border-b border-border flex items-center gap-4 shrink-0 overflow-x-auto no-scrollbar"
+      >
         <button
           type="button"
+          role="tab"
+          aria-selected={activeTab === 'all'}
           onClick={() => setActiveTab('all')}
           className={cn(
             'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-primary',
@@ -535,6 +541,8 @@ export default function Logs({
 
         <button
           type="button"
+          role="tab"
+          aria-selected={activeTab === 'errors'}
           onClick={() => setActiveTab('errors')}
           className={cn(
             'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-primary',
@@ -556,6 +564,8 @@ export default function Logs({
 
         <button
           type="button"
+          role="tab"
+          aria-selected={activeTab === 'warnings'}
           onClick={() => setActiveTab('warnings')}
           className={cn(
             'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-primary',
@@ -568,7 +578,7 @@ export default function Logs({
           <span
             className={cn(
               'px-1.5 py-0.2 rounded-full text-10 font-mono font-semibold',
-              parsed.warnings.length > 0 ? 'bg-amber-500 text-white' : 'bg-muted text-muted-foreground font-medium'
+              parsed.warnings.length > 0 ? 'bg-amber-400 dark:bg-amber-500 text-neutral-900' : 'bg-muted text-muted-foreground font-medium'
             )}
           >
             {parsed.warnings.length}
@@ -577,6 +587,8 @@ export default function Logs({
 
         <button
           type="button"
+          role="tab"
+          aria-selected={activeTab === 'info'}
           onClick={() => setActiveTab('info')}
           className={cn(
             'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-primary',
@@ -598,6 +610,8 @@ export default function Logs({
         <div className="rounded-md border border-border bg-background overflow-hidden">
           <button
             type="button"
+            aria-expanded={isRawLogsOpen}
+            aria-controls="raw-latex-logs"
             onClick={() => setIsRawLogsOpen((prev) => !prev)}
             className="w-full flex items-center gap-2 px-3 py-2 text-left font-medium text-xs text-foreground hover:bg-muted/60 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
@@ -607,7 +621,7 @@ export default function Logs({
             <span>Raw logs</span>
           </button>
           {isRawLogsOpen && (
-            <div className="p-3 border-t border-border bg-muted/30">
+            <div id="raw-latex-logs" className="p-3 border-t border-border bg-muted/30">
               <pre className="font-mono text-11 text-foreground/90 whitespace-pre-wrap break-words leading-relaxed max-h-96 overflow-y-auto select-text">
                 {log || 'No compilation logs recorded yet.'}
               </pre>
@@ -689,7 +703,7 @@ export default function Logs({
       </div>
 
       {/* ── Bottom Action Bar (Clear cached files & Other logs and files) ── */}
-      <footer className="h-11 px-3 bg-muted/60 border-t border-border flex items-center justify-between shrink-0 select-none">
+      <footer className="h-11 px-3 bg-background border-t border-border flex items-center justify-between shrink-0 select-none">
         {/* Left: Clear cached files button */}
         <button
           type="button"

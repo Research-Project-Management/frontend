@@ -10,7 +10,7 @@ import {
 } from '../services/chat.service';
 import { buildResponseWidgetsFromActions } from '../components/chat/response-widgets';
 import { useChatMode } from './use-chat-mode';
-import { ItemService } from '@/features/library';
+import { libraryServices } from '@/features/library';
 
 export function mergeAgentAction(current: AgentAction[], action: AgentAction): AgentAction[] {
   // If the action is finishing or updating a currently calling tool
@@ -224,7 +224,7 @@ export function useChat() {
     if (!collectionId || preloadedCollectionRef.current === collectionId) return;
 
     preloadedCollectionRef.current = collectionId;
-    ItemService.getByCollection('me', collectionId)
+    libraryServices.items.getByCollection('me', collectionId)
       .then((res: any) => {
         const papers: any[] = Array.isArray(res) ? res : res?.papers || [];
         const indexedPapers = papers.filter(

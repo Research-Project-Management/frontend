@@ -24,7 +24,7 @@ import {
   useCollectionsQuery,
   useSavedSearches,
   useTrash,
-  ItemService,
+  libraryServices,
   itemKeys,
   invalidateCollections,
 } from '../data';
@@ -121,7 +121,8 @@ export function ModernLibraryPage({
       queryClient,
       onSuccess: () => {
         invalidateCollections(queryClient, effectiveScopeId);
-        void queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
+        void queryClient.invalidateQueries({ queryKey: ['library', 'items'] });
+        void queryClient.invalidateQueries({ queryKey: ['library', 'counts'] });
       },
     });
   };
@@ -135,7 +136,7 @@ export function ModernLibraryPage({
     const label = formatItemTypeLabel(itemType);
     const toastId = toast.loading(`Creating ${label}...`, { id: 'create-ref' });
     try {
-      const newItem = await ItemService.create(effectiveScopeId, effectiveCollectionId || '', {
+      const newItem = await libraryServices.items.create(effectiveScopeId, effectiveCollectionId || '', {
         itemType,
         title: `Untitled ${label}`,
         collectionId: effectiveCollectionId,

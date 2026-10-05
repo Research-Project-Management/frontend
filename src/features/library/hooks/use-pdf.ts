@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchPdfBlob } from '../data';
+import { libraryServices } from '../data';
 import { getErrorMessage } from "@/shared/lib/utils";
 
 export interface UsePdfReturn {
@@ -58,7 +58,7 @@ export function usePdf(url: string | null): UsePdfReturn {
         setError(null);
         setBlobUrl(null);
 
-        const blob = await fetchPdfBlob(url!, controller.signal);
+        const blob = await libraryServices.items.fetchPdfBlob(url!, controller.signal);
 
         if (active) {
           const newObjectUrl = URL.createObjectURL(blob);

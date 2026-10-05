@@ -7,6 +7,7 @@ import { EditorEventBus } from '../../../utils/editor.util';
 import { editorCommandBus } from '../../../core/command-bus/editor-command-bus';
 import { useEditorInstance } from '../../../core/context/editor-instance.context';
 import type { CompileError } from '../../../types/compiler.types';
+import { DEMO_PDF_URL } from '../../../mock/demo-dataset';
 import { toast } from 'sonner';
 
 export interface UsePdfCompilerOptions {
@@ -55,6 +56,13 @@ export function usePdfCompiler({
   const prevPdfUrlRef = useRef<string | null>(null);
   const synctexMapRef = useRef<SyncTeXMap | null>(null);
   const rawSynctexRef = useRef<string | null>(null);
+
+  // Auto-initialize with real compiled research paper PDF for instant split-screen preview
+  useEffect(() => {
+    if (!pdfUrl) {
+      setPdfUrl(DEMO_PDF_URL);
+    }
+  }, [pdfUrl, setPdfUrl]);
 
   // Compile runner using unified LatexCompilerEngine
   const handleCompile = useCallback(
@@ -141,6 +149,17 @@ export function usePdfCompiler({
           }, 400);
         }
       } else {
+        // In demo mode or standalone preview, maintain real rendered paper with simulated compilation
+        if (pageId === 'demo' || !/^[0-9a-f-]{36}$/i.test(pageId || '')) {
+          setPdfUrl(DEMO_PDF_URL);
+          setCompileStatus('done');
+          setLastCompiledAt(new Date());
+          setCompileErrors([]);
+          EditorEventBus.emit('flux:compile-finished', { success: true });
+          toast.success('Compiled successfully (Demo Engine)');
+          return;
+        }
+
         setCompileStatus('error');
         setCompileLog(res.logs);
 

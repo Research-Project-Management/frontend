@@ -12,7 +12,7 @@ import {
   useBatchRestoreItemsMutation,
   useBatchPurgeItemsMutation,
   useCollectionsQuery,
-  CollectionsService,
+  libraryServices,
   itemKeys,
   invalidateCollections,
 } from '../../data';
@@ -105,7 +105,7 @@ export const ItemTable = React.memo(function ItemTable({
       }
       const toastId = toast.loading('Moving reference...', { id: 'move-doc' });
       try {
-        await CollectionsService.moveItems(scopeId, targetCollectionId, [itemId]);
+        await libraryServices.collections.moveItems(scopeId, targetCollectionId, [itemId]);
         queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
         queryClient.invalidateQueries({ queryKey: itemKeys.byCollection(scopeId, targetCollectionId) });
         invalidateCollections(queryClient, scopeId);

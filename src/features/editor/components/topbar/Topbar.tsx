@@ -83,7 +83,7 @@ export default function Topbar() {
     <TooltipProvider delayDuration={150}>
       <nav
         aria-label="Editor toolbar"
-        className="flex h-11 items-center justify-between gap-2 px-3 py-1 bg-muted shrink-0 z-10 select-none"
+        className="flex h-11 items-center justify-between gap-2 px-3 py-1 bg-background shrink-0 z-10 select-none border-b border-border"
       >
         {/* ── Left: Logo (Back to project / Home), Main Menubar ── */}
         <div className="flex items-center min-w-0 shrink-0 gap-1">

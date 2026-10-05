@@ -19,6 +19,16 @@ export {
 export { LibrarySidebar as Sidebar, LibrarySidebar } from './components';
 export { LibraryTopbar as Topbar, LibraryTopbar } from './components';
 
+// Unified Library Services SDK (Microservice Facade)
+export {
+  libraryServices,
+  libraryService,
+  LibraryServices,
+  LIBRARY_SERVICES_API_BASE,
+  LIBRARY_DOMAINS,
+  getDomainEndpoint,
+} from './data';
+
 // Architecture Layers: Types, Store, Data, Domain, Components, Utils, Hooks
 export * from './types';
 export * from './store';

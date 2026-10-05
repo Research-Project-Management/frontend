@@ -460,6 +460,17 @@ export interface CollaborationEvent {
   timestamp: number;
 }
 
+export const isMockOrDemoManuscript = (id?: string | null): boolean => {
+  if (!id) return true;
+  return (
+    id === 'demo' ||
+    id === 'adam-research' ||
+    id === 'default' ||
+    id.startsWith('mock-') ||
+    id.startsWith('demo-')
+  );
+};
+
 const createFallbackPage = (props: Partial<Page> & { id: string }): Page => ({
   title: 'main.tex',
   content: '',
@@ -477,8 +488,16 @@ const createFallbackPage = (props: Partial<Page> & { id: string }): Page => ({
 
 const docs = {
   getById: async (docId: string): Promise<Page> => {
+    if (isMockOrDemoManuscript(docId)) {
+      return createFallbackPage({
+        id: docId,
+        title: 'main.tex',
+        content: '',
+        status: 'published',
+      });
+    }
     try {
-      const res = await apiGet<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`);
+      const res = await apiGet<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`, { silent: true });
       return res.page;
     } catch {
       return createFallbackPage({
@@ -491,8 +510,11 @@ const docs = {
   },
 
   updateContent: async (docId: string, content: string): Promise<Page> => {
+    if (isMockOrDemoManuscript(docId)) {
+      return createFallbackPage({ id: docId, content });
+    }
     try {
-      const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`, { content });
+      const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`, { content }, { silent: true });
       return res.page;
     } catch {
       return createFallbackPage({ id: docId, content });
@@ -500,10 +522,15 @@ const docs = {
   },
 
   updateThumbnail: async (docId: string, dataUrl: string): Promise<Page> => {
+    if (isMockOrDemoManuscript(docId)) {
+      return createFallbackPage({ id: docId });
+    }
     try {
-      const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}/thumbnail`, {
-        pdfThumbnail: dataUrl,
-      });
+      const res = await apiPut<{ page: Page }>(
+        `${MANUSCRIPTS_API_BASE}/docs/${docId}/thumbnail`,
+        { pdfThumbnail: dataUrl },
+        { silent: true },
+      );
       return res.page;
     } catch {
       return createFallbackPage({ id: docId });
@@ -511,8 +538,11 @@ const docs = {
   },
 
   updateTitle: async (docId: string, title: string, _oldTitle?: string): Promise<Page> => {
+    if (isMockOrDemoManuscript(docId)) {
+      return createFallbackPage({ id: docId, title });
+    }
     try {
-      const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`, { title });
+      const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`, { title }, { silent: true });
       return res.page;
     } catch {
       return createFallbackPage({ id: docId, title });
@@ -858,9 +888,17 @@ const synctex = {
 
 const comments = {
   getComments: async (docId: string, status?: string): Promise<PageComment[]> => {
-    const query = status ? `?status=${encodeURIComponent(status)}` : '';
-    const data = await apiGet<{ comments: PageComment[] }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}/comments${query}`);
-    return data.comments || [];
+    if (isMockOrDemoManuscript(docId)) return [];
+    try {
+      const query = status ? `?status=${encodeURIComponent(status)}` : '';
+      const data = await apiGet<{ comments: PageComment[] }>(
+        `${MANUSCRIPTS_API_BASE}/docs/${docId}/comments${query}`,
+        { silent: true },
+      );
+      return data.comments || [];
+    } catch {
+      return [];
+    }
   },
 
   createComment: async (
@@ -938,11 +976,17 @@ const suggestions = {
     docId: string,
     status?: SuggestionStatus,
   ): Promise<PageSuggestion[]> => {
-    const queryStr = status ? `?status=${status}` : '';
-    const data = await api.apiGet<{ suggestions: PageSuggestion[] }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions${queryStr}`,
-    );
-    return data.suggestions;
+    if (isMockOrDemoManuscript(docId)) return [];
+    try {
+      const queryStr = status ? `?status=${status}` : '';
+      const data = await api.apiGet<{ suggestions: PageSuggestion[] }>(
+        `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions${queryStr}`,
+        { silent: true },
+      );
+      return data.suggestions || [];
+    } catch {
+      return [];
+    }
   },
 
   createSuggestion: async (payload: CreateSuggestionPayload): Promise<PageSuggestion> => {
@@ -997,9 +1041,13 @@ const suggestions = {
 
 const review = {
   getDocReviews: async (projectId: string, docId: string): Promise<DocReviewsResponseDto> => {
+    if (isMockOrDemoManuscript(projectId) || isMockOrDemoManuscript(docId)) {
+      return { changes: [], threads: [] };
+    }
     try {
       return await apiGet<DocReviewsResponseDto>(
         `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review`,
+        { silent: true },
       );
     } catch {
       return { changes: [], threads: [] };
@@ -1091,8 +1139,12 @@ const createFallbackVersion = (props: Partial<PageVersion> & { id: string }): Pa
 
 const history = {
   getByDocId: async (docId: string): Promise<PageVersion[]> => {
+    if (isMockOrDemoManuscript(docId)) return [];
     try {
-      const res = await apiGet<{ versions: PageVersion[] }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}/versions`);
+      const res = await apiGet<{ versions: PageVersion[] }>(
+        `${MANUSCRIPTS_API_BASE}/docs/${docId}/versions`,
+        { silent: true },
+      );
       return res.versions || [];
     } catch {
       return [];
@@ -1402,10 +1454,16 @@ const exportDocs = {
 
 const collaboration = {
   getPresence: async (docId: string): Promise<CollaborationPresence[]> => {
-    const res = await apiGet<{ activeUsers?: CollaborationPresence[]; presence?: CollaborationPresence[] }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/collaboration/presence`,
-    );
-    return res.activeUsers || res.presence || [];
+    if (isMockOrDemoManuscript(docId)) return [];
+    try {
+      const res = await apiGet<{ activeUsers?: CollaborationPresence[]; presence?: CollaborationPresence[] }>(
+        `${MANUSCRIPTS_API_BASE}/docs/${docId}/collaboration/presence`,
+        { silent: true },
+      );
+      return res.activeUsers || res.presence || [];
+    } catch {
+      return [];
+    }
   },
 
   sendHeartbeat: async (
@@ -1421,12 +1479,18 @@ const collaboration = {
       };
     },
   ): Promise<void> => {
-    await apiPost(`${MANUSCRIPTS_API_BASE}/docs/${docId}/collaboration/heartbeat`, { cursor });
+    if (isMockOrDemoManuscript(docId)) return;
+    try {
+      await apiPost(`${MANUSCRIPTS_API_BASE}/docs/${docId}/collaboration/heartbeat`, { cursor }, { silent: true });
+    } catch {
+      // ignore
+    }
   },
 
   leaveRoom: async (docId: string): Promise<void> => {
+    if (isMockOrDemoManuscript(docId)) return;
     try {
-      await apiPost(`${MANUSCRIPTS_API_BASE}/docs/${docId}/collaboration/leave`, {});
+      await apiPost(`${MANUSCRIPTS_API_BASE}/docs/${docId}/collaboration/leave`, {}, { silent: true });
     } catch {
       // ignore
     }
@@ -1476,16 +1540,18 @@ const structure = {
   },
 
   getAllNodes: async (projectId: string): Promise<StructureNodeDto[]> => {
+    if (isMockOrDemoManuscript(projectId)) return [];
     try {
-      return await apiGet<StructureNodeDto[]>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`);
+      return await apiGet<StructureNodeDto[]>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, { silent: true });
     } catch {
       return [];
     }
   },
 
   getNodeById: async (projectId: string, nodeId: string): Promise<StructureNodeDto | null> => {
+    if (isMockOrDemoManuscript(projectId)) return null;
     try {
-      return await apiGet<StructureNodeDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}`);
+      return await apiGet<StructureNodeDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}`, { silent: true });
     } catch {
       return null;
     }
@@ -1511,8 +1577,9 @@ const structure = {
   },
 
   getRootDoc: async (projectId: string): Promise<StructureNodeDto | null> => {
+    if (isMockOrDemoManuscript(projectId)) return null;
     try {
-      return await apiGet<StructureNodeDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc`);
+      return await apiGet<StructureNodeDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc`, { silent: true });
     } catch {
       return null;
     }

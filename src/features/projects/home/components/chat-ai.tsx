@@ -12,7 +12,7 @@ const CompanionInput = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-14 rounded-xl border border-border/60 bg-muted/30 animate-pulse" />
+      <div className="w-full h-14 rounded-lg border border-border/60 bg-muted/30 animate-pulse" />
     ),
   }
 );

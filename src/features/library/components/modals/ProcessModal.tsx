@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,7 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
+  Loader2,
   X,
 } from 'lucide-react';
 import type { ProcessModalState } from '../../data';
@@ -51,6 +53,11 @@ export default function ProcessModal({
   onMinimize,
   onRestore,
 }: ProcessModalProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const data = state.data;
   const total = data?.total || 1;
   const processed = data?.processed || 0;
@@ -67,38 +74,70 @@ export default function ProcessModal({
     ? -1
     : items.findIndex((item) => !isTerminalStatus(item.status));
 
-  // ── Floating Minimized Pill ────────────────────────────────────────────────
+  // ── Floating Minimized Widget ──────────────────────────────────────────────
   if (state.isMinimized && !state.isOpen) {
-    return (
+    if (!mounted || typeof document === 'undefined') return null;
+
+    return createPortal(
       <div
         onClick={onRestore}
-        className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-background shadow-raised-200 cursor-pointer hover:bg-muted/80 transition-colors text-12 font-medium text-foreground select-none"
+        role="status"
+        aria-live="polite"
+        className="fixed bottom-4 right-4 z-50 flex items-center gap-2.5 h-8 px-2.5 rounded-md border border-border bg-background shadow-raised-200 cursor-pointer hover:bg-muted/60 transition-colors text-12 font-medium text-foreground select-none overflow-hidden group"
         title="Click to view details"
       >
-        {state.isComplete ? (
-          <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-        ) : (
-          <RefreshCw className="size-3.5 text-primary animate-spin shrink-0" />
+        {/* Subtle Progress Bar Underline */}
+        {isRunning && (
+          <div
+            className="absolute bottom-0 left-0 h-[2px] bg-primary transition-all duration-300 ease-out"
+            style={{ width: `${percentage}%` }}
+          />
         )}
-        <span>
-          {state.isComplete
-            ? 'Processing complete'
-            : `Processing (${percentage}%)`}
-        </span>
-        {state.isComplete && (
+
+        {/* Status Icon */}
+        {state.error ? (
+          <AlertCircle className="size-3.5 text-destructive shrink-0" />
+        ) : state.isComplete ? (
+          <CheckCircle2 className="size-3.5 text-success shrink-0" />
+        ) : (
+          <Loader2 className="size-3.5 animate-spin text-foreground shrink-0 motion-reduce:animate-none" />
+        )}
+
+        {/* Status Label & Metrics */}
+        <div className="flex items-center gap-1.5 leading-none">
+          <span>
+            {state.error
+              ? 'Processing failed'
+              : state.isComplete
+                ? 'Processing complete'
+                : total > 1
+                  ? `Processing ${processed}/${total}`
+                  : 'Processing'}
+          </span>
+          {isRunning && (
+            <span className="font-mono text-11 tabular-nums text-muted-foreground font-normal">
+              ({percentage}%)
+            </span>
+          )}
+        </div>
+
+        {/* Dismiss Button when Complete or Errored */}
+        {(state.isComplete || state.error) && (
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               onClose();
             }}
-            className="size-4 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center ml-0.5 cursor-pointer"
+            className="size-4 p-0.5 rounded-xs hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center ml-0.5 cursor-pointer outline-none"
             title="Dismiss"
+            aria-label="Dismiss"
           >
             <X className="size-3" />
           </button>
         )}
-      </div>
+      </div>,
+      document.body
     );
   }
 
@@ -120,18 +159,12 @@ export default function ProcessModal({
     >
       <DialogContent className="sm:max-w-[580px] p-5 sm:p-6 rounded-xl border border-border bg-background shadow-raised-200 font-sans gap-0 overflow-hidden">
         {/* Modal Header */}
-        <div className="pb-3.5 flex items-start justify-between">
-          <DialogHeader className="text-left gap-1">
+        <div className="pb-3 flex items-start justify-between">
+          <DialogHeader className="text-left">
             <div className="flex items-center gap-2.5">
               <DialogTitle className="text-16 font-semibold text-foreground tracking-tight">
                 Metadata Retrieval
               </DialogTitle>
-              {isRunning && (
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-11 font-medium bg-primary/10 text-primary">
-                  <span className="size-1.5 rounded-full bg-primary animate-pulse" />
-                  In progress
-                </span>
-              )}
               {state.isComplete && !state.error && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-11 font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 className="size-3" />
@@ -139,12 +172,8 @@ export default function ProcessModal({
                 </span>
               )}
             </div>
-            <DialogDescription className="text-12 text-muted-foreground pt-0.5">
-              {isRunning
-                ? `Extracting academic metadata and authors from documents (${processed}/${total})`
-                : state.error
-                  ? 'Some documents encountered errors during extraction'
-                  : `Successfully processed ${data?.succeeded ?? processed} of ${total} document(s)`}
+            <DialogDescription className="sr-only">
+              Metadata Retrieval Process
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -260,21 +289,16 @@ export default function ProcessModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="pt-4 mt-3 border-t border-border flex items-center justify-between">
-          <span className="text-11 text-muted-foreground">
-            {isRunning ? `${processed} of ${total} files processed` : `${total} file(s) total`}
-          </span>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant={isRunning ? 'outline' : 'default'}
-              size="sm"
-              onClick={isRunning ? (onMinimize || onClose) : onClose}
-              className="h-8 px-4 text-12 font-medium rounded-md cursor-pointer"
-            >
-              {isRunning ? 'Minimize' : 'Close'}
-            </Button>
-          </div>
+        <div className="pt-2 flex items-center justify-end">
+          <Button
+            type="button"
+            variant={isRunning ? 'outline' : 'default'}
+            size="sm"
+            onClick={isRunning ? (onMinimize || onClose) : onClose}
+            className="h-8 px-4 text-12 font-medium rounded-md cursor-pointer"
+          >
+            {isRunning ? 'Minimize' : 'Close'}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

@@ -202,7 +202,7 @@ const SideBar = React.memo(function SideBar({
         <ul
           role="tablist"
           aria-label="Sidebar navigation"
-          className="flex h-full w-11 shrink-0 flex-col items-center gap-1.5 border-r border-border bg-muted py-2 select-none"
+          className="flex h-full w-11 shrink-0 flex-col items-center gap-1.5 border-r border-border bg-sidebar py-2 select-none"
         >
           {sideBarItems.map((item) => {
             const isOpen = activePanel === item.name;

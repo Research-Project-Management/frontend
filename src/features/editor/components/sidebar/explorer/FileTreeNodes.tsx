@@ -45,27 +45,27 @@ export function getStorageIcon(item: StorageItem) {
     mime.startsWith('image/') ||
     ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'eps'].includes(ext)
   ) {
-    return { icon: Image, color: 'text-warning' };
+    return { icon: Image, color: 'text-foreground' };
   }
   if (ext === 'pdf' || mime === 'application/pdf') {
-    return { icon: FileText, color: 'text-destructive' };
+    return { icon: FileText, color: 'text-foreground' };
   }
   if (['bib', 'bst'].includes(ext)) {
-    return { icon: BookText, color: 'text-success' };
+    return { icon: BookText, color: 'text-foreground' };
   }
   if (['cls', 'sty', 'ins'].includes(ext)) {
-    return { icon: Braces, color: 'text-muted-foreground' };
+    return { icon: Braces, color: 'text-foreground' };
   }
   if (['tex', 'ltx', 'dtx'].includes(ext)) {
-    return { icon: FileCode2, color: 'text-primary' };
+    return { icon: FileCode2, color: 'text-foreground' };
   }
   if (['py', 'r', 'm', 'c', 'cpp', 'java', 'js', 'ts', 'json', 'csv'].includes(ext)) {
-    return { icon: FileCode2, color: 'text-primary' };
+    return { icon: FileCode2, color: 'text-foreground' };
   }
   if (['zip', 'tar', 'gz', 'rar', '7z'].includes(ext)) {
-    return { icon: Paperclip, color: 'text-muted-foreground' };
+    return { icon: Paperclip, color: 'text-foreground' };
   }
-  return { icon: Paperclip, color: 'text-muted-foreground' };
+  return { icon: Paperclip, color: 'text-foreground' };
 }
 
 export function IndentGuides({ depth }: { depth: number }) {
@@ -101,17 +101,22 @@ export function InlineInput({
   isPending?: boolean;
 }) {
   return (
-    <div className="flex h-8 items-center rounded-md mx-1.5 px-2 my-0.5 bg-muted/40 transition-colors select-none">
+    <div
+      className="flex h-8 items-center gap-1.5 w-full rounded-md px-2 bg-muted/40 transition-colors select-none"
+      style={{ paddingLeft: '8px' }}
+    >
+      <span className="size-3.5 shrink-0" aria-hidden="true" />
       <Icon
         className={cn(
-          'size-4 shrink-0 mr-2',
-          iconColor ?? 'text-muted-foreground',
+          'size-4 shrink-0',
+          iconColor ?? 'text-foreground',
         )}
         strokeWidth={1.5}
       />
       <input
         autoFocus
         type="text"
+        name="newItemName"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
@@ -131,10 +136,10 @@ export function InlineInput({
         placeholder={placeholder}
         aria-label={placeholder || 'Item name'}
         disabled={isPending}
-        className="h-6.5 flex-1 min-w-0 bg-background text-12 font-normal text-foreground border border-primary rounded-sm px-2 py-0.5 outline-none focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground"
+        className="h-6.5 flex-1 min-w-0 bg-background text-12 font-sans text-foreground border border-border focus:border-foreground/50 rounded-sm px-2 py-0.5 outline-none focus-visible:ring-1 focus-visible:ring-foreground placeholder:text-muted-foreground"
       />
       {isPending && (
-        <Loader2 className="size-3.5 animate-spin text-primary shrink-0 ml-1.5" />
+        <Loader2 className="size-3.5 animate-spin text-foreground shrink-0 ml-1.5" />
       )}
     </div>
   );
@@ -158,6 +163,7 @@ export function RenameInput({
       <input
         autoFocus
         type="text"
+        name="renameItemName"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onClick={(e) => e.stopPropagation()}
@@ -178,10 +184,10 @@ export function RenameInput({
         }}
         aria-label="Rename file"
         disabled={isPending}
-        className="h-6.5 w-full bg-background text-12 font-normal text-foreground border border-primary rounded-sm px-2 py-0.5 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        className="h-6.5 w-full bg-background text-12 font-normal text-foreground border border-foreground/40 rounded-sm px-2 py-0.5 outline-none focus-visible:ring-1 focus-visible:ring-foreground"
       />
       {isPending && (
-        <Loader2 className="size-3.5 animate-spin text-primary shrink-0 ml-1.5" />
+        <Loader2 className="size-3.5 animate-spin text-foreground shrink-0 ml-1.5" />
       )}
     </div>
   );
@@ -202,7 +208,7 @@ export function RowActions({
           aria-label="File options"
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            'flex size-6 shrink-0 items-center justify-center rounded-md text-foreground opacity-0 group-hover/row:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-muted transition-opacity hover:transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+            'flex size-6 shrink-0 items-center justify-center rounded-md text-foreground opacity-0 group-hover/row:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-muted transition-opacity hover:transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground',
             className,
           )}
         >
@@ -305,17 +311,17 @@ export function StorageFolderNode({
         }
       }}
       className={cn(
-        'group/row relative flex h-8 items-center gap-1.5 rounded-md mx-1.5 px-2 my-0.5 transition-colors cursor-pointer select-none text-13 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-primary',
+        'group/row relative flex h-7.5 w-full items-center gap-1.5 rounded-md px-2 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground',
         dragOver
-          ? 'bg-primary/10 ring-1 ring-primary/30 ring-inset'
+          ? 'bg-muted ring-1 ring-foreground/20 ring-inset'
           : 'text-foreground hover:bg-muted/60 font-normal',
       )}
-      style={{ paddingLeft: `${Math.max(paddingLeft, 8)}px` }}
+      style={{ paddingLeft: '8px' }}
     >
       <IndentGuides depth={depth} />
       <ChevronRight
         className={cn(
-          'size-3.5 shrink-0 text-muted-foreground transition-transform duration-150',
+          'size-3.5 shrink-0 text-foreground transition-transform duration-150',
           expanded && 'rotate-90',
         )}
         strokeWidth={1.75}
@@ -346,7 +352,7 @@ export function StorageFolderNode({
         />
       ) : (
         <>
-          <span className="flex-1 min-w-0 truncate tracking-tight text-foreground font-medium">
+          <span className="flex-1 min-w-0 truncate tracking-tight text-foreground font-mono text-12 font-medium">
             {folder.filename}
           </span>
           <RowActions>
@@ -440,7 +446,7 @@ export function StorageFolderNode({
               className="flex h-8 items-center"
               style={{ paddingLeft: `${paddingLeft + 32}px` }}
             >
-              <Loader2 className="size-3.5 animate-spin text-muted-foreground shrink-0" />
+              <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
             </div>
           )}
           {children?.map((child: any) =>
@@ -538,10 +544,11 @@ export function StorageFileRow({
   if (renamingId === item.id) {
     return (
       <div
-        className="group/row flex h-8 items-center rounded-md mx-1.5 px-2 my-0.5 bg-muted/40 transition-colors select-none"
-        style={{ paddingLeft: `${Math.max(paddingLeft, 8)}px` }}
+        className="group/row flex h-8 items-center w-full rounded-md px-2 bg-muted/40 transition-colors select-none"
+        style={{ paddingLeft: '8px' }}
       >
         <IndentGuides depth={depth} />
+        <span className="size-3.5 shrink-0" aria-hidden="true" />
         <Icon className={cn('size-4 shrink-0 mr-2', color)} strokeWidth={1.5} />
         <RenameInput
           value={renameValue}
@@ -594,13 +601,14 @@ export function StorageFileRow({
           ? `Click to preview ${item.filename}`
           : `Click to insert command for ${item.filename}`
       }
-      className="group/row relative flex h-8 items-center gap-2 rounded-md mx-1.5 px-2 my-0.5 transition-colors cursor-pointer select-none text-13 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-primary text-foreground hover:bg-muted/60 font-normal"
-      style={{ paddingLeft: `${Math.max(paddingLeft, 8)}px` }}
+      className="group/row relative flex h-7.5 w-full items-center gap-1.5 rounded-md px-2 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground text-foreground hover:bg-muted/60 font-normal"
+      style={{ paddingLeft: '8px' }}
     >
       <IndentGuides depth={depth} />
+      <span className="size-3.5 shrink-0" aria-hidden="true" />
       <Icon className={cn('size-4 shrink-0', color)} strokeWidth={1.5} />
 
-      <span className="flex-1 min-w-0 truncate tracking-tight text-foreground">
+      <span className="flex-1 min-w-0 truncate tracking-tight text-foreground font-mono text-12">
         {item.filename}
       </span>
 

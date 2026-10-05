@@ -86,7 +86,7 @@ export const CompileButton = React.memo(function CompileButton({
   };
 
   return (
-    <div className="flex items-center select-none">
+    <div className="inline-flex items-center rounded-md shadow-xs select-none">
       <button
         type="button"
         onClick={onCompile}
@@ -97,9 +97,9 @@ export const CompileButton = React.memo(function CompileButton({
             ? statusLabel[compileStatus] ?? 'Compiling document…'
             : 'Recompile document (Ctrl+Enter)'
         }
-        className="flex items-center gap-1.5 h-7 px-3 rounded-l-md bg-success hover:bg-success/90 text-success-foreground text-xs font-semibold transition-colors disabled:opacity-60 outline-none focus-visible:ring-1 focus-visible:ring-success cursor-pointer"
+        className="flex items-center gap-1.5 h-7 px-2.5 rounded-l-md bg-primary hover:bg-primary-hover text-primary-foreground text-12 font-medium transition-colors disabled:opacity-60 outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
       >
-        {isRunning && <Loader2 className="size-3.5 animate-spin shrink-0 text-success-foreground" />}
+        {isRunning && <Loader2 className="size-3.5 animate-spin shrink-0 text-primary-foreground" />}
         <span>{isRunning ? statusLabel[compileStatus] ?? 'Compiling…' : 'Recompile'}</span>
       </button>
 
@@ -108,9 +108,9 @@ export const CompileButton = React.memo(function CompileButton({
           <button
             type="button"
             aria-label="Compile options"
-            className="flex items-center justify-center h-7 px-2 rounded-r-md bg-success hover:bg-success/90 data-[state=open]:bg-success/90 text-success-foreground border-l border-success-foreground/20 text-xs transition-colors outline-none focus-visible:ring-1 focus-visible:ring-success cursor-pointer"
+            className="flex items-center justify-center h-7 px-1.5 rounded-r-md bg-primary hover:bg-primary-hover data-[state=open]:bg-primary-hover text-primary-foreground border-l border-primary-foreground/25 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
           >
-            <ChevronDown className="size-3.5 text-success-foreground" />
+            <ChevronDown className="size-3.5 text-primary-foreground" />
           </button>
         </DropdownMenuTrigger>
 

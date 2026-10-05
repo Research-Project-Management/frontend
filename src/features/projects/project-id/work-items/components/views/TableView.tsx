@@ -195,17 +195,7 @@ export function renderPriorityIcon(priority?: Priority, className?: string) {
 // ── 4. Helper: Date Formatter ────────────────────────────────────────────────
 
 function formatTableDate(dateStr?: string | null) {
-  if (!dateStr) return null;
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-  } catch {
-    return dateStr;
-  }
+  return ItemHelpers.formatDate(dateStr) || null;
 }
 
 function isDateOverdue(dateStr?: string | null, completed?: boolean) {
@@ -371,7 +361,7 @@ export function TableHeaderRow({
   return (
     <div
       role="row"
-      className="sticky top-0 z-20 flex items-center h-10 border-b border-border bg-background/95 backdrop-blur-xs text-xs font-medium text-muted-foreground select-none w-full"
+      className="sticky top-0 z-20 flex items-center h-8 border-b border-border bg-muted/40 backdrop-blur-xs text-11 font-medium text-muted-foreground select-none w-full"
     >
       {/* 1. First Column: Checkbox + Work items Title */}
       <div
@@ -388,11 +378,11 @@ export function TableHeaderRow({
           />
           <span
             onClick={() => onSort?.('title')}
-            className="flex items-center gap-1.5 text-xs font-semibold text-foreground cursor-pointer hover:text-foreground transition-colors truncate"
+            className="flex items-center gap-1.5 text-11 font-medium text-foreground cursor-pointer hover:text-foreground transition-colors truncate"
           >
             <span>Work items</span>
             {totalItemsCount > 0 && (
-              <span className="text-11 font-mono text-muted-foreground font-normal">
+              <span className="text-10 font-mono text-muted-foreground font-normal tabular-nums">
                 {totalItemsCount}
               </span>
             )}
@@ -496,7 +486,7 @@ export function TableGroupHeader({
     <div
       role="row"
       onClick={onToggle}
-      className="flex items-center justify-between h-9 px-3 border-b border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer select-none group/groupHeader"
+      className="flex items-center justify-between h-8 px-3 border-b border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors duration-0 cursor-pointer select-none group/groupHeader"
     >
       <div className="flex items-center gap-2 min-w-0">
         <button
@@ -520,13 +510,13 @@ export function TableGroupHeader({
         ) : (
           <span
             className="size-2 rounded-full shrink-0"
-            style={{ backgroundColor: color || '#8A9093' }}
+            style={{ backgroundColor: color || '#6B7280' }}
           />
         )}
 
-        <span className="text-xs font-semibold text-foreground truncate">{title}</span>
+        <span className="text-12 font-medium text-foreground truncate">{title}</span>
 
-        <span className="rounded-md bg-muted px-1.5 py-0.2 text-10 font-mono font-medium text-foreground tabular-nums">
+        <span className="rounded-md bg-muted px-1.5 py-0.2 text-10 font-mono font-medium text-muted-foreground tabular-nums">
           {count}
         </span>
       </div>
@@ -667,6 +657,9 @@ export function TableRowItem({
   const attachmentsCount = ItemHelpers.countAttachments(item.attachments);
 
   const isOverdue = isDateOverdue(item.dueDate, item.completed);
+  const stateMatch = columns.find((c) => resolveColumnId(c) === item.columnId);
+  const stateGroup = stateMatch?.group || (item as any).stateGroup || (item as any).state?.group;
+  const isCancelled = stateGroup === 'cancelled' || item.columnId === 'cancelled' || item.columnId === 'cancel';
   const formattedDue = formatTableDate(item.dueDate);
   const formattedStart = formatTableDate(item.startDate);
   const formattedCreated = formatTableDate((item as any).createdAt);
@@ -705,8 +698,8 @@ export function TableRowItem({
       }}
       aria-label={`Work item: ${item.title}`}
       className={cn(
-        'group/row flex items-center h-10 border-b border-border/40 hover:bg-muted/40 transition-colors cursor-pointer text-xs select-none w-full relative outline-none focus-visible:ring-1 focus-visible:ring-primary',
-        isSelected && 'bg-primary/5 font-medium'
+        'group/row flex items-center h-8 border-b border-border/60 hover:bg-muted/40 transition-colors duration-0 cursor-pointer text-xs select-none w-full relative outline-none focus-visible:ring-1 focus-visible:ring-primary',
+        isSelected && 'bg-primary/5 border-l-2 border-primary font-medium'
       )}
     >
       {/* ── 1. Checkbox + Identifier + Title Column ────────────────────────── */}
@@ -732,7 +725,7 @@ export function TableRowItem({
             onCheckedChange={() => onToggleSelect(item.id)}
             aria-label={isSelected ? `Deselect ${item.title}` : `Select ${item.title}`}
             className={cn(
-              'size-3.5 border-border data-[state=checked]:border-primary transition-opacity',
+              'size-3.5 rounded-sm border-border data-[state=checked]:border-primary transition-opacity',
               !isSelected && 'sm:opacity-0 sm:group-hover/row:opacity-100'
             )}
           />
@@ -744,7 +737,7 @@ export function TableRowItem({
             type="button"
             onClick={handleCopyIdentifier}
             title="Click to copy identifier"
-            className="text-11 font-mono text-foreground hover:bg-muted/80 px-1 py-0.5 rounded-md mr-2 shrink-0 transition-colors"
+            className="text-11 font-mono text-muted-foreground hover:text-foreground px-1 py-0.5 rounded-sm mr-2 shrink-0 transition-colors tabular-nums"
           >
             {item.identifier}
           </button>
@@ -753,10 +746,10 @@ export function TableRowItem({
         {/* Sub-item Indicator */}
         {childCount > 0 && (
           <div
-            className="flex items-center gap-1 text-10 font-mono text-foreground mr-1.5 shrink-0"
+            className="flex items-center gap-1 text-11 font-mono text-muted-foreground mr-1.5 shrink-0 tabular-nums"
             title={`${childCount} sub-items`}
           >
-            <Layers className="size-3 text-foreground" />
+            <Layers className="size-3 text-muted-foreground" />
             <span>{childCount}</span>
           </div>
         )}
@@ -778,7 +771,7 @@ export function TableRowItem({
             <span
               className={cn(
                 'truncate font-normal text-xs',
-                item.completed ? 'line-through text-muted-foreground' : 'text-foreground'
+                isCancelled ? 'line-through text-muted-foreground' : item.completed ? 'text-muted-foreground' : 'text-foreground'
               )}
             >
               {item.title}
@@ -825,7 +818,7 @@ export function TableRowItem({
                         id={item.columnId}
                         title={currentColumn?.title || currentColumn?.name || 'Backlog'}
                         group={currentColumn?.group || currentColumn?.slug || 'backlog'}
-                        color={currentColumn?.color || currentColumn?.accentColor || '#8A9093'}
+                        color={currentColumn?.color || currentColumn?.accentColor || '#6B7280'}
                         className="size-3.5 shrink-0"
                       />
                       <span className="truncate">
@@ -838,7 +831,7 @@ export function TableRowItem({
                       const cId = resolveColumnId(col);
                       const isCurrent = cId === item.columnId;
                       const cTitle = col.title || col.name || 'Column';
-                      const cColor = col.color || col.accentColor || '#8A9093';
+                      const cColor = col.color || col.accentColor || '#6B7280';
                       const cGroup = col.group || col.slug || cTitle;
 
                       return (
@@ -918,10 +911,10 @@ export function TableRowItem({
                       disabled={isReadOnly}
                       className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-foreground hover:text-foreground hover:bg-muted/80 transition-colors w-full text-left cursor-pointer group/assign"
                     >
-                      <div className="size-4 rounded-md border border-dashed border-border/80 flex items-center justify-center group-hover/assign:border-foreground/60">
+                      <div className="size-4 rounded-md border border-border flex items-center justify-center group-hover/assign:border-foreground/60">
                         <Plus className="size-2.5 text-foreground" />
                       </div>
-                      <span className="text-11 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                      <span className="text-11 transition-opacity">
                         Assign
                       </span>
                     </button>
@@ -967,7 +960,7 @@ export function TableRowItem({
                     label={formattedDue || 'Due date'}
                     isReadOnly={isReadOnly}
                     actionBtnClass={cn(
-                      'h-7 px-2 text-xs font-normal border-0 shadow-none justify-start w-full cursor-pointer',
+                      'h-7 px-2 text-11 font-mono tabular-nums border-0 shadow-none justify-start w-full cursor-pointer',
                       formattedDue
                         ? isOverdue
                           ? 'text-destructive bg-destructive/10 hover:bg-destructive/20 font-medium'
@@ -1001,7 +994,7 @@ export function TableRowItem({
                             <span
                               key={labelItem?.id || idx}
                               style={labelColor ? { borderColor: `${labelColor}40` } : undefined}
-                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md text-10 font-medium bg-muted/60 text-foreground border border-border truncate max-w-[80px]"
+                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md text-11 font-normal bg-muted/60 text-foreground border border-border truncate max-w-[80px]"
                             >
                               {labelColor && (
                                 <span
@@ -1014,13 +1007,13 @@ export function TableRowItem({
                           );
                         })}
                         {item.labels.length > 2 && (
-                          <span className="text-10 font-mono text-foreground">
+                          <span className="text-11 font-mono text-muted-foreground tabular-nums">
                             +{item.labels.length - 2}
                           </span>
                         )}
                       </div>
                     ) : (
-                      <span className="text-foreground hover:text-foreground">-</span>
+                      <span className="text-muted-foreground hover:text-foreground">-</span>
                     )}
                   </button>
 
@@ -1060,14 +1053,14 @@ export function TableRowItem({
                     }
                     label={formattedStart || 'Start date'}
                     isReadOnly={isReadOnly}
-                    actionBtnClass="h-7 px-2 text-xs font-normal border-0 shadow-none justify-start w-full bg-transparent hover:bg-muted/80 text-foreground cursor-pointer"
+                    actionBtnClass="h-7 px-2 text-11 font-mono tabular-nums border-0 shadow-none justify-start w-full bg-transparent hover:bg-muted/80 text-foreground cursor-pointer"
                   />
                 </div>
               )}
 
               {/* CREATED ON CELL */}
               {p.key === 'createdOn' && (
-                <span className="text-xs text-foreground px-2 truncate">
+                <span className="text-11 font-mono text-muted-foreground px-2 truncate tabular-nums">
                   {formattedCreated || '-'}
                 </span>
               )}
@@ -1081,7 +1074,7 @@ export function TableRowItem({
 
               {/* UPDATED ON CELL */}
               {p.key === 'updatedOn' && (
-                <span className="text-xs text-foreground px-2 truncate">
+                <span className="text-11 font-mono text-muted-foreground px-2 truncate tabular-nums">
                   {formattedUpdated || '-'}
                 </span>
               )}
@@ -1091,7 +1084,7 @@ export function TableRowItem({
                 <button
                   type="button"
                   onClick={() => onEditCard(item)}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md text-11 font-mono tabular-nums text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
                 >
                   <Paperclip className="size-3.5 shrink-0" />
                   <span>{attachmentsCount > 0 ? attachmentsCount : '-'}</span>
@@ -1103,7 +1096,7 @@ export function TableRowItem({
                 <button
                   type="button"
                   onClick={() => onEditCard(item)}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md text-11 font-mono tabular-nums text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
                 >
                   <Layers className="size-3.5 shrink-0" />
                   <span>{childCount > 0 ? `${childCount} sub-items` : '-'}</span>
@@ -1112,7 +1105,7 @@ export function TableRowItem({
 
               {/* LINK CELL */}
               {p.key === 'link' && (
-                <span className="text-xs text-foreground px-2 truncate">-</span>
+                <span className="text-11 font-mono text-muted-foreground px-2 truncate tabular-nums">-</span>
               )}
             </div>
           );
@@ -1227,7 +1220,7 @@ export function TableInlineAddRow({
         <button
           type="button"
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 h-9 px-3 w-full text-xs text-foreground hover:bg-muted/30 transition-colors cursor-pointer text-left group/add"
+          className="flex items-center gap-2 h-8 px-3 w-full text-xs text-foreground hover:bg-muted/30 transition-colors cursor-pointer text-left group/add"
         >
           <Plus className="size-3.5 text-foreground transition-colors" />
           <span>{groupTitle ? `Add item to ${groupTitle}...` : 'New work item...'}</span>
@@ -1239,7 +1232,7 @@ export function TableInlineAddRow({
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex items-center h-10 px-3 border-b border-primary/50 bg-background transition-colors gap-2"
+      className="flex items-center h-8 px-3 border-b border-primary/50 bg-background transition-colors gap-2"
     >
       <Plus className="size-3.5 text-primary shrink-0" />
       <input
@@ -1567,7 +1560,7 @@ export function TableView({
           : (itemsByColumnId as Record<string, Item[]>)?.[colId] ??
             items.filter((i) => i.columnId === colId);
 
-      const colColor = col.color || col.accentColor || '#8A9093';
+      const colColor = col.color || col.accentColor || '#6B7280';
       const colTitle = col.title || col.name || 'Group';
 
       return {

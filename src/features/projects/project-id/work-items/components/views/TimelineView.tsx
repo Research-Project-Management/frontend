@@ -71,7 +71,7 @@ export interface TimelineViewProps extends BaseWorkItemViewProps, WorkItemCardHa
 // CONSTANTS & UTILITIES
 // ============================================================================
 
-export const ROW_HEIGHT = 38;
+export const ROW_HEIGHT = 32;
 export const HEADER_HEIGHT = 60;
 export const SIDEBAR_WIDTH = 320;
 
@@ -704,7 +704,7 @@ function TimelineSidebar({
             >
               {/* Left: Identifier + Title */}
               <div className="flex items-center gap-2 min-w-0 flex-1 pr-3">
-                <span className="text-xs text-foreground font-normal shrink-0 min-w-[48px]">
+                <span className="font-mono text-11 text-muted-foreground font-medium shrink-0 min-w-[48px] tabular-nums">
                   {identifier}
                 </span>
                 <span className="truncate text-xs text-foreground font-normal group-hover:text-primary transition-colors">
@@ -715,7 +715,7 @@ function TimelineSidebar({
               {/* Right: Duration (Blank when no dates, clean string when set) */}
               <div className="shrink-0 text-right">
                 {duration.label ? (
-                  <span className="text-xs text-foreground font-normal">
+                  <span className="font-mono text-11 text-muted-foreground font-normal tabular-nums">
                     {duration.label}
                   </span>
                 ) : null}
@@ -878,8 +878,8 @@ function TimelineBar({
       style={{
         left: `${visualLeft}px`,
         width: `${visualWidth}px`,
-        height: '26px',
-        top: '6px',
+        height: '22px',
+        top: '5px',
         backgroundColor: accentColor,
       }}
       className={cn(
@@ -1268,7 +1268,7 @@ function TimelineCanvas({
                     {group.label}
                   </span>
                   {group.isCurrent && (
-                    <span className="bg-primary text-primary-foreground text-10 font-medium px-1.5 py-0.5 rounded-md shrink-0">
+                    <span className="bg-primary text-primary-foreground text-11 font-medium px-1.5 py-0.5 rounded-md shrink-0">
                       Current
                     </span>
                   )}

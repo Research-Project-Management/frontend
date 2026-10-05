@@ -24,6 +24,19 @@ export const STICKY_COLOR_MAP: Record<
   "purple-1": { bg: "#754480", text: "#FAE8FF" },
 };
 
+export const DEFAULT_STICKY_COLOR: StickyColor = "yellow-1";
+
+export function getStickyColorConfig(color?: string | null): {
+  bg: string;
+  text: string;
+  border?: string;
+} {
+  if (color && color in STICKY_COLOR_MAP) {
+    return STICKY_COLOR_MAP[color as StickyColor];
+  }
+  return STICKY_COLOR_MAP[DEFAULT_STICKY_COLOR];
+}
+
 export const STICKY_COLOR_CYCLE = [
   "cyan-1",
   "cyan-2",

@@ -536,7 +536,7 @@ export function EditorWorkspaceLayout() {
         <div
           style={{ width: isNarrowScreen ? '100%' : (isSidebarCollapsed ? 44 : localSidebarWidth) }}
           className={cn(
-            "shrink-0 overflow-hidden bg-muted border-r border-border",
+            "shrink-0 overflow-hidden bg-sidebar border-r border-border",
             isNarrowScreen && "hidden",
           )}
         >

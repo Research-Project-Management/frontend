@@ -19,15 +19,10 @@ import { EditorEmptyState } from '../shared';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
+import { setupPdfWorker } from '@/shared/lib/pdfjs-worker';
 
-// Set up PDF.js worker
-if (typeof window !== 'undefined' && pdfjs && typeof pdfjs === 'object' && 'GlobalWorkerOptions' in pdfjs && pdfjs.GlobalWorkerOptions) {
-  try {
-    pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
-  } catch (err) {
-    logger.debug('[Surface] Failed to assign workerSrc', { err });
-  }
-}
+// Ensure PDF.js worker is properly configured
+setupPdfWorker();
 
 // ── Optimized PDF Page with IntersectionObserver ──────────────────────────────
 
@@ -43,6 +38,8 @@ interface ClickIndicator {
 interface OptimizedPDFPageProps {
   pageIndex: number; // 0-based
   scale: number;
+  autoFit?: boolean;
+  containerWidth?: number;
   pageElemRefs: React.MutableRefObject<Record<number, HTMLDivElement | null>>;
   approxHeightRef: React.MutableRefObject<number>;
   onDoubleClickPage: (
@@ -55,16 +52,20 @@ interface OptimizedPDFPageProps {
   ) => void;
   clickIndicator?: ClickIndicator | null;
   invertColors?: boolean;
+  isSpreadView?: boolean;
 }
 
 const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
   pageIndex,
   scale,
+  autoFit = true,
+  containerWidth,
   pageElemRefs,
   approxHeightRef,
   onDoubleClickPage,
   clickIndicator,
   invertColors = false,
+  isSpreadView = false,
 }: OptimizedPDFPageProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -79,7 +80,15 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
   });
 
   const pageNum = pageIndex + 1;
-  const estimatedHeight = approxHeightRef.current > 0 ? approxHeightRef.current : 840 * scale;
+  const pageWidth = isSpreadView && containerWidth
+    ? Math.floor((containerWidth - 8) / 2)
+    : (autoFit && containerWidth
+        ? containerWidth
+        : Math.round(595 * scale));
+
+  const estimatedHeight = approxHeightRef.current > 0
+    ? approxHeightRef.current
+    : Math.round(pageWidth * (842 / 595));
 
   const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -87,8 +96,9 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
     const clickY = e.clientY - rect.top;
     const pageHeight = rect.height;
     const clickFraction = pageHeight > 0 ? Math.max(0, Math.min(1, clickY / pageHeight)) : 0;
-    const ptX = scale > 0 ? Math.round(clickX / scale) : Math.round(clickX);
-    const ptY = scale > 0 ? Math.round(clickY / scale) : Math.round(clickY);
+    const effectiveScale = rect.width > 0 ? rect.width / 595 : (scale > 0 ? scale : 1);
+    const ptX = Math.round(clickX / effectiveScale);
+    const ptY = Math.round(clickY / effectiveScale);
     onDoubleClickPage(pageNum, clickFraction, ptX, ptY, clickX, clickY);
   };
 
@@ -109,9 +119,13 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
       onClickCapture={handleClickCapture}
       onDoubleClickCapture={handleDoubleClick}
       title="Double-click or Ctrl+Click anywhere to jump to LaTeX source"
-      className="bg-canvas rounded-sm border border-border relative flex items-center justify-center cursor-text"
+      className={cn(
+        "bg-canvas dark:bg-card relative flex items-center justify-center cursor-text transition-all shrink-0",
+        isSpreadView ? "my-0" : "border-b border-border/60 last:border-b-0"
+      )}
       style={{
-        width: 595 * scale,
+        width: autoFit ? '100%' : pageWidth,
+        maxWidth: '100%',
         minHeight: isVisible ? undefined : estimatedHeight,
         aspectRatio: isVisible ? undefined : '595 / 842',
       }}
@@ -119,18 +133,25 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
       {isVisible ? (
         <Page
           pageNumber={pageNum}
-          scale={scale}
+          width={autoFit ? containerWidth : undefined}
+          scale={autoFit ? undefined : scale}
           renderTextLayer
           renderAnnotationLayer
+          onRenderTextLayerSuccess={() => {
+            if (containerRef.current) {
+              const textLayers = containerRef.current.querySelectorAll('.textLayer, .react-pdf__Page__textContent');
+              textLayers.forEach((tl) => tl.setAttribute('aria-hidden', 'true'));
+            }
+          }}
           devicePixelRatio={Math.max(2, typeof window !== 'undefined' ? window.devicePixelRatio || 2 : 2)}
           loading={
-            <div className="absolute inset-0 flex items-center justify-center bg-muted">
+            <div className="absolute inset-0 flex items-center justify-center bg-canvas dark:bg-card">
               <Loader2 className="size-5 animate-spin text-muted-foreground/30 shrink-0" />
             </div>
           }
         />
       ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-secondary/10 text-muted-foreground/30 select-none animate-pulse">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 text-muted-foreground/30 select-none animate-pulse">
           <span className="text-xs font-mono font-medium">Page {pageNum}</span>
         </div>
       )}
@@ -188,6 +209,8 @@ export interface SurfaceProps {
   pdfUrl: string | null;
   synctexMap: SyncTeXMap | null;
   scale: number;
+  autoFit?: boolean;
+  containerWidth?: number;
   scrollMode?: boolean;
   pageNumber: number;
   numPages: number;
@@ -214,6 +237,8 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
     pdfUrl,
     synctexMap,
     scale,
+    autoFit = true,
+    containerWidth,
     scrollMode = true,
     pageNumber,
     numPages,
@@ -232,7 +257,19 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
   const pageElemRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const approxHeightRef = useRef<number>(0);
   const [clickIndicator, setClickIndicator] = useState<ClickIndicator | null>(null);
-  const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  setupPdfWorker();
+  useEffect(() => {
+    setupPdfWorker();
+  }, []);
+
+  const documentOptions = useMemo(
+    () => ({
+      cMapUrl: 'https://unpkg.com/pdfjs-dist@5.4.296/cmaps/',
+      standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@5.4.296/standard_fonts/',
+    }),
+    [],
+  );
 
   useEffect(() => {
     return () => {
@@ -321,112 +358,164 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
     );
   }, [triggerClickIndicator, onJumpToSource, synctexMap]);
 
-  return (
-    <div
-      ref={scrollContainerRef}
-      role="region"
-      aria-label="PDF document preview"
-      className={cn(
-        "flex-1 overflow-auto p-4 flex flex-col items-center justify-start select-text relative transition-colors duration-200",
-        invertColors ? "bg-neutral-950 text-neutral-100" : "bg-background text-foreground"
-      )}
-    >
-      {!pdfUrl ? (
-        <EditorEmptyState
-          variant="preview"
-          className={invertColors ? "bg-neutral-950 text-neutral-100" : undefined}
-        />
-      ) : (
-        /* PDF Document Canvas */
-        <Document
-          file={pdfUrl}
-          onLoadSuccess={handleDocumentLoadSuccess}
-          onLoadError={(error) => {
-            logger.warn('[Surface] Document load error', { error });
-          }}
-          loading={
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="size-8 animate-spin text-primary shrink-0" />
-            </div>
+    const [containerWidthState, setContainerWidthState] = useState<number>(0);
+
+    useEffect(() => {
+      const el = scrollContainerRef.current;
+      if (!el) return;
+
+      let rafId: number | null = null;
+      const updateWidth = () => {
+        if (rafId !== null) return;
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          if (el.clientWidth > 0) {
+            setContainerWidthState((prev) => {
+              // 2px deadband prevents layout thrashing during panel dragging
+              return Math.abs(prev - el.clientWidth) >= 2 ? el.clientWidth : prev;
+            });
           }
-          error={
-            <PlaneErrorState
-              title="Failed to load PDF file"
-              description="An issue occurred while rendering the compiled document canvas."
-              error={new Error('The compiled PDF document could not be decoded by the viewer engine.')}
-            />
-          }
-        >
-          {scrollMode ? (
-            isSpreadView ? (
-              <div
-                className="flex flex-col gap-3 transition-[filter] duration-200 items-center w-full"
-                style={invertColors ? { filter: 'invert(0.9) hue-rotate(180deg) contrast(1.25)' } : undefined}
-              >
-                {pagePairs.map((pair: number[], rowIdx: number) => (
-                  <div
-                    key={`spread_row_${rowIdx}`}
-                    className="flex flex-row justify-center gap-3 w-full"
-                  >
-                    {pair.map((pageIdx: number) => (
-                      <OptimizedPDFPage
-                        key={`page_${pageIdx + 1}`}
-                        pageIndex={pageIdx}
-                        scale={scale}
-                        pageElemRefs={pageElemRefs}
-                        approxHeightRef={approxHeightRef}
-                        onDoubleClickPage={handleDoubleClickPage}
-                        clickIndicator={clickIndicator}
-                      />
-                    ))}
-                  </div>
-                ))}
+        });
+      };
+      updateWidth();
+      const ro = new ResizeObserver(updateWidth);
+      ro.observe(el);
+      return () => {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+        }
+        ro.disconnect();
+      };
+    }, []);
+
+    const currentContainerWidth =
+      containerWidthState || containerWidth || scrollContainerRef.current?.clientWidth || 600;
+
+    return (
+      <div
+        ref={scrollContainerRef}
+        role="region"
+        aria-label="PDF document preview"
+        className={cn(
+          "flex-1 overflow-y-auto flex flex-col items-center justify-start select-text relative transition-colors duration-200 thin-scrollbar",
+          autoFit ? "overflow-x-hidden" : "overflow-x-auto",
+          invertColors ? "bg-neutral-950 text-neutral-100" : "bg-background text-foreground"
+        )}
+      >
+        {!pdfUrl ? (
+          <EditorEmptyState
+            variant="preview"
+            className={invertColors ? "bg-neutral-950 text-neutral-100" : undefined}
+          />
+        ) : (
+          /* PDF Document Canvas */
+          <Document
+            file={pdfUrl}
+            options={documentOptions}
+            onLoadSuccess={handleDocumentLoadSuccess}
+            onLoadError={(error) => {
+              logger.warn('[Surface] Document load error', { error });
+            }}
+            loading={
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="size-8 animate-spin text-primary shrink-0" />
               </div>
+            }
+            error={
+              <PlaneErrorState
+                title="Failed to load PDF file"
+                description="An issue occurred while rendering the compiled document canvas."
+                error={new Error('The compiled PDF document could not be decoded by the viewer engine.')}
+              />
+            }
+          >
+            {scrollMode ? (
+              isSpreadView ? (
+                <div
+                  className="flex flex-col gap-3 transition-[filter] duration-200 items-center w-full"
+                  style={invertColors ? { filter: 'invert(0.9) hue-rotate(180deg) contrast(1.25)' } : undefined}
+                >
+                  {pagePairs.map((pair: number[], rowIdx: number) => (
+                    <div
+                      key={`spread_row_${rowIdx}`}
+                      className="flex flex-row justify-center gap-3 w-full"
+                    >
+                      {pair.map((pageIdx: number) => (
+                        <OptimizedPDFPage
+                          key={`page_${pageIdx + 1}`}
+                          pageIndex={pageIdx}
+                          scale={scale}
+                          autoFit={autoFit}
+                          containerWidth={currentContainerWidth}
+                          isSpreadView={true}
+                          pageElemRefs={pageElemRefs}
+                          approxHeightRef={approxHeightRef}
+                          onDoubleClickPage={handleDoubleClickPage}
+                          clickIndicator={clickIndicator}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div
+                  className="flex flex-col transition-[filter] duration-200 w-full items-center"
+                  style={invertColors ? { filter: 'invert(0.9) hue-rotate(180deg) contrast(1.25)' } : undefined}
+                >
+                  {Array.from({ length: numPages }, (_, i) => (
+                    <OptimizedPDFPage
+                      key={`page_${i + 1}`}
+                      pageIndex={i}
+                      scale={scale}
+                      autoFit={autoFit}
+                      containerWidth={currentContainerWidth}
+                      isSpreadView={false}
+                      pageElemRefs={pageElemRefs}
+                      approxHeightRef={approxHeightRef}
+                      onDoubleClickPage={handleDoubleClickPage}
+                      clickIndicator={clickIndicator}
+                    />
+                  ))}
+                </div>
+              )
             ) : (
               <div
-                className="flex flex-col gap-1 transition-[filter] duration-200"
+                ref={(el) => {
+                  pageElemRefs.current[pageNumber] = el;
+                }}
+                onDoubleClickCapture={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const clickX = e.clientX - rect.left;
+                  const clickY = e.clientY - rect.top;
+                  const pageHeight = rect.height;
+                  const clickFraction = pageHeight > 0 ? Math.max(0, Math.min(1, clickY / pageHeight)) : 0;
+                  const effectiveScale = rect.width > 0 ? rect.width / 595 : (scale > 0 ? scale : 1);
+                  const ptX = Math.round(clickX / effectiveScale);
+                  const ptY = Math.round(clickY / effectiveScale);
+                  handleDoubleClickPage(pageNumber, clickFraction, ptX, ptY, clickX, clickY);
+                }}
+                title="Double-click anywhere to jump to LaTeX source"
+                className={cn(
+                  "bg-canvas dark:bg-card relative flex items-center justify-center cursor-text transition-[filter] duration-200 shrink-0"
+                )}
                 style={invertColors ? { filter: 'invert(0.9) hue-rotate(180deg) contrast(1.25)' } : undefined}
               >
-                {Array.from({ length: numPages }, (_, i) => (
-                  <OptimizedPDFPage
-                    key={`page_${i + 1}`}
-                    pageIndex={i}
-                    scale={scale}
-                    pageElemRefs={pageElemRefs}
-                    approxHeightRef={approxHeightRef}
-                    onDoubleClickPage={handleDoubleClickPage}
-                    clickIndicator={clickIndicator}
-                  />
-                ))}
-              </div>
-            )
-          ) : (
-            <div
-              ref={(el) => {
-                pageElemRefs.current[pageNumber] = el;
-              }}
-              onDoubleClickCapture={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const clickX = e.clientX - rect.left;
-                const clickY = e.clientY - rect.top;
-                const pageHeight = rect.height;
-                const clickFraction = pageHeight > 0 ? Math.max(0, Math.min(1, clickY / pageHeight)) : 0;
-                const ptX = scale > 0 ? Math.round(clickX / scale) : Math.round(clickX);
-                const ptY = scale > 0 ? Math.round(clickY / scale) : Math.round(clickY);
-                handleDoubleClickPage(pageNumber, clickFraction, ptX, ptY, clickX, clickY);
-              }}
-              title="Double-click anywhere to jump to LaTeX source"
-              className="bg-canvas rounded-sm border border-border relative flex items-center justify-center cursor-text transition-[filter] duration-200"
-              style={invertColors ? { filter: 'invert(0.9) hue-rotate(180deg) contrast(1.25)' } : undefined}
-            >
-              <Page
-                pageNumber={pageNumber}
-                scale={scale}
-                className=""
-                renderTextLayer
-                renderAnnotationLayer
-                devicePixelRatio={Math.max(2, typeof window !== 'undefined' ? window.devicePixelRatio || 2 : 2)}
-              />
+                <Page
+                  pageNumber={pageNumber}
+                  width={autoFit ? currentContainerWidth : undefined}
+                  scale={autoFit ? undefined : scale}
+                  className=""
+                  renderTextLayer
+                  renderAnnotationLayer
+                  onRenderTextLayerSuccess={() => {
+                    const el = pageElemRefs.current[pageNumber];
+                    if (el) {
+                      const textLayers = el.querySelectorAll('.textLayer, .react-pdf__Page__textContent');
+                      textLayers.forEach((tl) => tl.setAttribute('aria-hidden', 'true'));
+                    }
+                  }}
+                  devicePixelRatio={Math.max(2, typeof window !== 'undefined' ? window.devicePixelRatio || 2 : 2)}
+                />
               {clickIndicator && clickIndicator.page === pageNumber && (
                 <div
                   key={clickIndicator.id}

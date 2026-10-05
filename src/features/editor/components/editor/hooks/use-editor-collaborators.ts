@@ -46,7 +46,16 @@ export function useEditorCollaborators({
   providerRef.current = provider;
 
   useEffect(() => {
-    if (!pageId || !projectId) {
+    if (
+      !pageId ||
+      !projectId ||
+      pageId === 'demo' ||
+      projectId === 'adam-research' ||
+      projectId === 'demo' ||
+      projectId === 'default' ||
+      pageId.startsWith('mock-') ||
+      projectId.startsWith('mock-')
+    ) {
       setProvider(null);
       setConnectionStatus('disconnected');
       return;

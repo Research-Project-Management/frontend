@@ -214,7 +214,7 @@ export function Panel() {
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <Database className="size-3 text-primary shrink-0" />
+          <Database className="size-3 text-ai shrink-0" />
           <span>Kho dữ liệu</span>
         </button>
       </div>
@@ -232,8 +232,8 @@ export function Panel() {
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-lg p-3 text-center cursor-pointer transition-colors shrink-0 ${
               isDragOver
-                ? 'border-primary bg-primary/5'
-                : 'border-border hover:border-primary/40 hover:bg-muted/40'
+                ? 'border-ai bg-ai/5'
+                : 'border-border hover:border-ai/40 hover:bg-muted/40'
             }`}
           >
             <input
@@ -259,7 +259,7 @@ export function Panel() {
               onClick={() => setSourcePickerOpen(true)}
               className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md border border-border bg-background hover:bg-muted text-11 font-medium text-foreground transition-colors cursor-pointer"
             >
-              <BookOpen className="size-3 text-primary shrink-0" />
+              <BookOpen className="size-3 text-ai shrink-0" />
               <span>Từ Library</span>
             </button>
 
@@ -267,7 +267,7 @@ export function Panel() {
               onClick={() => setLibraryModalOpen(true)}
               className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md border border-border bg-background hover:bg-muted text-11 font-medium text-foreground transition-colors cursor-pointer"
             >
-              <Database className="size-3 text-primary shrink-0" />
+              <Database className="size-3 text-ai shrink-0" />
               <span>Quản lý kho</span>
             </button>
           </div>
@@ -281,7 +281,7 @@ export function Panel() {
                   className="flex items-center justify-between gap-2 p-2 rounded-lg bg-secondary/40 text-xs"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <Loader2 className="size-3.5 animate-spin text-primary shrink-0" />
+                    <Loader2 className="size-3.5 animate-spin text-ai shrink-0" />
                     <span className="truncate">{entry.name}</span>
                   </div>
                   <span className="text-xs text-muted-foreground shrink-0">
@@ -300,7 +300,7 @@ export function Panel() {
                   type="checkbox"
                   checked={allChecked}
                   onChange={(e) => handleToggleAll(e.target.checked)}
-                  className="rounded border-border text-primary size-3.5"
+                  className="rounded border-border text-ai focus:ring-ai size-3.5"
                 />
                 <span>Chọn tất cả ({sources.length})</span>
               </label>
@@ -322,7 +322,7 @@ export function Panel() {
                         type="checkbox"
                         checked={src.enabled}
                         onChange={() => toggleSource(src.id)}
-                        className="rounded border-border text-primary size-3.5 shrink-0"
+                        className="rounded border-border text-ai focus:ring-ai size-3.5 shrink-0"
                       />
                       {getFileIcon(src.name)}
                       <span className="truncate text-foreground/90 font-medium">{src.name}</span>
@@ -410,7 +410,7 @@ export function Panel() {
                     key={doc.id}
                     className={cn(
                       "group p-2 rounded-lg border text-xs transition-colors flex flex-col gap-1.5",
-                      isAttached ? "bg-primary/[0.03] border-primary/40" : "bg-card border-border hover:bg-muted/30"
+                      isAttached ? "bg-ai/[0.03] border-ai/40" : "bg-card border-border hover:bg-muted/30"
                     )}
                   >
                     <div className="flex items-start justify-between gap-1.5">
@@ -438,7 +438,7 @@ export function Panel() {
                         className={cn(
                           "inline-flex items-center gap-1 text-10 font-medium px-2 py-0.5 rounded cursor-pointer transition-colors",
                           isAttached
-                            ? "bg-primary/10 text-primary hover:bg-primary/15"
+                            ? "bg-ai/10 text-ai hover:bg-ai/15"
                             : "bg-muted hover:bg-muted/80 text-foreground"
                         )}
                       >

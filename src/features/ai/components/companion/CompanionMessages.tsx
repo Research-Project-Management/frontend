@@ -69,9 +69,9 @@ function ThinkingBlock({ content, isOpen }: { content: string; isOpen: boolean }
         onClick={() => setCollapsed((v) => !v)}
         aria-expanded={!collapsed}
         aria-label={isOpen ? 'AI is thinking' : 'Toggle thought process'}
-        className='w-full flex items-center gap-1.5 px-2.5 py-1.5 text-left hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
+        className='w-full flex items-center gap-1.5 px-2.5 py-1.5 text-left hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai'
       >
-        <Brain className={cn('size-3 shrink-0 text-primary', isOpen && 'animate-pulse motion-reduce:animate-none')} />
+        <Brain className={cn('size-3 shrink-0 text-ai', isOpen && 'animate-pulse motion-reduce:animate-none')} />
         <span className='text-11 font-medium text-muted-foreground flex-1'>
           {isOpen ? 'Thinking...' : 'Thought process'}
         </span>
@@ -146,7 +146,7 @@ function MessageBubble({
                 <div
                   className='flex items-center gap-1 px-2 py-0.5 rounded-md text-10 border border-border bg-muted/30 text-muted-foreground cursor-default'
                 >
-                  <FileText className='size-2.5 shrink-0 text-primary' />
+                  <FileText className='size-2.5 shrink-0 text-ai' />
                   <span className='truncate max-w-[180px]'>{src.title}</span>
                 </div>
               </TooltipTrigger>
@@ -216,31 +216,36 @@ export function CompanionMessages({
   return (
     <div
       ref={scrollContainerRef as any}
-      className='flex-1 overflow-y-auto min-h-0 pl-3 pr-1.5 py-3 space-y-3 select-text custom-scrollbar'
+      className={cn(
+        'flex-1 min-h-0 px-3.5 select-text',
+        isEmpty
+          ? 'overflow-hidden flex flex-col justify-center py-1'
+          : 'overflow-y-auto py-2.5 space-y-3 custom-scrollbar'
+      )}
     >
       {isEmpty ? (
-        <div className='flex flex-col justify-between h-full px-1 pb-1 select-none'>
+        <div className='flex flex-col justify-center select-none py-1 gap-2.5'>
           {/* 3D Animated AI Hero with background aura, floating levitation, and title */}
           <CompanionHero />
 
           {/* Suggestions Section */}
-          <div>
-            <div className='mb-2 px-1'>
-              <span className='text-13 font-medium text-muted-foreground'>
+          <div className='mt-1'>
+            <div className='mb-1.5 px-2'>
+              <span className='text-12 font-medium text-muted-foreground'>
                 Suggestions
               </span>
             </div>
 
             {/* Suggestions List */}
-            <div className='divide-y divide-border/60 border-t border-border/40'>
+            <div className='space-y-0.5'>
               {SUGGESTIONS.map((item) => (
                 <button
                   key={item.id}
                   type='button'
                   onClick={() => onSelectPrompt(item.prompt)}
-                  className='w-full flex items-start gap-3 py-3 px-1 text-left text-13 text-foreground hover:bg-muted/40 rounded-md transition-colors cursor-pointer group'
+                  className='w-full flex items-start gap-2.5 py-2 px-2.5 text-left text-13 text-foreground hover:bg-muted/60 rounded-lg transition-colors cursor-pointer group'
                 >
-                  <CornerDownRight className='size-4 text-foreground shrink-0 mt-0.5' />
+                  <CornerDownRight className='size-3.5 text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5 transition-colors' />
                   <span className='leading-snug text-13 font-normal text-foreground'>
                     {item.text}
                   </span>
@@ -260,14 +265,14 @@ export function CompanionMessages({
             <div className='flex flex-col gap-1 w-full items-start text-13'>
               <div className='relative max-w-[92%] rounded-md px-3 py-2 leading-relaxed bg-muted/50 border border-border/80 text-foreground'>
                 {activeAgent && (
-                  <div className='text-10 font-medium text-primary mb-1 flex items-center gap-1'>
+                  <div className='text-10 font-medium text-ai mb-1 flex items-center gap-1'>
                     <Sparkles className='size-2.5 animate-spin motion-reduce:animate-none' />
                     <span>{activeAgent.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())} Agent</span>
                   </div>
                 )}
                 <div className='prose prose-sm dark:prose-invert max-w-none text-13 space-y-2 break-words'>
                   {renderMarkdown(streamContent || 'Thinking...')}
-                  <span className='inline-block w-1.5 h-3.5 bg-primary ml-0.5 animate-pulse' />
+                  <span className='inline-block w-1.5 h-3.5 bg-ai ml-0.5 animate-pulse' />
                 </div>
               </div>
 

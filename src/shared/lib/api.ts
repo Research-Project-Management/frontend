@@ -439,6 +439,11 @@ export async function apiFetch<T>(
           statusCode: response.status,
           message: errorMessage,
         });
+      } else if (response.status === 403) {
+        logger.warn(`Permission denied (403): [${normalizedMethod}] ${path}`, {
+          statusCode: response.status,
+          message: errorMessage,
+        });
       } else {
         logger.error(`API Error: [${normalizedMethod}] ${path}`, error, {
           statusCode: response.status,

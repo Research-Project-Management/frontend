@@ -44,6 +44,7 @@ import {
   DropdownMenuSeparator,
 } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
+import { ProjectAvatar } from '@/shared/components/icons';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { useAiCompanionStore } from '../../store/ai-companion.store';
 import { uploadDocument, type UploadDocumentProgress } from '../../services/chat.service';
@@ -183,7 +184,7 @@ export function CompanionInput({
   isStreaming = false,
   initialText = '',
   placeholder = 'How can I help you today?',
-  className = 'px-3 pb-2.5 pt-0.5 bg-background',
+  className = 'px-3.5 pb-3 pt-2 bg-background',
   showDisclaimer = true,
 }: CompanionInputProps) {
   const [text, setText] = useState(initialText);
@@ -412,7 +413,11 @@ export function CompanionInput({
 
   // Selected project display name
   const currentProjectObj = activeProjects.find((p: any) => p.id === selectedProject);
-  const currentProjectName = currentProjectObj?.name || 'None';
+  const rawProjectName = currentProjectObj?.name || 'None';
+  const currentProjectName =
+    rawProjectName.toLowerCase().includes('flux neural dynamics') || rawProjectName.toLowerCase() === 'flux'
+      ? 'flux'
+      : rawProjectName;
 
   return (
     <div className={cn('w-full shrink-0 select-none', className)}>
@@ -422,13 +427,13 @@ export function CompanionInput({
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         className={cn(
-          'relative flex flex-col rounded-2xl border border-border bg-background transition-all px-3 py-2',
-          isDragging && 'border-primary/70 ring-2 ring-primary/20 bg-primary/[0.02]'
+          'relative flex flex-col rounded-lg border border-border bg-background transition-all px-3 py-2.5',
+          isDragging && 'border-ai/70 ring-2 ring-ai/20 bg-ai/[0.02]'
         )}
       >
         {/* Drag & Drop Visual Overlay */}
         {isDragging && (
-          <div className='absolute inset-0 z-30 rounded-2xl bg-background/95 backdrop-blur-xs border-2 border-dashed border-primary flex flex-col items-center justify-center gap-1.5 pointer-events-none'>
+          <div className='absolute inset-0 z-30 rounded-lg bg-background/95 backdrop-blur-xs border-2 border-dashed border-ai flex flex-col items-center justify-center gap-1.5 pointer-events-none'>
             <FileUp className='size-5 text-foreground transition-transform duration-300 ease-out animate-pulse motion-reduce:animate-none' />
             <p className='text-12 font-medium text-foreground'>Drop files to attach to chat</p>
           </div>
@@ -445,7 +450,7 @@ export function CompanionInput({
         />
 
         {/* ── Top Bar: Project Scope Selector & Attached/Uploading Files ────── */}
-        <div className='flex items-center gap-1.5 flex-wrap mb-1'>
+        <div className='flex items-center gap-1.5 flex-wrap mb-2'>
           <Popover open={scopeOpen} onOpenChange={setScopeOpen}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -455,7 +460,17 @@ export function CompanionInput({
                     className='inline-flex h-6 max-w-[220px] items-center gap-1.5 rounded-lg border border-border bg-background hover:bg-muted px-2 text-11 text-foreground transition-colors cursor-pointer outline-none shrink-0'
                     aria-label='Project context scope'
                   >
-                    <Folder className='size-3 text-foreground shrink-0' />
+                    {currentProjectObj ? (
+                      <ProjectAvatar
+                        avatar={currentProjectObj.avatar}
+                        name={currentProjectObj.name}
+                        id={currentProjectObj.id}
+                        size="custom"
+                        className="size-3.5 flex items-center justify-center text-11 leading-none shrink-0"
+                      />
+                    ) : (
+                      <Folder className='size-3 text-foreground shrink-0' />
+                    )}
                     <span className='truncate font-medium'>{currentProjectName}</span>
                     <ChevronDown className='size-2.5 text-foreground shrink-0 opacity-70 ml-0.5' />
                   </button>
@@ -534,6 +549,10 @@ export function CompanionInput({
                 {!isLoadingProjects &&
                   filteredProjects.map((p: any) => {
                     const isSelected = selectedProject === p.id;
+                    const displayName =
+                      p.name?.toLowerCase().includes('flux neural dynamics') || p.name?.toLowerCase() === 'flux'
+                        ? 'flux'
+                        : p.name;
                     return (
                       <button
                         key={p.id}
@@ -551,8 +570,14 @@ export function CompanionInput({
                         )}
                       >
                         <div className='flex items-center gap-2 truncate'>
-                          <Folder className='size-3 text-foreground shrink-0' />
-                          <span className='truncate'>{p.name}</span>
+                          <ProjectAvatar
+                            avatar={p.avatar}
+                            name={displayName}
+                            id={p.id}
+                            size="custom"
+                            className="size-3.5 flex items-center justify-center text-11 leading-none shrink-0"
+                          />
+                          <span className='truncate'>{displayName}</span>
                         </div>
                         {isSelected && (
                           <Check className='size-3 text-foreground shrink-0 ml-1.5' />
@@ -571,7 +596,7 @@ export function CompanionInput({
               <Tooltip key={up.id}>
                 <TooltipTrigger asChild>
                   <div className='inline-flex h-6.5 items-center gap-1.5 px-2 rounded-md border border-border/70 bg-muted/40 text-11 text-foreground transition-all select-none max-w-[240px] cursor-default'>
-                    <Loader2 className='size-3 animate-spin text-primary shrink-0' />
+                    <Loader2 className='size-3 animate-spin text-ai shrink-0' />
                     <span className='truncate max-w-[120px] font-medium'>{up.name}</span>
                     <span className='text-10 text-muted-foreground font-mono shrink-0'>
                       {isProcessing ? 'Indexing...' : `${up.progress}%`}
@@ -652,11 +677,11 @@ export function CompanionInput({
           disabled={isStreaming}
           placeholder={placeholder}
           rows={1}
-          className='w-full resize-none bg-transparent text-13 text-foreground placeholder:text-muted-foreground outline-none leading-relaxed min-h-[26px] max-h-[140px] px-0.5 py-0.5'
+          className='w-full resize-none bg-transparent text-13 text-foreground placeholder:text-muted-foreground outline-none leading-relaxed min-h-[32px] max-h-[140px] px-0.5 py-1'
         />
 
         {/* ── Bottom Action Toolbar ─────────────────────────────────────────── */}
-        <div className='flex items-center justify-between pt-0.5'>
+        <div className='flex items-center justify-between pt-2'>
           {/* Left tools: Plus menu containing upload, storage import, library import, web search */}
           <div className='flex items-center gap-1'>
             <DropdownMenu>
@@ -667,7 +692,7 @@ export function CompanionInput({
                       type='button'
                       disabled={isStreaming}
                       className={cn(
-                        'relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                        'relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai',
                         isStreaming && 'opacity-40 cursor-not-allowed'
                       )}
                       aria-label='Add attachment or toggle features'
@@ -739,7 +764,7 @@ export function CompanionInput({
                   <div
                     className={cn(
                       'relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
-                      webSearchEnabled ? 'bg-primary' : 'bg-muted-foreground/30'
+                      webSearchEnabled ? 'bg-ai' : 'bg-muted-foreground/30'
                     )}
                   >
                     <span
@@ -782,7 +807,7 @@ export function CompanionInput({
                   <button
                     type='button'
                     onClick={onStop}
-                    className='flex size-7 items-center justify-center rounded-full bg-primary text-white hover:bg-primary-hover transition-all active:scale-95 cursor-pointer'
+                    className='flex size-7 items-center justify-center rounded-md bg-ai text-white hover:bg-ai-hover transition-all active:scale-95 cursor-pointer'
                     aria-label='Stop generating'
                   >
                     <Square className='size-3 fill-current' />
@@ -800,12 +825,12 @@ export function CompanionInput({
                     onClick={handleSubmit}
                     disabled={(!text.trim() && attachedFiles.length === 0) || isUploading}
                     className={cn(
-                      'flex size-7 items-center justify-center rounded-full p-0 transition-all select-none',
+                      'flex size-7 items-center justify-center rounded-md p-0 transition-all select-none',
                       isUploading
                         ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
                         : (!text.trim() && attachedFiles.length === 0)
                           ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-40'
-                          : 'bg-primary text-white hover:bg-primary-hover active:scale-95 cursor-pointer'
+                          : 'bg-ai text-white hover:bg-ai-hover active:scale-95 cursor-pointer'
                     )}
                     aria-label={
                       isUploading
@@ -814,7 +839,7 @@ export function CompanionInput({
                     }
                   >
                     {isUploading ? (
-                      <Loader2 className='size-3.5 animate-spin text-primary' />
+                      <Loader2 className='size-3.5 animate-spin text-ai' />
                     ) : (
                       <ArrowUp className='size-3.5 shrink-0 stroke-[2.5] translate-y-[1px]' />
                     )}
@@ -835,7 +860,7 @@ export function CompanionInput({
 
       {/* Plane Style Disclaimer Footer */}
       {showDisclaimer && (
-        <p className='text-12 text-muted-foreground text-center select-none pt-1.5 pb-0.5 leading-normal'>
+        <p className='text-12 text-muted-foreground text-center select-none pt-2 pb-0.5 leading-normal'>
           Flux AI can make mistakes, please double-check responses.
         </p>
       )}

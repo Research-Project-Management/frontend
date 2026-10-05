@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { PanelLeft } from "lucide-react";
@@ -12,12 +13,14 @@ const ProjectsSidebar = dynamic(
 
 export default function ProjectsLayout({ children }: { children?: React.ReactNode }) {
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
 
   // If inside project settings, hide outer project sidebar so settings sidebar has full focus
   const isProjectSettings = pathname.includes('/settings');
 
   useEffect(() => {
+    setMounted(true);
     const isMobile = window.innerWidth < 1024;
     try {
       const saved = localStorage.getItem('flux:project-sidebar-visible');
@@ -77,15 +80,16 @@ export default function ProjectsLayout({ children }: { children?: React.ReactNod
   }
 
   return (
-    <div className="relative flex h-full overflow-hidden">
+    <div className="relative flex h-full min-h-0 min-w-0">
       {/* Mobile Drawer Backdrop */}
-      {isSidebarVisible && (
+      {mounted && isSidebarVisible && typeof document !== 'undefined' && createPortal(
         <button
           type="button"
           aria-label="Close project sidebar"
           className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs lg:hidden cursor-pointer animate-in fade-in duration-200"
           onClick={() => handleToggleSidebar(false)}
-        />
+        />,
+        document.body
       )}
 
       {/* Project Sidebar Panel */}
@@ -101,7 +105,7 @@ export default function ProjectsLayout({ children }: { children?: React.ReactNod
       </div>
 
       <div
-        className="flex-1 min-w-0 flex flex-col h-full bg-transparent relative"
+        className="flex-1 min-w-0 flex flex-col h-full bg-transparent relative min-h-0"
         style={{ '--header-offset': !isSidebarVisible ? '46px' : '0px' } as React.CSSProperties}
       >
         {!isSidebarVisible && (
@@ -117,8 +121,8 @@ export default function ProjectsLayout({ children }: { children?: React.ReactNod
             </button>
           </div>
         )}
-        <div className="relative flex-1 min-h-0 overflow-hidden">
-          <div className="h-full w-full min-w-0">
+        <div className="relative flex-1 min-h-0 min-w-0 flex flex-col">
+          <div className="h-full w-full min-w-0 flex-1 min-h-0 flex flex-col">
             {children}
           </div>
         </div>

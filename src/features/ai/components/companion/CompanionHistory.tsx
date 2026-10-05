@@ -127,7 +127,7 @@ export function CompanionHistory({
             <button
               type='button'
               onClick={onNewChat}
-              className='size-7.5 shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary'
+              className='size-7.5 shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai'
               aria-label='New chat'
               title='New chat'
             >
@@ -168,7 +168,7 @@ export function CompanionHistory({
             <button
               type='button'
               onClick={onNewChat}
-              className='flex-1 h-7.5 px-2.5 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground text-12 font-normal flex items-center justify-center gap-1.5 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary'
+              className='flex-1 h-7.5 px-2.5 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground text-12 font-normal flex items-center justify-center gap-1.5 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai'
               aria-label='New chat'
             >
               <SquarePen className='size-3.5 text-foreground/80' />
@@ -178,7 +178,7 @@ export function CompanionHistory({
             <button
               type='button'
               onClick={() => setIsSearchOpen(true)}
-              className='size-7.5 shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground/80 flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary'
+              className='size-7.5 shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground/80 flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai'
               title='Search chats'
               aria-label='Search chats'
             >
@@ -286,7 +286,7 @@ export function CompanionHistory({
                             if (e.key === 'Enter') handleSaveRename(e as any, chat.id);
                             if (e.key === 'Escape') setEditingId(null);
                           }}
-                          className='h-6 flex-1 px-1.5 text-12 rounded border border-primary bg-background text-foreground outline-none'
+                          className='h-6 flex-1 px-1.5 text-12 rounded border border-ai bg-background text-foreground outline-none'
                           autoFocus
                         />
                       ) : (
@@ -300,7 +300,7 @@ export function CompanionHistory({
                           <button
                             type='button'
                             onClick={(e) => handleSaveRename(e, chat.id)}
-                            className='size-6 flex items-center justify-center rounded hover:bg-muted text-foreground cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary'
+                            className='size-6 flex items-center justify-center rounded hover:bg-muted text-foreground cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai'
                             title='Save rename'
                             aria-label='Save new title'
                           >
@@ -312,7 +312,7 @@ export function CompanionHistory({
                               e.stopPropagation();
                               setEditingId(null);
                             }}
-                            className='size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary'
+                            className='size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai'
                             title='Cancel'
                             aria-label='Cancel rename'
                           >
@@ -325,7 +325,7 @@ export function CompanionHistory({
                             <button
                               type='button'
                               onClick={(e) => e.stopPropagation()}
-                              className='size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary'
+                              className='size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai'
                               title='More actions'
                               aria-label='More actions'
                             >

@@ -90,14 +90,7 @@ const PRIORITY_THEME_CLASSES: Record<string, string> = {
 };
 
 function formatDueDate(dateStr?: string | null): string {
-  if (!dateStr) return '';
-  try {
-    const d = new Date(dateStr);
-    if (Number.isNaN(d.getTime())) return '';
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  } catch {
-    return '';
-  }
+  return ItemHelpers.formatDate(dateStr);
 }
 
 // ── 2. Group Checkbox Component (Indeterminate & Keyboard Accessible) ──────────
@@ -206,7 +199,7 @@ export const ItemRow = ({
   const showId = propsConfig?.id !== false;
   const showState = propsConfig?.state !== false;
   const showPriority = propsConfig?.priority !== false;
-  const showStartDate = Boolean(propsConfig?.startDate || item.startDate);
+  const showStartDate = Boolean(propsConfig?.startDate) || (Boolean(item.startDate) && Boolean(item.dueDate));
   const showDueDate = propsConfig?.dueDate !== false;
   const showAssignee = propsConfig?.assignee !== false;
   const showAttach = propsConfig?.attach !== false;
@@ -315,15 +308,16 @@ export const ItemRow = ({
   const currentColor =
     resolvedState?.color ||
     resolvedState?.accentColor ||
-    '#8A9093';
-  const stateGroup = resolvedState?.group || (item as any).stateGroup || colTitle;
+    '#6B7280';
+  const stateGroup = resolvedState?.group || (item as any).stateGroup || (item as any).state?.group || colTitle;
+  const isCancelled = stateGroup === 'cancelled' || item.columnId === 'cancelled' || item.columnId === 'cancel';
 
   return (
     <div
       className={cn(
-        'group/row relative h-10 pl-7 sm:pl-8 pr-3 sm:pr-4 flex items-center justify-between border-b border-border bg-background hover:bg-muted select-none text-13 transition-colors duration-150',
+        'group/row relative h-8 pl-7 sm:pl-8 pr-3 sm:pr-4 flex items-center justify-between border-b border-border/60 bg-background hover:bg-muted/40 select-none text-13 transition-colors duration-0',
         isDragging && 'opacity-50 bg-muted',
-        isSelected && 'bg-muted font-medium',
+        isSelected && 'bg-primary/5 border-l-2 border-primary font-medium',
         item.completed && 'opacity-75',
       )}
     >
@@ -418,7 +412,8 @@ export const ItemRow = ({
           }}
           className={cn(
             'font-normal truncate cursor-pointer text-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:underline',
-            item.completed && 'text-muted-foreground line-through',
+            isCancelled && 'text-muted-foreground line-through',
+            item.completed && !isCancelled && 'text-muted-foreground',
             !item.title?.trim() && 'italic text-muted-foreground',
           )}
           title={item.title || 'Untitled work item'}
@@ -455,7 +450,7 @@ export const ItemRow = ({
                 const cId = resolveColumnId(col);
                 const isCurr = cId === item.columnId;
                 const cTitle = col.title || col.name || 'Column';
-                const cColor = col.color || col.accentColor || '#8A9093';
+                const cColor = col.color || col.accentColor || '#6B7280';
                 return (
                   <DropdownMenuItem
                     key={cId}
@@ -554,7 +549,7 @@ export const ItemRow = ({
                 type="button"
                 onClick={() => setAssigneeOpen(true)}
                 disabled={isReadOnly}
-                className="cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all rounded-md shrink-0"
+                className="cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all rounded-full shrink-0"
                 title={`${resolvedAssignees.length} assignees`}
               >
                 <AvatarStack users={resolvedAssignees} size="xs" max={3} />
@@ -564,7 +559,7 @@ export const ItemRow = ({
                 type="button"
                 onClick={() => setAssigneeOpen(true)}
                 disabled={isReadOnly}
-                className="size-6 rounded-md border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all"
+                className="size-6 rounded-full border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all"
                 title={resolvedAssignees[0].name || 'Assignee'}
               >
                 <Avatar className="size-full shrink-0">
@@ -579,7 +574,7 @@ export const ItemRow = ({
                 type="button"
                 onClick={() => setAssigneeOpen(true)}
                 disabled={isReadOnly}
-                className="size-6 rounded-md border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all"
+                className="size-6 rounded-full border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all"
                 title={assignee.name || 'Assignee'}
               >
                 <Avatar className="size-full shrink-0">
@@ -594,7 +589,7 @@ export const ItemRow = ({
                 type="button"
                 onClick={() => setAssigneeOpen(true)}
                 disabled={isReadOnly}
-                className="size-6 rounded-md border border-dashed border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                className="size-6 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                 aria-label="Assign member"
                 title="Assign member"
               >
@@ -779,10 +774,11 @@ const ChildItemRow = ({
   onDeleteChildItem,
 }: ChildItemRowProps) => {
   const isDone = Boolean(childItem.completed || (childItem as any).stateGroup === 'completed' || (childItem as any).state?.group === 'completed' || childItem.columnId === 'done' || childItem.columnId === 'completed');
+  const isCancelled = Boolean((childItem as any).stateGroup === 'cancelled' || (childItem as any).state?.group === 'cancelled' || childItem.columnId === 'cancelled');
   const stateList = projectStates && projectStates.length > 0 ? projectStates : columns;
   const currentCol = stateList.find((c) => resolveColumnId(c) === childItem.columnId);
   const colTitle = currentCol?.title || currentCol?.name || childItem.columnId || 'Todo';
-  const colColor = currentCol?.accentColor || currentCol?.color || (isDone ? '#10B981' : '#8A9093');
+  const colColor = currentCol?.accentColor || currentCol?.color || (isDone ? '#1A7F37' : '#6B7280');
 
   const defaultUnstartedId = useMemo(() => {
     if (!Array.isArray(stateList) || stateList.length === 0) return 'todo';
@@ -803,7 +799,7 @@ const ChildItemRow = ({
   }, [stateList]);
 
   return (
-    <div className="group/sub relative h-9 pl-12 sm:pl-14 pr-3 sm:pr-4 flex items-center justify-between hover:bg-muted/60 select-none text-12 transition-colors duration-150 border-b border-border/40">
+    <div className="group/sub relative h-7.5 pl-12 sm:pl-14 pr-3 sm:pr-4 flex items-center justify-between hover:bg-muted/50 select-none text-12 transition-colors duration-0 border-b border-border/40">
       {/* Left Tree Branch & Checkbox & Title */}
       <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
         <CornerDownRight className="size-3 text-foreground shrink-0 -ml-5" />
@@ -820,7 +816,7 @@ const ChildItemRow = ({
           }}
           aria-label={`Mark sub-item as ${isDone ? 'incomplete' : 'complete'}`}
           className={cn(
-            'size-3.5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0',
+            'size-3.5 rounded-sm border flex items-center justify-center transition-colors cursor-pointer shrink-0',
             isDone
               ? 'bg-emerald-500 border-emerald-500 text-white'
               : 'border-border hover:border-primary'
@@ -830,7 +826,7 @@ const ChildItemRow = ({
         </button>
 
         {childItem.identifier && (
-          <span className="font-mono text-11 font-medium text-foreground shrink-0 tabular-nums">
+          <span className="font-mono text-11 font-medium text-muted-foreground shrink-0 tabular-nums">
             {childItem.identifier}
           </span>
         )}
@@ -863,7 +859,7 @@ const ChildItemRow = ({
           }}
           className={cn(
             'truncate cursor-pointer hover:text-primary transition-colors text-12 font-normal',
-            isDone ? 'line-through text-muted-foreground' : 'text-foreground'
+            isCancelled ? 'line-through text-muted-foreground' : isDone ? 'text-muted-foreground' : 'text-foreground'
           )}
           title={childItem.title}
         >
@@ -877,7 +873,7 @@ const ChildItemRow = ({
           <DropdownMenuTrigger asChild disabled={isReadOnly}>
             <button
               type="button"
-              className="h-5 px-2 text-10 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1 shrink-0 transition-colors cursor-pointer outline-none"
+              className="h-5 px-2 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1 shrink-0 transition-colors cursor-pointer outline-none"
             >
               <StatusIcon
                 title={colTitle}
@@ -892,7 +888,7 @@ const ChildItemRow = ({
             {stateList.map((col) => {
               const cId = resolveColumnId(col);
               const cTitle = col.title || col.name || 'Column';
-              const cColor = col.color || col.accentColor || '#8A9093';
+              const cColor = col.color || col.accentColor || '#6B7280';
               const isCurr = cId === childItem.columnId;
               return (
                 <DropdownMenuItem
@@ -1203,7 +1199,7 @@ const ListViewGroup = ({
             onToggleExpand(group.key);
           }
         }}
-        className="group/header relative h-10 pl-7 sm:pl-8 pr-3 sm:pr-4 flex items-center justify-between border-b border-border bg-secondary hover:bg-muted select-none cursor-pointer transition-colors focus-visible:outline-none"
+        className="group/header relative h-8 pl-7 sm:pl-8 pr-3 sm:pr-4 flex items-center justify-between border-b border-border bg-muted/30 hover:bg-muted/60 dark:bg-muted/15 dark:hover:bg-muted/30 select-none cursor-pointer transition-colors duration-0 focus-visible:outline-none"
       >
         {/* Group Multi-select Checkbox (Absolute at left-2, zero layout shift) */}
         <div
@@ -1230,12 +1226,12 @@ const ListViewGroup = ({
           />
 
           {/* Group Name */}
-          <span className="text-13 font-medium text-foreground tracking-tight truncate">
+          <span className="text-12 font-medium text-foreground tracking-tight truncate">
             {group.label}
           </span>
 
-          {/* Item Count (Tabular Numbers, no parentheses) */}
-          <span className="text-13 text-foreground font-medium tabular-nums ml-1 shrink-0">
+          {/* Item Count (Tabular Numbers, mono) */}
+          <span className="font-mono text-11 text-muted-foreground font-medium tabular-nums ml-1.5 shrink-0">
             {group.items.length}
           </span>
         </div>
@@ -1343,7 +1339,7 @@ const ListViewGroup = ({
                 <button
                   type="button"
                   onClick={() => setQuickAddKey(group.key)}
-                  className="h-9 pl-7 sm:pl-8 pr-3 sm:pr-4 w-full flex items-center gap-2 text-13 text-foreground hover:bg-muted cursor-pointer border-b border-border text-left font-normal transition-colors focus-visible:outline-none"
+                  className="h-8 pl-7 sm:pl-8 pr-3 sm:pr-4 w-full flex items-center gap-2 text-13 text-foreground hover:bg-muted/40 cursor-pointer border-b border-border/60 text-left font-normal transition-colors duration-0 focus-visible:outline-none"
                 >
                   <Plus className="size-3.5 shrink-0 text-foreground" />
                   <span>New work item</span>
@@ -1489,7 +1485,7 @@ export function ListView({
     if (!Array.isArray(columns)) return [];
     const rawGroups = columns.map((col) => {
       const colId = resolveColumnId(col);
-      const colColor = col.color || col.accentColor || '#8A9093';
+      const colColor = col.color || col.accentColor || '#6B7280';
 
       return {
         key: colId,

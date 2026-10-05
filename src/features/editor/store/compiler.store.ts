@@ -48,6 +48,7 @@ export const useDocumentCompilerStore = create<DocumentCompilerState>()((set, ge
 
   markDirty(fileId, content) {
     set((s) => {
+      if (s.dirtyContentMap.get(fileId) === content) return s;
       const next = new Map(s.dirtyContentMap);
       next.set(fileId, content);
       return { dirtyContentMap: next };
@@ -56,6 +57,7 @@ export const useDocumentCompilerStore = create<DocumentCompilerState>()((set, ge
 
   clearDirty(fileId) {
     set((s) => {
+      if (!s.dirtyContentMap.has(fileId)) return s;
       const next = new Map(s.dirtyContentMap);
       next.delete(fileId);
       return { dirtyContentMap: next };

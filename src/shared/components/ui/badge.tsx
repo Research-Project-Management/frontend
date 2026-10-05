@@ -21,7 +21,9 @@ const badgeVariants = cva(
         ai: "border-ai-border bg-ai-subtle text-ai font-medium [a&]:hover:bg-ai-subtle/80",
         started: "border-transparent bg-state-started/15 text-state-started font-medium",
         completed: "border-transparent bg-state-completed/15 text-state-completed font-medium",
+        unstarted: "border-transparent bg-state-unstarted/15 text-state-unstarted font-medium",
         backlog: "border-transparent bg-muted text-muted-foreground font-medium",
+        cancelled: "border-transparent bg-state-cancelled/15 text-state-cancelled font-medium line-through",
       },
     },
     defaultVariants: {

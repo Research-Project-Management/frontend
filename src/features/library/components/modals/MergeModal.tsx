@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import type { Item } from '../../types/items.types';
 import { formatAcademicAuthors } from '../../utils/academic-text';
-import { ItemService } from '../../data';
+import { libraryServices } from '../../data';
 import {
   inspectItemDifferences,
   aggregateItemAssets,
@@ -107,7 +107,7 @@ export function MergeModal({
     Promise.all(
       duplicates.map(async (dup) => {
         try {
-          const full = await ItemService.getItem(effectiveScope, dup.id);
+          const full = await libraryServices.items.getItem(effectiveScope, dup.id);
           return full || dup;
         } catch {
           return dup;

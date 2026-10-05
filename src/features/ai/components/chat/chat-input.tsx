@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from "@/shared/lib/utils";
+import { ProjectAvatar } from '@/shared/components/icons';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { useChatMode } from '../../hooks/use-chat-mode';
 import { useAiUIStore } from '../../store';
@@ -456,13 +457,13 @@ export function ChatInput({
         onDrop={handleDrop}
         className={cn(
           "relative rounded-lg border border-border bg-background transition-all p-3 sm:p-3.5",
-          isDragging && "border-primary/70 ring-2 ring-primary/20 bg-primary/[0.02]"
+          isDragging && "border-ai/70 ring-2 ring-ai/20 bg-ai/[0.02]"
         )}
       >
         {/* Drag & Drop Visual Overlay */}
         {isDragging && (
-          <div className="absolute inset-0 z-30 rounded-lg bg-background/95 backdrop-blur-xs border-2 border-dashed border-primary flex flex-col items-center justify-center gap-2 pointer-events-none transition-all">
-            <div className="size-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+          <div className="absolute inset-0 z-30 rounded-lg bg-background/95 backdrop-blur-xs border-2 border-dashed border-ai flex flex-col items-center justify-center gap-2 pointer-events-none transition-all">
+            <div className="size-10 rounded-full bg-ai/10 text-ai flex items-center justify-center">
               <FileUp className="size-5 transition-transform duration-300 ease-out animate-pulse motion-reduce:animate-none" />
             </div>
             <p className="text-12 font-medium text-foreground">Drop files here to attach</p>
@@ -478,7 +479,17 @@ export function ChatInput({
                 type="button"
                 className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-background hover:bg-muted px-2 py-1 text-12 font-medium text-foreground transition-colors cursor-pointer outline-none"
               >
-                <Folder className="size-3.5 text-muted-foreground shrink-0" />
+                {!isAllProjects && currentProjObj ? (
+                  <ProjectAvatar
+                    avatar={currentProjObj.avatar}
+                    name={currentProjObj.name}
+                    id={currentProjObj.id}
+                    size="custom"
+                    className="size-3.5 flex items-center justify-center text-xs leading-none shrink-0"
+                  />
+                ) : (
+                  <Folder className="size-3.5 text-muted-foreground shrink-0" />
+                )}
                 <span className="max-w-44 truncate">{currentProjName}</span>
                 <ChevronDown className="size-3 text-muted-foreground shrink-0 opacity-70" />
               </button>
@@ -503,7 +514,10 @@ export function ChatInput({
                     : "hover:bg-muted text-foreground/80 font-normal"
                 )}
               >
-                <span className="truncate">All Projects</span>
+                <div className="flex items-center gap-2 truncate">
+                  <Folder className="size-3.5 text-muted-foreground shrink-0" />
+                  <span className="truncate">All Projects</span>
+                </div>
                 {isAllProjects && <Check className="size-3.5 text-foreground shrink-0 ml-2" />}
               </button>
 
@@ -539,7 +553,16 @@ export function ChatInput({
                         : "hover:bg-muted text-foreground/80 font-normal"
                     )}
                   >
-                    <span className="truncate">{proj.name}</span>
+                    <div className="flex items-center gap-2 truncate">
+                      <ProjectAvatar
+                        avatar={proj.avatar}
+                        name={proj.name}
+                        id={proj.id}
+                        size="custom"
+                        className="size-3.5 flex items-center justify-center text-xs leading-none shrink-0"
+                      />
+                      <span className="truncate">{proj.name}</span>
+                    </div>
                     {isSelected && <Check className="size-3.5 text-foreground shrink-0 ml-2" />}
                   </button>
                 );
@@ -558,13 +581,13 @@ export function ChatInput({
                 <Tooltip key={up.id}>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-border/70 bg-muted/40 max-w-[240px] cursor-default">
-                      <div className="size-7 rounded-md flex items-center justify-center shrink-0 border border-border/50 bg-background text-primary">
-                        <Loader2 className="size-3.5 animate-spin text-primary" />
+                      <div className="size-7 rounded-md flex items-center justify-center shrink-0 border border-border/50 bg-background text-ai">
+                        <Loader2 className="size-3.5 animate-spin text-ai" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-11 font-medium text-foreground truncate">{up.name}</p>
                         <div className="flex items-center gap-1.5 text-10 text-muted-foreground">
-                          <span className={isProcessing ? "text-primary font-medium" : ""}>
+                          <span className={isProcessing ? "text-ai font-medium" : ""}>
                             {isProcessing ? 'Indexing...' : `Uploading (${up.progress ?? 0}%)`}
                           </span>
                           {up.size ? <span>• {formatBytes(up.size)}</span> : null}
@@ -653,7 +676,7 @@ export function ChatInput({
                           e.stopPropagation();
                           removeSource(src.id);
                         }}
-                        className="size-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0 ml-0.5 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        className="size-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0 ml-0.5 outline-none focus-visible:ring-1 focus-visible:ring-ai"
                         aria-label={`Remove ${src.name}`}
                       >
                         <X className="size-3" />
@@ -702,7 +725,7 @@ export function ChatInput({
                     <button
                       type="button"
                       className={cn(
-                        "relative size-8 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary",
+                        "relative size-8 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-ai",
                         (sources.length > 0 || isSourcesOpen) && "bg-muted"
                       )}
                       aria-label="Add sources or toggle features"
@@ -710,7 +733,7 @@ export function ChatInput({
                     >
                       <Plus className="size-4 shrink-0 text-foreground" />
                       {sources.length > 0 && (
-                        <span className="absolute -top-1 -right-1 size-3.5 rounded-full bg-primary text-white text-9 font-medium flex items-center justify-center">
+                        <span className="absolute -top-1 -right-1 size-3.5 rounded-full bg-ai text-white text-9 font-medium flex items-center justify-center">
                           {sources.length}
                         </span>
                       )}
@@ -799,7 +822,7 @@ export function ChatInput({
                   <div
                     className={cn(
                       'relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
-                      webSearch ? 'bg-primary' : 'bg-muted-foreground/30'
+                      webSearch ? 'bg-ai' : 'bg-muted-foreground/30'
                     )}
                   >
                     <span
@@ -836,12 +859,12 @@ export function ChatInput({
                   onClick={handleSend}
                   disabled={(!message.trim() && !disabled) || isUploading}
                   className={cn(
-                    "size-8 rounded-full flex items-center justify-center p-0 transition-all shrink-0 select-none",
+                    "size-8 rounded-md flex items-center justify-center p-0 transition-all shrink-0 select-none",
                     isUploading
                       ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
                       : disabled
-                        ? "bg-primary text-white hover:bg-primary-hover cursor-pointer"
-                        : "bg-primary text-white hover:bg-primary-hover active:scale-95 disabled:cursor-not-allowed"
+                        ? "bg-ai text-white hover:bg-ai-hover cursor-pointer"
+                        : "bg-ai text-white hover:bg-ai-hover active:scale-95 disabled:cursor-not-allowed"
                   )}
                   aria-label={
                     isUploading
@@ -852,7 +875,7 @@ export function ChatInput({
                   }
                 >
                   {isUploading ? (
-                    <Loader2 className="size-3.5 animate-spin text-primary" />
+                    <Loader2 className="size-3.5 animate-spin text-ai" />
                   ) : disabled ? (
                     <Square className="size-3 fill-current shrink-0" />
                   ) : (

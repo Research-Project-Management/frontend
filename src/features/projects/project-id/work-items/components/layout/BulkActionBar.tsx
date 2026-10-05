@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Trash2,
@@ -95,17 +96,22 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  if (selectedIds.length === 0) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || selectedIds.length === 0 || typeof document === 'undefined') return null;
 
   const count = selectedIds.length;
 
-  return (
+  return createPortal(
     <>
       <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-background/95 backdrop-blur-md border border-border rounded-md px-4 py-2 h-11 flex items-center gap-2 w-max max-w-[calc(100vw-2rem)] overflow-x-auto no-scrollbar shadow-lg animate-in fade-in slide-in-from-bottom-3 duration-200 select-none">
         {/* Selection count badge */}
         <div className="flex items-center gap-1.5 bg-muted px-2 py-1 rounded-md text-12 font-medium text-foreground shrink-0">
-          <span>{count} selected</span>
+          <span className="font-mono text-11 tabular-nums">{count} selected</span>
           <button
             type="button"
             onClick={onClearSelection}
@@ -477,6 +483,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </>,
+    document.body
   );
 };

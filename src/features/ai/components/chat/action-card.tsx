@@ -31,7 +31,7 @@ const CATEGORY_ACCENT: Record<ToolCategory, string> = {
   create: 'bg-success',
   update: 'bg-warning',
   delete: 'bg-destructive',
-  analyze: 'bg-primary',
+  analyze: 'bg-ai',
 };
 
 const CATEGORY_TEXT: Record<ToolCategory, string> = {
@@ -39,7 +39,7 @@ const CATEGORY_TEXT: Record<ToolCategory, string> = {
   create: 'text-success',
   update: 'text-warning',
   delete: 'text-destructive',
-  analyze: 'text-primary',
+  analyze: 'text-ai',
 };
 
 const CATEGORY_SURFACE: Record<ToolCategory, string> = {
@@ -47,7 +47,7 @@ const CATEGORY_SURFACE: Record<ToolCategory, string> = {
   create: 'bg-success/10 text-success',
   update: 'bg-warning/10 text-warning',
   delete: 'bg-destructive/10 text-destructive',
-  analyze: 'bg-primary/10 text-primary',
+  analyze: 'bg-ai/10 text-ai',
 };
 
 const AGENT_LABELS: Record<string, { label: string }> = {
@@ -104,7 +104,7 @@ export function ActionCardsGroup({
       >
         <div className="flex items-center gap-2 min-w-0">
           {runningAction ? (
-            <Loader2 className="size-3.5 text-primary animate-spin shrink-0" />
+            <Loader2 className="size-3.5 text-ai animate-spin shrink-0" />
           ) : hasErrors ? (
             <AlertCircle className="size-3.5 text-destructive shrink-0" />
           ) : (
@@ -154,7 +154,7 @@ function ActionRow({ action }: { action: AgentAction }) {
     const toLabel = AGENT_LABELS[action.to ?? '']?.label ?? action.to;
     return (
       <div className="flex items-center gap-2 py-1 text-xs text-muted-foreground">
-        <ArrowRight className="size-3 text-primary shrink-0" />
+        <ArrowRight className="size-3 text-ai shrink-0" />
         <span>Delegating to <strong>{toLabel}</strong></span>
       </div>
     );
@@ -182,7 +182,7 @@ function ActionRow({ action }: { action: AgentAction }) {
 
         <div className="flex items-center gap-1.5 shrink-0">
           {action.status === 'calling' && (
-            <Loader2 className="size-3 text-primary animate-spin shrink-0" />
+            <Loader2 className="size-3 text-ai animate-spin shrink-0" />
           )}
           {action.status === 'done' && (
             <CheckCircle2 className="size-3 text-success shrink-0" />

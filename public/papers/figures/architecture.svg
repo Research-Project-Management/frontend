@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 650 260" width="100%" height="100%" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <rect width="650" height="260" fill="#ffffff" rx="8" />
+  
+  <text x="325" y="24" text-anchor="middle" font-size="13" font-weight="600" fill="#1e293b">Figure 1: Adam Computational Graph and Moment Estimation Pipeline</text>
+
+  <!-- Input Gradient Node -->
+  <g transform="translate(30, 95)">
+    <rect width="90" height="50" rx="6" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5" />
+    <text x="45" y="25" text-anchor="middle" font-size="11" font-weight="600" fill="#1e40af">Gradients</text>
+    <text x="45" y="40" text-anchor="middle" font-size="11" fill="#2563eb">g_t = ∇f(θ)</text>
+  </g>
+
+  <!-- Arrows from Gradient -->
+  <path d="M 120 110 L 170 80" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrow)" />
+  <path d="M 120 130 L 170 160" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrow)" />
+
+  <!-- First Moment Box -->
+  <g transform="translate(170, 55)">
+    <rect width="130" height="50" rx="6" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5" />
+    <text x="65" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#15803d">1st Moment (Mean)</text>
+    <text x="65" y="38" text-anchor="middle" font-size="10" fill="#16a34a">m_t = β₁m_{t-1} + (1-β₁)g_t</text>
+  </g>
+
+  <!-- Second Moment Box -->
+  <g transform="translate(170, 135)">
+    <rect width="130" height="50" rx="6" fill="#fefce8" stroke="#eab308" stroke-width="1.5" />
+    <text x="65" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#854d0e">2nd Moment (Variance)</text>
+    <text x="65" y="38" text-anchor="middle" font-size="10" fill="#ca8a04">v_t = β₂v_{t-1} + (1-β₂)g_t²</text>
+  </g>
+
+  <!-- Arrow to Bias Correction -->
+  <path d="M 300 80 L 350 80" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrow)" />
+  <path d="M 300 160 L 350 160" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrow)" />
+
+  <!-- Bias Correction 1 -->
+  <g transform="translate(350, 55)">
+    <rect width="110" height="50" rx="6" fill="#fdf2f8" stroke="#ec4899" stroke-width="1.5" />
+    <text x="55" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#9d174d">Bias Correction</text>
+    <text x="55" y="38" text-anchor="middle" font-size="11" fill="#db2777">m̂_t = m_t / (1-β₁ᵗ)</text>
+  </g>
+
+  <!-- Bias Correction 2 -->
+  <g transform="translate(350, 135)">
+    <rect width="110" height="50" rx="6" fill="#fdf2f8" stroke="#ec4899" stroke-width="1.5" />
+    <text x="55" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#9d174d">Bias Correction</text>
+    <text x="55" y="38" text-anchor="middle" font-size="11" fill="#db2777">v̂_t = v_t / (1-β₂ᵗ)</text>
+  </g>
+
+  <!-- Arrows to Parameter Update -->
+  <path d="M 460 80 L 500 110" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrow)" />
+  <path d="M 460 160 L 500 130" stroke="#64748b" stroke-width="1.5" fill="none" marker-end="url(#arrow)" />
+
+  <!-- Parameter Update Box -->
+  <g transform="translate(500, 95)">
+    <rect width="125" height="50" rx="6" fill="#f5f3ff" stroke="#8b5cf6" stroke-width="1.5" />
+    <text x="62" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#5b21b6">Parameter Update</text>
+    <text x="62" y="38" text-anchor="middle" font-size="10" fill="#7c3aed">θ_t = θ_{t-1} - α·m̂_t/(√v̂_t+ε)</text>
+  </g>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#64748b" />
+    </marker>
+  </defs>
+</svg>

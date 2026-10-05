@@ -295,7 +295,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
+              className="absolute right-2 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer relative after:absolute after:-inset-2 after:content-['']"
               aria-label="Clear search"
             >
               <X className="size-3" />
@@ -414,8 +414,9 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                           e.stopPropagation();
                           handleCopyKey(item.key);
                         }}
-                        className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                        className="relative size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
                         title="Copy \cite command"
+                        aria-label="Copy citation command"
                       >
                         {copiedKey === item.key ? (
                           <Check className="size-3 text-emerald-500 shrink-0" />
@@ -429,8 +430,9 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                           e.stopPropagation();
                           handleInsertKey(item.key);
                         }}
-                        className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                        className="relative size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
                         title="Insert \cite at cursor"
+                        aria-label="Insert citation at cursor"
                       >
                         <Plus className="size-3.5 shrink-0" />
                       </button>
@@ -520,8 +522,9 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                           e.stopPropagation();
                           handleCopyKey(item.key);
                         }}
-                        className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                        className="relative size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
                         title="Copy \cite command"
+                        aria-label="Copy citation command"
                       >
                         {copiedKey === item.key ? (
                           <Check className="size-3 text-emerald-500 shrink-0" />
@@ -535,8 +538,9 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                           e.stopPropagation();
                           handleInsertKey(item.key);
                         }}
-                        className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                        className="relative size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
                         title="Insert \cite at cursor"
+                        aria-label="Insert citation at cursor"
                       >
                         <Plus className="size-3.5 shrink-0" />
                       </button>

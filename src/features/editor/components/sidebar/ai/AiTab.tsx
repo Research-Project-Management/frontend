@@ -375,6 +375,7 @@ export default function AiTab({ onClose }: AiTabProps) {
             onClick={onClose}
             className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
             title="Close AI panel"
+            aria-label="Close AI panel"
           >
             <X className="size-3.5" />
           </button>

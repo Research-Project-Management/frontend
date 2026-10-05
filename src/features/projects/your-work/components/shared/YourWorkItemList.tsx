@@ -436,9 +436,10 @@ function WorkItemRow({
 }: WorkItemRowProps) {
   const workItemId = item.id;
   const projectInfo = getWorkItemProject(item, workItemProjectMap);
-  const isDone = item.columnId === 'done' || item.completed;
+  const isDone = item.columnId === 'done' || item.completed || item.stateGroup === 'completed' || item.state?.group === 'completed';
+  const isCancelled = item.columnId === 'cancelled' || item.columnId === 'cancel' || item.stateGroup === 'cancelled' || item.state?.group === 'cancelled';
   const isOverdue =
-    item.dueDate && new Date(item.dueDate) < new Date() && !isDone;
+    item.dueDate && new Date(item.dueDate) < new Date() && !isDone && !isCancelled;
   const priorityKey = item.priority || 'none';
   const priorityConfig = PRIORITY_BADGES[priorityKey];
   const PriorityIcon = priorityConfig?.icon;
@@ -505,7 +506,8 @@ function WorkItemRow({
         <span
           className={cn(
             'text-xs truncate font-medium text-foreground transition-colors',
-            isDone && 'text-muted-foreground line-through font-normal',
+            isCancelled && 'text-muted-foreground line-through font-normal',
+            isDone && !isCancelled && 'text-muted-foreground font-normal',
           )}
         >
           {item.title}

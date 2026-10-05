@@ -66,9 +66,9 @@ export default function StandaloneViewerPage() {
   }, []);
 
   const fittedScale = useMemo(() => {
-    const available = containerWidth - 48;
+    const available = containerWidth;
     const s = available / 595;
-    return Math.max(0.5, Math.min(s, 2.5));
+    return Math.max(0.3, Math.min(s, 2.5));
   }, [containerWidth]);
 
   useEffect(() => {
@@ -267,6 +267,8 @@ export default function StandaloneViewerPage() {
           pdfUrl={pdfUrl}
           synctexMap={synctexMap}
           scale={scale}
+          autoFit={autoFit}
+          containerWidth={containerWidth}
           scrollMode={true}
           pageNumber={pageNumber}
           numPages={numPages}

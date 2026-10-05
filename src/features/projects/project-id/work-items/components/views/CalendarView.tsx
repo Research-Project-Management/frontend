@@ -71,10 +71,10 @@ function CalendarCard({ card }: CalendarCardProps) {
   const columnColor = resolveStateColor(card.columnId);
 
   return (
-    <div className="rounded-md border border-border bg-card p-3 space-y-2 text-xs w-72">
+    <div className="rounded-md border border-border bg-card p-3 space-y-2 text-xs w-72 shadow-none">
       <div className="flex items-center justify-between gap-2">
         {card.identifier && (
-          <span className="text-10 font-mono text-muted-foreground font-semibold">
+          <span className="text-11 font-mono text-muted-foreground font-medium tabular-nums">
             {card.identifier}
           </span>
         )}
@@ -85,11 +85,11 @@ function CalendarCard({ card }: CalendarCardProps) {
         )}
       </div>
 
-      <div className="font-semibold text-foreground text-sm leading-snug line-clamp-2">
+      <div className="font-medium text-foreground text-13 leading-snug line-clamp-2">
         {card.title}
       </div>
 
-      <div className="flex items-center justify-between pt-1 text-11 text-muted-foreground border-t border-border">
+      <div className="flex items-center justify-between pt-1 text-11 text-muted-foreground">
         <div className="flex items-center gap-1.5">
           <span className="size-2 rounded-full" style={{ backgroundColor: columnColor }} />
           <span className="capitalize">{card.columnId}</span>
@@ -726,7 +726,7 @@ export function CalendarView({
                   type="button"
                   variant="ghost"
                   onClick={handleCloseExistingDialog}
-                  className="h-9 px-3 text-foreground hover:bg-muted rounded-md"
+                  className="h-8 px-3 text-12 text-foreground hover:bg-muted rounded-md"
                 >
                   Cancel
                 </Button>
@@ -734,7 +734,7 @@ export function CalendarView({
                   type="button"
                   onClick={handleSubmitExistingItems}
                   disabled={selectedExistingItemIds.length === 0}
-                  className="h-9 min-w-17.5 bg-primary px-4 text-primary-foreground shadow-none hover:bg-primary-hover disabled:opacity-30 rounded-md"
+                  className="h-8 min-w-17.5 bg-primary px-3 text-12 font-medium text-primary-foreground shadow-none hover:bg-primary-hover disabled:opacity-30 rounded-md"
                 >
                   Add
                 </Button>
@@ -812,13 +812,13 @@ const CalendarDayCell = memo(({
       {/* Day number header row - perfectly positioned top right */}
       <div className="flex items-center justify-end px-3 pt-2 pb-1 text-right select-none">
         {isThisToday ? (
-          <span className="inline-flex size-5.5 items-center justify-center rounded-full bg-primary text-11 font-semibold text-primary-foreground">
+          <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary text-11 font-mono font-medium text-primary-foreground tabular-nums">
             {format(day, "d")}
           </span>
         ) : (
           <span
             className={cn(
-              "text-11 font-medium leading-none",
+              "text-11 font-mono font-medium leading-none tabular-nums",
               !isCurrentMonth ? "text-muted-foreground" : "text-foreground"
             )}
           >

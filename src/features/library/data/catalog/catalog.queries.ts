@@ -19,7 +19,6 @@ import {
   StateService,
   ItemStateService,
   ItemTypesService,
-  TypesService,
   SavedSearchesService,
   SavedSearchService,
   RelationsService,

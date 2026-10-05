@@ -20,10 +20,9 @@ import {
   X,
   Check,
   UploadCloud,
-  RefreshCw,
   Eye,
   Trash2,
-  Database,
+  Layers,
 } from 'lucide-react';
 import {
   fetchDocuments,
@@ -33,6 +32,7 @@ import {
 } from '../../services/chat.service';
 import type { DocumentItem } from '../../types/chat.types';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
+import StorageEmptyState from '@/features/storage/components/layout/StorageEmptyState';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
 
@@ -44,21 +44,24 @@ export interface UploadedDocumentsModalProps {
   onSelectItems?: (items: Array<{ id: string; name: string; size: number }>) => void;
 }
 
-type FileCategory = 'all' | 'pdf' | 'spreadsheet' | 'code' | 'image' | 'other';
+type FileCategory = 'all' | 'pdf' | 'doc_text' | 'spreadsheet' | 'image' | 'code' | 'other';
 
-const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg']);
-const SHEET_EXTS = new Set(['xls', 'xlsx', 'csv']);
+const PDF_EXTS = new Set(['pdf']);
+const DOC_TEXT_EXTS = new Set(['doc', 'docx', 'txt', 'md', 'rtf', 'odt', 'tex', 'bib']);
+const SHEET_EXTS = new Set(['xls', 'xlsx', 'csv', 'tsv']);
+const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'eps', 'bmp']);
 const CODE_EXTS = new Set([
-  'ts', 'tsx', 'js', 'jsx', 'json', 'py', 'java', 'cpp', 'c', 'go', 'rs', 'md', 'txt',
+  'py', 'r', 'ts', 'tsx', 'js', 'jsx', 'json', 'java', 'cpp', 'c', 'go', 'rs', 'sh', 'bash', 'sql', 'html', 'css',
 ]);
 
 function getDocumentCategory(title: string, type?: string): FileCategory {
   const parts = (title || '').split('.');
   const ext = (parts.length > 1 ? parts.pop() || '' : type || '').toLowerCase();
 
-  if (ext === 'pdf') return 'pdf';
-  if (IMAGE_EXTS.has(ext)) return 'image';
+  if (PDF_EXTS.has(ext)) return 'pdf';
+  if (DOC_TEXT_EXTS.has(ext)) return 'doc_text';
   if (SHEET_EXTS.has(ext)) return 'spreadsheet';
+  if (IMAGE_EXTS.has(ext)) return 'image';
   if (CODE_EXTS.has(ext)) return 'code';
   return 'other';
 }
@@ -66,24 +69,26 @@ function getDocumentCategory(title: string, type?: string): FileCategory {
 function getDocumentIcon(category: FileCategory) {
   switch (category) {
     case 'pdf':
+    case 'doc_text':
       return FileText;
     case 'spreadsheet':
       return FileSpreadsheet;
-    case 'code':
-      return FileCode;
     case 'image':
       return FileImage;
+    case 'code':
+      return FileCode;
     default:
       return File;
   }
 }
 
 const CATEGORY_ITEMS: { id: FileCategory; label: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number }> }[] = [
-  { id: 'all', label: 'All Documents', icon: Database },
+  { id: 'all', label: 'All Files', icon: Layers },
   { id: 'pdf', label: 'PDF Documents', icon: FileText },
-  { id: 'spreadsheet', label: 'Spreadsheets', icon: FileSpreadsheet },
-  { id: 'code', label: 'Code & Text', icon: FileCode },
+  { id: 'doc_text', label: 'Office & Text', icon: FileText },
+  { id: 'spreadsheet', label: 'Data Sheets', icon: FileSpreadsheet },
   { id: 'image', label: 'Images', icon: FileImage },
+  { id: 'code', label: 'Scripts & Code', icon: FileCode },
 ];
 
 export function UploadedDocumentsModal({
@@ -149,7 +154,7 @@ export function UploadedDocumentsModal({
         await uploadDocument(targetScope, file);
         successCount++;
       } catch (err: any) {
-        toast.error(`Failed to upload ${file.name}: ${err?.message || 'Upload error'}`);
+        toast.error('Failed to upload ' + file.name + ': ' + (err?.message || 'Upload error'));
       }
     }
 
@@ -157,7 +162,7 @@ export function UploadedDocumentsModal({
     if (fileInputRef.current) fileInputRef.current.value = '';
 
     if (successCount > 0) {
-      toast.success(`Uploaded ${successCount} document(s) successfully`);
+      toast.success('Uploaded ' + successCount + ' document(s) successfully');
       loadDocuments();
     }
   };
@@ -165,7 +170,7 @@ export function UploadedDocumentsModal({
   // Handle delete document
   const handleDeleteDoc = async (doc: DocumentItem, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm(`Are you sure you want to delete "${doc.title}"?`)) return;
+    if (!confirm('Are you sure you want to delete "' + doc.title + '"?')) return;
 
     setDeletingId(doc.id);
     try {
@@ -176,9 +181,9 @@ export function UploadedDocumentsModal({
         next.delete(doc.id);
         return next;
       });
-      toast.success(`Deleted "${doc.title}"`);
+      toast.success('Deleted "' + doc.title + '"');
     } catch (err: any) {
-      toast.error(`Failed to delete document: ${err?.message || 'Error'}`);
+      toast.error('Failed to delete document: ' + (err?.message || 'Error'));
     } finally {
       setDeletingId(null);
     }
@@ -228,6 +233,26 @@ export function UploadedDocumentsModal({
     return list;
   }, [documents, selectedCategory, search]);
 
+  // Counts per category
+  const categoryCounts = useMemo(() => {
+    const counts: Record<FileCategory, number> = {
+      all: documents.length,
+      pdf: 0,
+      doc_text: 0,
+      spreadsheet: 0,
+      image: 0,
+      code: 0,
+      other: 0,
+    };
+    for (const doc of documents) {
+      const cat = getDocumentCategory(doc.title, doc.type);
+      if (counts[cat] !== undefined) {
+        counts[cat]++;
+      }
+    }
+    return counts;
+  }, [documents]);
+
   // Toggle select item
   const toggleSelect = (doc: DocumentItem) => {
     setSelectedDocs((prev) => {
@@ -250,7 +275,7 @@ export function UploadedDocumentsModal({
     };
     onSelectItem?.(payload);
     onSelectItems?.([payload]);
-    toast.success(`Attached "${payload.name}" to chat`);
+    toast.success('Attached "' + payload.name + '" to chat');
     onClose();
   };
 
@@ -269,7 +294,7 @@ export function UploadedDocumentsModal({
       list.forEach((doc) => onSelectItem(doc));
     }
 
-    toast.success(`Attached ${list.length} ${list.length === 1 ? 'document' : 'documents'} to chat`);
+    toast.success('Attached ' + list.length + ' ' + (list.length === 1 ? 'document' : 'documents') + ' to chat');
     onClose();
   };
 
@@ -277,11 +302,8 @@ export function UploadedDocumentsModal({
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] h-[580px] flex flex-col p-0 overflow-hidden rounded-lg bg-background border border-border/60 shadow-raised-400">
-          {/* Header: Title and icon only */}
-          <DialogHeader className="px-5 py-3.5 border-b border-border/50 flex flex-row items-center gap-2.5 shrink-0">
-            <div className="size-7 rounded-md bg-muted/60 flex items-center justify-center text-muted-foreground shrink-0">
-              <UploadCloud className="size-4" strokeWidth={1.5} />
-            </div>
+          {/* Header: Title only with compact spacing */}
+          <DialogHeader className="px-5 pt-3.5 pb-1 flex flex-row items-center shrink-0">
             <DialogTitle className="text-14 font-semibold text-foreground">
               Uploaded documents
             </DialogTitle>
@@ -290,31 +312,46 @@ export function UploadedDocumentsModal({
           {/* Main Body: Sidebar + Main Content Area */}
           <div className="flex-1 flex min-h-0">
             {/* Left Sidebar: Categories */}
-            <div className="w-48 bg-muted/20 border-r border-border/50 p-2.5 overflow-y-auto space-y-1 shrink-0 select-none">
-              <p className="px-2 pb-1.5 text-11 font-medium text-muted-foreground">
+            <div className="w-48 bg-muted/20 border-r border-border/50 px-2.5 pt-1 pb-2 overflow-y-auto space-y-1 shrink-0 select-none">
+              <p className="px-2 pb-1 text-11 font-medium text-muted-foreground">
                 Categories
               </p>
 
               {CATEGORY_ITEMS.map((cat) => {
                 const Icon = cat.icon;
                 const isActive = selectedCategory === cat.id;
+                const count = categoryCounts[cat.id] || 0;
                 return (
                   <button
                     key={cat.id}
                     type="button"
                     onClick={() => setSelectedCategory(cat.id)}
                     className={cn(
-                      'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-12 text-left cursor-pointer transition-colors',
+                      'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-12 text-left cursor-pointer transition-colors group',
                       isActive
                         ? 'bg-background text-foreground font-medium shadow-xs border border-border/60'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 font-normal border border-transparent'
                     )}
                   >
-                    <Icon
-                      className={cn('size-3.5 shrink-0', isActive ? 'text-foreground' : 'text-muted-foreground')}
-                      strokeWidth={1.5}
-                    />
-                    <span className="truncate">{cat.label}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Icon
+                        className={cn('size-3.5 shrink-0', isActive ? 'text-foreground' : 'text-muted-foreground')}
+                        strokeWidth={1.5}
+                      />
+                      <span className="truncate">{cat.label}</span>
+                    </div>
+                    {count > 0 && (
+                      <span
+                        className={cn(
+                          'text-11 px-1.5 py-0.2 rounded tabular-nums font-normal shrink-0',
+                          isActive
+                            ? 'text-foreground bg-muted font-medium'
+                            : 'text-muted-foreground/70 group-hover:text-muted-foreground'
+                        )}
+                      >
+                        {count}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -322,9 +359,9 @@ export function UploadedDocumentsModal({
 
             {/* Right Main Content: Toolbar + Document List */}
             <div className="flex-1 flex flex-col min-w-0">
-              {/* Toolbar: Search input + Actions (Refresh, Upload) */}
-              <div className="p-3 pb-2 flex items-center justify-between gap-2 shrink-0">
-                <div className="relative flex-1 max-w-xs">
+              {/* Toolbar: Search input (flex-1) + Upload button placed directly adjacent */}
+              <div className="px-3 pt-1 pb-2 flex items-center gap-2 shrink-0">
+                <div className="relative flex-1">
                   <Search
                     className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none"
                     strokeWidth={1.5}
@@ -350,43 +387,28 @@ export function UploadedDocumentsModal({
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={loadDocuments}
-                    disabled={loading}
-                    className="h-8 px-2.5 text-12 font-medium rounded-md border-border bg-background hover:bg-muted text-foreground cursor-pointer shadow-none gap-1.5"
-                    title="Refresh document list"
-                  >
-                    <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} />
-                    <span className="hidden sm:inline">Refresh</span>
-                  </Button>
-
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="h-8 px-3 text-12 font-medium rounded-md cursor-pointer shadow-none gap-1.5"
-                  >
-                    {isUploading ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <UploadCloud className="size-3.5" />
-                    )}
-                    <span>Upload</span>
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    className="hidden"
-                    onChange={handleFileUpload}
-                    accept=".pdf,.doc,.docx,.txt,.md,.csv,.xls,.xlsx,.json,.ts,.tsx,.js,.py"
-                  />
-                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="h-8 px-3 text-12 font-medium rounded-md cursor-pointer shadow-none gap-1.5 shrink-0"
+                >
+                  {isUploading ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <UploadCloud className="size-3.5" />
+                  )}
+                  <span>Upload</span>
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  accept=".pdf,.doc,.docx,.txt,.md,.tex,.bib,.csv,.tsv,.xls,.xlsx,.json,.ts,.tsx,.js,.jsx,.py,.r,.sh,.sql,.png,.jpg,.jpeg,.svg,.webp"
+                />
               </div>
 
               {/* Document List Scroll Area */}
@@ -398,34 +420,23 @@ export function UploadedDocumentsModal({
                   </div>
                 ) : error ? (
                   <PlaneErrorState
+                    error={error || new Error('Internal Server Error')}
                     title="Failed to load documents"
-                    description={error}
+                    description={typeof error === 'string' ? error : 'An error occurred while loading documents. Please try again.'}
+                    reset={loadDocuments}
                     className="min-h-0 py-8 px-4"
                   />
                 ) : filteredDocs.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center py-16 text-center px-4">
-                    <div className="size-10 rounded-full bg-muted/50 flex items-center justify-center mb-3">
-                      <Database className="size-5 text-muted-foreground/60" strokeWidth={1.5} />
-                    </div>
-                    <p className="text-13 font-medium text-foreground">No documents found</p>
-                    <p className="text-12 text-muted-foreground mt-1 max-w-xs leading-normal">
-                      {search
-                        ? 'No uploaded documents match your search query.'
-                        : 'Upload files to make them available for AI companion context.'}
-                    </p>
-                    {!search && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="mt-3.5 h-8 px-3 text-12 font-medium rounded-md gap-1.5 cursor-pointer border-border hover:bg-muted"
-                      >
-                        <UploadCloud className="size-3.5" />
-                        <span>Upload files</span>
-                      </Button>
-                    )}
-                  </div>
+                  <StorageEmptyState
+                    searchQuery={search}
+                    title={search ? 'No matching documents' : 'No documents found'}
+                    description={
+                      search
+                        ? 'No documents found matching "' + search + '". Try searching with different keywords.'
+                        : 'Upload files to make them available for AI companion context.'
+                    }
+                    className="min-h-0 py-8 px-4"
+                  />
                 ) : (
                   <div className="space-y-0.5">
                     {filteredDocs.map((doc) => {
@@ -508,7 +519,7 @@ export function UploadedDocumentsModal({
           </div>
 
           {/* Footer: 2 buttons only (Cancel, Attach) */}
-          <div className="px-4 py-3 border-t border-border/50 flex items-center justify-end gap-2 shrink-0 select-none bg-background">
+          <div className="px-4 py-3 flex items-center justify-end gap-2 shrink-0 select-none bg-background">
             <Button
               type="button"
               variant="outline"

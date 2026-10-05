@@ -5,15 +5,15 @@ async function getPdfjs() {
   try {
     const pdfModule = await import('pdfjs-dist/legacy/build/pdf.mjs');
     const pdfjs = (pdfModule as any).default || pdfModule;
-    if (pdfjs?.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
-      pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
+    if (pdfjs?.GlobalWorkerOptions) {
+      pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
     }
     return pdfjs;
   } catch {
     try {
       const { pdfjs } = await import('react-pdf');
-      if (pdfjs?.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
-        pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
+      if (pdfjs?.GlobalWorkerOptions) {
+        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
       }
       return pdfjs;
     } catch {

@@ -4,7 +4,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Plus, Search, X, Loader2 } from 'lucide-react';
 import { useSticky } from '@/features/projects/stickies/hooks/use-sticky';
-import { STICKY_COLOR_MAP, type Sticky, type StickyColor } from '@/features/projects/stickies/types/sticky.types';
+import { getStickyColorConfig, type Sticky, type StickyColor } from '@/features/projects/stickies/types/sticky.types';
 import Content from '@/features/projects/stickies/components/card/Content';
 import Toolbar from '@/features/projects/stickies/components/card/Toolbar';
 import { StickiesIcon } from '@/shared/components/icons/StickiesIcon';
@@ -104,8 +104,7 @@ const ModalStickyCard = React.memo(function ModalStickyCard({
 }: ModalStickyCardProps) {
   const [editor, setEditor] = useState<StickiesEditorHandle | null>(null);
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  const currentColor = (sticky.color as StickyColor) || 'yellow-1';
-  const colorConfig = STICKY_COLOR_MAP[currentColor] || STICKY_COLOR_MAP['yellow-1'];
+  const colorConfig = getStickyColorConfig(sticky?.color);
 
   return (
     <div
@@ -205,8 +204,7 @@ export default function StickyDock() {
     }
   };
 
-  const currentColor = (activeSticky?.color as StickyColor) || 'pink-1';
-  const colorConfig = STICKY_COLOR_MAP[currentColor] || STICKY_COLOR_MAP['pink-1'];
+  const colorConfig = getStickyColorConfig(activeSticky?.color || 'pink-1');
 
   return (
     <>

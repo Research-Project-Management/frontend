@@ -229,6 +229,9 @@ export const ItemsService = {
   },
 
   getCounts: (scopeId?: string) => {
+    if (scopeId === 'adam-research' || scopeId === 'demo' || scopeId?.startsWith('mock-')) {
+      return Promise.resolve({ total: 0, unfiled: 0, starred: 0, trash: 0 });
+    }
     return apiGet<{ total: number; unfiled: number; starred: number; trash: number }>(
       getItemUrl(scopeId, 'counts'),
     );
@@ -247,6 +250,15 @@ export const ItemsService = {
       [key: string]: any;
     },
   ) => {
+    if (scopeId === 'adam-research' || scopeId === 'demo' || scopeId?.startsWith('mock-')) {
+      return Promise.resolve({
+        items: [],
+        papers: [],
+        total: 0,
+        meta: undefined,
+        pagination: undefined,
+      });
+    }
     const formattedParams = params
       ? {
           ...params,
@@ -567,8 +579,6 @@ export interface ItemMetadataSourcesResponse {
 }
 
 export const ItemService = ItemsService;
-export const PaperService = ItemsService;
-export const PapersService = ItemsService;
 
 // ── 2. CollectionsService ─────────────────────────────────────────────────────
 
@@ -711,9 +721,6 @@ export const getCollections = CollectionsService.getAll;
 export const createCollection = CollectionsService.create;
 export const updateCollection = CollectionsService.update;
 export const deleteCollection = CollectionsService.delete;
-export const moveItemsToCollection = CollectionsService.moveItems;
-export const movePapersToCollection = CollectionsService.movePapers;
-export const reorderCollections = CollectionsService.reorder;
 export const CollectionService = CollectionsService;
 
 // ── 3. TagsService ────────────────────────────────────────────────────────────
@@ -1029,9 +1036,7 @@ export const StateService = {
   },
 };
 
-export const ReadingService = StateService;
 export const ItemStateService = StateService;
-export const UserStateService = StateService;
 
 // ── 6. ItemTypesService ───────────────────────────────────────────────────────
 
@@ -1105,8 +1110,6 @@ export const ItemTypesService = {
     );
   },
 };
-
-export const TypesService = ItemTypesService;
 
 // ── 7. SavedSearchesService ───────────────────────────────────────────────────
 

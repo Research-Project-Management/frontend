@@ -43,7 +43,7 @@ export function WorkItemProgressCard({
   const backlogPct = actionableTotal > 0 ? (backlog / actionableTotal) * 100 : 0;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 flex flex-col gap-4">
+    <div className="rounded-md border border-border bg-card p-5 flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -102,7 +102,7 @@ export function WorkItemProgressCard({
         {/* Legend / Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
           {/* Completed */}
-          <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 p-2.5">
+          <div className="flex items-center gap-2 rounded-md border border-border bg-background/50 p-2.5">
             <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
             <div className="flex flex-col min-w-0">
               <span className="text-11 text-muted-foreground font-medium">Completed</span>
@@ -116,7 +116,7 @@ export function WorkItemProgressCard({
           </div>
 
           {/* In Progress / Started */}
-          <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 p-2.5">
+          <div className="flex items-center gap-2 rounded-md border border-border bg-background/50 p-2.5">
             <Clock className="size-4 text-amber-500 shrink-0" />
             <div className="flex flex-col min-w-0">
               <span className="text-11 text-muted-foreground font-medium">Started</span>
@@ -130,7 +130,7 @@ export function WorkItemProgressCard({
           </div>
 
           {/* Unstarted */}
-          <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 p-2.5">
+          <div className="flex items-center gap-2 rounded-md border border-border bg-background/50 p-2.5">
             <CircleDot className="size-4 text-blue-500 shrink-0" />
             <div className="flex flex-col min-w-0">
               <span className="text-11 text-muted-foreground font-medium">Unstarted</span>
@@ -144,7 +144,7 @@ export function WorkItemProgressCard({
           </div>
 
           {/* Backlog */}
-          <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 p-2.5">
+          <div className="flex items-center gap-2 rounded-md border border-border bg-background/50 p-2.5">
             <Inbox className="size-4 text-slate-400 shrink-0" />
             <div className="flex flex-col min-w-0">
               <span className="text-11 text-muted-foreground font-medium">Backlog</span>
@@ -161,7 +161,7 @@ export function WorkItemProgressCard({
 
       {/* Overdue alert banner if > 0 */}
       {overdue > 0 && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs text-destructive">
+        <div className="flex items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs text-destructive">
           <div className="flex items-center gap-2 font-medium">
             <AlertTriangle className="size-4 shrink-0 text-destructive" />
             <span>

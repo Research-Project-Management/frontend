@@ -57,7 +57,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
   return (
     <div
       className={cn(
-        'flex flex-col select-none relative border-t border-border bg-background',
+        'flex flex-col select-none relative border-t border-border/60 bg-transparent mb-1',
         !isFileTreeOpen && isOutlineOpen ? 'flex-1 min-h-0' : 'shrink-0',
       )}
     >
@@ -76,12 +76,12 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
         onClick={() => setIsOutlineOpen((value) => !value)}
         aria-expanded={isOutlineOpen}
         aria-label={isOutlineOpen ? 'Collapse file outline' : 'Expand file outline'}
-        className="flex h-9 w-full items-center justify-between px-3 text-left text-13 font-semibold tracking-tight text-foreground transition-colors hover:bg-muted/50 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
+        className="flex h-9 w-full items-center justify-between px-3 text-left text-13 font-semibold tracking-tight text-foreground transition-colors hover:bg-muted/50 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-inset"
       >
         <div className="flex items-center gap-1.5 min-w-0">
           <ChevronRight
             className={cn(
-              'size-3.5 shrink-0 transition-transform duration-150 text-muted-foreground',
+              'size-3.5 shrink-0 transition-transform duration-150 text-foreground',
               isOutlineOpen && 'rotate-90',
             )}
             strokeWidth={1.75}
@@ -89,7 +89,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
           <span className="truncate">File outline</span>
         </div>
         {outline.length > 0 && (
-          <span className="rounded-full bg-muted px-1.5 py-0.2 text-10 font-mono font-medium text-muted-foreground">
+          <span className="rounded-full bg-muted px-1.5 py-0.5 text-11 font-mono font-medium text-foreground">
             {outline.length}
           </span>
         )}
@@ -100,7 +100,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
         <div
           style={isFileTreeOpen ? { height: `${outlineHeight}px` } : undefined}
           className={cn(
-            'overflow-y-auto pb-1',
+            'overflow-y-auto pb-3',
             !isFileTreeOpen && 'flex-1 min-h-0',
           )}
         >
@@ -120,13 +120,13 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
                   paddingLeft: `${16 + OUTLINE_INDENT[entry.level]}px`,
                 }}
                 className={cn(
-                  'flex h-7.5 w-full items-center gap-2 pr-2 text-left text-13 tracking-tight transition-colors hover:bg-muted/60 cursor-pointer outline-none focus-visible:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset text-foreground',
+                  'flex h-7.5 w-full items-center gap-2 pr-2 text-left text-13 tracking-tight transition-colors hover:bg-muted/60 cursor-pointer outline-none focus-visible:bg-muted focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-inset text-foreground',
                   entry.level === 0 ? 'font-medium' : 'font-normal text-foreground/90',
                 )}
               >
                 <ChevronRight
                   className={cn(
-                    'shrink-0 text-muted-foreground',
+                    'shrink-0 text-foreground',
                     entry.level === 0 ? 'size-3.5' : 'size-3',
                   )}
                   strokeWidth={1.5}

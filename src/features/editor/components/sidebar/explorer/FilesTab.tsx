@@ -13,10 +13,14 @@ import {
   FileCode2,
   FileText,
   Folder,
+  FolderOpen,
+  ChevronRight,
   Loader2,
   Search,
   Upload,
 } from 'lucide-react';
+import { DropdownMenuItem } from '@/shared/components/ui/dropdown-menu';
+import { cn } from '@/shared/lib/utils';
 import { useEditorStorage } from '@/features/editor/hooks/use-storage';
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 import {
@@ -58,6 +62,8 @@ import {
   InlineInput,
   StorageFolderNode,
   StorageFileRow,
+  IndentGuides,
+  RowActions,
 } from './FileTreeNodes';
 import { UploadConflictDialog } from './UploadConflictDialog';
 import { FileOutlineSection } from './FileOutlineSection';
@@ -239,12 +245,19 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
   const handleFileClick = useCallback(
     (fileId: string, title: string) => {
-      const activeFileId = searchParams.get('file') ?? pageId;
-      if (fileId === activeFileId) return;
+      const isTargetMain = fileId === pageId || fileId === parentPageId || fileId === mainFileId || title.toLowerCase() === 'main.tex';
+      const currentParam = searchParams.get('file');
+      if (isTargetMain && !currentParam) return;
+      if (!isTargetMain && fileId === currentParam) return;
+
       if (parentPageId) openTab(parentPageId, { id: fileId, title });
-      setSearchParams({ file: fileId });
+      if (isTargetMain) {
+        setSearchParams({ file: '' });
+      } else {
+        setSearchParams({ file: fileId });
+      }
     },
-    [searchParams, pageId, parentPageId, openTab, setSearchParams],
+    [searchParams, pageId, parentPageId, mainFileId, openTab, setSearchParams],
   );
 
   const handleStartCreate = () => {
@@ -439,52 +452,191 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     toast.success(`Copied ${snippet} to clipboard`);
   }, []);
 
-  // Build unified file tree items
-  type UnifiedItem =
-    | { kind: 'folder'; data: StorageItem }
-    | { kind: 'asset'; data: StorageItem }
+  // ── Hierarchical Tree Types ───────────────────────────────────────────────
+  type FileTreeNode =
     | {
-        kind: 'tex';
-        data: { id: string; title: string; updatedAt: string };
+        type: 'folder';
+        id: string;
+        name: string;
+        fullPath: string;
+        children: FileTreeNode[];
+        storageData?: StorageItem;
+      }
+    | {
+        type: 'file';
+        id: string;
+        title: string;        // canonical title/path, e.g. "sections/01_abstract.tex"
+        displayLabel: string; // clean leaf name, e.g. "01_abstract.tex"
+        updatedAt?: string;
+        kind: 'tex' | 'asset';
+        storageData?: StorageItem;
       };
 
-  const items = useMemo(() => {
-    const list: UnifiedItem[] = [];
-    const existingTexNames = new Set<string>();
+  const treeItems = useMemo<FileTreeNode[]>(() => {
+    const rootFiles: Extract<FileTreeNode, { type: 'file' }>[] = [];
+    const folderMap = new Map<
+      string,
+      {
+        type: 'folder';
+        id: string;
+        name: string;
+        fullPath: string;
+        children: FileTreeNode[];
+        storageData?: StorageItem;
+      }
+    >();
 
+    // 1. Explicit storage folders from projectFiles
     projectFiles?.forEach((f: any) => {
-      if (f.isFolder) {
-        if (f.id !== projectId && f.id !== parentPageId) {
-          list.push({ kind: 'folder', data: f });
+      if (f.isFolder && f.id !== projectId && f.id !== parentPageId) {
+        const name = (f.filename || '').trim();
+        if (name && !folderMap.has(name)) {
+          folderMap.set(name, {
+            type: 'folder',
+            id: f.id || `folder:${name}`,
+            name,
+            fullPath: name,
+            children: [],
+            storageData: f,
+          });
         }
       }
     });
 
-    const fileItems: UnifiedItem[] = [];
+    const existingTexTitles = new Set<string>();
+
+    // Helper to intelligently categorize flat research files into Overleaf standard folders
+    const inferResearchFolder = (filename: string): string | null => {
+      const lower = filename.toLowerCase();
+      if (lower === 'main.tex' || lower === 'preamble.tex' || lower === 'references.bib') {
+        return null;
+      }
+      if (
+        /^\d\d_/.test(lower) ||
+        lower.includes('abstract') ||
+        lower.includes('intro') ||
+        lower.includes('related') ||
+        lower.includes('prelim') ||
+        lower.includes('method') ||
+        lower.includes('theoret') ||
+        lower.includes('experiment') ||
+        lower.includes('ablation') ||
+        lower.includes('discuss') ||
+        lower.includes('conclu')
+      ) {
+        return 'sections';
+      }
+      if (lower.startsWith('table') || lower.includes('benchmark')) {
+        return 'tables';
+      }
+      if (lower.startsWith('alg') || lower.includes('algorithm')) {
+        return 'algorithms';
+      }
+      if (lower.startsWith('appendix') || lower.startsWith('app_')) {
+        return 'appendices';
+      }
+      if (lower.startsWith('math_') || lower.startsWith('notation_') || lower.includes('macro')) {
+        return 'macros';
+      }
+      if (lower.endsWith('.sty') || lower.endsWith('.cls') || lower.includes('style')) {
+        return 'styles';
+      }
+      if (lower.startsWith('fig') || /\.(png|jpe?g|svg|webp|eps)$/i.test(lower)) {
+        return 'figures';
+      }
+      if (lower.includes('slide') || lower.includes('defense') || lower.includes('beamer')) {
+        return 'supplementary';
+      }
+      return null;
+    };
+
+    // 2. Process TeX files
     files?.forEach((f: any) => {
-      fileItems.push({ kind: 'tex', data: f });
-      existingTexNames.add(displayName(f.title).toLowerCase());
+      const rawPath = (f.title || '').trim().replace(/\\/g, '/');
+      if (!rawPath) return;
+      existingTexTitles.add(rawPath.toLowerCase());
+
+      const parts = rawPath.split('/').filter(Boolean);
+      if (parts.length <= 1) {
+        const rawFileName = displayName(parts[0] || f.title);
+        const inferredFolder = inferResearchFolder(rawFileName);
+
+        if (inferredFolder) {
+          if (!folderMap.has(inferredFolder)) {
+            folderMap.set(inferredFolder, {
+              type: 'folder',
+              id: `folder:${inferredFolder}`,
+              name: inferredFolder,
+              fullPath: inferredFolder,
+              children: [],
+            });
+          }
+          folderMap.get(inferredFolder)!.children.push({
+            type: 'file',
+            id: f.id,
+            title: f.title,
+            displayLabel: rawFileName,
+            updatedAt: f.updatedAt,
+            kind: 'tex',
+          });
+        } else {
+          rootFiles.push({
+            type: 'file',
+            id: f.id,
+            title: f.title,
+            displayLabel: rawFileName,
+            updatedAt: f.updatedAt,
+            kind: 'tex',
+          });
+        }
+      } else {
+        const folderName = parts[0];
+        if (!folderMap.has(folderName)) {
+          folderMap.set(folderName, {
+            type: 'folder',
+            id: `folder:${folderName}`,
+            name: folderName,
+            fullPath: folderName,
+            children: [],
+          });
+        }
+        const leafName = parts.slice(1).join('/');
+        folderMap.get(folderName)!.children.push({
+          type: 'file',
+          id: f.id,
+          title: f.title,
+          displayLabel: displayName(leafName),
+          updatedAt: f.updatedAt,
+          kind: 'tex',
+        });
+      }
     });
 
-    // Ensure parentPage is always visible in the tree even before child files are created or fetched
-    if (parentPage && !fileItems.some((f) => f.data.id === parentPage.id)) {
-      fileItems.unshift({
+    // Check if main.tex already exists; do NOT duplicate parentPage if main.tex is present
+    const hasMain =
+      rootFiles.some(
+        (rf) =>
+          rf.type === 'file' &&
+          (rf.displayLabel.toLowerCase() === 'main.tex' || rf.id === mainFileId)
+      ) || existingTexTitles.has('main.tex');
+
+    if (parentPage && !hasMain) {
+      rootFiles.unshift({
+        type: 'file',
+        id: parentPage.id,
+        title: 'main.tex',
+        displayLabel: 'main.tex',
+        updatedAt: parentPage.updatedAt || new Date().toISOString(),
         kind: 'tex',
-        data: {
-          id: parentPage.id,
-          title: parentPage.title || 'main.tex',
-          updatedAt: parentPage.updatedAt || new Date().toISOString(),
-        },
       });
-      existingTexNames.add(displayName(parentPage.title || 'main.tex').toLowerCase());
     }
 
+    // 3. Storage assets / files
     projectFiles?.forEach((f: any) => {
       if (f.isFolder) return;
       const fname = (f.filename || '').trim();
-
-      // Filter out root buckets, placeholders, or invalid items without extension
       if (
+        !fname ||
         f.id === projectId ||
         f.id === parentPageId ||
         fname.toLowerCase() === 'flux' ||
@@ -493,48 +645,329 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       ) {
         return;
       }
-
       if (!fname.includes('.') && (!f.size || f.size === 0) && !f.url) {
         return;
       }
+      if (existingTexTitles.has(fname.toLowerCase())) return;
 
-      // If storage has a file matching an existing .tex document, skip storage duplicate
-      if (existingTexNames.has(fname.toLowerCase())) {
-        return;
+      const rawPath = fname.replace(/\\/g, '/');
+      const parts = rawPath.split('/').filter(Boolean);
+      if (parts.length <= 1) {
+        rootFiles.push({
+          type: 'file',
+          id: f.id,
+          title: f.filename,
+          displayLabel: parts[0],
+          kind: 'asset',
+          storageData: f,
+        });
+      } else {
+        const folderName = parts[0];
+        if (!folderMap.has(folderName)) {
+          folderMap.set(folderName, {
+            type: 'folder',
+            id: `folder:${folderName}`,
+            name: folderName,
+            fullPath: folderName,
+            children: [],
+          });
+        }
+        folderMap.get(folderName)!.children.push({
+          type: 'file',
+          id: f.id,
+          title: f.filename,
+          displayLabel: parts.slice(1).join('/'),
+          kind: 'asset',
+          storageData: f,
+        });
       }
-
-      fileItems.push({ kind: 'asset', data: f });
     });
 
-    fileItems.sort((a, b) => {
-      const nameA = a.kind === 'tex' ? a.data.title : a.data.filename;
-      const nameB = b.kind === 'tex' ? b.data.title : b.data.filename;
-      return nameA.localeCompare(nameB);
+    // Sort root files: main.tex (1), preamble.tex (2), references.bib (3), others (10)
+    const getRootFilePriority = (item: Extract<FileTreeNode, { type: 'file' }>) => {
+      const lower = item.displayLabel.toLowerCase();
+      if (item.id === mainFileId || lower === 'main.tex') return 1;
+      if (lower === 'preamble.tex') return 2;
+      if (lower === 'references.bib') return 3;
+      return 10;
+    };
+
+    rootFiles.sort((a, b) => {
+      const prioA = getRootFilePriority(a);
+      const prioB = getRootFilePriority(b);
+      if (prioA !== prioB) return prioA - prioB;
+      return a.displayLabel.localeCompare(b.displayLabel, undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
     });
 
-    list.push(...fileItems);
-    return list;
-  }, [projectFiles, files, parentPage, projectId, parentPageId]);
+    // Sort folders in Overleaf research sequence
+    const getFolderPriority = (folderName: string) => {
+      const f = folderName.toLowerCase();
+      if (f === 'sections' || f === 'chapters' || f === 'src') return 10;
+      if (f === 'figures' || f === 'images' || f === 'plots') return 20;
+      if (f === 'tables') return 30;
+      if (f === 'algorithms') return 40;
+      if (f.startsWith('appendi')) return 50;
+      if (f === 'macros') return 60;
+      if (f === 'styles') return 70;
+      if (f === 'supplementary') return 80;
+      return 90;
+    };
 
-  const displayItems = useMemo(() => {
+    const sortedFolders = Array.from(folderMap.values()).sort((a, b) => {
+      const prioA = getFolderPriority(a.name);
+      const prioB = getFolderPriority(b.name);
+      if (prioA !== prioB) return prioA - prioB;
+      return a.name.localeCompare(b.name, undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
+    });
+
+    // Sort children inside each folder naturally
+    sortedFolders.forEach((folder) => {
+      folder.children.sort((a, b) => {
+        if (a.type === 'file' && b.type === 'file') {
+          return a.displayLabel.localeCompare(b.displayLabel, undefined, {
+            numeric: true,
+            sensitivity: 'base',
+          });
+        }
+        return 0;
+      });
+    });
+
+    // Clean document organization: Group root document files together (main.tex, preamble.tex, references.bib), then structured resource folders
+    return [...rootFiles, ...sortedFolders];
+  }, [projectFiles, files, parentPage, projectId, parentPageId, mainFileId]);
+
+  const displayTree = useMemo<FileTreeNode[]>(() => {
     const trimmedFilter = fileFilter.trim().toLowerCase();
-    if (!trimmedFilter) return items;
-    return items.filter((item) => {
-      if (item.kind === 'folder') {
-        return item.data.filename.toLowerCase().includes(trimmedFilter);
+    if (!trimmedFilter) return treeItems;
+
+    const filterNodes = (nodes: FileTreeNode[]): FileTreeNode[] => {
+      const res: FileTreeNode[] = [];
+      for (const node of nodes) {
+        if (node.type === 'file') {
+          if (
+            node.displayLabel.toLowerCase().includes(trimmedFilter) ||
+            node.title.toLowerCase().includes(trimmedFilter)
+          ) {
+            res.push(node);
+          }
+        } else {
+          const matchingChildren = filterNodes(node.children);
+          if (
+            node.name.toLowerCase().includes(trimmedFilter) ||
+            matchingChildren.length > 0
+          ) {
+            res.push({
+              ...node,
+              children: matchingChildren.length > 0 ? matchingChildren : node.children,
+            });
+          }
+        }
       }
-      if (item.kind === 'asset') {
-        return item.data.filename.toLowerCase().includes(trimmedFilter);
+      return res;
+    };
+
+    return filterNodes(treeItems);
+  }, [treeItems, fileFilter]);
+
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => {
+    return new Set(['sections', 'supplementary']);
+  });
+
+  const toggleFolder = useCallback((folderKey: string) => {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(folderKey)) {
+        next.delete(folderKey);
+      } else {
+        next.add(folderKey);
       }
-      return item.data.title.toLowerCase().includes(trimmedFilter);
+      return next;
     });
-  }, [items, fileFilter]);
+  }, []);
+
+  const renderTreeNode = useCallback(
+    (node: FileTreeNode, depth = 0): React.ReactNode => {
+      if (node.type === 'folder') {
+        const isExpanded = fileFilter.trim()
+          ? true
+          : expandedFolders.has(node.name) || expandedFolders.has(node.id);
+
+        return (
+          <div key={node.id} className="flex flex-col">
+            <div
+              role="button"
+              tabIndex={0}
+              aria-expanded={isExpanded}
+              aria-label={`Folder ${node.name}`}
+              onClick={() => toggleFolder(node.name)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggleFolder(node.name);
+                }
+              }}
+              className={cn(
+                'group/row relative flex h-7.5 w-full items-center gap-1.5 rounded-md px-2 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground',
+                'text-foreground hover:bg-muted/60 font-normal',
+              )}
+              style={{ paddingLeft: '8px' }}
+            >
+              <IndentGuides depth={depth} />
+              <ChevronRight
+                className={cn(
+                  'size-3.5 shrink-0 text-foreground transition-transform duration-150',
+                  isExpanded && 'rotate-90',
+                )}
+                strokeWidth={1.75}
+              />
+              {isExpanded ? (
+                <FolderOpen className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+              ) : (
+                <Folder className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+              )}
+
+              <span className="flex-1 min-w-0 truncate font-mono text-12 font-medium tracking-tight text-foreground">
+                {node.name}
+              </span>
+
+              <RowActions>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setNewFileName(`${node.name}/`);
+                    setIsCreatingFile(true);
+                  }}
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                >
+                  <FileCode2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span>New file in {node.name}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleUploadToFolder([], node.id);
+                  }}
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                >
+                  <Upload className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span>Upload to {node.name}</span>
+                </DropdownMenuItem>
+              </RowActions>
+            </div>
+
+            {isExpanded && (
+              <div className="flex flex-col">
+                {node.children.length === 0 ? (
+                  <div
+                    className="flex h-7 items-center text-11 italic text-muted-foreground/60 select-none"
+                    style={{ paddingLeft: `${8 + (depth + 1) * 14 + 20}px` }}
+                  >
+                    Empty folder
+                  </div>
+                ) : (
+                  node.children.map((child) => renderTreeNode(child, depth + 1))
+                )}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // It's a file node
+      if (node.kind === 'asset') {
+        const storageItem: StorageItem = node.storageData || {
+          id: node.id,
+          filename: node.displayLabel,
+          isFolder: false,
+          size: 0,
+        };
+        return (
+          <StorageFileRow
+            key={node.id}
+            item={storageItem}
+            depth={depth}
+            onInsertAsset={handleInsertAsset}
+            onPreview={handleOpenPreview}
+            projectId={projectId}
+          />
+        );
+      }
+
+      // kind === 'tex'
+      const activeId = activeFilePage?.id ?? (searchParams.get('file') || pageId);
+      const isActive =
+        node.id === activeId ||
+        node.title === activeId ||
+        (activeId === pageId && (node.id === mainFileId || node.displayLabel === 'main.tex'));
+      const isMain =
+        node.id === mainFileId ||
+        node.displayLabel.toLowerCase() === 'main.tex' ||
+        node.title === 'main.tex' ||
+        node.id === `${parentPageId}-main`;
+
+      return (
+        <TexFileRow
+          key={node.id}
+          file={{ id: node.id, title: node.title, updatedAt: node.updatedAt }}
+          depth={depth}
+          displayLabel={node.displayLabel}
+          isActive={isActive}
+          isMain={isMain}
+          isRenaming={renamingId === node.id}
+          renameValue={renameValue}
+          isRenamePending={updateTitleMutation.isPending}
+          onFileClick={handleFileClick}
+          onStartRename={handleStartRename}
+          onRenameChange={setRenameValue}
+          onCommitRename={handleCommitRename}
+          onCancelRename={() => setRenamingId(null)}
+          onDelete={handleDelete}
+          onSetMain={handleSetMain}
+          onDownload={handleDownloadTex}
+          onCopyCommand={handleCopyTexCommand}
+        />
+      );
+    },
+    [
+      fileFilter,
+      expandedFolders,
+      toggleFolder,
+      activeFilePage,
+      searchParams,
+      pageId,
+      mainFileId,
+      parentPageId,
+      renamingId,
+      renameValue,
+      updateTitleMutation.isPending,
+      handleFileClick,
+      handleStartRename,
+      handleCommitRename,
+      handleDelete,
+      handleSetMain,
+      handleDownloadTex,
+      handleCopyTexCommand,
+      handleInsertAsset,
+      handleOpenPreview,
+      handleUploadToFolder,
+      projectId,
+    ],
+  );
 
   return (
     <>
-      <div className="w-full h-full flex flex-col select-none text-sm bg-background">
+      <div className="w-full h-full flex flex-col select-none text-sm bg-transparent">
         {/* Hidden upload inputs */}
         <input
+          id="editor-combined-file-upload"
+          name="combinedFileUpload"
           ref={combinedUploadRef}
           type="file"
           multiple
@@ -542,6 +975,8 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           onChange={handleFilePicked}
         />
         <input
+          id="editor-folder-upload"
+          name="folderUpload"
           ref={folderUploadRef}
           type="file"
           multiple
@@ -566,7 +1001,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         {/* ── File tree ──────────────────────────────────────────────────────── */}
         {isFileTreeOpen && (
           <div
-            className="relative min-h-0 flex-1 overflow-y-auto"
+            className="relative min-h-0 flex-1 overflow-y-auto px-2 pb-3 thin-scrollbar"
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
             onDragOver={handleDragOver}
@@ -574,11 +1009,11 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           >
             {/* Drag-over overlay */}
             {isDragging && (
-              <div className="absolute inset-1.5 z-10 flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-primary/40 bg-primary/5 pointer-events-none backdrop-blur-[1px]">
-                <div className="p-2 rounded-full bg-primary/10">
-                  <Upload className="size-5 text-primary shrink-0" strokeWidth={1.5} />
+              <div className="absolute inset-1.5 z-10 flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-foreground/40 bg-muted/40 pointer-events-none backdrop-blur-[1px]">
+                <div className="p-2 rounded-full bg-muted">
+                  <Upload className="size-5 text-foreground shrink-0" strokeWidth={1.5} />
                 </div>
-                <span className="text-12 font-medium text-primary">Drop files to upload</span>
+                <span className="text-12 font-medium text-foreground">Drop files to upload</span>
               </div>
             )}
 
@@ -586,7 +1021,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
             {isCreatingFile && (
               <InlineInput
                 icon={FileCode2}
-                iconColor="text-primary"
+                iconColor="text-foreground"
                 value={newFileName}
                 onChange={setNewFileName}
                 placeholder="filename.tex"
@@ -598,7 +1033,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
             {isCreatingFolder && (
               <InlineInput
                 icon={Folder}
-                iconColor="text-warning"
+                iconColor="text-foreground"
                 value={newFolderName}
                 onChange={setNewFolderName}
                 placeholder="folder name"
@@ -626,7 +1061,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
             {/* Uploading indicator */}
             {uploadingCount > 0 && (
               <div className="flex h-8 items-center gap-2 px-3 text-12 text-muted-foreground select-none">
-                <Loader2 className="size-3.5 animate-spin text-primary shrink-0" />
+                <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
                 <span>
                   Uploading {uploadingCount} file{uploadingCount > 1 ? 's' : ''}…
                 </span>
@@ -636,7 +1071,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
             {/* ── UNIFIED FILE TREE ITEMS ─────────────────────────────────────── */}
             {!isLoading && !projectFilesLoading && (
               <>
-                {items.length > 0 && displayItems.length === 0 ? (
+                {treeItems.length > 0 && displayTree.length === 0 ? (
                   <div className="py-6 px-2">
                     <EditorEmptyState
                       variant="search"
@@ -654,81 +1089,17 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
                       }
                     />
                   </div>
-                ) : items.length === 0 && !isCreatingFile && !isCreatingFolder ? (
+                ) : treeItems.length === 0 && !isCreatingFile && !isCreatingFolder ? (
                   <div className="py-6 px-2">
                     <EditorEmptyState
                       variant="files"
                       isCompact
                       title="No files yet"
                       description="Create your first document or upload files to begin editing."
-                      action={
-                        <button
-                          type="button"
-                          onClick={handleStartCreate}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-12 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
-                        >
-                          Create file
-                        </button>
-                      }
                     />
                   </div>
                 ) : (
-                  displayItems.map((item) => {
-                    if (item.kind === 'folder') {
-                      return (
-                        <StorageFolderNode
-                          key={item.data.id}
-                          folder={item.data}
-                          projectId={parentPageId || ''}
-                          depth={0}
-                          onInsertAsset={handleInsertAsset}
-                          onPreview={handleOpenPreview}
-                          onUploadToFolder={handleUploadToFolder}
-                        />
-                      );
-                    }
-
-                    if (item.kind === 'asset') {
-                      return (
-                        <StorageFileRow
-                          key={item.data.id}
-                          item={item.data}
-                          depth={0}
-                          onInsertAsset={handleInsertAsset}
-                          onPreview={handleOpenPreview}
-                          projectId={projectId}
-                        />
-                      );
-                    }
-
-                    // kind === "tex"
-                    const file = item.data;
-                    const activeId =
-                      activeFilePage?.id ?? (searchParams.get('fileId') || pageId);
-                    const isActive = file.id === activeId || file.id === pageId;
-                    const isMain = file.id === mainFileId;
-
-                    return (
-                      <TexFileRow
-                        key={file.id}
-                        file={file}
-                        isActive={isActive}
-                        isMain={isMain}
-                        isRenaming={renamingId === file.id}
-                        renameValue={renameValue}
-                        isRenamePending={updateTitleMutation.isPending}
-                        onFileClick={handleFileClick}
-                        onStartRename={handleStartRename}
-                        onRenameChange={setRenameValue}
-                        onCommitRename={handleCommitRename}
-                        onCancelRename={() => setRenamingId(null)}
-                        onDelete={handleDelete}
-                        onSetMain={handleSetMain}
-                        onDownload={handleDownloadTex}
-                        onCopyCommand={handleCopyTexCommand}
-                      />
-                    );
-                  })
+                  displayTree.map((node) => renderTreeNode(node, 0))
                 )}
               </>
             )}

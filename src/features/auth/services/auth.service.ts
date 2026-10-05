@@ -79,7 +79,7 @@ export const getUser = async (): Promise<AuthUser | null> => {
   }
 
   try {
-    const data = await apiGet<{ user?: AuthUser } & Partial<AuthUser>>('/auth/user');
+    const data = await apiGet<{ user?: AuthUser } & Partial<AuthUser>>('/auth/user', { silent: true });
     const user = data?.user || (data?.id ? (data as AuthUser) : null);
     if (user) {
       if (user.name) {

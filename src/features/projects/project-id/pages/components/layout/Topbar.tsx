@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { PenLine, Search, X, Columns3, AlignJustify } from 'lucide-react';
+import { PenLine, Search, X, Columns3, AlignJustify, ListFilter, Check } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import {
@@ -11,6 +11,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
 import { Switcher } from '@/features/projects/project-id/components/layout/Switcher';
 
@@ -25,6 +30,9 @@ export interface TopbarProps {
   onCreateClick: () => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
+  projectLabels?: Array<{ id: string; name: string; color?: string }>;
+  selectedLabelId?: string | null;
+  onSelectLabelId?: (labelId: string | null) => void;
 }
 
 const VIEW_OPTIONS = [
@@ -39,11 +47,27 @@ export function Topbar({
   onCreateClick,
   searchQuery = '',
   onSearchChange,
+  projectLabels = [],
+  selectedLabelId = null,
+  onSelectLabelId,
 }: TopbarProps) {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filterSearch, setFilterSearch] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isSearching = isSearchExpanded || Boolean(searchQuery);
+
+  const selectedLabel = useMemo(
+    () => projectLabels.find((l) => l.id === selectedLabelId),
+    [projectLabels, selectedLabelId]
+  );
+
+  const filteredLabels = useMemo(() => {
+    if (!filterSearch.trim()) return projectLabels;
+    const q = filterSearch.toLowerCase().trim();
+    return projectLabels.filter((l) => l.name.toLowerCase().includes(q));
+  }, [projectLabels, filterSearch]);
 
   return (
     <header
@@ -57,7 +81,7 @@ export function Topbar({
         moduleIcon={PenLine}
       />
 
-      {/* Right: Collapsible Search, Segmented View Switcher & Add Document CTA */}
+      {/* Right: Collapsible Search, Label Filter, Segmented View Switcher & Add Document CTA */}
       <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 ml-auto">
         {/* Collapsible Search matching Sticky Topbar style: default is an icon button, click to open */}
         <div
@@ -125,6 +149,141 @@ export function Topbar({
           )}
         </div>
 
+        {/* Label Filter Popover Icon Button */}
+        <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className={cn(
+                      'relative size-8 rounded-md bg-transparent border-border/60 hover:bg-muted text-foreground cursor-pointer transition-colors shadow-none shrink-0',
+                      selectedLabelId && 'bg-muted border-border font-medium'
+                    )}
+                    aria-label={selectedLabel ? `Filtered: ${selectedLabel.name}` : 'Filter by label'}
+                  >
+                    <ListFilter className="size-4 text-foreground shrink-0" strokeWidth={1.75} />
+                    {selectedLabel && (
+                      <span
+                        className="absolute bottom-1 right-1 size-1.5 rounded-full ring-1 ring-background shrink-0"
+                        style={{ backgroundColor: selectedLabel.color || '#3b82f6' }}
+                      />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={6} className="text-11 px-2 py-0.5 rounded-md font-medium">
+                {selectedLabel ? `Filter: ${selectedLabel.name}` : 'Filter by label'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <PopoverContent
+            align="end"
+            sideOffset={6}
+            className="w-64 p-2 bg-popover border border-border rounded-md shadow-md z-50 text-foreground"
+          >
+            <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-border/50">
+              <span className="text-xs font-semibold text-foreground">Filter by label</span>
+              {selectedLabelId && (
+                <button
+                  type="button"
+                  onClick={() => onSelectLabelId?.(null)}
+                  className="text-11 text-muted-foreground hover:text-foreground underline cursor-pointer"
+                >
+                  Clear filter
+                </button>
+              )}
+            </div>
+
+            {projectLabels.length > 5 && (
+              <div className="relative flex items-center mb-1.5">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3 text-muted-foreground shrink-0 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search labels..."
+                  value={filterSearch}
+                  onChange={(e) => setFilterSearch(e.target.value)}
+                  className="h-7 w-full pl-7 pr-6 text-xs bg-muted/40 border border-border/60 rounded-md outline-none focus:border-border text-foreground placeholder:text-muted-foreground/60"
+                />
+                {filterSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setFilterSearch('')}
+                    className="absolute right-2 text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    <X className="size-3" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-0.5 max-h-56 overflow-y-auto">
+              {/* Option: All documents / Clear filter */}
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectLabelId?.(null);
+                  setIsFilterOpen(false);
+                }}
+                className={cn(
+                  'w-full flex items-center justify-between px-2 py-1.5 text-xs rounded-md cursor-pointer transition-colors text-left',
+                  !selectedLabelId
+                    ? 'bg-muted text-foreground font-medium'
+                    : 'text-foreground/80 hover:bg-muted/70 hover:text-foreground'
+                )}
+              >
+                <span>All documents</span>
+                {!selectedLabelId && <Check className="size-3.5 text-primary shrink-0" />}
+              </button>
+
+              {filteredLabels.map((label) => {
+                const isSelected = selectedLabelId === label.id;
+                const color = label.color || '#3b82f6';
+                return (
+                  <button
+                    key={label.id}
+                    type="button"
+                    onClick={() => {
+                      onSelectLabelId?.(isSelected ? null : label.id);
+                      setIsFilterOpen(false);
+                    }}
+                    className={cn(
+                      'w-full flex items-center justify-between px-2 py-1.5 text-xs rounded-md cursor-pointer transition-colors text-left group',
+                      isSelected
+                        ? 'bg-muted text-foreground font-medium'
+                        : 'text-foreground/80 hover:bg-muted/70 hover:text-foreground'
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="size-2 rounded-full shrink-0"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="truncate">{label.name}</span>
+                    </div>
+                    {isSelected && <Check className="size-3.5 text-primary shrink-0 ml-2" />}
+                  </button>
+                );
+              })}
+
+              {projectLabels.length > 0 && filteredLabels.length === 0 && (
+                <p className="text-11 text-muted-foreground py-2 text-center">
+                  No labels found
+                </p>
+              )}
+
+              {projectLabels.length === 0 && (
+                <p className="text-11 text-muted-foreground py-2 text-center">
+                  No labels in this project
+                </p>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+
         {/* Segmented View Switcher matching Storage and Work-Items */}
         <TooltipProvider delayDuration={150}>
           <div
@@ -180,7 +339,7 @@ export function Topbar({
         <Button
           size="sm"
           onClick={onCreateClick}
-          className="h-8 rounded-md px-3 text-xs font-medium cursor-pointer"
+          className="h-8 rounded-md px-3 text-xs font-medium cursor-pointer shadow-none"
         >
           Add Document
         </Button>

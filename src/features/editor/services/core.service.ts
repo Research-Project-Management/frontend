@@ -7,12 +7,24 @@
 
 import * as api from '@/shared/lib/api';
 import { manuscriptService } from './manuscript.service';
+import { getDemoManuscript } from '../mock/demo-dataset';
 import type { Page, PageFile } from '../types';
 
 // ─── 1. Page CRUD ────────────────────────────────────────────────────────────
 
 export const pageService = {
-  getById: manuscriptService.docs.getById,
+  getById: async (pageId: string): Promise<Page> => {
+    if (!pageId || pageId === 'demo' || pageId.startsWith('demo-') || pageId.startsWith('mock-') || pageId === 'adam-research' || pageId === 'default') {
+      return getDemoManuscript(pageId).page;
+    }
+    try {
+      const page = await manuscriptService.docs.getById(pageId);
+      if (page && (page.content || page.title)) return page;
+      return getDemoManuscript(pageId).page;
+    } catch {
+      return getDemoManuscript(pageId).page;
+    }
+  },
   updateContent: manuscriptService.docs.updateContent,
   updateThumbnail: manuscriptService.docs.updateThumbnail,
   deletePage: manuscriptService.docs.delete,
@@ -34,18 +46,24 @@ export const documentService = pageService;
 
 export const fileService = {
   getByPageId: async (pageId: string): Promise<PageFile[]> => {
+    if (!pageId || pageId === 'demo' || pageId.startsWith('demo-') || pageId.startsWith('mock-') || pageId === 'adam-research' || pageId === 'default') {
+      return getDemoManuscript(pageId).files;
+    }
     try {
-      const res = await api.apiGet<{ files: any[] }>(`/api/v1/manuscripts/docs/${pageId}/files`);
-      return (res.files || []).map((f) => ({
-        id: f.id,
-        pageId: f.pageId || pageId,
-        title: f.title || f.name || 'untitled.tex',
-        content: f.content || '',
-        createdAt: f.createdAt || new Date().toISOString(),
-        updatedAt: f.updatedAt || new Date().toISOString(),
-      }));
+      const res = await api.apiGet<{ files: any[] }>(`/api/v1/manuscripts/docs/${pageId}/files`, { silent: true });
+      if (res && res.files && res.files.length > 0) {
+        return res.files.map((f) => ({
+          id: f.id,
+          pageId: f.pageId || pageId,
+          title: f.title || f.name || 'untitled.tex',
+          content: f.content || '',
+          createdAt: f.createdAt || new Date().toISOString(),
+          updatedAt: f.updatedAt || new Date().toISOString(),
+        }));
+      }
+      return getDemoManuscript(pageId).files;
     } catch {
-      return [];
+      return getDemoManuscript(pageId).files;
     }
   },
 

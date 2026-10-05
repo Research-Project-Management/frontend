@@ -98,7 +98,7 @@ export default function AppLayout({
             <Sidebar />
           </Suspense>
         </ErrorBoundary>
-        <div className='order-1 flex-1 min-w-0 rounded-md border border-border bg-background overflow-hidden md:order-2 flex flex-col relative'>
+        <div className='order-1 flex-1 min-w-0 rounded-md border border-border bg-background md:order-2 flex flex-col relative min-h-0'>
           <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Page Content">
             <Suspense fallback={null}>
               {children}

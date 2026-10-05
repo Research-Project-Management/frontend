@@ -33,7 +33,7 @@ import {
   CheckSquare,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
-import { Button, Checkbox } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,7 +44,7 @@ import { cn } from "@/shared/lib/utils";
 import { useKanban, useCard, type ItemCardLabel } from '../../hooks/use-view';
 import {
   PriorityPopover,
-  SingleDatePopover,
+  DatePopover,
   MemberPopover,
   LabelPopover,
   AvatarStack,
@@ -125,16 +125,7 @@ const PRIORITY_THEME_CLASSES: Record<string, string> = {
 };
 
 function formatDateDisplay(dateStr?: string | null): string {
-  if (!dateStr) return '';
-  try {
-    const d = new Date(dateStr);
-    if (Number.isNaN(d.getTime())) return '';
-    const day = d.getDate();
-    const month = d.toLocaleDateString('en-US', { month: 'short' });
-    return `${day} ${month}`;
-  } catch {
-    return '';
-  }
+  return ItemHelpers.formatDate(dateStr);
 }
 
 // ── Card Component ──────────────────────────────────────────────────────────
@@ -183,8 +174,7 @@ export function CardUI({
   onToggleSelect,
 }: CardProps) {
   const [priorityOpen, setPriorityOpen] = useState(false);
-  const [startDateOpen, setStartDateOpen] = useState(false);
-  const [dueDateOpen, setDueDateOpen] = useState(false);
+  const [dateOpen, setDateOpen] = useState(false);
   const [memberOpen, setMemberOpen] = useState(false);
   const [labelOpen, setLabelOpen] = useState(false);
 
@@ -219,14 +209,6 @@ export function CardUI({
     edit,
   } = actions;
 
-  const isDone = Boolean(
-    card.completed ||
-    (card as any).stateGroup === 'completed' ||
-    (card as any).state?.group === 'completed' ||
-    card.columnId === 'done' ||
-    card.columnId === 'completed'
-  );
-
   // State matching (resolve true work item state regardless of board grouping)
   const matchedState = useMemo(() => {
     if (card.state && typeof card.state === 'object') {
@@ -248,11 +230,31 @@ export function CardUI({
     return stateList[0];
   }, [card.state, card.columnId, projectStates, columns, displayOptions?.groupBy]);
 
+  const isDone = Boolean(
+    card.completed ||
+    (card as any).stateGroup === 'completed' ||
+    (card as any).state?.group === 'completed' ||
+    matchedState?.group === 'completed' ||
+    card.columnId === 'done' ||
+    card.columnId === 'completed'
+  );
+
+  const isCancelled = Boolean(
+    (card as any).stateGroup === 'cancelled' ||
+    (card as any).state?.group === 'cancelled' ||
+    matchedState?.group === 'cancelled' ||
+    card.columnId === 'cancelled' ||
+    card.columnId === 'cancel'
+  );
+
+  const colTitle = matchedState?.title || matchedState?.name || 'Backlog';
+  const currentColor = matchedState?.color || matchedState?.accentColor || '#6B7280';
+  const stateGroup = matchedState?.group || (card as any).stateGroup || (card as any).state?.group || colTitle;
+
   const priorityKey = (card.priority || 'none').toLowerCase() as Priority;
 
-  // Formatted dates
-  const formattedStartDate = formatDateDisplay(card.startDate);
-  const formattedDueDate = formatDateDisplay(card.dueDate);
+  // Formatted date range (unified single badge, never separated)
+  const formattedDateRange = ItemHelpers.formatDateRange(card.startDate, card.dueDate);
   const isOverdue = dates.isOverdue;
 
   // Modules resolution
@@ -305,6 +307,10 @@ export function CardUI({
     return 0;
   }, [(card as any).links, card.attachments, (card as any).attach, (card as any).linkCount]);
 
+  const showSubItems = displayOptions?.properties?.childWorkItemCount !== false && childWorkItemTotal > 0;
+  const showAttach = displayOptions?.properties?.attachmentCount !== false && attachmentsCount > 0;
+  const showLinks = displayOptions?.properties?.link !== false && linksCount > 0;
+
   return (
     <div
       role="button"
@@ -318,226 +324,279 @@ export function CardUI({
       }}
       aria-label={`Work item: ${card.title}`}
       className={cn(
-        'group relative min-w-0 rounded-md border border-border/70 dark:border-border/60 bg-card p-3 shadow-none hover:border-border transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none',
+        'group relative min-w-0 rounded-md border border-border bg-card p-3.5 shadow-none hover:border-border-hover dark:hover:border-border transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none',
         isDragging && 'opacity-40',
         isSelected && 'ring-1 ring-ring border-ring bg-muted/40'
       )}
     >
-      {/* Row 1: Identifier + Options Menu */}
-      <div className="flex items-center justify-between gap-2">
+      {/* Row 1: Identifier | Options Menu */}
+      <div className="flex items-center justify-between gap-1.5 min-w-0">
         <div
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
-          className="flex items-center gap-1.5 min-w-0"
+          className="flex items-center gap-1.5 min-w-0 overflow-hidden"
         >
-          {(isSelected || onToggleSelect) && (
-            <div
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="flex items-center justify-center shrink-0 cursor-pointer"
-            >
-              <Checkbox
-                checked={isSelected}
-                onCheckedChange={() => onToggleSelect?.(card.id)}
-                aria-label={isSelected ? `Deselect ${card.title}` : `Select ${card.title}`}
-                className={cn(
-                  'size-3.5 rounded-sm border-border data-[state=checked]:border-primary transition-opacity cursor-pointer',
-                  !isSelected && 'sm:opacity-0 sm:group-hover:opacity-100 max-sm:opacity-100'
-                )}
-              />
-            </div>
-          )}
+          {/* Identifier */}
           {(card.identifier || card.sequenceNumber) && (displayOptions?.properties?.id !== false) && (
-            <span className="font-mono text-11 font-medium text-foreground uppercase tracking-tight shrink-0 tabular-nums">
+            <span className="font-mono text-11 font-medium text-muted-foreground uppercase tracking-tight shrink-0 tabular-nums">
               {card.identifier || `ISSUE-${card.sequenceNumber}`}
             </span>
           )}
         </div>
 
+        {/* Right: Options Menu */}
         {!isReadOnly && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={`Options for ${card.title}`}
-                className={cn(
-                  'size-6 -mr-1.5 -mt-1 text-foreground hover:text-foreground transition-opacity rounded-md',
-                  isSelected ? 'opacity-100' : 'max-sm:opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
-                )}
-              >
-                <MoreHorizontal className="size-3.5 shrink-0" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40 z-100 rounded-md">
-              {onDuplicate && (
-                <DropdownMenuItem onClick={duplicate} className="rounded-md cursor-pointer">
-                  <Copy className="mr-2 size-3.5 shrink-0 text-foreground" />
-                  Duplicate
-                </DropdownMenuItem>
-              )}
-              {currentUserId && (
-                <DropdownMenuItem onClick={assignee.isCurrentUser ? leave : join} className="rounded-md cursor-pointer">
-                  {assignee.isCurrentUser ? (
-                    <>
-                      <UserMinus className="mr-2 size-3.5 shrink-0 text-foreground" />
-                      Leave card
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="mr-2 size-3.5 shrink-0 text-foreground" />
-                      Join card
-                    </>
-                  )}
-                </DropdownMenuItem>
-              )}
-              {onDelete && (
-                <DropdownMenuItem
-                  onClick={remove}
-                  className="text-destructive focus:text-destructive rounded-md cursor-pointer"
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 shrink-0 ml-auto"
+          >
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Options for ${card.title}`}
+                  className="size-5.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors rounded-sm flex items-center justify-center cursor-pointer"
                 >
-                  <Trash2 className="mr-2 size-3.5 shrink-0" />
-                  Delete
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  <MoreHorizontal className="size-3.5 shrink-0" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40 z-100 rounded-md">
+                {onDuplicate && (
+                  <DropdownMenuItem onClick={duplicate} className="rounded-md cursor-pointer">
+                    <Copy className="mr-2 size-3.5 shrink-0 text-foreground" />
+                    Duplicate
+                  </DropdownMenuItem>
+                )}
+                {currentUserId && (
+                  <DropdownMenuItem onClick={assignee.isCurrentUser ? leave : join} className="rounded-md cursor-pointer">
+                    {assignee.isCurrentUser ? (
+                      <>
+                        <UserMinus className="mr-2 size-3.5 shrink-0 text-foreground" />
+                        Leave card
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="mr-2 size-3.5 shrink-0 text-foreground" />
+                        Join card
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem
+                    onClick={remove}
+                    className="text-destructive focus:text-destructive rounded-md cursor-pointer"
+                  >
+                    <Trash2 className="mr-2 size-3.5 shrink-0" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         )}
       </div>
 
       {/* Row 2: Title */}
       <p
         className={cn(
-          'mt-1 text-13 font-medium text-foreground leading-snug line-clamp-2 select-text',
-          isDone && 'line-through text-muted-foreground'
+          'mt-1.5 text-13 font-medium text-foreground leading-snug line-clamp-2 select-text',
+          isCancelled && 'line-through text-muted-foreground',
+          isDone && !isCancelled && 'text-muted-foreground'
         )}
       >
         {card.title}
       </p>
 
-      {/* Row 3: Primary Property Badges (Status, Priority, Dates, Assignee, Module Button) */}
-      <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
-        {/* Status Pill */}
-        {displayOptions?.properties?.state !== false && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild disabled={isReadOnly} onClick={(e) => e.stopPropagation()}>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border/70 bg-muted/20 text-xs font-normal text-foreground hover:bg-muted/50 transition-colors cursor-pointer outline-none shrink-0"
-              >
-                <StatusIcon
-                  id={card.columnId}
-                  title={matchedState?.title || matchedState?.name}
-                  group={matchedState?.group}
-                  color={matchedState?.color || matchedState?.accentColor}
-                  className="size-3 shrink-0"
-                />
-                <span className="truncate max-w-[75px]">{matchedState?.title || matchedState?.name || 'Backlog'}</span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-44 p-1 text-xs z-100 rounded-md">
-              {((projectStates && projectStates.length > 0 ? projectStates : columns) || []).map((col) => {
-                const cId = resolveColumnId(col);
-                const isCurr = cId === card.columnId;
-                const cTitle = col.title || col.name || 'Column';
-                const cColor = col.color || col.accentColor || '#8A9093';
+      {/* Row 3: Unified Footer (Priority, Dates, Labels, Modules, Indicators | Assignee) */}
+      <div className="mt-2.5 flex items-end justify-between gap-1.5 min-w-0">
+        {/* Left: Metadata badges */}
+        <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
+          {/* 1. Priority */}
+          {displayOptions?.properties?.priority !== false && (
+            <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+              <PriorityPopover
+                open={priorityOpen}
+                onOpenChange={setPriorityOpen}
+                priority={priorityKey as Priority}
+                setPriority={(p) => onUpdateItem?.(card.id, { priority: p })}
+                isReadOnly={isReadOnly}
+                actionBtnClass={cn(
+                  'h-5 px-1.5 text-10 font-normal rounded-sm border transition-colors shadow-none flex items-center gap-1 cursor-pointer shrink-0',
+                  PRIORITY_THEME_CLASSES[priorityKey] || PRIORITY_THEME_CLASSES.none
+                )}
+              />
+            </div>
+          )}
+
+          {/* 2. Date */}
+          {displayOptions?.properties?.dueDate !== false && formattedDateRange && (
+            <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+              <DatePopover
+                open={dateOpen}
+                onOpenChange={setDateOpen}
+                startDate={card.startDate || null}
+                dueDate={card.dueDate || null}
+                label={formattedDateRange}
+                isReadOnly={isReadOnly}
+                onApplyDates={(payload) => {
+                  onUpdateItem?.(card.id, {
+                    startDate: payload.startDate,
+                    dueDate: payload.dueDate,
+                  });
+                }}
+                actionBtnClass={cn(
+                  'h-5 px-1.5 text-10 font-mono tabular-nums font-normal rounded-sm border flex items-center justify-center transition-colors cursor-pointer gap-1 shrink-0',
+                  isOverdue
+                    ? 'text-destructive border-destructive/40 bg-destructive/5 hover:bg-destructive/10'
+                    : 'border-border bg-muted/20 text-foreground hover:bg-muted'
+                )}
+              />
+            </div>
+          )}
+
+          {/* 3. Labels (compact pills: max 2 + counter pill to prevent any lone drop) */}
+          {displayOptions?.properties?.labels !== false && labels.length > 0 && (
+            <>
+              {labels.slice(0, 2).map((lbl: any) => {
+                const lblName = lbl.title || lbl.name || lbl.id || '';
+                const lblColor = lbl.color || '#8b5cf6';
                 return (
-                  <DropdownMenuItem
-                    key={cId}
-                    onClick={() => {
-                      if (onUpdateItem) {
-                        onUpdateItem(card.id, { columnId: cId });
-                      } else {
-                        onMoveCard?.(card.id, cId);
-                      }
+                  <button
+                    key={lbl.id || lblName}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLabelOpen(true);
                     }}
-                    className={cn(
-                      'flex items-center gap-2 cursor-pointer py-1.5 text-xs rounded-md',
-                      isCurr && 'bg-muted font-medium'
-                    )}
+                    className="inline-flex items-center gap-1 h-5 px-1.5 rounded-sm border border-border/70 bg-muted/20 text-10 text-foreground font-normal hover:bg-muted transition-colors shrink-0 cursor-pointer"
+                    title={`Label: ${lblName}`}
                   >
-                    <StatusIcon
-                      id={cId}
-                      title={cTitle}
-                      group={col.group || col.slug || cTitle}
-                      color={cColor}
-                      className="size-3.5 shrink-0"
+                    <span
+                      className="size-1.5 rounded-full shrink-0"
+                      style={{ backgroundColor: lblColor }}
                     />
-                    <span className="truncate">{cTitle}</span>
-                  </DropdownMenuItem>
+                    <span className="truncate max-w-[85px]">{lblName}</span>
+                  </button>
                 );
               })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-
-        {/* Priority Pill */}
-        {displayOptions?.properties?.priority !== false && (
-          <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-            <PriorityPopover
-              open={priorityOpen}
-              onOpenChange={setPriorityOpen}
-              priority={priorityKey as Priority}
-              setPriority={(p) => onUpdateItem?.(card.id, { priority: p })}
-              isReadOnly={isReadOnly}
-              actionBtnClass={cn(
-                'h-6 px-2 text-xs font-normal rounded-md border transition-colors shadow-none flex items-center gap-1 cursor-pointer',
-                PRIORITY_THEME_CLASSES[priorityKey] || PRIORITY_THEME_CLASSES.none
+              {labels.length > 2 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLabelOpen(true);
+                  }}
+                  className="inline-flex items-center h-5 px-1.5 rounded-sm border border-border/70 bg-muted/20 text-10 font-mono text-muted-foreground shrink-0 hover:bg-muted cursor-pointer"
+                  title={labels.slice(2).map((l: any) => l.title || l.name).join(', ')}
+                >
+                  +{labels.length - 2}
+                </button>
               )}
-            />
-          </div>
-        )}
+            </>
+          )}
 
-        {/* Start Date */}
-        {displayOptions?.properties?.startDate !== false && (
-          <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-            <SingleDatePopover
-              open={startDateOpen}
-              onOpenChange={setStartDateOpen}
-              label={formattedStartDate || 'Start date'}
-              date={card.startDate || ''}
-              onSelectDate={(d) => onUpdateItem?.(card.id, { startDate: d || null })}
-              actionBtnClass={cn(
-                'rounded-md border border-border/70 flex items-center justify-center transition-colors hover:bg-muted/60 cursor-pointer',
-                card.startDate
-                  ? 'h-6 px-2 text-11 font-normal bg-muted/20 text-foreground gap-1'
-                  : 'size-6 p-0 bg-transparent text-foreground [&>span]:hidden'
-              )}
-            />
-          </div>
-        )}
+          {/* 4. Module Badge */}
+          {hasModules && (
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit?.(card);
+              }}
+              className="inline-flex items-center gap-1 px-1.5 h-5 rounded-sm border border-border/70 bg-muted/20 text-10 text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0"
+              title={moduleText}
+            >
+              <ModuleGridIcon className="size-3 shrink-0" />
+              <span className="truncate max-w-[85px]">{moduleText}</span>
+            </div>
+          )}
 
-        {/* Due Date */}
-        {displayOptions?.properties?.dueDate !== false && (
-          <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-            <SingleDatePopover
-              open={dueDateOpen}
-              onOpenChange={setDueDateOpen}
-              label={formattedDueDate || 'Due date'}
-              date={card.dueDate || ''}
-              onSelectDate={(d) => onUpdateItem?.(card.id, { dueDate: d || null })}
-              actionBtnClass={cn(
-                'rounded-md border border-border/70 flex items-center justify-center transition-colors hover:bg-muted/60 cursor-pointer',
-                card.dueDate
-                  ? cn(
-                      'h-6 px-2 text-11 font-normal bg-muted/20 gap-1',
-                      isOverdue ? 'text-destructive border-destructive/40 bg-destructive/5' : 'text-foreground'
-                    )
-                  : 'size-6 p-0 bg-transparent text-foreground [&>span]:hidden'
-              )}
-            />
-          </div>
-        )}
+          {/* 5. Subitem Indicator */}
+          {showSubItems && (
+            <div
+              className="inline-flex items-center gap-1 px-1.5 h-5 rounded-sm text-10 text-foreground border border-border/70 bg-muted/20 shrink-0"
+              title={`${childWorkItemDone}/${childWorkItemTotal} sub-items`}
+            >
+              <CheckSquare className="size-2.5 shrink-0" />
+              <span className="tabular-nums font-mono text-10">{childWorkItemDone}/{childWorkItemTotal}</span>
+            </div>
+          )}
 
-        {/* Assignee */}
+          {/* 6. Attachments Indicator */}
+          {showAttach && (
+            <div
+              className="inline-flex items-center gap-1 px-1.5 h-5 rounded-sm text-10 text-foreground border border-border/70 bg-muted/20 shrink-0"
+              title={`${attachmentsCount} attachment${attachmentsCount > 1 ? 's' : ''}`}
+            >
+              <Paperclip className="size-2.5 shrink-0" />
+              <span className="tabular-nums font-mono text-10">{attachmentsCount}</span>
+            </div>
+          )}
+
+          {/* 7. Links Indicator */}
+          {showLinks && (
+            <div
+              className="inline-flex items-center gap-1 px-1.5 h-5 rounded-sm text-10 text-foreground border border-border/70 bg-muted/20 shrink-0"
+              title={`${linksCount} link${linksCount > 1 ? 's' : ''}`}
+            >
+              <Link2 className="size-2.5 shrink-0" />
+              <span className="tabular-nums font-mono text-10">{linksCount}</span>
+            </div>
+          )}
+
+          {/* Quick Add Date if empty - visible on hover */}
+          {displayOptions?.properties?.dueDate !== false && !formattedDateRange && !isReadOnly && (
+            <div className="shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+              <DatePopover
+                open={dateOpen}
+                onOpenChange={setDateOpen}
+                startDate={card.startDate || null}
+                dueDate={card.dueDate || null}
+                label="Dates"
+                isReadOnly={isReadOnly}
+                onApplyDates={(payload) => {
+                  onUpdateItem?.(card.id, {
+                    startDate: payload.startDate,
+                    dueDate: payload.dueDate,
+                  });
+                }}
+                actionBtnClass="size-5 p-0 rounded-sm border border-border/60 bg-transparent hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer shrink-0 [&>span]:hidden"
+              />
+            </div>
+          )}
+
+          {/* Quick Add Label - visible on hover */}
+          {displayOptions?.properties?.labels !== false && !isReadOnly && (
+            <div className="shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+              <LabelPopover
+                open={labelOpen}
+                onOpenChange={setLabelOpen}
+                labels={card.labels || []}
+                setLabels={(updater) => {
+                  const current = card.labels || [];
+                  const next = typeof updater === 'function' ? updater(current) : updater;
+                  onUpdateItem?.(card.id, { labels: next });
+                }}
+                iconOnly
+                actionBtnClass="size-5 p-0 rounded-sm border border-border/60 bg-transparent hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer shrink-0 [&>span]:hidden"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Right: Assignee Avatar */}
         {displayOptions?.properties?.assignee !== false && (
-          <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="shrink-0 ml-auto flex items-center self-end"
+          >
             {resolvedAssignees.length > 1 ? (
               <button
                 type="button"
                 onClick={() => setMemberOpen(true)}
                 disabled={isReadOnly}
-                className="cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all rounded-md shrink-0"
+                className="cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all rounded-full shrink-0"
                 title={`${resolvedAssignees.length} assignees`}
               >
                 <AvatarStack users={resolvedAssignees} size="xs" max={2} />
@@ -547,27 +606,26 @@ export function CardUI({
                 type="button"
                 onClick={() => setMemberOpen(true)}
                 disabled={isReadOnly}
-                className="size-6 rounded-md border border-border/70 bg-transparent hover:bg-muted/60 flex items-center justify-center text-foreground cursor-pointer transition-colors"
-                title={resolvedAssignees[0].name || ''}
+                className="size-5 rounded-full border border-border overflow-hidden flex items-center justify-center shrink-0 cursor-pointer hover:ring-1 hover:ring-ring focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none transition-all"
+                title={resolvedAssignees[0].name || 'Assignee'}
               >
-                <Avatar className="size-5 shrink-0">
+                <Avatar className="size-full shrink-0">
                   <AvatarImage src={resolvedAssignees[0].avatar || undefined} />
-                  <AvatarFallback className="text-9">
+                  <AvatarFallback className="text-9 font-medium bg-muted text-foreground">
                     {(resolvedAssignees[0].name || 'U').charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
               </button>
-            ) : (
+            ) : !isReadOnly ? (
               <button
                 type="button"
                 onClick={() => setMemberOpen(true)}
-                disabled={isReadOnly}
-                className="size-6 p-0 rounded-md border border-border/70 bg-transparent hover:bg-muted/60 flex items-center justify-center text-foreground cursor-pointer transition-colors"
+                className="size-5 rounded-md border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer transition-colors sm:opacity-0 sm:group-hover:opacity-100"
                 title="Assign member"
               >
-                <User className="size-3.5 text-foreground" />
+                <User className="size-3" />
               </button>
-            )}
+            ) : null}
 
             <MemberPopover
               open={memberOpen}
@@ -579,108 +637,7 @@ export function CardUI({
             />
           </div>
         )}
-
       </div>
-
-      {/* Row 4: Secondary Badges (Modules, Labels, Subitems, Attachments, Links) */}
-      {(() => {
-        const showLabels = displayOptions?.properties?.labels !== false && labels.length > 0;
-        const showSubItems = Boolean(displayOptions?.properties?.childWorkItemCount ?? displayOptions?.properties?.subItemCount) && childWorkItemTotal > 0;
-        const showAttach = Boolean(displayOptions?.properties?.attachmentCount ?? displayOptions?.properties?.attach) && attachmentsCount > 0;
-        const showLinks = Boolean(displayOptions?.properties?.link) && linksCount > 0;
-
-        if (!hasModules && !showLabels && !showSubItems && !showAttach && !showLinks) {
-          return null;
-        }
-
-        return (
-          <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-            {/* Module Badge */}
-            {hasModules && (
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit?.(card);
-                }}
-                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border/70 bg-muted/20 text-11 text-foreground hover:bg-muted/50 transition-colors cursor-pointer shrink-0"
-                title={moduleText}
-              >
-                <ModuleGridIcon className="size-3.5 shrink-0" />
-                <span className="truncate max-w-[130px]">{moduleText}</span>
-              </div>
-            )}
-
-            {/* Label Badges */}
-            {displayOptions?.properties?.labels !== false && (
-              <>
-                {labels.map((lbl: any) => {
-                  const lblName = lbl.title || lbl.name || lbl.id || '';
-                  const lblColor = lbl.color || '#8b5cf6';
-                  return (
-                    <span
-                      key={lbl.id || lblName}
-                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-border/70 bg-muted/20 text-11 text-foreground font-normal hover:bg-muted/50 transition-colors shrink-0"
-                    >
-                      <span
-                        className="size-2 rounded-full shrink-0"
-                        style={{ backgroundColor: lblColor }}
-                      />
-                      <span className="truncate max-w-[90px]">{lblName}</span>
-                    </span>
-                  );
-                })}
-
-                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <LabelPopover
-                    open={labelOpen}
-                    onOpenChange={setLabelOpen}
-                    labels={card.labels || []}
-                    setLabels={(updater) => {
-                      const current = card.labels || [];
-                      const next = typeof updater === 'function' ? updater(current) : updater;
-                      onUpdateItem?.(card.id, { labels: next });
-                    }}
-                    actionBtnClass="size-6 p-0 rounded-md border border-border/70 bg-transparent hover:bg-muted/60 flex items-center justify-center text-foreground transition-colors cursor-pointer"
-                  />
-                </div>
-              </>
-            )}
-
-            {/* Subitem Indicator */}
-            {showSubItems && (
-              <div
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-11 text-foreground border border-border/70 bg-muted/20 shrink-0"
-                title={`${childWorkItemDone}/${childWorkItemTotal} sub-items`}
-              >
-                <CheckSquare className="size-3 shrink-0" />
-                <span className="tabular-nums font-mono">{childWorkItemDone}/{childWorkItemTotal}</span>
-              </div>
-            )}
-
-            {/* Attachments Indicator */}
-            {showAttach && (
-              <div
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-11 text-foreground border border-border/70 bg-muted/20 shrink-0"
-                title={`${attachmentsCount} attachment${attachmentsCount > 1 ? 's' : ''}`}
-              >
-                <Paperclip className="size-3 shrink-0" />
-                <span className="tabular-nums font-mono">{attachmentsCount}</span>
-              </div>
-            )}
-
-            {/* Links Indicator */}
-            {showLinks && (
-              <div
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-11 text-foreground border border-border/70 bg-muted/20 shrink-0"
-                title={`${linksCount} link${linksCount > 1 ? 's' : ''}`}
-              >
-                <Link2 className="size-3 shrink-0" />
-                <span className="tabular-nums font-mono">{linksCount}</span>
-              </div>
-            )}
-          </div>
-        );
-      })()}
     </div>
   );
 }
@@ -761,7 +718,7 @@ export function Column({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const columnId = resolveColumnId(column);
-  const columnColor = column.color || column.accentColor || '#8A9093';
+  const columnColor = column.color || column.accentColor || '#6B7280';
 
   const effectiveDroppableId = droppableId || columnId;
   const { setNodeRef, isOver } = useDroppable({
@@ -912,7 +869,7 @@ export function Column({
       </div>
 
       {/* Cards List */}
-      <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2.5 min-h-[60px]">
+      <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2.5 min-h-[60px] kanban-scrollbar">
         {isQuickAdding && (
           <form onSubmit={handleQuickAddSubmit} className="p-3 bg-card rounded-md border border-border shadow-none space-y-2.5">
             <input
@@ -1214,7 +1171,7 @@ export function BoardView({
   };
 
   return (
-    <div className="flex-1 h-full overflow-x-auto overflow-y-auto p-2 sm:p-2.5 min-w-0 bg-background select-none">
+    <div className="flex-1 h-full overflow-x-auto overflow-y-auto p-2 sm:p-2.5 min-w-0 bg-background kanban-scrollbar select-none">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -1276,7 +1233,7 @@ export function BoardView({
 
                   {/* Swimlane Columns Grid */}
                   {!isCollapsed && (
-                    <div className="flex items-stretch gap-3 p-2.5 overflow-x-auto min-w-max">
+                    <div className="flex items-stretch gap-3 p-2.5 overflow-x-auto min-w-max pb-2 kanban-scrollbar">
                       {columns.map((col) => {
                         const colId = resolveColumnId(col);
                         const columnCards = lane.itemsByColumn.get(colId) || [];

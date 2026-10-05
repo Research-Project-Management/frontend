@@ -19,15 +19,15 @@ export function resolveColumnColor(
   columnId?: string | Partial<Column> | Partial<State> | null,
   accentColor?: string
 ): string {
-  if (!columnId) return accentColor || "#8A9093";
+  if (!columnId) return accentColor || "#6B7280";
   if (typeof columnId === "object") {
     const colObj = columnId as Record<string, unknown>;
     const colColor =
       (typeof colObj.color === "string" ? colObj.color : undefined) ||
       (typeof colObj.accentColor === "string" ? colObj.accentColor : undefined);
-    return colColor || accentColor || "#8A9093";
+    return colColor || accentColor || "#6B7280";
   }
-  return accentColor || "#8A9093";
+  return accentColor || "#6B7280";
 }
 
 export function resolveItemId(target?: { id?: string; itemId?: string; workItemId?: string } | null): string {
@@ -122,16 +122,16 @@ export function normalizeStates(raw: unknown): Column[] {
         ? (rawObj.group as StateGroup)
         : inferStateGroup(rawId, rawName);
     const groupColorMap: Record<StateGroup, string> = {
-      backlog: "#8A9093",
-      unstarted: "#525866",
-      started: "#F59E0B",
-      completed: "#10B981",
-      cancelled: "#EF4444",
+      backlog: "#6B7280",
+      unstarted: "#94A3B8",
+      started: "#D97706",
+      completed: "#1A7F37",
+      cancelled: "#9CA3AF",
     };
     const rawCustom =
       (typeof rawObj.color === "string" && rawObj.color.trim() ? rawObj.color.trim() : undefined) ||
       (typeof rawObj.accentColor === "string" && rawObj.accentColor.trim() ? rawObj.accentColor.trim() : undefined);
-    const color = rawCustom || groupColorMap[group] || "#8A9093";
+    const color = rawCustom || groupColorMap[group] || "#6B7280";
     return {
       id: rawId,
       name: rawName,
@@ -193,11 +193,40 @@ export const WorkItemHelpers = {
     return targetDate.toLocaleDateString("vi-VN", { month: "short", day: "numeric" });
   },
 
-  formatDate: (val?: string | null): string => {
+  formatDate: (val?: string | null | Date): string => {
     if (!val) return "";
-    const targetDate = new Date(val);
+    const targetDate = typeof val === "string" ? new Date(val) : val;
     if (Number.isNaN(targetDate.getTime())) return "";
-    return targetDate.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+    const day = String(targetDate.getDate()).padStart(2, "0");
+    const month = String(targetDate.getMonth() + 1).padStart(2, "0");
+    const year = targetDate.getFullYear();
+    const currentYear = new Date().getFullYear();
+    if (year === currentYear) {
+      return `${day}/${month}`;
+    }
+    return `${day}/${month}/${year}`;
+  },
+
+  formatDateRange: (
+    startDate?: string | null | Date,
+    dueDate?: string | null | Date
+  ): string => {
+    // Nếu chỉ có ngày bắt đầu thì không hiện, chỉ hiện khi có ngày kết thúc
+    if (!dueDate) return "";
+
+    const formattedDue = WorkItemHelpers.formatDate(dueDate);
+    if (!formattedDue) return "";
+
+    // Nếu không có ngày bắt đầu: chỉ hiện ngày kết thúc
+    if (!startDate) return formattedDue;
+
+    const formattedStart = WorkItemHelpers.formatDate(startDate);
+    // Nếu có cả ngày bắt đầu và kết thúc: gộp chung, không tách riêng
+    if (formattedStart && formattedStart !== formattedDue) {
+      return `${formattedStart} - ${formattedDue}`;
+    }
+
+    return formattedDue;
   },
 
   checkOverdue: (val?: string | null): boolean => {
@@ -371,6 +400,8 @@ export const Helpers = WorkItemHelpers;
 export const getInitials = WorkItemHelpers.getInitials;
 export const formatActivityTime = WorkItemHelpers.formatActivityTime;
 export const formatDate = WorkItemHelpers.formatDate;
+export const formatDateRange = WorkItemHelpers.formatDateRange;
+export const formatWorkItemDate = WorkItemHelpers.formatDate;
 export const checkOverdue = WorkItemHelpers.checkOverdue;
 export const uniqueLabels = WorkItemHelpers.uniqueLabels;
 export const countAttachments = WorkItemHelpers.countAttachments;

@@ -1,7 +1,10 @@
 import { apiGet, apiPost, apiPatch, apiPut, apiDelete } from "@/shared/lib/api";
-import type { Sticky } from "@/features/projects/stickies/types/sticky.types";
+import { STICKY_COLOR_MAP, type Sticky, type StickyColor } from "@/features/projects/stickies/types/sticky.types";
 
 export const normalizeSticky = (s: Partial<Sticky> | null | undefined): Sticky => {
+  const isValidColor = s?.color && s.color in STICKY_COLOR_MAP;
+  const color: StickyColor = isValidColor ? (s!.color as StickyColor) : 'yellow-1';
+
   if (!s) {
     return {
       id: '',
@@ -16,7 +19,7 @@ export const normalizeSticky = (s: Partial<Sticky> | null | undefined): Sticky =
     ...s,
     id: s.id || '',
     content: s.content || '',
-    color: s.color || 'yellow-1',
+    color,
   } as Sticky;
 };
 

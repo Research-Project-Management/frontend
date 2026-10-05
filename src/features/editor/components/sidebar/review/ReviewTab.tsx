@@ -267,7 +267,8 @@ const CommentCard = React.memo(function CommentCard({
             onClick={handleToggleStatus}
             disabled={resolveMutation.isPending}
             title={isResolved ? 'Reopen comment' : 'Resolve comment'}
-            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            aria-label={isResolved ? 'Reopen comment' : 'Resolve comment'}
+            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
           >
             {resolveMutation.isPending ? (
               <Loader2 className="size-3.5 animate-spin" />
@@ -282,7 +283,8 @@ const CommentCard = React.memo(function CommentCard({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                aria-label="Comment options"
+                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
               >
                 <MoreVertical className="size-3.5" />
               </button>
@@ -360,7 +362,8 @@ const CommentCard = React.memo(function CommentCard({
             <button
               type="submit"
               disabled={addReplyMutation.isPending}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-primary hover:text-primary/80 transition-colors cursor-pointer"
+              aria-label="Send reply"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-primary hover:text-primary/80 transition-colors cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
             >
               {addReplyMutation.isPending ? (
                 <Loader2 className="size-3 animate-spin" />
@@ -429,8 +432,9 @@ const ReplyRow = React.memo(function ReplyRow({
             type="button"
             onClick={() => onDelete(reply.id)}
             disabled={isPending}
-            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-0.5 cursor-pointer"
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-0.5 cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
             title="Delete reply"
+            aria-label="Delete reply"
           >
             <Trash2 className="size-3" />
           </button>
@@ -1153,7 +1157,8 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
                     <button
                       type="button"
                       onClick={() => setShowAddForm(false)}
-                      className="rounded p-0.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                      className="rounded p-0.5 text-muted-foreground hover:text-foreground cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
+                      aria-label="Close comment form"
                     >
                       <X className="size-3.5 shrink-0" />
                     </button>

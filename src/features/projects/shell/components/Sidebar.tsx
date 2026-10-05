@@ -22,6 +22,8 @@ import {
   Pin,
   PinOff,
   PanelLeft,
+  MessageSquare,
+  Wallet,
 } from 'lucide-react';
 import { motion, LayoutGroup } from 'framer-motion';
 import { toast } from 'sonner';
@@ -62,18 +64,30 @@ const CreateModal = dynamic(
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ProjectModuleKey = 'overview' | 'work-items' | 'pages';
+type ProjectModuleKey =
+  | 'overview'
+  | 'work-items'
+  | 'pages'
+  | 'messages'
+  | 'budget'
+  | 'settings';
 
 const MODULE_ORDER: ProjectModuleKey[] = [
   'overview',
   'work-items',
   'pages',
+  'messages',
+  'budget',
+  'settings',
 ];
 
 const modulesConfig: Record<ProjectModuleKey, { label: string; icon: React.ComponentType<any>; path: string }> = {
   'overview': { label: 'Overview', icon: Compass, path: 'overview' },
   'work-items': { label: 'Work items', icon: WorkItemsIcon, path: 'work-items' },
   'pages': { label: 'Pages', icon: FileText, path: 'pages' },
+  'messages': { label: 'Messages', icon: MessageSquare, path: 'messages' },
+  'budget': { label: 'Budget', icon: Wallet, path: 'budget' },
+  'settings': { label: 'Settings', icon: Settings, path: 'settings' },
 };
 
 type NavItem = {
@@ -399,20 +413,23 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           </div>
         </div>
 
-        {/* Project Submodules: strictly overview, work-items, pages */}
+        {/* Project Submodules: overview, work-items, pages, messages, budget, settings */}
         <CollapsibleContent className="overflow-hidden flex flex-col gap-1 mt-1">
           {(() => {
             const rawModules: string[] =
               projectModules && projectModules.length > 0
                 ? projectModules.map((m: string) => String(m).toLowerCase().replace(/_/g, '-'))
-                : ['overview', 'work-items', 'pages'];
+                : ['overview', 'work-items', 'pages', 'messages', 'budget', 'settings'];
             const activeSet = new Set(rawModules);
 
-            // Strictly filter by MODULE_ORDER, ensuring overview and work-items are always present as core navigation
+            // Strictly filter by MODULE_ORDER, ensuring core modules are always present
             const effectiveModules = MODULE_ORDER.filter(
-              (k) =>
+              (k: string) =>
                 k === 'overview' ||
                 k === 'work-items' ||
+                k === 'messages' ||
+                k === 'budget' ||
+                k === 'settings' ||
                 !projectModules ||
                 projectModules.length === 0 ||
                 activeSet.has(k) ||

@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
 } from "@/shared/components/ui";
 
-import { CitationService, ExportService } from '../../data';
+import { libraryServices } from '../../data';
 import { generateCitationKey } from '../../domain';
 import { useParams } from 'next/navigation';
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/shared/components/ui";
@@ -22,8 +22,6 @@ import type { Collection, Item, CslStyle } from '../../types/library.types';
 export interface BatchBarProps {
   selectedCount: number;
   selectedItems?: Item[];
-  /** @deprecated Use selectedItems */
-  selectedPapers?: Item[];
   collections: Collection[];
   onClearSelection: () => void;
   onBatchMove?: (collectionId: string | null) => void;
@@ -36,12 +34,9 @@ export interface BatchBarProps {
   projectId?: string;
 }
 
-export type PaperBatchBarProps = BatchBarProps;
-
 export function BatchBar({
   selectedCount,
   selectedItems,
-  selectedPapers,
   collections,
   onClearSelection,
   onBatchMove,
@@ -83,8 +78,7 @@ export function BatchBar({
 
   if (selectedCount === 0) return null;
 
-  // Support both selectedItems and deprecated selectedPapers prop
-  const resolvedItems = selectedItems || selectedPapers || [];
+  const resolvedItems = selectedItems || [];
 
   const isAllProcessingSelected =
     resolvedItems.length > 0 &&
@@ -126,7 +120,7 @@ export function BatchBar({
     const itemIds = resolvedItems.map((p) => p.id).filter(Boolean);
     if (itemIds.length > 0) {
       try {
-        const res = await CitationService.batchFormat(effectiveScopeId, itemIds, style);
+        const res = await libraryServices.citations.batchFormat(effectiveScopeId, itemIds, style);
         const text = res.citations
           .map((c) => c.citation?.bibliography)
           .filter(Boolean)
@@ -152,7 +146,7 @@ export function BatchBar({
     const itemIds = resolvedItems.map((p) => p.id).filter(Boolean);
     if (itemIds.length > 0) {
       try {
-        const res = await CitationService.batchFormat(effectiveScopeId, itemIds, style);
+        const res = await libraryServices.citations.batchFormat(effectiveScopeId, itemIds, style);
         const inTexts = res.citations.map((c) => c.citation?.inText).filter(Boolean);
         let text = '';
         if (inTexts.every((t) => t.startsWith('(') && t.endsWith(')'))) {
@@ -177,7 +171,7 @@ export function BatchBar({
     if (itemIds.length === 0) return;
 
     try {
-      const res = await ExportService.exportLibrary(effectiveScopeId, {
+      const res = await libraryServices.exports.exportLibrary(effectiveScopeId, {
         format: 'bibtex',
         itemIds,
       });
@@ -212,7 +206,7 @@ export function BatchBar({
     let downloadFilename = `references-selected-${selectedCount}.bib`;
 
     try {
-      const res = await ExportService.exportLibrary(effectiveScopeId, {
+      const res = await libraryServices.exports.exportLibrary(effectiveScopeId, {
         format: 'bibtex',
         itemIds,
       });
@@ -573,4 +567,3 @@ export function BatchBar({
 }
 
 export default BatchBar;
-export { BatchBar as ItemBatchBar };

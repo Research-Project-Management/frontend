@@ -2,6 +2,9 @@
 
 import React, { useState, useMemo } from 'react';
 import { Document, Page } from 'react-pdf';
+import { setupPdfWorker } from '@/shared/lib/pdfjs-worker';
+
+setupPdfWorker();
 import { ListTree, LayoutGrid, ChevronRight, Highlighter, Search, X } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import type { DocumentFulltext, ReaderDocument } from '../types/reader.types';

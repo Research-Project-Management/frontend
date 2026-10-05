@@ -88,15 +88,15 @@ function getTypographyExtension(fontSize = 15, fontFamily = 'default', lineHeigh
       fontSize: `${fontSize}px`,
     },
     '&.cm-focused': {
-      outline: 'none !important',
+      outline: 'none',
     },
     '.cm-scroller': {
       fontFamily: resolvedFont,
       lineHeight: `${lineHeight}`,
-      outline: 'none !important',
+      outline: 'none',
     },
     '.cm-content': {
-      outline: 'none !important',
+      outline: 'none',
     },
   });
 }
@@ -104,34 +104,37 @@ function getTypographyExtension(fontSize = 15, fontFamily = 'default', lineHeigh
 function createLatexLinterExtension() {
   return [
     lintGutter(),
-    linter((view) => {
-      const doc = view.state.doc;
-      const text = doc.toString();
-      const rawDiags = runLatexLinter(text);
+    linter(
+      (view) => {
+        const doc = view.state.doc;
+        const text = doc.toString();
+        const rawDiags = runLatexLinter(text);
 
-      const diagnostics: Diagnostic[] = [];
+        const diagnostics: Diagnostic[] = [];
 
-      for (const d of rawDiags) {
-        const startLineNum = Math.min(Math.max(1, d.startLineNumber), doc.lines);
-        const endLineNum = Math.min(Math.max(1, d.endLineNumber), doc.lines);
+        for (const d of rawDiags) {
+          const startLineNum = Math.min(Math.max(1, d.startLineNumber), doc.lines);
+          const endLineNum = Math.min(Math.max(1, d.endLineNumber), doc.lines);
 
-        const startLine = doc.line(startLineNum);
-        const endLine = doc.line(endLineNum);
+          const startLine = doc.line(startLineNum);
+          const endLine = doc.line(endLineNum);
 
-        const from = Math.min(startLine.from + Math.max(0, d.startColumn - 1), startLine.to);
-        const to = Math.min(endLine.from + Math.max(0, d.endColumn - 1), endLine.to);
+          const from = Math.min(startLine.from + Math.max(0, d.startColumn - 1), startLine.to);
+          const to = Math.min(endLine.from + Math.max(0, d.endColumn - 1), endLine.to);
 
-        diagnostics.push({
-          from: Math.min(from, to),
-          to: Math.max(from, to, from + 1),
-          severity: d.severity,
-          message: d.message,
-          source: 'LaTeX Code Check',
-        });
-      }
+          diagnostics.push({
+            from: Math.min(from, to),
+            to: Math.max(from, to, from + 1),
+            severity: d.severity,
+            message: d.message,
+            source: 'LaTeX Code Check',
+          });
+        }
 
-      return diagnostics;
-    }),
+        return diagnostics;
+      },
+      { delay: 1000 },
+    ),
   ];
 }
 
@@ -152,6 +155,7 @@ export default function UnifiedCodeMirrorEditor({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const adapterRef = useRef<CodeMirrorEngineAdapter | null>(null);
+  const lastSyncedValueRef = useRef(value);
   const { setEngine } = useEditorInstance();
 
   const editorMode = useSettingsStore((s) => s.editorMode);
@@ -247,7 +251,10 @@ export default function UnifiedCodeMirrorEditor({
         crosshairCursor(),
 
         // Dynamic Settings Compartments
-        wordWrapCompartmentRef.current.of(wordWrap ? [EditorView.lineWrapping] : []),
+        wordWrapCompartmentRef.current.of((wordWrap || isVisual) ? [EditorView.lineWrapping] : []),
+        linterCompartmentRef.current.of(
+          linterEnabled && !isVisual ? createLatexLinterExtension() : []
+        ),
         lineNumbersCompartmentRef.current.of(
           lineNumbersSetting && !isVisual ? [lineNumbers(), highlightActiveLineGutter()] : []
         ),
@@ -258,9 +265,6 @@ export default function UnifiedCodeMirrorEditor({
         cursorBlinkCompartmentRef.current.of(
           nonBlinkingCursor ? [EditorView.theme({ '.cm-cursor': { animation: 'none !important' } })] : []
         ),
-        linterCompartmentRef.current.of(
-          linterEnabled && !isVisual ? createLatexLinterExtension() : []
-        ),
 
         // Update listener
         EditorView.updateListener.of((update) => {
@@ -268,7 +272,9 @@ export default function UnifiedCodeMirrorEditor({
             adapterRef.current.handleViewUpdate(update);
           }
           if (update.docChanged) {
-            onChange(update.state.doc.toString());
+            const nextText = update.state.doc.toString();
+            lastSyncedValueRef.current = nextText;
+            onChange(nextText);
           }
         }),
 
@@ -426,16 +432,6 @@ export default function UnifiedCodeMirrorEditor({
     if (!view) return;
 
     const isVisual = editorMode === 'visual';
-    const bibKeys = bibEntries.map((b: any) => b.id || b.key || b.citationKey).filter(Boolean);
-    const latexCompletion = autocompletion({
-      override: [
-        createLatexCompletionSource(
-          bibKeys,
-          () => projectFilesRef.current || []
-        ),
-      ],
-    });
-
     const modeExtensions = isVisual
       ? [latexVisualPlugin]
       : [
@@ -445,29 +441,21 @@ export default function UnifiedCodeMirrorEditor({
         ];
 
     view.dispatch({
-      effects: [
-        modeCompartmentRef.current.reconfigure(modeExtensions),
-        lineNumbersCompartmentRef.current.reconfigure(
-          lineNumbersSetting && !isVisual ? [lineNumbers(), highlightActiveLineGutter()] : []
-        ),
-        autocompleteCompartmentRef.current.reconfigure(
-          autoComplete && !isVisual ? [latexCompletion] : []
-        ),
-        linterCompartmentRef.current.reconfigure(
-          linterEnabled && !isVisual ? createLatexLinterExtension() : []
-        ),
-      ],
+      effects: modeCompartmentRef.current.reconfigure(modeExtensions),
     });
-  }, [editorMode, bibEntries, lineNumbersSetting, autoComplete, linterEnabled]);
+  }, [editorMode]);
 
   // ── Dynamic Word Wrap Switching ───────────────────────────────────────────
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+    const isVisual = editorMode === 'visual';
     view.dispatch({
-      effects: wordWrapCompartmentRef.current.reconfigure(wordWrap ? [EditorView.lineWrapping] : []),
+      effects: wordWrapCompartmentRef.current.reconfigure(
+        (wordWrap || isVisual) ? [EditorView.lineWrapping] : []
+      ),
     });
-  }, [wordWrap]);
+  }, [wordWrap, editorMode]);
 
   // ── Dynamic Line Numbers Switching ────────────────────────────────────────
   useEffect(() => {
@@ -495,16 +483,20 @@ export default function UnifiedCodeMirrorEditor({
     const view = viewRef.current;
     if (!view) return;
     const isVisual = editorMode === 'visual';
-    const bibKeys = bibEntries.map((b: any) => b.id || b.key || b.citationKey).filter(Boolean);
     const latexCompletion = autocompletion({
-      override: [createLatexCompletionSource(bibKeys, () => projectFilesRef.current || [])],
+      override: [
+        createLatexCompletionSource(
+          () => bibEntriesRef.current,
+          () => projectFilesRef.current || []
+        ),
+      ],
     });
     view.dispatch({
       effects: autocompleteCompartmentRef.current.reconfigure(
         autoComplete && !isVisual ? [latexCompletion] : []
       ),
     });
-  }, [autoComplete, editorMode, bibEntries]);
+  }, [autoComplete, editorMode]);
 
   // ── Dynamic Non-blinking Cursor Switching ─────────────────────────────────
   useEffect(() => {
@@ -533,6 +525,9 @@ export default function UnifiedCodeMirrorEditor({
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+
+    if (value === lastSyncedValueRef.current) return;
+    lastSyncedValueRef.current = value;
 
     const currentDoc = view.state.doc.toString();
     if (value !== currentDoc && (!yText || yText.length === 0)) {
@@ -578,7 +573,7 @@ export default function UnifiedCodeMirrorEditor({
   );
 
   return (
-    <div className="h-full w-full relative flex flex-col bg-background">
+    <div className="h-full w-full relative flex flex-col bg-canvas">
       {/* CodeMirror DOM Container */}
       <div
         ref={containerRef}

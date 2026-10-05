@@ -153,7 +153,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       settingsPanelOpen: false,
       mainFile: 'main.tex',
       fontSize: 15,
-      wordWrap: true,
+      wordWrap: false,
       lineNumbers: true,
       editorMode: 'code',
       reviewMode: false,
@@ -247,6 +247,16 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
     }),
     {
       name: 'flux-editor-settings',
+      version: 2,
+      migrate: (persistedState: any, version: number) => {
+        if (version < 2) {
+          return {
+            ...persistedState,
+            wordWrap: false,
+          };
+        }
+        return persistedState;
+      },
       partialize: (state) => {
         // Don't persist transient UI state or auto-compile (always on by default)
         const { settingsPanelOpen, autoCompile, isHistoryOpen, isTemplateModalOpen, activeSidebarPanel, isLocked, ...rest } = state;

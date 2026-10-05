@@ -24,7 +24,7 @@ import {
   ContextMenuSubContent,
   ContextMenuSubTrigger,
 } from '@/shared/components/ui/context-menu';
-import { CitationService } from '../../data';
+import { libraryServices } from '../../data';
 import { useLibraryUIStore } from '../../store';
 import type { Item, Collection } from '../../types';
 
@@ -73,7 +73,7 @@ export function ItemContextMenu({
 
   const handleCopyBibliography = async () => {
     try {
-      const res = await CitationService.formatCitation(undefined, item.id, 'apa');
+      const res = await libraryServices.citations.formatCitation(undefined, item.id, 'apa');
       const text = res.bibliography || res.inText || '';
       if (text) {
         await copyToClipboard(text);
@@ -88,7 +88,7 @@ export function ItemContextMenu({
 
   const handleCopyInTextCitation = async () => {
     try {
-      const res = await CitationService.formatCitation(undefined, item.id, 'apa');
+      const res = await libraryServices.citations.formatCitation(undefined, item.id, 'apa');
       const text = res.inText || res.citation || '';
       if (text) {
         await copyToClipboard(text);

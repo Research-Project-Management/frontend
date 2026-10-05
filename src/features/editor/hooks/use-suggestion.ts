@@ -19,19 +19,19 @@ export const suggestionKeys = {
 };
 
 export const usePageSuggestions = (pageId: string | null, status?: SuggestionStatus) => {
+  const isDemo = !pageId || pageId === 'demo' || pageId.startsWith('demo-') || pageId.startsWith('mock-');
   return useQuery({
     queryKey: suggestionKeys.byPage(pageId, status),
     queryFn: async (): Promise<PageSuggestion[]> => {
-      if (!pageId) return [];
+      if (isDemo) return [];
       try {
         const suggestions = await suggestionService.getSuggestions(pageId, status);
         return suggestions || [];
-      } catch (err) {
-        console.error('[usePageSuggestions] Failed to load suggestions:', err);
+      } catch {
         return [];
       }
     },
-    enabled: !!pageId,
+    enabled: Boolean(pageId && !isDemo),
   });
 };
 

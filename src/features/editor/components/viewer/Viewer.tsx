@@ -44,8 +44,7 @@ export default function Viewer() {
     pageId: string;
   }>();
 
-  const currentPage = usePageStore((s) => s.currentPage);
-  const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const documentTitle = usePageStore((s) => s.currentPage?.title);
   const { engine: editorEngine } = useEditorInstance();
   const pdfDocRef = useRef<any>(null);
 
@@ -98,6 +97,7 @@ export default function Viewer() {
   const {
     scale,
     autoFit,
+    containerWidth,
     showZoomGroup,
     showUtilityGroup,
     handleZoomIn,
@@ -193,10 +193,10 @@ export default function Viewer() {
       // fallback below
     }
 
-    const content = editorEngine?.getContent() || activeFilePage?.content || '';
+    const content = editorEngine?.getContent() || usePageStore.getState().activeFilePage?.content || '';
     const fallback = extractOutlineFromContent(content, pdf.numPages || 1, synctexMapRef.current as any);
     setPdfOutline(fallback);
-  }, [editorEngine, activeFilePage?.content, synctexMapRef]);
+  }, [editorEngine, synctexMapRef]);
 
   const handlePrevPage = useCallback(() => setPageNumber((p) => Math.max(p - 1, 1)), []);
   const handleNextPage = useCallback(() => setPageNumber((p) => Math.min(p + 1, numPages)), [numPages]);
@@ -205,9 +205,9 @@ export default function Viewer() {
     if (!pdfUrl) return;
     const a = downloadRef.current || document.createElement('a');
     a.href = pdfUrl;
-    a.download = `${currentPage?.title?.replace(/\s+/g, '_') || 'document'}.pdf`;
+    a.download = `${documentTitle?.replace(/\s+/g, '_') || 'document'}.pdf`;
     a.click();
-  }, [pdfUrl, currentPage?.title]);
+  }, [pdfUrl, documentTitle]);
 
   const handleToggleLog = useCallback(() => setShowLog((p) => !p), []);
   const handleToggleAutoCompile = useCallback(() => setAutoCompile(!autoCompile), [autoCompile, setAutoCompile]);
@@ -270,7 +270,7 @@ export default function Viewer() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-background select-none relative min-h-0">
+    <div className="h-full w-full flex flex-col bg-background select-none relative min-h-0 overflow-hidden">
       {showLog ? (
         <Logs
           log={compileLog || ''}
@@ -329,12 +329,14 @@ export default function Viewer() {
           <a ref={downloadRef} className="hidden" aria-hidden="true" />
 
           {/* PDF Viewer Surface */}
-          <div ref={pdfContainerRef} className="flex-1 min-h-0 relative flex flex-col">
+          <div ref={pdfContainerRef} className="flex-1 min-h-0 relative flex flex-col overflow-hidden">
             <Surface
               ref={pdfSurfaceRef}
               pdfUrl={pdfUrl}
               synctexMap={synctexMapRef.current}
               scale={scale}
+              autoFit={autoFit}
+              containerWidth={containerWidth}
               scrollMode={true}
               pageNumber={pageNumber}
               numPages={numPages}

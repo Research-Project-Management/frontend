@@ -59,42 +59,42 @@ export const STATE_GROUP_CONFIG: Record<
 > = {
   backlog: {
     label: "Backlog",
-    defaultColor: "#8A9093",
+    defaultColor: "#6B7280",
     defaultIcon: "circle-dashed",
     description: "Unprioritized items awaiting scheduling",
   },
   unstarted: {
     label: "Unstarted",
-    defaultColor: "#525866",
+    defaultColor: "#94A3B8",
     defaultIcon: "circle",
     description: "Prioritized items ready for work",
   },
   started: {
     label: "Started",
-    defaultColor: "#EAB308",
+    defaultColor: "#D97706",
     defaultIcon: "circle-dot",
     description: "Items actively being worked on",
   },
   completed: {
     label: "Completed",
-    defaultColor: "#10B981",
+    defaultColor: "#1A7F37",
     defaultIcon: "check-circle",
     description: "Finished and accepted items",
   },
   cancelled: {
     label: "Cancelled",
-    defaultColor: "#EF4444",
+    defaultColor: "#9CA3AF",
     defaultIcon: "x-circle",
     description: "Work items that are abandoned, rejected, or won’t be done.",
   },
 };
 
 export const DEFAULT_WORK_ITEM_STATES: WorkItemState[] = [
-  { id: 'backlog', name: 'Backlog', title: 'Backlog', group: 'backlog', color: '#8A9093', accentColor: '#8A9093', icon: 'circle-dashed', sequence: 0, isDefault: true },
-  { id: 'todo', name: 'Todo', title: 'Todo', group: 'unstarted', color: '#525866', accentColor: '#525866', icon: 'circle', sequence: 1, isDefault: false },
-  { id: 'in_progress', name: 'In Progress', title: 'In Progress', group: 'started', color: '#EAB308', accentColor: '#EAB308', icon: 'circle-dot', sequence: 2, isDefault: false },
-  { id: 'done', name: 'Done', title: 'Done', group: 'completed', color: '#10B981', accentColor: '#10B981', icon: 'check-circle', sequence: 3, isDefault: false },
-  { id: 'cancelled', name: 'Cancelled', title: 'Cancelled', group: 'cancelled', color: '#EF4444', accentColor: '#EF4444', icon: 'x-circle', sequence: 4, isDefault: false },
+  { id: 'backlog', name: 'Backlog', title: 'Backlog', group: 'backlog', color: '#6B7280', accentColor: '#6B7280', icon: 'circle-dashed', sequence: 0, isDefault: true },
+  { id: 'todo', name: 'Todo', title: 'Todo', group: 'unstarted', color: '#94A3B8', accentColor: '#94A3B8', icon: 'circle', sequence: 1, isDefault: false },
+  { id: 'in_progress', name: 'In Progress', title: 'In Progress', group: 'started', color: '#D97706', accentColor: '#D97706', icon: 'circle-dot', sequence: 2, isDefault: false },
+  { id: 'done', name: 'Done', title: 'Done', group: 'completed', color: '#1A7F37', accentColor: '#1A7F37', icon: 'check-circle', sequence: 3, isDefault: false },
+  { id: 'cancelled', name: 'Cancelled', title: 'Cancelled', group: 'cancelled', color: '#9CA3AF', accentColor: '#9CA3AF', icon: 'x-circle', sequence: 4, isDefault: false },
 ];
 
 export function resolveStateTitle(state?: Partial<WorkItemState> | null): string {

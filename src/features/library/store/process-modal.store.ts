@@ -2,8 +2,7 @@ import { create } from 'zustand';
 import type { QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
-  uploadLibraryFileMultipart,
-  IngestionService,
+  libraryServices,
   itemKeys,
   invalidateCollections,
 } from '../data';
@@ -264,7 +263,7 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
           });
 
           const content = await file.text();
-          const res = await IngestionService.ingest(scopeId, {
+          const res = await libraryServices.ingestion.ingestion.ingest(scopeId, {
             source,
             content,
             collectionId: effectiveCollection,
@@ -324,7 +323,7 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
         // 1. Binary / PDF Upload stage (Physical File Transfer)
         let uploadRes: { fileId?: string; url?: string } | null = null;
         try {
-          uploadRes = await uploadLibraryFileMultipart(scopeId, file, {
+          uploadRes = await libraryServices.upload.uploadMultipart(scopeId, file, {
             onProgress: (percent) => {
               set((s) => ({
                 processingItems: s.processingItems.map((p) =>
@@ -373,7 +372,7 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
         let runId: string | undefined = undefined;
 
         try {
-          const ingestRes = await IngestionService.ingest(scopeId, {
+          const ingestRes = await libraryServices.ingestion.ingestion.ingest(scopeId, {
             source: 'pdf',
             fileId: uploadRes.fileId,
             filename: file.name,
@@ -407,7 +406,7 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
           while (Date.now() - startTime < maxWaitMs && !isDone) {
             await new Promise((r) => setTimeout(r, 1200));
             try {
-              const runStatus = await IngestionService.getRunStatus(scopeId, targetRunId);
+              const runStatus = await libraryServices.ingestion.ingestion.getRunStatus(scopeId, targetRunId);
               const statusPayload = runStatus as {
                 data?: { status?: string; title?: string; itemId?: string; lastError?: string; errorMessage?: string };
                 status?: string;
@@ -441,12 +440,18 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
               // Retry on transient poll network glitch
             }
           }
+
+          if (!isDone) {
+            markFileFailed('Metadata extraction timed out. Please check your library.');
+            return;
+          }
         }
 
         // File extraction completed successfully!
         successCount++;
         completedCount++;
 
+        // Update provisional item with final itemId and title so LibraryContent can seamlessly hand off
         set((s) => {
           const items = s.state.data?.items.map((i) =>
             i.title === file.name
@@ -455,6 +460,17 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
           );
           const percentage = Math.round((completedCount / files.length) * 100);
           return {
+            processingItems: s.processingItems.map((p) =>
+              p.fileName === file.name && p.fileSize === file.size
+                ? {
+                    ...p,
+                    itemId: finalItemId,
+                    extractedTitle: finalTitle,
+                    status: 'SUCCEEDED' as const,
+                    progress: 100,
+                  }
+                : p,
+            ),
             state: s.state.data
               ? {
                   ...s.state,
@@ -470,15 +486,21 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
           };
         });
 
-        // Trigger refetch so the real item is pulled from the backend into cache BEFORE clearing provisional placeholder
-        await queryClient.refetchQueries({ queryKey: itemKeys.all(scopeId) });
+        // Broadly invalidate all library item and count queries to ensure infinite query and view filters re-render
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['library', 'items'] }),
+          queryClient.invalidateQueries({ queryKey: ['library', 'counts'] }),
+          queryClient.invalidateQueries({ queryKey: ['library', 'collections'] }),
+        ]);
+
         if (effectiveCollection) {
           await queryClient.refetchQueries({
             queryKey: itemKeys.byCollection(scopeId, effectiveCollection),
           });
         }
 
-        // Immediately remove this file from provisional processingItems so real item renders in table seamlessly
+        // Small delay to let the refetched queries settle before clearing the provisional item
+        await new Promise((r) => setTimeout(r, 400));
         set((s) => ({
           processingItems: s.processingItems.filter(
             (p) => !(p.fileName === file.name && p.fileSize === file.size),

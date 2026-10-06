@@ -53,6 +53,7 @@ export interface ItemTableProps {
  */
 export const ItemTable = React.memo(function ItemTable({
   items,
+  totalCount,
   hasNextPage,
   isLoadingMore,
   onLoadMore,
@@ -221,7 +222,7 @@ export const ItemTable = React.memo(function ItemTable({
   const virtualRows = rowVirtualizer.getVirtualItems();
   const totalVirtualHeight = rowVirtualizer.getTotalSize();
 
-  // Auto-trigger infinite load more when virtual window reaches bottom items
+  // Auto-trigger infinite load more when virtual window reaches bottom items (if infinite pagination is active)
   const lastVirtualRow = virtualRows[virtualRows.length - 1];
   React.useEffect(() => {
     if (!lastVirtualRow || !hasNextPage || isLoadingMore) return;
@@ -229,6 +230,15 @@ export const ItemTable = React.memo(function ItemTable({
       onLoadMore?.();
     }
   }, [lastVirtualRow, hasNextPage, isLoadingMore, onLoadMore, sortedItems.length]);
+
+  // Reset scroll position to top when items reference changes (e.g. page navigation)
+  const prevItemsRef = useRef(items);
+  React.useEffect(() => {
+    if (prevItemsRef.current !== items) {
+      prevItemsRef.current = items;
+      tableContainerRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [items]);
 
   const columns =
     displayOptions?.columns || DEFAULT_LIBRARY_DISPLAY_OPTIONS.columns;
@@ -435,7 +445,7 @@ export const ItemTable = React.memo(function ItemTable({
     if (columns.doi) fixedPx += 144;
     if (columns.citationKey) fixedPx += 144;
     if (columns.citations) fixedPx += 55;
-    if (isTrash) fixedPx += 89;
+    if (isTrash) fixedPx += 160;
 
     let authorsWidth: string | undefined = undefined;
     let pubWidth: string | undefined = undefined;
@@ -487,7 +497,7 @@ export const ItemTable = React.memo(function ItemTable({
             clearSelection();
           }
         }}
-        className="flex-1 w-full overflow-auto text-13 focus:outline-none"
+        className="flex-1 w-full overflow-auto text-13 focus:outline-none pb-4"
       >
         <table className="w-full min-w-[640px] table-fixed text-left border-collapse">
           <colgroup>
@@ -499,7 +509,7 @@ export const ItemTable = React.memo(function ItemTable({
             {columns.doi && <col style={{ width: '144px' }} />}
             {columns.citationKey && <col style={{ width: '144px' }} />}
             {columns.citations && <col style={{ width: '55px' }} />}
-            {isTrash && <col style={{ width: '89px' }} />}
+            {isTrash && <col style={{ width: '160px' }} />}
           </colgroup>
           <ItemTableHeader
             columns={columns}
@@ -511,11 +521,11 @@ export const ItemTable = React.memo(function ItemTable({
             onSort={handleSort}
           />
 
-          <tbody className="divide-y divide-border">
+          <tbody>
             {/* Top virtual spacer */}
             {virtualRows.length > 0 && virtualRows[0].start > 0 && (
-              <tr style={{ height: `${virtualRows[0].start}px`, border: 'none' }}>
-                <td colSpan={activeColumnCount} style={{ padding: 0, border: 'none' }} />
+              <tr className="border-0 border-none" style={{ height: `${virtualRows[0].start}px`, border: 'none' }}>
+                <td colSpan={activeColumnCount} className="p-0 border-0 border-none" style={{ padding: 0, border: 'none' }} />
               </tr>
             )}
 
@@ -523,11 +533,13 @@ export const ItemTable = React.memo(function ItemTable({
             {virtualRows.map((virtualRow) => {
               const item = sortedItems[virtualRow.index];
               if (!item) return null;
+              const isLast = virtualRow.index === sortedItems.length - 1;
               return (
                 <ItemTableRow
                   key={item.id}
                   item={item}
                   index={virtualRow.index}
+                  isLast={isLast}
                   columns={columns}
                   density={displayOptions.density}
                   isTrash={isTrash}
@@ -547,6 +559,7 @@ export const ItemTable = React.memo(function ItemTable({
             {/* Bottom virtual spacer */}
             {virtualRows.length > 0 && (
               <tr
+                className="border-0 border-none"
                 style={{
                   height: `${Math.max(
                     0,
@@ -555,7 +568,7 @@ export const ItemTable = React.memo(function ItemTable({
                   border: 'none',
                 }}
               >
-                <td colSpan={activeColumnCount} style={{ padding: 0, border: 'none' }} />
+                <td colSpan={activeColumnCount} className="p-0 border-0 border-none" style={{ padding: 0, border: 'none' }} />
               </tr>
             )}
           </tbody>
@@ -571,4 +584,5 @@ export const ItemTable = React.memo(function ItemTable({
 });
 
 export default ItemTable;
+
 

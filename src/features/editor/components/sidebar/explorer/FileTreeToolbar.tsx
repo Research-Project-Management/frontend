@@ -48,23 +48,29 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
           'flex h-9 shrink-0 items-center justify-between px-2 bg-transparent select-none',
         )}
       >
-        <button
-          type="button"
-          onClick={onToggleFileTree}
-          aria-expanded={isFileTreeOpen}
-          className="flex items-center gap-1.5 font-semibold text-13 tracking-tight text-foreground hover:text-foreground/80 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-foreground rounded-sm py-0.5"
-          title={isFileTreeOpen ? 'Collapse file tree' : 'Expand file tree'}
-          aria-label={isFileTreeOpen ? 'Collapse file tree' : 'Expand file tree'}
-        >
-          <ChevronRight
-            className={cn(
-              'size-3.5 shrink-0 transition-transform duration-150 text-foreground',
-              isFileTreeOpen && 'rotate-90',
-            )}
-            strokeWidth={1.75}
-          />
-          <span>Files</span>
-        </button>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onToggleFileTree}
+              aria-expanded={isFileTreeOpen}
+              className="flex items-center gap-1.5 font-semibold text-13 tracking-tight text-foreground hover:text-foreground/80 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-foreground rounded-sm py-0.5"
+              aria-label={isFileTreeOpen ? 'Collapse files' : 'Expand files'}
+            >
+              <ChevronRight
+                className={cn(
+                  'size-3.5 shrink-0 transition-transform duration-150 text-foreground',
+                  isFileTreeOpen && 'rotate-90',
+                )}
+                strokeWidth={1.75}
+              />
+              <span>Files</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-11">
+            {isFileTreeOpen ? 'Collapse' : 'Expand'}
+          </TooltipContent>
+        </Tooltip>
 
         {isFileTreeOpen && (
           <div className="flex items-center gap-0.5">
@@ -163,15 +169,21 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
               className="h-full w-full pl-8.5 pr-7 text-12 font-sans text-foreground placeholder:text-muted-foreground bg-transparent border-none outline-none leading-none shadow-none"
             />
             {fileFilter && (
-              <button
-                type="button"
-                onClick={() => onFileFilterChange('')}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 size-5 flex items-center justify-center text-foreground hover:text-foreground/80 cursor-pointer rounded p-0.5 transition-colors after:absolute after:-inset-1.5 after:content-['']"
-                title="Clear filter (Esc)"
-                aria-label="Clear filter"
-              >
-                <X className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
-              </button>
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => onFileFilterChange('')}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 size-5 flex items-center justify-center text-foreground hover:text-foreground/80 cursor-pointer rounded p-0.5 transition-colors after:absolute after:-inset-1.5 after:content-['']"
+                    aria-label="Clear filter"
+                  >
+                    <X className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-11">
+                  Clear
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
         </div>

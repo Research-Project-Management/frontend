@@ -11,7 +11,7 @@ import { useCollaborationStream } from '../../../hooks/use-collaboration';
 
 const Editor = dynamic(() => import('../../../components/editor/Editor'), { ssr: false });
 
-import { EditorEmptyState } from '../../../components/shared';
+import { PlaneEmptyState, Button } from '@/shared/components/ui';
 
 interface EmptyEditorStateProps {
   onOpenDefaultFile?: () => void;
@@ -20,20 +20,21 @@ interface EmptyEditorStateProps {
 
 function EmptyEditorState({ onOpenDefaultFile, fileName = 'main.tex' }: EmptyEditorStateProps) {
   return (
-    <EditorEmptyState
+    <PlaneEmptyState
       variant="document"
       title="No file open"
       description="Select a document from the Files explorer or reopen the default manuscript to start writing."
       action={
         onOpenDefaultFile ? (
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="outline"
             onClick={onOpenDefaultFile}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border transition-colors cursor-pointer"
+            className="h-8 gap-1.5 text-xs font-medium cursor-pointer"
           >
             <FileCode2 className="size-3.5 shrink-0 opacity-70" />
             <span>Open {fileName}</span>
-          </button>
+          </Button>
         ) : undefined
       }
     />
@@ -107,9 +108,9 @@ export function EditorColumn() {
   }
 
   return (
-    <div className="h-full w-full flex flex-col bg-background">
+    <div className="h-full w-full flex flex-col bg-background min-h-0">
       {pageId && <Tabs rootPageId={pageId} activeFileId={fileId ?? activePage.id ?? ''} />}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 min-w-0 w-full h-full flex flex-col">
         {isAssetTab ? (
           <ImagePanel asset={selectedAsset!} />
         ) : displayPage ? (

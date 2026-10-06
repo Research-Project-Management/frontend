@@ -100,7 +100,7 @@ export function Item({
 
       {/* Email */}
       <td className="py-3 px-4 text-muted-foreground font-normal truncate max-w-[200px]">
-        {user.email || '—'}
+        {user.email || '-'}
       </td>
 
       {/* Role */}

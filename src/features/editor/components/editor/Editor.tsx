@@ -24,8 +24,11 @@ import { cn } from '@/shared/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { filesQuery } from '@/features/editor/hooks/use-core';
 import {
+  usePageSuggestions,
   useAcceptSuggestion,
   useRejectSuggestion,
+  useAcceptAllSuggestions,
+  useRejectAllSuggestions,
   useCreateSuggestion,
 } from '@/features/editor/hooks/use-suggestion';
 import { usePageComments } from '@/features/editor/hooks/use-comment';
@@ -37,7 +40,6 @@ import { FormatToolbar } from '@/features/editor/sub-features/code-editor/compon
 import UnifiedCodeMirrorEditor from './UnifiedCodeMirrorEditor';
 import { EditorModeSwitcher } from './subcomponents/EditorModeSwitcher';
 import { SourceVisualSwitcher } from './subcomponents/SourceVisualSwitcher';
-import { WordCountDialog } from './subcomponents/WordCountDialog';
 import { EditorSearchPanel } from './subcomponents/EditorSearchPanel';
 import type { SelFloating } from './subcomponents/EditorFloatingBar';
 import type { RenameDialogState } from './subcomponents/RenameSymbolDialog';
@@ -56,6 +58,7 @@ import { useEditorInstance } from '../../core/context/editor-instance.context';
 import { editorCommandBus } from '../../core/command-bus/editor-command-bus';
 
 const EMPTY_LIBRARY_ITEMS: unknown[] = [];
+const EMPTY_PAGE_FILES: any[] = [];
 
 interface EditorProps {
   page: Page | PageFile;
@@ -120,8 +123,12 @@ export default function Editor({ page }: EditorProps) {
 
   // Live comments & suggestions for Overleaf review parity
   const { data: comments = [] } = usePageComments(page?.id ?? null);
+  const { data: suggestions = [] } = usePageSuggestions(page?.id ?? null);
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
-  const [suggestions, setSuggestions] = useState<PageSuggestion[]>([]);
+  const acceptSuggestionMutation = useAcceptSuggestion();
+  const rejectSuggestionMutation = useRejectSuggestion();
+  const acceptAllSuggestionsMutation = useAcceptAllSuggestions();
+  const rejectAllSuggestionsMutation = useRejectAllSuggestions();
 
   useEffect(() => {
     const unsub = EditorEventBus.on('flux:open-panel', (detail) => {
@@ -138,7 +145,18 @@ export default function Editor({ page }: EditorProps) {
     typeof rawProjId === 'string'
       ? rawProjId
       : rawProjId?.id || '';
-  const userExtra = user as (typeof user & { email?: string; avatar?: string; image?: string; color?: string }) | null;
+  const collaboratorCurrentUser = useMemo(() => {
+    if (!user) return undefined;
+    const userExtra = user as (typeof user & { email?: string; avatar?: string; image?: string; color?: string }) | null;
+    return {
+      id: user.id,
+      name: user.name || userExtra?.email || 'Collaborator',
+      avatar: userExtra?.avatar || userExtra?.image,
+      color: userExtra?.color,
+      role: user.role,
+    };
+  }, [user]);
+
   const {
     activeCollaborators,
     isDocumentLocked,
@@ -149,15 +167,7 @@ export default function Editor({ page }: EditorProps) {
     projectId: effectiveProjectId,
     pageId: page.id,
     currentUserId: user?.id,
-    currentUser: user
-      ? {
-          id: user.id,
-          name: user.name || userExtra?.email || 'Collaborator',
-          avatar: userExtra?.avatar || userExtra?.image,
-          color: userExtra?.color,
-          role: user.role,
-        }
-      : undefined,
+    currentUser: collaboratorCurrentUser,
   });
 
   // Core editor state hooks
@@ -167,40 +177,7 @@ export default function Editor({ page }: EditorProps) {
     handleContentChange,
   } = useEditorSave({ page, isRealtimeActive: false });
 
-  // Table, Figure, Symbol Wizard Modals
-  const [tableWizardOpen, setTableWizardOpen] = useState(false);
-  const [figureWizardOpen, setFigureWizardOpen] = useState(false);
-  const [symbolPaletteOpen, setSymbolPaletteOpen] = useState(false);
-  const [wordCountOpen, setWordCountOpen] = useState(false);
-
   const rootPageId = ('parentPageId' in page ? (page as { parentPageId?: string }).parentPageId : undefined) || page?.id || null;
-
-  const handleInsertWizardSnippet = useCallback((snippet: string) => {
-    if (engine) {
-      engine.insertText(snippet);
-    }
-  }, [engine]);
-
-  useEffect(() => {
-    const unsubTable = EditorEventBus.on('flux:open-table-wizard', () => {
-      setTableWizardOpen(true);
-    });
-    const unsubFigure = EditorEventBus.on('flux:open-figure-wizard', () => {
-      setFigureWizardOpen(true);
-    });
-    const unsubSymbol = EditorEventBus.on('flux:open-symbol-palette', () => {
-      setSymbolPaletteOpen(true);
-    });
-    const unsubWordCount = EditorEventBus.on('flux:open-word-count', () => {
-      setWordCountOpen(true);
-    });
-    return () => {
-      unsubTable();
-      unsubFigure();
-      unsubSymbol();
-      unsubWordCount();
-    };
-  }, []);
 
   const vimStatusRef = useRef<HTMLDivElement>(null);
   const emacsStatusRef = useRef<HTMLDivElement>(null);
@@ -212,12 +189,9 @@ export default function Editor({ page }: EditorProps) {
   const [glyphTooltip, setGlyphTooltip] = useState<GlyphTooltipData | null>(null);
   const [activeSuggestionWidgetData, setActiveSuggestionWidgetData] = useState<InlineSuggestionWidgetData | null>(null);
 
-  const acceptSuggestionMutation = useAcceptSuggestion();
-  const rejectSuggestionMutation = useRejectSuggestion();
   const createSuggestionMutation = useCreateSuggestion();
 
   const handleAcceptSuggestion = useCallback((s: PageSuggestion) => {
-    setSuggestions((prev) => prev.filter((item) => item.id !== s.id));
     setActiveSuggestionWidgetData(null);
     if (page?.id) {
       acceptSuggestionMutation.mutate({ pageId: page.id, suggestionId: s.id });
@@ -225,7 +199,6 @@ export default function Editor({ page }: EditorProps) {
   }, [page?.id, acceptSuggestionMutation, setActiveSuggestionWidgetData]);
 
   const handleRejectSuggestion = useCallback((s: PageSuggestion) => {
-    setSuggestions((prev) => prev.filter((item) => item.id !== s.id));
     setActiveSuggestionWidgetData(null);
     if (page?.id) {
       rejectSuggestionMutation.mutate({ pageId: page.id, suggestionId: s.id });
@@ -234,10 +207,11 @@ export default function Editor({ page }: EditorProps) {
 
   const projectScopeId = effectiveProjectId;
 
-  const { data: pageFiles = [] } = useQuery({
+  const { data: rawPageFiles } = useQuery({
     ...filesQuery(rootPageId ?? ''),
     enabled: !!rootPageId,
   });
+  const pageFiles = rawPageFiles ?? EMPTY_PAGE_FILES;
 
   const { data: libraryData } = useViewItems(
     projectScopeId || 'me',
@@ -250,10 +224,14 @@ export default function Editor({ page }: EditorProps) {
     citationModalOpen,
     setCitationModalOpen,
     handleInsertCitationSnippet,
+    initialCitationQuery,
+    initialCitationKey,
+    citedKeys,
   } = useEditorCitation({
     pageFiles,
     libraryItems,
     projectId: projectScopeId,
+    rootPageId,
   });
 
   // Local popup states
@@ -323,6 +301,7 @@ export default function Editor({ page }: EditorProps) {
     ctxStartLine,
     ctxEndLine,
     ctxSelText,
+    projectId: projectScopeId,
   });
 
   // Global keyboard shortcuts
@@ -407,29 +386,6 @@ export default function Editor({ page }: EditorProps) {
 
   const handleSuggestionSubmit = useCallback(async () => {
     if (!suggestModal) return;
-    const userEmail = (user as { email?: string })?.email || '';
-    const newSug: PageSuggestion = {
-      id: `sug-${Date.now()}`,
-      pageId: page.id,
-      authorId: user?.id || 'local',
-      author: {
-        id: user?.id || 'local',
-        name: user?.name || 'Collaborator',
-        email: userEmail,
-      },
-      type: suggestModal.type,
-      originalText: suggestModal.originalText,
-      suggestedText: suggestModal.type === 'delete' ? '' : suggestModal.suggestedText,
-      fromLine: suggestModal.fromLine,
-      fromColumn: 0,
-      toLine: suggestModal.toLine,
-      toColumn: 0,
-      description: suggestModal.description || undefined,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setSuggestions((prev) => [...prev, newSug]);
     createSuggestionMutation.mutate({
       pageId: page.id,
       type: suggestModal.type,
@@ -443,7 +399,7 @@ export default function Editor({ page }: EditorProps) {
     });
     setSuggestModal(null);
     EditorEventBus.emit('flux:open-panel', 'Review');
-  }, [page.id, suggestModal, user, createSuggestionMutation]);
+  }, [page.id, suggestModal, createSuggestionMutation]);
 
   const handleCloseSuggestionWidget = useCallback(() => {
     setActiveSuggestionWidgetData(null);
@@ -481,7 +437,7 @@ export default function Editor({ page }: EditorProps) {
   const isReadOnly = Boolean(isPageLocked || isDocumentLocked);
 
   return (
-    <div className="flex-1 w-full h-full flex flex-col min-h-0 overflow-hidden">
+    <div className="relative flex-1 w-full min-w-0 max-w-full h-full flex flex-col min-h-0 overflow-hidden">
       {/* Header format bar & mode switches (Overleaf 1:1 Parity) */}
       <div className="h-9 flex items-center justify-between border-b border-border bg-background pl-1 pr-2 shrink-0 overflow-hidden gap-1.5">
         <div className="flex-1 min-w-0 overflow-hidden">
@@ -609,6 +565,28 @@ export default function Editor({ page }: EditorProps) {
             >
               New suggestion
             </button>
+            {suggestions.some((s) => s.status === 'pending') && (
+              <>
+                <button
+                  type="button"
+                  disabled={acceptAllSuggestionsMutation.isPending}
+                  onClick={() => acceptAllSuggestionsMutation.mutate({ pageId: page.id })}
+                  className="px-2 py-0.5 rounded-sm text-11 font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50"
+                  title="Accept all pending suggestions"
+                >
+                  Accept All
+                </button>
+                <button
+                  type="button"
+                  disabled={rejectAllSuggestionsMutation.isPending}
+                  onClick={() => rejectAllSuggestionsMutation.mutate({ pageId: page.id })}
+                  className="px-2 py-0.5 rounded-sm text-11 font-medium bg-rose-600 hover:bg-rose-700 text-white transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50"
+                  title="Reject all pending suggestions"
+                >
+                  Reject All
+                </button>
+              </>
+            )}
             <button
               type="button"
               onClick={() => toggleReviewMode()}
@@ -624,24 +602,31 @@ export default function Editor({ page }: EditorProps) {
       {/* Editor surface area */}
       <div
         id="editor-surface"
-        className="flex-1 w-full relative min-h-0 flex flex-col overflow-hidden bg-background focus-within:ring-1 focus-within:ring-primary/40 focus-within:ring-inset transition-shadow duration-150"
+        className="flex-1 w-full min-w-0 max-w-full relative min-h-0 flex flex-col overflow-hidden focus-within:ring-1 focus-within:ring-primary/40 focus-within:ring-inset bg-[var(--editor-bg,#FCFCFB)] dark:bg-[var(--editor-bg,#1A1A22)]"
       >
-        <div className="flex-1 w-full h-full relative min-h-0 overflow-hidden bg-background">
-          <UnifiedCodeMirrorEditor
-            key={page.id}
-            value={currentContent}
-            onChange={handleContentChange}
-            isDarkTheme={isDarkTheme}
-            readOnly={isReadOnly}
-            bibEntries={bibEntries}
-            projectFiles={pageFiles}
-            keybinding={keybinding}
-            yText={yText}
-            awareness={awareness}
-            comments={comments}
-            activeCommentId={activeCommentId}
-          />
-        </div>
+        <UnifiedCodeMirrorEditor
+          key={page.id}
+          value={currentContent}
+          onChange={handleContentChange}
+          isDarkTheme={isDarkTheme}
+          readOnly={isReadOnly}
+          bibEntries={bibEntries}
+          projectFiles={pageFiles}
+          projectId={projectScopeId}
+          keybinding={keybinding}
+          yText={yText}
+          awareness={awareness}
+          comments={comments}
+          activeCommentId={activeCommentId}
+          suggestions={suggestions}
+          trackChangesViewMode={trackChangesViewMode}
+          onAcceptSuggestion={(sug) =>
+            acceptSuggestionMutation.mutate({ pageId: page.id, suggestionId: sug.id })
+          }
+          onRejectSuggestion={(sug) =>
+            rejectSuggestionMutation.mutate({ pageId: page.id, suggestionId: sug.id })
+          }
+        />
 
         {/* In-Editor Search & Replace Bar */}
         <EditorSearchPanel
@@ -674,7 +659,7 @@ export default function Editor({ page }: EditorProps) {
             aria-label="Emacs mode status bar"
           >
             <div className="flex items-center gap-2">
-              <span className="px-1.5 py-0.5 rounded-sm bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-11 font-semibold tracking-normal">
+              <span className="px-1.5 py-0.5 rounded-sm bg-ai/10 text-ai border border-ai/20 text-11 font-semibold tracking-normal">
                 Emacs
               </span>
               <span className="text-foreground font-medium text-xs">
@@ -721,21 +706,17 @@ export default function Editor({ page }: EditorProps) {
         menuGroups={menuGroups}
       />
 
-      {/* Modals (Citations, Tables, Figures, Symbols, Suggestion, Rename) */}
+      {/* Modals (Citations, Tables, Figures, Symbols, Word Count, Suggestion, Rename) */}
       <EditorModals
         citationModalOpen={citationModalOpen}
         setCitationModalOpen={setCitationModalOpen}
         bibEntries={bibEntries}
         onInsertCitation={handleInsertCitationSnippet}
         projectId={projectScopeId}
-        tableWizardOpen={tableWizardOpen}
-        setTableWizardOpen={setTableWizardOpen}
-        figureWizardOpen={figureWizardOpen}
-        setFigureWizardOpen={setFigureWizardOpen}
+        initialCitationQuery={initialCitationQuery}
+        initialCitationKey={initialCitationKey}
+        citedKeys={citedKeys}
         rootPageId={rootPageId}
-        symbolPaletteOpen={symbolPaletteOpen}
-        setSymbolPaletteOpen={setSymbolPaletteOpen}
-        onInsertSnippet={handleInsertWizardSnippet}
         suggestModal={suggestModal}
         setSuggestModal={setSuggestModal}
         isCreatingSuggestion={false}
@@ -746,13 +727,6 @@ export default function Editor({ page }: EditorProps) {
         onChangeRenameName={handleChangeRenameName}
         onApplyRename={handleApplyRename}
         onCancelRename={handleCancelRename}
-      />
-
-      {/* Overleaf Word Count Dialog */}
-      <WordCountDialog
-        open={wordCountOpen}
-        onClose={() => setWordCountOpen(false)}
-        content={engine?.getContent() || currentContent || ''}
       />
     </div>
   );

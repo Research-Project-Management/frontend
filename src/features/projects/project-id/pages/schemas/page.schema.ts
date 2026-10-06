@@ -39,6 +39,7 @@ export const createPageSchema = z.object({
   content: z.string().optional(),
   status: z.enum(['draft', 'published', 'archived']).optional(),
   labels: z.array(z.string()).optional(),
+  templateType: z.enum(['blank', 'example']).default('blank').optional(),
 });
 
 // ── Inferred Types ──────────────────────────────────────────────────────────

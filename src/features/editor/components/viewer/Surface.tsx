@@ -14,8 +14,7 @@ import { AlertCircle, FileText, Loader2, Play } from 'lucide-react';
 import { LatexCompilerEngine, type SyncTeXMap } from '@/features/editor/utils/viewer.util';
 import { useIntersectionObserver } from "@/shared/hooks";
 import { logger, cn } from "@/shared/lib/utils";
-import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
-import { EditorEmptyState } from '../shared';
+import { PlaneErrorState, PlaneEmptyState } from '@/shared/components/ui';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -118,7 +117,6 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
       }}
       onClickCapture={handleClickCapture}
       onDoubleClickCapture={handleDoubleClick}
-      title="Double-click or Ctrl+Click anywhere to jump to LaTeX source"
       className={cn(
         "bg-canvas dark:bg-card relative flex items-center justify-center cursor-text transition-all shrink-0",
         isSpreadView ? "my-0" : "border-b border-border/60 last:border-b-0"
@@ -140,10 +138,16 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
           onRenderTextLayerSuccess={() => {
             if (containerRef.current) {
               const textLayers = containerRef.current.querySelectorAll('.textLayer, .react-pdf__Page__textContent');
-              textLayers.forEach((tl) => tl.setAttribute('aria-hidden', 'true'));
+              textLayers.forEach((tl) => {
+                tl.querySelectorAll('span').forEach((span) => {
+                  if (span.textContent && span.textContent.includes('—')) {
+                    span.textContent = span.textContent.replace(/—/g, '-');
+                  }
+                });
+              });
             }
           }}
-          devicePixelRatio={Math.max(2, typeof window !== 'undefined' ? window.devicePixelRatio || 2 : 2)}
+          devicePixelRatio={typeof window !== 'undefined' ? Math.min(2, Math.max(1, window.devicePixelRatio || 1)) : 1}
           loading={
             <div className="absolute inset-0 flex items-center justify-center bg-canvas dark:bg-card">
               <Loader2 className="size-5 animate-spin text-muted-foreground/30 shrink-0" />
@@ -397,13 +401,13 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
         role="region"
         aria-label="PDF document preview"
         className={cn(
-          "flex-1 overflow-y-auto flex flex-col items-center justify-start select-text relative transition-colors duration-200 thin-scrollbar",
+          "flex-1 h-full min-h-0 overflow-y-auto flex flex-col items-center justify-start select-text relative transition-colors duration-200 thin-scrollbar",
           autoFit ? "overflow-x-hidden" : "overflow-x-auto",
           invertColors ? "bg-neutral-950 text-neutral-100" : "bg-background text-foreground"
         )}
       >
         {!pdfUrl ? (
-          <EditorEmptyState
+          <PlaneEmptyState
             variant="preview"
             className={invertColors ? "bg-neutral-950 text-neutral-100" : undefined}
           />
@@ -494,7 +498,6 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
                   const ptY = Math.round(clickY / effectiveScale);
                   handleDoubleClickPage(pageNumber, clickFraction, ptX, ptY, clickX, clickY);
                 }}
-                title="Double-click anywhere to jump to LaTeX source"
                 className={cn(
                   "bg-canvas dark:bg-card relative flex items-center justify-center cursor-text transition-[filter] duration-200 shrink-0"
                 )}
@@ -511,10 +514,16 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
                     const el = pageElemRefs.current[pageNumber];
                     if (el) {
                       const textLayers = el.querySelectorAll('.textLayer, .react-pdf__Page__textContent');
-                      textLayers.forEach((tl) => tl.setAttribute('aria-hidden', 'true'));
+                      textLayers.forEach((tl) => {
+                        tl.querySelectorAll('span').forEach((span) => {
+                          if (span.textContent && span.textContent.includes('—')) {
+                            span.textContent = span.textContent.replace(/—/g, '-');
+                          }
+                        });
+                      });
                     }
                   }}
-                  devicePixelRatio={Math.max(2, typeof window !== 'undefined' ? window.devicePixelRatio || 2 : 2)}
+                  devicePixelRatio={typeof window !== 'undefined' ? Math.min(2, Math.max(1, window.devicePixelRatio || 1)) : 1}
                 />
               {clickIndicator && clickIndicator.page === pageNumber && (
                 <div
@@ -527,9 +536,9 @@ export const Surface = React.memo(forwardRef<SurfaceHandle, SurfaceProps>(functi
                   }}
                 >
                   <span className="relative flex size-9 items-center justify-center">
-                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500/60 opacity-80" />
-                    <span className="absolute inline-flex size-6 rounded-full border-2 border-emerald-500 bg-emerald-500/20 shadow-lg" />
-                    <span className="relative inline-flex size-2 rounded-full bg-emerald-600 shadow" />
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/40 opacity-70" />
+                    <span className="absolute inline-flex size-6 rounded-full border-2 border-primary bg-primary/20" />
+                    <span className="relative inline-flex size-2 rounded-full bg-primary" />
                   </span>
                 </div>
               )}

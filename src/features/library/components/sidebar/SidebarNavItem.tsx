@@ -8,7 +8,8 @@ import { cn } from "@/shared/lib/utils";
 
 export interface SidebarNavItemProps {
   href: string;
-  icon: LucideIcon;
+  icon?: LucideIcon | React.ComponentType<{ className?: string }>;
+  customIcon?: React.ReactNode;
   label: string;
   isActive: boolean;
   navId: string;
@@ -20,6 +21,7 @@ export interface SidebarNavItemProps {
 export function SidebarNavItem({
   href,
   icon: Icon,
+  customIcon,
   label,
   isActive,
   navId,
@@ -78,7 +80,7 @@ export function SidebarNavItem({
         "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
         isActive
           ? "bg-muted text-foreground font-medium"
-          : "text-foreground hover:bg-muted font-normal",
+          : "text-foreground hover:bg-muted group-hover/item:bg-muted group-hover/root:bg-muted has-[[data-state=open]]:bg-muted font-normal",
         isDragOverTarget && "bg-primary/15 text-primary font-medium ring-1 ring-primary/40 ring-inset"
       )}
     >
@@ -90,11 +92,20 @@ export function SidebarNavItem({
           transition={{ type: 'spring', stiffness: 500, damping: 35 }}
         />
       )}
-      <Icon
+      {customIcon ? (
+        <span className="relative z-10 flex size-4 shrink-0 items-center justify-center text-13 leading-none select-none">
+          {customIcon}
+        </span>
+      ) : Icon ? (
+        <Icon
           className="relative z-10 size-4 shrink-0 text-foreground"
           strokeWidth={1.5}
         />
-      <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
+      ) : null}
+      <span className={cn(
+        "relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground",
+        isActive ? "font-medium" : "font-normal"
+      )}>
         {label}
       </span>
       {badge}

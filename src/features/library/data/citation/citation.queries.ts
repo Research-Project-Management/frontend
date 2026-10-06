@@ -61,10 +61,15 @@ export function useAcademicResolver() {
   });
 }
 
-export function useSearchCslStyles(query: string = '', limit: number = 30) {
+export function useSearchCslStyles(
+  query: string = '',
+  limit: number = 30,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: [...citationKeys.all, 'styles-search', query, limit] as const,
     queryFn: () => CitationService.searchStyles(query, limit),
+    enabled: options?.enabled ?? true,
     staleTime: 1000 * 60 * 60,
   });
 }

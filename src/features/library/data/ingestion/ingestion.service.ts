@@ -409,6 +409,7 @@ export const RetractionService = {
     apiPost<{
       itemId: string;
       isRetracted: boolean;
+      status?: 'retracted' | 'clean' | 'unknown';
       nature?: string;
       details?: Record<string, unknown>;
     }>(

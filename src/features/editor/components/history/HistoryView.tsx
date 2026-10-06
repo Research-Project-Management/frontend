@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   FileText,
@@ -53,15 +53,41 @@ import {
   useVersionActions,
   useHistoryActions,
   useVersionDiff,
+  useProjectDiff,
+  useProjectSnapshot,
+  historyKeys,
 } from '@/features/editor/hooks/use-history';
 import {
   versionService,
   historyService,
   type VersionDiffResponse,
+  type ProjectDiffResponse,
+  type ProjectSnapshotDetail,
+  type ProjectFileDiff,
 } from '@/features/editor/services/history.service';
 import { useProjectExport } from '@/features/editor/hooks/use-export';
 import { toast } from 'sonner';
-import { EditorEmptyState } from '../shared';
+import { PlaneEmptyState } from '@/shared/components/ui';
+
+// ── Snapshot Content Extractor ───────────────────────────────────────────────
+
+function extractFileContentFromSnapshot(
+  snapshot?: ProjectSnapshotDetail | any | null,
+  filePath?: string | null,
+): string {
+  if (!snapshot || !snapshot.files || !filePath) return '';
+  const clean = filePath.replace(/^\//, '');
+  const entry =
+    snapshot.files[clean] ||
+    snapshot.files[`/${clean}`] ||
+    Object.entries(snapshot.files).find(([k]) => k.replace(/^\//, '') === clean)?.[1];
+
+  if (!entry) return '';
+  if (typeof entry === 'string') return entry;
+  if (Array.isArray(entry.lines)) return entry.lines.join('\n');
+  if (typeof entry.content === 'string') return entry.content;
+  return '';
+}
 
 // ── Date Formatting Helpers ───────────────────────────────────────────────────
 
@@ -145,9 +171,13 @@ export default function HistoryView() {
   const { exportVersionZip } = useProjectExport();
 
   // Selected revision state
+  const queryClient = useQueryClient();
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [activeFileId, setActiveFileId] = useState<string | null>(activeFilePage?.id || null);
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
+  const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
+  const [isRestoringProject, setIsRestoringProject] = useState(false);
 
   // Content of the active file at the selected revision
   const [previewContent, setPreviewContent] = useState<string>('');
@@ -349,59 +379,137 @@ export default function HistoryView() {
     return timelineItems.find((i) => i.id === selectedEventId) || timelineItems[0];
   }, [timelineItems, selectedEventId]);
 
-  // Fetch content for selected revision
+  const activeVersionNumber = useMemo(() => {
+    return (
+      (activeRevision as any)?.versionNumber ||
+      (timelineItems.length > 0 ? timelineItems.length : 1)
+    );
+  }, [activeRevision, timelineItems]);
+
+  const latestVersionNumber = useMemo(() => {
+    if (!timelineItems.length) return 1;
+    const nums = timelineItems
+      .map((i) => (i as any).versionNumber)
+      .filter((n): n is number => typeof n === 'number');
+    return nums.length ? Math.max(...nums) : 1;
+  }, [timelineItems]);
+
+  const isComparingAgainstCurrent = compareTargetId === 'current';
+  const resolvedBaseVersion = useMemo(() => {
+    if (isComparingAgainstCurrent) {
+      return activeVersionNumber;
+    }
+    if (compareTargetId === 'previous') {
+      return Math.max(1, activeVersionNumber - 1);
+    }
+    const match = timelineItems.find((i) => i.id === compareTargetId);
+    return (match as any)?.versionNumber || Math.max(1, activeVersionNumber - 1);
+  }, [isComparingAgainstCurrent, compareTargetId, activeVersionNumber, timelineItems]);
+
+  const baseVersionForDiff = Math.min(resolvedBaseVersion, activeVersionNumber);
+  const targetVersionForDiff = Math.max(resolvedBaseVersion, activeVersionNumber);
+
+  const shouldFetchProjectDiff =
+    diffMode && !isComparingAgainstCurrent && baseVersionForDiff !== targetVersionForDiff;
+
+  const { data: projectDiffData, isLoading: isProjectDiffLoading } = useProjectDiff(
+    projectId || rootPageId,
+    baseVersionForDiff,
+    targetVersionForDiff,
+    { enabled: shouldFetchProjectDiff }
+  );
+
+  const { data: targetSnapshot, isLoading: isTargetSnapshotLoading } = useProjectSnapshot(
+    projectId || rootPageId,
+    activeVersionNumber,
+    { enabled: Boolean(activeVersionNumber) }
+  );
+
+  const { data: baseSnapshot, isLoading: isBaseSnapshotLoading } = useProjectSnapshot(
+    projectId || rootPageId,
+    baseVersionForDiff,
+    {
+      enabled: Boolean(
+        baseVersionForDiff &&
+          !isComparingAgainstCurrent &&
+          baseVersionForDiff !== activeVersionNumber
+      ),
+    }
+  );
+
+  // Auto-select selectedFilePath if not set or when diff changes
+  useEffect(() => {
+    if (diffMode && projectDiffData?.files && projectDiffData.files.length > 0) {
+      const match = projectDiffData.files.find(
+        (f) => f.path.replace(/^\//, '') === selectedFilePath?.replace(/^\//, '')
+      );
+      if (!match) {
+        setSelectedFilePath(projectDiffData.files[0].path.replace(/^\//, ''));
+      }
+    } else if (viewMode === 'snapshot' && targetSnapshot?.files) {
+      const keys = Object.keys(targetSnapshot.files).map((k) => k.replace(/^\//, ''));
+      if (keys.length > 0 && (!selectedFilePath || !keys.includes(selectedFilePath.replace(/^\//, '')))) {
+        setSelectedFilePath(keys[0]);
+      }
+    } else if (!selectedFilePath) {
+      const activeFile =
+        pageFiles.find((p: any) => p.id === activeFileId) ||
+        deletedFiles.find((p: any) => p.id === activeFileId);
+      if (activeFile?.title) {
+        setSelectedFilePath(activeFile.title);
+      } else if (pageFiles.length > 0) {
+        setSelectedFilePath(pageFiles[0].title || 'main.tex');
+      }
+    }
+  }, [diffMode, viewMode, projectDiffData, targetSnapshot, selectedFilePath, pageFiles, deletedFiles, activeFileId]);
+
+  // Synchronize activeFileId with selectedFilePath
+  useEffect(() => {
+    if (!selectedFilePath) return;
+    const clean = selectedFilePath.replace(/^\//, '');
+    const found =
+      pageFiles.find((p: any) => (p.title || p.name || p.path) === clean) ||
+      deletedFiles.find((p: any) => (p.title || p.name || p.path) === clean);
+    if (found && found.id !== activeFileId) {
+      setActiveFileId(found.id);
+    }
+  }, [selectedFilePath, pageFiles, deletedFiles, activeFileId]);
+
+  const activeFileName = useMemo(() => {
+    if (selectedFilePath) return selectedFilePath.replace(/^\//, '');
+    const f =
+      pageFiles.find((p) => p.id === activeFileId) ||
+      deletedFiles.find((p: any) => p.id === activeFileId);
+    return f?.title || activeRevision?.fileName || 'main.tex';
+  }, [selectedFilePath, pageFiles, deletedFiles, activeFileId, activeRevision]);
+
+  // Fetch content for selected revision fallback
   useEffect(() => {
     let isCancelled = false;
 
     async function loadContent() {
-      if (!activeFileId) return;
+      if (!activeFileId && !selectedFilePath) return;
       setIsLoadingContent(true);
       try {
-        // 1. Try project snapshot from backend
-        if ((activeRevision as any)?.versionNumber && (projectId || rootPageId)) {
-          try {
-            const snap = await historyService.getProjectSnapshot(
-              projectId || rootPageId,
-              (activeRevision as any).versionNumber,
-            );
-            if (snap && snap.files) {
-              const activeFile =
-                pageFiles.find((f: any) => f.id === activeFileId) ||
-                deletedFiles.find((f: any) => f.id === activeFileId);
-              const fileName = activeFile?.title || (activeFile as any)?.name || (activeFile as any)?.path || 'main.tex';
-              const fileEntry =
-                snap.files[fileName] ||
-                snap.files[`/${fileName}`] ||
-                Object.entries(snap.files).find(([k]) => k.endsWith(fileName))?.[1];
-
-              if (fileEntry) {
-                const content =
-                  typeof fileEntry === 'string'
-                    ? fileEntry
-                    : Array.isArray(fileEntry.lines)
-                    ? fileEntry.lines.join('\n')
-                    : fileEntry.content || '';
-                if (!isCancelled) {
-                  setPreviewContent(content);
-                  setIsLoadingContent(false);
-                  return;
-                }
-              }
-            }
-          } catch {
-            // Proceed to doc-level versions
+        if (targetSnapshot?.files) {
+          const content = extractFileContentFromSnapshot(targetSnapshot, selectedFilePath || activeFileName);
+          if (content && !isCancelled) {
+            setPreviewContent(content);
+            setIsLoadingContent(false);
+            return;
           }
         }
 
-        // 2. Fallback to doc-level versions
-        const versions = await versionService.getByPageId(activeFileId);
-        if (versions && versions.length > 0) {
-          const match = versions.find((v) => v.id === selectedVersionId || v.id === selectedEventId) || versions[0];
-          const fullVersion = await versionService.getById(activeFileId, match.id);
-          if (!isCancelled && fullVersion?.content !== undefined) {
-            setPreviewContent(fullVersion.content);
-            setIsLoadingContent(false);
-            return;
+        if (activeFileId) {
+          const versions = await versionService.getByPageId(activeFileId);
+          if (versions && versions.length > 0) {
+            const match = versions.find((v) => v.id === selectedVersionId || v.id === selectedEventId) || versions[0];
+            const fullVersion = await versionService.getById(activeFileId, match.id);
+            if (!isCancelled && fullVersion?.content !== undefined) {
+              setPreviewContent(fullVersion.content);
+              setIsLoadingContent(false);
+              return;
+            }
           }
         }
 
@@ -427,14 +535,14 @@ export default function HistoryView() {
     return () => {
       isCancelled = true;
     };
-  }, [activeFileId, selectedVersionId, selectedEventId, pageFiles, deletedFiles, activeRevision, projectId, rootPageId]);
+  }, [activeFileId, selectedFilePath, selectedVersionId, selectedEventId, pageFiles, deletedFiles, targetSnapshot, activeFileName]);
 
   // Server-computed visual diff with TanStack Query caching
   const { data: serverDiffData, isLoading: isDiffLoading } = useVersionDiff(
     activeFileId,
     compareTargetId,
     selectedEventId,
-    { enabled: diffMode && Boolean(activeFileId && selectedEventId) },
+    { enabled: diffMode && Boolean(activeFileId && selectedEventId && !projectDiffData) },
   );
 
   const diffData = useMemo<VersionDiffResponse | null>(() => {
@@ -446,16 +554,84 @@ export default function HistoryView() {
       fromContent: currentFileContent,
       toContent: previewContent,
       chunks: [],
-      stats: { addedLines: 0, deletedLines: 0, unchangedLines: 0 },
+      stats: {
+        addedLines: projectDiffData?.totalAdditions ?? 0,
+        deletedLines: projectDiffData?.totalDeletions ?? 0,
+        unchangedLines: 0,
+      },
     };
-  }, [diffMode, serverDiffData, compareTargetId, selectedEventId, currentFileContent, previewContent]);
+  }, [diffMode, serverDiffData, compareTargetId, selectedEventId, currentFileContent, previewContent, projectDiffData]);
 
-  const activeFileName = useMemo(() => {
-    const f =
-      pageFiles.find((p) => p.id === activeFileId) ||
-      deletedFiles.find((p: any) => p.id === activeFileId);
-    return f?.title || activeRevision?.fileName || 'main.tex';
-  }, [pageFiles, deletedFiles, activeFileId, activeRevision]);
+  const diffViewerOriginal = useMemo(() => {
+    if (viewMode !== 'diff') return '';
+    if (isComparingAgainstCurrent) {
+      const snapText = extractFileContentFromSnapshot(targetSnapshot, selectedFilePath || activeFileName);
+      return snapText || previewContent;
+    }
+    const fromBase = extractFileContentFromSnapshot(baseSnapshot, selectedFilePath || activeFileName);
+    if (fromBase !== undefined && fromBase !== '') return fromBase;
+    return diffData?.fromContent || currentFileContent;
+  }, [viewMode, isComparingAgainstCurrent, targetSnapshot, baseSnapshot, selectedFilePath, activeFileName, previewContent, diffData?.fromContent, currentFileContent]);
+
+  const diffViewerModified = useMemo(() => {
+    if (viewMode !== 'diff') return '';
+    if (isComparingAgainstCurrent) {
+      return currentFileContent;
+    }
+    const fromTarget = extractFileContentFromSnapshot(targetSnapshot, selectedFilePath || activeFileName);
+    if (fromTarget !== undefined && fromTarget !== '') return fromTarget;
+    return diffData?.toContent || previewContent;
+  }, [viewMode, isComparingAgainstCurrent, targetSnapshot, selectedFilePath, activeFileName, currentFileContent, diffData?.toContent, previewContent]);
+
+  const singleViewerContent = useMemo(() => {
+    if (viewMode === 'timeline') return scrubContent;
+    const fromSnap = extractFileContentFromSnapshot(targetSnapshot, selectedFilePath || activeFileName);
+    if (fromSnap !== undefined && fromSnap !== '') return fromSnap;
+    return previewContent;
+  }, [viewMode, scrubContent, targetSnapshot, selectedFilePath, activeFileName, previewContent]);
+
+  const diffChangedFiles = useMemo(() => {
+    if (!diffMode) return [];
+    if (projectDiffData?.files && projectDiffData.files.length > 0) {
+      return projectDiffData.files.map((df) => {
+        const cleanPath = df.path.replace(/^\//, '');
+        const matchingPage = pageFiles.find((p: any) => (p.title || p.name || p.path) === cleanPath);
+        return {
+          ...df,
+          cleanPath,
+          id: matchingPage?.id || cleanPath,
+        };
+      });
+    }
+    return [];
+  }, [diffMode, projectDiffData, pageFiles]);
+
+  const unchangedProjectFiles = useMemo(() => {
+    if (!diffMode || diffChangedFiles.length === 0) return [];
+    const changedPaths = new Set(diffChangedFiles.map((f) => f.cleanPath));
+    return pageFiles.filter((p: any) => !changedPaths.has(p.title || p.name || p.path));
+  }, [diffMode, diffChangedFiles, pageFiles]);
+
+  const snapshotFilesList = useMemo(() => {
+    if (targetSnapshot?.files) {
+      return Object.entries(targetSnapshot.files).map(([path, data]) => {
+        const cleanPath = path.replace(/^\//, '');
+        const matchingPage = pageFiles.find((p: any) => (p.title || p.name || p.path) === cleanPath);
+        return {
+          path: cleanPath,
+          id: matchingPage?.id || cleanPath,
+          type: (data as any)?.type || 'doc',
+          isRootDoc: (data as any)?.isRootDoc,
+        };
+      });
+    }
+    return pageFiles.map((p: any) => ({
+      path: p.title || p.name || p.path || 'untitled.tex',
+      id: p.id,
+      type: 'doc',
+      isRootDoc: p.isRootDoc,
+    }));
+  }, [targetSnapshot, pageFiles]);
 
   const isSelectedFileDeleted = useMemo(() => {
     return deletedFiles.some((df: any) => df.id === activeFileId);
@@ -464,22 +640,24 @@ export default function HistoryView() {
   // Handle Restore Single File (Overleaf Parity)
   const handleRestoreFile = (targetId?: string) => {
     const fileId = targetId || activeFileId;
-    if (!fileId || previewContent === undefined) return;
+    const contentToRestore =
+      extractFileContentFromSnapshot(targetSnapshot, selectedFilePath || activeFileName) || previewContent;
+    if (!fileId || contentToRestore === undefined) return;
 
     const fileObj =
-      pageFiles.find((f) => f.id === fileId) ||
+      pageFiles.find((f: any) => f.id === fileId) ||
       deletedFiles.find((f: any) => f.id === fileId);
     const fileName = fileObj?.title || activeFileName;
 
     updateContentMutation.mutate(
       {
         pageId: fileId,
-        content: previewContent,
+        content: contentToRestore,
       },
       {
         onSuccess: () => {
           if (fileId === activeFilePage?.id) {
-            engine?.setContent(previewContent);
+            engine?.setContent(contentToRestore);
           }
           toast.success(`Restored "${fileName}" to this revision successfully!`);
           setIsHistoryOpen(false);
@@ -519,21 +697,31 @@ export default function HistoryView() {
     });
   };
 
-  // Handle Restore Entire Project
-  const handleRestore = async () => {
+  // Handle Confirm Restore Project (Overleaf Parity)
+  const handleConfirmRestore = async () => {
     if (!activeRevision) return;
+    setIsRestoringProject(true);
     try {
-      if (activeRevision.id) {
-        await restoreToEvent.mutateAsync({
-          rootPageId,
-          eventId: activeRevision.id,
-          versionNumber: (activeRevision as any).versionNumber,
-        });
-      }
+      await historyService.restoreProjectVersion(
+        projectId || rootPageId,
+        activeVersionNumber,
+      );
+      toast.success(`Project restored to Version ${activeVersionNumber} successfully!`);
+      queryClient.invalidateQueries({ queryKey: historyKeys.byProject(projectId || rootPageId) });
+      queryClient.invalidateQueries({ queryKey: filesQuery(rootPageId).queryKey });
+      queryClient.invalidateQueries({ queryKey: ['pages'] });
+      setRestoreConfirmOpen(false);
       setIsHistoryOpen(false);
-    } catch {
-      // Error already notified by mutation hook
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to restore project version');
+    } finally {
+      setIsRestoringProject(false);
     }
+  };
+
+  // Handle Restore Entire Project (opens modal)
+  const handleRestore = () => {
+    setRestoreConfirmOpen(true);
   };
 
   // Handle Save Label
@@ -627,22 +815,205 @@ export default function HistoryView() {
             aria-label="Project files list"
             className="w-56 shrink-0 border-r border-border bg-background flex flex-col min-h-0 animate-in fade-in duration-150 motion-reduce:animate-none"
           >
-            <div className="px-3 py-2 border-b border-border text-11 font-heading font-semibold text-muted-foreground select-none uppercase tracking-wide">
-              Project Files
+            <div className="px-3 py-2 border-b border-border text-11 font-heading font-semibold text-muted-foreground select-none uppercase tracking-wide flex items-center justify-between">
+              <span>
+                {diffMode
+                  ? `Changed Files (${diffChangedFiles.length})`
+                  : viewMode === 'snapshot'
+                  ? `Snapshot Files (${snapshotFilesList.length})`
+                  : 'Project Files'}
+              </span>
             </div>
             <div className="flex-1 overflow-y-auto py-2 px-1.5 space-y-1">
-              {pageFiles.length === 0 ? (
-                <div
-                  className="flex items-center justify-between h-8 px-2.5 rounded-md text-12 font-medium cursor-pointer transition-colors bg-primary text-primary-foreground"
-                >
-                  <div className="flex items-center gap-2 truncate font-mono text-12">
-                    <FileText className="size-3.5 shrink-0" />
-                    <span className="truncate">{activeRevision?.fileName || 'main.tex'}</span>
+              {diffMode ? (
+                diffChangedFiles.length === 0 ? (
+                  <div className="px-3 py-4 text-center text-11 text-muted-foreground font-mono">
+                    No files changed in this comparison
                   </div>
-                  <span className="text-11 font-mono font-medium px-1.5 py-0.5 rounded-md bg-primary-foreground/20 text-primary-foreground leading-tight">
-                    Edited
-                  </span>
-                </div>
+                ) : (
+                  <>
+                    {diffChangedFiles.map((file) => {
+                      const isSelected = selectedFilePath?.replace(/^\//, '') === file.cleanPath;
+                      return (
+                        <div
+                          key={file.cleanPath}
+                          role="button"
+                          tabIndex={0}
+                          aria-selected={isSelected}
+                          aria-label={`Select file ${file.cleanPath}`}
+                          onClick={() => setSelectedFilePath(file.cleanPath)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setSelectedFilePath(file.cleanPath);
+                            }
+                          }}
+                          className={cn(
+                            'flex items-center justify-between h-8 px-2.5 rounded-md text-12 font-medium cursor-pointer transition-colors select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                            isSelected
+                              ? 'bg-primary text-primary-foreground font-semibold'
+                              : 'text-foreground/85 hover:bg-muted hover:text-foreground',
+                          )}
+                        >
+                          <div className="flex items-center gap-2 truncate min-w-0 font-mono text-12">
+                            <FileText className="size-3.5 shrink-0" />
+                            <span className="truncate">{file.cleanPath}</span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0 ml-1.5 font-mono text-11">
+                            {file.status === 'added' ? (
+                              <span
+                                className={cn(
+                                  'px-1.5 py-0.5 rounded-md leading-tight font-medium',
+                                  isSelected
+                                    ? 'bg-primary-foreground/20 text-primary-foreground'
+                                    : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+                                )}
+                              >
+                                +{file.additions || 1}
+                              </span>
+                            ) : file.status === 'deleted' ? (
+                              <span
+                                className={cn(
+                                  'px-1.5 py-0.5 rounded-md leading-tight font-medium',
+                                  isSelected
+                                    ? 'bg-primary-foreground/20 text-primary-foreground'
+                                    : 'bg-destructive/15 text-destructive',
+                                )}
+                              >
+                                -{file.deletions || 1}
+                              </span>
+                            ) : (
+                              <div className="flex items-center gap-0.5">
+                                {file.additions > 0 && (
+                                  <span
+                                    className={cn(
+                                      'px-1 py-0.5 rounded-md leading-tight font-medium',
+                                      isSelected
+                                        ? 'bg-primary-foreground/20 text-primary-foreground'
+                                        : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+                                    )}
+                                  >
+                                    +{file.additions}
+                                  </span>
+                                )}
+                                {file.deletions > 0 && (
+                                  <span
+                                    className={cn(
+                                      'px-1 py-0.5 rounded-md leading-tight font-medium',
+                                      isSelected
+                                        ? 'bg-primary-foreground/20 text-primary-foreground'
+                                        : 'bg-destructive/15 text-destructive',
+                                    )}
+                                  >
+                                    -{file.deletions}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {isSelected && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRestoreFile(file.id);
+                                }}
+                                title={`Restore only "${file.cleanPath}"`}
+                                aria-label={`Restore only "${file.cleanPath}" to this revision`}
+                                className="size-6 rounded-md hover:bg-primary-foreground/20 flex items-center justify-center text-primary-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary-foreground"
+                              >
+                                <RotateCcw className="size-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {unchangedProjectFiles.length > 0 && (
+                      <div className="pt-2 mt-2 border-t border-border">
+                        <div className="px-2 py-1 text-11 font-semibold text-muted-foreground select-none uppercase tracking-wide">
+                          Unchanged Files ({unchangedProjectFiles.length})
+                        </div>
+                        <div className="space-y-1 mt-1">
+                          {unchangedProjectFiles.map((file: any) => {
+                            const fileName = file.title || file.name || file.path;
+                            const isSelected = selectedFilePath?.replace(/^\//, '') === fileName;
+                            return (
+                              <div
+                                key={file.id}
+                                role="button"
+                                tabIndex={0}
+                                aria-selected={isSelected}
+                                onClick={() => setSelectedFilePath(fileName)}
+                                className={cn(
+                                  'flex items-center justify-between h-8 px-2.5 rounded-md text-12 font-medium cursor-pointer transition-colors select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                                  isSelected
+                                    ? 'bg-primary text-primary-foreground font-semibold'
+                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                                )}
+                              >
+                                <div className="flex items-center gap-2 truncate min-w-0 font-mono text-12">
+                                  <FileText className="size-3.5 shrink-0" />
+                                  <span className="truncate">{fileName}</span>
+                                </div>
+                                <span className="text-11 font-mono text-muted-foreground">Unchanged</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )
+              ) : viewMode === 'snapshot' ? (
+                snapshotFilesList.map((file) => {
+                  const isSelected = selectedFilePath?.replace(/^\//, '') === file.path;
+                  return (
+                    <div
+                      key={file.path}
+                      role="button"
+                      tabIndex={0}
+                      aria-selected={isSelected}
+                      onClick={() => setSelectedFilePath(file.path)}
+                      className={cn(
+                        'flex items-center justify-between h-8 px-2.5 rounded-md text-12 font-medium cursor-pointer transition-colors select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                        isSelected
+                          ? 'bg-primary text-primary-foreground font-semibold'
+                          : 'text-foreground/85 hover:bg-muted hover:text-foreground',
+                      )}
+                    >
+                      <div className="flex items-center gap-2 truncate min-w-0 font-mono text-12">
+                        <FileText className="size-3.5 shrink-0" />
+                        <span className="truncate">{file.path}</span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 ml-1.5">
+                        <span
+                          className={cn(
+                            'text-11 font-mono font-medium px-1.5 py-0.5 rounded-md leading-tight',
+                            isSelected
+                              ? 'bg-primary-foreground/20 text-primary-foreground'
+                              : 'bg-muted text-muted-foreground',
+                          )}
+                        >
+                          v{activeVersionNumber}
+                        </span>
+                        {isSelected && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRestoreFile(file.id);
+                            }}
+                            title={`Restore "${file.path}" to current editor`}
+                            className="size-6 rounded-md hover:bg-primary-foreground/20 flex items-center justify-center text-primary-foreground transition-colors cursor-pointer"
+                          >
+                            <RotateCcw className="size-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
               ) : (
                 pageFiles.map((file: any) => {
                   const isActive = file.id === activeFileId;
@@ -653,12 +1024,9 @@ export default function HistoryView() {
                       tabIndex={0}
                       aria-selected={isActive}
                       aria-label={`Select file ${file.title || 'untitled.tex'}`}
-                      onClick={() => setActiveFileId(file.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          setActiveFileId(file.id);
-                        }
+                      onClick={() => {
+                        setActiveFileId(file.id);
+                        setSelectedFilePath(file.title || file.name || file.path);
                       }}
                       className={cn(
                         'flex items-center justify-between h-8 px-2.5 rounded-md text-12 font-medium cursor-pointer transition-colors select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
@@ -848,14 +1216,19 @@ export default function HistoryView() {
               )}
 
               {/* Diff Stats Badge */}
-              {diffMode && diffData?.stats && (
+              {diffMode && (
                 <div className="hidden md:flex items-center gap-1.5 text-11 font-mono shrink-0">
                   <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-500/30">
-                    +{diffData.stats.addedLines}
+                    +{projectDiffData?.totalAdditions ?? diffData?.stats?.addedLines ?? 0}
                   </span>
                   <span className="px-2 py-0.5 rounded-md bg-destructive/15 text-destructive font-semibold border border-destructive/30">
-                    -{diffData.stats.deletedLines}
+                    -{projectDiffData?.totalDeletions ?? diffData?.stats?.deletedLines ?? 0}
                   </span>
+                  {projectDiffData?.filesChanged !== undefined && (
+                    <span className="text-muted-foreground text-11 font-sans">
+                      ({projectDiffData.filesChanged} file{projectDiffData.filesChanged !== 1 ? 's' : ''} changed)
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -1048,7 +1421,7 @@ export default function HistoryView() {
                     <span>Reconstructing…</span>
                   </div>
                 )}
-                <span className="px-2 py-0.5 rounded-md bg-background border border-border text-10 font-mono text-muted-foreground">
+                <span className="px-2 py-0.5 rounded-md bg-background border border-border text-11 font-mono text-muted-foreground">
                   {timelineOps.length} ops recorded
                 </span>
               </div>
@@ -1059,9 +1432,9 @@ export default function HistoryView() {
           <div className="flex-1 relative min-h-0 bg-[var(--editor-bg,hsl(var(--background)))]">
             <HistoryCodeMirrorViewer
               viewMode={viewMode}
-              original={diffData?.fromContent || currentFileContent}
-              modified={diffData?.toContent || previewContent}
-              singleContent={viewMode === 'timeline' ? scrubContent : previewContent}
+              original={diffViewerOriginal}
+              modified={diffViewerModified}
+              singleContent={singleViewerContent}
               isDarkTheme={editorTheme === 'dark'}
               fontSize={13}
             />
@@ -1118,7 +1491,7 @@ export default function HistoryView() {
                 </div>
               ) : groupedTimeline.length === 0 ? (
                 <div className="py-8 px-2">
-                  <EditorEmptyState
+                  <PlaneEmptyState
                     variant="history"
                     isCompact
                     title={timelineTab === 'labels' ? 'No labeled versions' : 'No revisions found'}
@@ -1178,7 +1551,7 @@ export default function HistoryView() {
                                   <MoreVertical className="size-3.5" />
                                 </button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-52 z-[9999] rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 p-1">
+                              <DropdownMenuContent align="end" className="w-52 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 p-1">
                                 <DropdownMenuItem
                                   onClick={() => handleOpenLabelModal(item)}
                                   className="cursor-pointer gap-2 text-12 rounded-md"
@@ -1309,6 +1682,62 @@ export default function HistoryView() {
                 Save label
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── 4. Restore Entire Project Confirmation Modal (Overleaf Parity) ─────── */}
+      <Dialog open={restoreConfirmOpen} onOpenChange={setRestoreConfirmOpen}>
+        <DialogContent className="sm:max-w-[440px] rounded-md font-sans border border-border bg-popover text-popover-foreground shadow-raised-200">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-13 font-semibold text-foreground">
+              <RotateCcw className="size-4 text-primary" />
+              <span>Restore Project to Version {activeVersionNumber}?</span>
+            </DialogTitle>
+            <DialogDescription className="text-12 text-muted-foreground pt-1 leading-relaxed">
+              This will restore all files in your project to their state in{' '}
+              <strong className="text-foreground">{formattedDate.full}</strong>.
+              A new version (Version {latestVersionNumber + 1}) will be created automatically, so your recent work will remain preserved in version history.
+            </DialogDescription>
+          </DialogHeader>
+
+          {activeRevision?.label && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 border border-border text-12 font-mono text-foreground">
+              <Tag className="size-3.5 text-primary shrink-0" />
+              <span>Label: {activeRevision.label}</span>
+            </div>
+          )}
+
+          <DialogFooter className="flex items-center justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isRestoringProject}
+              onClick={() => setRestoreConfirmOpen(false)}
+              className="rounded-md text-12 h-8"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={isRestoringProject}
+              onClick={handleConfirmRestore}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-md text-12 h-8 flex items-center gap-1.5"
+            >
+              {isRestoringProject ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  <span>Restoring…</span>
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="size-3.5" />
+                  <span>Confirm Restore</span>
+                </>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Sparkles,
+  Bot,
   Check,
   Copy,
   X,
@@ -21,6 +21,8 @@ import {
   type AcademicAiActionResult,
 } from '@/features/editor/services/ai-academic-assistant.service';
 import { toast } from 'sonner';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
 
 export interface FloatingAiAssistantProps {
@@ -99,27 +101,30 @@ export function FloatingAiAssistant({
 
   return createPortal(
     <div
-      className="fixed z-[100000] w-[440px] rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-300 flex flex-col overflow-hidden text-xs animate-in fade-in-50 zoom-in-95 duration-150"
+      className="fixed z-50 w-[440px] rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-300 flex flex-col overflow-hidden text-xs animate-in fade-in-50 zoom-in-95 duration-150"
       style={{ left: clampedX, top: clampedY }}
     >
       {/* ── Header ────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border bg-background">
         <div className="flex items-center gap-2">
-          <div className="size-5 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-            <Sparkles className="size-3.5" />
+          <div className="size-5 rounded-md bg-ai/10 text-ai flex items-center justify-center">
+            <Bot className="size-3.5" />
           </div>
-          <span className="font-semibold text-foreground tracking-tight">Overleaf AI Assist</span>
+          <span className="font-semibold text-foreground tracking-tight">Flux AI Assist</span>
           <span className="text-10 text-muted-foreground font-mono">
             (Lines {startLine}-{endLine})
           </span>
         </div>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={onClose}
-          className="size-5 rounded-sm hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer"
+          aria-label="Close AI Assist"
+          className="size-5 p-0 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
         >
           <X className="size-3.5" />
-        </button>
+        </Button>
       </div>
 
       {/* ── Quick Action Tabs (Overleaf 2024-2026 Parity) ─────── */}
@@ -131,7 +136,7 @@ export function FloatingAiAssistant({
           className={cn(
             'flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer',
             activeAction === 'academic-tone'
-              ? 'bg-primary text-primary-foreground font-semibold'
+              ? 'bg-ai text-ai-foreground font-medium'
               : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80',
           )}
         >
@@ -146,7 +151,7 @@ export function FloatingAiAssistant({
           className={cn(
             'flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer',
             activeAction === 'make-concise'
-              ? 'bg-primary text-primary-foreground font-semibold'
+              ? 'bg-ai text-ai-foreground font-medium'
               : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80',
           )}
         >
@@ -161,7 +166,7 @@ export function FloatingAiAssistant({
           className={cn(
             'flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer',
             activeAction === 'fix-grammar'
-              ? 'bg-primary text-primary-foreground font-semibold'
+              ? 'bg-ai text-ai-foreground font-medium'
               : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80',
           )}
         >
@@ -176,7 +181,7 @@ export function FloatingAiAssistant({
           className={cn(
             'flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer',
             activeAction === 'translate-english'
-              ? 'bg-primary text-primary-foreground font-semibold'
+              ? 'bg-ai text-ai-foreground font-medium'
               : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80',
           )}
         >
@@ -187,7 +192,7 @@ export function FloatingAiAssistant({
 
       {/* ── Custom Instruction Input ──────────────────────────── */}
       <div className="px-2.5 py-1.5 border-b border-border bg-muted/20 flex items-center gap-1.5">
-        <input
+        <Input
           type="text"
           value={customPrompt}
           onChange={(e) => setCustomPrompt(e.target.value)}
@@ -196,33 +201,34 @@ export function FloatingAiAssistant({
           }}
           placeholder="Or ask AI custom change (e.g. rewrite in passive voice)..."
           disabled={isLoading}
-          className="flex-1 bg-transparent px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/60 outline-none"
+          className="h-7 text-xs bg-background placeholder:text-muted-foreground/60"
         />
-        <button
+        <Button
           type="button"
+          size="icon"
           onClick={() => handleExecute('custom', customPrompt)}
           disabled={isLoading || !customPrompt.trim()}
-          className="size-6 rounded-sm bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-40 flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+          className="size-7 shrink-0 cursor-pointer"
         >
           <ArrowRight className="size-3.5" />
-        </button>
+        </Button>
       </div>
 
       {/* ── Diff / Result Preview ─────────────────────────────── */}
       <div className="p-3 max-h-56 overflow-y-auto space-y-2.5 bg-background">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2">
-            <Loader2 className="size-6 animate-spin text-primary" />
+            <Loader2 className="size-6 animate-spin text-ai" />
             <span className="text-xs">Polishing academic text...</span>
           </div>
         ) : result ? (
           <>
             {/* Original with Strikethrough */}
             <div className="space-y-1">
-              <span className="text-10 font-semibold text-rose-500 tracking-normal">
+              <span className="text-10 font-semibold text-destructive tracking-normal">
                 Original ({result.diffSummary.wordsOriginal} words)
               </span>
-              <div className="p-2 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-800 dark:text-rose-300 font-mono text-11 leading-relaxed line-through whitespace-pre-wrap select-text">
+              <div className="p-2 rounded-md bg-destructive/10 border border-destructive/20 text-destructive font-mono text-11 leading-relaxed line-through whitespace-pre-wrap select-text">
                 {result.originalText}
               </div>
             </div>
@@ -230,7 +236,7 @@ export function FloatingAiAssistant({
             {/* Suggested Replacement */}
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <span className="text-10 font-semibold text-emerald-600 dark:text-emerald-400 tracking-normal">
+                <span className="text-10 font-semibold text-success tracking-normal">
                   Suggested ({result.diffSummary.wordsSuggested} words)
                 </span>
                 <span className="text-10 font-mono text-muted-foreground">
@@ -239,7 +245,7 @@ export function FloatingAiAssistant({
                     : `${result.diffSummary.wordsSuggested - result.diffSummary.wordsOriginal} words`}
                 </span>
               </div>
-              <div className="p-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-foreground font-mono text-11 leading-relaxed whitespace-pre-wrap select-text">
+              <div className="p-2 rounded-md bg-success/10 border border-success/20 text-foreground font-mono text-11 leading-relaxed whitespace-pre-wrap select-text">
                 {result.suggestedText}
               </div>
             </div>
@@ -250,40 +256,45 @@ export function FloatingAiAssistant({
       {/* ── Action Buttons ────────────────────────────────────── */}
       <div className="p-2.5 border-t border-border bg-background flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={handleCopy}
             disabled={!result || isLoading}
             title="Copy suggested text"
-            className="flex items-center gap-1 px-2 py-1 rounded-sm border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground text-11 transition-colors cursor-pointer disabled:opacity-40"
+            className="h-7 px-2 text-xs gap-1 cursor-pointer"
           >
-            {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+            {copied ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
             <span>{copied ? 'Copied' : 'Copy'}</span>
-          </button>
+          </Button>
         </div>
 
         <div className="flex items-center gap-1.5">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => handleApply('insert-below')}
             disabled={!result || isLoading}
             title="Insert suggestion below selection"
-            className="flex items-center gap-1 px-2 py-1 rounded-sm border border-border bg-background hover:bg-muted text-foreground text-11 font-medium transition-colors cursor-pointer disabled:opacity-40"
+            className="h-7 px-2 text-xs font-medium gap-1 cursor-pointer"
           >
             <CornerDownRight className="size-3" />
             <span>Insert Below</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
+            size="sm"
             onClick={() => handleApply('replace')}
             disabled={!result || isLoading}
             title="Replace selection in editor"
-            className="flex items-center gap-1 px-2.5 py-1 rounded-sm bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-semibold transition-colors cursor-pointer disabled:opacity-40"
+            className="h-7 px-2.5 text-xs font-semibold gap-1 bg-primary text-primary-foreground hover:bg-primary-hover cursor-pointer"
           >
             <Check className="size-3.5" />
             <span>Replace Selection</span>
-          </button>
+          </Button>
         </div>
       </div>
     </div>,

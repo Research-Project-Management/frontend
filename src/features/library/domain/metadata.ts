@@ -438,7 +438,7 @@ export function getPublicationVenue(
     ) {
       return anyItem.publicationTitle.trim();
     }
-    return '—';
+    return '-';
   }
 
   if (typeLower === 'conferencepaper') {
@@ -448,7 +448,7 @@ export function getPublicationVenue(
       (typeof ef.proceedingsTitle === 'string' && ef.proceedingsTitle.trim()) ||
       (typeof ef.conferenceName === 'string' && ef.conferenceName.trim()) ||
       (typeof anyItem.publicationTitle === 'string' && anyItem.publicationTitle.trim()) ||
-      '—'
+      '-'
     );
   }
 
@@ -457,7 +457,7 @@ export function getPublicationVenue(
       (typeof anyItem.bookTitle === 'string' && anyItem.bookTitle.trim()) ||
       (typeof ef.bookTitle === 'string' && ef.bookTitle.trim()) ||
       (typeof anyItem.publicationTitle === 'string' && anyItem.publicationTitle.trim()) ||
-      '—'
+      '-'
     );
   }
 
@@ -466,7 +466,7 @@ export function getPublicationVenue(
       (typeof anyItem.publisher === 'string' && anyItem.publisher.trim()) ||
       (typeof ef.publisher === 'string' && ef.publisher.trim()) ||
       (typeof anyItem.publicationTitle === 'string' && anyItem.publicationTitle.trim()) ||
-      '—'
+      '-'
     );
   }
 
@@ -477,7 +477,7 @@ export function getPublicationVenue(
       (typeof ef.university === 'string' && ef.university.trim()) ||
       (typeof ef.institution === 'string' && ef.institution.trim()) ||
       (typeof anyItem.publisher === 'string' && anyItem.publisher.trim()) ||
-      '—'
+      '-'
     );
   }
 
@@ -486,7 +486,7 @@ export function getPublicationVenue(
       (typeof anyItem.institution === 'string' && anyItem.institution.trim()) ||
       (typeof ef.institution === 'string' && ef.institution.trim()) ||
       (typeof anyItem.publisher === 'string' && anyItem.publisher.trim()) ||
-      '—'
+      '-'
     );
   }
 
@@ -496,7 +496,7 @@ export function getPublicationVenue(
       (typeof ef.issuingAuthority === 'string' && ef.issuingAuthority.trim()) ||
       (typeof anyItem.assignee === 'string' && anyItem.assignee.trim()) ||
       (typeof ef.assignee === 'string' && ef.assignee.trim()) ||
-      '—'
+      '-'
     );
   }
 
@@ -507,7 +507,7 @@ export function getPublicationVenue(
       (typeof ef.websiteTitle === 'string' && ef.websiteTitle.trim()) ||
       (typeof ef.blogTitle === 'string' && ef.blogTitle.trim()) ||
       (typeof anyItem.publicationTitle === 'string' && anyItem.publicationTitle.trim()) ||
-      '—'
+      '-'
     );
   }
 
@@ -516,11 +516,11 @@ export function getPublicationVenue(
     (typeof anyItem.journal === 'string' && anyItem.journal.trim()) ||
     (typeof anyItem.publisher === 'string' && anyItem.publisher.trim());
 
-  return defaultVenue || '—';
+  return defaultVenue || '-';
 }
 
 export function formatItemTypeLabel(rawType?: string | null): string {
-  if (!rawType) return '—';
+  if (!rawType) return '-';
   const str = String(rawType).trim();
   const withSpaces = str
     .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -568,7 +568,7 @@ export function formatExtraDisplay(paper: Item): string {
     }
   }
 
-  return '—';
+  return '-';
 }
 
 export function formatAndSanitizeExtraMetadata(

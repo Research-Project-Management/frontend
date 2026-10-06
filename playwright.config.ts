@@ -18,7 +18,9 @@ export default defineConfig({
       testMatch: '**/smoke.spec.ts',
       use: {
         ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/owner.json',
       },
+      dependencies: ['setup'],
     },
     {
       name: 'setup',

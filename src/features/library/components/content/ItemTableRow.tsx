@@ -7,9 +7,13 @@ import {
   StickyNote,
   ShieldAlert,
   AlertCircle,
+  RotateCcw,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/shared/components/ui/checkbox';
+import { ArchivalTag } from '@/shared/components/ui/archival-tag';
+import { isItemRetracted } from '../../utils/retraction';
 import { cn } from '@/shared/lib/utils';
 import {
   useIsItemSelected,
@@ -36,6 +40,7 @@ export interface ItemTableRowProps {
   onPurge?: (id: string) => void;
   onMoveToCollection?: (itemId: string, collectionId: string) => void;
   onDetachFromCollection?: (id: string) => void;
+  isLast?: boolean;
 }
 
 /**
@@ -47,6 +52,7 @@ export interface ItemTableRowProps {
 export const ItemTableRow = React.memo(function ItemTableRow({
   item,
   index,
+  isLast = false,
   columns,
   density = 'comfortable',
   isTrash = false,
@@ -85,7 +91,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         : item.creators;
     if (!raw) return '';
     const formatted = formatAcademicAuthors(raw, 999);
-    return formatted !== '—' ? formatted : '';
+    return formatted !== '-' ? formatted : '';
   }, [item.authors, item.creators]);
 
   const isStarred =
@@ -96,11 +102,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
   const processingStatus = item._processingStatus;
   const processingError = item._processingError;
 
-  const isRetracted = Boolean(
-    item.isRetracted ||
-    item.retractionStatus === 'retracted' ||
-    item.is_retracted
-  );
+  const isRetracted = isItemRetracted(item);
   const hasAttachment = Boolean(
     item.hasFile ||
     (item.attachmentCount ?? 0) > 0 ||
@@ -181,10 +183,19 @@ export const ItemTableRow = React.memo(function ItemTableRow({
               return;
             }
             router.push(`/library/papers/${item.id}${qParam}`);
+          } else {
+            toast.info('Restore this reference to open in reader', {
+              id: 'trash-restore-prompt',
+              action: onRestore ? {
+                label: 'Restore',
+                onClick: () => onRestore(item.id),
+              } : undefined,
+            });
           }
         }}
         className={cn(
           'cursor-pointer transition-colors duration-75 group text-13 h-8',
+          !isLast && 'border-b border-border',
           isRowActive || isSelected
             ? 'bg-muted'
             : isProcessing
@@ -301,7 +312,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
           <td className="px-2 h-8 py-0 align-middle text-center text-13 font-mono tabular-nums text-foreground font-normal">
             {(item.year && item.year > 0 ? item.year : null) ||
               (item.publicationDate || item.date || '').match(/\b(1[7-9]\d{2}|20\d{2})\b/)?.[1] ||
-              '—'}
+              '-'}
           </td>
         )}
 
@@ -317,7 +328,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
                   item.journal ||
                   item.publisher ||
                   ''
-                ) || '—'}
+                ) || '-'}
               </span>
             )}
           </td>
@@ -325,50 +336,89 @@ export const ItemTableRow = React.memo(function ItemTableRow({
 
         {/* Item Type Label */}
         {columns.itemType && (
-          <td className="px-3 h-8 py-0 align-middle truncate text-12 font-mono text-muted-foreground font-normal">
-            {item.itemType || '—'}
+          <td className="px-3 h-8 py-0 align-middle truncate text-12 font-mono text-foreground font-normal">
+            {item.itemType || '-'}
           </td>
         )}
 
         {/* DOI */}
         {columns.doi && (
-          <td className="px-3 h-8 py-0 align-middle truncate text-13 font-mono tabular-nums text-foreground font-normal">
+          <td className="px-3 h-8 py-0 align-middle truncate text-foreground font-normal">
             {item.doi ? (
-              <a
+              <ArchivalTag
+                value={item.doi}
+                type="doi"
                 href={`https://doi.org/${item.doi}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="hover:underline text-foreground transition-colors"
-              >
-                {item.doi}
-              </a>
+              />
             ) : (
-              '—'
+              '-'
             )}
           </td>
         )}
 
         {/* Citation Key */}
         {columns.citationKey && (
-          <td className="px-3 h-8 py-0 align-middle truncate text-13 font-mono text-foreground font-normal">
-            {item.citationKey || item.key || '—'}
+          <td className="px-3 h-8 py-0 align-middle truncate text-foreground font-normal">
+            {item.citationKey || item.key ? (
+              <ArchivalTag
+                value={item.citationKey || item.key!}
+                type="bibtex"
+              />
+            ) : (
+              '-'
+            )}
           </td>
         )}
 
         {/* Citations Count */}
         {columns.citations && (
           <td className="px-2 h-8 py-0 align-middle text-center text-13 font-mono tabular-nums text-foreground font-normal">
-            {item.citationCount != null && Number(item.citationCount) > 0 ? item.citationCount : '—'}
+            {item.citationCount != null && Number(item.citationCount) > 0 ? item.citationCount : '-'}
           </td>
         )}
 
-        {/* Trash deletedAt */}
+        {/* Trash deletedAt & Quick Actions */}
         {isTrash && (
-          <td className="px-3 h-8 py-0 align-middle text-13 font-mono tabular-nums text-foreground font-normal">
-            {item.deletedAt
-              ? new Date(item.deletedAt).toLocaleDateString()
-              : '—'}
+          <td className="px-3 h-8 py-0 align-middle text-12 font-mono tabular-nums text-foreground font-normal">
+            <div className="flex items-center justify-between gap-1 w-full">
+              <span className="truncate">
+                {item.deletedAt
+                  ? new Date(item.deletedAt).toLocaleDateString()
+                  : '-'}
+              </span>
+              <div className="hidden group-hover:flex items-center gap-1 shrink-0 ml-1">
+                {onRestore && (
+                  <button
+                    type="button"
+                    title="Restore reference"
+                    aria-label="Restore reference"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRestore(item.id);
+                    }}
+                    className="size-6 rounded flex items-center justify-center hover:bg-muted text-foreground transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="size-3.5" />
+                  </button>
+                )}
+                {onPurge && (
+                  <button
+                    type="button"
+                    title="Permanently delete reference"
+                    aria-label="Permanently delete reference"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm('Permanently delete this reference? This action cannot be undone.')) {
+                        onPurge(item.id);
+                      }
+                    }}
+                    className="size-6 rounded flex items-center justify-center hover:bg-destructive/15 text-foreground hover:text-destructive transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
           </td>
         )}
       </tr>

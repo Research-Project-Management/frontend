@@ -115,7 +115,8 @@ export function useViewerSyncTeX({
   // SyncTeX forward sync (Code cursor -> PDF highlight)
   useEffect(() => {
     const handleForwardSync = async (line: number) => {
-      const rootId = pageId || projectId || 'default';
+      const rootId = pageId || projectId;
+      if (!rootId) return;
       const filename = activeFilePage?.title || 'main.tex';
 
       // 1. Try Backend Single Source of Truth

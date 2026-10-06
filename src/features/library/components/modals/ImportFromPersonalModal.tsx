@@ -367,7 +367,7 @@ export default function ImportFromPersonalModal({
                         <p className="text-11 text-muted-foreground truncate mt-0.5">
                           {authorText ? `${authorText} ` : ''}
                           {item.year ? `(${item.year})` : ''}
-                          {item.publicationTitle ? ` — ${item.publicationTitle}` : ''}
+                          {item.publicationTitle ? ` · ${item.publicationTitle}` : ''}
                         </p>
                       </div>
                     </div>

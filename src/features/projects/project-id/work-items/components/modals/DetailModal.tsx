@@ -399,7 +399,7 @@ export function DetailModal({
       setColumnId(card.columnId || firstColumnId);
       setRelations(card.relations || []);
       setPriority(card.priority || "none");
-      setLabels(ItemHelpers.uniqueLabels(card.labels));
+      setLabels(ItemHelpers.uniqueLabels(card.labels as any));
       setDueDate(card.dueDate || "");
       setStartDate(card.startDate || "");
       setParentId(card.parentId || null);
@@ -465,7 +465,7 @@ export function DetailModal({
       priority: card?.priority || "none",
       dueDate: card?.dueDate || "",
       startDate: card?.startDate || "",
-      labels: ItemHelpers.uniqueLabels(card?.labels),
+      labels: ItemHelpers.uniqueLabels(card?.labels as any),
       assigneeId: initialAssigneeIds[0] ?? null,
       assigneeIds: initialAssigneeIds,
       parentId: card?.parentId || null,

@@ -78,15 +78,15 @@ import { CoreService } from '../../services/core.service';
 
 const PRIORITY_THEME_CLASSES: Record<string, string> = {
   urgent:
-    'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/30 hover:bg-red-500/20 shadow-none font-normal',
+    'text-destructive bg-destructive/10 border-destructive/30 hover:bg-destructive/20 shadow-none font-normal',
   high:
-    'text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20 shadow-none font-normal',
+    'text-amber-700 dark:text-amber-300 bg-amber-500/15 border-amber-500/30 hover:bg-amber-500/25 shadow-none font-normal',
   medium:
-    'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 shadow-none font-normal',
+    'text-foreground bg-muted border-border hover:bg-muted/80 shadow-none font-normal',
   low:
-    'text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20 shadow-none font-normal',
+    'text-muted-foreground bg-muted/40 border-border/70 hover:bg-muted shadow-none font-normal',
   none:
-    'text-foreground bg-background hover:bg-muted border-border shadow-none font-normal',
+    'text-muted-foreground/60 bg-transparent hover:bg-muted/50 border-border/40 shadow-none font-normal',
 };
 
 function formatDueDate(dateStr?: string | null): string {

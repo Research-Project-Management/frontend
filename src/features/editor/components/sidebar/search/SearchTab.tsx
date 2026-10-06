@@ -21,7 +21,7 @@ import { EditorEventBus } from "@/features/editor/utils/editor.util";
 import { documentSearchService } from "@/features/editor/services/search.service";
 import { useEditorInstance } from "@/features/editor/core/context/editor-instance.context";
 import { editorCommandBus } from "@/features/editor/core/command-bus/editor-command-bus";
-import { EditorEmptyState } from "../../shared";
+import { PlaneEmptyState, PlaneErrorState } from "@/shared/components/ui";
 
 interface MatchEntry {
   line: number;
@@ -48,7 +48,8 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   const openTab = useTabsStore((s) => s.openTab);
 
   const rootPageId = params?.pageId || params?.projectId || currentPage?.id || "";
-  const rootProjectId = params?.projectId || storeProjectId || currentPage?.projectId || params?.pageId || currentPage?.id || "";
+  const rawProjectId = params?.projectId || storeProjectId || currentPage?.projectId || params?.pageId || currentPage?.id || "";
+  const rootProjectId = typeof rawProjectId === "string" ? rawProjectId : (rawProjectId as any)?.id || "";
   const activeFileId = searchParams.get("file") ?? activeFilePage?.id ?? currentPage?.id;
 
   const [query, setQuery] = useState("");
@@ -128,6 +129,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
     isLoading: isSearching,
     isFetching,
     error: searchError,
+    isError: isSearchError,
   } = useQuery({
     queryKey: [
       "project-document-search",
@@ -556,9 +558,17 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                   );
                 })}
               </ul>
+            ) : isSearchError ? (
+              <div className="py-8 px-2">
+                <PlaneErrorState
+                  title="Search failed"
+                  description="An issue occurred while searching project files."
+                  error={searchError || new Error("Search failed")}
+                />
+              </div>
             ) : (
               <div className="py-8 px-2">
-                <EditorEmptyState
+                <PlaneEmptyState
                   variant="search"
                   isCompact
                   title="No results found"
@@ -569,7 +579,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
           </>
         ) : (
           <div className="py-12 px-2">
-            <EditorEmptyState
+            <PlaneEmptyState
               variant="search"
               isCompact
               title="Search project files"

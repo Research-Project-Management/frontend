@@ -3,9 +3,10 @@
 import React, { useMemo, useCallback, useState } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { cn } from '@/shared/lib/utils';
 import {
-  useInfiniteLibraryItemsQuery,
+  useLibraryItemsQuery,
   useCollectionsQuery,
   useBatchRestoreItemsMutation,
   useDetachItemFromCollectionMutation,
@@ -39,6 +40,43 @@ const ITEM_LIST_FIELDS = [
   'tags', 'labels', 'url',
 ] as const;
 
+const PAGE_SIZE = 50;
+
+/** Computes visible page numbers with ellipsis for clean minimal pagination */
+function getVisiblePages(currentPage: number, totalPages: number): (number | 'ellipsis')[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, 5, 'ellipsis', totalPages];
+  }
+  if (currentPage >= totalPages - 3) {
+    return [1, 'ellipsis', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+  }
+  return [1, 'ellipsis', currentPage - 1, currentPage, currentPage + 1, 'ellipsis', totalPages];
+}
+
+/** Maps generic library order-by fields to the saved search results API sortBy contract. */
+const mapOrderByToSavedSearchSortBy = (
+  orderBy?: LibraryOrderBy,
+): 'dateAdded' | 'year' | 'title' | 'creator' | 'updatedAt' | undefined => {
+  if (!orderBy) return undefined;
+  switch (orderBy) {
+    case 'createdAt':
+      return 'dateAdded';
+    case 'year':
+      return 'year';
+    case 'title':
+      return 'title';
+    case 'authors':
+      return 'creator';
+    case 'updatedAt':
+      return 'updatedAt';
+    default:
+      return undefined;
+  }
+};
+
 interface LibraryContentProps {
   scopeId?: string;
   collectionId?: string;
@@ -47,6 +85,7 @@ interface LibraryContentProps {
   canEdit?: boolean;
   onDirectFilesUpload?: (files: File[]) => void;
   onAddLink?: () => void;
+  onEmptyTrash?: () => void;
 }
 
 export function LibraryContent({
@@ -57,6 +96,7 @@ export function LibraryContent({
   canEdit = true,
   onDirectFilesUpload,
   onAddLink,
+  onEmptyTrash,
 }: LibraryContentProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -71,17 +111,32 @@ export function LibraryContent({
   const typeParam = searchParams.get('type') || searchParams.get('itemType') || undefined;
   const readStatusParam = searchParams.get('readStatus') || undefined;
   const hasFileParam = searchParams.get('hasFile');
+  const hasNotesParam = searchParams.get('hasNotes');
+  const fileStatusParam = searchParams.get('fileStatus');
+  const tagParam = searchParams.get('tag') || undefined;
 
   const handleClearSearch = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete('q');
     const qs = params.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname);
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [router, pathname, searchParams]);
 
   const fromYear = fromYearParam ? parseInt(fromYearParam, 10) : undefined;
   const toYear = toYearParam ? parseInt(toYearParam, 10) : undefined;
-  const hasFile = hasFileParam !== null ? hasFileParam === 'true' : undefined;
+
+  const hasFile = useMemo(() => {
+    if (hasFileParam !== null) return hasFileParam === 'true';
+    if (fileStatusParam === 'has-pdf') return true;
+    if (fileStatusParam === 'missing-pdf') return false;
+    return undefined;
+  }, [hasFileParam, fileStatusParam]);
+
+  const hasNotes = useMemo(() => {
+    if (hasNotesParam !== null) return hasNotesParam === 'true';
+    if (fileStatusParam === 'has-notes') return true;
+    return undefined;
+  }, [hasNotesParam, fileStatusParam]);
 
   const openModal = useLibraryModalStore((s) => s.openModal);
   const selectedIds = useLibraryViewStore((s) => s.selectedIds);
@@ -90,10 +145,36 @@ export function LibraryContent({
   const setDisplayOptions = useLibraryUIStore((s) => s.setDisplayOptions);
   const processingItems = useProcessModalStore((s) => s.processingItems);
 
+  const effectiveView = view || (filterParam && filterParam !== 'saved-search' ? filterParam : undefined);
+
+  const orderByParam = searchParams.get('orderBy') as LibraryOrderBy | null;
+  const orderDirectionParam = searchParams.get('orderDirection') as 'asc' | 'desc' | null;
+
+  const pageParam = parseInt(searchParams.get('page') || '1', 10);
+  const currentPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (newPage <= 1) {
+        params.delete('page');
+      } else {
+        params.set('page', String(newPage));
+      }
+      clearSelection();
+      const queryString = params.toString();
+      router.push(`${pathname}${queryString ? `?${queryString}` : ''}`, { scroll: false });
+    },
+    [pathname, router, searchParams, clearSelection],
+  );
+
+  const effectiveOrderBy = orderByParam || displayOptions?.orderBy;
+  const effectiveOrderDirection = orderDirectionParam || displayOptions?.orderDirection;
+
   const queryParams = useMemo(
     () => ({
       collectionId,
-      view: view || undefined,
+      view: effectiveView,
       search,
       type: typeParam,
       itemType: typeParam,
@@ -101,21 +182,28 @@ export function LibraryContent({
       toYear: Number.isFinite(toYear) ? toYear : undefined,
       readStatus: readStatusParam,
       hasFile,
-      orderBy: displayOptions?.orderBy,
-      orderDirection: displayOptions?.orderDirection,
+      hasNotes,
+      tag: tagParam,
+      orderBy: effectiveOrderBy,
+      orderDirection: effectiveOrderDirection,
       fields: ITEM_LIST_FIELDS,
+      page: currentPage,
+      limit: PAGE_SIZE,
     }),
     [
       collectionId,
-      view,
+      effectiveView,
       search,
       typeParam,
       fromYear,
       toYear,
       readStatusParam,
       hasFile,
-      displayOptions?.orderBy,
-      displayOptions?.orderDirection,
+      hasNotes,
+      tagParam,
+      effectiveOrderBy,
+      effectiveOrderDirection,
+      currentPage,
     ],
   );
 
@@ -124,10 +212,7 @@ export function LibraryContent({
     isLoading: isItemsLoading,
     isError: isItemsError,
     error: itemsError,
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-  } = useInfiniteLibraryItemsQuery(scopeId, queryParams, {
+  } = useLibraryItemsQuery(scopeId, queryParams, {
     enabled: !isSavedSearchView,
   });
 
@@ -135,8 +220,10 @@ export function LibraryContent({
     scopeId,
     effectiveSavedSearchId || null,
     {
-      sortBy: displayOptions?.orderBy,
-      sortOrder: displayOptions?.orderDirection,
+      page: currentPage,
+      limit: PAGE_SIZE,
+      sortBy: mapOrderByToSavedSearchSortBy(effectiveOrderBy),
+      sortOrder: effectiveOrderDirection,
     },
   );
 
@@ -155,9 +242,8 @@ export function LibraryContent({
     if (isSavedSearchView) {
       return (savedSearchQuery.data?.items as unknown as Item[]) || [];
     }
-    if (!data?.pages) return [];
-    return data.pages.flatMap((page) => page.items);
-  }, [isSavedSearchView, savedSearchQuery.data?.items, data?.pages]);
+    return data?.items || [];
+  }, [isSavedSearchView, savedSearchQuery.data?.items, data?.items]);
 
   // Construct provisional raw items from active background uploads
   const provisionalItems: Item[] = useMemo(() => {
@@ -215,7 +301,9 @@ export function LibraryContent({
   const totalCount =
     (isSavedSearchView
       ? (savedSearchQuery.data?.meta?.totalCount ?? items.length)
-      : (data?.pages?.[0]?.total ?? items.length)) + provisionalItems.length;
+      : (data?.total ?? items.length)) + provisionalItems.length;
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const selectedItems: Item[] = useMemo(() => {
     if (selectedIds.size === 0) return [];
@@ -344,13 +432,23 @@ export function LibraryContent({
     openModal('MERGE_DUPLICATES', { items: selectedItems, duplicates: selectedItems });
   };
 
-  const handleSortChange = (columnKey: string, direction: 'asc' | 'desc') => {
-    setDisplayOptions((prev) => ({
-      ...prev,
-      orderBy: columnKey as LibraryOrderBy,
-      orderDirection: direction,
-    }));
-  };
+  const handleSortChange = useCallback(
+    (columnKey: string, direction: 'asc' | 'desc') => {
+      setDisplayOptions((prev) => ({
+        ...prev,
+        orderBy: columnKey as LibraryOrderBy,
+        orderDirection: direction,
+      }));
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('orderBy', columnKey);
+      params.set('orderDirection', direction);
+      params.delete('page'); // Reset to page 1 on sort change
+      clearSelection();
+      const queryString = params.toString();
+      router.push(`${pathname}${queryString ? `?${queryString}` : ''}`, { scroll: false });
+    },
+    [pathname, router, searchParams, setDisplayOptions, clearSelection],
+  );
 
   if (isLoading) {
     return <ContentSkeleton rowCount={10} />;
@@ -397,20 +495,110 @@ export function LibraryContent({
         </div>
       )}
 
-      <ErrorBoundary variant="section" featureName="Reference Table">
-        <ItemTable
-          items={displayedItems}
-          totalCount={totalCount}
-          hasNextPage={Boolean(isSavedSearchView ? false : hasNextPage)}
-          isLoadingMore={isSavedSearchView ? false : isFetchingNextPage}
-          onLoadMore={isSavedSearchView ? undefined : () => fetchNextPage()}
-          onSortChange={handleSortChange}
-          scopeId={scopeId}
-          collectionId={collectionId}
-          onDetachItem={canEdit && !isTrash && collectionId ? handleDetachItem : undefined}
-          isTrash={isTrash}
-        />
-      </ErrorBoundary>
+      {/* Informative Trash Notice Banner */}
+      {isTrash && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-muted/40 border-b border-border text-xs text-muted-foreground select-none shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <Trash2 className="size-3.5 text-muted-foreground shrink-0" />
+            <span className="truncate">
+              Items in Trash will be removed permanently when emptied. References can be restored back to your library at any time.
+            </span>
+          </div>
+          {canEdit && onEmptyTrash && displayedItems.length > 0 && (
+            <button
+              type="button"
+              onClick={onEmptyTrash}
+              className="font-medium text-destructive hover:underline shrink-0 cursor-pointer ml-2 text-xs"
+            >
+              Empty Trash now
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <ErrorBoundary variant="section" featureName="Reference Table">
+          <ItemTable
+            items={displayedItems}
+            totalCount={totalCount}
+            onSortChange={handleSortChange}
+            scopeId={scopeId}
+            collectionId={collectionId}
+            onDetachItem={canEdit && !isTrash && collectionId ? handleDetachItem : undefined}
+            isTrash={isTrash}
+          />
+        </ErrorBoundary>
+      </div>
+
+      {totalPages > 1 && (
+        <nav
+          role="navigation"
+          aria-label="Pagination"
+          className="flex items-center justify-center py-2 px-4 border-t border-border shrink-0 select-none bg-background"
+        >
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => handlePageChange(currentPage - 1)}
+              aria-label="Previous page"
+              className={cn(
+                'inline-flex items-center justify-center size-7 rounded-md text-xs font-medium transition-colors',
+                currentPage <= 1
+                  ? 'text-muted-foreground/30 cursor-not-allowed pointer-events-none'
+                  : 'text-foreground hover:bg-muted cursor-pointer',
+              )}
+            >
+              <ChevronLeft className="size-3.5" />
+            </button>
+
+            {getVisiblePages(currentPage, totalPages).map((p, idx) => {
+              if (p === 'ellipsis') {
+                return (
+                  <span
+                    key={`ellipsis-${idx}`}
+                    className="inline-flex items-center justify-center size-7 text-xs text-muted-foreground select-none"
+                  >
+                    …
+                  </span>
+                );
+              }
+              const isCurrent = p === currentPage;
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => handlePageChange(p)}
+                  aria-current={isCurrent ? 'page' : undefined}
+                  className={cn(
+                    'inline-flex items-center justify-center size-7 rounded-md text-xs font-medium transition-colors cursor-pointer',
+                    isCurrent
+                      ? 'bg-muted text-foreground font-semibold border border-border shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',
+                  )}
+                >
+                  {p}
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => handlePageChange(currentPage + 1)}
+              aria-label="Next page"
+              className={cn(
+                'inline-flex items-center justify-center size-7 rounded-md text-xs font-medium transition-colors',
+                currentPage >= totalPages
+                  ? 'text-muted-foreground/30 cursor-not-allowed pointer-events-none'
+                  : 'text-foreground hover:bg-muted cursor-pointer',
+              )}
+            >
+              <ChevronRight className="size-3.5" />
+            </button>
+          </div>
+        </nav>
+      )}
 
       {/* Floating Multi-Selection Action Bar */}
       <BatchBar

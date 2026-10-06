@@ -15,7 +15,11 @@ export const savedSearchFieldSchema = z.enum([
   'isbn',
   'hasAttachment',
   'dateAdded',
+  'dateModified',
   'publicationTitle',
+  'url',
+  'attachmentContent',
+  'noteContent',
 ]);
 
 export const savedSearchOperatorSchema = z.enum([

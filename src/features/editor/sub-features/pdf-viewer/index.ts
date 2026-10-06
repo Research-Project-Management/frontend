@@ -7,4 +7,5 @@
 export * from './components/PdfToolbar';
 export * from './components/PdfPaginationControls';
 export * from './components/PdfZoomControls';
-export * from './components/PdfExportDropdown';
+export * from './components/PdfFindBar';
+export * from './hooks/use-pdf-search';

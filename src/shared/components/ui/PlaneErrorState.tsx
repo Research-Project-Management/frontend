@@ -17,9 +17,7 @@ const ILLUSTRATION_COLOR_TOKEN_MAP = {
   },
 };
 
-export interface TIllustrationAssetProps {
-  className?: string;
-}
+import type { TIllustrationAssetProps } from './PlaneEmptyState';
 
 /**
  * ErrorVerticalStackIllustration

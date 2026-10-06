@@ -108,10 +108,10 @@ function normalizeCompareValue(val: unknown): string {
 
 export function formatFieldValueDisplay(key: string, value: unknown): string {
   if (value === null || value === undefined || value === '') {
-    return '— (Empty)';
+    return '- (Empty)';
   }
   if (Array.isArray(value)) {
-    if (value.length === 0) return '— (Empty)';
+    if (value.length === 0) return '- (Empty)';
     return value
       .map((item) => {
         if (typeof item === 'string') return item;

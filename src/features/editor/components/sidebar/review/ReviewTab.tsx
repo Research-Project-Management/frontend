@@ -131,7 +131,7 @@ function Avatar({
   );
 }
 
-import { EditorEmptyState } from '../../shared';
+import { PlaneEmptyState, PlaneErrorState } from '@/shared/components/ui';
 
 // ── Empty Review State (Overleaf Parity) ─────────────────────────────────────
 function EmptyReviewState({
@@ -144,7 +144,7 @@ function EmptyReviewState({
   action?: React.ReactNode;
 }) {
   return (
-    <EditorEmptyState
+    <PlaneEmptyState
       variant="review"
       isCompact
       title={title}
@@ -188,24 +188,26 @@ const CommentCard = React.memo(function CommentCard({
 
   const isAuthor = Boolean(
     currentUserId && (
-      currentUserId === comment.author.id ||
+      currentUserId === comment.author?.id ||
       (comment as any).createdById === currentUserId ||
       (comment as any).authorId === currentUserId
     )
   );
 
   const authorDisplay = useMemo(() => {
-    const matched = comment.author?.id ? membersMap?.get(comment.author.id) : undefined;
+    const authorObj = comment.author || (comment as any).user;
+    const authorId = authorObj?.id || (comment as any).authorId || (comment as any).userId;
+    const matched = authorId ? membersMap?.get(authorId) : undefined;
     return {
       name:
         matched?.name ||
-        (comment.author.name && comment.author.name !== 'Collaborator' ? comment.author.name : undefined) ||
+        (authorObj?.name && authorObj.name !== 'Collaborator' ? authorObj.name : undefined) ||
         matched?.email?.split('@')[0] ||
-        comment.author.name ||
+        authorObj?.name ||
         'Collaborator',
-      color: (matched as any)?.color || (comment.author as any)?.color || '#0ea5e9',
+      color: (matched as any)?.color || (authorObj as any)?.color || '#0ea5e9',
     };
-  }, [comment.author, membersMap]);
+  }, [comment, membersMap]);
 
   const isResolved = comment.status === 'resolved';
   const hasReplies = comment.replies && comment.replies.length > 0;
@@ -393,24 +395,26 @@ const ReplyRow = React.memo(function ReplyRow({
 }) {
   const isAuthor = Boolean(
     currentUserId && (
-      currentUserId === reply.author.id ||
+      currentUserId === reply.author?.id ||
       (reply as any).createdById === currentUserId ||
       (reply as any).authorId === currentUserId
     )
   );
 
   const authorDisplay = useMemo(() => {
-    const matched = reply.author?.id ? membersMap?.get(reply.author.id) : undefined;
+    const authorObj = reply.author || (reply as any).user;
+    const authorId = authorObj?.id || (reply as any).authorId || (reply as any).userId;
+    const matched = authorId ? membersMap?.get(authorId) : undefined;
     return {
       name:
         matched?.name ||
-        (reply.author.name && reply.author.name !== 'Collaborator' ? reply.author.name : undefined) ||
+        (authorObj?.name && authorObj.name !== 'Collaborator' ? authorObj.name : undefined) ||
         matched?.email?.split('@')[0] ||
-        reply.author.name ||
+        authorObj?.name ||
         'Collaborator',
       color: (matched as any)?.color || '#38bdf8',
     };
-  }, [reply.author, membersMap]);
+  }, [reply, membersMap]);
 
   return (
     <div className="group flex flex-col py-1 text-xs">
@@ -478,17 +482,19 @@ const SuggestionCard = React.memo(function SuggestionCard({
         : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20';
 
   const authorDisplay = useMemo(() => {
-    const matched = suggestion.author?.id ? membersMap?.get(suggestion.author.id) : undefined;
+    const authorObj = suggestion.author || (suggestion as any).user;
+    const authorId = authorObj?.id || suggestion.authorId || (suggestion as any).userId;
+    const matched = authorId ? membersMap?.get(authorId) : undefined;
     return {
       name:
         matched?.name ||
-        (suggestion.author.name && suggestion.author.name !== 'Collaborator' ? suggestion.author.name : undefined) ||
+        (authorObj?.name && authorObj.name !== 'Collaborator' ? authorObj.name : undefined) ||
         matched?.email?.split('@')[0] ||
-        suggestion.author.name ||
+        authorObj?.name ||
         'Collaborator',
-      avatar: matched?.avatar || suggestion.author.avatar,
+      avatar: matched?.avatar || authorObj?.avatar,
     };
-  }, [suggestion.author, membersMap]);
+  }, [suggestion, membersMap]);
 
   return (
     <div
@@ -764,7 +770,8 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
   const currentPage = usePageStore((s) => s.currentPage);
   const pageId = storeActivePageId || currentPage?.id || rootPageId;
   const storeProjectId = usePageStore((s) => s.projectId);
-  const projectId = currentPage?.projectId || routeProjectId || storeProjectId || '';
+  const rawProjectId = currentPage?.projectId || routeProjectId || storeProjectId || '';
+  const projectId = typeof rawProjectId === 'string' ? rawProjectId : (rawProjectId as any)?.id || '';
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -922,8 +929,18 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
   const lineStartVal = useWatch({ control, name: 'line' });
   const newCommentContent = useWatch({ control, name: 'content' }) || '';
 
-  const { data: comments = [], isLoading: isCommentsLoading } = usePageComments(pageId ?? null);
-  const { data: suggestions = [], isLoading: isSuggestionsLoading } = usePageSuggestions(pageId ?? null);
+  const {
+    data: comments = [],
+    isLoading: isCommentsLoading,
+    isError: isCommentsError,
+    error: commentsError,
+  } = usePageComments(pageId ?? null);
+  const {
+    data: suggestions = [],
+    isLoading: isSuggestionsLoading,
+    isError: isSuggestionsError,
+    error: suggestionsError,
+  } = usePageSuggestions(pageId ?? null);
   const createMutation = useCreateComment();
   const acceptMutation = useAcceptSuggestion();
   const rejectMutation = useRejectSuggestion();
@@ -1082,7 +1099,15 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
       </div>
 
       {/* ── Content View Area ── */}
-      {scope === 'current' ? (
+      {isCommentsError || isSuggestionsError ? (
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center">
+          <PlaneErrorState
+            title="Unable to load reviews"
+            description="An issue occurred while loading comments and suggestions."
+            error={commentsError || suggestionsError || new Error('Review data load failed')}
+          />
+        </div>
+      ) : scope === 'current' ? (
         <div className="flex flex-1 flex-col overflow-hidden min-h-0">
           {/* 10-Minute Notification Digest Banner */}
           {totalAllItems > 0 && (

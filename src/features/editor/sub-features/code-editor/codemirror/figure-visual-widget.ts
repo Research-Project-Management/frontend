@@ -12,6 +12,33 @@
  */
 
 import { WidgetType, EditorView } from '@codemirror/view';
+import { resolveFileUrl } from '../../../utils/editor.util';
+import { useDocumentEditorStore } from '../../../store';
+
+/**
+ * Resolves a LaTeX \\includegraphics path to the project's backend filestore URL.
+ * Automatically maps project-relative assets (e.g. "figures/plot.png", "logo.jpg").
+ */
+export function resolveProjectAssetSrc(rawSrc: string): string {
+  if (!rawSrc) return '';
+  if (
+    rawSrc.startsWith('http://') ||
+    rawSrc.startsWith('https://') ||
+    rawSrc.startsWith('blob:') ||
+    rawSrc.startsWith('data:')
+  ) {
+    return rawSrc;
+  }
+
+  const projectId = useDocumentEditorStore.getState().projectId;
+  if (!projectId) {
+    return rawSrc.startsWith('/') ? rawSrc : `/${rawSrc}`;
+  }
+
+  const cleanPath = rawSrc.replace(/^\//, '').trim();
+  const url = `/api/v1/manuscripts/projects/${encodeURIComponent(projectId)}/files/raw?path=${encodeURIComponent(cleanPath)}`;
+  return resolveFileUrl(url);
+}
 
 export interface ParsedFigure {
   rawLatex: string;
@@ -214,10 +241,7 @@ export class FigureWidget extends WidgetType {
 
     if (this.parsed.imageSrc) {
       const img = document.createElement('img');
-      const resolvedSrc =
-        this.parsed.imageSrc.startsWith('http') || this.parsed.imageSrc.startsWith('/')
-          ? this.parsed.imageSrc
-          : `/${this.parsed.imageSrc}`;
+      const resolvedSrc = resolveProjectAssetSrc(this.parsed.imageSrc);
       img.src = resolvedSrc;
       img.alt = this.parsed.caption || this.parsed.imageSrc;
       img.className = 'max-h-64 max-w-full object-contain rounded border border-border/40 bg-background';
@@ -393,8 +417,7 @@ export class StandaloneImageWidget extends WidgetType {
 
     // Image preview
     const img = document.createElement('img');
-    const resolvedSrc =
-      this.src.startsWith('http') || this.src.startsWith('/') ? this.src : `/${this.src}`;
+    const resolvedSrc = resolveProjectAssetSrc(this.src);
     img.src = resolvedSrc;
     img.alt = this.src;
     img.className = 'max-h-64 object-contain rounded border border-border/40 bg-background';

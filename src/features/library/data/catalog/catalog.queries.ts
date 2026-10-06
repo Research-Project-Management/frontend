@@ -1015,10 +1015,12 @@ export interface LibraryItemsQueryResult {
 export function useLibraryItemsQuery(
   scopeId?: string,
   params?: ItemQueryParams,
+  options?: { enabled?: boolean },
 ) {
   const targetScope = scopeId || 'user';
   return useQuery({
     queryKey: libraryKeys.items(targetScope, params),
+    enabled: options?.enabled ?? true,
     queryFn: async (): Promise<LibraryItemsQueryResult> => {
       const res = await ItemService.getAll(targetScope, params);
       const items: Item[] = res?.items || [];
@@ -1605,6 +1607,7 @@ export function useSavedSearchResults(
   id: string | null,
   params?: {
     limit?: number;
+    page?: number;
     cursor?: string;
     sortBy?: string;
     sortOrder?: string;

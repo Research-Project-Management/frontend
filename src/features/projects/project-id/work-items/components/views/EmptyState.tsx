@@ -357,7 +357,7 @@ export function EmptyState({
       </h3>
 
       <p className="text-13 text-muted-foreground max-w-[420px] leading-relaxed mb-6 font-normal">
-        Work items are the building blocks of your project — assign owners, set priorities, and track progress easily.
+        Work items are the building blocks of your project - assign owners, set priorities, and track progress easily.
       </p>
 
       {!isReadOnly && handleCreate && (

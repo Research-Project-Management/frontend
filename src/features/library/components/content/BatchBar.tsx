@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FolderInput, FolderMinus, Copy, Trash2, X, Folder, Library, Quote, Download, RotateCcw, GitMerge, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
@@ -18,6 +19,7 @@ import { generateCitationKey } from '../../domain';
 import { useParams } from 'next/navigation';
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/shared/components/ui";
 import type { Collection, Item, CslStyle } from '../../types/library.types';
+import { isItemRetracted } from '../../utils/retraction';
 
 export interface BatchBarProps {
   selectedCount: number;
@@ -51,6 +53,11 @@ export function BatchBar({
   const params = useParams() as { projectId?: string };
   const effectiveScopeId =
     propsScopeId || propsProjectId || params?.projectId || 'user';
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const copyWithToast = async (text: string, label: string = 'Copied to clipboard') => {
     if (!text || !text.trim()) {
@@ -89,12 +96,7 @@ export function BatchBar({
         item.id.startsWith('provisional-'),
     );
 
-  const retractedSelected = resolvedItems.filter(
-    (i) =>
-      i.isRetracted ||
-      i.retractionStatus === 'retracted' ||
-      i.is_retracted,
-  );
+  const retractedSelected = resolvedItems.filter((i) => isItemRetracted(i));
 
   const warnIfRetractedPresent = (actionLabel: string) => {
     if (retractedSelected.length > 0) {
@@ -242,15 +244,21 @@ export function BatchBar({
     URL.revokeObjectURL(url);
   };
 
-  return (
+  if (!mounted || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 10 }}
-        transition={{ duration: 0.15, ease: 'easeOut' }}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-md select-none shadow-raised-200 max-w-[calc(100vw-2rem)] overflow-x-auto scrollbar-none"
-      >
+      {selectedCount > 0 && (
+        <motion.div
+          key="batch-selection-bar"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          transition={{ duration: 0.15, ease: 'easeOut' }}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-md select-none shadow-raised-200 max-w-[calc(100vw-2rem)] overflow-x-auto scrollbar-none"
+        >
         {/* Selection Count */}
         <div className="flex items-center gap-1.5 pr-2.5 border-r border-border">
           <span className="text-12 font-medium text-foreground whitespace-nowrap">
@@ -561,8 +569,10 @@ export function BatchBar({
             Clear selection (Esc)
           </TooltipContent>
         </Tooltip>
-      </motion.div>
-    </AnimatePresence>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body
   );
 }
 

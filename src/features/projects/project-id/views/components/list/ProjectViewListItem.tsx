@@ -70,17 +70,17 @@ export function ProjectViewListItem({
   const renderLayoutIcon = () => {
     switch (view.layout) {
       case 'board':
-        return <BoardIcon className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />;
+        return <BoardIcon className="size-4 text-muted-foreground group-hover:text-foreground transition-colors" />;
       case 'list':
-        return <ListIcon className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />;
+        return <ListIcon className="size-4 text-muted-foreground group-hover:text-foreground transition-colors" />;
       case 'table':
-        return <TableIcon className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />;
+        return <TableIcon className="size-4 text-muted-foreground group-hover:text-foreground transition-colors" />;
       case 'calendar':
-        return <CalendarIcon className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />;
+        return <CalendarIcon className="size-4 text-muted-foreground group-hover:text-foreground transition-colors" />;
       case 'timeline':
-        return <TimelineIcon className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />;
+        return <TimelineIcon className="size-4 text-muted-foreground group-hover:text-foreground transition-colors" />;
       default:
-        return <ViewsOutlineIcon className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />;
+        return <ViewsOutlineIcon className="size-4 text-muted-foreground group-hover:text-foreground transition-colors" />;
     }
   };
 

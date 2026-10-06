@@ -33,8 +33,8 @@ export interface LineLock {
   lockedAt: number;
 }
 
-export interface AwarenessEvent {
-  type: 'presence' | 'cursor' | 'lock' | 'unlock';
-  userId: string;
-  payload: any;
-}
+export type AwarenessEvent =
+  | { type: 'presence'; userId: string; payload: CollaboratorPresence }
+  | { type: 'cursor'; userId: string; payload: CursorPosition }
+  | { type: 'lock'; userId: string; payload: LineLock }
+  | { type: 'unlock'; userId: string; payload: { line: number } };

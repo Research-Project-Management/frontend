@@ -3,8 +3,7 @@
 import React from 'react';
 import { ExternalLink, Minimize2 } from 'lucide-react';
 import type { CompileStatus } from '@/features/editor/store';
-
-import { EditorEmptyState } from '../shared';
+import { PlaneEmptyState, Button } from '@/shared/components/ui';
 
 export interface DetachedViewerPlaceholderProps {
   onReattach: () => void;
@@ -18,29 +17,31 @@ export default function DetachedViewerPlaceholder({
   onFocusWindow,
 }: DetachedViewerPlaceholderProps) {
   return (
-    <EditorEmptyState
+    <PlaneEmptyState
       variant="detached"
       title="PDF viewer detached"
       description="Document preview is currently running in a separate window."
       action={
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="outline"
             onClick={onReattach}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border transition-colors cursor-pointer"
+            className="h-8 gap-1.5 text-xs font-medium cursor-pointer"
           >
             <Minimize2 className="size-3.5 shrink-0 opacity-70" />
             <span>Reattach to editor</span>
-          </button>
+          </Button>
           {onFocusWindow && (
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="outline"
               onClick={onFocusWindow}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-background hover:bg-muted text-muted-foreground hover:text-foreground border border-border transition-colors cursor-pointer"
+              className="h-8 gap-1.5 text-xs font-medium cursor-pointer"
             >
               <ExternalLink className="size-3.5 shrink-0 opacity-70" />
               <span>Focus window</span>
-            </button>
+            </Button>
           )}
         </div>
       }

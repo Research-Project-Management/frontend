@@ -21,21 +21,32 @@ type ToasterProps = React.ComponentProps<typeof SonnerToaster>;
 
 export function Toaster({ ...props }: ToasterProps) {
   React.useEffect(() => {
-    // Strip layout property animation (transition: height) from Sonner's auto-injected stylesheet
-    const sanitizeStyles = () => {
-      document.querySelectorAll('style').forEach((styleEl) => {
-        if (
-          styleEl.textContent &&
-          styleEl.textContent.includes('data-sonner-toast') &&
-          styleEl.textContent.includes('height')
-        ) {
-          styleEl.textContent = styleEl.textContent.replace(/height\s*\.?\d+s?,?/gi, '');
+    const sanitizeSonnerStyles = () => {
+      for (const sheet of document.styleSheets) {
+        try {
+          for (let i = 0; i < sheet.cssRules.length; i++) {
+            const rule = sheet.cssRules[i];
+            if (
+              rule instanceof CSSStyleRule &&
+              rule.selectorText === '[data-sonner-toast]' &&
+              rule.style.transition?.includes('height')
+            ) {
+              rule.style.transition = rule.style.transition
+                .replace(/height[^,]*,?\s*/g, '')
+                .trim()
+                .replace(/,\s*$/, '');
+            }
+          }
+        } catch {
+          // Cross-origin stylesheet guard
         }
-      });
+      }
     };
-    sanitizeStyles();
-    const timer = setTimeout(sanitizeStyles, 100);
-    return () => clearTimeout(timer);
+
+    sanitizeSonnerStyles();
+    const observer = new MutationObserver(sanitizeSonnerStyles);
+    observer.observe(document.head, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, []);
 
   return (

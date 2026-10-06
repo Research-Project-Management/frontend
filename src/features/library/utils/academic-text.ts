@@ -76,3 +76,21 @@ export function formatAcademicAuthors(authors: any, maxAuthors = 3): string {
   if (cleaned.length <= maxAuthors) return cleaned.join(', ');
   return `${cleaned.slice(0, maxAuthors).join(', ')} et al.`;
 }
+
+/**
+ * Detects and extracts a leading emoji from a title/label.
+ * If present, returns { emoji, label: textWithoutEmoji }.
+ * Used to avoid redundant icons when items have custom emoji prefixes.
+ */
+export function parseEmojiPrefix(text?: string | null): { emoji: string | null; label: string } {
+  if (!text) return { emoji: null, label: '' };
+  const trimmed = text.trim();
+  const match = trimmed.match(/^(\p{Extended_Pictographic}|\p{Emoji_Presentation}|[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}])\s*(.*)$/u);
+  if (match) {
+    return {
+      emoji: match[1],
+      label: match[2].trim() || trimmed,
+    };
+  }
+  return { emoji: null, label: trimmed };
+}

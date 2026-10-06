@@ -20,6 +20,15 @@ export default function EditorLayout({
     }
   }, [isLoading, user, router]);
 
+  useEffect(() => {
+    document.documentElement.classList.add('overflow-hidden');
+    document.body.classList.add('overflow-hidden');
+    return () => {
+      document.documentElement.classList.remove('overflow-hidden');
+      document.body.classList.remove('overflow-hidden');
+    };
+  }, []);
+
   // If unauthenticated, block rendering and redirect to marketing
   if (!isLoading && !user) {
     return null;
@@ -47,7 +56,7 @@ export default function EditorLayout({
       featureName="Document Editor"
       description="An issue occurred while rendering the document editor."
     >
-      <div className="h-dvh max-h-dvh w-full overflow-hidden flex flex-col">
+      <div className="h-dvh max-h-dvh w-full flex flex-col relative" suppressHydrationWarning>
         {children}
       </div>
     </ErrorBoundary>

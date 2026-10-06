@@ -79,25 +79,25 @@ export default function InboxItem({
       case 'mention':
         return {
           icon: AtSign,
-          bg: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+          bg: 'bg-primary-subtle text-primary border-primary/20',
           label: 'Mention',
         };
       case 'comment_reply':
         return {
           icon: MessageSquare,
-          bg: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+          bg: 'bg-muted text-foreground border-border',
           label: 'Reply',
         };
       case 'thread_resolved':
         return {
           icon: CheckCircle2,
-          bg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+          bg: 'bg-success/10 text-success border-success/20',
           label: 'Resolved',
         };
       case 'project_invite':
         return {
           icon: UserPlus,
-          bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+          bg: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/20',
           label: 'Invite',
         };
       default:

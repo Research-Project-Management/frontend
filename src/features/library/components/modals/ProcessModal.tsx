@@ -29,7 +29,7 @@ interface ProcessModalProps {
 }
 
 function formatSourceLabel(raw?: string): string {
-  if (!raw) return '—';
+  if (!raw) return '-';
   const str = raw.trim();
   if (str.startsWith('http://') || str.startsWith('https://')) {
     try {
@@ -277,7 +277,7 @@ export default function ProcessModal({
                             {item.error || 'Extraction failed'}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground/60 text-12 font-normal">—</span>
+                          <span className="text-muted-foreground/60 text-12 font-normal">-</span>
                         )}
                       </div>
                     </div>

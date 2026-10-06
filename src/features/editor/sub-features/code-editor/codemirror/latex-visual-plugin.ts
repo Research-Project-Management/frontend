@@ -26,7 +26,14 @@ import { toast } from 'sonner';
 import { renderMathHtml, renderChemHtml } from '../../../utils/latex-converter.util';
 import { TableWidget } from './table-visual-widget';
 import { FigureWidget, StandaloneImageWidget } from './figure-visual-widget';
-import { isTableData, parseTableToLatex } from '../../../utils/smart-paste.util';
+import {
+  isTableData,
+  parseTableToLatex,
+  isRichTextHtml,
+  parseHtmlToLatex,
+} from '../../../utils/smart-paste.util';
+import { editorCommandBus } from '../../../core/command-bus/editor-command-bus';
+import { EditorEventBus } from '../../../utils/editor.util';
 
 export interface MathPopoverTrigger {
   math: string;
@@ -194,9 +201,10 @@ class CitationWidget extends WidgetType {
   override toDOM(view: EditorView): HTMLElement {
     const chip = document.createElement('span');
     chip.className =
-      'cm-citation-chip inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 rounded-sm bg-muted text-foreground border border-border text-11 font-mono font-normal hover:bg-muted/80 cursor-pointer select-none transition-colors';
-    chip.title = `Citation: \\${this.prefix}{${this.citeKey}} (Click to select)`;
+      'cm-citation-chip inline-flex items-center gap-1.5 px-2 py-0.5 my-0.5 rounded-sm bg-muted text-foreground border border-border text-11 font-mono font-normal hover:bg-muted/80 cursor-pointer select-none transition-colors leading-normal';
+    chip.title = `Citation: \\${this.prefix}{${this.citeKey}} (Click to select, Double-click to inspect in Citations panel)`;
     chip.innerHTML = `<span class="opacity-70 text-11">📖</span><span>[${this.citeKey}]</span>`;
+
     chip.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -205,6 +213,16 @@ class CitationWidget extends WidgetType {
         scrollIntoView: true,
       });
     });
+
+    chip.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      EditorEventBus.emit('flux:open-panel', { panel: 'Citations', query: this.citeKey });
+      toast.info(`Citation [${this.citeKey}]`, {
+        description: 'Viewing entry details in Citations tab',
+      });
+    });
+
     return chip;
   }
 
@@ -238,19 +256,37 @@ class RefWidget extends WidgetType {
   override toDOM(view: EditorView): HTMLElement {
     const chip = document.createElement('span');
     chip.className =
-      'cm-ref-chip inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-0.5 rounded-sm bg-muted text-foreground border border-border text-11 font-sans font-medium hover:bg-muted/80 cursor-pointer select-none transition-colors';
-    chip.title = `Cross-Reference: ${this.refKey}`;
+      'cm-ref-chip inline-flex items-center gap-1 px-2 py-0.5 my-0.5 rounded-sm bg-muted text-foreground border border-border text-11 font-sans font-medium hover:bg-muted/80 cursor-pointer select-none transition-colors leading-normal';
+    chip.title = `Cross-Reference: ${this.refKey} (Click to jump to \\label{${this.refKey}})`;
     const icon = this.isEq ? 'eq:' : '🏷️';
     const displayText = this.isEq ? `(${this.refKey})` : this.refKey;
     chip.innerHTML = `<span class="opacity-70 text-11">${icon}</span><span>${displayText}</span>`;
+
     chip.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      view.dispatch({
-        selection: { anchor: this.from, head: this.to },
-        scrollIntoView: true,
-      });
+
+      // Overleaf parity: jump to corresponding \label{refKey} in document
+      const docText = view.state.doc.toString();
+      const escapedKey = this.refKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const labelRegex = new RegExp(`\\\\label\\{${escapedKey}\\}`, 'm');
+      const match = labelRegex.exec(docText);
+
+      if (match) {
+        const line = view.state.doc.lineAt(match.index).number;
+        editorCommandBus.dispatch({ type: 'editor:jump-to-line', line, highlight: 'synctex' });
+        toast.info(`Jumped to \\label{${this.refKey}} at line ${line}`);
+      } else {
+        view.dispatch({
+          selection: { anchor: this.from, head: this.to },
+          scrollIntoView: true,
+        });
+        toast.info(`Reference "${this.refKey}"`, {
+          description: `No \\label{${this.refKey}} found in this document.`,
+        });
+      }
     });
+
     return chip;
   }
 
@@ -700,9 +736,24 @@ function buildVisualDecorations(state: EditorState): DecorationSet {
   }
 
   // ── 17. Typography Marks (\textbf, \textit, \emph, \underline, \texttt) ────
-  // Applied only to ranges that do NOT overlap with any active replacement widget
-  const isInsideReplace = (from: number, to: number) => {
-    return validReplaceRanges.some((r) => Math.max(r.from, from) < Math.min(r.to, to));
+  // Applied only to ranges that do NOT overlap with any active replacement widget using O(log N) binary search
+  const isInsideReplace = (from: number, to: number): boolean => {
+    let low = 0;
+    let high = validReplaceRanges.length - 1;
+    let candidate = -1;
+
+    while (low <= high) {
+      const mid = (low + high) >> 1;
+      if (validReplaceRanges[mid].to > from) {
+        candidate = mid;
+        high = mid - 1;
+      } else {
+        low = mid + 1;
+      }
+    }
+
+    if (candidate === -1) return false;
+    return validReplaceRanges[candidate].from < to;
   };
 
   const boldRegex = /\\textbf\{([^}]+)\}/g;
@@ -714,7 +765,7 @@ function buildVisualDecorations(state: EditorState): DecorationSet {
       const textFrom = fullFrom + '\\textbf{'.length;
       const textTo = fullTo - 1;
       markRanges.push(
-        Decoration.mark({ class: 'cm-visual-bold font-bold text-foreground' }).range(
+        Decoration.mark({ class: 'cm-visual-bold font-semibold text-foreground' }).range(
           textFrom,
           textTo
         )
@@ -796,7 +847,12 @@ function buildVisualDecorations(state: EditorState): DecorationSet {
     return a.to - b.to;
   });
 
-  return Decoration.set(allRanges);
+  try {
+    return Decoration.set(allRanges);
+  } catch (err) {
+    console.warn('[latexVisualPlugin] Failed to build visual decorations set:', err);
+    return Decoration.none;
+  }
 }
 
 /**
@@ -841,6 +897,23 @@ export const visualPasteHandler = EditorView.domEventHandlers({
         });
         toast.success('Pasted table converted to LaTeX format', {
           description: 'Converted tabular data into \\begin{table}...\\end{table}',
+        });
+        return true;
+      }
+    }
+
+    if (isRichTextHtml(event.clipboardData)) {
+      const html = event.clipboardData.getData('text/html');
+      const latexContent = parseHtmlToLatex(html);
+      if (latexContent) {
+        event.preventDefault();
+        const { from, to } = view.state.selection.main;
+        view.dispatch({
+          changes: { from, to, insert: latexContent },
+          scrollIntoView: true,
+        });
+        toast.success('Pasted formatted text converted to LaTeX', {
+          description: 'Preserved typography, headings, and lists in LaTeX markup',
         });
         return true;
       }

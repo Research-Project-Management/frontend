@@ -19,11 +19,10 @@ export const suggestionKeys = {
 };
 
 export const usePageSuggestions = (pageId: string | null, status?: SuggestionStatus) => {
-  const isDemo = !pageId || pageId === 'demo' || pageId.startsWith('demo-') || pageId.startsWith('mock-');
   return useQuery({
     queryKey: suggestionKeys.byPage(pageId, status),
     queryFn: async (): Promise<PageSuggestion[]> => {
-      if (isDemo) return [];
+      if (!pageId) return [];
       try {
         const suggestions = await suggestionService.getSuggestions(pageId, status);
         return suggestions || [];
@@ -31,7 +30,7 @@ export const usePageSuggestions = (pageId: string | null, status?: SuggestionSta
         return [];
       }
     },
-    enabled: Boolean(pageId && !isDemo),
+    enabled: Boolean(pageId),
   });
 };
 

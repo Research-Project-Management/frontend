@@ -763,7 +763,13 @@ export function useRetraction(scopeId?: string) {
       queryClient.invalidateQueries({
         queryKey: readerQueryKeys.item(scopeId, itemId),
       });
-      if (data.isRetracted) {
+      if (data.status === 'unknown') {
+        toast.info('Could not verify this item', {
+          description:
+            'Retraction status needs a DOI or PMID, or the lookup was unavailable. The stored status was not changed.',
+          id: 'reader-retraction-check',
+        });
+      } else if (data.isRetracted) {
         toast.error('Retraction detected!', {
           description: `This publication was flagged as ${data.nature || 'retracted'}.`,
           id: 'reader-retraction-check',

@@ -25,14 +25,9 @@ export interface EditorStorageItem {
   [key: string]: unknown;
 }
 
-const isMockOrDemoStorage = (id?: string | null): boolean => {
-  if (!id) return true;
-  return id === 'demo' || id === 'adam-research' || id === 'default' || id.startsWith('mock-');
-};
-
 export const StorageService = {
   getProjectFiles: async (projectId: string, parentId?: string | null): Promise<EditorStorageItem[]> => {
-    if (isMockOrDemoStorage(projectId)) return [];
+    if (!projectId) return [];
     try {
       const endpoint = parentId
         ? `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes?parentId=${parentId}`
@@ -57,7 +52,6 @@ export const StorageService = {
 
   getPageFiles: async (pageId: string, parentId?: string | null): Promise<EditorStorageItem[]> => {
     if (!pageId) return [];
-    if (isMockOrDemoStorage(pageId)) return [];
     const legacyEndpoint = parentId
       ? `/api/files/page/${pageId}?parentId=${parentId}`
       : `/api/files/page/${pageId}`;
@@ -301,7 +295,7 @@ export const StorageService = {
   },
 
   getRootDoc: async (projectId: string) => {
-    if (isMockOrDemoStorage(projectId)) return null;
+    if (!projectId) return null;
     try {
       return await apiGet<any>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc`, { silent: true });
     } catch {

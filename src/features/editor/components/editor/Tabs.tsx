@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useMemo } from 'react';
 import { LayoutGroup } from 'framer-motion';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { X, FileText } from 'lucide-react';
@@ -17,19 +17,21 @@ interface TabItemProps {
   onCloseTab: () => void;
 }
 
-const TabItem = React.memo(function TabItem({ tab, isActive, onActivate, onCloseTab }: TabItemProps) {
+const TabItem = React.memo(function TabItem({ tab, isActive, rootPageId, onActivate, onCloseTab }: TabItemProps) {
+  const isRoot = tab.id === rootPageId || tab.id === `${rootPageId}-main` || Boolean((tab as any).isRoot);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       onActivate();
-    } else if (e.key === 'Delete' || (e.key === 'w' && (e.ctrlKey || e.metaKey))) {
+    } else if (!isRoot && (e.key === 'Delete' || (e.key === 'w' && (e.ctrlKey || e.metaKey)))) {
       e.preventDefault();
       onCloseTab();
     }
   };
 
   const handleAuxClick = (e: React.MouseEvent) => {
-    if (e.button === 1) {
+    if (e.button === 1 && !isRoot) {
       e.preventDefault();
       onCloseTab();
     }
@@ -47,38 +49,34 @@ const TabItem = React.memo(function TabItem({ tab, isActive, onActivate, onClose
       onAuxClick={handleAuxClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        'group/tab relative flex items-center gap-1.5 h-full px-3 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset',
-        'border-r border-border min-w-0 max-w-[200px] shrink-0 transition-colors',
+        'group/tab relative flex items-center gap-1.5 h-full px-3 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
+        'border-r border-border/50 min-w-0 max-w-[200px] shrink-0 transition-colors',
         isActive
-          ? 'bg-background text-foreground font-medium border-t-2 border-t-primary'
-          : 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground border-t-2 border-t-transparent',
+          ? 'bg-background text-foreground font-medium border-b-transparent before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-primary'
+          : 'bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground',
       )}
     >
-      {/* File Document Icon */}
-      <FileText className="size-3.5 shrink-0 opacity-70" />
+      {/* File Document Icon - Clean project style */}
+      <FileText className="size-3.5 shrink-0 text-foreground" />
 
       {/* Title */}
-      <span className="text-12 font-mono truncate leading-normal">{tab.title}</span>
+      <span className="text-12 font-mono truncate leading-normal min-w-0">{tab.title}</span>
 
-      {/* Close button */}
-      <button
-        type="button"
-        aria-label={`Close file ${tab.title}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onCloseTab();
-        }}
-        onAuxClick={(e) => e.preventDefault()}
-        className={cn(
-          'relative ml-auto shrink-0 size-4 min-w-[16px] min-h-[16px] flex items-center justify-center rounded-sm transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer',
-          'after:absolute after:-inset-1.5 after:content-[""]',
-          isActive
-            ? 'opacity-60 hover:opacity-100 hover:bg-muted hover:text-foreground'
-            : 'opacity-0 group-hover/tab:opacity-60 group-hover/tab:hover:opacity-100 hover:bg-muted hover:text-foreground',
-        )}
-      >
-        <X className="size-3 shrink-0" />
-      </button>
+      {/* Close button (only on non-root tabs, hidden until hovered) */}
+      {!isRoot && (
+        <button
+          type="button"
+          aria-label={`Close file ${tab.title}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onCloseTab();
+          }}
+          onAuxClick={(e) => e.preventDefault()}
+          className="ml-auto shrink-0 size-4 flex items-center justify-center rounded-xs transition-opacity outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer opacity-0 group-hover/tab:opacity-70 group-hover/tab:hover:opacity-100 hover:bg-muted text-foreground"
+        >
+          <X className="size-3 shrink-0" />
+        </button>
+      )}
     </div>
   );
 });
@@ -98,12 +96,30 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
   const pathname = usePathname();
   const tabListRef = useRef<HTMLDivElement>(null);
 
-  const tabs = useTabsStore((s) => s.tabsByProject[rootPageId] ?? EMPTY_TABS);
+  const rawTabs = useTabsStore((s) => s.tabsByProject[rootPageId] ?? EMPTY_TABS);
   const closeTab = useTabsStore((s) => s.closeTab);
+
+  // Guarantee no duplicate tabs are rendered for the root document
+  const tabs = useMemo(() => {
+    const isRootDoc = (t: EditorTab) =>
+      t.id === rootPageId ||
+      t.id === `${rootPageId}-main`;
+
+    const seen = new Set<string>();
+    const result: EditorTab[] = [];
+    for (const t of rawTabs) {
+      const key = isRootDoc(t) ? '__root__' : (t.id || t.title.toLowerCase());
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(t);
+      }
+    }
+    return result;
+  }, [rawTabs, rootPageId]);
 
   const updateQueryParams = useCallback((newFile: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (newFile && newFile !== rootPageId) {
+    if (newFile && newFile !== rootPageId && newFile !== `${rootPageId}-main`) {
       params.set('file', newFile);
     } else {
       params.delete('file');
@@ -112,18 +128,49 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
     router.replace(`${pathname}${query ? `?${query}` : ''}`);
   }, [pathname, router, searchParams, rootPageId]);
 
+  const currentParam = searchParams.get('file');
+
+  // Single source of truth for the active tab: exactly ONE tab can be active
+  const resolvedActiveTabId = useMemo(() => {
+    if (tabs.length === 0) return null;
+
+    // 1. If URL has a specific file param that matches a non-root tab:
+    if (currentParam && currentParam !== rootPageId && currentParam !== `${rootPageId}-main`) {
+      const match = tabs.find((t) => t.id === currentParam || t.title === currentParam);
+      if (match) return match.id;
+    }
+
+    // 2. If activeFileId passed from props matches a non-root tab:
+    if (activeFileId && activeFileId !== rootPageId && activeFileId !== `${rootPageId}-main`) {
+      const match = tabs.find((t) => t.id === activeFileId);
+      if (match) return match.id;
+    }
+
+    // 3. Otherwise root page is active: find the root document tab
+    const rootTab = tabs.find(
+      (t) => t.id === rootPageId || t.id === `${rootPageId}-main`
+    );
+    if (rootTab) return rootTab.id;
+
+    // 4. Fallback to the first tab
+    return tabs[0]?.id ?? null;
+  }, [tabs, currentParam, activeFileId, rootPageId]);
+
   const handleTabActivate = useCallback((tabId: string) => {
-    const isRoot = tabId === rootPageId;
-    const currentParam = searchParams.get('file');
-    const isCurrentActive = tabId === activeFileId || (isRoot && !currentParam);
-    if (!isCurrentActive) {
+    const isRoot = tabId === rootPageId || tabId === `${rootPageId}-main`;
+
+    if (tabId !== resolvedActiveTabId) {
       updateQueryParams(isRoot ? null : tabId);
     }
-  }, [activeFileId, rootPageId, searchParams, updateQueryParams]);
+  }, [rootPageId, resolvedActiveTabId, updateQueryParams]);
 
   const handleTabClose = useCallback((tabId: string) => {
     closeTab(rootPageId, tabId, (nextId) => {
-      if (nextId && nextId !== rootPageId) {
+      const isNextRoot =
+        !nextId ||
+        nextId === rootPageId ||
+        nextId === `${rootPageId}-main`;
+      if (!isNextRoot && nextId) {
         updateQueryParams(nextId);
       } else {
         updateQueryParams(null);
@@ -133,7 +180,7 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
 
   const handleTabListKeyDown = (e: React.KeyboardEvent) => {
     if (tabs.length === 0) return;
-    const currentIndex = tabs.findIndex((t) => t.id === activeFileId);
+    const currentIndex = tabs.findIndex((t) => t.id === resolvedActiveTabId);
 
     if (e.key === 'ArrowRight') {
       e.preventDefault();
@@ -173,9 +220,7 @@ export default function Tabs({ rootPageId, activeFileId }: TabsProps) {
           className="flex h-full overflow-x-auto shrink min-w-0 scrollbar-none items-stretch"
         >
           {tabs.map((tab) => {
-            const isRoot = tab.id === rootPageId || tab.title === 'main.tex';
-            const currentParam = searchParams.get('file');
-            const isTabActive = tab.id === activeFileId || (isRoot && (!currentParam || currentParam === rootPageId));
+            const isTabActive = tab.id === resolvedActiveTabId;
             return (
               <TabItem
                 key={tab.id}

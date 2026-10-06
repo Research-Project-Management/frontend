@@ -33,6 +33,11 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/shared/components/ui/context-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
 import { useEditorStorage } from '@/features/editor/hooks/use-storage';
@@ -102,8 +107,7 @@ export function InlineInput({
 }) {
   return (
     <div
-      className="flex h-8 items-center gap-1.5 w-full rounded-md px-2 bg-muted/40 transition-colors select-none"
-      style={{ paddingLeft: '8px' }}
+      className="flex h-8 items-center gap-1.5 w-full rounded-md pl-2 pr-1 bg-muted/40 transition-colors select-none"
     >
       <span className="size-3.5 shrink-0" aria-hidden="true" />
       <Icon
@@ -202,19 +206,26 @@ export function RowActions({
 }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label="File options"
-          onClick={(e) => e.stopPropagation()}
-          className={cn(
-            'flex size-6 shrink-0 items-center justify-center rounded-md text-foreground opacity-0 group-hover/row:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-muted transition-opacity hover:transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground',
-            className,
-          )}
-        >
-          <MoreVertical className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-        </button>
-      </DropdownMenuTrigger>
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Options"
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                'flex size-6 shrink-0 items-center justify-center rounded-md text-foreground opacity-0 group-hover/row:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-muted transition-opacity hover:transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground',
+                className,
+              )}
+            >
+              <MoreVertical className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+            </button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-11">
+          Options
+        </TooltipContent>
+      </Tooltip>
       <DropdownMenuContent
         side="bottom"
         align="end"
@@ -311,12 +322,11 @@ export function StorageFolderNode({
         }
       }}
       className={cn(
-        'group/row relative flex h-7.5 w-full items-center gap-1.5 rounded-md px-2 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground',
+        'group/row relative flex h-7.5 w-full items-center gap-1.5 rounded-md pl-2 pr-1 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground',
         dragOver
           ? 'bg-muted ring-1 ring-foreground/20 ring-inset'
           : 'text-foreground hover:bg-muted/60 font-normal',
       )}
-      style={{ paddingLeft: '8px' }}
     >
       <IndentGuides depth={depth} />
       <ChevronRight
@@ -544,8 +554,7 @@ export function StorageFileRow({
   if (renamingId === item.id) {
     return (
       <div
-        className="group/row flex h-8 items-center w-full rounded-md px-2 bg-muted/40 transition-colors select-none"
-        style={{ paddingLeft: '8px' }}
+        className="group/row flex h-8 items-center w-full rounded-md pl-2 pr-1 bg-muted/40 transition-colors select-none"
       >
         <IndentGuides depth={depth} />
         <span className="size-3.5 shrink-0" aria-hidden="true" />
@@ -596,21 +605,22 @@ export function StorageFileRow({
           }
         }
       }}
-      title={
-        isImage
-          ? `Click to preview ${item.filename}`
-          : `Click to insert command for ${item.filename}`
-      }
-      className="group/row relative flex h-7.5 w-full items-center gap-1.5 rounded-md px-2 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground text-foreground hover:bg-muted/60 font-normal"
-      style={{ paddingLeft: '8px' }}
+      className="group/row relative flex h-7.5 w-full items-center gap-1.5 rounded-md pl-2 pr-1 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground text-foreground hover:bg-muted/60 font-normal"
     >
       <IndentGuides depth={depth} />
       <span className="size-3.5 shrink-0" aria-hidden="true" />
       <Icon className={cn('size-4 shrink-0', color)} strokeWidth={1.5} />
 
-      <span className="flex-1 min-w-0 truncate tracking-tight text-foreground font-mono text-12">
-        {item.filename}
-      </span>
+      <Tooltip delayDuration={400}>
+        <TooltipTrigger asChild>
+          <span className="flex-1 min-w-0 truncate tracking-tight text-foreground font-mono text-12">
+            {item.filename}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="text-11">
+          {isImage ? 'Preview image' : 'Insert snippet'}
+        </TooltipContent>
+      </Tooltip>
 
       <RowActions>
         <DropdownMenuItem

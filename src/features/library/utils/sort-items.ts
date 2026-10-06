@@ -15,9 +15,18 @@ import type { Item } from '../types/library.types';
 
 // Fields that map to different internal property names
 const SORT_FIELD_ALIASES: Partial<Record<string, (item: Item) => unknown>> = {
-  authors: (item) => (Array.isArray(item.authors) ? item.authors[0] : item.authors),
+  authors: (item) =>
+    Array.isArray(item.authors) && item.authors.length > 0
+      ? item.authors[0]
+      : item.firstAuthor || item.authors,
   dateAdded: (item) => item.createdAt,
   dateModified: (item) => item.updatedAt,
+  dateDeleted: (item) => item.deletedAt,
+  deletedAt: (item) => item.deletedAt,
+  publication: (item) =>
+    item.publicationTitle || (item as any).journal || (item as any).publisher,
+  publicationTitle: (item) =>
+    item.publicationTitle || (item as any).journal || (item as any).publisher,
 };
 
 function getValue(item: Item, column: string): unknown {

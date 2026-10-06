@@ -704,9 +704,9 @@ export function cleanAcademicText(text?: string | null): string {
 }
 
 export function formatAcademicAuthors(authors: any, maxAuthors = 3): string {
-  if (!authors) return '—';
+  if (!authors) return '-';
   const rawList = normalizeAuthors(authors);
-  if (!rawList || rawList.length === 0) return '—';
+  if (!rawList || rawList.length === 0) return '-';
 
   const cleaned = rawList
     .map((name) => {
@@ -720,7 +720,7 @@ export function formatAcademicAuthors(authors: any, maxAuthors = 3): string {
     })
     .filter(Boolean);
 
-  if (cleaned.length === 0) return '—';
+  if (cleaned.length === 0) return '-';
   if (cleaned.length <= maxAuthors) return cleaned.join(', ');
   return `${cleaned.slice(0, maxAuthors).join(', ')} et al.`;
 }

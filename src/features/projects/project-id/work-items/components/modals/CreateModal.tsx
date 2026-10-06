@@ -205,7 +205,7 @@ export function CreateModal({
       startDate: initialData?.startDate || '',
       parentId: initialData?.parentId || initialData?.parentWorkItemId || null,
       parentWorkItemId: initialData?.parentWorkItemId || initialData?.parentId || null,
-      labels: initialData?.labels ? ItemHelpers.uniqueLabels(initialData.labels) : [],
+      labels: initialData?.labels ? ItemHelpers.uniqueLabels(initialData.labels as any) : [],
     },
   });
 
@@ -394,7 +394,7 @@ export function CreateModal({
         startDate: initialData?.startDate || '',
         parentId: initialData?.parentId || initialData?.parentWorkItemId || null,
         parentWorkItemId: initialData?.parentWorkItemId || initialData?.parentId || null,
-        labels: initialData?.labels ? ItemHelpers.uniqueLabels(initialData.labels) : [],
+        labels: initialData?.labels ? ItemHelpers.uniqueLabels(initialData.labels as any) : [],
         assigneeIds: initialAssigneeIds,
         assigneeId: initialAssigneeIds[0] ?? null,
         attachments: normalizeAttachments(initialData?.attachments),

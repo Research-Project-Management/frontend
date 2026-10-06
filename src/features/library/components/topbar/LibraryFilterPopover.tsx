@@ -8,11 +8,6 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  FileText,
-  Calendar as CalendarIcon,
-  Tag as TagIcon,
-  BookmarkCheck,
-  Shapes,
 } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { Button, Checkbox } from "@/shared/components/ui";
@@ -196,7 +191,17 @@ export function LibraryFilterPopover({
   const [endDateOpen, setEndDateOpen] = useState(false);
 
   // 1. Current URL params
-  const fileStatus = searchParams.get('fileStatus') || 'all';
+  const rawFileStatus = searchParams.get('fileStatus');
+  const hasFileParam = searchParams.get('hasFile');
+  const hasNotesParam = searchParams.get('hasNotes');
+
+  const fileStatus = useMemo(() => {
+    if (rawFileStatus) return rawFileStatus;
+    if (hasNotesParam === 'true') return 'has-notes';
+    if (hasFileParam === 'true') return 'has-pdf';
+    if (hasFileParam === 'false') return 'missing-pdf';
+    return 'all';
+  }, [rawFileStatus, hasNotesParam, hasFileParam]);
 
   // Read statuses: supports multi-select checkbox (e.g. readStatus=unread,reading)
   const readStatuses = useMemo(() => {
@@ -257,15 +262,27 @@ export function LibraryFilterPopover({
     const nextParams = new URLSearchParams(searchParams.toString());
     mutator(nextParams);
     const query = nextParams.toString();
-    router.push(query ? `${pathname}?${query}` : pathname);
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
 
   const handleFileStatusToggle = (status: 'has-pdf' | 'missing-pdf' | 'has-notes') => {
     updateQuery((params) => {
       if (fileStatus === status) {
         params.delete('fileStatus');
+        params.delete('hasFile');
+        params.delete('hasNotes');
       } else {
         params.set('fileStatus', status);
+        if (status === 'has-pdf') {
+          params.set('hasFile', 'true');
+          params.delete('hasNotes');
+        } else if (status === 'missing-pdf') {
+          params.set('hasFile', 'false');
+          params.delete('hasNotes');
+        } else if (status === 'has-notes') {
+          params.set('hasNotes', 'true');
+          params.delete('hasFile');
+        }
       }
     });
   };
@@ -363,19 +380,6 @@ export function LibraryFilterPopover({
       if (nextTags.length > 0) {
         params.set('tag', nextTags.join(','));
       }
-    });
-  };
-
-  const handleClearAll = () => {
-    updateQuery((params) => {
-      params.delete('fileStatus');
-      params.delete('readStatus');
-      params.delete('type');
-      params.delete('fromYear');
-      params.delete('toYear');
-      params.delete('startDate');
-      params.delete('endDate');
-      params.delete('tag');
     });
   };
 
@@ -640,10 +644,7 @@ export function LibraryFilterPopover({
                 onClick={() => setTypesOpen(!typesOpen)}
                 className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground cursor-pointer select-none"
               >
-                <div className="flex items-center gap-1.5">
-                  <Shapes className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                  <span>Type</span>
-                </div>
+                <span>Type</span>
                 {typesOpen ? (
                   <ChevronUp className="size-3.5 text-foreground shrink-0" />
                 ) : (
@@ -670,19 +671,12 @@ export function LibraryFilterPopover({
                             }
                           }}
                           className={cn(
-                            "flex items-center justify-between gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                            "flex items-center gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
                             isChecked && "bg-muted font-medium"
                           )}
                         >
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <FilterCheckbox checked={isChecked} />
-                            <span className="font-normal leading-none truncate">{t.label}</span>
-                          </div>
-                          {typeof t.count === 'number' && t.count > 0 && (
-                            <span className="text-11 text-muted-foreground tabular-nums shrink-0">
-                              {t.count}
-                            </span>
-                          )}
+                          <FilterCheckbox checked={isChecked} />
+                          <span className="font-normal leading-none truncate">{t.label}</span>
                         </div>
                       );
                     })}
@@ -700,10 +694,7 @@ export function LibraryFilterPopover({
                 onClick={() => setTagsOpen(!tagsOpen)}
                 className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground cursor-pointer select-none"
               >
-                <div className="flex items-center gap-1.5">
-                  <TagIcon className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                  <span>Tags</span>
-                </div>
+                <span>Tags</span>
                 {tagsOpen ? (
                   <ChevronUp className="size-3.5 text-foreground shrink-0" />
                 ) : (
@@ -759,10 +750,7 @@ export function LibraryFilterPopover({
                 onClick={() => setFilesOpen(!filesOpen)}
                 className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground cursor-pointer select-none"
               >
-                <div className="flex items-center gap-1.5">
-                  <FileText className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                  <span>Files</span>
-                </div>
+                <span>Files</span>
                 {filesOpen ? (
                   <ChevronUp className="size-3.5 text-foreground shrink-0" />
                 ) : (
@@ -810,10 +798,7 @@ export function LibraryFilterPopover({
                 onClick={() => setReadingOpen(!readingOpen)}
                 className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground cursor-pointer select-none"
               >
-                <div className="flex items-center gap-1.5">
-                  <BookmarkCheck className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                  <span>Progress</span>
-                </div>
+                <span>Progress</span>
                 {readingOpen ? (
                   <ChevronUp className="size-3.5 text-foreground shrink-0" />
                 ) : (
@@ -862,7 +847,6 @@ export function LibraryFilterPopover({
                 className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground cursor-pointer select-none"
               >
                 <div className="flex items-center gap-1.5">
-                  <CalendarIcon className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                   <span>Date</span>
                   {hasDateFilter && (
                     <span className="size-1.5 rounded-full bg-foreground shrink-0" />

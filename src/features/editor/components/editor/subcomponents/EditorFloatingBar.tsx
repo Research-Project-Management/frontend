@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom';
 import { MessageSquarePlus, FileCheck, Sparkles } from 'lucide-react';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useActionsStore } from '@/features/editor/store';
+import { Button } from '@/shared/components/ui/button';
+import { Separator } from '@/shared/components/ui/separator';
 import { cn } from '@/shared/lib/utils';
 
 export interface SelFloating {
@@ -51,10 +53,12 @@ export const EditorFloatingBar = React.memo(function EditorFloatingBar({
   return createPortal(
     <div
       ref={selFloatingRef}
-      className="fixed z-[9998] flex items-center gap-px rounded-md border border-border bg-popover text-popover-foreground px-1 py-1 shadow-raised-200"
+      className="fixed z-50 flex items-center gap-1 rounded-md border border-border bg-popover text-popover-foreground px-1 py-1 shadow-raised-200"
       style={{ left: selFloating.x, top: selFloating.y }}
     >
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => {
           setPendingComment({
             startLine: selFloating.startLine,
@@ -64,14 +68,18 @@ export const EditorFloatingBar = React.memo(function EditorFloatingBar({
           EditorEventBus.emit('flux:open-panel', 'Review');
           onClose();
         }}
-        className="flex items-center gap-1.5 px-2 py-1 rounded-sm text-xs text-foreground hover:bg-muted transition-colors cursor-pointer"
+        className="h-7 px-2 text-xs font-normal text-foreground hover:bg-muted gap-1.5 cursor-pointer"
         title="Add Comment"
       >
         <MessageSquarePlus className="size-3.5 shrink-0" />
         <span>Comment</span>
-      </button>
-      <div className="w-px h-4 bg-border mx-0.5" />
-      <button
+      </Button>
+
+      <Separator orientation="vertical" className="h-4 mx-0.5" />
+
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => {
           onOpenSuggest({
             originalText: selFloating.text,
@@ -84,7 +92,7 @@ export const EditorFloatingBar = React.memo(function EditorFloatingBar({
           onClose();
         }}
         className={cn(
-          "flex items-center gap-1.5 px-2 py-1 rounded-sm text-xs transition-colors cursor-pointer",
+          "h-7 px-2 text-xs font-normal gap-1.5 cursor-pointer",
           reviewMode
             ? "bg-amber-500/20 text-amber-800 dark:text-amber-200 font-semibold ring-1 ring-amber-500/40"
             : "text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
@@ -93,9 +101,13 @@ export const EditorFloatingBar = React.memo(function EditorFloatingBar({
       >
         <FileCheck className="size-3.5 shrink-0" />
         <span>Suggest{reviewMode ? ' (Active)' : ''}</span>
-      </button>
-      <div className="w-px h-4 bg-border mx-0.5" />
-      <button
+      </Button>
+
+      <Separator orientation="vertical" className="h-4 mx-0.5" />
+
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => {
           if (onOpenAiAssist) {
             onOpenAiAssist({
@@ -109,12 +121,12 @@ export const EditorFloatingBar = React.memo(function EditorFloatingBar({
           }
           onClose();
         }}
-        className="flex items-center gap-1.5 px-2 py-1 rounded-sm text-xs text-primary hover:bg-primary/10 font-medium transition-colors cursor-pointer"
-        title="Overleaf AI Assist (Academic Rephrase / Concise / Grammar)"
+        className="h-7 px-2 text-xs font-normal text-foreground hover:bg-muted gap-1.5 cursor-pointer"
+        title="AI Assist"
       >
-        <Sparkles className="size-3.5 shrink-0" />
+        <Sparkles className="size-3.5 shrink-0 text-ai" />
         <span>AI Assist</span>
-      </button>
+      </Button>
     </div>,
     document.body,
   );

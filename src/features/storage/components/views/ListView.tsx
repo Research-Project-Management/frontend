@@ -496,7 +496,7 @@ export default function ListView({
 
                     <div className="col-span-2 flex items-center gap-2 min-w-0 overflow-hidden">
                       {item.isFolder ? (
-                        <span className="text-xs text-muted-foreground">—</span>
+                        <span className="text-xs text-muted-foreground">-</span>
                       ) : (
                         <>
                           {item.author?.avatar ? (
@@ -513,7 +513,7 @@ export default function ListView({
                             </div>
                           )}
                           <span className="text-xs text-muted-foreground truncate">
-                            {item.author?.name || "—"}
+                            {item.author?.name || "-"}
                           </span>
                         </>
                       )}
@@ -524,7 +524,7 @@ export default function ListView({
                     </div>
 
                     <div className="col-span-1 text-xs text-muted-foreground">
-                      {item.isFolder ? "—" : formatFileSize(item.size)}
+                      {item.isFolder ? "-" : formatFileSize(item.size)}
                     </div>
 
                     <div className="col-span-2 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">

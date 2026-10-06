@@ -15,7 +15,7 @@ import { tags as t } from '@lezer/highlight';
 export const fluxLightTheme = EditorView.theme(
   {
     '&': {
-      backgroundColor: 'var(--background, #FAFAF9)',
+      backgroundColor: 'var(--editor-bg, #FCFCFB)',
       color: 'var(--foreground, #212121)',
       fontSize: '14px',
       height: '100%',
@@ -23,15 +23,23 @@ export const fluxLightTheme = EditorView.theme(
     '&.cm-focused': {
       outline: 'none',
     },
+    '.cm-editor': {
+      width: '100%',
+      maxWidth: '100%',
+      minWidth: '0',
+    },
     '.cm-scroller': {
       fontFamily: 'var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)',
       lineHeight: '1.65',
       outline: 'none',
       overflowX: 'auto',
+      maxWidth: '100%',
+      minWidth: '0',
     },
     '.cm-content': {
       outline: 'none',
       width: '100%',
+      maxWidth: '100%',
       minWidth: '0',
       flexGrow: 1,
       boxSizing: 'border-box',
@@ -39,12 +47,22 @@ export const fluxLightTheme = EditorView.theme(
     },
     '.cm-line': {
       width: '100%',
+      maxWidth: '100%',
       boxSizing: 'border-box',
       padding: '0 8px',
+      overflowWrap: 'anywhere',
     },
     '.cm-lineWrapping': {
+      whiteSpace: 'pre-wrap',
       wordBreak: 'break-word',
-      overflowWrap: 'break-word',
+      overflowWrap: 'anywhere',
+      flexShrink: '1',
+      maxWidth: '100%',
+    },
+    '.cm-lineWrapping .cm-line': {
+      overflowWrap: 'anywhere',
+      wordBreak: 'break-word',
+      maxWidth: '100%',
     },
 
     '.cm-gutters': {
@@ -156,6 +174,38 @@ export const fluxLightTheme = EditorView.theme(
       borderRadius: '2px',
       cursor: 'pointer',
     },
+    '.cm-track-change': {
+      borderRadius: '2px',
+      cursor: 'pointer',
+      transition: 'background-color 0.15s ease',
+    },
+    '.cm-track-change-insert': {
+      backgroundColor: 'rgba(34, 197, 94, 0.16)',
+      borderBottom: '2px solid #16a34a',
+      color: '#15803d',
+    },
+    '.cm-track-change-insert:hover': {
+      backgroundColor: 'rgba(34, 197, 94, 0.28)',
+    },
+    '.cm-track-change-delete': {
+      backgroundColor: 'rgba(239, 68, 68, 0.14)',
+      textDecoration: 'line-through #dc2626 2px',
+      color: '#b91c1c',
+    },
+    '.cm-track-change-delete:hover': {
+      backgroundColor: 'rgba(239, 68, 68, 0.26)',
+    },
+    '.cm-track-change-replace': {
+      backgroundColor: 'rgba(245, 158, 11, 0.16)',
+      borderBottom: '2px dashed #d97706',
+      color: '#b45309',
+    },
+    '.cm-track-change-replace:hover': {
+      backgroundColor: 'rgba(245, 158, 11, 0.28)',
+    },
+    '.cm-track-change-hidden': {
+      display: 'none',
+    },
   },
   { dark: false }
 );
@@ -163,7 +213,7 @@ export const fluxLightTheme = EditorView.theme(
 export const fluxDarkTheme = EditorView.theme(
   {
     '&': {
-      backgroundColor: 'var(--background, #111118)',
+      backgroundColor: 'var(--editor-bg, #1A1A22)',
       color: 'var(--foreground, #F0F0F0)',
       fontSize: '14px',
       height: '100%',
@@ -171,15 +221,23 @@ export const fluxDarkTheme = EditorView.theme(
     '&.cm-focused': {
       outline: 'none',
     },
+    '.cm-editor': {
+      width: '100%',
+      maxWidth: '100%',
+      minWidth: '0',
+    },
     '.cm-scroller': {
       fontFamily: 'var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)',
       lineHeight: '1.65',
       outline: 'none',
       overflowX: 'auto',
+      maxWidth: '100%',
+      minWidth: '0',
     },
     '.cm-content': {
       outline: 'none',
       width: '100%',
+      maxWidth: '100%',
       minWidth: '0',
       flexGrow: 1,
       boxSizing: 'border-box',
@@ -187,12 +245,22 @@ export const fluxDarkTheme = EditorView.theme(
     },
     '.cm-line': {
       width: '100%',
+      maxWidth: '100%',
       boxSizing: 'border-box',
       padding: '0 8px',
+      overflowWrap: 'anywhere',
     },
     '.cm-lineWrapping': {
+      whiteSpace: 'pre-wrap',
       wordBreak: 'break-word',
-      overflowWrap: 'break-word',
+      overflowWrap: 'anywhere',
+      flexShrink: '1',
+      maxWidth: '100%',
+    },
+    '.cm-lineWrapping .cm-line': {
+      overflowWrap: 'anywhere',
+      wordBreak: 'break-word',
+      maxWidth: '100%',
     },
 
     '.cm-gutters': {
@@ -303,13 +371,45 @@ export const fluxDarkTheme = EditorView.theme(
       borderRadius: '2px',
       cursor: 'pointer',
     },
+    '.cm-track-change': {
+      borderRadius: '2px',
+      cursor: 'pointer',
+      transition: 'background-color 0.15s ease',
+    },
+    '.cm-track-change-insert': {
+      backgroundColor: 'rgba(34, 197, 94, 0.22)',
+      borderBottom: '2px solid #22c55e',
+      color: '#4ade80',
+    },
+    '.cm-track-change-insert:hover': {
+      backgroundColor: 'rgba(34, 197, 94, 0.35)',
+    },
+    '.cm-track-change-delete': {
+      backgroundColor: 'rgba(239, 68, 68, 0.22)',
+      textDecoration: 'line-through #ef4444 2px',
+      color: '#f87171',
+    },
+    '.cm-track-change-delete:hover': {
+      backgroundColor: 'rgba(239, 68, 68, 0.35)',
+    },
+    '.cm-track-change-replace': {
+      backgroundColor: 'rgba(245, 158, 11, 0.22)',
+      borderBottom: '2px dashed #f59e0b',
+      color: '#fbbf24',
+    },
+    '.cm-track-change-replace:hover': {
+      backgroundColor: 'rgba(245, 158, 11, 0.35)',
+    },
+    '.cm-track-change-hidden': {
+      display: 'none',
+    },
   },
   { dark: true }
 );
 
 export const fluxLightHighlightStyle = HighlightStyle.define([
-  { tag: t.keyword, color: '#7c3aed', fontWeight: 'bold' }, // \begin, \end, \section
-  { tag: t.controlKeyword, color: '#6d28d9', fontWeight: 'bold' },
+  { tag: t.keyword, color: '#7c3aed', fontWeight: '600' }, // \begin, \end, \section
+  { tag: t.controlKeyword, color: '#6d28d9', fontWeight: '600' },
   { tag: t.definition(t.variableName), color: '#0369a1' }, // labels
   { tag: t.variableName, color: '#0284c7' },
   { tag: t.comment, color: '#64748b', fontStyle: 'italic' }, // % comments
@@ -318,12 +418,12 @@ export const fluxLightHighlightStyle = HighlightStyle.define([
   { tag: t.macroName, color: '#1d4ed8', fontWeight: '600' }, // \textbf, \textit, \cite
   { tag: t.bracket, color: '#d97706' }, // {}, []
   { tag: t.operator, color: '#c2410c' },
-  { tag: t.heading, color: '#1e40af', fontWeight: 'bold' },
+  { tag: t.heading, color: '#1e40af', fontWeight: '600' },
 ]);
 
 export const fluxDarkHighlightStyle = HighlightStyle.define([
-  { tag: t.keyword, color: '#c084fc', fontWeight: 'bold' }, // \begin, \end, \section (~8.5:1 on dark)
-  { tag: t.controlKeyword, color: '#d8b4fe', fontWeight: 'bold' },
+  { tag: t.keyword, color: '#c084fc', fontWeight: '600' }, // \begin, \end, \section (~8.5:1 on dark)
+  { tag: t.controlKeyword, color: '#d8b4fe', fontWeight: '600' },
   { tag: t.definition(t.variableName), color: '#38bdf8' }, // labels (~9.8:1)
   { tag: t.variableName, color: '#38bdf8' },
   { tag: t.comment, color: '#94a3b8', fontStyle: 'italic' }, // % comments (~7.2:1)
@@ -332,7 +432,7 @@ export const fluxDarkHighlightStyle = HighlightStyle.define([
   { tag: t.macroName, color: '#60a5fa', fontWeight: '600' }, // \textbf, \textit (~8.2:1)
   { tag: t.bracket, color: '#fbbf24' }, // {}, [] (~10:1)
   { tag: t.operator, color: '#fb923c' }, // (~8.7:1)
-  { tag: t.heading, color: '#93c5fd', fontWeight: 'bold' }, // (~11.5:1)
+  { tag: t.heading, color: '#93c5fd', fontWeight: '600' }, // (~11.5:1)
 ]);
 
 // Backward compatibility alias

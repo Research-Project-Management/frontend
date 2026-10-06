@@ -1,18 +1,59 @@
 import type { Metadata } from 'next';
-import { Inter, IBM_Plex_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 import { Toaster } from "@/shared/components/ui/sonner";
 import '@/shared/styles/globals.css';
 import Providers from './providers';
 
-const inter = Inter({
-  subsets: ['latin', 'vietnamese'],
+const inter = localFont({
+  src: [
+    {
+      path: './fonts/Inter-400.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: './fonts/Inter-500.woff2',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: './fonts/Inter-600.woff2',
+      weight: '600',
+      style: 'normal',
+    },
+    {
+      path: './fonts/Inter-700.woff2',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
   variable: '--font-inter',
   display: 'swap',
 });
 
-const ibmPlexMono = IBM_Plex_Mono({
-  subsets: ['latin', 'vietnamese'],
-  weight: ['400', '500', '600', '700'],
+const ibmPlexMono = localFont({
+  src: [
+    {
+      path: './fonts/IBMPlexMono-400.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: './fonts/IBMPlexMono-500.woff2',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: './fonts/IBMPlexMono-600.woff2',
+      weight: '600',
+      style: 'normal',
+    },
+    {
+      path: './fonts/IBMPlexMono-700.woff2',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
   variable: '--font-ibm-plex-mono',
   display: 'swap',
 });
@@ -42,7 +83,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${ibmPlexMono.variable}`}
+      className={`${inter.variable} ${ibmPlexMono.variable} font-sans antialiased`}
       suppressHydrationWarning
     >
       <body

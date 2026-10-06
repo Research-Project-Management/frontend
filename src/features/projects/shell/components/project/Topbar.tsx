@@ -97,7 +97,7 @@ export function Topbar({
           asChild
           variant="outline"
           size="sm"
-          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted inline-flex cursor-pointer shrink-0"
+          className="h-8 px-2.5 py-1.5 text-xs gap-1.5 text-foreground hover:bg-muted inline-flex cursor-pointer shrink-0"
           title="View your work"
         >
           <Link className="shrink-0" href="/your-work">
@@ -111,7 +111,7 @@ export function Topbar({
           asChild
           variant="outline"
           size="sm"
-          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted hidden md:inline-flex cursor-pointer shrink-0"
+          className="h-8 px-2.5 py-1.5 text-xs gap-1.5 text-foreground hover:bg-muted hidden md:inline-flex cursor-pointer shrink-0"
           title="View drafts"
         >
           <Link className="shrink-0" href="/drafts">
@@ -125,7 +125,7 @@ export function Topbar({
           asChild
           variant="outline"
           size="sm"
-          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted hidden md:inline-flex cursor-pointer shrink-0"
+          className="h-8 px-2.5 py-1.5 text-xs gap-1.5 text-foreground hover:bg-muted hidden md:inline-flex cursor-pointer shrink-0"
           title="View favorite projects"
         >
           <Link className="shrink-0" href="/projects/favorite">
@@ -139,7 +139,7 @@ export function Topbar({
           asChild
           variant="outline"
           size="sm"
-          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted hidden sm:inline-flex cursor-pointer shrink-0"
+          className="h-8 px-2.5 py-1.5 text-xs gap-1.5 text-foreground hover:bg-muted hidden sm:inline-flex cursor-pointer shrink-0"
           title="View analytics"
         >
           <Link className="shrink-0" href="/projects/analytics">
@@ -153,7 +153,7 @@ export function Topbar({
           asChild
           variant="outline"
           size="sm"
-          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted inline-flex cursor-pointer shrink-0"
+          className="h-8 px-2.5 py-1.5 text-xs gap-1.5 text-foreground hover:bg-muted inline-flex cursor-pointer shrink-0"
           title="View archived projects"
         >
           <Link className="shrink-0" href="/archives">
@@ -172,7 +172,7 @@ export function Topbar({
           asChild
           variant="outline"
           size="sm"
-          className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted hidden md:inline-flex cursor-pointer shrink-0"
+          className="h-8 px-2.5 py-1.5 text-xs gap-1.5 text-foreground hover:bg-muted hidden md:inline-flex cursor-pointer shrink-0"
           title="View trash"
         >
           <Link className="shrink-0" href="/archives?tab=trash">

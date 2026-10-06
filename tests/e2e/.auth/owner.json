@@ -1,0 +1,61 @@
+{
+  "cookies": [
+    {
+      "name": "accessToken",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLWFjYWRlbWljLTAwMSIsImlkIjoidXNlci1hY2FkZW1pYy0wMDEiLCJlbWFpbCI6ImFsYW5AZmx1eC5hY2FkZW1pYyIsIm5hbWUiOiJEci4gQWxhbiBUdXJpbmciLCJleHAiOjE3OTE4NTU1MzF9.signature",
+      "domain": "127.0.0.1",
+      "path": "/",
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax",
+      "expires": 1791855531
+    },
+    {
+      "name": "token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLWFjYWRlbWljLTAwMSIsImlkIjoidXNlci1hY2FkZW1pYy0wMDEiLCJlbWFpbCI6ImFsYW5AZmx1eC5hY2FkZW1pYyIsIm5hbWUiOiJEci4gQWxhbiBUdXJpbmciLCJleHAiOjE3OTE4NTU1MzF9.signature",
+      "domain": "127.0.0.1",
+      "path": "/",
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax",
+      "expires": 1791855531
+    },
+    {
+      "name": "flux_token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLWFjYWRlbWljLTAwMSIsImlkIjoidXNlci1hY2FkZW1pYy0wMDEiLCJlbWFpbCI6ImFsYW5AZmx1eC5hY2FkZW1pYyIsIm5hbWUiOiJEci4gQWxhbiBUdXJpbmciLCJleHAiOjE3OTE4NTU1MzF9.signature",
+      "domain": "127.0.0.1",
+      "path": "/",
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax",
+      "expires": 1791855531
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://127.0.0.1:2915",
+      "localStorage": [
+        {
+          "name": "accessToken",
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLWFjYWRlbWljLTAwMSIsImlkIjoidXNlci1hY2FkZW1pYy0wMDEiLCJlbWFpbCI6ImFsYW5AZmx1eC5hY2FkZW1pYyIsIm5hbWUiOiJEci4gQWxhbiBUdXJpbmciLCJleHAiOjE3OTE4NTU1MzF9.signature"
+        },
+        {
+          "name": "token",
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLWFjYWRlbWljLTAwMSIsImlkIjoidXNlci1hY2FkZW1pYy0wMDEiLCJlbWFpbCI6ImFsYW5AZmx1eC5hY2FkZW1pYyIsIm5hbWUiOiJEci4gQWxhbiBUdXJpbmciLCJleHAiOjE3OTE4NTU1MzF9.signature"
+        },
+        {
+          "name": "flux_token",
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLWFjYWRlbWljLTAwMSIsImlkIjoidXNlci1hY2FkZW1pYy0wMDEiLCJlbWFpbCI6ImFsYW5AZmx1eC5hY2FkZW1pYyIsIm5hbWUiOiJEci4gQWxhbiBUdXJpbmciLCJleHAiOjE3OTE4NTU1MzF9.signature"
+        },
+        {
+          "name": "flux_cached_user",
+          "value": "{\"id\":\"user-academic-001\",\"name\":\"Dr. Alan Turing\",\"email\":\"alan@flux.academic\",\"role\":\"owner\"}"
+        },
+        {
+          "name": "user",
+          "value": "{\"id\":\"user-academic-001\",\"name\":\"Dr. Alan Turing\",\"email\":\"alan@flux.academic\",\"role\":\"owner\"}"
+        }
+      ]
+    }
+  ]
+}

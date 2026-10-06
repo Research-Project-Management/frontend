@@ -403,5 +403,22 @@ describe('Library Domain Layer — Pure Functional Logic', () => {
       const sortedByDate = sortLibraryItems(items, 'dateAdded', 'desc', false);
       expect(sortedByDate[0].id).toBe('2');
     });
+
+    it('should correctly handle publication and dateDeleted aliases', async () => {
+      const { sortLibraryItems } = await import('@/features/library/utils/sort-items');
+      const items: any[] = [
+        { id: '1', title: 'Paper 1', publicationTitle: 'Nature', deletedAt: '2026-03-01' },
+        { id: '2', title: 'Paper 2', publicationTitle: 'ACM Computing', deletedAt: '2026-05-01' },
+      ];
+
+      const sortedByPub = sortLibraryItems(items, 'publication', 'asc', false);
+      expect(sortedByPub[0].id).toBe('2'); // 'ACM Computing' < 'Nature'
+
+      const sortedByDeleted = sortLibraryItems(items, 'dateDeleted', 'desc', false);
+      expect(sortedByDeleted[0].id).toBe('2'); // May > March
+
+      const sortedByDeletedAt = sortLibraryItems(items, 'deletedAt', 'asc', false);
+      expect(sortedByDeletedAt[0].id).toBe('1'); // March < May
+    });
   });
 });

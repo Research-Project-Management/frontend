@@ -40,29 +40,89 @@ export function Switcher({
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams<{ projectId?: string }>();
-  const currentProjectId = propProject?.id || params?.projectId || '';
 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Fetch workspace projects
-  const { projects = [] } = useProjects();
+  const { projects = [], isLoading: isProjectsLoading } = useProjects();
 
-  // If project prop wasn't passed or doesn't have name, fetch details
-  const { state: projectState } = useProject(currentProjectId, {
-    enabled: !propProject?.name && Boolean(currentProjectId),
+  // Resolve current project ID with multi-layer fallback
+  const currentProjectId = useMemo(() => {
+    if (propProject?.id) return propProject.id;
+    if (params?.projectId) return params.projectId;
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('flux_active_project_id');
+        if (stored && projects.some((p) => p.id === stored)) return stored;
+      } catch {}
+    }
+    return projects[0]?.id || '';
+  }, [propProject?.id, params?.projectId, projects]);
+
+  // Synchronously look up from projects list (instant cache hit)
+  const projectFromList = useMemo(() => {
+    if (!currentProjectId) return null;
+    return (
+      projects.find(
+        (p) => p.id === currentProjectId || (p as any).identifier === currentProjectId
+      ) || null
+    );
+  }, [projects, currentProjectId]);
+
+  // Fetch single project detail if not found in list and name is missing
+  const shouldFetchDetail = Boolean(
+    currentProjectId && !propProject?.name && !projectFromList?.name
+  );
+  const { state: projectState, isLoading: isProjectDetailLoading } = useProject(currentProjectId, {
+    enabled: shouldFetchDetail,
   });
 
-  const currentProject = useMemo(
-    () =>
-      propProject?.name
-        ? propProject
-        : projectState?.project || { id: currentProjectId, name: '', avatar: null },
-    [propProject, projectState?.project, currentProjectId],
-  );
+  const currentProject = useMemo(() => {
+    if (propProject?.name) {
+      return {
+        id: propProject.id || currentProjectId,
+        name: propProject.name,
+        avatar: propProject.avatar ?? null,
+      };
+    }
+    if (projectFromList?.name) {
+      return {
+        id: projectFromList.id,
+        name: projectFromList.name,
+        avatar: projectFromList.avatar ?? null,
+      };
+    }
+    if (projectState?.project?.name) {
+      return {
+        id: projectState.project.id,
+        name: projectState.project.name,
+        avatar: projectState.project.avatar ?? null,
+      };
+    }
+    return {
+      id: currentProjectId,
+      name: '',
+      avatar: null,
+    };
+  }, [propProject, projectFromList, projectState?.project, currentProjectId]);
 
-  const displayName = currentProject.name || 'Select project…';
+  // Sync active project to localStorage whenever resolved
+  useEffect(() => {
+    if (currentProject.id && currentProject.name && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('flux_active_project_id', currentProject.id);
+      } catch {}
+    }
+  }, [currentProject.id, currentProject.name]);
+
+  const isResolving =
+    Boolean(currentProjectId) &&
+    !currentProject.name &&
+    (isProjectsLoading || (shouldFetchDetail && isProjectDetailLoading));
+
+  const displayName = currentProject.name || (isResolving ? 'Loading…' : 'Select project…');
 
   useEffect(() => {
     if (open) {
@@ -93,45 +153,68 @@ export function Switcher({
     setOpen(false);
     if (newProjectId === currentProjectId) return;
 
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('flux_active_project_id', newProjectId);
+      } catch {}
+    }
+
     // Smart route replacement to preserve current module
     if (pathname && currentProjectId && pathname.includes(`/projects/${currentProjectId}`)) {
       // If inside a specific sub-item that won't exist in the new project (like pages/[id]), normalize to parent module
-      const normalizedPath = pathname
-        .replace(new RegExp(`/projects/${currentProjectId}/pages/[^/]+`), `/projects/${currentProjectId}/pages`);
+      const normalizedPath = pathname.replace(
+        new RegExp(`/projects/${currentProjectId}/pages/[^/]+`),
+        `/projects/${currentProjectId}/pages`
+      );
 
       const targetPath = normalizedPath.replace(
         `/projects/${currentProjectId}`,
         `/projects/${newProjectId}`
       );
       router.push(targetPath);
+    } else if (pathname && pathname.includes('/pages')) {
+      router.push(`/projects/${newProjectId}/pages`);
     } else {
       router.push(`/projects/${newProjectId}`);
     }
   };
 
   return (
-    <div className={cn('flex items-center gap-1.5 sm:gap-2 shrink-0 select-none min-w-0', className)}>
-      {/* 1. Project Switcher */}
+    <div className={cn('flex items-center gap-1 sm:gap-1.5 shrink-0 select-none min-w-0', className)}>
+      {/* 1. Project Breadcrumb Item */}
+      <div className="flex items-center gap-1.5 sm:gap-2 h-7 px-1 -ml-1 text-13 font-medium text-foreground shrink-0 select-none">
+        <ProjectAvatar avatar={currentProject.avatar} name={currentProject.name} id={currentProject.id} size="xs" />
+        <span className="truncate max-w-[110px] sm:max-w-[170px] text-13 font-medium text-foreground">
+          {displayName}
+        </span>
+      </div>
+
+      {/* Horizontal Arrow Icon: Breadcrumb Separator & Project Switcher Popover Trigger */}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
             type="button"
+            aria-label="Switch project"
+            title="Switch project"
             className={cn(
-              'flex items-center gap-1.5 sm:gap-2 h-7 px-1.5 -ml-1 rounded-md text-13 font-medium text-foreground hover:bg-muted/60 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 select-none',
-              open && 'bg-muted/60',
+              'size-6 flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0',
+              open && 'bg-muted/60 text-foreground',
             )}
           >
-            <ProjectAvatar avatar={currentProject.avatar} name={currentProject.name} id={currentProject.id} size="xs" />
-            <span className="truncate max-w-[100px] sm:max-w-[150px] text-13 font-medium text-foreground">
-              {displayName}
-            </span>
+            <ChevronRight
+              className={cn(
+                'size-3.5 transition-transform duration-200 text-current',
+                open && 'rotate-90',
+              )}
+              strokeWidth={1.75}
+            />
           </button>
         </PopoverTrigger>
 
         <PopoverContent
           align="start"
           sideOffset={6}
-          className="w-56 p-1.5 border border-border bg-popover text-popover-foreground rounded-lg shadow-raised-200 select-none"
+          className="w-56 p-1.5 border border-border bg-popover text-popover-foreground rounded-lg shadow-raised-200 select-none z-50"
         >
           {/* Search Box */}
           <div className="flex items-center gap-2 border border-border/70 rounded-md px-2.5 py-1.5 mb-1 bg-background">
@@ -139,7 +222,7 @@ export function Switcher({
             <input
               ref={searchRef}
               type="text"
-              placeholder="Search"
+              placeholder="Search projects…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
@@ -179,9 +262,6 @@ export function Switcher({
           </div>
         </PopoverContent>
       </Popover>
-
-      {/* Breadcrumb Separator */}
-      <ChevronRight className="size-3.5 text-muted-foreground/50 shrink-0" strokeWidth={1.5} />
 
       {/* 2. Module Title */}
       <div className="flex items-center gap-2 h-7 px-1 text-13 font-medium text-foreground select-none shrink-0">

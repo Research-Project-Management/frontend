@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: 'Library · Flux' };
 export default function LibraryIndexPage() {
   return (
     <Suspense fallback={null}>
-      <ModernLibraryPage />
+      <ModernLibraryPage title="Library" />
     </Suspense>
   );
 }

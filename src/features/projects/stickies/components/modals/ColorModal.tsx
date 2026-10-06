@@ -35,7 +35,7 @@ export default function ColorModal({
       </PopoverTrigger>
       <PopoverContent 
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="w-[180px] p-0 rounded-md z-[100] bg-popover border border-border text-popover-foreground overflow-hidden" 
+        className="w-[180px] p-0 rounded-md bg-popover border border-border text-popover-foreground overflow-hidden" 
         align="start" 
         side="top" 
         sideOffset={14}

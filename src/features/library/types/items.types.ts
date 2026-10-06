@@ -370,6 +370,7 @@ export interface ItemQueryParams {
   search?: string;
   smartFilter?: 'unfiled' | 'missing-doi' | 'missing-pdf' | 'with-notes';
   limit?: number;
+  page?: number;
   skip?: number;
   cursor?: string;
   view?: string;
@@ -378,6 +379,7 @@ export interface ItemQueryParams {
   orderBy?: string;
   orderDirection?: 'asc' | 'desc';
   tagId?: string;
+  tag?: string;
   tags?: string[];
   type?: string;
   itemType?: string;
@@ -386,5 +388,7 @@ export interface ItemQueryParams {
   toYear?: number;
   readStatus?: 'unread' | 'reading' | 'completed' | string;
   hasFile?: boolean;
+  hasNotes?: boolean;
+  fields?: readonly string[] | string[];
 }
 

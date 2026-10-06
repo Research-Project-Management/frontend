@@ -12,7 +12,12 @@ import { StateField, RangeSet } from '@codemirror/state';
 import { Decoration, DecorationSet, EditorView } from '@codemirror/view';
 import { highlightLineEffect } from '../../../adapters/codemirror/codemirror.adapter';
 
-export const latexLanguage = StreamLanguage.define(stex);
+export const latexLanguage = StreamLanguage.define({
+  ...stex,
+  languageData: {
+    commentTokens: { line: '% ' },
+  },
+});
 
 const synctexLineDecoration = Decoration.line({
   attributes: { class: 'cm-synctex-flash' },

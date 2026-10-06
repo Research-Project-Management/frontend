@@ -3,7 +3,6 @@
 import React from 'react';
 import {
   Info,
-  AlignLeft,
   Paperclip,
   StickyNote,
   FolderTree,
@@ -50,7 +49,6 @@ export function InspectorTabs({
 }: InspectorTabsProps) {
   const tabs: TabItem[] = [
     { id: 'info', label: 'Details', icon: Info },
-    { id: 'abstract', label: 'Abstract', icon: AlignLeft },
     { id: 'files', label: 'Attachments', icon: Paperclip, badge: attachmentCount },
     { id: 'notes', label: 'Notes', icon: StickyNote, badge: noteCount },
     { id: 'collections', label: 'Collections', icon: FolderTree },

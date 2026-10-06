@@ -7,7 +7,6 @@ import { EditorEventBus } from '../../../utils/editor.util';
 import { editorCommandBus } from '../../../core/command-bus/editor-command-bus';
 import { useEditorInstance } from '../../../core/context/editor-instance.context';
 import type { CompileError } from '../../../types/compiler.types';
-import { DEMO_PDF_URL } from '../../../mock/demo-dataset';
 import { toast } from 'sonner';
 
 export interface UsePdfCompilerOptions {
@@ -56,35 +55,42 @@ export function usePdfCompiler({
   const prevPdfUrlRef = useRef<string | null>(null);
   const synctexMapRef = useRef<SyncTeXMap | null>(null);
   const rawSynctexRef = useRef<string | null>(null);
-
-  // Auto-initialize with real compiled research paper PDF for instant split-screen preview
-  useEffect(() => {
-    if (!pdfUrl) {
-      setPdfUrl(DEMO_PDF_URL);
-    }
-  }, [pdfUrl, setPdfUrl]);
+  const isCompilingRef = useRef<boolean>(false);
 
   // Compile runner using unified LatexCompilerEngine
   const handleCompile = useCallback(
     async (options?: { forceClean?: boolean }) => {
       if (!pageId) return;
 
+      // Guard against overlapping concurrent compilations
+      if (isCompilingRef.current) {
+        LatexCompilerEngine.cancelInFlightCompile();
+      }
+      isCompilingRef.current = true;
+
       EditorEventBus.emit('flux:compile-started');
 
       // Collect dirty file buffers
       const dirtyFiles = getDirtyFiles();
       const currentVal = getContent();
-      if (activeFilePage?.id && currentVal !== undefined) {
-        const idx = dirtyFiles.findIndex((f) => f.fileId === activeFilePage.id);
+      const effectiveActiveFileId = activeFilePage?.id || pageId;
+      if (effectiveActiveFileId && currentVal !== undefined) {
+        const idx = dirtyFiles.findIndex((f) => f.fileId === effectiveActiveFileId);
         if (idx >= 0) dirtyFiles[idx].content = currentVal;
-        else dirtyFiles.push({ fileId: activeFilePage.id, content: currentVal });
+        else dirtyFiles.push({ fileId: effectiveActiveFileId, content: currentVal });
       }
 
-      const effectiveProjectId = currentPage?.projectId || projectId || '';
+      const effectiveProjectId =
+        typeof currentPage?.projectId === 'object'
+          ? (currentPage.projectId as any)?.id
+          : currentPage?.projectId || projectId || '';
+      const resolvedMainRaw = mainFile || 'main.tex';
+      const resolvedMainFile = resolvedMainRaw.endsWith('.tex') ? resolvedMainRaw : `${resolvedMainRaw}.tex`;
+
       const res = await LatexCompilerEngine.compile({
         projectId: effectiveProjectId,
-        pageId,
-        mainFile: mainFile || 'main.tex',
+        pageId: effectiveActiveFileId,
+        mainFile: resolvedMainFile,
         source: currentVal || (currentPage as any)?.content,
         engine: engine || 'pdflatex',
         texLiveVersion,
@@ -100,6 +106,8 @@ export function usePdfCompiler({
           });
         },
       });
+
+      isCompilingRef.current = false;
 
       if (res.success) {
         if (
@@ -118,21 +126,22 @@ export function usePdfCompiler({
         setCompileStatus('done');
         setLastCompiledAt(res.compiledAt);
 
-        const warningDiagnostics: CompileError[] =
+        // Keep all non-error diagnostics (warnings, badboxes, info notes) for Overleaf log parity
+        const nonErrorDiagnostics: CompileError[] =
           res.diagnostics && res.diagnostics.length > 0
             ? res.diagnostics
-                .filter((d) => d.severity === 'warning')
+                .filter((d) => d.severity !== 'error')
                 .map((d) => ({
                   line: d.line,
                   message: d.message,
                   context: d.context || '',
                   file: d.file,
-                  severity: 'warning' as const,
+                  severity: d.severity,
                   code: d.code,
                   suggestion: d.suggestion,
                 }))
             : [];
-        setCompileErrors(warningDiagnostics);
+        setCompileErrors(nonErrorDiagnostics);
 
         if (res.flushedFileIds && res.flushedFileIds.length > 0) {
           res.flushedFileIds.forEach((fid) => clearDirty(fid));
@@ -149,14 +158,9 @@ export function usePdfCompiler({
           }, 400);
         }
       } else {
-        // In demo mode or standalone preview, maintain real rendered paper with simulated compilation
-        if (pageId === 'demo' || !/^[0-9a-f-]{36}$/i.test(pageId || '')) {
-          setPdfUrl(DEMO_PDF_URL);
-          setCompileStatus('done');
-          setLastCompiledAt(new Date());
-          setCompileErrors([]);
-          EditorEventBus.emit('flux:compile-finished', { success: true });
-          toast.success('Compiled successfully (Demo Engine)');
+        if (res.error === 'Compilation superseded' || res.error === 'Compilation stopped') {
+          setCompileStatus('idle');
+          EditorEventBus.emit('flux:compile-finished', { success: false, aborted: true });
           return;
         }
 
@@ -237,7 +241,9 @@ export function usePdfCompiler({
 
   const handleStopCompilation = useCallback(() => {
     LatexCompilerEngine.cancelInFlightCompile();
+    isCompilingRef.current = false;
     setCompileStatus('idle');
+    EditorEventBus.emit('flux:compile-finished', { success: false, aborted: true });
     toast.info('Compilation stopped');
   }, [setCompileStatus]);
 
@@ -270,6 +276,10 @@ export function usePdfCompiler({
     };
   }, []);
 
+  const handleClearCacheAndCompile = useCallback(() => {
+    return handleCompile({ forceClean: true });
+  }, [handleCompile]);
+
   return {
     engine,
     setEngine,
@@ -284,6 +294,7 @@ export function usePdfCompiler({
     synctexMapRef,
     rawSynctexRef,
     handleCompile,
+    handleClearCacheAndCompile,
     handleForceSync,
     handleStopCompilation,
   };

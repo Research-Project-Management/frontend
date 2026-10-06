@@ -37,17 +37,15 @@ const STATUS_CONFIG: Record<
     icon: React.ElementType;
     iconColor: string;
     borderClass: string;
-    bgGradient: string;
   }
 > = {
   on_track: {
     label: 'On Track',
     sublabel: 'Progressing according to schedule with no major blockers',
-    badgeClass: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+    badgeClass: 'bg-success/10 text-success border-success/30',
     icon: CheckCircle2,
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-    borderClass: 'border-emerald-500/20 hover:border-emerald-500/40',
-    bgGradient: 'from-emerald-500/5 via-background to-background',
+    iconColor: 'text-success',
+    borderClass: 'border-border hover:border-success/40',
   },
   at_risk: {
     label: 'At Risk',
@@ -55,17 +53,15 @@ const STATUS_CONFIG: Record<
     badgeClass: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
     icon: AlertTriangle,
     iconColor: 'text-amber-600 dark:text-amber-400',
-    borderClass: 'border-amber-500/20 hover:border-amber-500/40',
-    bgGradient: 'from-amber-500/5 via-background to-background',
+    borderClass: 'border-border hover:border-amber-500/40',
   },
   off_track: {
     label: 'Off Track',
     sublabel: 'Critical delays or blockers currently impacting deliverables',
-    badgeClass: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30',
+    badgeClass: 'bg-destructive/10 text-destructive border-destructive/30',
     icon: AlertOctagon,
-    iconColor: 'text-rose-600 dark:text-rose-400',
-    borderClass: 'border-rose-500/20 hover:border-rose-500/40',
-    bgGradient: 'from-rose-500/5 via-background to-background',
+    iconColor: 'text-destructive',
+    borderClass: 'border-border hover:border-destructive/40',
   },
 };
 
@@ -152,7 +148,7 @@ export function ProjectStatusCard({
         {/* Current / Latest Status Banner */}
         {currentUpdate && config ? (
           <div
-            className={`rounded-lg border bg-gradient-to-br ${config.bgGradient} ${config.borderClass} p-4 transition-all flex flex-col gap-3`}
+            className={`rounded-md border bg-card ${config.borderClass} p-4 transition-colors flex flex-col gap-3`}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">

@@ -5,22 +5,23 @@
  * - WYSIWYG interactive table with in-place cell editing
  * - Floating contextual action bar:
  *   - Caption dropdown/editor
- *   - Border styles (No borders, All borders, Booktabs, Custom borders)
- *   - Column/cell text alignment (l, c, r)
- *   - Column width & text-wrapping controls (Stretch vs Fixed width e.g. 8cm, %)
- *   - Toggle raw LaTeX code view {}
- *   - Merge/unmerge cells & Delete table
- *   - Insert / delete rows and columns
- * - Column drag handles with live measurement pills (|-> 8cm)
- * - Row handles on the left
- * - Active cell highlight with blue focus outline & sky tint
- * - 100% LaTeX AST preservation (0% data loss)
+ *   - Border styles (Booktabs, All borders, No borders, Custom borders)
+ *   - Column/cell text alignment (Left, Center, Right)
+ *   - Column width controls & measurements (|-> 8cm)
+ *   - Dedicated row & column insertion/deletion (Above/Below, Left/Right)
+ *   - Toggle raw LaTeX code view {} with two-way sync
+ *   - Delete table with confirmation
+ * - Resilient position tracking via posAtDOM and content fingerprinting (immune to offset drift)
+ * - 100% LaTeX AST preservation (unmodified cells retain original LaTeX, formulas, macros, & comments)
+ * - Spreadsheet-like keyboard navigation (Tab, Shift+Tab, Enter, Arrow keys)
  */
 
 import { WidgetType, EditorView } from '@codemirror/view';
 
 export interface TableCell {
   text: string;
+  rawText?: string;
+  isModified?: boolean;
   align?: 'l' | 'c' | 'r';
   isHeader?: boolean;
 }
@@ -30,6 +31,7 @@ export interface TableRow {
 }
 
 export interface ParsedTable {
+  isWrappedInTable: boolean;
   caption: string | null;
   label: string | null;
   borderStyle: 'none' | 'all' | 'booktabs' | 'custom';
@@ -62,17 +64,24 @@ export function cleanLatexCell(raw: string): string {
 }
 
 /**
- * Escape plain text back into LaTeX for saving
+ * Escape edited text back into LaTeX for saving without breaking math or macros
  */
 export function escapeCellToLatex(text: string): string {
   if (!text) return '';
   let res = text.trim();
   if (res === '✓') return '\\checkmark';
   if (res === '×') return '$\\times$';
+
+  // If text already contains valid math or latex commands, preserve them
+  if (res.includes('$') || res.includes('\\')) {
+    // Only escape bare unescaped ampersands that would break LaTeX columns
+    return res.replace(/(?<!\\)&/g, '\\&');
+  }
+
+  // Plain text: escape ampersand and percent
   return res
     .replace(/&/g, '\\&')
     .replace(/%/g, '\\%')
-    .replace(/\$/g, '\\$')
     .replace(/#/g, '\\#')
     .replace(/_/g, '\\_');
 }
@@ -81,6 +90,8 @@ export function escapeCellToLatex(text: string): string {
  * Parses LaTeX table code into a structured ParsedTable object
  */
 export function parseLatexTable(raw: string): ParsedTable {
+  const isWrappedInTable = /\\begin\{table\*?\}/.test(raw);
+
   const captionMatch = raw.match(/\\caption(?:\[[^\]]*\])?\{([^}]+)\}/);
   const caption = captionMatch ? captionMatch[1].trim() : null;
 
@@ -96,14 +107,15 @@ export function parseLatexTable(raw: string): ParsedTable {
   const tabularMatch = raw.match(/\\begin\{tabular\*?\}(?:\[[^\]]*\])?\{([^}]*)\}([\s\S]*?)\\end\{tabular\*?\}/);
   if (!tabularMatch) {
     return {
+      isWrappedInTable,
       caption,
       label,
       borderStyle: 'booktabs',
       colAlignments: ['l', 'c', 'c'],
       colWidths: [null, null, null],
       rows: [
-        { cells: [{ text: 'Col 1', isHeader: true }, { text: 'Col 2', isHeader: true }] },
-        { cells: [{ text: 'Val 1' }, { text: 'Val 2' }] },
+        { cells: [{ text: 'Col 1', rawText: 'Col 1', isHeader: true }, { text: 'Col 2', rawText: 'Col 2', isHeader: true }] },
+        { cells: [{ text: 'Val 1', rawText: 'Val 1' }, { text: 'Val 2', rawText: 'Val 2' }] },
       ],
       hasResizeBox,
       placement,
@@ -170,15 +182,26 @@ export function parseLatexTable(raw: string): ParsedTable {
 
     // Split cells by unescaped &
     const rawCells = cleanRow.split(/(?<!\\)&/);
-    const cells: TableCell[] = rawCells.map((c, idx) => ({
-      text: cleanLatexCell(c),
-      align: colAlignments[idx] || 'l',
-      isHeader: isFirstRow,
-    }));
+    const cells: TableCell[] = rawCells.map((c, idx) => {
+      const trimmedRaw = c.trim();
+      return {
+        text: cleanLatexCell(trimmedRaw),
+        rawText: trimmedRaw,
+        isModified: false,
+        align: colAlignments[idx] || 'l',
+        isHeader: isFirstRow,
+      };
+    });
 
     // Pad cells if fewer than column count
     while (cells.length < colAlignments.length) {
-      cells.push({ text: '', align: colAlignments[cells.length] || 'l', isHeader: isFirstRow });
+      cells.push({
+        text: '',
+        rawText: '',
+        isModified: false,
+        align: colAlignments[cells.length] || 'l',
+        isHeader: isFirstRow,
+      });
     }
 
     rows.push({ cells });
@@ -186,6 +209,7 @@ export function parseLatexTable(raw: string): ParsedTable {
   }
 
   return {
+    isWrappedInTable,
     caption,
     label,
     borderStyle,
@@ -199,11 +223,11 @@ export function parseLatexTable(raw: string): ParsedTable {
 }
 
 /**
- * Generates LaTeX string from ParsedTable
+ * Generates LaTeX string from ParsedTable with 100% AST preservation
  */
 export function generateLatexTable(data: ParsedTable): string {
   const colSpecs: string[] = [];
-  const hasVlines = data.borderStyle === 'all' || (data.borderStyle === 'custom');
+  const hasVlines = data.borderStyle === 'all' || data.borderStyle === 'custom';
 
   for (let i = 0; i < data.colAlignments.length; i++) {
     const align = data.colAlignments[i] || 'c';
@@ -224,7 +248,16 @@ export function generateLatexTable(data: ParsedTable): string {
   }
 
   data.rows.forEach((row, rowIdx) => {
-    const rowContent = row.cells.map((c) => escapeCellToLatex(c.text)).join(' & ') + ' \\\\';
+    const rowContent =
+      row.cells
+        .map((c) => {
+          if (c.isModified || c.rawText === undefined) {
+            return escapeCellToLatex(c.text);
+          }
+          return c.rawText;
+        })
+        .join(' & ') + ' \\\\';
+
     lines.push(`  ${rowContent}`);
 
     if (data.borderStyle === 'booktabs') {
@@ -247,7 +280,11 @@ export function generateLatexTable(data: ParsedTable): string {
     tabularBlock = `\\resizebox{\\columnwidth}{!}{\n${tabularBlock}\n}`;
   }
 
-  // Wrap in table environment if caption, label, or originally had table
+  // Only wrap in \begin{table} if originally wrapped OR if caption/label is specified
+  if (!data.isWrappedInTable && !data.caption && !data.label) {
+    return tabularBlock;
+  }
+
   const outLines: string[] = [];
   outLines.push(`\\begin{table}[${data.placement || 'htbp'}]`);
   outLines.push('  \\centering');
@@ -264,13 +301,14 @@ export function generateLatexTable(data: ParsedTable): string {
 }
 
 /**
- * Interactive Overleaf Table Widget
+ * Interactive Overleaf Table Widget with in-place cell editing
  */
 export class TableWidget extends WidgetType {
   private parsed: ParsedTable;
   private isCodeMode = false;
   private selectedCell: { row: number; col: number } | null = null;
   private selectedCol: number | null = null;
+  private domElement: HTMLElement | null = null;
 
   constructor(
     public readonly rawLatex: string,
@@ -290,17 +328,63 @@ export class TableWidget extends WidgetType {
     return true;
   }
 
+  /**
+   * Resilient position tracking: finds actual range in document even after external edits
+   */
+  private resolveDocumentRange(view: EditorView): { from: number; to: number } {
+    const docText = view.state.doc.toString();
+    const len = docText.length;
+
+    // 1. Direct offset match check
+    if (this.to <= len && docText.slice(this.from, this.to) === this.rawLatex) {
+      return { from: this.from, to: this.to };
+    }
+
+    // 2. Resolve via DOM position if mounted
+    if (this.domElement && this.domElement.isConnected) {
+      try {
+        const domPos = view.posAtDOM(this.domElement);
+        if (typeof domPos === 'number' && domPos >= 0 && domPos <= len) {
+          const searchStart = Math.max(0, domPos - 150);
+          const searchEnd = Math.min(len, domPos + this.rawLatex.length + 150);
+          const windowChunk = docText.slice(searchStart, searchEnd);
+          const relIdx = windowChunk.indexOf(this.rawLatex);
+          if (relIdx !== -1) {
+            return {
+              from: searchStart + relIdx,
+              to: searchStart + relIdx + this.rawLatex.length,
+            };
+          }
+        }
+      } catch {}
+    }
+
+    // 3. Fallback: global search for the raw LaTeX snippet
+    const globalIdx = docText.indexOf(this.rawLatex);
+    if (globalIdx !== -1) {
+      return { from: globalIdx, to: globalIdx + this.rawLatex.length };
+    }
+
+    // Fallback to initial coordinates bounded by length
+    return {
+      from: Math.min(this.from, len),
+      to: Math.min(this.to, len),
+    };
+  }
+
   private dispatchUpdate(view: EditorView) {
     const newLatex = generateLatexTable(this.parsed);
     if (newLatex !== this.rawLatex) {
+      const { from, to } = this.resolveDocumentRange(view);
       view.dispatch({
-        changes: { from: this.from, to: this.to, insert: newLatex },
+        changes: { from, to, insert: newLatex },
       });
     }
   }
 
   override toDOM(view: EditorView): HTMLElement {
     const root = document.createElement('div');
+    this.domElement = root;
     root.className = 'cm-overleaf-table-widget my-4 select-none font-sans relative group';
 
     const render = () => {
@@ -311,9 +395,8 @@ export class TableWidget extends WidgetType {
         return;
       }
 
-      // Container for Visual Table
       const container = document.createElement('div');
-      container.className = 'relative my-2';
+      container.className = 'relative my-2 rounded-lg border border-border/70 bg-card p-2 shadow-xs';
 
       // 1. Floating Action Toolbar (Overleaf 1:1 Parity)
       const toolbar = this.buildToolbar(view, render);
@@ -351,7 +434,7 @@ export class TableWidget extends WidgetType {
     bar.className =
       'flex flex-wrap items-center gap-1.5 p-1.5 mb-2 bg-muted/40 text-foreground border border-border/60 rounded-md text-xs select-none';
 
-    // ── 1. Caption Dropdown ──
+    // ── 1. Caption Button ──
     const captionBtn = document.createElement('button');
     captionBtn.type = 'button';
     captionBtn.className =
@@ -361,9 +444,12 @@ export class TableWidget extends WidgetType {
     captionBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const current = this.parsed.caption || '';
-      const next = window.prompt('Enter table caption:', current);
+      const next = window.prompt('Enter table caption (or leave blank to remove):', current);
       if (next !== null) {
         this.parsed.caption = next.trim() || null;
+        if (this.parsed.caption && !this.parsed.isWrappedInTable) {
+          this.parsed.isWrappedInTable = true;
+        }
         this.dispatchUpdate(view);
         rerender();
       }
@@ -438,7 +524,7 @@ export class TableWidget extends WidgetType {
       'h-7 px-2 rounded border border-border/60 hover:bg-muted font-medium flex items-center gap-1 transition-colors cursor-pointer text-11 text-foreground/80';
     const activeWidth = this.selectedCol !== null ? this.parsed.colWidths[this.selectedCol] : null;
     widthBtn.innerHTML = `<span>⟷ ${activeWidth ? activeWidth : 'Auto'}</span><span class="text-[11px] text-muted-foreground">▾</span>`;
-    widthBtn.title = 'Set column width (Stretch vs Fixed width e.g. 8cm)';
+    widthBtn.title = 'Set column width (Stretch vs Fixed width e.g. 8cm, 0.25\\linewidth)';
     widthBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const colIdx = this.selectedCol !== null ? this.selectedCol : 0;
@@ -466,37 +552,141 @@ export class TableWidget extends WidgetType {
     });
     bar.appendChild(codeBtn);
 
-    // ── 6. Add Row / Col (+) ──
-    const addBtn = document.createElement('button');
-    addBtn.type = 'button';
-    addBtn.className =
-      'h-7 px-2 rounded border border-border/60 hover:bg-muted font-semibold flex items-center justify-center text-12 text-foreground/80 transition-colors cursor-pointer';
-    addBtn.innerHTML = '+';
-    addBtn.title = 'Add row or column';
-    addBtn.addEventListener('click', (e) => {
+    // Divider
+    const sep2 = document.createElement('div');
+    sep2.className = 'h-4 w-px bg-border/60 mx-0.5';
+    bar.appendChild(sep2);
+
+    // ── 6. Dedicated Insert Row Above / Below ──
+    const addRowAboveBtn = document.createElement('button');
+    addRowAboveBtn.type = 'button';
+    addRowAboveBtn.className =
+      'h-7 px-2 rounded border border-border/60 hover:bg-muted font-medium flex items-center text-11 text-foreground/80 transition-colors cursor-pointer';
+    addRowAboveBtn.textContent = '+ Row ↑';
+    addRowAboveBtn.title = 'Insert row above selected';
+    addRowAboveBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const choice = window.confirm('Click OK to add a new ROW, or Cancel to add a new COLUMN.');
-      if (choice) {
-        // Add row
-        const newCells = this.parsed.colAlignments.map((a) => ({
-          text: '',
-          align: a,
-        }));
-        this.parsed.rows.push({ cells: newCells });
-      } else {
-        // Add column
-        this.parsed.colAlignments.push('c');
-        this.parsed.colWidths.push(null);
-        this.parsed.rows.forEach((r) => {
-          r.cells.push({ text: '', align: 'c' });
-        });
-      }
+      const targetIdx = this.selectedCell ? this.selectedCell.row : 0;
+      const newCells: TableCell[] = this.parsed.colAlignments.map((a) => ({
+        text: '',
+        rawText: '',
+        isModified: true,
+        align: a,
+      }));
+      this.parsed.rows.splice(targetIdx, 0, { cells: newCells });
+      this.selectedCell = { row: targetIdx, col: this.selectedCell?.col ?? 0 };
       this.dispatchUpdate(view);
       rerender();
     });
-    bar.appendChild(addBtn);
+    bar.appendChild(addRowAboveBtn);
 
-    // ── 7. Delete Table (Trash) ──
+    const addRowBelowBtn = document.createElement('button');
+    addRowBelowBtn.type = 'button';
+    addRowBelowBtn.className =
+      'h-7 px-2 rounded border border-border/60 hover:bg-muted font-medium flex items-center text-11 text-foreground/80 transition-colors cursor-pointer';
+    addRowBelowBtn.textContent = '+ Row ↓';
+    addRowBelowBtn.title = 'Insert row below selected';
+    addRowBelowBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const targetIdx = this.selectedCell ? this.selectedCell.row + 1 : this.parsed.rows.length;
+      const newCells: TableCell[] = this.parsed.colAlignments.map((a) => ({
+        text: '',
+        rawText: '',
+        isModified: true,
+        align: a,
+      }));
+      this.parsed.rows.splice(targetIdx, 0, { cells: newCells });
+      this.selectedCell = { row: targetIdx, col: this.selectedCell?.col ?? 0 };
+      this.dispatchUpdate(view);
+      rerender();
+    });
+    bar.appendChild(addRowBelowBtn);
+
+    // ── 7. Dedicated Insert Col Left / Right ──
+    const addColLeftBtn = document.createElement('button');
+    addColLeftBtn.type = 'button';
+    addColLeftBtn.className =
+      'h-7 px-2 rounded border border-border/60 hover:bg-muted font-medium flex items-center text-11 text-foreground/80 transition-colors cursor-pointer';
+    addColLeftBtn.textContent = '+ Col ←';
+    addColLeftBtn.title = 'Insert column to the left';
+    addColLeftBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const targetIdx = this.selectedCol !== null ? this.selectedCol : 0;
+      this.parsed.colAlignments.splice(targetIdx, 0, 'c');
+      this.parsed.colWidths.splice(targetIdx, 0, null);
+      this.parsed.rows.forEach((r) => {
+        r.cells.splice(targetIdx, 0, { text: '', rawText: '', isModified: true, align: 'c' });
+      });
+      this.selectedCol = targetIdx;
+      this.dispatchUpdate(view);
+      rerender();
+    });
+    bar.appendChild(addColLeftBtn);
+
+    const addColRightBtn = document.createElement('button');
+    addColRightBtn.type = 'button';
+    addColRightBtn.className =
+      'h-7 px-2 rounded border border-border/60 hover:bg-muted font-medium flex items-center text-11 text-foreground/80 transition-colors cursor-pointer';
+    addColRightBtn.textContent = '+ Col →';
+    addColRightBtn.title = 'Insert column to the right';
+    addColRightBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const targetIdx = this.selectedCol !== null ? this.selectedCol + 1 : this.parsed.colAlignments.length;
+      this.parsed.colAlignments.splice(targetIdx, 0, 'c');
+      this.parsed.colWidths.splice(targetIdx, 0, null);
+      this.parsed.rows.forEach((r) => {
+        r.cells.splice(targetIdx, 0, { text: '', rawText: '', isModified: true, align: 'c' });
+      });
+      this.selectedCol = targetIdx;
+      this.dispatchUpdate(view);
+      rerender();
+    });
+    bar.appendChild(addColRightBtn);
+
+    // ── 8. Delete Row / Delete Col Buttons ──
+    const delRowBtn = document.createElement('button');
+    delRowBtn.type = 'button';
+    delRowBtn.className =
+      'h-7 px-2 rounded border border-border/60 hover:bg-destructive/20 hover:text-destructive text-muted-foreground flex items-center text-11 transition-colors cursor-pointer';
+    delRowBtn.textContent = '- Row';
+    delRowBtn.title = 'Delete selected row';
+    delRowBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (this.parsed.rows.length <= 1) {
+        window.alert('Cannot delete the only row of the table.');
+        return;
+      }
+      const targetRow = this.selectedCell ? this.selectedCell.row : this.parsed.rows.length - 1;
+      this.parsed.rows.splice(targetRow, 1);
+      this.selectedCell = null;
+      this.dispatchUpdate(view);
+      rerender();
+    });
+    bar.appendChild(delRowBtn);
+
+    const delColBtn = document.createElement('button');
+    delColBtn.type = 'button';
+    delColBtn.className =
+      'h-7 px-2 rounded border border-border/60 hover:bg-destructive/20 hover:text-destructive text-muted-foreground flex items-center text-11 transition-colors cursor-pointer';
+    delColBtn.textContent = '- Col';
+    delColBtn.title = 'Delete selected column';
+    delColBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (this.parsed.colAlignments.length <= 1) {
+        window.alert('Cannot delete the only column of the table.');
+        return;
+      }
+      const targetCol = this.selectedCol !== null ? this.selectedCol : this.parsed.colAlignments.length - 1;
+      this.parsed.colAlignments.splice(targetCol, 1);
+      this.parsed.colWidths.splice(targetCol, 1);
+      this.parsed.rows.forEach((r) => r.cells.splice(targetCol, 1));
+      this.selectedCol = null;
+      this.dispatchUpdate(view);
+      rerender();
+    });
+    bar.appendChild(delColBtn);
+
+    // ── 9. Delete Table (Trash) ──
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
     deleteBtn.className =
@@ -506,69 +696,19 @@ export class TableWidget extends WidgetType {
     deleteBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       if (window.confirm('Delete this table from the document?')) {
+        const { from, to } = this.resolveDocumentRange(view);
         view.dispatch({
-          changes: { from: this.from, to: this.to, insert: '' },
+          changes: { from, to, insert: '' },
         });
       }
     });
     bar.appendChild(deleteBtn);
-
-    // ── Sub-row: Delete row/col & Help button (Matching Overleaf 1:1) ──
-    const subBar = document.createElement('div');
-    subBar.className = 'w-full flex items-center gap-1.5 pt-1 border-t border-border/40';
-
-    // Delete active row/col button
-    const delSubBtn = document.createElement('button');
-    delSubBtn.type = 'button';
-    delSubBtn.className =
-      'size-6 rounded border border-border/60 hover:bg-destructive/20 hover:text-destructive text-muted-foreground flex items-center justify-center text-[11px] transition-colors cursor-pointer';
-    delSubBtn.innerHTML = '🗑️';
-    delSubBtn.title = 'Delete selected row or column';
-    delSubBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (this.selectedCell !== null && this.parsed.rows.length > 1) {
-        // Delete selected row
-        this.parsed.rows.splice(this.selectedCell.row, 1);
-        this.selectedCell = null;
-        this.dispatchUpdate(view);
-        rerender();
-      } else if (this.selectedCol !== null && this.parsed.colAlignments.length > 1) {
-        // Delete selected column
-        this.parsed.colAlignments.splice(this.selectedCol, 1);
-        this.parsed.colWidths.splice(this.selectedCol, 1);
-        this.parsed.rows.forEach((r) => r.cells.splice(this.selectedCol!, 1));
-        this.selectedCol = null;
-        this.dispatchUpdate(view);
-        rerender();
-      } else {
-        window.alert('Click on a cell or column first, then click Delete.');
-      }
-    });
-    subBar.appendChild(delSubBtn);
-
-    // Help button (?)
-    const helpBtn = document.createElement('button');
-    helpBtn.type = 'button';
-    helpBtn.className =
-      'size-6 rounded-full border border-border/60 hover:bg-muted text-muted-foreground flex items-center justify-center text-[11px] font-semibold transition-colors cursor-pointer';
-    helpBtn.innerHTML = '?';
-    helpBtn.title = 'Table shortcuts & tips';
-    helpBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      window.alert(
-        'Overleaf Table Shortcuts:\n• Click any cell to edit text directly.\n• Tab: Next cell | Shift+Tab: Previous cell.\n• Enter: Move down a row.\n• Click top grey handles to adjust column widths.\n• Click { } to switch to raw LaTeX source.'
-      );
-    });
-    subBar.appendChild(helpBtn);
-
-    bar.appendChild(subBar);
 
     return bar;
   }
 
   /**
    * Builds the Column Handles Bar with live measurement pills (|-> 8cm)
-   * exactly matching user's screenshot
    */
   private buildColumnHandlesBar(view: EditorView, rerender: () => void): HTMLElement {
     const handleBar = document.createElement('div');
@@ -647,11 +787,19 @@ export class TableWidget extends WidgetType {
 
       // Row handle on the left (grey vertical indicator)
       const handleTd = document.createElement('td');
-      handleTd.className = 'w-4 p-0 text-center select-none cursor-grab align-middle';
+      handleTd.className = 'w-4 p-0 text-center select-none cursor-pointer align-middle';
       const handlePill = document.createElement('div');
-      handlePill.className =
-        'w-1.5 h-4 mx-auto rounded-full bg-muted-foreground/30 hover:bg-primary transition-colors';
-      handlePill.title = `Row ${rowIdx + 1}`;
+      handlePill.className = `w-1.5 h-4 mx-auto rounded-full transition-colors ${
+        this.selectedCell?.row === rowIdx
+          ? 'bg-primary ring-2 ring-primary/40'
+          : 'bg-muted-foreground/30 hover:bg-primary'
+      }`;
+      handlePill.title = `Row ${rowIdx + 1} (Click to select row)`;
+      handlePill.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.selectedCell = { row: rowIdx, col: this.selectedCell?.col ?? 0 };
+        rerender();
+      });
       handleTd.appendChild(handlePill);
       tr.appendChild(handleTd);
 
@@ -691,33 +839,60 @@ export class TableWidget extends WidgetType {
         contentDiv.addEventListener('focus', () => {
           this.selectedCell = { row: rowIdx, col: colIdx };
           this.selectedCol = colIdx;
-          rerender();
         });
 
         contentDiv.addEventListener('blur', () => {
           const nextText = contentDiv.textContent || '';
           if (nextText !== cell.text) {
             cell.text = nextText;
+            cell.isModified = true;
             this.dispatchUpdate(view);
           }
         });
 
-        // Keyboard navigation: Tab / Shift-Tab / Enter
+        // Spreadsheet keyboard navigation: Tab / Shift-Tab / Enter / Arrows
         contentDiv.addEventListener('keydown', (e) => {
           if (e.key === 'Tab') {
             e.preventDefault();
             const nextCol = e.shiftKey ? colIdx - 1 : colIdx + 1;
             if (nextCol >= 0 && nextCol < row.cells.length) {
               this.selectedCell = { row: rowIdx, col: nextCol };
+              this.selectedCol = nextCol;
               rerender();
             } else if (!e.shiftKey && rowIdx + 1 < this.parsed.rows.length) {
               this.selectedCell = { row: rowIdx + 1, col: 0 };
+              this.selectedCol = 0;
+              rerender();
+            } else if (!e.shiftKey && rowIdx + 1 >= this.parsed.rows.length) {
+              // At very last cell: append new row automatically
+              const newCells: TableCell[] = this.parsed.colAlignments.map((a) => ({
+                text: '',
+                rawText: '',
+                isModified: true,
+                align: a,
+              }));
+              this.parsed.rows.push({ cells: newCells });
+              this.selectedCell = { row: rowIdx + 1, col: 0 };
+              this.selectedCol = 0;
+              this.dispatchUpdate(view);
               rerender();
             }
           } else if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             if (rowIdx + 1 < this.parsed.rows.length) {
               this.selectedCell = { row: rowIdx + 1, col: colIdx };
+              rerender();
+            } else {
+              // Append new row at bottom
+              const newCells: TableCell[] = this.parsed.colAlignments.map((a) => ({
+                text: '',
+                rawText: '',
+                isModified: true,
+                align: a,
+              }));
+              this.parsed.rows.push({ cells: newCells });
+              this.selectedCell = { row: rowIdx + 1, col: colIdx };
+              this.dispatchUpdate(view);
               rerender();
             }
           }
@@ -771,9 +946,10 @@ export class TableWidget extends WidgetType {
 
     textarea.addEventListener('blur', () => {
       const nextCode = textarea.value.trim();
-      if (nextCode) {
+      if (nextCode && nextCode !== this.rawLatex) {
+        const { from, to } = this.resolveDocumentRange(view);
         view.dispatch({
-          changes: { from: this.from, to: this.to, insert: nextCode },
+          changes: { from, to, insert: nextCode },
         });
       }
     });

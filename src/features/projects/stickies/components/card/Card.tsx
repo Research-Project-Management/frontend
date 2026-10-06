@@ -41,7 +41,7 @@ const Card = memo(
           "group relative flex flex-col justify-between w-full h-[340px] rounded-lg border border-border overflow-hidden",
           className,
           isDragging
-            ? " scale-[1.02] rotate-1 z-50 pointer-events-none"
+            ? " scale-[1.02] rotate-1 z-30 pointer-events-none"
             : "transition-[box-shadow,background-color,transform] duration-200"
         )}
         style={{ backgroundColor: colorConfig.bg, color: colorConfig.text }}

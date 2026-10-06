@@ -2,9 +2,9 @@ export type LibraryColumnKey =
   | 'authors'
   | 'year'
   | 'publication'
-  | 'citationKey'
   | 'itemType'
   | 'doi'
+  | 'citationKey'
   | 'citations';
 
 export type LibraryOrderBy =
@@ -14,7 +14,8 @@ export type LibraryOrderBy =
   | 'title'
   | 'citationKey'
   | 'authors'
-  | 'publicationTitle';
+  | 'publicationTitle'
+  | 'deletedAt';
 
 export interface LibraryDisplayOptions {
   columns: Record<LibraryColumnKey, boolean>;
@@ -28,9 +29,9 @@ export const DEFAULT_LIBRARY_DISPLAY_OPTIONS: LibraryDisplayOptions = {
     authors: true,
     year: true,
     publication: true,
-    citationKey: true,
     itemType: false,
     doi: false,
+    citationKey: true,
     citations: false,
   },
   orderBy: 'createdAt',

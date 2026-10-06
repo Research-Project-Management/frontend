@@ -88,3 +88,38 @@ export const revokeProjectInvitation = async (
     `/api/projects/${projectId}/invitations/${invitationId}`,
   );
 };
+
+// ── Link Sharing API (Overleaf Parity) ────────────────────────────────────────
+
+export interface ProjectLinkSharingConfig {
+  enabled: boolean;
+  editToken?: string;
+  readOnlyToken?: string;
+}
+
+/**
+ * Fetch link sharing settings for a project.
+ */
+export const fetchProjectLinkSharing = async (
+  projectId: string,
+  signal?: AbortSignal,
+) => {
+  return apiGet<ProjectLinkSharingConfig>(
+    `/api/projects/${projectId}/link-sharing`,
+    { signal },
+  );
+};
+
+/**
+ * Enable/disable or regenerate link sharing for a project.
+ */
+export const toggleProjectLinkSharing = async (
+  projectId: string,
+  data: { enabled: boolean; regenerate?: boolean },
+) => {
+  return apiPost<ProjectLinkSharingConfig>(
+    `/api/projects/${projectId}/link-sharing`,
+    data,
+  );
+};
+

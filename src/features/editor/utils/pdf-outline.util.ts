@@ -12,36 +12,51 @@ export interface PdfOutlineItem {
   level: number;
 }
 
+export interface PdfJsOutlineItem {
+  title: string;
+  dest?: string | unknown[];
+  items?: PdfJsOutlineItem[];
+}
+
+export interface PdfJsDocument {
+  getOutline: () => Promise<PdfJsOutlineItem[] | null>;
+  getDestination: (dest: string) => Promise<unknown[] | null>;
+  getPageIndex: (ref: unknown) => Promise<number>;
+}
+
 /**
  * Recursively extracts outline bookmarks from a PDF.js Document object.
  */
-export async function extractPdfBookmarks(pdfDoc: any): Promise<PdfOutlineItem[]> {
+export async function extractPdfBookmarks(
+  pdfDoc: PdfJsDocument | null | undefined
+): Promise<PdfOutlineItem[]> {
   if (!pdfDoc || typeof pdfDoc.getOutline !== 'function') {
     return [];
   }
+  const doc = pdfDoc;
 
   try {
-    const rawOutline = await pdfDoc.getOutline();
+    const rawOutline = await doc.getOutline();
     if (!rawOutline || !Array.isArray(rawOutline) || rawOutline.length === 0) {
       return [];
     }
 
     const results: PdfOutlineItem[] = [];
 
-    async function traverse(items: any[], level = 0) {
+    async function traverse(items: PdfJsOutlineItem[], level = 0) {
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         if (!item || !item.title) continue;
 
         let pageNumber = 1;
         try {
-          let dest = item.dest;
+          let dest: any = item.dest;
           if (typeof dest === 'string') {
-            dest = await pdfDoc.getDestination(dest);
+            dest = await doc.getDestination(dest);
           }
 
           if (Array.isArray(dest) && dest.length > 0) {
-            const pageIndex = await pdfDoc.getPageIndex(dest[0]);
+            const pageIndex = await doc.getPageIndex(dest[0]);
             pageNumber = typeof pageIndex === 'number' ? pageIndex + 1 : 1;
           }
         } catch {

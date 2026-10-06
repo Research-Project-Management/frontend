@@ -20,15 +20,14 @@ import {
 import { normalizeTags } from '../../domain';
 
 /**
- * 8 Inspector Levels counted from bottom icon to top icon:
+ * 7 Inspector Levels counted from bottom icon to top icon:
  * Level 1: 'cite' (1 bar: Citation)
  * Level 2: 'relations' (2 bars: Related, Citation)
  * Level 3: 'tags' (3 bars: Tags, Related, Citation)
  * Level 4: 'collections' (4 bars: Collections, Tags, Related, Citation)
  * Level 5: 'notes' (5 bars: Notes, Collections, Tags, Related, Citation)
  * Level 6: 'files' (6 bars: Attachments, Notes, Collections, Tags, Related, Citation)
- * Level 7: 'abstract' (7 bars: Abstract, Attachments, Notes, Collections, Tags, Related, Citation)
- * Level 8: 'info' (8 bars: All 8 sections)
+ * Level 7: 'info' (7 bars: Details including bibliographic metadata and abstract)
  */
 export const INSPECTOR_LEVELS_FROM_BOTTOM: InspectorSectionId[] = [
   'cite',
@@ -37,7 +36,6 @@ export const INSPECTOR_LEVELS_FROM_BOTTOM: InspectorSectionId[] = [
   'collections',
   'notes',
   'files',
-  'abstract',
   'info',
 ];
 
@@ -48,7 +46,6 @@ import { InspectorTabs } from './InspectorTabs';
 
 import dynamic from 'next/dynamic';
 const InfoSection = dynamic(() => import('./InfoSection'), { ssr: false });
-const AbstractSection = dynamic(() => import('./AbstractSection'), { ssr: false });
 const AttachmentsSection = dynamic(() => import('./AttachmentsSection'), {
   ssr: false,
 });
@@ -129,7 +126,7 @@ function InspectorSection({
                 }
                 onAdd();
               }}
-              className="size-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+              className="size-5 rounded flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors"
               title={`Add ${title.toLowerCase()}`}
               aria-label={`Add ${title.toLowerCase()}`}
             >
@@ -143,7 +140,7 @@ function InspectorSection({
               e.stopPropagation();
               onToggleExpand();
             }}
-            className="size-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+            className="size-5 rounded flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors"
             title={isExpanded ? 'Collapse section' : 'Expand section'}
             aria-label={isExpanded ? 'Collapse section' : 'Expand section'}
             aria-expanded={isExpanded}
@@ -274,6 +271,9 @@ export function LibraryInspector({
     (activeItemId ? lastItemRef.current : null);
   const handleClose = propOnClose || toggleInspector;
 
+  const isItemInTrash = Boolean(effectiveItem?.deletedAt);
+  const effectiveCanEdit = canEdit && !isItemInTrash;
+
   // Calculate file & note counts for tab badges (O(1) — no memoization needed)
   const attachmentCount = effectiveItem?.attachments?.length ?? 0;
   const noteCount = effectiveItem?.notes?.length ?? 0;
@@ -284,7 +284,7 @@ export function LibraryInspector({
     payload: Partial<Item>,
     options?: { silent?: boolean },
   ) => {
-    if (!effectiveItem) return;
+    if (!effectiveItem || !effectiveCanEdit) return;
     const version =
       payload.version ??
       effectiveItem.version;
@@ -418,7 +418,7 @@ export function LibraryInspector({
               <InspectorHeader
                 item={effectiveItem}
                 scopeId={targetScope}
-                canEdit={canEdit}
+                canEdit={effectiveCanEdit}
                 onClose={handleClose}
               />
 
@@ -435,37 +435,18 @@ export function LibraryInspector({
                     isExpanded={expandedSections.info}
                     onToggleExpand={() => toggleSection('info')}
                     contentClassName="px-3 pt-1.5 pb-2.5 flex flex-col gap-1"
-                    canEdit={canEdit}
+                    canEdit={effectiveCanEdit}
                   >
                     <InfoSection
                       paper={effectiveItem}
                       onUpdatePaper={handleUpdatePaper}
-                      canEdit={canEdit}
+                      canEdit={effectiveCanEdit}
                       scopeId={targetScope}
                     />
                   </InspectorSection>
                 )}
 
-                {/* 2. Abstract (Level 7) */}
-                {visibleSectionIds.has('abstract') && (
-                  <InspectorSection
-                    id="abstract"
-                    title="Abstract"
-                    isExpanded={expandedSections.abstract}
-                    onToggleExpand={() => toggleSection('abstract')}
-                    contentClassName="px-3 pt-1.5 pb-2.5"
-                    canEdit={canEdit}
-                  >
-                    <AbstractSection
-                      paper={effectiveItem}
-                      onUpdatePaper={handleUpdatePaper}
-                      hideHeader
-                      canEdit={canEdit}
-                    />
-                  </InspectorSection>
-                )}
-
-                {/* 3. Attachments (Level 6) */}
+                {/* 2. Attachments (Level 6) */}
                 {visibleSectionIds.has('files') && (
                   <InspectorSection
                     id="files"
@@ -478,13 +459,13 @@ export function LibraryInspector({
                       attachmentsAddRef.current?.();
                     }}
                     contentClassName={hasFiles ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
-                    canEdit={canEdit}
+                    canEdit={effectiveCanEdit}
                   >
                     <AttachmentsSection
                       paper={effectiveItem}
                       scopeId={targetScope}
                       hideHeader
-                      canEdit={canEdit}
+                      canEdit={effectiveCanEdit}
                       onRegisterAdd={(fn) => {
                         attachmentsAddRef.current = fn;
                       }}
@@ -505,7 +486,7 @@ export function LibraryInspector({
                       setIsAddingNote(true);
                     }}
                     contentClassName={hasNotes ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
-                    canEdit={canEdit}
+                    canEdit={effectiveCanEdit}
                   >
                     <NotesSection
                       paper={effectiveItem}
@@ -516,7 +497,7 @@ export function LibraryInspector({
                       onClearPendingText={onClearPendingText}
                       onNavigateToAnnotation={onNavigateToAnnotation}
                       onCancelAdding={() => setIsAddingNote(false)}
-                      canEdit={canEdit}
+                      canEdit={effectiveCanEdit}
                     />
                   </InspectorSection>
                 )}
@@ -534,13 +515,13 @@ export function LibraryInspector({
                       openModal('CREATE_COLLECTION');
                     }}
                     contentClassName="px-3 pt-1.5 pb-2.5 flex flex-col gap-1"
-                    canEdit={canEdit}
+                    canEdit={effectiveCanEdit}
                   >
                     <CollectionsSection
                       paper={effectiveItem}
                       scopeId={targetScope}
                       hideHeader
-                      canEdit={canEdit}
+                      canEdit={effectiveCanEdit}
                     />
                   </InspectorSection>
                 )}
@@ -558,14 +539,14 @@ export function LibraryInspector({
                       setIsAddingTag(true);
                     }}
                     contentClassName={hasTags ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-1' : 'p-0'}
-                    canEdit={canEdit}
+                    canEdit={effectiveCanEdit}
                   >
                     <TagsSection
                       paper={effectiveItem}
                       hideHeader
                       forceAdding={isAddingTag}
                       onCancelAdding={() => setIsAddingTag(false)}
-                      canEdit={canEdit}
+                      canEdit={effectiveCanEdit}
                     />
                   </InspectorSection>
                 )}
@@ -582,7 +563,7 @@ export function LibraryInspector({
                       handleAddRelatedOpenChange(true);
                     }}
                     contentClassName={relatedItems.length > 0 ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
-                    canEdit={canEdit}
+                    canEdit={effectiveCanEdit}
                   >
                     <RelatedSection
                       paper={effectiveItem}
@@ -591,7 +572,7 @@ export function LibraryInspector({
                       hideHeader
                       isAddOpen={isAddRelatedOpen}
                       onAddOpenChange={handleAddRelatedOpenChange}
-                      canEdit={canEdit}
+                      canEdit={effectiveCanEdit}
                     />
                   </InspectorSection>
                 )}
@@ -604,7 +585,7 @@ export function LibraryInspector({
                     isExpanded={expandedSections.cite}
                     onToggleExpand={() => toggleSection('cite')}
                     contentClassName="px-3 pt-1.5 pb-2.5 flex flex-col gap-2"
-                    canEdit={canEdit}
+                    canEdit={effectiveCanEdit}
                   >
                     <CiteSection
                       paper={effectiveItem}
@@ -624,11 +605,11 @@ export function LibraryInspector({
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                    className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0"
                     title="Close inspector"
                     aria-label="Close inspector"
                   >
-                    <X className="size-4 shrink-0" />
+                    <X className="size-4 shrink-0 text-foreground" />
                   </button>
                 )}
               </div>

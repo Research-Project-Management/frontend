@@ -12,7 +12,10 @@ import {
   Trash2,
   Download,
   Copy,
+  Link2,
+  RefreshCw,
 } from 'lucide-react';
+import type { LinkedFileDto } from '@/features/editor/services/manuscript.service';
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -21,6 +24,11 @@ import {
   ContextMenuSeparator,
 } from '@/shared/components/ui/context-menu';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
 import { IndentGuides, RenameInput, RowActions } from './FileTreeNodes';
@@ -80,6 +88,8 @@ export interface TexFileRowProps {
   onSetMain: (id: string) => void;
   onDownload?: (file: { id: string; title: string }) => void;
   onCopyCommand?: (title: string) => void;
+  linkedFile?: LinkedFileDto;
+  onRefreshLinked?: (linkedFileId: string, name: string) => void;
 }
 
 export const TexFileRow = React.memo(function TexFileRow({
@@ -100,6 +110,8 @@ export const TexFileRow = React.memo(function TexFileRow({
   onSetMain,
   onDownload,
   onCopyCommand,
+  linkedFile,
+  onRefreshLinked,
 }: TexFileRowProps) {
   const { icon: FileIcon, color: fileColor } = getFileIcon(file.title);
   const fullName = displayName(file.title);
@@ -134,8 +146,7 @@ export const TexFileRow = React.memo(function TexFileRow({
   if (isRenaming) {
     return (
       <div
-        className="group/row flex h-7.5 items-center w-full rounded-md px-2 bg-muted/40 transition-colors select-none"
-        style={{ paddingLeft: '8px' }}
+        className="group/row flex h-7.5 items-center w-full rounded-md pl-2 pr-1 bg-muted/40 transition-colors select-none"
       >
         <IndentGuides depth={depth} />
         <span className="size-3.5 shrink-0" aria-hidden="true" />
@@ -157,6 +168,12 @@ export const TexFileRow = React.memo(function TexFileRow({
       tabIndex={isActive ? 0 : -1}
       aria-label={`File ${label}${isMain ? ', main document' : ''}`}
       onClick={() => onFileClick(file.id, file.title)}
+      draggable={!isRenaming}
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/flux-file-id', file.id);
+        e.dataTransfer.setData('text/plain', file.title);
+        e.dataTransfer.effectAllowed = 'move';
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
@@ -164,32 +181,69 @@ export const TexFileRow = React.memo(function TexFileRow({
         }
       }}
       className={cn(
-        'group/row relative flex h-7.5 w-full items-center gap-1.5 rounded-md px-2 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground',
+        'group/row relative flex h-7.5 w-full items-center gap-1.5 rounded-md pl-2 pr-1 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground',
         isActive
           ? 'bg-muted text-foreground font-medium'
           : 'text-foreground hover:bg-muted/60 font-normal',
       )}
-      style={{ paddingLeft: '8px' }}
     >
       <IndentGuides depth={depth} />
       <span className="size-3.5 shrink-0" aria-hidden="true" />
       <FileIcon className={cn('size-4 shrink-0', fileColor)} strokeWidth={1.5} />
 
-      <span className="flex-1 min-w-0 truncate tracking-tight text-foreground font-mono text-12 font-medium">
-        {label}
-      </span>
+      <Tooltip delayDuration={400}>
+        <TooltipTrigger asChild>
+          <span className="flex-1 min-w-0 truncate tracking-tight text-foreground font-mono text-12 font-medium">
+            {label}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="text-11">
+          {label}
+        </TooltipContent>
+      </Tooltip>
 
       {isMain && (
-        <span
-          title="Main document"
-          className="shrink-0 text-11 font-mono px-1.5 py-0.5 rounded-md font-medium border border-border bg-muted text-foreground"
-        >
-          main
-        </span>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <span className="shrink-0 text-11 font-mono px-1.5 py-0.5 rounded-md font-medium border border-border bg-muted text-foreground cursor-default">
+              main
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-11">
+            Main document
+          </TooltipContent>
+        </Tooltip>
+      )}
+
+      {linkedFile && (
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <span className="shrink-0 flex items-center gap-1 text-10 font-mono px-1.5 py-0.5 rounded border border-border bg-primary/10 text-primary cursor-default">
+              <Link2 className="size-3 shrink-0" />
+              <span>{linkedFile.providerType || 'linked'}</span>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-11">
+            Linked from {linkedFile.providerType || 'external source'}{' '}
+            {linkedFile.lastSyncedAt ? `(Synced ${new Date(linkedFile.lastSyncedAt).toLocaleTimeString()})` : ''}
+          </TooltipContent>
+        </Tooltip>
       )}
 
       {/* Row action dropdown trigger (⋮) - Matching Library CollectionContextMenu */}
       <RowActions>
+        {linkedFile && onRefreshLinked && (
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              onRefreshLinked(linkedFile.id, fullName);
+            }}
+            className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+          >
+            <RefreshCw className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+            <span>Refresh from {linkedFile.providerType || 'source'}</span>
+          </DropdownMenuItem>
+        )}
         {!isMain && (
           <DropdownMenuItem
             onClick={(e) => {
@@ -248,6 +302,18 @@ export const TexFileRow = React.memo(function TexFileRow({
     <ContextMenu>
       <ContextMenuTrigger asChild>{rowContent}</ContextMenuTrigger>
       <ContextMenuContent className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none text-13">
+        {linkedFile && onRefreshLinked && (
+          <ContextMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              onRefreshLinked(linkedFile.id, fullName);
+            }}
+            className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+          >
+            <RefreshCw className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+            <span>Refresh from {linkedFile.providerType || 'source'}</span>
+          </ContextMenuItem>
+        )}
         {!isMain && (
           <ContextMenuItem
             onClick={(e) => {

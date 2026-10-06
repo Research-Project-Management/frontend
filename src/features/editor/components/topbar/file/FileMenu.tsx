@@ -19,10 +19,13 @@ import { useEditorInstance } from '@/features/editor/core/context/editor-instanc
 
 export default function FileMenu() {
   const params = useParams<{ pageId?: string; projectId?: string }>();
-  const { currentPage, activeFilePage } = usePageStore();
+  const currentPage = usePageStore((s) => s.currentPage);
+  const activeFilePage = usePageStore((s) => s.activeFilePage);
   const { getContent } = useEditorInstance();
-  const { pdfUrl } = useCompileStore();
-  const { setSettingsPanelOpen, toggleHistory, setIsTemplateModalOpen } = useSettingsStore();
+  const pdfUrl = useCompileStore((s) => s.pdfUrl);
+  const setSettingsPanelOpen = useSettingsStore((s) => s.setSettingsPanelOpen);
+  const toggleHistory = useSettingsStore((s) => s.toggleHistory);
+  const setIsTemplateModalOpen = useSettingsStore((s) => s.setIsTemplateModalOpen);
   const [isZipping, setIsZipping] = useState(false);
 
   const handleNewFile = () => {
@@ -41,6 +44,7 @@ export default function FileMenu() {
     downloadPdf,
     downloadCopy,
     exportZip,
+    exportArxiv,
     exportWord,
     exportMarkdown,
     exportHtml,
@@ -62,6 +66,18 @@ export default function FileMenu() {
     const rootId = params?.pageId || params?.projectId || currentPage?.id;
     if (!rootId) return;
     exportZip({
+      parentPageId: rootId,
+      projectTitle: currentPage?.title,
+      currentContent: getContent(),
+      activeFileId: activeFilePage?.id,
+      activeFileTitle: activeFilePage?.title,
+    });
+  };
+
+  const handleDownloadArxiv = () => {
+    const rootId = params?.pageId || params?.projectId || currentPage?.id;
+    if (!rootId) return;
+    exportArxiv({
       parentPageId: rootId,
       projectTitle: currentPage?.title,
       currentContent: getContent(),
@@ -100,7 +116,7 @@ export default function FileMenu() {
       <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md">
         File
       </MenubarTrigger>
-      <MenubarContent className="min-w-48 text-xs z-[9999]">
+      <MenubarContent className="min-w-48 text-xs">
         <MenubarItem
           onClick={handleNewFile}
           className="cursor-pointer"
@@ -156,13 +172,20 @@ export default function FileMenu() {
           <MenubarSubTrigger className="cursor-pointer">
             Download
           </MenubarSubTrigger>
-          <MenubarSubContent className="min-w-56 text-xs z-[9999]">
+          <MenubarSubContent className="min-w-56 text-xs">
             <MenubarItem
               onClick={handleDownloadZip}
               disabled={isZipping}
               className="cursor-pointer"
             >
               Download as source (.zip)
+            </MenubarItem>
+            <MenubarItem
+              onClick={handleDownloadArxiv}
+              disabled={isZipping}
+              className="cursor-pointer"
+            >
+              Download as arXiv submission (.zip)
             </MenubarItem>
             <MenubarItem
               onClick={handleDownloadPdf}

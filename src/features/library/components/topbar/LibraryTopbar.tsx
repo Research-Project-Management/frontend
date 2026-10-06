@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
 import {
+  Folder,
   FolderOpen,
   ChevronRight,
   MoreHorizontal,
@@ -119,7 +120,7 @@ export type LibraryTopbarProps = TopbarProps;
 export function LibraryTopbar({
   title,
   count,
-  icon: Icon = LibraryIcon,
+  icon: propIcon,
   breadcrumbs,
   search,
   onSearchChange,
@@ -181,7 +182,12 @@ export function LibraryTopbar({
     propProjectId ||
     (activeScope.type === 'project' ? activeScope.id : 'user');
 
-  const displayTitle = title || activeScope.name || 'My Library';
+  const displayTitle =
+    title ||
+    (activeScope.type === 'personal' ? 'Library' : activeScope.name) ||
+    'Library';
+
+  const Icon = propIcon !== undefined ? propIcon : (isTrash ? Trash2 : LibraryIcon);
 
   const directFileInputRef = useRef<HTMLInputElement>(null);
   const directFolderInputRef = useRef<HTMLInputElement>(null);
@@ -222,6 +228,7 @@ export function LibraryTopbar({
         'flex items-center justify-between border-b border-border bg-transparent px-3 sm:px-4 h-11 sticky top-0 z-10 shrink-0 select-none overflow-x-auto scrollbar-none min-w-0',
         className
       )}
+      style={{ paddingLeft: 'max(0.75rem, var(--header-offset, 0px))' }}
     >
       {/* Left Section: Breadcrumbs / Title */}
       <div className="flex items-center gap-2.5 min-w-0 shrink-0 mr-2">
@@ -254,16 +261,16 @@ export function LibraryTopbar({
         )}
 
         {breadcrumbs && breadcrumbs.length > 0 ? (
-          <nav aria-label="Breadcrumbs" className="flex items-center gap-1.5 sm:gap-2 min-w-0 overflow-hidden">
+          <nav aria-label="Breadcrumbs" className="flex items-center gap-1 sm:gap-1.5 min-w-0 overflow-hidden">
             {breadcrumbs.map((crumb, idx) => {
               if (crumb.isEllipsis) {
                 return (
                   <React.Fragment key={crumb.id || idx}>
                     {idx > 0 && (
-                      <ChevronRight className="size-3.5 text-muted-foreground shrink-0" />
+                      <ChevronRight className="size-3.5 text-muted-foreground/50 shrink-0" strokeWidth={1.5} />
                     )}
                     <div className="flex items-center justify-center shrink-0">
-                      <MoreHorizontal className="size-4 text-muted-foreground shrink-0" />
+                      <MoreHorizontal className="size-4 text-foreground shrink-0" />
                     </div>
                   </React.Fragment>
                 );
@@ -274,41 +281,35 @@ export function LibraryTopbar({
               return (
                 <React.Fragment key={crumb.id || idx}>
                   {idx > 0 && (
-                    <ChevronRight className="size-3.5 text-muted-foreground shrink-0" />
+                    <ChevronRight className="size-3.5 text-muted-foreground/50 shrink-0" strokeWidth={1.5} />
                   )}
                   {!isLast && onNavigateCrumb ? (
                     <button
                       type="button"
-                      className="flex items-center gap-2 min-w-0 cursor-pointer hover:underline outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-xs py-0.5 text-left"
+                      className="flex items-center gap-1.5 h-7 px-1.5 rounded-md text-13 font-medium text-foreground hover:bg-muted/60 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 select-none text-left"
                       onClick={() => onNavigateCrumb(crumb.id)}
                     >
-                      <FolderOpen className="size-4 shrink-0 transition-colors text-muted-foreground" />
+                      {idx === 0 && Icon && (
+                        <Icon className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                      )}
                       <span
-                        className="text-13 tracking-tight transition-colors truncate max-w-[120px] sm:max-w-[200px] text-muted-foreground font-normal"
+                        className="text-13 tracking-tight truncate max-w-[120px] sm:max-w-[180px] font-medium text-foreground"
                         title={crumb.name}
                       >
                         {crumb.name}
                       </span>
                     </button>
                   ) : (
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FolderOpen
-                        className={cn(
-                          'size-4 shrink-0 transition-colors',
-                          isLast ? 'text-foreground' : 'text-muted-foreground'
-                        )}
-                      />
-                      <span
-                        className={cn(
-                          'text-13 tracking-tight transition-colors truncate max-w-[120px] sm:max-w-[200px]',
-                          isLast
-                            ? 'text-foreground font-medium'
-                            : 'text-muted-foreground font-normal'
-                        )}
+                    <div className="flex items-center gap-2 h-7 px-1 min-w-0 select-none shrink-0">
+                      {idx === 0 && Icon && (
+                        <Icon className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                      )}
+                      <h1
+                        className="text-13 font-medium tracking-tight text-foreground truncate max-w-[200px] sm:max-w-[320px]"
                         title={crumb.name}
                       >
                         {crumb.name}
-                      </span>
+                      </h1>
                     </div>
                   )}
                 </React.Fragment>
@@ -316,16 +317,11 @@ export function LibraryTopbar({
             })}
           </nav>
         ) : (
-          <div className="flex items-center gap-2 min-w-0">
-            {Icon && <Icon className="size-4 text-foreground shrink-0" />}
-            <h1 className="text-18 font-semibold tracking-tight text-foreground truncate">
+          <div className="flex items-center gap-2 h-7 px-1 min-w-0 select-none shrink-0">
+            {Icon && <Icon className="size-4 text-foreground shrink-0" strokeWidth={1.5} />}
+            <h1 className="text-13 font-medium tracking-tight text-foreground truncate">
               {displayTitle}
             </h1>
-            {typeof count === 'number' && (
-              <span className="text-12 text-foreground font-mono tabular-nums">
-                ({count})
-              </span>
-            )}
           </div>
         )}
       </div>
@@ -349,8 +345,11 @@ export function LibraryTopbar({
           <LibraryDisplayPopover
             options={effectiveDisplayOptions}
             onOptionsChange={effectiveOnDisplayOptionsChange}
+            isTrash={isTrash}
           />
         )}
+
+        {children}
 
         {/* Empty Trash Button or New Item Dropdown Menu */}
         {isTrash && isEffectiveCanEdit && onEmptyTrash ? (
@@ -358,9 +357,14 @@ export function LibraryTopbar({
             size="sm"
             variant="outline"
             onClick={onEmptyTrash}
-            className="h-8 px-3 rounded-md cursor-pointer font-medium text-13 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/60 inline-flex items-center gap-1.5"
+            disabled={count === 0}
+            className={cn(
+              "h-8 px-3 rounded-md font-medium text-13 inline-flex items-center justify-center transition-colors",
+              count === 0
+                ? "opacity-50 cursor-not-allowed border-border text-muted-foreground"
+                : "cursor-pointer text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/60"
+            )}
           >
-            <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
             <span>Empty Trash</span>
           </Button>
         ) : isEffectiveCanEdit && !isTrash ? (
@@ -540,8 +544,6 @@ export function LibraryTopbar({
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}
-
-        {children}
 
         {/* Inspector Toggle Button with preceding divider line - Hidden when panel is open */}
         {showInspectorToggle && !isInspectorOpen && (

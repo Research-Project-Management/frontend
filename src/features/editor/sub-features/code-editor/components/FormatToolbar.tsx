@@ -22,11 +22,10 @@ import {
   Upload,
   Folder,
   Globe,
-  Sparkles,
   Image as ImageIcon,
+  Sparkles,
 } from 'lucide-react';
 import {
-  OverleafBotIcon,
   OverleafUndoIcon,
   OverleafRedoIcon,
   OverleafHeadingsIcon,
@@ -109,7 +108,7 @@ const ToolbarButton = React.memo(function ToolbarButton({
             'relative flex size-7 items-center justify-center rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary select-none after:absolute after:-inset-1 after:content-[\'\']',
             active
               ? 'bg-muted text-foreground font-semibold'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 motion-reduce:transform-none',
+              : 'text-foreground hover:bg-muted',
             className,
           )}
         >
@@ -232,20 +231,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
       className="h-9 px-1 flex items-center min-w-0 w-full select-none bg-transparent text-foreground overflow-hidden"
     >
       <div className="flex items-center gap-0.5 min-w-0 overflow-hidden">
-        {/* 1. AI Assistant */}
-        <ToolbarButton
-          onClick={() => {
-            editorCommandBus.dispatch({ type: 'sidebar:toggle-panel', panel: 'AI' });
-            EditorEventBus.emit('flux:toggle-ai-panel');
-          }}
-          icon={OverleafBotIcon}
-          iconClassName="size-4"
-          tooltip="AI Assistant"
-        />
-
-        <div className="h-4 w-px bg-border/60 mx-1.5 shrink-0" />
-
-        {/* 2. Undo / Redo */}
+        {/* 1. Undo / Redo */}
         <ToolbarButton
           onClick={() => editorCommandBus.dispatch({ type: 'editor:undo' })}
           icon={OverleafUndoIcon}
@@ -271,7 +257,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex h-7 px-1.5 items-center justify-center rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none data-[state=open]:bg-muted data-[state=open]:text-foreground"
+                    className="flex h-7 px-1.5 items-center justify-center rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none data-[state=open]:bg-muted"
                     aria-label="Headings"
                   >
                     <OverleafHeadingsIcon className="h-3.5 w-auto shrink-0" />
@@ -283,7 +269,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
             <DropdownMenuContent
               align="start"
               sideOffset={4}
-              className="w-48 min-w-[170px] p-1 z-[9999] rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 select-none"
+              className="w-48 min-w-[170px] p-1 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 select-none"
             >
               <DropdownMenuItem
                 onClick={() => handleFormat('normal')}
@@ -296,35 +282,35 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
 
               <DropdownMenuItem
                 onClick={() => handleFormat('section')}
-                className="px-2.5 py-1.5 cursor-pointer text-14 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-tight"
+                className="px-2.5 py-1.5 cursor-pointer font-serif text-14 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-tight"
               >
                 Section
               </DropdownMenuItem>
 
               <DropdownMenuItem
                 onClick={() => handleFormat('subsection')}
-                className="px-2.5 py-1.5 cursor-pointer text-13 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-tight"
+                className="px-2.5 py-1.5 cursor-pointer font-serif text-13 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-tight"
               >
                 Subsection
               </DropdownMenuItem>
 
               <DropdownMenuItem
                 onClick={() => handleFormat('subsubsection')}
-                className="px-2.5 py-1.5 cursor-pointer text-12 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-tight"
+                className="px-2.5 py-1.5 cursor-pointer font-serif text-12 font-semibold text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-tight"
               >
                 Subsubsection
               </DropdownMenuItem>
 
               <DropdownMenuItem
                 onClick={() => handleFormat('paragraph')}
-                className="px-2.5 py-1.5 cursor-pointer text-12 font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-normal"
+                className="px-2.5 py-1.5 cursor-pointer font-serif text-12 font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-normal"
               >
                 Paragraph
               </DropdownMenuItem>
 
               <DropdownMenuItem
                 onClick={() => handleFormat('subparagraph')}
-                className="px-2.5 py-1.5 cursor-pointer text-12 font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-normal"
+                className="px-2.5 py-1.5 cursor-pointer font-serif text-12 font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-sm outline-none transition-colors leading-normal"
               >
                 Subparagraph
               </DropdownMenuItem>
@@ -364,7 +350,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none data-[state=open]:bg-muted data-[state=open]:text-foreground"
+                    className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none data-[state=open]:bg-muted"
                     aria-label="Insert Math Formula"
                   >
                     <OverleafMathFormulaIcon className="size-4 shrink-0" />
@@ -373,7 +359,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">Insert Math Formula</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="start" className="w-48 p-1 z-[9999] rounded-md border border-border bg-popover text-popover-foreground shadow-xl">
+            <DropdownMenuContent align="start" className="w-48 p-1 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200">
               <DropdownMenuItem onClick={() => handleFormat('inlineMath')} className="cursor-pointer text-xs py-1.5">
                 Inline Math ($...$)
               </DropdownMenuItem>
@@ -413,7 +399,6 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
           <ToolbarButton
             onClick={() => {
               editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
-              EditorEventBus.emit('flux:open-panel', 'Review');
             }}
             icon={OverleafCommentIcon}
             iconClassName="size-3.5"
@@ -430,7 +415,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none data-[state=open]:bg-muted data-[state=open]:text-foreground"
+                    className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none data-[state=open]:bg-muted"
                     aria-label="Insert Label or Reference"
                   >
                     <OverleafTagIcon className="size-3.5 shrink-0" />
@@ -439,7 +424,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">Insert Label / Reference</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="start" className="w-40 p-1 z-[9999] rounded-md border border-border bg-popover text-popover-foreground shadow-xl">
+            <DropdownMenuContent align="start" className="w-40 p-1 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200">
               <DropdownMenuItem
                 onClick={() => editorCommandBus.dispatch({
                   type: 'editor:wrap-selection',
@@ -469,7 +454,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
         {/* 10. Citation [📖] (visible if level < 1) */}
         {level < 1 && (
           <ToolbarButton
-            onClick={() => handleFormat('cite')}
+            onClick={() => EditorEventBus.emit('flux:open-citation-picker')}
             icon={OverleafBookIcon}
             iconClassName="size-3.5"
             tooltip="Insert Citation"
@@ -485,7 +470,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none data-[state=open]:bg-muted data-[state=open]:text-foreground"
+                    className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none data-[state=open]:bg-muted"
                     aria-label="Insert Figure"
                   >
                     <OverleafFigureIcon className="size-4 shrink-0" />
@@ -497,27 +482,27 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
             <DropdownMenuContent
               align="start"
               sideOffset={4}
-              className="w-56 p-1.5 z-[9999] rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-200"
+              className="w-56 p-1.5 rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-200"
             >
               <DropdownMenuItem
                 onClick={() => fileInputRef.current?.click()}
                 className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
               >
-                <Upload className="size-4 text-muted-foreground shrink-0" />
+                <Upload className="size-4 text-foreground shrink-0" />
                 <span>Upload from computer</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setImageModalOpen(true)}
                 className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
               >
-                <ImageIcon className="size-4 text-muted-foreground shrink-0" />
+                <ImageIcon className="size-4 text-foreground shrink-0" />
                 <span>From project files</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setImageModalOpen(true)}
                 className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
               >
-                <Folder className="size-4 text-muted-foreground shrink-0" />
+                <Folder className="size-4 text-foreground shrink-0" />
                 <span>From another project</span>
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -531,7 +516,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                 }}
                 className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
               >
-                <Globe className="size-4 text-muted-foreground shrink-0" />
+                <Globe className="size-4 text-foreground shrink-0" />
                 <span>From URL</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -546,7 +531,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none data-[state=open]:bg-muted data-[state=open]:text-foreground"
+                    className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none data-[state=open]:bg-muted"
                     aria-label="Insert Table"
                   >
                     <OverleafTableIcon className="size-3.5 shrink-0" />
@@ -558,7 +543,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
             <DropdownMenuContent
               align="start"
               sideOffset={4}
-              className="w-52 p-1.5 z-[9999] rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-200"
+              className="w-52 p-1.5 rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-200"
             >
               <div className="px-2.5 py-1 text-xs font-semibold text-muted-foreground select-none">
                 Insert table
@@ -566,12 +551,10 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
               <DropdownMenuItem
                 onClick={() => {
                   editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'AI' });
-                  EditorEventBus.emit('flux:open-panel', 'AI');
                   toast.info('Ask AI to generate a table from text or image');
                 }}
                 className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-2.5 transition-colors outline-none"
               >
-                <Sparkles className="size-4 text-ai shrink-0" />
                 <span>From text or image</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="my-1" />
@@ -595,7 +578,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none data-[state=open]:bg-muted data-[state=open]:text-foreground"
+                    className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none data-[state=open]:bg-muted"
                     aria-label="Lists"
                   >
                     <OverleafListIcon className="size-3.5 shrink-0" />
@@ -607,14 +590,14 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
             <DropdownMenuContent
               align="start"
               sideOffset={4}
-              className="flex items-center gap-1.5 p-1 z-[9999] rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 min-w-0"
+              className="flex items-center gap-1.5 p-1 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 min-w-0"
             >
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
                     onClick={() => handleFormat('itemize')}
-                    className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-colors cursor-pointer outline-none"
+                    className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none"
                     aria-label="Bullet list"
                   >
                     <OverleafListIcon className="size-3.5 shrink-0" />
@@ -627,7 +610,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                   <button
                     type="button"
                     onClick={() => handleFormat('enumerate')}
-                    className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-colors cursor-pointer outline-none"
+                    className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none"
                     aria-label="Numbered list"
                   >
                     <ListOrdered className="size-4 shrink-0" />
@@ -647,7 +630,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none data-[state=open]:bg-muted data-[state=open]:text-foreground shrink-0"
+                    className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none data-[state=open]:bg-muted shrink-0"
                     aria-label="More actions"
                   >
                     <OverleafMoreHorizontalIcon className="size-4 shrink-0" />
@@ -661,7 +644,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
             <PopoverContent
               align="start"
               sideOffset={4}
-              className="flex items-center gap-0.5 p-1 z-[9999] rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 select-none min-w-0 w-auto"
+              className="flex items-center gap-0.5 p-1 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 select-none min-w-0 w-auto"
             >
               {/* Headings (if collapsed at level >= 5) */}
               {level >= 5 && (
@@ -672,7 +655,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                         <DropdownMenuTrigger asChild>
                           <button
                             type="button"
-                            className="flex h-7 px-1.5 items-center justify-center rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none"
+                            className="flex h-7 px-1.5 items-center justify-center rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none"
                             aria-label="Headings"
                           >
                             <OverleafHeadingsIcon className="h-3.5 w-auto shrink-0" />
@@ -684,7 +667,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                     <DropdownMenuContent
                       align="start"
                       sideOffset={4}
-                      className="w-48 min-w-[170px] p-1 z-[9999] rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 select-none"
+                      className="w-48 min-w-[170px] p-1 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 select-none"
                     >
                       <DropdownMenuItem
                         onClick={() => { handleFormat('normal'); setOverflowOpen(false); }}
@@ -759,7 +742,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                         <DropdownMenuTrigger asChild>
                           <button
                             type="button"
-                            className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none"
+                            className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none"
                             aria-label="Insert Math Formula"
                           >
                             <OverleafMathFormulaIcon className="size-4 shrink-0" />
@@ -771,7 +754,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                     <DropdownMenuContent
                       align="start"
                       sideOffset={4}
-                      className="w-48 p-1 z-[9999] rounded-md border border-border bg-popover text-popover-foreground shadow-xl"
+                      className="w-48 p-1 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200"
                     >
                       <DropdownMenuItem
                         onClick={() => { handleFormat('inlineMath'); setOverflowOpen(false); }}
@@ -828,7 +811,6 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                   <ToolbarButton
                     onClick={() => {
                       editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
-                      EditorEventBus.emit('flux:open-panel', 'Review');
                       setOverflowOpen(false);
                     }}
                     icon={OverleafCommentIcon}
@@ -842,7 +824,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                         <DropdownMenuTrigger asChild>
                           <button
                             type="button"
-                            className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none"
+                            className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none"
                             aria-label="Insert Label or Ref"
                           >
                             <OverleafTagIcon className="size-3.5 shrink-0" />
@@ -854,7 +836,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                     <DropdownMenuContent
                       align="start"
                       sideOffset={4}
-                      className="w-40 p-1 z-[9999] rounded-md border border-border bg-popover text-popover-foreground shadow-xl"
+                      className="w-40 p-1 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200"
                     >
                       <DropdownMenuItem
                         onClick={() => {
@@ -895,7 +877,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                 <>
                   <ToolbarButton
                     onClick={() => {
-                      handleFormat('cite');
+                      EditorEventBus.emit('flux:open-citation-picker');
                       setOverflowOpen(false);
                     }}
                     icon={OverleafBookIcon}
@@ -911,7 +893,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                         <DropdownMenuTrigger asChild>
                           <button
                             type="button"
-                            className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none"
+                            className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none"
                             aria-label="Insert Figure"
                           >
                             <OverleafFigureIcon className="size-3.5 shrink-0" />
@@ -923,7 +905,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                     <DropdownMenuContent
                       align="start"
                       sideOffset={4}
-                      className="w-56 p-1.5 z-[9999] rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-200"
+                      className="w-56 p-1.5 rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-200"
                     >
                       <DropdownMenuItem
                         onClick={() => {
@@ -932,7 +914,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                         }}
                         className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
                       >
-                        <Upload className="size-4 text-muted-foreground shrink-0" />
+                        <Upload className="size-4 text-foreground shrink-0" />
                         <span>Upload from computer</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
@@ -942,7 +924,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                         }}
                         className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
                       >
-                        <ImageIcon className="size-4 text-muted-foreground shrink-0" />
+                        <ImageIcon className="size-4 text-foreground shrink-0" />
                         <span>From project files</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
@@ -952,7 +934,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                         }}
                         className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
                       >
-                        <Folder className="size-4 text-muted-foreground shrink-0" />
+                        <Folder className="size-4 text-foreground shrink-0" />
                         <span>From another project</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
@@ -967,7 +949,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                         }}
                         className="cursor-pointer text-xs py-2 px-2.5 rounded-md hover:bg-muted hover:text-foreground flex items-center gap-3 transition-colors outline-none"
                       >
-                        <Globe className="size-4 text-muted-foreground shrink-0" />
+                        <Globe className="size-4 text-foreground shrink-0" />
                         <span>From URL</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -980,7 +962,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                         <DropdownMenuTrigger asChild>
                           <button
                             type="button"
-                            className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none"
+                            className="flex size-7 items-center justify-center rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none"
                             aria-label="Insert Table"
                           >
                             <OverleafTableIcon className="size-3.5 shrink-0" />
@@ -992,7 +974,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                     <DropdownMenuContent
                       align="start"
                       sideOffset={4}
-                      className="w-52 p-1.5 z-[9999] rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-200"
+                      className="w-52 p-1.5 rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-200"
                     >
                       <div className="px-2.5 py-1 text-xs font-semibold text-muted-foreground select-none">
                         Insert table
@@ -1000,7 +982,6 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                       <DropdownMenuItem
                         onClick={() => {
                           editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'AI' });
-                          EditorEventBus.emit('flux:open-panel', 'AI');
                           toast.info('Ask AI to generate a table from text or image');
                           setOverflowOpen(false);
                         }}
@@ -1031,7 +1012,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                           handleFormat('itemize');
                           setOverflowOpen(false);
                         }}
-                        className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                         aria-label="Bullet list"
                       >
                         <OverleafListIcon className="size-3.5 shrink-0" />
@@ -1047,7 +1028,7 @@ export const FormatToolbar = React.memo(function FormatToolbar() {
                           handleFormat('enumerate');
                           setOverflowOpen(false);
                         }}
-                        className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                         aria-label="Numbered list"
                       >
                         <ListOrdered className="size-4 shrink-0" />

@@ -57,6 +57,7 @@ export interface PageFile {
   title: string;
   content?: string;
   pageId: string;
+  projectId?: string | PageProjectContext;
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;

@@ -8,6 +8,9 @@ import {
   fetchProjectInvitations,
   createProjectInvitation,
   revokeProjectInvitation,
+  fetchProjectLinkSharing,
+  toggleProjectLinkSharing,
+  type ProjectLinkSharingConfig,
   invitationKeys,
 } from '../services/invitation.service';
 import type {
@@ -145,3 +148,43 @@ export function useRevokeProjectInvitation(projectId?: string) {
     },
   });
 }
+
+/**
+ * Hook to manage link sharing (Overleaf Parity).
+ */
+export function useProjectLinkSharing(projectId?: string) {
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ['project-link-sharing', projectId],
+    queryFn: ({ signal }) => fetchProjectLinkSharing(projectId!, signal),
+    enabled: Boolean(projectId),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: (data: { enabled: boolean; regenerate?: boolean }) => {
+      if (!projectId) throw new Error('Project ID is required');
+      return toggleProjectLinkSharing(projectId, data);
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['project-link-sharing', projectId], updated);
+      queryClient.invalidateQueries({
+        queryKey: ['project-link-sharing', projectId],
+      });
+      toast.success(
+        updated.enabled
+          ? 'Link sharing activated'
+          : 'Link sharing turned off',
+      );
+    },
+    onError: (err) => {
+      toast.error(getErrorMessage(err) || 'Failed to update link sharing');
+    },
+  });
+
+  return {
+    ...query,
+    toggleMutation,
+  };
+}
+

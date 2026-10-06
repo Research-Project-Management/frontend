@@ -28,6 +28,7 @@ export type EditorTheme =
   | 'dark';
 export type KeybindingMode = 'standard' | 'vim' | 'emacs';
 export type TrackChangesViewMode = 'changes' | 'clean' | 'original';
+export type EditorSidebarTab = 'Files' | 'Search' | 'Citations' | 'Review' | 'Chat' | 'AI';
 
 export interface DocumentSettingsState {
   engine: CompilerEngine;
@@ -48,7 +49,7 @@ export interface DocumentSettingsState {
   editorMode: 'code' | 'visual';
   reviewMode: boolean;
   trackChangesViewMode: TrackChangesViewMode;
-  activeSidebarPanel: 'Files' | 'Search' | 'Citations' | 'Review' | 'AI' | null;
+  activeSidebarPanel: EditorSidebarTab | null;
   isHistoryOpen: boolean;
   isTemplateModalOpen: boolean;
   spellCheck: boolean;
@@ -92,17 +93,13 @@ export interface DocumentSettingsState {
   toggleSettingsPanel: () => void;
   setActiveSidebarPanel: (
     panel:
-      | 'Files'
-      | 'Search'
-      | 'Citations'
-      | 'Review'
-      | 'AI'
+      | EditorSidebarTab
       | null
       | ((
-          prev: 'Files' | 'Search' | 'Citations' | 'Review' | 'AI' | null,
-        ) => 'Files' | 'Search' | 'Citations' | 'Review' | 'AI' | null),
+          prev: EditorSidebarTab | null,
+        ) => EditorSidebarTab | null),
   ) => void;
-  toggleSidebarPanel: (panel: 'Files' | 'Search' | 'Citations' | 'Review' | 'AI') => void;
+  toggleSidebarPanel: (panel: EditorSidebarTab) => void;
   setIsHistoryOpen: (open: boolean) => void;
   toggleHistory: () => void;
   setIsTemplateModalOpen: (open: boolean) => void;
@@ -153,7 +150,7 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
       settingsPanelOpen: false,
       mainFile: 'main.tex',
       fontSize: 15,
-      wordWrap: false,
+      wordWrap: true,
       lineNumbers: true,
       editorMode: 'code',
       reviewMode: false,
@@ -247,12 +244,12 @@ export const useDocumentSettingsStore = create<DocumentSettingsState>()(
     }),
     {
       name: 'flux-editor-settings',
-      version: 2,
+      version: 3,
       migrate: (persistedState: any, version: number) => {
-        if (version < 2) {
+        if (version < 3) {
           return {
             ...persistedState,
-            wordWrap: false,
+            wordWrap: true,
           };
         }
         return persistedState;

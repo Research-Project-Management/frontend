@@ -249,7 +249,7 @@ export function MathSymbolPalette({ onInsert, trigger }: MathSymbolPaletteProps)
               <button
                 type="button"
                 aria-label="LaTeX Math Symbol Palette (Ω)"
-                className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors select-none cursor-pointer"
+                className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors select-none cursor-pointer"
               >
                 <OverleafOmegaIcon className="size-3.5 shrink-0" />
               </button>
@@ -264,7 +264,7 @@ export function MathSymbolPalette({ onInsert, trigger }: MathSymbolPaletteProps)
       <PopoverContent
         align="start"
         side="bottom"
-        className="w-[390px] p-2.5 z-[9999] shadow-raised-200 border border-border bg-popover text-popover-foreground rounded-md"
+        className="w-[390px] p-2.5 shadow-raised-200 border border-border bg-popover text-popover-foreground rounded-md"
       >
         {/* Header Title & Search Input */}
         <div className="space-y-2 mb-2">

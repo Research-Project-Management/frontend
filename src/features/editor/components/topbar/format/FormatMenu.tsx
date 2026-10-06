@@ -22,6 +22,7 @@
  */
 
 import React, { useCallback, useMemo } from 'react';
+import { Sparkles, BookMarked } from 'lucide-react';
 import {
   MenubarMenu,
   MenubarTrigger,
@@ -99,7 +100,7 @@ export default function FormatMenu() {
 
       <MenubarContent
         align="start"
-        className="w-56 min-w-[210px] p-1.5 z-[9999] rounded-md border border-border bg-popover text-popover-foreground shadow-2xl text-xs select-none"
+        className="w-56 min-w-[210px] p-1.5 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 text-xs select-none"
       >
         {/* 1. Basic Inline Formatting */}
         <MenubarItem
@@ -200,6 +201,34 @@ export default function FormatMenu() {
           className="px-2.5 py-1.5 cursor-pointer text-xs rounded-sm hover:bg-accent hover:text-accent-foreground"
         >
           Subparagraph
+        </MenubarItem>
+
+        <MenubarSeparator className="my-1 h-px bg-border/70" />
+
+        <MenubarItem
+          onClick={() => EditorEventBus.emit('flux:open-citation-picker')}
+          className="px-2.5 py-1.5 cursor-pointer text-xs rounded-sm hover:bg-accent hover:text-accent-foreground flex items-center justify-between"
+        >
+          <span className="flex items-center gap-2">
+            <BookMarked className="size-3.5 text-foreground" />
+            Insert Citation...
+          </span>
+          <MenubarShortcut className="text-[11px] text-muted-foreground/80 font-mono tracking-tight ml-auto">
+            {modLabel}Shift K
+          </MenubarShortcut>
+        </MenubarItem>
+
+        <MenubarItem
+          onClick={() => EditorEventBus.emit('flux:autofix')}
+          className="px-2.5 py-1.5 cursor-pointer text-xs rounded-sm hover:bg-accent hover:text-accent-foreground flex items-center justify-between"
+        >
+          <span className="flex items-center gap-2">
+            <Sparkles className="size-3.5 text-foreground" />
+            Auto-Fix Page Syntax
+          </span>
+          <MenubarShortcut className="text-[11px] text-muted-foreground/80 font-mono tracking-tight ml-auto">
+            Alt Shift F
+          </MenubarShortcut>
         </MenubarItem>
       </MenubarContent>
     </MenubarMenu>

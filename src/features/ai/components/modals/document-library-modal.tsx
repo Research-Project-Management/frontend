@@ -34,7 +34,6 @@ import {
   Layers,
   Calendar,
   X,
-  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';

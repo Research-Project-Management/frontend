@@ -1,9 +1,19 @@
 'use client';
 
 import React from 'react';
-import { createPortal } from 'react-dom';
-import { FileCheck, X } from 'lucide-react';
+import { FileCheck, Loader2 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
 
 export interface SuggestModalState {
   originalText: string;
@@ -29,45 +39,33 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
   onSubmit,
   onChangeState,
 }: SuggestEditModalProps) {
-  if (!suggestModal || typeof document === 'undefined') return null;
+  if (!suggestModal) return null;
 
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="suggest-dialog-title"
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/50 backdrop-blur-xs"
+  return (
+    <Dialog
+      open={Boolean(suggestModal)}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
     >
-      <div className="w-full max-w-lg rounded-lg border border-border bg-background p-5 space-y-4 shadow-raised-300">
-        <div className="flex items-center justify-between pb-2 border-b border-border">
+      <DialogContent className="sm:max-w-lg p-5 gap-4">
+        <DialogHeader className="gap-1">
           <div className="flex items-center gap-2">
-            <div className="size-7 rounded-md bg-amber-500/15 flex items-center justify-center text-amber-600 dark:text-amber-400">
+            <div className="size-7 rounded-md bg-amber-500/15 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
               <FileCheck className="size-4" />
             </div>
-            <div>
-              <h2
-                id="suggest-dialog-title"
-                className="text-lg font-semibold text-foreground"
-              >
-                Suggest Edit (Track Changes)
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Propose an edit on lines {suggestModal.fromLine} - {suggestModal.toLine}
-              </p>
-            </div>
+            <DialogTitle className="text-16 font-semibold tracking-tight text-foreground">
+              Suggest Edit (Track Changes)
+            </DialogTitle>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
+          <DialogDescription className="text-xs text-muted-foreground">
+            Propose an edit on lines {suggestModal.fromLine} - {suggestModal.toLine}
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* Type selection */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Action:</span>
+        {/* Action Type Toggle */}
+        <div className="flex items-center gap-2 pt-1">
+          <Label className="text-xs font-medium text-muted-foreground">Action:</Label>
           <div className="inline-flex rounded-md p-0.5 bg-muted text-xs border border-border">
             {(['replace', 'insert', 'delete'] as const).map((t) => (
               <button
@@ -77,9 +75,9 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
                   onChangeState((prev) => (prev ? { ...prev, type: t } : null))
                 }
                 className={cn(
-                  'px-2.5 py-1 rounded-sm capitalize font-medium transition-colors cursor-pointer',
+                  'px-2.5 py-1 rounded-sm capitalize font-medium transition-colors cursor-pointer text-xs outline-none focus-visible:ring-1 focus-visible:ring-primary',
                   suggestModal.type === t
-                    ? 'bg-background text-foreground'
+                    ? 'bg-background text-foreground shadow-2xs'
                     : 'text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -91,11 +89,11 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
 
         {/* Original text preview */}
         {suggestModal.originalText && (
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">
               Original Code / Text:
-            </label>
-            <div className="max-h-24 overflow-y-auto rounded-md border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs font-mono text-rose-700 dark:text-rose-400">
+            </Label>
+            <div className="max-h-24 overflow-y-auto rounded-md border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs font-mono text-rose-700 dark:text-rose-400 select-text leading-relaxed">
               {suggestModal.originalText}
             </div>
           </div>
@@ -103,13 +101,13 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
 
         {/* Suggested text input */}
         {suggestModal.type !== 'delete' && (
-          <div className="space-y-1">
-            <label
+          <div className="space-y-1.5">
+            <Label
               htmlFor="suggested-text"
               className="text-xs font-medium text-muted-foreground"
             >
               Suggested Code / Text:
-            </label>
+            </Label>
             <textarea
               id="suggested-text"
               value={suggestModal.suggestedText}
@@ -120,21 +118,21 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
               }
               rows={3}
               placeholder="Type proposed LaTeX or text change..."
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground/60 resize-y"
               spellCheck={false}
             />
           </div>
         )}
 
         {/* Optional reason / description */}
-        <div className="space-y-1">
-          <label
+        <div className="space-y-1.5">
+          <Label
             htmlFor="suggest-note"
             className="text-xs font-medium text-muted-foreground"
           >
             Reason / Note (optional):
-          </label>
-          <input
+          </Label>
+          <Input
             id="suggest-note"
             value={suggestModal.description}
             onChange={(e) =>
@@ -143,29 +141,34 @@ export const SuggestEditModal = React.memo(function SuggestEditModal({
               )
             }
             placeholder="e.g., Fix equation index, improve clarity..."
-            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+            className="h-8 text-xs"
           />
         </div>
 
-        <div className="flex justify-end gap-2 pt-2 border-t border-border">
-          <button
+        <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border">
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={onClose}
-            className="px-3 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
+            className="h-8 px-3 rounded-md text-xs font-medium cursor-pointer"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            size="sm"
             onClick={onSubmit}
             disabled={isPending}
-            className="px-4 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50 transition-colors cursor-pointer"
+            className="h-8 px-3.5 rounded-md text-xs font-medium cursor-pointer gap-1.5"
           >
-            {isPending ? 'Submitting...' : 'Submit Suggestion'}
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
+            {isPending && <Loader2 className="size-3.5 animate-spin" />}
+            <span>{isPending ? 'Submitting...' : 'Submit Suggestion'}</span>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 });
+
+export default SuggestEditModal;

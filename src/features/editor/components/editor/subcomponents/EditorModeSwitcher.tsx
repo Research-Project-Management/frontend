@@ -46,7 +46,7 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
     <button
       type="button"
       className={cn(
-        'inline-flex items-center justify-center gap-1 h-7 px-1.5 rounded-sm text-xs font-medium transition-colors cursor-pointer outline-none select-none text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95',
+        'relative inline-flex items-center justify-center gap-1 h-7 px-2 py-1 rounded-sm text-xs font-medium transition-colors cursor-pointer outline-none select-none text-foreground hover:bg-muted after:absolute after:-inset-1 after:content-[\'\']',
         reviewMode && 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/40 hover:bg-amber-500/20',
         isReviewerOnly && 'cursor-default opacity-90',
         className,
@@ -79,7 +79,7 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
       <DropdownMenuTrigger asChild>{triggerButton}</DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-56 p-1.5 z-[9999] rounded-lg border border-border bg-popover text-popover-foreground shadow-xl"
+        className="w-56 p-1.5 rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-200"
       >
         <DropdownMenuItem
           onClick={() => onSelectMode('editing')}
@@ -124,7 +124,7 @@ export const EditorModeSwitcher = React.memo(function EditorModeSwitcher({
         {reviewMode && (
           <>
             <DropdownMenuSeparator className="my-1" />
-            <div className="px-2 py-1 text-10 font-semibold text-muted-foreground tracking-normal">
+            <div className="px-2 py-1 text-11 font-semibold text-muted-foreground tracking-normal">
               Display Mode
             </div>
             <DropdownMenuItem

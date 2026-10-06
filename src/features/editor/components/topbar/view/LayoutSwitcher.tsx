@@ -73,8 +73,10 @@ function PdfDocIcon({ className }: { className?: string }) {
 }
 
 export default function LayoutSwitcher() {
-  const { layout, setLayout } = useSettingsStore();
-  const { pdfUrl, setIsViewerPoppedOut } = useCompileStore();
+  const layout = useSettingsStore((s) => s.layout);
+  const setLayout = useSettingsStore((s) => s.setLayout);
+  const pdfUrl = useCompileStore((s) => s.pdfUrl);
+  const setIsViewerPoppedOut = useCompileStore((s) => s.setIsViewerPoppedOut);
   const params = useParams<{ projectId?: string; pageId?: string }>();
 
   const handleOpenPdfSeparateTab = () => {
@@ -127,7 +129,7 @@ export default function LayoutSwitcher() {
       <DropdownMenuContent
         align="end"
         sideOffset={6}
-        className="w-60 p-1 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md text-xs z-[9999]"
+        className="w-60 p-1 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md text-xs"
       >
         {/* Header */}
         <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none">

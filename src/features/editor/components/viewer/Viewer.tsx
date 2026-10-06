@@ -37,12 +37,19 @@ import { usePdfZoom } from '../../sub-features/pdf-viewer/hooks/use-pdf-zoom';
 import { usePdfCompiler } from '../../sub-features/compiler/hooks/use-pdf-compiler';
 import { useViewerSyncTeX } from '../../sub-features/pdf-viewer/hooks/use-viewer-synctex';
 import { useViewerPopout } from '../../sub-features/pdf-viewer/hooks/use-viewer-popout';
+import { usePdfSearch, PdfFindBar } from '../../sub-features/pdf-viewer';
 
 export default function Viewer() {
-  const { projectId, pageId: urlPageId } = useParams<{
+  const { projectId: rawProjectId, pageId: urlPageId, draftId } = useParams<{
     projectId?: string;
-    pageId: string;
+    pageId?: string;
+    draftId?: string;
   }>();
+
+  const storeProjectId = usePageStore((s) => s.projectId);
+  const rawProj = rawProjectId || storeProjectId;
+  const projectId = rawProj || undefined;
+  const rootPageId = urlPageId ?? draftId ?? null;
 
   const documentTitle = usePageStore((s) => s.currentPage?.title);
   const { engine: editorEngine } = useEditorInstance();
@@ -53,7 +60,6 @@ export default function Viewer() {
 
   const { updateThumbnail: saveThumbnailMutation } = usePageActions();
 
-  const rootPageId = urlPageId ?? null;
   const { data: pageFiles = [] } = useQuery({
     ...filesQuery(rootPageId || ''),
     enabled: !!rootPageId,
@@ -145,6 +151,24 @@ export default function Viewer() {
     handleJumpToSource,
   });
 
+  // 5. In-Document PDF Search Controller (Overleaf Parity)
+  const {
+    isOpen: isSearchOpen,
+    query: searchQuery,
+    setQuery: setSearchQuery,
+    matches: searchMatches,
+    currentMatchIndex,
+    isSearching,
+    nextMatch,
+    prevMatch,
+    toggleSearch,
+    closeSearch,
+  } = usePdfSearch({
+    pdfDocRef,
+    pdfContainerRef,
+    onScrollToPage: (p) => pdfSurfaceRef.current?.scrollToPage(p),
+  });
+
   // F5 shortcut to launch Presentation mode when PDF is ready
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -193,7 +217,8 @@ export default function Viewer() {
       // fallback below
     }
 
-    const content = editorEngine?.getContent() || usePageStore.getState().activeFilePage?.content || '';
+    const rawContent = editorEngine?.getContent() || usePageStore.getState().activeFilePage?.content || '';
+    const content = typeof rawContent === 'string' ? rawContent : (rawContent as any)?.source || (rawContent as any)?.text || '';
     const fallback = extractOutlineFromContent(content, pdf.numPages || 1, synctexMapRef.current as any);
     setPdfOutline(fallback);
   }, [editorEngine, synctexMapRef]);
@@ -270,7 +295,7 @@ export default function Viewer() {
   }
 
   return (
-    <div className="h-full w-full flex flex-col bg-background select-none relative min-h-0 overflow-hidden">
+    <div className="h-full w-full flex flex-col bg-background select-none relative min-h-0">
       {showLog ? (
         <Logs
           log={compileLog || ''}
@@ -321,6 +346,8 @@ export default function Viewer() {
             onToggleInvertColors={handleToggleInvertColors}
             isSpreadView={pdfSpreadView}
             onToggleSpreadView={togglePdfSpreadView}
+            isSearchOpen={isSearchOpen}
+            onToggleSearch={toggleSearch}
             onOpenPresentationMode={() => setIsPresentationOpen(true)}
             errorCount={parsedLog?.errors.length ?? 0}
             warningCount={parsedLog?.warnings.length ?? 0}
@@ -329,7 +356,18 @@ export default function Viewer() {
           <a ref={downloadRef} className="hidden" aria-hidden="true" />
 
           {/* PDF Viewer Surface */}
-          <div ref={pdfContainerRef} className="flex-1 min-h-0 relative flex flex-col overflow-hidden">
+          <div ref={pdfContainerRef} className="flex-1 min-h-0 relative flex flex-col">
+            <PdfFindBar
+              isOpen={isSearchOpen}
+              query={searchQuery}
+              onQueryChange={setSearchQuery}
+              matchesCount={searchMatches.length}
+              currentMatchIndex={currentMatchIndex}
+              isSearching={isSearching}
+              onNext={nextMatch}
+              onPrev={prevMatch}
+              onClose={closeSearch}
+            />
             <Surface
               ref={pdfSurfaceRef}
               pdfUrl={pdfUrl}

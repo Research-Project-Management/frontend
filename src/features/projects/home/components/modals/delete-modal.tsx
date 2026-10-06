@@ -32,7 +32,7 @@ export function DeleteModal({
       <DialogContent
         showCloseButton={false}
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="max-w-[440px] p-0 overflow-hidden z-[101] rounded-lg border border-border bg-popover"
+        className="max-w-[440px] p-0 overflow-hidden rounded-lg border border-border bg-popover"
       >
         <div className="p-6">
           <DialogHeader className="flex flex-row items-start gap-4 space-y-0">

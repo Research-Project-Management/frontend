@@ -11,10 +11,10 @@ import {
   Tag,
   Folder,
   Split,
-  Sparkles,
   SlidersHorizontal,
   Maximize2,
   X,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -238,7 +238,7 @@ export function DuplicateMergeInspector({
               className="h-6 px-1.5 text-11 text-primary hover:text-primary hover:bg-primary/10 gap-1 rounded-sm"
               title="Auto-select most complete values"
             >
-              <Sparkles className="size-3" />
+              <Check className="size-3" />
               <span>Recommend Best</span>
             </Button>
           ) : (
@@ -416,8 +416,8 @@ export function DuplicateMergeInspector({
                                 </span>
                               )}
                               {isRecommended && (
-                                <span className="flex items-center gap-0.5 text-9 text-amber-600 dark:text-amber-400 font-medium">
-                                  <Sparkles className="size-2.5" /> Best
+                                <span className="flex items-center gap-0.5 text-9 text-amber-700 dark:text-amber-300 font-medium">
+                                  <Check className="size-2.5" /> Best
                                 </span>
                               )}
                             </div>

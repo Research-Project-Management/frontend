@@ -262,3 +262,43 @@ export function useVersionDiff(
   });
 }
 
+export const projectHistoryKeys = {
+  diff: (projectId: string, baseVersion: number, targetVersion: number) =>
+    ['projects', projectId, 'history', 'diff', baseVersion, targetVersion] as const,
+  snapshot: (projectId: string, version: number) =>
+    ['projects', projectId, 'history', 'snapshot', version] as const,
+};
+
+export function useProjectDiff(
+  projectId: string,
+  baseVersion?: number | null,
+  targetVersion?: number | null,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: projectHistoryKeys.diff(projectId, baseVersion || 0, targetVersion || 0),
+    queryFn: async () => {
+      if (!projectId || !baseVersion || !targetVersion) return null;
+      return historyService.compareProjectVersions(projectId, baseVersion, targetVersion);
+    },
+    enabled: Boolean(projectId && baseVersion && targetVersion && (options?.enabled ?? true)),
+    staleTime: 1000 * 60 * 30, // 30 minutes cache for immutable historical diffs
+  });
+}
+
+export function useProjectSnapshot(
+  projectId: string,
+  version?: number | null,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: projectHistoryKeys.snapshot(projectId, version || 0),
+    queryFn: async () => {
+      if (!projectId || !version) return null;
+      return historyService.getProjectSnapshot(projectId, version);
+    },
+    enabled: Boolean(projectId && version && (options?.enabled ?? true)),
+    staleTime: 1000 * 60 * 30,
+  });
+}
+

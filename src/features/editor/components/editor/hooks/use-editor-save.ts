@@ -25,8 +25,7 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
   const clearDirty = useCompileStore((s) => s.clearDirty);
   const setCurrentPage = usePageStore((s) => s.setCurrentPage);
 
-  const pageRef = useRef(page);
-  pageRef.current = page;
+  const activePageRef = useRef(page);
   const activePageIdRef = useRef(page.id);
 
   const initialText = extractStringContent(page.content);
@@ -45,23 +44,30 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
-    const currentPage = pageRef.current;
+    if (!isDirtyRef.current) return;
+
+    const pageToSave = activePageRef.current;
+    if (!pageToSave || !pageToSave.id) return;
+
     const targetText = latestTextRef.current;
-    const savedText = extractStringContent(currentPage.content);
+    const savedText = extractStringContent(pageToSave.content);
     if (targetText !== savedText) {
       if (typeof setCurrentPage === 'function') {
         setCurrentPage({
-          ...currentPage,
+          ...pageToSave,
           content: targetText,
         });
       }
-      clearDirty(currentPage.id);
+      clearDirty(pageToSave.id);
       isDirtyRef.current = false;
       manuscriptService.docs
-        .updateContent(currentPage.id, targetText)
+        .updateContent(pageToSave.id, targetText)
         .catch((err) => {
           console.error('[useEditorSave] Flush-save failed:', err);
         });
+    } else {
+      clearDirty(pageToSave.id);
+      isDirtyRef.current = false;
     }
   }, [clearDirty, setCurrentPage]);
 
@@ -76,20 +82,45 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
   // Page switch & external doc synchronization
   useEffect(() => {
     if (activePageIdRef.current !== page.id) {
-      flushSave();
+      const prevPageId = activePageIdRef.current;
+      const prevPage = activePageRef.current;
+      const textToFlush = latestTextRef.current;
+
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
       if (compileTimerRef.current) {
         clearTimeout(compileTimerRef.current);
         compileTimerRef.current = null;
       }
+
+      // 1. Flush pending changes on previous document ONLY if it was genuinely dirty
+      if (isDirtyRef.current && prevPage && prevPageId) {
+        const prevSavedText = extractStringContent(prevPage.content);
+        if (textToFlush !== prevSavedText) {
+          clearDirty(prevPageId);
+          manuscriptService.docs
+            .updateContent(prevPageId, textToFlush)
+            .catch((err) => {
+              console.error('[useEditorSave] Flush on page switch failed:', err);
+            });
+        }
+      }
+
+      // 2. Switch cleanly to new page
       activePageIdRef.current = page.id;
+      activePageRef.current = page;
       const pageText = extractStringContent(page.content);
       latestTextRef.current = pageText;
       lastCompiledContentRef.current = pageText;
       isDirtyRef.current = false;
+      clearDirty(page.id);
       setCurrentContent(pageText);
       useCompileStore.getState().setPendingCompile(false);
     } else {
       // Same page: external content update (e.g. data reloaded)
+      activePageRef.current = page;
       const pageText = extractStringContent(page.content);
       if (!isDirtyRef.current && pageText !== latestTextRef.current) {
         latestTextRef.current = pageText;
@@ -97,7 +128,7 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
         setCurrentContent(pageText);
       }
     }
-  }, [page.id, page.content, flushSave]);
+  }, [page.id, page.content, clearDirty]);
 
   // Real-time remote document updates from collaborating peers
   useEffect(() => {
@@ -106,7 +137,7 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
       const detail = customEvent.detail;
       if (!detail || detail.docId !== page.id) return;
 
-      const currentPage = pageRef.current;
+      const currentPage = activePageRef.current;
       const currentSavedText = extractStringContent(currentPage.content);
       const isLocallyDirty = isDirtyRef.current || (latestTextRef.current !== currentSavedText);
 
@@ -160,9 +191,25 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
   // Per-keystroke handler: 0ms main thread delay, NO React re-renders during typing
   const handleContentChange = useCallback((value: string | undefined) => {
     const text = value || '';
+    const currentPage = activePageRef.current;
+    if (!currentPage || !currentPage.id) return;
+
+    const savedText = extractStringContent(currentPage.content);
+    if (text === savedText) {
+      if (isDirtyRef.current) {
+        isDirtyRef.current = false;
+        clearDirty(currentPage.id);
+        if (saveTimerRef.current) {
+          clearTimeout(saveTimerRef.current);
+          saveTimerRef.current = null;
+        }
+      }
+      return;
+    }
+
     latestTextRef.current = text;
     isDirtyRef.current = true;
-    markDirty(pageRef.current.id, text);
+    markDirty(currentPage.id, text);
 
     // 1. Debounced Auto-save (800ms idle)
     if (saveTimerRef.current) {
@@ -170,25 +217,27 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
     }
     saveTimerRef.current = setTimeout(() => {
       saveTimerRef.current = null;
-      const currentPage = pageRef.current;
+      if (!isDirtyRef.current) return;
+      const pageToSave = activePageRef.current;
+      if (!pageToSave || !pageToSave.id) return;
       const targetText = latestTextRef.current;
-      const savedText = extractStringContent(currentPage.content);
-      if (targetText !== savedText) {
+      const persistedText = extractStringContent(pageToSave.content);
+      if (targetText !== persistedText) {
         if (typeof setCurrentPage === 'function') {
           setCurrentPage({
-            ...currentPage,
+            ...pageToSave,
             content: targetText,
           });
         }
-        clearDirty(currentPage.id);
+        clearDirty(pageToSave.id);
         isDirtyRef.current = false;
         manuscriptService.docs
-          .updateContent(currentPage.id, targetText)
+          .updateContent(pageToSave.id, targetText)
           .catch((err) => {
             console.error('[useEditorSave] Auto-save failed:', err);
           });
       } else {
-        clearDirty(currentPage.id);
+        clearDirty(pageToSave.id);
         isDirtyRef.current = false;
       }
     }, 800);
@@ -229,14 +278,14 @@ export function useEditorSave({ page }: UseEditorSaveOptions) {
 
   const updateMutation = {
     mutate: (params: { pageId?: string; content: string }, opts?: any) => {
-      const targetId = params?.pageId || pageRef.current.id;
+      const targetId = params?.pageId || activePageRef.current.id;
       manuscriptService.docs
         .updateContent(targetId, params.content)
         .then((res) => opts?.onSuccess?.(res))
         .catch((err) => opts?.onError?.(err));
     },
     mutateAsync: async (params: { pageId?: string; content: string }) => {
-      const targetId = params?.pageId || pageRef.current.id;
+      const targetId = params?.pageId || activePageRef.current.id;
       return await manuscriptService.docs.updateContent(targetId, params.content);
     },
     isLoading: false,

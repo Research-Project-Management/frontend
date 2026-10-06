@@ -4,6 +4,7 @@
  */
 
 import type { Item } from '@/features/library';
+import type { BibEntry } from './bib-parser.util';
 
 /**
  * Regex matching LaTeX citation commands with optional square-bracket arguments:
@@ -225,4 +226,56 @@ export function formatItemToBibtex(item: Item): string {
   if (item.pages) fields.push(`  pages = {${item.pages}}`);
 
   return `@${type}{${key},\n${fields.join(',\n')}\n}`;
+}
+
+/**
+ * Formats a parsed BibEntry into a standard, pretty-printed BibTeX entry string.
+ * Uses raw snippet if available, or synthesizes clean BibTeX from metadata.
+ */
+export function formatBibEntryToBibtex(entry: BibEntry): string {
+  if (entry.raw && entry.raw.trim().startsWith('@')) {
+    return entry.raw.trim();
+  }
+  const type = (entry.type || 'article').toLowerCase();
+  const fields: string[] = [];
+
+  if (entry.title) {
+    fields.push(`  title = {${entry.title}}`);
+  }
+  if (entry.authors && entry.authors.length > 0) {
+    fields.push(`  author = {${entry.authors.join(' and ')}}`);
+  }
+  if (entry.journal) {
+    fields.push(`  journal = {${entry.journal}}`);
+  }
+  if (entry.booktitle) {
+    fields.push(`  booktitle = {${entry.booktitle}}`);
+  }
+  if (entry.year) {
+    fields.push(`  year = {${entry.year}}`);
+  }
+  if (entry.volume) {
+    fields.push(`  volume = {${entry.volume}}`);
+  }
+  if (entry.number) {
+    fields.push(`  number = {${entry.number}}`);
+  }
+  if (entry.pages) {
+    fields.push(`  pages = {${entry.pages}}`);
+  }
+  if (entry.publisher) {
+    fields.push(`  publisher = {${entry.publisher}}`);
+  }
+  if (entry.doi) {
+    fields.push(`  doi = {${entry.doi}}`);
+  }
+  if (entry.url) {
+    fields.push(`  url = {${entry.url}}`);
+  }
+  if (entry.abstract) {
+    const cleanAbstract = entry.abstract.replace(/\s+/g, ' ').trim();
+    fields.push(`  abstract = {${cleanAbstract}}`);
+  }
+
+  return `@${type}{${entry.key},\n${fields.join(',\n')}\n}`;
 }

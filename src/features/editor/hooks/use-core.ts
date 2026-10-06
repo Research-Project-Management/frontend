@@ -15,7 +15,6 @@ import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/r
 import { pageService, fileService } from '../services/core.service';
 import { manuscriptService } from '../services/manuscript.service';
 import { usePageStore, useTabsStore, useSettingsStore } from '../store';
-import { getDemoManuscript } from '../mock/demo-dataset';
 import { toast } from 'sonner';
 import type { Page, PageFile } from '../types';
 
@@ -36,16 +35,8 @@ export const pageQuery = (pageId: string) =>
   queryOptions({
     queryKey: pageKeys.detail(pageId),
     queryFn: async () => {
-      if (!pageId || pageId === 'demo' || pageId.startsWith('demo-') || pageId.startsWith('mock-')) {
-        return getDemoManuscript(pageId || 'demo').page;
-      }
-      try {
-        const page = await pageService.getById(pageId);
-        if (page && (page.content || page.title)) return page;
-        return getDemoManuscript(pageId).page;
-      } catch {
-        return getDemoManuscript(pageId).page;
-      }
+      if (!pageId) throw new Error('Missing pageId');
+      return await pageService.getById(pageId);
     },
   });
 
@@ -53,16 +44,8 @@ export const filesQuery = (pageId: string) =>
   queryOptions({
     queryKey: pageKeys.files(pageId),
     queryFn: async () => {
-      if (!pageId || pageId === 'demo' || pageId.startsWith('demo-') || pageId.startsWith('mock-')) {
-        return getDemoManuscript(pageId || 'demo').files;
-      }
-      try {
-        const files = await fileService.getByPageId(pageId);
-        if (files && files.length > 0) return files;
-        return getDemoManuscript(pageId).files;
-      } catch {
-        return getDemoManuscript(pageId).files;
-      }
+      if (!pageId) return [];
+      return await fileService.getByPageId(pageId);
     },
   });
 
@@ -70,11 +53,8 @@ export const deletedFilesQuery = (pageId: string) =>
   queryOptions({
     queryKey: pageKeys.deletedFiles(pageId),
     queryFn: async () => {
-      try {
-        return await fileService.getDeletedByPageId(pageId);
-      } catch {
-        return [];
-      }
+      if (!pageId) return [];
+      return await fileService.getDeletedByPageId(pageId);
     },
   });
 
@@ -87,10 +67,14 @@ export const pageDeletedFilesQueryOptions = deletedFilesQuery;
 export function useActiveDocument() {
   const router = useRouter();
   const pathname = usePathname();
-  const { projectId, pageId } = useParams<{
+  const { projectId: rawProjectId, pageId: rawPageId, draftId } = useParams<{
     projectId?: string;
-    pageId: string;
+    pageId?: string;
+    draftId?: string;
   }>();
+
+  const pageId = rawPageId || draftId || '';
+  const projectId = rawProjectId || undefined;
 
   const searchParams = useSearchParams();
   const fileId = searchParams.get('file');
@@ -105,30 +89,35 @@ export function useActiveDocument() {
     enabled: !!pageId,
   });
 
-  const demoData = useMemo(
-    () => getDemoManuscript(pageId || 'demo', projectId || 'adam-research'),
-    [pageId, projectId],
-  );
+  const parentPage = serverPage || null;
+  const childFiles = serverFiles || [];
 
-  const fallbackPage: Page = demoData.page;
-  const fallbackFiles: PageFile[] = demoData.files;
+  const mainId =
+    typeof parentPage?.mainFile === 'string'
+      ? parentPage.mainFile
+      : (parentPage?.mainFile as Page | undefined)?.id ||
+        (parentPage as { mainFileId?: string })?.mainFileId;
 
-  const parentPage = serverPage || fallbackPage;
-  const childFiles = serverFiles && serverFiles.length > 0 ? serverFiles : fallbackFiles;
+  const isMainFile =
+    !fileId ||
+    fileId === pageId ||
+    fileId === parentPage?.id ||
+    Boolean(mainId && fileId === mainId);
 
-  const isMainFile = !fileId || fileId === pageId || fileId === parentPage?.id;
+  // When a child file is active, query its complete content from server
+  const activeFileId = !isMainFile && fileId ? fileId : null;
+  const { data: activeFileDoc, isLoading: fileLoading } = useQuery({
+    ...pageQuery(activeFileId || ''),
+    enabled: Boolean(activeFileId),
+  });
 
   const activeFile = useMemo(() => {
     if (!fileId || isMainFile) return undefined;
-    const direct = childFiles.find((f) => f.id === fileId || f.title === fileId);
-    if (direct) return direct;
-    const idxMatch = fileId.match(/-file-(\d+)$/);
-    if (idxMatch) {
-      const idx = parseInt(idxMatch[1], 10) - 1;
-      if (idx >= 0 && idx < childFiles.length) return childFiles[idx];
-    }
+    if (activeFileDoc) return activeFileDoc;
+    const meta = childFiles.find((f) => f.id === fileId || f.title === fileId);
+    if (meta && typeof meta.content === 'string' && meta.content.length > 0) return meta;
     return undefined;
-  }, [fileId, isMainFile, childFiles]);
+  }, [fileId, isMainFile, activeFileDoc, childFiles]);
 
   const setCurrentPage = usePageStore((s) => s.setCurrentPage);
   const setFileHierarchy = usePageStore((s) => s.setFileHierarchy);
@@ -139,10 +128,11 @@ export function useActiveDocument() {
 
   const openTab = useTabsStore((s) => s.openTab);
   const setActive = useTabsStore((s) => s.setActive);
-  const parentProjectId =
+  const rawParentProj =
     typeof parentPage?.projectId === 'object'
       ? parentPage?.projectId?.id
       : parentPage?.projectId;
+  const parentProjectId = rawParentProj || null;
   const effectiveProjectId = projectId || parentProjectId || null;
 
   useEffect(() => {
@@ -160,31 +150,24 @@ export function useActiveDocument() {
     if (!parentPage) return;
 
     if (isMainFile) {
-      const mainId =
-        typeof parentPage.mainFile === 'string'
-          ? parentPage.mainFile
-          : (parentPage.mainFile as Page | undefined)?.id;
-      const mainFile = childFiles.find(
-        (f) => f.id === mainId || f.id === (parentPage as { mainFileId?: string }).mainFileId
-      );
-      const targetPage = mainFile || parentPage;
+      setCurrentPage?.(parentPage);
+      setActivePageId?.(parentPage.id);
 
-      setCurrentPage?.(targetPage);
-      setActivePageId?.(targetPage.id);
+      const resolvedTitle = parentPage.title || 'main.tex';
 
       if (pageId) {
         openTab(pageId, {
-          id: targetPage.id,
-          title: targetPage.title || 'main.tex',
+          id: parentPage.id,
+          title: resolvedTitle,
         });
-        setActive(pageId, targetPage.id);
+        setActive(pageId, parentPage.id);
       }
       if (projectId && projectId !== pageId) {
         openTab(projectId, {
-          id: targetPage.id,
-          title: targetPage.title || 'main.tex',
+          id: parentPage.id,
+          title: resolvedTitle,
         });
-        setActive(projectId, targetPage.id);
+        setActive(projectId, parentPage.id);
       }
     } else if (activeFile) {
       setCurrentPage?.(activeFile);
@@ -212,7 +195,6 @@ export function useActiveDocument() {
     projectId,
     parentPage,
     activeFile,
-    childFiles,
     setCurrentPage,
     setActivePageId,
     openTab,
@@ -221,14 +203,19 @@ export function useActiveDocument() {
 
   const selectFile = useCallback((targetFileId: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (targetFileId === pageId || targetFileId === parentPage?.id) {
+    const isTargetMain =
+      targetFileId === pageId ||
+      targetFileId === parentPage?.id ||
+      (mainId && targetFileId === mainId);
+
+    if (isTargetMain) {
       params.delete('file');
     } else {
       params.set('file', targetFileId);
     }
     const query = params.toString();
     router.push(`${pathname}${query ? `?${query}` : ''}`);
-  }, [searchParams, pageId, parentPage?.id, router, pathname]);
+  }, [searchParams, pageId, parentPage?.id, mainId, router, pathname]);
 
   const activeTabId = useTabsStore((s) =>
     (pageId ? s.activeByProject[pageId] : null) ||
@@ -237,15 +224,20 @@ export function useActiveDocument() {
   );
   const selectedAsset = usePageStore((s) => s.selectedAsset);
   const isAssetTab = activeTabId?.startsWith('asset:') || false;
-  const activePage = (isMainFile ? parentPage : activeFile) || parentPage;
+  const activePage = isMainFile ? parentPage : (activeFile || null);
   const displayPage = isAssetTab ? null : activePage;
+
+  const isDocumentLoading =
+    (parentLoading && !parentPage) ||
+    (Boolean(activeFileId) && (fileLoading || !activeFileDoc));
 
   return {
     parentPage,
     activePage,
     displayPage,
     childFiles,
-    isLoading: parentLoading && filesLoading && !parentPage,
+    isLoading: isDocumentLoading,
+    isChildLoading: fileLoading,
     selectFile,
     activePageId,
     pageId,
@@ -307,6 +299,10 @@ export function usePageActions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+      }
       toast.success('File deleted');
     },
     onError: (err: unknown) => {
@@ -322,6 +318,10 @@ export function usePageActions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+      }
       toast.success('File restored');
     },
     onError: (err: unknown) => {
@@ -377,12 +377,17 @@ export function useFileActions() {
   });
 
   const setMainFileMutation = useMutation({
-    mutationFn: async ({ pageId, fileId }: { pageId: string; fileId: string }) => {
+    mutationFn: async ({ pageId, fileId, projectId }: { pageId: string; fileId: string; projectId?: string }) => {
       if (isLocked) throw new Error('Document is locked');
-      return await fileService.setMain({ pageId, fileId });
+      return await fileService.setMain({ pageId, fileId, projectId });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });
+      queryClient.invalidateQueries({ queryKey: ['files', variables.pageId] });
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+      }
       toast.success('Set as main document');
     },
     onError: (err: unknown) => {

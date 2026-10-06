@@ -32,7 +32,7 @@ export const SYSTEM_BOTTOM_NAV_ITEMS: SystemNavItemConfig[] = [
   {
     id: 'starred',
     label: 'Starred Items',
-    href: (basePath) => `${basePath}?filter=starred`,
+    href: (basePath) => `${basePath}/starred`,
     icon: Star,
     isActive: (pathname, currentFilter, isPersonalScope, basePath) =>
       isPersonalScope &&
@@ -62,7 +62,7 @@ export const SYSTEM_BOTTOM_NAV_ITEMS: SystemNavItemConfig[] = [
   {
     id: 'my-publications',
     label: 'My Publications',
-    href: (basePath) => `${basePath}?filter=my-publications`,
+    href: (basePath) => `${basePath}/my-publications`,
     icon: Award,
     isActive: (pathname, currentFilter, isPersonalScope, basePath) =>
       isPersonalScope &&
@@ -73,10 +73,11 @@ export const SYSTEM_BOTTOM_NAV_ITEMS: SystemNavItemConfig[] = [
   {
     id: 'retracted',
     label: 'Retracted Items',
-    href: (basePath) => `${basePath}?filter=retracted`,
+    href: (basePath) => `${basePath}/retracted`,
     icon: ShieldAlert,
     isActive: (pathname, currentFilter, isPersonalScope, basePath) =>
-      isPersonalScope && pathname === basePath && currentFilter === 'retracted',
+      isPersonalScope &&
+      (pathname === `${basePath}/retracted` || (pathname === basePath && currentFilter === 'retracted')),
     getBadge: (stats) => stats.retractedCount || null,
   },
   {

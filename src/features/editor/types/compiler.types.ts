@@ -68,9 +68,11 @@ export interface SyncIncrementalInput {
   projectId?: string;
 }
 
+import type { DocumentContent } from './core.types';
+
 export interface SaveAndSyncInput {
   title?: string;
-  content?: any;
+  content?: DocumentContent;
   createSnapshot?: boolean;
   versionDescription?: string;
 }

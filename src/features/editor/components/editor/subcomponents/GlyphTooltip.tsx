@@ -21,7 +21,7 @@ export const GlyphTooltip = React.memo(function GlyphTooltip({ tooltip }: GlyphT
 
   return createPortal(
     <div
-      className="fixed z-[9997] max-w-xs rounded-md border border-border bg-popover text-popover-foreground py-2 px-3 pointer-events-none shadow-raised-200"
+      className="fixed z-50 max-w-xs rounded-md border border-border bg-popover text-popover-foreground py-2 px-3 pointer-events-none shadow-raised-200"
       style={{ left: tooltip.x, bottom: tooltip.bottom }}
     >
       {tooltip.comments.map((c, idx) => (

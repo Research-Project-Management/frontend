@@ -60,7 +60,7 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
             onClick={onPrevPage}
             disabled={pageNumber <= 1}
             aria-label="Previous page"
-            className="size-6 relative flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-2 after:content-['']"
+            className="size-6 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-2 after:content-['']"
           >
             <ChevronUp className="size-3.5" />
           </button>
@@ -78,7 +78,7 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
             onClick={onNextPage}
             disabled={pageNumber >= numPages}
             aria-label="Next page"
-            className="size-6 relative flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-2 after:content-['']"
+            className="size-6 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-2 after:content-['']"
           >
             <ChevronDown className="size-3.5" />
           </button>
@@ -89,7 +89,7 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
       </Tooltip>
 
       {/* 3. Page input [ 1 ] / N */}
-      <div className="flex items-center gap-1 text-xs text-muted-foreground font-mono tabular-nums">
+      <div className="flex items-center gap-1 text-xs text-foreground font-mono tabular-nums">
         <input
           type="text"
           role="spinbutton"
@@ -131,7 +131,7 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
                 type="button"
                 onClick={onZoomOut}
                 aria-label="Zoom out"
-                className="size-6 relative flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-2 after:content-['']"
+                className="size-6 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-2 after:content-['']"
               >
                 <Minus className="size-3.5" />
               </button>
@@ -147,7 +147,7 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
                 type="button"
                 onClick={onZoomIn}
                 aria-label="Zoom in"
-                className="size-6 relative flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-2 after:content-['']"
+                className="size-6 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-2 after:content-['']"
               >
                 <Plus className="size-3.5" />
               </button>

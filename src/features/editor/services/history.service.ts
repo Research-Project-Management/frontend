@@ -12,6 +12,10 @@ export type {
   VersionDiffResponse,
   OpLogTimeline,
   ReconstructedContent,
+  ProjectVersionListItem,
+  ProjectSnapshotDetail,
+  ProjectDiffResponse,
+  ProjectFileDiff,
 } from './manuscript.service';
 
 export const versionService = {

@@ -238,7 +238,16 @@ export const WorkItemHelpers = {
     return targetDate.getTime() < now.getTime();
   },
 
-  uniqueLabels: (list?: string[]): string[] => Array.from(new Set(list || [])),
+  uniqueLabels: (list?: (string | { id?: string; name?: string; color?: string; [key: string]: unknown })[]): string[] => {
+    if (!list) return [];
+    return Array.from(
+      new Set(
+        list
+          .map((item) => (typeof item === 'string' ? item : (item.name || item.id || '')))
+          .filter(Boolean),
+      ),
+    );
+  },
 
   countAttachments: (attachments: unknown): number => {
     if (!attachments) return 0;

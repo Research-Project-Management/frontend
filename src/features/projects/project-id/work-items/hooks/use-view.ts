@@ -252,7 +252,8 @@ export function useKanban({
             } else if (subGroupBy === 'assignee') {
               targetLaneId = ItemHelpers.resolveAssigneeId(overItem) || '__unassigned__';
             } else if (subGroupBy === 'labels') {
-              targetLaneId = (overItem.labels && overItem.labels.length > 0) ? overItem.labels[0] : '__no_label__';
+              const firstLbl = (overItem.labels && overItem.labels.length > 0) ? overItem.labels[0] : null;
+              targetLaneId = firstLbl ? (typeof firstLbl === 'string' ? firstLbl : (firstLbl as any).name || (firstLbl as any).id || '__no_label__') : '__no_label__';
             }
           }
         }

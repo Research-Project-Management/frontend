@@ -56,11 +56,11 @@ export function CollectionContextMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="flex size-6 shrink-0 items-center justify-center rounded-md text-foreground opacity-0 group-hover/node:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-muted transition-opacity hover:transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-foreground opacity-0 group-hover/node:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-foreground/10 focus-visible:opacity-100 hover:bg-foreground/10 active:bg-foreground/20 transition-all duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           onClick={(e) => e.stopPropagation()}
           aria-label={`Options for ${node.name}`}
         >
-          <MoreVertical className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+          <MoreVertical className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent

@@ -122,10 +122,10 @@ export function TopbarSearch({
       <Search
         strokeWidth={1.5}
         className={cn(
-          'absolute top-1/2 -translate-y-1/2 size-3.5 transition-colors duration-150 z-10 shrink-0 text-foreground',
+          'absolute top-1/2 -translate-y-1/2 size-3.5 transition-colors duration-150 z-10 shrink-0 text-muted-foreground',
           active
             ? 'left-2 translate-x-0'
-            : 'left-1/2 -translate-x-1/2'
+            : 'left-1/2 -translate-x-1/2 group-hover:text-foreground'
         )}
       />
       <Input

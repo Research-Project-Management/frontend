@@ -45,7 +45,7 @@ import {
 } from '@/features/editor/store';
 import { EDITOR_THEMES } from '../editor/editor-themes';
 import { useTheme } from '@/shared/providers';
-import { filesQuery } from '@/features/editor/hooks/use-core';
+import { filesQuery, pageQuery, useFileActions } from '@/features/editor/hooks/use-core';
 import { useQuery } from '@tanstack/react-query';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 
@@ -193,20 +193,60 @@ export default function ProjectSettingsModal() {
     enabled: Boolean(pageId || projectId),
   });
 
+  const { data: parentPage } = useQuery({
+    ...pageQuery(pageId ?? ''),
+    enabled: Boolean(pageId),
+  });
+
+  const { setMainFile: setMainFileMutation } = useFileActions();
+
+  const handleMainFileChange = (newMainFileName: string) => {
+    setMainFile(newMainFileName);
+    const targetFile = (projectFiles as any[])?.find(
+      (f: any) => (f.title || f.name || f.filename) === newMainFileName
+    );
+    const effectiveProjectId =
+      (typeof currentPage?.projectId === 'string' ? currentPage.projectId : (currentPage?.projectId as any)?.id) ||
+      projectId ||
+      pageId ||
+      '';
+    if (targetFile && (pageId || projectId)) {
+      setMainFileMutation.mutate({ pageId: (pageId || projectId)!, fileId: targetFile.id, projectId: effectiveProjectId });
+    } else if ((pageId || projectId) && parentPage && (parentPage.title === newMainFileName || newMainFileName === 'main.tex')) {
+      setMainFileMutation.mutate({ pageId: (pageId || projectId)!, fileId: parentPage.id, projectId: effectiveProjectId });
+    }
+  };
+
   const texFiles = useMemo(() => {
-    if (!projectFiles || !Array.isArray(projectFiles)) return ['main.tex'];
-    const filtered = projectFiles
-      .filter((f: any) => typeof f.name === 'string' && f.name.toLowerCase().endsWith('.tex'))
-      .map((f: any) => f.name);
-    return filtered.length > 0 ? filtered : ['main.tex'];
-  }, [projectFiles]);
+    const list: string[] = [];
+    if (parentPage?.title) {
+      const rootTitle = parentPage.title.endsWith('.tex') ? parentPage.title : `${parentPage.title}.tex`;
+      list.push(rootTitle);
+    }
+    if (projectFiles && Array.isArray(projectFiles)) {
+      projectFiles.forEach((f: any) => {
+        const name = f.title || f.name || f.filename;
+        if (typeof name === 'string' && name.toLowerCase().endsWith('.tex') && !list.includes(name)) {
+          list.push(name);
+        }
+      });
+    }
+    if (list.length === 0) list.push('main.tex');
+    return list;
+  }, [parentPage?.title, projectFiles]);
 
   const bibFiles = useMemo(() => {
-    if (!projectFiles || !Array.isArray(projectFiles)) return ['references.bib'];
-    const filtered = projectFiles
-      .filter((f: any) => typeof f.name === 'string' && f.name.toLowerCase().endsWith('.bib'))
-      .map((f: any) => f.name);
-    return filtered.length > 0 ? filtered : ['references.bib'];
+    const list: string[] = [];
+    if (projectFiles && Array.isArray(projectFiles)) {
+      projectFiles.forEach((f: any) => {
+        const name = f.title || f.name || f.filename;
+        if (typeof name === 'string' && name.toLowerCase().endsWith('.bib') && !list.includes(name)) {
+          list.push(name);
+        }
+      });
+    }
+    if (list.length === 0) list.push('references.bib');
+    return list;
   }, [projectFiles]);
 
   const [newWordInput, setNewWordInput] = useState('');
@@ -410,7 +450,7 @@ export default function ProjectSettingsModal() {
                     <SelectTrigger className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background">
                       <SelectValue placeholder="Keybindings" />
                     </SelectTrigger>
-                    <SelectContent className="z-[9999]">
+                    <SelectContent>
                       <SelectItem value="standard" className="cursor-pointer text-xs">
                         None
                       </SelectItem>
@@ -435,7 +475,7 @@ export default function ProjectSettingsModal() {
                     <SelectTrigger className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background">
                       <SelectValue placeholder="PDF Viewer" />
                     </SelectTrigger>
-                    <SelectContent className="z-[9999]">
+                    <SelectContent>
                       <SelectItem value="overleaf" className="cursor-pointer text-xs">
                         Overleaf
                       </SelectItem>
@@ -477,7 +517,7 @@ export default function ProjectSettingsModal() {
                     <SelectTrigger className="w-28 h-8 text-xs font-medium cursor-pointer border-border bg-background">
                       <SelectValue placeholder="Font size" />
                     </SelectTrigger>
-                    <SelectContent className="z-[9999]">
+                    <SelectContent>
                       {[11, 12, 13, 14, 15, 16, 17, 18, 20, 22, 24].map((sz) => (
                         <SelectItem key={sz} value={String(sz)} className="cursor-pointer text-xs">
                           {sz}px
@@ -498,7 +538,7 @@ export default function ProjectSettingsModal() {
                     <SelectTrigger className="w-40 h-8 text-xs font-medium cursor-pointer border-border bg-background">
                       <SelectValue placeholder="Font family" />
                     </SelectTrigger>
-                    <SelectContent className="z-[9999]">
+                    <SelectContent>
                       <SelectItem value="default" className="cursor-pointer text-xs">
                         Default Monospace
                       </SelectItem>
@@ -529,7 +569,7 @@ export default function ProjectSettingsModal() {
                     <SelectTrigger className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background">
                       <SelectValue placeholder="Line height" />
                     </SelectTrigger>
-                    <SelectContent className="z-[9999]">
+                    <SelectContent>
                       <SelectItem value="1.3" className="cursor-pointer text-xs">
                         Compact (1.3)
                       </SelectItem>
@@ -569,7 +609,7 @@ export default function ProjectSettingsModal() {
                     <SelectTrigger className="w-52 h-8 text-xs font-medium cursor-pointer border-border bg-background">
                       <SelectValue placeholder="Select language" />
                     </SelectTrigger>
-                    <SelectContent className="z-[9999]">
+                    <SelectContent>
                       <SelectItem value="en_US" className="cursor-pointer text-xs">
                         English (United States)
                       </SelectItem>
@@ -682,7 +722,7 @@ export default function ProjectSettingsModal() {
                     <SelectTrigger className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background">
                       <SelectValue placeholder="Engine" />
                     </SelectTrigger>
-                    <SelectContent className="z-[9999]">
+                    <SelectContent>
                       <SelectItem value="pdflatex" className="cursor-pointer text-xs">
                         pdfLaTeX
                       </SelectItem>
@@ -707,7 +747,7 @@ export default function ProjectSettingsModal() {
                     <SelectTrigger className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background">
                       <SelectValue placeholder="Version" />
                     </SelectTrigger>
-                    <SelectContent className="z-[9999]">
+                    <SelectContent>
                       <SelectItem value="2024" className="cursor-pointer text-xs">
                         2024
                       </SelectItem>
@@ -728,11 +768,11 @@ export default function ProjectSettingsModal() {
                   title="Main document"
                   description="The entrypoint LaTeX document to compile"
                 >
-                  <Select value={mainFile} onValueChange={setMainFile}>
+                  <Select value={mainFile} onValueChange={handleMainFileChange}>
                     <SelectTrigger className="w-44 h-8 text-xs font-medium cursor-pointer border-border bg-background">
                       <SelectValue placeholder="Main file" />
                     </SelectTrigger>
-                    <SelectContent className="z-[9999]">
+                    <SelectContent>
                       {texFiles.map((file) => (
                         <SelectItem key={file} value={file} className="cursor-pointer text-xs">
                           {file}
@@ -808,7 +848,7 @@ export default function ProjectSettingsModal() {
                     <SelectTrigger className="w-48 h-8 text-xs font-medium cursor-pointer border-border bg-background">
                       <SelectValue placeholder="Theme" />
                     </SelectTrigger>
-                    <SelectContent className="z-[9999]">
+                    <SelectContent>
                       {EDITOR_THEMES.map((t) => (
                         <SelectItem key={t.id} value={t.id} className="cursor-pointer text-xs">
                           {t.name}
@@ -826,7 +866,7 @@ export default function ProjectSettingsModal() {
                     <SelectTrigger className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background">
                       <SelectValue placeholder="Theme" />
                     </SelectTrigger>
-                    <SelectContent className="z-[9999]">
+                    <SelectContent>
                       <SelectItem value="system" className="cursor-pointer text-xs">
                         System
                       </SelectItem>
@@ -851,7 +891,7 @@ export default function ProjectSettingsModal() {
                     <SelectTrigger className="w-28 h-8 text-xs font-medium cursor-pointer border-border bg-background">
                       <SelectValue placeholder="Size" />
                     </SelectTrigger>
-                    <SelectContent className="z-[9999]">
+                    <SelectContent>
                       {[12, 13, 14, 15, 16, 18, 20].map((size) => (
                         <SelectItem key={size} value={String(size)} className="cursor-pointer text-xs">
                           {size}px
@@ -869,7 +909,7 @@ export default function ProjectSettingsModal() {
                     <SelectTrigger className="w-44 h-8 text-xs font-medium cursor-pointer border-border bg-background">
                       <SelectValue placeholder="Font" />
                     </SelectTrigger>
-                    <SelectContent className="z-[9999]">
+                    <SelectContent>
                       <SelectItem value="default" className="cursor-pointer text-xs">
                         Default (Monaco)
                       </SelectItem>

@@ -691,7 +691,7 @@ export function ArchivePage() {
                       <div className="min-w-0">
                         <span className="text-xs font-semibold text-foreground truncate block">{project.name}</span>
                         <p className="text-10 text-muted-foreground font-mono mt-0.5">
-                          Deleted {project.deletedAt ? new Date(project.deletedAt as any).toLocaleDateString() : '—'}
+                          Deleted {project.deletedAt ? new Date(project.deletedAt as any).toLocaleDateString() : '-'}
                         </p>
                       </div>
                     </div>

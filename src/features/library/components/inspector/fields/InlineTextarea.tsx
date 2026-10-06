@@ -5,6 +5,7 @@ import { cn } from '@/shared/lib/utils';
 
 export interface InlineTextareaProps {
   value: string;
+  placeholder?: string;
   ariaLabel?: string;
   onSave: (val: string) => void;
   className?: string;
@@ -18,6 +19,7 @@ export interface InlineTextareaProps {
  */
 export function InlineTextarea({
   value,
+  placeholder,
   ariaLabel,
   onSave,
   className,
@@ -78,6 +80,7 @@ export function InlineTextarea({
       ref={textareaRef}
       rows={rows}
       value={draft}
+      placeholder={placeholder}
       aria-label={ariaLabel || 'Text area'}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}

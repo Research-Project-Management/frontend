@@ -25,6 +25,7 @@ import {
   DialogDescription,
 } from '@/shared/components/ui/dialog';
 import { Badge } from '@/shared/components/ui/badge';
+import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { useSettingsStore, usePageStore } from '@/features/editor/store';
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
@@ -440,6 +441,8 @@ export default function TemplateGalleryModal() {
     }
   };
 
+  const [isScaffolding, setIsScaffolding] = useState(false);
+
   const handleApplyTemplate = async () => {
     if (!selectedTemplate) return;
     try {
@@ -454,6 +457,28 @@ export default function TemplateGalleryModal() {
       }
     } catch {
       toast.error('Could not apply template');
+    }
+  };
+
+  const handleScaffoldProject = async () => {
+    if (!selectedTemplate) return;
+    if (!projectId) {
+      handleApplyTemplate();
+      return;
+    }
+    setIsScaffolding(true);
+    try {
+      await manuscriptService.templates.scaffold(projectId, selectedTemplate.id);
+      toast.success(`Project scaffolded successfully with "${selectedTemplate.name}"!`);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+      }
+      setIsTemplateModalOpen(false);
+    } catch (err) {
+      console.warn('[TemplateGallery] Backend scaffolding failed, falling back to active file update:', err);
+      handleApplyTemplate();
+    } finally {
+      setIsScaffolding(false);
     }
   };
 
@@ -631,25 +656,46 @@ export default function TemplateGalleryModal() {
             {/* Bottom Action Footer */}
             <div className="px-5 py-3 border-t border-border bg-background flex items-center justify-between">
               <span className="text-11 text-muted-foreground">
-                Will insert template code into your active document.
+                Apply template into active document or scaffold complete project files.
               </span>
 
               <div className="flex items-center gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => setIsTemplateModalOpen(false)}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="h-8 text-xs font-medium cursor-pointer"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={handleApplyTemplate}
-                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-medium bg-primary hover:bg-primary-hover text-primary-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  disabled={isScaffolding}
+                  className="h-8 gap-1.5 text-xs font-medium cursor-pointer"
+                  title="Insert template code into current active file"
                 >
-                  <FileCheck className="size-3.5" />
-                  Use this template
-                </button>
+                  <FileText className="size-3.5" />
+                  <span>Insert into file</span>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleScaffoldProject}
+                  disabled={isScaffolding}
+                  className="h-8 gap-1.5 px-4 text-xs font-medium cursor-pointer"
+                  title="Scaffold complete multi-file project with .bib, style files, and assets"
+                >
+                  {isScaffolding ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <FileCheck className="size-3.5" />
+                  )}
+                  <span>{isScaffolding ? 'Scaffolding...' : 'Scaffold Project'}</span>
+                </Button>
               </div>
             </div>
           </div>

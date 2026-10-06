@@ -6,7 +6,7 @@ import { formatFileSize, formatDate } from './storage.util';
  */
 export function formatDetailedSize(bytes?: number): string {
   if (bytes === undefined || bytes === null || Number.isNaN(bytes)) {
-    return '—';
+    return '-';
   }
   const formatted = formatFileSize(bytes);
   const localeBytes = bytes.toLocaleString();
@@ -17,7 +17,7 @@ export function formatDetailedSize(bytes?: number): string {
  * Resolves Google Drive style location string (e.g. "My Files / Datasets" or "Project Root").
  */
 export function formatFileLocation(item?: StorageItem | null, projectName?: string): string {
-  if (!item) return '—';
+  if (!item) return '-';
   if (projectName) {
     return `${projectName}${item.parent ? ` / ${item.parent}` : ''}`;
   }
@@ -28,10 +28,10 @@ export function formatFileLocation(item?: StorageItem | null, projectName?: stri
  * Formats date and time in standard locale format for Google Drive file details.
  */
 export function formatDetailedDate(dateString?: string | Date | null): string {
-  if (!dateString) return '—';
+  if (!dateString) return '-';
   try {
     const d = new Date(dateString);
-    if (Number.isNaN(d.getTime())) return '—';
+    if (Number.isNaN(d.getTime())) return '-';
     return d.toLocaleString('vi-VN', {
       year: 'numeric',
       month: '2-digit',
@@ -40,6 +40,6 @@ export function formatDetailedDate(dateString?: string | Date | null): string {
       minute: '2-digit',
     });
   } catch {
-    return '—';
+    return '-';
   }
 }

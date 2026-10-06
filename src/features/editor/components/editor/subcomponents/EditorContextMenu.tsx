@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { Separator } from '@/shared/components/ui/separator';
 import { cn } from '@/shared/lib/utils';
 import type { MenuAction } from '../hooks/use-editor-shortcuts';
 
@@ -25,7 +26,7 @@ export const EditorContextMenu = React.memo(function EditorContextMenu({
       ref={ctxMenuRef}
       role="menu"
       aria-label="Editor context menu"
-      className="fixed z-[9999] w-52 rounded-md border border-border bg-popover py-1 overflow-hidden shadow-raised-200"
+      className="fixed z-50 w-52 rounded-md border border-border bg-popover py-1 overflow-hidden shadow-raised-200"
       style={{
         left: ctxPos?.x ?? ctxMenu.x,
         top: ctxPos?.y ?? ctxMenu.y,
@@ -34,7 +35,7 @@ export const EditorContextMenu = React.memo(function EditorContextMenu({
     >
       {menuGroups.map((group, gi) => (
         <React.Fragment key={gi}>
-          {gi > 0 && <div className="my-1 mx-2 h-px bg-border" role="separator" />}
+          {gi > 0 && <Separator className="my-1" />}
           {group.map((item) => {
             const Icon = item.icon;
             return (

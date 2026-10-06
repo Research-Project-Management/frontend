@@ -53,3 +53,17 @@ export {
   fixMojibake,
   getInitials,
 } from '../utils/format';
+export {
+  assertUnreachable,
+  isDefined,
+  brand,
+  fromPartial,
+  fromAny,
+  fromExact,
+  type Brand,
+  type Prettify,
+  type NonEmptyArray,
+  type ValueOf,
+  type DeepPartial,
+} from './type-utilities';
+

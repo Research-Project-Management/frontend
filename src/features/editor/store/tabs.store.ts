@@ -31,6 +31,16 @@ export interface DocumentTabsState {
   clearAll: () => void;
 }
 
+function isMainDocTab(tab: { id?: string; title?: string }, projectId: string): boolean {
+  if (!tab) return false;
+  const lowerTitle = tab.title?.toLowerCase() ?? '';
+  return (
+    tab.id === projectId ||
+    tab.id === `${projectId}-main` ||
+    lowerTitle === 'main.tex'
+  );
+}
+
 export const useDocumentTabsStore = create<DocumentTabsState>()((set, get) => ({
   tabsByProject: {},
   activeByProject: {},
@@ -38,13 +48,43 @@ export const useDocumentTabsStore = create<DocumentTabsState>()((set, get) => ({
   openTab(projectId, tab) {
     set((state) => {
       const existing = state.tabsByProject[projectId] ?? [];
-      const alreadyOpen = existing.some((t) => t.id === tab.id);
+      const isIncomingMain = isMainDocTab(tab, projectId);
+
+      // Check if tab already exists: matching ID, or both represent root main.tex, or matching file title
+      const existingIndex = existing.findIndex((t) => {
+        if (t.id === tab.id) return true;
+        if (isIncomingMain && isMainDocTab(t, projectId)) return true;
+        if (t.title.toLowerCase() === tab.title.toLowerCase()) return true;
+        return false;
+      });
+
+      let updatedTabs: EditorTab[];
+      if (existingIndex !== -1) {
+        // Tab exists: update in place, preserving existing id if incoming is an alias
+        updatedTabs = existing.map((t, idx) =>
+          idx === existingIndex
+            ? { ...t, ...tab, id: isIncomingMain && t.id.endsWith('-main') ? t.id : tab.id }
+            : t
+        );
+      } else {
+        updatedTabs = [...existing, tab];
+      }
+
+      // Purge any duplicates that may exist in the project tab list
+      const seen = new Set<string>();
+      const dedupedTabs: EditorTab[] = [];
+      for (const t of updatedTabs) {
+        const key = isMainDocTab(t, projectId) ? '__main__' : (t.id || t.title.toLowerCase());
+        if (!seen.has(key)) {
+          seen.add(key);
+          dedupedTabs.push(t);
+        }
+      }
+
       return {
         tabsByProject: {
           ...state.tabsByProject,
-          [projectId]: alreadyOpen
-            ? existing.map((t) => (t.id === tab.id ? { ...t, title: tab.title } : t))
-            : [...existing, tab],
+          [projectId]: dedupedTabs,
         },
         activeByProject: {
           ...state.activeByProject,
@@ -57,20 +97,31 @@ export const useDocumentTabsStore = create<DocumentTabsState>()((set, get) => ({
   closeTab(projectId, tabId, router) {
     const state = get();
     const currentTabs = state.tabsByProject[projectId] ?? [];
-    const idx = currentTabs.findIndex((t) => t.id === tabId);
+    const isClosingMain = isMainDocTab({ id: tabId }, projectId);
+
+    const idx = currentTabs.findIndex(
+      (t) => t.id === tabId || (isClosingMain && isMainDocTab(t, projectId)),
+    );
     if (idx === -1) return;
 
-    const remaining = currentTabs.filter((t) => t.id !== tabId);
+    const remaining = currentTabs.filter(
+      (t) => t.id !== tabId && (!isClosingMain || !isMainDocTab(t, projectId)),
+    );
     let nextActive: string | null = null;
 
-    if (state.activeByProject[projectId] === tabId) {
+    const currentActive = state.activeByProject[projectId];
+    const wasActive =
+      currentActive === tabId ||
+      (isClosingMain && currentActive && isMainDocTab({ id: currentActive }, projectId));
+
+    if (wasActive) {
       if (remaining.length > 0) {
         const nextIdx = Math.min(idx, remaining.length - 1);
         nextActive = remaining[nextIdx].id;
       }
       router(nextActive);
     } else {
-      nextActive = state.activeByProject[projectId] ?? null;
+      nextActive = currentActive ?? null;
     }
 
     set({

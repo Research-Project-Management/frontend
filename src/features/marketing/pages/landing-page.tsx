@@ -148,7 +148,7 @@ export default function LandingPage() {
               animate='visible'
               className='text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl mx-auto'
             >
-              Write, collaborate, and manage your research — all in one place.
+              Write, collaborate, and manage your research - all in one place.
               Built for teams who move fast without losing context.
             </motion.p>
 
@@ -216,7 +216,7 @@ export default function LandingPage() {
               Everything your team needs
             </h2>
             <p className='text-muted-foreground mt-2.5 text-base sm:text-lg leading-relaxed'>
-              A focused set of tools designed for research workflows — from
+              A focused set of tools designed for research workflows - from
               writing papers to managing project timelines.
             </p>
           </motion.div>

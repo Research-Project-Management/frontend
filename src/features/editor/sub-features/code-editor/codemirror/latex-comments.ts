@@ -69,7 +69,11 @@ export const commentHighlightField = StateField.define<DecorationSet>({
           }
         }
 
-        decorations = RangeSet.of(decos, true);
+        try {
+          decorations = RangeSet.of(decos, true);
+        } catch {
+          decorations = Decoration.none;
+        }
       }
     }
     return decorations;

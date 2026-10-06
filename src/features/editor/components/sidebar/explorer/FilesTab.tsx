@@ -57,6 +57,7 @@ const DeletedFilesModal = dynamic(
 );
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/services/storage.service';
+import { manuscriptService, type LinkedFileDto } from '@/features/editor/services/manuscript.service';
 
 import {
   InlineInput,
@@ -70,7 +71,7 @@ import { FileOutlineSection } from './FileOutlineSection';
 import { FileTreeToolbar } from './FileTreeToolbar';
 import { TexFileRow, displayName } from './TexFileRow';
 import { useFileUpload } from './useFileUpload';
-import { EditorEmptyState } from '../../shared';
+import { PlaneEmptyState, PlaneErrorState } from '@/shared/components/ui';
 
 const sanitizeTitle = (raw: string) => {
   const trimmed = raw.trim();
@@ -103,6 +104,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   const setTexFiles = usePageStore((s) => s.setTexFiles);
   const setSelectedAsset = usePageStore((s) => s.setSelectedAsset);
   const setMainFile = useSettingsStore((s) => s.setMainFile);
+  const configuredMainFile = useSettingsStore((s) => s.mainFile);
   const openTab = useTabsStore((s) => s.openTab);
   const { engine } = useEditorInstance();
 
@@ -148,7 +150,12 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       ? parentPage.mainFile.id
       : ((parentPage?.mainFile as string | null | undefined) ?? null);
 
-  const { data: files, isLoading } = useQuery({
+  const {
+    data: files,
+    isLoading,
+    isError: isFilesError,
+    error: filesError,
+  } = useQuery({
     ...filesQuery(parentPageId ?? ''),
     enabled: !!parentPageId,
   });
@@ -171,9 +178,30 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     isLoading: projectFilesLoading,
     uploadFile,
     createFolder,
+    moveItem,
   } = useEditorStorage(parentPageId || null, undefined, projectId || null);
 
   const queryClient = useQueryClient();
+
+  const handleMoveItem = useCallback(
+    (itemId: string, targetFolderId: string | null) => {
+      moveItem.mutate(
+        { itemId, targetFolderId },
+        {
+          onSuccess: () => {
+            if (parentPageId) {
+              queryClient.invalidateQueries({ queryKey: filesQuery(parentPageId).queryKey });
+            }
+            queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+            }
+          },
+        },
+      );
+    },
+    [moveItem, queryClient, parentPageId],
+  );
 
   // Listen for real-time WebSocket file-tree mutations from collaborating peers
   useEffect(() => {
@@ -191,6 +219,50 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       window.removeEventListener('flux:filetree-updated', handleFileTreeUpdated);
     };
   }, [queryClient, parentPageId, pageId]);
+
+  // Query external linked files (Zotero, Mendeley, remote URL)
+  const { data: linkedFiles = [] } = useQuery<LinkedFileDto[]>({
+    queryKey: ['project-linked-files', projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+      try {
+        return await manuscriptService.linkedFiles.list(projectId);
+      } catch {
+        return [];
+      }
+    },
+    enabled: Boolean(projectId),
+  });
+
+  const linkedFileMap = useMemo(() => {
+    const map = new Map<string, LinkedFileDto>();
+    linkedFiles.forEach((lf) => {
+      if (lf.name) map.set(lf.name.toLowerCase(), lf);
+      if (lf.targetBibFile) map.set(lf.targetBibFile.toLowerCase(), lf);
+    });
+    return map;
+  }, [linkedFiles]);
+
+  const handleRefreshLinkedFile = useCallback(
+    async (linkedFileId: string, fileName: string) => {
+      if (!projectId) return;
+      const toastId = toast.loading(`Refreshing ${fileName} from external source...`);
+      try {
+        await manuscriptService.linkedFiles.refresh(projectId, linkedFileId);
+        if (parentPageId) {
+          queryClient.invalidateQueries({ queryKey: filesQuery(parentPageId).queryKey });
+        }
+        queryClient.invalidateQueries({ queryKey: ['project-linked-files', projectId] });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+        }
+        toast.success(`Successfully refreshed ${fileName}`, { id: toastId });
+      } catch (err: any) {
+        toast.error(`Failed to refresh ${fileName}: ${err?.message || 'Network error'}`, { id: toastId });
+      }
+    },
+    [projectId, parentPageId, queryClient],
+  );
 
   // Hook extracting all upload orchestration, zip extraction, drag-drop
   const {
@@ -245,7 +317,11 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
   const handleFileClick = useCallback(
     (fileId: string, title: string) => {
-      const isTargetMain = fileId === pageId || fileId === parentPageId || fileId === mainFileId || title.toLowerCase() === 'main.tex';
+      const isTargetMain =
+        fileId === pageId ||
+        fileId === parentPageId ||
+        fileId === mainFileId ||
+        (configuredMainFile && (title.toLowerCase() === configuredMainFile.toLowerCase() || displayName(title).toLowerCase() === configuredMainFile.toLowerCase()));
       const currentParam = searchParams.get('file');
       if (isTargetMain && !currentParam) return;
       if (!isTargetMain && fileId === currentParam) return;
@@ -257,7 +333,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         setSearchParams({ file: fileId });
       }
     },
-    [searchParams, pageId, parentPageId, mainFileId, openTab, setSearchParams],
+    [searchParams, pageId, parentPageId, mainFileId, configuredMainFile, openTab, setSearchParams],
   );
 
   const handleStartCreate = () => {
@@ -382,7 +458,8 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         : `${targetFile.title}.tex`;
       setMainFile(fileName);
     }
-    setMainFileMutation.mutate({ pageId: parentPageId, fileId });
+    const effectiveProjectId = projectId || parentPageId;
+    setMainFileMutation.mutate({ pageId: parentPageId, fileId, projectId: effectiveProjectId });
   };
 
   const handleInsertAsset = (name: string) => {
@@ -469,6 +546,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         displayLabel: string; // clean leaf name, e.g. "01_abstract.tex"
         updatedAt?: string;
         kind: 'tex' | 'asset';
+        isRootDoc?: boolean;
         storageData?: StorageItem;
       };
 
@@ -508,7 +586,13 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     // Helper to intelligently categorize flat research files into Overleaf standard folders
     const inferResearchFolder = (filename: string): string | null => {
       const lower = filename.toLowerCase();
-      if (lower === 'main.tex' || lower === 'preamble.tex' || lower === 'references.bib') {
+      if (
+        (configuredMainFile && lower === configuredMainFile.toLowerCase()) ||
+        (parentPage?.title && lower === parentPage.title.toLowerCase()) ||
+        lower === 'main.tex' ||
+        lower === 'preamble.tex' ||
+        lower === 'references.bib'
+      ) {
         return null;
       }
       if (
@@ -578,6 +662,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
             displayLabel: rawFileName,
             updatedAt: f.updatedAt,
             kind: 'tex',
+            isRootDoc: Boolean(f.isRootDoc),
           });
         } else {
           rootFiles.push({
@@ -587,6 +672,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
             displayLabel: rawFileName,
             updatedAt: f.updatedAt,
             kind: 'tex',
+            isRootDoc: Boolean(f.isRootDoc),
           });
         }
       } else {
@@ -608,24 +694,32 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           displayLabel: displayName(leafName),
           updatedAt: f.updatedAt,
           kind: 'tex',
+          isRootDoc: Boolean(f.isRootDoc),
         });
       }
     });
 
-    // Check if main.tex already exists; do NOT duplicate parentPage if main.tex is present
-    const hasMain =
+    // Root TeX document (parentPage)
+    const rawRootTitle = (parentPage?.title || '').trim();
+    const resolvedRootTitle = rawRootTitle
+      ? (rawRootTitle.toLowerCase().endsWith('.tex') ? rawRootTitle : `${rawRootTitle}.tex`)
+      : (configuredMainFile || 'main.tex');
+
+    const hasRootDocument =
       rootFiles.some(
         (rf) =>
           rf.type === 'file' &&
-          (rf.displayLabel.toLowerCase() === 'main.tex' || rf.id === mainFileId)
-      ) || existingTexTitles.has('main.tex');
+          (rf.id === parentPage?.id ||
+            rf.id === mainFileId ||
+            rf.displayLabel.toLowerCase() === resolvedRootTitle.toLowerCase())
+      ) || existingTexTitles.has(resolvedRootTitle.toLowerCase());
 
-    if (parentPage && !hasMain) {
+    if (parentPage && !hasRootDocument) {
       rootFiles.unshift({
         type: 'file',
         id: parentPage.id,
-        title: 'main.tex',
-        displayLabel: 'main.tex',
+        title: rawRootTitle || resolvedRootTitle,
+        displayLabel: resolvedRootTitle,
         updatedAt: parentPage.updatedAt || new Date().toISOString(),
         kind: 'tex',
       });
@@ -683,10 +777,16 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       }
     });
 
-    // Sort root files: main.tex (1), preamble.tex (2), references.bib (3), others (10)
+    // Sort root files: designated main document (1), preamble.tex (2), references.bib (3), others (10)
     const getRootFilePriority = (item: Extract<FileTreeNode, { type: 'file' }>) => {
       const lower = item.displayLabel.toLowerCase();
-      if (item.id === mainFileId || lower === 'main.tex') return 1;
+      if (
+        item.id === mainFileId ||
+        (configuredMainFile && lower === configuredMainFile.toLowerCase()) ||
+        item.id === parentPageId
+      ) {
+        return 1;
+      }
       if (lower === 'preamble.tex') return 2;
       if (lower === 'references.bib') return 3;
       return 10;
@@ -739,9 +839,9 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       });
     });
 
-    // Clean document organization: Group root document files together (main.tex, preamble.tex, references.bib), then structured resource folders
+    // Clean document organization: Group root document files together (main document, preamble.tex, references.bib), then structured resource folders
     return [...rootFiles, ...sortedFolders];
-  }, [projectFiles, files, parentPage, projectId, parentPageId, mainFileId]);
+  }, [projectFiles, files, parentPage, projectId, parentPageId, mainFileId, configuredMainFile]);
 
   const displayTree = useMemo<FileTreeNode[]>(() => {
     const trimmedFilter = fileFilter.trim().toLowerCase();
@@ -813,11 +913,26 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
                   toggleFolder(node.name);
                 }
               }}
+              onDragOver={(e) => {
+                if (e.dataTransfer.types.includes('application/flux-file-id')) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.dataTransfer.dropEffect = 'move';
+                }
+              }}
+              onDrop={(e) => {
+                const internalFileId = e.dataTransfer.getData('application/flux-file-id');
+                if (internalFileId && internalFileId !== node.id) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleMoveItem(internalFileId, node.id);
+                  return;
+                }
+              }}
               className={cn(
-                'group/row relative flex h-7.5 w-full items-center gap-1.5 rounded-md px-2 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground',
+                'group/row relative flex h-7.5 w-full items-center gap-1.5 rounded-md pl-2 pr-1 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground',
                 'text-foreground hover:bg-muted/60 font-normal',
               )}
-              style={{ paddingLeft: '8px' }}
             >
               <IndentGuides depth={depth} />
               <ChevronRight
@@ -902,15 +1017,20 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
       // kind === 'tex'
       const activeId = activeFilePage?.id ?? (searchParams.get('file') || pageId);
+      const isMain = Boolean(
+        node.isRootDoc ||
+        (mainFileId && node.id === mainFileId) ||
+        (configuredMainFile && (node.displayLabel.toLowerCase() === configuredMainFile.toLowerCase() || node.title.toLowerCase() === configuredMainFile.toLowerCase())) ||
+        (!mainFileId && !configuredMainFile && (node.id === parentPageId || node.id === `${parentPageId}-main`))
+      );
       const isActive =
         node.id === activeId ||
         node.title === activeId ||
-        (activeId === pageId && (node.id === mainFileId || node.displayLabel === 'main.tex'));
-      const isMain =
-        node.id === mainFileId ||
-        node.displayLabel.toLowerCase() === 'main.tex' ||
-        node.title === 'main.tex' ||
-        node.id === `${parentPageId}-main`;
+        (activeId === pageId && isMain);
+
+      const linked =
+        linkedFileMap.get(node.displayLabel.toLowerCase()) ||
+        linkedFileMap.get(node.title.toLowerCase());
 
       return (
         <TexFileRow
@@ -920,6 +1040,8 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           displayLabel={node.displayLabel}
           isActive={isActive}
           isMain={isMain}
+          linkedFile={linked}
+          onRefreshLinked={handleRefreshLinkedFile}
           isRenaming={renamingId === node.id}
           renameValue={renameValue}
           isRenamePending={updateTitleMutation.isPending}
@@ -936,6 +1058,8 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       );
     },
     [
+      linkedFileMap,
+      handleRefreshLinkedFile,
       fileFilter,
       expandedFolders,
       toggleFolder,
@@ -943,6 +1067,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       searchParams,
       pageId,
       mainFileId,
+      configuredMainFile,
       parentPageId,
       renamingId,
       renameValue,
@@ -1001,11 +1126,31 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         {/* ── File tree ──────────────────────────────────────────────────────── */}
         {isFileTreeOpen && (
           <div
-            className="relative min-h-0 flex-1 overflow-y-auto px-2 pb-3 thin-scrollbar"
-            onDragEnter={handleDragEnter}
+            className="relative min-h-0 flex-1 overflow-y-auto pl-2 pr-1 pb-3 thin-scrollbar"
+            onDragEnter={(e) => {
+              if (!e.dataTransfer.types.includes('application/flux-file-id')) {
+                handleDragEnter(e);
+              }
+            }}
             onDragLeave={handleDragLeave}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
+            onDragOver={(e) => {
+              if (e.dataTransfer.types.includes('application/flux-file-id')) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+              } else {
+                handleDragOver(e);
+              }
+            }}
+            onDrop={(e) => {
+              const internalFileId = e.dataTransfer.getData('application/flux-file-id');
+              if (internalFileId) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleMoveItem(internalFileId, null);
+                return;
+              }
+              handleDrop(e);
+            }}
           >
             {/* Drag-over overlay */}
             {isDragging && (
@@ -1069,11 +1214,19 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
             )}
 
             {/* ── UNIFIED FILE TREE ITEMS ─────────────────────────────────────── */}
-            {!isLoading && !projectFilesLoading && (
+            {isFilesError ? (
+              <div className="py-6 px-2">
+                <PlaneErrorState
+                  title="Unable to load files"
+                  description="An issue occurred while loading project files."
+                  error={filesError || new Error('Failed to load project files')}
+                />
+              </div>
+            ) : !isLoading && !projectFilesLoading && (
               <>
                 {treeItems.length > 0 && displayTree.length === 0 ? (
                   <div className="py-6 px-2">
-                    <EditorEmptyState
+                    <PlaneEmptyState
                       variant="search"
                       isCompact
                       title="No files match"
@@ -1091,7 +1244,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
                   </div>
                 ) : treeItems.length === 0 && !isCreatingFile && !isCreatingFolder ? (
                   <div className="py-6 px-2">
-                    <EditorEmptyState
+                    <PlaneEmptyState
                       variant="files"
                       isCompact
                       title="No files yet"
@@ -1109,7 +1262,13 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         {/* ── File Outline Accordion ────────────────────────────────────────── */}
         <FileOutlineSection
           isFileTreeOpen={isFileTreeOpen}
-          docContent={currentPage?.content || ''}
+          docContent={
+            typeof currentPage?.content === 'string'
+              ? currentPage.content
+              : (currentPage?.content as any)?.source ||
+                (currentPage?.content as any)?.text ||
+                ''
+          }
         />
       </div>
 

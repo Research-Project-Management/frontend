@@ -56,7 +56,7 @@ export default function Recent() {
     {
       id: 'mock-3',
       type: 'page',
-      title: 'main.tex — ICML 2026 Camera Ready Draft',
+      title: 'main.tex - ICML 2026 Camera Ready Draft',
       emoji: '📑',
       project: { id: 'proj-icml', identifier: 'ICML', name: 'ICML 2026' },
       updatedAt: new Date(Date.now() - 1000 * 60 * 140).toISOString(),

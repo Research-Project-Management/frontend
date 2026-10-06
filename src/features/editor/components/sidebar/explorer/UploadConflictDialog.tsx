@@ -15,6 +15,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  Button,
 } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 
@@ -144,28 +146,24 @@ export function UploadConflictDialog({
                       <AlertTriangle className="size-2.5 shrink-0" />
                       Already exists
                     </span>
-                    <button
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={item.resolution === 'overwrite' ? 'default' : 'outline'}
                       onClick={() => onSetResolution(i, 'overwrite')}
-                      className={cn(
-                        'h-5 px-2 rounded-sm text-xs border transition-colors',
-                        item.resolution === 'overwrite'
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'border-border text-foreground hover:border-primary hover:bg-muted',
-                      )}
+                      className="h-5 px-2 text-xs rounded-sm cursor-pointer"
                     >
                       Overwrite
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={item.resolution === 'suffix' ? 'default' : 'outline'}
                       onClick={() => onSetResolution(i, 'suffix')}
-                      className={cn(
-                        'h-5 px-2 rounded-sm text-xs border transition-colors',
-                        item.resolution === 'suffix'
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'border-border text-foreground hover:border-primary hover:bg-muted',
-                      )}
+                      className="h-5 px-2 text-xs rounded-sm cursor-pointer"
                     >
                       Add suffix
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
@@ -177,14 +175,19 @@ export function UploadConflictDialog({
             </p>
           )}
         </div>
-        <div className="flex items-center justify-end gap-2 pt-1">
-          <button
+        <DialogFooter className="gap-2 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={onCancel}
-            className="h-8 rounded-md px-3 text-xs text-foreground transition-colors hover:bg-muted cursor-pointer"
+            className="h-8 text-xs cursor-pointer"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            size="sm"
             onClick={onConfirm}
             disabled={
               pendingUploads.length === 0 ||
@@ -192,7 +195,7 @@ export function UploadConflictDialog({
                 (p) => p.conflict === 'duplicate' && !p.resolution,
               )
             }
-            className="h-8 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-8 text-xs font-medium cursor-pointer"
           >
             {pendingUploads.some(
               (p) => p.conflict === 'duplicate' && !p.resolution,
@@ -205,8 +208,8 @@ export function UploadConflictDialog({
                       }`
                     : ''
                 }`}
-          </button>
-        </div>
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

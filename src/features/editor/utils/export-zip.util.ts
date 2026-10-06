@@ -3,6 +3,7 @@ import { fileService, documentService } from '../services/core.service';
 import { versionService } from '../services/history.service';
 import { StorageService } from '../services/storage.service';
 import { resolveFileUrl } from './editor.util';
+import { manuscriptService } from '../services/manuscript.service';
 
 export interface ExportZipOptions {
   parentPageId: string;
@@ -61,6 +62,43 @@ async function bundleAndDownloadZip({
   activeFileId,
   isArxiv = false,
 }: BundleZipOptions): Promise<string> {
+  const baseTitle = isArxiv
+    ? (projectTitle || 'manuscript')
+    : (projectTitle || 'flux-project');
+
+  const cleanTitle =
+    baseTitle
+      .replace(/[^\w\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '_') || (isArxiv ? 'manuscript' : 'flux-project');
+
+  // 1. Attempt high-performance server-side streaming ZIP export first
+  if (parentPageId) {
+    try {
+      const blob = await manuscriptService.exportImport.exportProjectZip(parentPageId, {
+        cleanArxiv: isArxiv,
+        projectName: cleanTitle,
+      });
+
+      const filename = isArxiv ? `arxiv-${cleanTitle}.zip` : `${cleanTitle}.zip`;
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+      return filename;
+    } catch (serverErr) {
+      console.warn(
+        '[export-zip] Server streaming ZIP export unavailable; falling back to client-side JSZip:',
+        serverErr,
+      );
+    }
+  }
+
+  // 2. Client-side JSZip fallback
   try {
     const zip = new JSZip();
 

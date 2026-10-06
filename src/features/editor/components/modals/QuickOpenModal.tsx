@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -9,17 +9,15 @@ import {
   BookText,
   Braces,
   Image as ImageIcon,
-  Search,
-  X,
-  FilePlus,
 } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/shared/components/ui/dialog';
-import { Input } from '@/shared/components/ui/input';
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from '@/shared/components/ui/command';
 import { cn } from '@/shared/lib/utils';
 import { usePageStore, useTabsStore } from '@/features/editor/store';
 import { filesQuery } from '@/features/editor/hooks/use-core';
@@ -58,33 +56,9 @@ export default function QuickOpenModal({ open, onOpenChange }: QuickOpenModalPro
   const rootId = currentPage?.id || params?.pageId;
 
   const { data: pageFiles = [] } = useQuery({
-    ...filesQuery(rootId ?? ''),
-    enabled: Boolean(rootId),
+    ...filesQuery(rootId || ''),
+    enabled: Boolean(rootId) && open,
   });
-
-  const [search, setSearch] = useState('');
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return pageFiles;
-    return pageFiles.filter((f: any) =>
-      (f.title || '').toLowerCase().includes(q)
-    );
-  }, [pageFiles, search]);
-
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [search]);
-
-  useEffect(() => {
-    if (open) {
-      setSearch('');
-      setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
-  }, [open]);
 
   const effectiveProjectId =
     (currentPage?.projectId as any)?.id ||
@@ -106,96 +80,48 @@ export default function QuickOpenModal({ open, onOpenChange }: QuickOpenModalPro
     onOpenChange(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setSelectedIndex((prev) => (prev + 1 < filtered.length ? prev + 1 : 0));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setSelectedIndex((prev) => (prev - 1 >= 0 ? prev - 1 : filtered.length - 1));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (filtered[selectedIndex]) {
-        handleSelectFile(filtered[selectedIndex]);
-      }
-    }
-  };
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-lg text-foreground select-none">
-        <DialogTitle className="sr-only">Quick Open File</DialogTitle>
-        <DialogDescription className="sr-only">
-          Quickly switch between project files by searching
-        </DialogDescription>
+    <CommandDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Quick Open File"
+      description="Quickly switch between project files by searching"
+      className="max-w-lg"
+    >
+      <CommandInput placeholder="Type a file name to jump to..." />
+      <CommandList className="max-h-80 p-1">
+        <CommandEmpty className="py-8 text-center text-xs text-muted-foreground">
+          No matching files found.
+        </CommandEmpty>
+        <CommandGroup heading="Project Files">
+          {pageFiles.map((file: any) => {
+            const { icon: IconComp, color } = getFileIcon(file.title || '');
+            const isActive = file.id === activeFilePage?.id;
 
-        {/* Search Bar Input */}
-        <div className="flex items-center px-4 py-3 border-b border-border bg-background gap-2.5">
-          <Search className="size-4 text-muted-foreground shrink-0" />
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder="Type a file name to jump to... (↑ ↓ to navigate)"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none border-none"
-          />
-          <kbd className="px-1.5 py-0.5 rounded-sm bg-muted border border-border text-10 font-mono text-muted-foreground shrink-0">
-            Esc to close
-          </kbd>
-        </div>
-
-        {/* Results List */}
-        <div className="max-h-72 overflow-y-auto p-2 space-y-0.5">
-          {filtered.length === 0 ? (
-            <div className="py-8 text-center text-xs text-muted-foreground">
-              No matching files found.
-            </div>
-          ) : (
-            filtered.map((file: any, index: number) => {
-              const { icon: IconComp, color } = getFileIcon(file.title || '');
-              const isSelected = index === selectedIndex;
-              const isActive = file.id === activeFilePage?.id;
-
-              return (
-                <div
-                  key={file.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => handleSelectFile(file)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleSelectFile(file);
-                    }
-                  }}
-                  onMouseEnter={() => setSelectedIndex(index)}
-                  className={cn(
-                    'flex items-center justify-between px-3 py-2 rounded-md text-xs cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                    isSelected
-                      ? 'bg-sidebar-hover text-foreground'
-                      : 'text-foreground/80 hover:bg-muted/50'
-                  )}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <IconComp className={cn('size-4 shrink-0', color)} />
-                    <span className={cn('font-medium truncate', isActive && 'text-primary font-medium')}>
-                      {file.title || 'untitled.tex'}
-                    </span>
-                  </div>
-
-                  {isActive && (
-                    <span className="text-10 font-mono px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary">
-                      Active
-                    </span>
-                  )}
+            return (
+              <CommandItem
+                key={file.id}
+                value={file.title || ''}
+                onSelect={() => handleSelectFile(file)}
+                className="flex items-center justify-between px-3 py-2 text-xs rounded-md cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <IconComp className={cn('size-4 shrink-0', color)} />
+                  <span className={cn('truncate font-medium', isActive && 'text-primary font-semibold')}>
+                    {file.title || 'untitled.tex'}
+                  </span>
                 </div>
-              );
-            })
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+
+                {isActive && (
+                  <span className="text-10 font-mono px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary shrink-0">
+                    Active
+                  </span>
+                )}
+              </CommandItem>
+            );
+          })}
+        </CommandGroup>
+      </CommandList>
+    </CommandDialog>
   );
 }

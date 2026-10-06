@@ -86,7 +86,7 @@ export default function AppLayout({
   }
 
   return (
-    <div className='h-dvh max-h-dvh flex flex-col overflow-hidden bg-muted' suppressHydrationWarning>
+    <div className='h-dvh max-h-dvh flex flex-col bg-muted relative' suppressHydrationWarning>
       <ErrorBoundary fallback={null} featureName="Toolbar">
         <Suspense fallback={null}>
           <Topbar />
@@ -98,7 +98,7 @@ export default function AppLayout({
             <Sidebar />
           </Suspense>
         </ErrorBoundary>
-        <div className='order-1 flex-1 min-w-0 rounded-md border border-border bg-background md:order-2 flex flex-col relative min-h-0'>
+        <div className='order-1 flex-1 min-w-0 rounded-md border border-border bg-background md:order-2 flex flex-col relative min-h-0 overflow-hidden'>
           <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Page Content">
             <Suspense fallback={null}>
               {children}

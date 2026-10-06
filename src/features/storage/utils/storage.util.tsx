@@ -103,7 +103,7 @@ export function getFileColorClass(type: FileType): string {
 }
 
 export function formatFileSize(bytes?: number): string {
-  if (bytes === undefined || bytes === null || Number.isNaN(bytes)) return '—';
+  if (bytes === undefined || bytes === null || Number.isNaN(bytes)) return '-';
   return formatBytes(bytes);
 }
 
@@ -125,9 +125,9 @@ export function formatMimeType(item: StorageItem): string {
 }
 
 export function formatDate(dateString?: string | null): string {
-  if (!dateString) return '—';
+  if (!dateString) return '-';
   const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return '—';
+  if (Number.isNaN(date.getTime())) return '-';
 
   const now = new Date();
   const diff = now.getTime() - date.getTime();

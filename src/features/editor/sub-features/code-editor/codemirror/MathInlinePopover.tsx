@@ -10,7 +10,9 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Sigma, Check, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { renderMathHtml } from '../../../utils/latex-converter.util';
 import type { MathPopoverTrigger } from './latex-visual-plugin';
 
@@ -77,38 +79,34 @@ export function MathInlinePopover({ trigger, onApply, onClose }: MathInlinePopov
 
   return (
     <div
-      className="fixed z-[100] w-96 rounded-lg border border-border bg-popover text-popover-foreground p-3.5 shadow-raised-300 animate-in fade-in zoom-in-95 duration-150 select-none"
+      className="fixed z-50 w-96 rounded-lg border border-border bg-popover text-popover-foreground p-3.5 shadow-raised-300 animate-in fade-in zoom-in-95 duration-150 select-none"
       style={{ top, left }}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Header */}
-      <div className="flex items-center justify-between pb-2 border-b border-border/50 text-xs font-semibold">
-        <div className="flex items-center gap-1.5 text-primary">
-          <Sigma className="size-3.5" />
-          <span>Edit LaTeX Math (In-place)</span>
-          <span className="text-11 text-muted-foreground font-normal">
-            {trigger.isDisplay ? '$$ Display $$' : '$ Inline $'}
-          </span>
-        </div>
-        <button
+      <div className="flex items-center justify-between pb-2 border-b border-border/50 text-xs">
+        <span className="font-semibold text-foreground">Edit Math</span>
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={onClose}
-          className="text-muted-foreground hover:text-foreground cursor-pointer rounded-sm p-0.5"
+          className="size-6 p-0 text-muted-foreground hover:text-foreground cursor-pointer rounded-sm"
           title="Close (Esc)"
         >
           <X className="size-3.5" />
-        </button>
+        </Button>
       </div>
 
       {/* Input */}
       <div className="my-2.5">
-        <input
+        <Input
           ref={inputRef}
           type="text"
           value={formula}
           onChange={(e) => setFormula(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="w-full px-2.5 py-1.5 rounded-md border border-input bg-background font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          className="w-full h-8 px-2.5 font-mono text-xs"
           placeholder="e.g. \frac{a}{b} + c^2 = d"
         />
       </div>
@@ -136,21 +134,24 @@ export function MathInlinePopover({ trigger, onApply, onClose }: MathInlinePopov
       <div className="flex items-center justify-between pt-1.5 border-t border-border/40 text-11 text-muted-foreground">
         <span>Press Enter to save</span>
         <div className="flex items-center gap-1.5">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={onClose}
-            className="px-2 py-1 rounded-sm hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            className="h-7 px-2.5 text-xs cursor-pointer"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            size="sm"
             onClick={handleSave}
-            className="px-2.5 py-1 rounded-sm bg-primary text-primary-foreground hover:bg-primary-hover font-medium flex items-center gap-1 transition-colors cursor-pointer"
+            className="h-7 px-2.5 text-xs font-medium flex items-center gap-1 cursor-pointer"
           >
             <Check className="size-3" />
             <span>Apply</span>
-          </button>
+          </Button>
         </div>
       </div>
     </div>

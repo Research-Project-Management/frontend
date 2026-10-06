@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { collaborationService, type CollaborationEvent } from '@/features/editor/services/collaboration.service';
 import { useSettingsStore } from '@/features/editor/store';
 import { parseSyncTeX, LatexCompilerEngine } from '@/features/editor/utils/viewer.util';
+import { fromAny, fromPartial } from '@/shared/lib/type-utilities';
 
 describe('Editor & Document End-to-End Integration Tests', () => {
   beforeEach(() => {
@@ -18,8 +19,8 @@ describe('Editor & Document End-to-End Integration Tests', () => {
       let createdUrl = '';
       class MockEventSource {
         url: string;
-        onmessage: any = null;
-        onerror: any = null;
+        onmessage: unknown = null;
+        onerror: unknown = null;
         constructor(url: string) {
           this.url = url;
           createdUrl = url;
@@ -27,7 +28,7 @@ describe('Editor & Document End-to-End Integration Tests', () => {
         close() {}
       }
       const origEventSource = globalThis.EventSource;
-      globalThis.EventSource = MockEventSource as any;
+      globalThis.EventSource = fromAny(MockEventSource);
 
       const cleanup = collaborationService.createCollaborationStream(
         null,
@@ -44,8 +45,8 @@ describe('Editor & Document End-to-End Integration Tests', () => {
       let createdUrl = '';
       class MockEventSource {
         url: string;
-        onmessage: any = null;
-        onerror: any = null;
+        onmessage: unknown = null;
+        onerror: unknown = null;
         constructor(url: string) {
           this.url = url;
           createdUrl = url;
@@ -53,7 +54,7 @@ describe('Editor & Document End-to-End Integration Tests', () => {
         close() {}
       }
       const origEventSource = globalThis.EventSource;
-      globalThis.EventSource = MockEventSource as any;
+      globalThis.EventSource = fromAny(MockEventSource);
 
       const cleanup = collaborationService.createCollaborationStream(
         'proj-456',
@@ -67,17 +68,17 @@ describe('Editor & Document End-to-End Integration Tests', () => {
     });
 
     it('should parse incoming SSE message and dispatch collaboration events', () => {
-      let messageHandler: ((e: any) => void) | null = null;
+      let messageHandler: ((e: { data: string }) => void) | null = null;
       class MockEventSource {
         url: string = '';
-        onerror: any = null;
-        set onmessage(fn: any) {
+        onerror: unknown = null;
+        set onmessage(fn: (e: { data: string }) => void) {
           messageHandler = fn;
         }
         close() {}
       }
       const origEventSource = globalThis.EventSource;
-      globalThis.EventSource = MockEventSource as any;
+      globalThis.EventSource = fromAny(MockEventSource);
 
       const receivedEvents: CollaborationEvent[] = [];
       const cleanup = collaborationService.createCollaborationStream(
@@ -90,7 +91,7 @@ describe('Editor & Document End-to-End Integration Tests', () => {
         pageId: 'page-123',
         type: 'suggestion-created',
         timestamp: Date.now(),
-        suggestion: { id: 'sugg-1', description: 'Fix typo' },
+        suggestion: fromPartial({ id: 'sugg-1', description: 'Fix typo' }),
       };
 
       expect(messageHandler).toBeDefined();
@@ -98,7 +99,7 @@ describe('Editor & Document End-to-End Integration Tests', () => {
 
       expect(receivedEvents).toHaveLength(1);
       expect(receivedEvents[0].type).toBe('suggestion-created');
-      expect(receivedEvents[0].suggestion.id).toBe('sugg-1');
+      expect(receivedEvents[0].suggestion?.id).toBe('sugg-1');
 
       cleanup();
       globalThis.EventSource = origEventSource;

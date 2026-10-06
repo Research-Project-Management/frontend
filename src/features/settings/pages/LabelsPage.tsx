@@ -355,7 +355,7 @@ export default function LabelsPage() {
 
                         {root.description && (
                           <span className="text-xs text-muted-foreground truncate hidden md:inline max-w-md">
-                            — {root.description}
+                            - {root.description}
                           </span>
                         )}
                       </div>
@@ -414,7 +414,7 @@ export default function LabelsPage() {
                               </span>
                               {child.description && (
                                 <span className="text-muted-foreground truncate hidden md:inline">
-                                  — {child.description}
+                                  - {child.description}
                                 </span>
                               )}
                             </div>

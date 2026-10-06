@@ -423,11 +423,11 @@ export function normalizeAuthors(
  * - 3+ authors: "Author 1 et al."
  */
 export function formatCreatorCompact(authors?: string[] | null): string {
-  if (!authors || authors.length === 0) return '—';
+  if (!authors || authors.length === 0) return '-';
   const clean = authors.filter(
     (a) => !/^(FOR\s+[A-Z]|BY\s+[A-Z]|Reducing\s+Internal)/i.test(a.trim()),
   );
-  if (clean.length === 0) return '—';
+  if (clean.length === 0) return '-';
   if (clean.length === 1) return clean[0];
   if (clean.length === 2) return `${clean[0]} & ${clean[1]}`;
   return `${clean[0]} et al.`;

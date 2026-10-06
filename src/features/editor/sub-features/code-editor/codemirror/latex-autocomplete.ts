@@ -14,6 +14,8 @@ import {
   Completion,
   snippet,
 } from '@codemirror/autocomplete';
+import { EditorView } from '@codemirror/view';
+import { EditorEventBus } from '@/features/editor/utils/editor.util';
 
 const COMMON_ENVIRONMENTS = [
   'equation',
@@ -101,27 +103,92 @@ const MATH_COMMANDS: Completion[] = [
   { label: '\\gamma', type: 'variable', apply: '\\gamma', detail: 'Greek gamma' },
   { label: '\\delta', type: 'variable', apply: '\\delta', detail: 'Greek delta' },
   { label: '\\epsilon', type: 'variable', apply: '\\epsilon', detail: 'Greek epsilon' },
+  { label: '\\zeta', type: 'variable', apply: '\\zeta', detail: 'Greek zeta' },
+  { label: '\\eta', type: 'variable', apply: '\\eta', detail: 'Greek eta' },
   { label: '\\theta', type: 'variable', apply: '\\theta', detail: 'Greek theta' },
+  { label: '\\kappa', type: 'variable', apply: '\\kappa', detail: 'Greek kappa' },
   { label: '\\lambda', type: 'variable', apply: '\\lambda', detail: 'Greek lambda' },
+  { label: '\\mu', type: 'variable', apply: '\\mu', detail: 'Greek mu' },
+  { label: '\\nu', type: 'variable', apply: '\\nu', detail: 'Greek nu' },
+  { label: '\\xi', type: 'variable', apply: '\\xi', detail: 'Greek xi' },
+  { label: '\\pi', type: 'variable', apply: '\\pi', detail: 'Greek pi' },
+  { label: '\\rho', type: 'variable', apply: '\\rho', detail: 'Greek rho' },
   { label: '\\sigma', type: 'variable', apply: '\\sigma', detail: 'Greek sigma' },
+  { label: '\\tau', type: 'variable', apply: '\\tau', detail: 'Greek tau' },
+  { label: '\\phi', type: 'variable', apply: '\\phi', detail: 'Greek phi' },
+  { label: '\\chi', type: 'variable', apply: '\\chi', detail: 'Greek chi' },
+  { label: '\\psi', type: 'variable', apply: '\\psi', detail: 'Greek psi' },
+  { label: '\\omega', type: 'variable', apply: '\\omega', detail: 'Greek omega' },
+  { label: '\\Gamma', type: 'variable', apply: '\\Gamma', detail: 'Greek Gamma' },
+  { label: '\\Delta', type: 'variable', apply: '\\Delta', detail: 'Greek Delta' },
+  { label: '\\Theta', type: 'variable', apply: '\\Theta', detail: 'Greek Theta' },
+  { label: '\\Lambda', type: 'variable', apply: '\\Lambda', detail: 'Greek Lambda' },
+  { label: '\\Sigma', type: 'variable', apply: '\\Sigma', detail: 'Greek Sigma' },
+  { label: '\\Phi', type: 'variable', apply: '\\Phi', detail: 'Greek Phi' },
+  { label: '\\Psi', type: 'variable', apply: '\\Psi', detail: 'Greek Psi' },
+  { label: '\\Omega', type: 'variable', apply: '\\Omega', detail: 'Greek Omega' },
   { label: '\\infty', type: 'constant', apply: '\\infty', detail: 'Infinity symbol' },
   { label: '\\partial', type: 'operator', apply: '\\partial', detail: 'Partial derivative' },
+  { label: '\\nabla', type: 'operator', apply: '\\nabla', detail: 'Nabla / Del operator' },
   { label: '\\mathbf', type: 'function', apply: snippet('\\mathbf{${1:x}}'), detail: 'Bold math' },
   { label: '\\mathcal', type: 'function', apply: snippet('\\mathcal{${1:L}}'), detail: 'Calligraphic font' },
   { label: '\\mathbb', type: 'function', apply: snippet('\\mathbb{${1:R}}'), detail: 'Blackboard bold' },
+  { label: '\\mathrm', type: 'function', apply: snippet('\\mathrm{${1:text}}'), detail: 'Roman math font' },
+  { label: '\\mathit', type: 'function', apply: snippet('\\mathit{${1:text}}'), detail: 'Italic math font' },
+  { label: '\\forall', type: 'operator', apply: '\\forall ', detail: 'Universal quantifier' },
+  { label: '\\exists', type: 'operator', apply: '\\exists ', detail: 'Existential quantifier' },
+  { label: '\\in', type: 'operator', apply: '\\in ', detail: 'Element of' },
+  { label: '\\notin', type: 'operator', apply: '\\notin ', detail: 'Not element of' },
+  { label: '\\subset', type: 'operator', apply: '\\subset ', detail: 'Subset' },
+  { label: '\\subseteq', type: 'operator', apply: '\\subseteq ', detail: 'Subset or equal' },
+  { label: '\\approx', type: 'operator', apply: '\\approx ', detail: 'Approximately equal' },
+  { label: '\\equiv', type: 'operator', apply: '\\equiv ', detail: 'Equivalent / identical' },
+  { label: '\\neq', type: 'operator', apply: '\\neq ', detail: 'Not equal' },
+  { label: '\\le', type: 'operator', apply: '\\le ', detail: 'Less than or equal' },
+  { label: '\\ge', type: 'operator', apply: '\\ge ', detail: 'Greater than or equal' },
+  { label: '\\times', type: 'operator', apply: '\\times ', detail: 'Multiplication sign' },
+  { label: '\\cdot', type: 'operator', apply: '\\cdot ', detail: 'Center dot' },
+  { label: '\\dots', type: 'constant', apply: '\\dots', detail: 'Ellipsis' },
+  { label: '\\cdots', type: 'constant', apply: '\\cdots', detail: 'Centered ellipsis' },
+  { label: '\\ldots', type: 'constant', apply: '\\ldots', detail: 'Low ellipsis' },
+  { label: '\\left', type: 'keyword', apply: snippet('\\left( ${1:content} \\right)'), detail: 'Dynamic auto-sized brackets' },
+  { label: '\\hat', type: 'function', apply: snippet('\\hat{${1:x}}'), detail: 'Hat accent' },
+  { label: '\\bar', type: 'function', apply: snippet('\\bar{${1:x}}'), detail: 'Bar accent' },
+  { label: '\\tilde', type: 'function', apply: snippet('\\tilde{${1:x}}'), detail: 'Tilde accent' },
+  { label: '\\vec', type: 'function', apply: snippet('\\vec{${1:x}}'), detail: 'Vector accent' },
 ];
 
 const GENERAL_COMMANDS: Completion[] = [
   { label: '\\section', type: 'keyword', apply: snippet('\\section{${1:Title}}\n'), detail: 'Section heading' },
   { label: '\\subsection', type: 'keyword', apply: snippet('\\subsection{${1:Title}}\n'), detail: 'Subsection heading' },
   { label: '\\subsubsection', type: 'keyword', apply: snippet('\\subsubsection{${1:Title}}\n'), detail: 'Subsubsection heading' },
+  { label: '\\paragraph', type: 'keyword', apply: snippet('\\paragraph{${1:Title}} '), detail: 'Paragraph heading' },
   { label: '\\textbf', type: 'function', apply: snippet('\\textbf{${1:text}}'), detail: 'Bold text' },
   { label: '\\textit', type: 'function', apply: snippet('\\textit{${1:text}}'), detail: 'Italic text' },
   { label: '\\underline', type: 'function', apply: snippet('\\underline{${1:text}}'), detail: 'Underline text' },
   { label: '\\texttt', type: 'function', apply: snippet('\\texttt{${1:code}}'), detail: 'Monospace code' },
+  { label: '\\emph', type: 'function', apply: snippet('\\emph{${1:text}}'), detail: 'Emphasized text' },
+  { label: '\\footnote', type: 'function', apply: snippet('\\footnote{${1:note}}'), detail: 'Footnote text' },
+  { label: '\\item', type: 'keyword', apply: '\\item ', detail: 'List item' },
+  { label: '\\centering', type: 'keyword', apply: '\\centering\n', detail: 'Center alignment' },
+  { label: '\\raggedright', type: 'keyword', apply: '\\raggedright\n', detail: 'Left alignment' },
+  { label: '\\raggedleft', type: 'keyword', apply: '\\raggedleft\n', detail: 'Right alignment' },
+  { label: '\\newpage', type: 'keyword', apply: '\\newpage\n', detail: 'Page break' },
+  { label: '\\clearpage', type: 'keyword', apply: '\\clearpage\n', detail: 'Flush floats & page break' },
+  { label: '\\appendix', type: 'keyword', apply: '\\appendix\n', detail: 'Start appendix sections' },
+  { label: '\\tableofcontents', type: 'keyword', apply: '\\tableofcontents\n', detail: 'Table of contents' },
+  { label: '\\listoffigures', type: 'keyword', apply: '\\listoffigures\n', detail: 'List of figures' },
+  { label: '\\listoftables', type: 'keyword', apply: '\\listoftables\n', detail: 'List of tables' },
+  { label: '\\maketitle', type: 'keyword', apply: '\\maketitle\n', detail: 'Generate title block' },
+  { label: '\\title', type: 'function', apply: snippet('\\title{${1:Title}}'), detail: 'Document title' },
+  { label: '\\author', type: 'function', apply: snippet('\\author{${1:Authors}}'), detail: 'Document authors' },
+  { label: '\\date', type: 'function', apply: snippet('\\date{${1:\\today}}'), detail: 'Document date' },
   { label: '\\usepackage', type: 'keyword', apply: snippet('\\usepackage{${1:package}}'), detail: 'Import package' },
   { label: '\\caption', type: 'function', apply: snippet('\\caption{${1:caption}}'), detail: 'Table/Figure caption' },
   { label: '\\label', type: 'function', apply: snippet('\\label{${1:key}}'), detail: 'Cross-reference label' },
+  { label: '\\bibliography', type: 'function', apply: snippet('\\bibliography{${1:references}}'), detail: 'BibTeX bibliography file' },
+  { label: '\\bibliographystyle', type: 'function', apply: snippet('\\bibliographystyle{${1:plain}}'), detail: 'BibTeX style' },
+  { label: '\\addbibresource', type: 'function', apply: snippet('\\addbibresource{${1:references.bib}}'), detail: 'biblatex resource' },
 ];
 
 export type LatexBibEntryInput =
@@ -135,6 +202,7 @@ export type LatexBibEntryInput =
       author?: string;
       year?: string | number;
       journal?: string;
+      source?: 'bib' | 'library' | 'server' | string;
     };
 
 export type LatexFileInput =
@@ -167,56 +235,160 @@ export function createLatexCompletionSource(
       return { from, options, validFor: /^[a-zA-Z0-9*_-]*$/ };
     }
 
-    // 2. Check for \cite{...}
-    const citeMatch = context.matchBefore(/\\cite\{[a-zA-Z0-9_-]*/);
+    // 2. Check for citation commands (\cite, \citep, \citet, \autocite, \parencite, \nocite, etc.)
+    const citeMatch = context.matchBefore(
+      /\\(?:auto|paren|text|foot|no)?cite(?:p|t|alt|alp|author|year|date|num)?\*?(?:\[[^\]]*\])*\{[^}]*$/i,
+    );
     if (citeMatch) {
-      const from = citeMatch.from + 6; // after "\cite{"
+      const matchText = citeMatch.text;
+      const lastSep = Math.max(matchText.lastIndexOf('{'), matchText.lastIndexOf(','));
+      const afterSep = matchText.slice(lastSep + 1);
+      const leadingSpaces = afterSep.length - afterSep.trimStart().length;
+      const searchQuery = afterSep.trimStart().toLowerCase();
+      const from = citeMatch.from + lastSep + 1 + leadingSpaces;
 
-      const docBibMap = new Map<string, { key: string; detail?: string; info?: string }>();
+      interface NormalizedCiteItem {
+        key: string;
+        title?: string;
+        authors: string[];
+        authorStr?: string;
+        year?: string;
+        journal?: string;
+        source: 'bib' | 'library' | 'server';
+      }
+
+      const allBibItems = new Map<string, NormalizedCiteItem>();
+
       for (const item of rawKeys) {
         if (typeof item === 'string' && item) {
-          docBibMap.set(item.toLowerCase(), { key: item, detail: 'Citation key' });
+          allBibItems.set(item.toLowerCase(), {
+            key: item,
+            authors: [],
+            source: 'bib',
+          });
         } else if (item && typeof item === 'object') {
           const key = item.key || item.citationKey || item.id;
           if (key) {
-            const authorStr = item.author || (Array.isArray(item.authors) ? item.authors.join(', ') : '');
-            const yearStr = item.year ? ` (${item.year})` : '';
-            const detail = (authorStr + yearStr).trim() || 'Citation key';
-            docBibMap.set(key.toLowerCase(), {
+            const authors = Array.isArray(item.authors)
+              ? item.authors
+              : item.author
+              ? [item.author]
+              : [];
+            const authorStr =
+              authors.length > 0
+                ? authors.length <= 2
+                  ? authors.join(' & ')
+                  : `${authors[0]} et al.`
+                : '';
+            const year = item.year ? String(item.year) : undefined;
+            allBibItems.set(key.toLowerCase(), {
               key,
-              detail,
-              info: item.title || undefined,
+              title: item.title,
+              authors,
+              authorStr,
+              year,
+              journal: item.journal,
+              source: (item.source as 'bib' | 'library' | 'server') || 'bib',
             });
           }
         }
       }
 
       // Also extract any \bibitem{...} from the document
-      const bibitemRegex = /\\bibitem\{([^}]+)\}/g;
+      const bibitemRegex = /\\bibitem(?:\[[^\]]*\])?\{([^}]+)\}/g;
       let bMatch: RegExpExecArray | null;
       while ((bMatch = bibitemRegex.exec(docText)) !== null) {
-        const key = bMatch[1];
-        if (!docBibMap.has(key.toLowerCase())) {
-          docBibMap.set(key.toLowerCase(), { key, detail: 'Document bibliography' });
+        const key = bMatch[1]?.trim();
+        if (key && !allBibItems.has(key.toLowerCase())) {
+          allBibItems.set(key.toLowerCase(), {
+            key,
+            authors: [],
+            authorStr: 'Document bibliography',
+            source: 'bib',
+          });
         }
       }
 
-      const options: Completion[] = Array.from(docBibMap.values()).map((entry) => ({
-        label: entry.key,
-        type: 'constant',
-        apply: `${entry.key}}`,
-        detail: entry.detail,
-        info: entry.info,
-        boost: 1,
-      }));
+      const itemsList = Array.from(allBibItems.values());
 
-      return { from, options, validFor: /^[a-zA-Z0-9_-]*$/ };
+      // Multi-field search and relevance ranking
+      let matchedItems: Array<{ item: NormalizedCiteItem; score: number }> = [];
+
+      if (!searchQuery) {
+        matchedItems = itemsList.map((item) => ({
+          item,
+          score: item.source === 'bib' ? 2 : 1,
+        }));
+      } else {
+        for (const item of itemsList) {
+          const lowerKey = item.key.toLowerCase();
+          const lowerTitle = item.title?.toLowerCase() || '';
+          const authorMatch = item.authors.some((a) => a.toLowerCase().includes(searchQuery));
+          const yearMatch = item.year?.includes(searchQuery);
+
+          let score = 0;
+          if (lowerKey === searchQuery) {
+            score = 100;
+          } else if (lowerKey.startsWith(searchQuery)) {
+            score = 80;
+          } else if (lowerKey.includes(searchQuery)) {
+            score = 60;
+          } else if (authorMatch) {
+            score = 40;
+          } else if (lowerTitle.includes(searchQuery)) {
+            score = 30;
+          } else if (yearMatch) {
+            score = 20;
+          }
+
+          if (score > 0) {
+            if (item.source === 'bib') score += 5; // Slight bias toward project references
+            matchedItems.push({ item, score });
+          }
+        }
+        matchedItems.sort((a, b) => b.score - a.score);
+      }
+
+      const options: Completion[] = matchedItems.map(({ item }) => {
+        const isProject = item.source === 'bib';
+        const authorYear = [item.authorStr, item.year ? `(${item.year})` : ''].filter(Boolean).join(' ');
+        const detail = authorYear || (isProject ? 'Project Reference' : 'Library Reference');
+
+        return {
+          label: item.key,
+          type: isProject ? 'constant' : 'variable',
+          detail,
+          info: item.title ? `${item.title}${item.journal ? `\n\nVenue: ${item.journal}` : ''}` : undefined,
+          section: isProject
+            ? { name: 'FROM YOUR PROJECT', rank: 1 }
+            : { name: 'FROM LIBRARY', rank: 2 },
+          boost: isProject ? 2 : 1,
+          apply: (view: EditorView, _completion: Completion, applyFrom: number, applyTo: number) => {
+            const nextChar = view.state.doc.sliceString(applyTo, applyTo + 1);
+            const insertText = nextChar === '}' || nextChar === ',' ? item.key : `${item.key}}`;
+            view.dispatch({
+              changes: { from: applyFrom, to: applyTo, insert: insertText },
+              selection: { anchor: applyFrom + insertText.length },
+            });
+            EditorEventBus.emit('flux:insert-citation', {
+              bibKey: item.key,
+              textInserted: true,
+            });
+          },
+        };
+      });
+
+      return {
+        from,
+        options,
+        filter: false,
+      };
     }
 
-    // 3. Check for \ref{...}
-    const refMatch = context.matchBefore(/\\ref\{[a-zA-Z0-9:_-]*/);
+    // 3. Check for cross-references (\ref, \pageref, \eqref, \autoref, \cref, etc.)
+    const refMatch = context.matchBefore(/\\(?:eq|page|auto|c|C|name)?ref\{[a-zA-Z0-9:_-]*/);
     if (refMatch) {
-      const from = refMatch.from + 5; // after "\ref{"
+      const from = refMatch.text.lastIndexOf('{') + refMatch.from + 1;
       const labels = new Set<string>();
       const labelRegex = /\\label\{([^}]+)\}/g;
       let lMatch: RegExpExecArray | null;
@@ -227,7 +399,14 @@ export function createLatexCompletionSource(
       const options: Completion[] = Array.from(labels).map((lbl) => ({
         label: lbl,
         type: 'variable',
-        apply: `${lbl}}`,
+        apply: (view: EditorView, _completion: Completion, applyFrom: number, applyTo: number) => {
+          const nextChar = view.state.doc.sliceString(applyTo, applyTo + 1);
+          const insertText = nextChar === '}' ? lbl : `${lbl}}`;
+          view.dispatch({
+            changes: { from: applyFrom, to: applyTo, insert: insertText },
+            selection: { anchor: applyFrom + insertText.length },
+          });
+        },
         detail: 'Cross-reference label',
       }));
 
@@ -293,15 +472,34 @@ export function createLatexCompletionSource(
       return { from, options, validFor: /^[a-zA-Z0-9_\-\./]*$/ };
     }
 
-    // 7. Standard command matching after '\'
+    // 7. Standard & user-defined command matching after '\'
     const slashMatch = context.matchBefore(/\\[a-zA-Z]*/);
     if (!slashMatch || (slashMatch.from === slashMatch.to && !context.explicit)) {
       return null;
     }
 
+    // Scan document for user-defined macros: \newcommand{\name}, \renewcommand{\name}, \DeclareMathOperator{\name}, \def\name
+    const userMacros: Completion[] = [];
+    const macroRegex = /\\(?:(?:re)?newcommand\*?|DeclareMathOperator\*?)\s*(?:\{?\\([a-zA-Z]+)\}?)|\\def\\([a-zA-Z]+)/g;
+    let mMatch: RegExpExecArray | null;
+    const seenMacros = new Set<string>();
+    while ((mMatch = macroRegex.exec(docText)) !== null) {
+      const macroName = mMatch[1] || mMatch[2];
+      if (macroName && !seenMacros.has(macroName)) {
+        seenMacros.add(macroName);
+        userMacros.push({
+          label: `\\${macroName}`,
+          type: 'function',
+          detail: 'User-defined macro',
+          section: { name: 'USER DEFINED', rank: 0 },
+          boost: 3,
+        });
+      }
+    }
+
     return {
       from: slashMatch.from,
-      options: [...GENERAL_COMMANDS, ...MATH_COMMANDS],
+      options: [...userMacros, ...GENERAL_COMMANDS, ...MATH_COMMANDS],
       validFor: /^\\[a-zA-Z]*$/,
     };
   };

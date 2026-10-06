@@ -48,7 +48,11 @@ export const useDocumentCompilerStore = create<DocumentCompilerState>()((set, ge
 
   markDirty(fileId, content) {
     set((s) => {
-      if (s.dirtyContentMap.get(fileId) === content) return s;
+      // If already dirty, update buffer in-place without triggering cascade store subscriber re-renders
+      if (s.dirtyContentMap.has(fileId)) {
+        s.dirtyContentMap.set(fileId, content);
+        return s;
+      }
       const next = new Map(s.dirtyContentMap);
       next.set(fileId, content);
       return { dirtyContentMap: next };

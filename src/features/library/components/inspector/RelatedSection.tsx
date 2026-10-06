@@ -16,6 +16,7 @@ import { useLibraryViewStore } from '../../store';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Input } from '@/shared/components/ui/input';
+import { Separator } from '@/shared/components/ui/separator';
 import {
   Tooltip,
   TooltipTrigger,
@@ -368,7 +369,7 @@ export default function RelatedSection({
       <Dialog open={isModalOpen} onOpenChange={setModalOpen}>
         <DialogContent
           onKeyDown={handleDialogKeyDown}
-          className="sm:max-w-[780px] w-[95vw] bg-background text-foreground p-0 gap-0 border border-border rounded-xl shadow-raised-200 overflow-hidden flex flex-col h-[580px] max-h-[85vh]"
+          className="sm:max-w-[780px] w-full sm:w-[95vw] h-[92vh] sm:h-[580px] max-h-[92vh] sm:max-h-[85vh] bg-background text-foreground p-0 gap-0 border border-border rounded-xl shadow-raised-200 overflow-hidden flex flex-col"
         >
           {/* Header */}
           <DialogHeader className="px-5 py-3.5 border-b border-border/60 bg-background space-y-1 shrink-0">
@@ -386,23 +387,25 @@ export default function RelatedSection({
             </DialogDescription>
           </DialogHeader>
 
-          {/* Body: Left Sidebar (Collections) + Right Main Panel (References) */}
-          <div className="flex-1 flex min-h-0 overflow-hidden">
-            {/* Left Sidebar: Collections with soft surface tint and live counts */}
-            <div className="w-52 sm:w-56 shrink-0 border-r border-border/50 bg-muted/20 flex flex-col min-h-0 select-none">
-              <div className="px-3 pt-3 pb-1.5 text-11 font-medium text-muted-foreground">
-                Collections
+          {/* Body: Responsive Layout - Top Filter Strip on Mobile, Left Sidebar on Desktop */}
+          <div className="flex-1 flex flex-col sm:flex-row min-h-0 overflow-hidden">
+            {/* Collections: Horizontal scroll on mobile, Left Sidebar on desktop */}
+            <div className="w-full sm:w-56 shrink-0 border-b sm:border-b-0 sm:border-r border-border/50 bg-muted/20 flex flex-col min-h-0 select-none">
+              <div className="px-3 pt-2.5 pb-1 sm:pt-3 sm:pb-1.5 text-11 font-medium text-muted-foreground flex items-center justify-between">
+                <span>Collections</span>
+                <span className="sm:hidden text-10 text-muted-foreground/70">Swipe to filter</span>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5 thin-scrollbar">
+              <div className="flex flex-row sm:flex-col overflow-x-auto sm:overflow-y-auto p-1.5 gap-1 sm:gap-0.5 thin-scrollbar shrink-0">
                 {/* All Items Option */}
                 <button
                   type="button"
+                  aria-pressed={selectedCollectionFilter === 'all'}
                   onClick={() => setSelectedCollectionFilter('all')}
                   className={cn(
-                    'w-full text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none',
+                    'text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none shrink-0 sm:shrink sm:w-full',
                     selectedCollectionFilter === 'all'
-                      ? 'bg-muted text-foreground font-medium'
+                      ? 'bg-muted text-foreground font-medium shadow-2xs'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 font-normal',
                   )}
                 >
@@ -411,7 +414,7 @@ export default function RelatedSection({
                     <span className="truncate">All Items</span>
                   </div>
                   {collectionCounts.all > 0 && (
-                    <span className="text-10 font-mono text-muted-foreground tabular-nums shrink-0">
+                    <span className="text-10 font-mono text-muted-foreground tabular-nums shrink-0 ml-1">
                       {collectionCounts.all}
                     </span>
                   )}
@@ -426,15 +429,16 @@ export default function RelatedSection({
                     <button
                       key={col.id}
                       type="button"
+                      aria-pressed={isSelected}
                       onClick={() => setSelectedCollectionFilter(col.id)}
                       className={cn(
-                        'w-full text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none',
+                        'text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none shrink-0 sm:shrink sm:w-full',
                         isSelected
-                          ? 'bg-muted text-foreground font-medium'
+                          ? 'bg-muted text-foreground font-medium shadow-2xs'
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 font-normal',
                       )}
                       title={col.name}
-                      aria-label={col.name}
+                      aria-label={`${col.name} (${count} items)`}
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
                         <Folder
@@ -445,7 +449,7 @@ export default function RelatedSection({
                         <span className="truncate">{col.name}</span>
                       </div>
                       {count > 0 && (
-                        <span className="text-10 font-mono text-muted-foreground tabular-nums shrink-0">
+                        <span className="text-10 font-mono text-muted-foreground tabular-nums shrink-0 ml-1">
                           {count}
                         </span>
                       )}
@@ -457,41 +461,45 @@ export default function RelatedSection({
 
             {/* Right Main Panel: Command Search + Inset Divider + References List */}
             <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-background">
-              {/* Seamless Command Search Bar: no full-bleed harsh line */}
+              {/* Seamless Command Search Bar */}
               <div className="px-3.5 pt-3 pb-2 flex items-center shrink-0">
                 <div className="relative w-full max-w-md flex items-center">
                   <Search
                     className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/60 pointer-events-none"
                     strokeWidth={1.5}
                   />
-                  <input
+                  <Input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search by title, author, venue, year..."
                     aria-label="Search references"
-                    className="w-full h-8.5 pl-9 pr-8 text-13 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/35 focus:bg-background focus:border-border text-foreground placeholder:text-muted-foreground/60 outline-none transition-all shadow-none"
-                    autoFocus
+                    className="w-full h-8.5 pl-9 pr-9 text-13 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/35 focus:bg-background focus:border-border text-foreground placeholder:text-muted-foreground/60 outline-none transition-all shadow-none"
                   />
                   {searchQuery && (
                     <button
                       type="button"
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center text-muted-foreground/60 hover:text-foreground cursor-pointer transition-colors"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center text-muted-foreground/60 hover:text-foreground cursor-pointer transition-colors rounded-md"
                       title="Clear search"
                       aria-label="Clear search"
                     >
-                      <X className="size-3" strokeWidth={1.5} />
+                      <X className="size-3.5" strokeWidth={1.5} />
                     </button>
                   )}
                 </div>
               </div>
 
               {/* Inset non-touching divider line between search and list */}
-              <div className="mx-3.5 border-b border-border/40 shrink-0" />
+              <Separator className="mx-3.5 shrink-0" />
 
-              {/* Scrollable References List */}
-              <div className="flex-1 overflow-y-auto px-2.5 py-2 min-h-0 thin-scrollbar">
+              {/* Scrollable References List with live region */}
+              <div
+                role="region"
+                aria-label="Available references list"
+                aria-live="polite"
+                className="flex-1 overflow-y-auto px-2.5 py-2 min-h-0 thin-scrollbar"
+              >
                 {availableItems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground space-y-2 text-center px-4">
                     <div className="size-9 rounded-full bg-muted flex items-center justify-center">
@@ -529,29 +537,16 @@ export default function RelatedSection({
                       return (
                         <React.Fragment key={targetItem.id}>
                           {index > 0 && <div className="mx-3 my-0.5 border-b border-border/30" />}
-                          <div
-                            role="checkbox"
-                            aria-checked={isChecked}
-                            tabIndex={0}
-                            onClick={() => handleToggleSelect(targetItem.id)}
-                            onKeyDown={(e) => {
-                              if (e.key === ' ' || e.key === 'Enter') {
-                                e.preventDefault();
-                                handleToggleSelect(targetItem.id);
-                              }
-                            }}
+                          <label
                             className={cn(
-                              'group relative w-full text-left px-3 py-2 rounded-md text-13 flex items-center gap-2.5 cursor-pointer transition-colors duration-150 select-none focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring',
+                              'group relative w-full text-left px-3 py-2 rounded-md text-13 flex items-center gap-2.5 cursor-pointer transition-colors duration-150 select-none focus-within:ring-1 focus-within:ring-ring',
                               isChecked
                                 ? 'bg-primary/[0.06] text-primary'
                                 : 'hover:bg-muted/60 text-foreground',
                             )}
                           >
-                            {/* Checkbox with click propagation stop */}
-                            <div
-                              className="shrink-0 flex items-center"
-                              onClick={(e) => e.stopPropagation()}
-                            >
+                            {/* Checkbox with direct binding */}
+                            <div className="shrink-0 flex items-center">
                               <Checkbox
                                 checked={isChecked}
                                 onCheckedChange={() => handleToggleSelect(targetItem.id)}
@@ -581,7 +576,7 @@ export default function RelatedSection({
                                 </span>
                               </div>
                             ) : null}
-                          </div>
+                          </label>
                         </React.Fragment>
                       );
                     })}
@@ -617,9 +612,9 @@ export default function RelatedSection({
               <span>
                 {isLinking
                   ? 'Linking...'
-                  : selectedTargetIds.size > 1
-                  ? 'Link Items'
-                  : 'Link Item'}
+                  : selectedTargetIds.size > 0
+                  ? `Link ${selectedTargetIds.size} ${selectedTargetIds.size === 1 ? 'Reference' : 'References'}`
+                  : 'Link References'}
               </span>
             </Button>
           </div>

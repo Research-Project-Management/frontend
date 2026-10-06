@@ -14,11 +14,14 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/shared/components/ui/dialog';
 import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
+import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 
 export interface ShortcutItem {
@@ -142,8 +145,8 @@ export const SHORTCUT_LIST: ShortcutItem[] = [
     id: 'goto-line',
     label: 'Go to Line',
     category: 'Navigation',
-    keys: ['Ctrl', 'G'],
-    description: 'Jump to line number',
+    keys: ['Ctrl', 'Shift', 'L'],
+    description: 'Jump to line number (or Ctrl+G)',
   },
   {
     id: 'command-palette',
@@ -204,24 +207,15 @@ export default function KeyboardShortcutsModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-2xl rounded-lg text-foreground select-none">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background">
-          <div>
-            <DialogTitle className="text-base font-semibold flex items-center gap-2">
-              <Keyboard className="size-4 text-foreground" />
-              Keyboard Shortcuts Cheat Sheet
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-              Quick reference for productivity hotkeys matching Overleaf and modern LaTeX IDEs.
-            </DialogDescription>
-          </div>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
+        <DialogHeader className="px-6 py-4 border-b border-border bg-background">
+          <DialogTitle className="text-base font-semibold flex items-center gap-2">
+            <Keyboard className="size-4 text-foreground" />
+            Keyboard Shortcuts Cheat Sheet
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+            Quick reference for productivity hotkeys matching Overleaf and modern LaTeX IDEs.
+          </DialogDescription>
+        </DialogHeader>
 
         {/* Search & Category Filter */}
         <div className="p-4 border-b border-border bg-background flex flex-col sm:flex-row gap-3 items-center justify-between">
@@ -303,13 +297,15 @@ export default function KeyboardShortcutsModal({
         {/* Footer */}
         <div className="px-6 py-3 bg-background border-t border-border flex items-center justify-between text-11 text-muted-foreground">
           <span>Tip: On macOS, use ⌘ Command instead of Ctrl.</span>
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => onOpenChange(false)}
-            className="px-3 py-1 text-xs font-medium rounded-md hover:bg-muted transition-colors cursor-pointer text-foreground border border-border outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="h-7 text-xs font-medium cursor-pointer"
           >
             Close
-          </button>
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

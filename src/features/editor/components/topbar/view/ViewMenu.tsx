@@ -21,6 +21,7 @@ import {
 import { cn } from "@/shared/lib/utils";
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useSettingsStore, useCompileStore } from '@/features/editor/store';
+import { useShallow } from 'zustand/react/shallow';
 
 function PenIcon({ className }: { className?: string }) {
   return (
@@ -107,9 +108,23 @@ export default function ViewMenu() {
     toggleShowEditorTabs,
     showEquationPreview,
     toggleShowEquationPreview,
-  } = useSettingsStore();
+  } = useSettingsStore(
+    useShallow((s) => ({
+      layout: s.layout,
+      setLayout: s.setLayout,
+      reviewMode: s.reviewMode,
+      setReviewMode: s.setReviewMode,
+      showBreadcrumbs: s.showBreadcrumbs,
+      toggleShowBreadcrumbs: s.toggleShowBreadcrumbs,
+      showEditorTabs: s.showEditorTabs,
+      toggleShowEditorTabs: s.toggleShowEditorTabs,
+      showEquationPreview: s.showEquationPreview,
+      toggleShowEquationPreview: s.toggleShowEquationPreview,
+    }))
+  );
 
-  const { pdfUrl, setIsViewerPoppedOut } = useCompileStore();
+  const pdfUrl = useCompileStore((s) => s.pdfUrl);
+  const setIsViewerPoppedOut = useCompileStore((s) => s.setIsViewerPoppedOut);
   const params = useParams<{ projectId?: string; pageId?: string }>();
 
   const handleOpenPdfSeparateTab = () => {
@@ -150,7 +165,7 @@ export default function ViewMenu() {
         View
       </MenubarTrigger>
 
-      <MenubarContent className="min-w-60 text-xs z-[9999]">
+      <MenubarContent className="min-w-60 text-xs">
         {/* ── Section 1: Layout options ── */}
         <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none">
           Layout options
@@ -244,7 +259,7 @@ export default function ViewMenu() {
           <MenubarSubTrigger className="cursor-pointer">
             <span>Editing mode</span>
           </MenubarSubTrigger>
-          <MenubarSubContent className="min-w-40 text-xs z-[9999]">
+          <MenubarSubContent className="min-w-40 text-xs">
             <MenubarItem
               onClick={() => setReviewMode(false)}
               className={cn(
@@ -335,7 +350,7 @@ export default function ViewMenu() {
           <MenubarSubTrigger className="cursor-pointer">
             <span>PDF zoom</span>
           </MenubarSubTrigger>
-          <MenubarSubContent className="min-w-36 text-xs z-[9999]">
+          <MenubarSubContent className="min-w-36 text-xs">
             <MenubarItem
               onClick={() => EditorEventBus.emit('flux:zoom-in')}
               className="cursor-pointer"

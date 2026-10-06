@@ -250,22 +250,25 @@ export const LatexCompilerEngine = {
     const flushedFileIds: string[] = dirtyFiles.map((f) => f.fileId);
     const flushErrors: Array<{ fileId: string; error: unknown }> = [];
 
-    // Optional background sync if dirty files exist (non-blocking)
-    if (dirtyFiles.length > 0) {
+    // 2. Pre-compile Synchronous Flush: Flush in-flight buffer and dirty files
+    if (dirtyFiles.length > 0 || projectId) {
       onPhaseChange?.("flushing");
-      // Background non-blocking flush to ensure database sync eventually
-      if (projectId) {
-        manuscriptService.updater.flushProject(projectId).catch(() => {});
+      try {
+        const flushTasks: Promise<any>[] = [];
+        if (projectId) {
+          flushTasks.push(manuscriptService.updater.flushProject(projectId).catch(() => {}));
+        }
+        for (const { fileId, content } of dirtyFiles) {
+          flushTasks.push(
+            flushPageContent(fileId, content).catch((err: unknown) => {
+              logger.debug(`[LatexCompilerEngine] Flush notice on ${fileId}`, { error: err });
+            }),
+          );
+        }
+        await Promise.allSettled(flushTasks);
+      } catch (err: unknown) {
+        logger.debug("[LatexCompilerEngine] Flush warning", { error: err });
       }
-      Promise.all(
-        dirtyFiles.map(async ({ fileId, content }) => {
-          try {
-            await flushPageContent(fileId, content);
-          } catch (err: unknown) {
-            logger.debug(`[LatexCompilerEngine] Background flush notice on ${fileId}`, { error: err });
-          }
-        }),
-      ).catch(() => {});
     }
 
     // 3. Compile
@@ -280,10 +283,6 @@ export const LatexCompilerEngine = {
         sourceContent = item.content;
       }
       filesMap[item.fileId] = item.content;
-    }
-
-    if (!sourceContent && dirtyFiles.length > 0) {
-      sourceContent = dirtyFiles[0].content;
     }
 
     const payload: CompileLatexPayload = {

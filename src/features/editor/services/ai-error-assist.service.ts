@@ -124,14 +124,61 @@ function heuristicFallback(params: AiErrorFixParams): AiErrorFixResult {
     };
   }
 
-  // Generic fallback
+  // 5. Missing \begin{document}
+  if (/missing \\begin\{document\}/i.test(errorMessage) || /missing \\begin\{document\}/i.test(detail)) {
+    return {
+      explanation: "The document environment has not been opened. Add '\\begin{document}' after your preamble before document content, or verify the main root document.",
+      originalSnippet: currentLineText || '',
+      fixedSnippet: '\\begin{document}',
+      startLine: lineNum,
+      endLine: lineNum,
+      confidence: 'high',
+    };
+  }
+
+  // 6. File not found
+  const fileNotFoundMatch = errorMessage.match(/File ['`"]?([^'`"]+)['`"]? not found/i);
+  if (fileNotFoundMatch) {
+    const missingFile = fileNotFoundMatch[1];
+    return {
+      explanation: `Referenced file or package '${missingFile}' cannot be found. Verify that the file exists in the project hierarchy or update the \\input path.`,
+      originalSnippet: currentLineText || `\\input{${missingFile}}`,
+      fixedSnippet: currentLineText ? `% Verify file exists: ${missingFile}\n${currentLineText}` : '',
+      startLine: lineNum,
+      endLine: lineNum,
+      confidence: 'high',
+    };
+  }
+
+  // 7. Unmatched braces
+  if (/missing \} inserted/i.test(errorMessage) || /extra \}, or forgotten \\endgroup/i.test(errorMessage) || /too many \}'s/i.test(errorMessage)) {
+    return {
+      explanation: "Unbalanced curly braces. Check for an unclosed '{' or an extra closing '}' in this block.",
+      originalSnippet: currentLineText || '',
+      fixedSnippet: currentLineText ? currentLineText.replace(/\}+$/, '') : '',
+      startLine: lineNum,
+      endLine: lineNum,
+      confidence: 'medium',
+    };
+  }
+
+  // Generic fallback: direct and concise, without repeating error prefix or stray symbols
+  const cleanMsg = errorMessage
+    .replace(/^!/g, '')
+    .replace(/^LaTeX Error:\s*/i, '')
+    .replace(/^Error:\s*/i, '')
+    .trim();
+  const cleanDetail = detail && !/^[@^~.?!\s]+$/.test(detail) && detail.length > 1 ? ` (${detail})` : '';
+
   return {
-    explanation: `Error on line ${lineNum}: ${errorMessage}. ${detail}`,
-    originalSnippet: currentLineText || '% Error line',
-    fixedSnippet: currentLineText || '% Suggested fix',
+    explanation: cleanMsg
+      ? `${cleanMsg}${cleanDetail}. Review the syntax at line ${lineNum}.`
+      : `LaTeX syntax issue detected at line ${lineNum}. Check surrounding commands.`,
+    originalSnippet: currentLineText || '',
+    fixedSnippet: '',
     startLine: lineNum,
     endLine: lineNum,
-    confidence: 'low',
+    confidence: 'medium',
   };
 }
 
@@ -195,8 +242,14 @@ export async function suggestLatexFix(params: AiErrorFixParams): Promise<AiError
 
     const parsed = JSON.parse(jsonText) as Record<string, any>;
     if (parsed && typeof parsed === 'object' && parsed.explanation && parsed.fixedSnippet !== undefined) {
+      let explanation = String(parsed.explanation).trim();
+      explanation = explanation
+        .replace(/^Error on line \d+:\s*/i, '')
+        .replace(/^LaTeX Error:\s*/i, '')
+        .trim();
+
       return {
-        explanation: String(parsed.explanation),
+        explanation: explanation || String(parsed.explanation),
         originalSnippet: String(parsed.originalSnippet || ''),
         fixedSnippet: String(parsed.fixedSnippet || ''),
         startLine: Number(parsed.startLine) || params.errorLine || 1,

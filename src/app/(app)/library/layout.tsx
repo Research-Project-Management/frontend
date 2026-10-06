@@ -22,7 +22,7 @@ export default function LibraryLayout({
   }
 
   return (
-    <div className="flex h-full w-full overflow-hidden relative">
+    <div className="flex h-full w-full min-h-0 relative">
       {isOpen && <Sidebar />}
       <main className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden relative">
         {children}

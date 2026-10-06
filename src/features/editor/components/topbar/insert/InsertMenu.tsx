@@ -38,13 +38,13 @@ export default function InsertMenu() {
         Insert
       </MenubarTrigger>
 
-      <MenubarContent className="min-w-48 text-xs z-[9999]">
+      <MenubarContent className="min-w-48 text-xs">
         {/* 1. Math > */}
         <MenubarSub>
           <MenubarSubTrigger className="cursor-pointer">
             <span>Math</span>
           </MenubarSubTrigger>
-          <MenubarSubContent className="min-w-36 text-xs z-[9999]">
+          <MenubarSubContent className="min-w-36 text-xs">
             <MenubarItem
               onClick={() => insertSnippet('$E = mc^2$')}
               className="cursor-pointer"
@@ -73,7 +73,7 @@ export default function InsertMenu() {
           <MenubarSubTrigger className="cursor-pointer">
             <span>Figure</span>
           </MenubarSubTrigger>
-          <MenubarSubContent className="min-w-48 text-xs z-[9999]">
+          <MenubarSubContent className="min-w-48 text-xs">
             <MenubarItem
               onClick={() => EditorEventBus.emit('flux:upload-file')}
               className="cursor-pointer"

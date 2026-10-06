@@ -17,7 +17,10 @@ import { useParams } from 'next/navigation';
 
 import SideBar, { type SidebarTab } from '../../../components/sidebar/SideBar';
 import Topbar from '../../../components/topbar/Topbar';
-const Setting = dynamic(() => import('../../../components/topbar/settings/Setting'), { ssr: false });
+const ProjectSettingsModal = dynamic(
+  () => import('../../../components/modals/ProjectSettingsModal'),
+  { ssr: false }
+);
 import { ResizeHandle } from './ResizeHandle';
 import { EditorColumn } from './EditorColumn';
 
@@ -41,7 +44,8 @@ export function EditorWorkspaceLayout() {
     draftId?: string;
   }>();
   const storeProjectId = usePageStore((s) => s.projectId);
-  const projectId = routeProjectId || storeProjectId || undefined;
+  const rawProjectId = routeProjectId || storeProjectId || undefined;
+  const projectId = rawProjectId || undefined;
   const rootPageId = pageId ?? draftId ?? null;
 
   // Stream real-time SSE events for the root document (suggestions, comments, page updates)
@@ -81,6 +85,9 @@ export function EditorWorkspaceLayout() {
   );
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const sidebarColRef = useRef<HTMLDivElement>(null);
+  const editorColRef = useRef<HTMLDivElement>(null);
+  const viewerColRef = useRef<HTMLDivElement>(null);
   const sidebarWidthRef = useRef(sidebarWidth);
   const editorFlexRef = useRef(editorFlex);
 
@@ -181,7 +188,9 @@ export function EditorWorkspaceLayout() {
           sidebarRafRef.current = null;
           const newW = clampSidebarWidth(startWidth + (ev.clientX - startX));
           sidebarWidthRef.current = newW;
-          setLocalSidebarWidth(newW);
+          if (sidebarColRef.current) {
+            sidebarColRef.current.style.width = `${newW}px`;
+          }
         });
       }
     };
@@ -199,6 +208,7 @@ export function EditorWorkspaceLayout() {
       if (isDraggingSidebarRef.current) {
         isDraggingSidebarRef.current = false;
         setIsDraggingSidebar(false);
+        setLocalSidebarWidth(sidebarWidthRef.current);
         setSidebarWidth(sidebarWidthRef.current);
       }
     };
@@ -235,7 +245,9 @@ export function EditorWorkspaceLayout() {
           sidebarRafRef.current = null;
           const newW = clampSidebarWidth(startWidth + (currentTouch.clientX - startX));
           sidebarWidthRef.current = newW;
-          setLocalSidebarWidth(newW);
+          if (sidebarColRef.current) {
+            sidebarColRef.current.style.width = `${newW}px`;
+          }
         });
       }
     };
@@ -251,6 +263,7 @@ export function EditorWorkspaceLayout() {
       if (isDraggingSidebarRef.current) {
         isDraggingSidebarRef.current = false;
         setIsDraggingSidebar(false);
+        setLocalSidebarWidth(sidebarWidthRef.current);
         setSidebarWidth(sidebarWidthRef.current);
       }
     };
@@ -328,7 +341,12 @@ export function EditorWorkspaceLayout() {
           const mouseX = ev.clientX - editorLeft;
           const newFlex = Math.min(Math.max(mouseX / Math.max(available, 100), MIN_EDITOR_FLEX), MAX_EDITOR_FLEX);
           editorFlexRef.current = newFlex;
-          setLocalEditorFlex(newFlex);
+          if (editorColRef.current) {
+            editorColRef.current.style.flex = `${newFlex}`;
+          }
+          if (viewerColRef.current) {
+            viewerColRef.current.style.flex = `${1 - newFlex}`;
+          }
         });
       }
     };
@@ -346,6 +364,7 @@ export function EditorWorkspaceLayout() {
       if (isDraggingSplitterRef.current) {
         isDraggingSplitterRef.current = false;
         setIsDraggingSplitter(false);
+        setLocalEditorFlex(editorFlexRef.current);
         setEditorFlex(editorFlexRef.current);
       }
     };
@@ -390,7 +409,12 @@ export function EditorWorkspaceLayout() {
           const touchX = currentTouch.clientX - editorLeft;
           const newFlex = Math.min(Math.max(touchX / Math.max(available, 100), MIN_EDITOR_FLEX), MAX_EDITOR_FLEX);
           editorFlexRef.current = newFlex;
-          setLocalEditorFlex(newFlex);
+          if (editorColRef.current) {
+            editorColRef.current.style.flex = `${newFlex}`;
+          }
+          if (viewerColRef.current) {
+            viewerColRef.current.style.flex = `${1 - newFlex}`;
+          }
         });
       }
     };
@@ -406,6 +430,7 @@ export function EditorWorkspaceLayout() {
       if (isDraggingSplitterRef.current) {
         isDraggingSplitterRef.current = false;
         setIsDraggingSplitter(false);
+        setLocalEditorFlex(editorFlexRef.current);
         setEditorFlex(editorFlexRef.current);
       }
     };
@@ -496,7 +521,7 @@ export function EditorWorkspaceLayout() {
   }
 
   return (
-    <div className="flex flex-col h-dvh bg-background">
+    <div className="flex flex-col h-full w-full bg-background min-h-0">
       <Topbar />
 
       {/* Mobile Tab Switcher for Split Layout */}
@@ -531,12 +556,14 @@ export function EditorWorkspaceLayout() {
         </div>
       )}
 
-      <div ref={containerRef} className="flex-1 flex min-h-0 relative">
+      <div ref={containerRef} className="flex-1 flex min-h-0 h-full relative">
         {/* Desktop Sidebar */}
         <div
+          ref={sidebarColRef}
           style={{ width: isNarrowScreen ? '100%' : (isSidebarCollapsed ? 44 : localSidebarWidth) }}
           className={cn(
-            "shrink-0 overflow-hidden bg-sidebar border-r border-border",
+            "shrink-0 bg-sidebar flex flex-col h-full overflow-hidden",
+            isSidebarCollapsed && "border-r border-border",
             isNarrowScreen && "hidden",
           )}
         >
@@ -620,9 +647,10 @@ export function EditorWorkspaceLayout() {
         {/* Editor Column */}
         {showEditor && (
           <div
+            ref={editorColRef}
             style={{ flex: showDivider ? localEditorFlex : 1 }}
             className={cn(
-              "min-w-0 flex flex-col",
+              "min-w-0 flex flex-col h-full min-h-0",
               (isDraggingSplitter || isDraggingSidebar) && "pointer-events-none select-none"
             )}
           >
@@ -692,12 +720,13 @@ export function EditorWorkspaceLayout() {
 
         {/* PDF Viewer Column */}
         <div
+          ref={viewerColRef}
           style={{
             flex: showDivider ? 1 - localEditorFlex : 1,
             display: showViewer ? undefined : 'none'
           }}
           className={cn(
-            "min-w-0 flex flex-col",
+            "min-w-0 flex flex-col h-full min-h-0",
             (isDraggingSplitter || isDraggingSidebar) && "pointer-events-none select-none"
           )}
         >
@@ -707,13 +736,13 @@ export function EditorWorkspaceLayout() {
         {/* Global drag overlay to prevent pointer-events capture by iframes / editors */}
         {(isDraggingSidebar || isDraggingSplitter) && (
           <div
-            className="fixed inset-0 z-[99999] cursor-col-resize select-none pointer-events-auto"
+            className="fixed inset-0 z-50 cursor-col-resize select-none pointer-events-auto"
             style={{ userSelect: 'none', cursor: 'col-resize' }}
           />
         )}
 
         {/* Settings Panel */}
-        {settingsPanelOpen && <Setting />}
+        {settingsPanelOpen && <ProjectSettingsModal />}
       </div>
     </div>
   );

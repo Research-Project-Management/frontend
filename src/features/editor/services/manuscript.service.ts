@@ -25,8 +25,21 @@
 import * as api from '@/shared/lib/api';
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete, getAuthToken, getEffectiveBaseUrl } from '@/shared/lib/api';
 import type { Page, PageFile, PageComment, PageSuggestion, SuggestionStatus, SuggestionType, PageVersion, ProjectEvent } from '../types';
+import type {
+  ProjectVersionListItem,
+  ProjectSnapshotDetail,
+  ProjectDiffResponse,
+  ProjectFileDiff,
+} from '../types/history.types';
 import type { DocumentExportFormat } from '../types/export.types';
 import { spellingService } from './spelling.service';
+
+export type {
+  ProjectVersionListItem,
+  ProjectSnapshotDetail,
+  ProjectDiffResponse,
+  ProjectFileDiff,
+};
 
 export interface DiagnosticItemDto {
   file: string;
@@ -49,10 +62,16 @@ export interface DiagnosticItemDto {
 }
 
 export interface DiagnosticReportDto {
+  id?: string;
   items: DiagnosticItemDto[];
-  errorCount: number;
-  warningCount: number;
-  badboxCount: number;
+  errorCount?: number;
+  errorsCount?: number;
+  warningCount?: number;
+  warningsCount?: number;
+  badboxCount?: number;
+  badboxesCount?: number;
+  infoCount?: number;
+  totalCount?: number;
   isSuccess: boolean;
   rawLog?: string;
 }
@@ -193,7 +212,7 @@ export interface DocReviewsResponseDto {
 export interface QueueUpdatePayload {
   pathname?: string;
   docLines?: string[];
-  docOps?: any[];
+  docOps?: unknown[];
   version?: number;
 }
 
@@ -344,13 +363,20 @@ export interface CreateSuggestionPayload {
   description?: string;
 }
 
+export interface DiffChunk {
+  type: 'added' | 'removed' | 'unchanged';
+  lines: string[];
+  oldStart?: number;
+  newStart?: number;
+}
+
 export interface VersionDiffResponse {
   fromVersionId: string;
   toVersionId: string;
   fromContent?: string;
   toContent?: string;
   diff?: string;
-  chunks?: any[];
+  chunks?: DiffChunk[];
   stats?: {
     additions?: number;
     deletions?: number;
@@ -360,8 +386,18 @@ export interface VersionDiffResponse {
   };
 }
 
+export interface OpLogEntry {
+  id?: string;
+  timestamp: number;
+  userId?: string;
+  userName?: string;
+  operation?: string;
+  description?: string;
+  [key: string]: unknown;
+}
+
 export interface OpLogTimeline {
-  entries: any[];
+  entries: OpLogEntry[];
   oldestMs?: number;
   newestMs?: number;
 }
@@ -450,8 +486,8 @@ export interface CollaborationPresence {
 export interface CollaborationEvent {
   pageId: string;
   type: string;
-  suggestion?: any;
-  comment?: any;
+  suggestion?: PageSuggestion;
+  comment?: PageComment;
   user?: CollaborationPresence;
   users?: CollaborationPresence[];
   userId?: string;
@@ -460,93 +496,39 @@ export interface CollaborationEvent {
   timestamp: number;
 }
 
-export const isMockOrDemoManuscript = (id?: string | null): boolean => {
-  if (!id) return true;
-  return (
-    id === 'demo' ||
-    id === 'adam-research' ||
-    id === 'default' ||
-    id.startsWith('mock-') ||
-    id.startsWith('demo-')
-  );
-};
-
-const createFallbackPage = (props: Partial<Page> & { id: string }): Page => ({
-  title: 'main.tex',
-  content: '',
-  status: 'draft',
-  projectId: '',
-  author: { id: 'fallback', name: 'User' },
-  views: 0,
-  lastAccessedAt: new Date().toISOString(),
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  ...props,
-});
 
 // ─── 1. DOCS CLIENT ─────────────────────────────────────────────────────────
 
 const docs = {
   getById: async (docId: string): Promise<Page> => {
-    if (isMockOrDemoManuscript(docId)) {
-      return createFallbackPage({
-        id: docId,
-        title: 'main.tex',
-        content: '',
-        status: 'published',
-      });
+    if (!docId) throw new Error('docId is required');
+    const res = await apiGet<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`);
+    if (!res || !res.page) {
+      throw new Error(`Document ${docId} not found`);
     }
-    try {
-      const res = await apiGet<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`, { silent: true });
-      return res.page;
-    } catch {
-      return createFallbackPage({
-        id: docId,
-        title: 'main.tex',
-        content: '',
-        status: 'published',
-      });
-    }
+    return res.page;
   },
 
   updateContent: async (docId: string, content: string): Promise<Page> => {
-    if (isMockOrDemoManuscript(docId)) {
-      return createFallbackPage({ id: docId, content });
-    }
-    try {
-      const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`, { content }, { silent: true });
-      return res.page;
-    } catch {
-      return createFallbackPage({ id: docId, content });
-    }
+    if (!docId) throw new Error('docId is required');
+    const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`, { content });
+    return res.page;
   },
 
   updateThumbnail: async (docId: string, dataUrl: string): Promise<Page> => {
-    if (isMockOrDemoManuscript(docId)) {
-      return createFallbackPage({ id: docId });
-    }
-    try {
-      const res = await apiPut<{ page: Page }>(
-        `${MANUSCRIPTS_API_BASE}/docs/${docId}/thumbnail`,
-        { pdfThumbnail: dataUrl },
-        { silent: true },
-      );
-      return res.page;
-    } catch {
-      return createFallbackPage({ id: docId });
-    }
+    if (!docId) throw new Error('docId is required');
+    const res = await apiPut<{ page: Page }>(
+      `${MANUSCRIPTS_API_BASE}/docs/${docId}/thumbnail`,
+      { pdfThumbnail: dataUrl },
+      { silent: true },
+    );
+    return res.page;
   },
 
   updateTitle: async (docId: string, title: string, _oldTitle?: string): Promise<Page> => {
-    if (isMockOrDemoManuscript(docId)) {
-      return createFallbackPage({ id: docId, title });
-    }
-    try {
-      const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`, { title }, { silent: true });
-      return res.page;
-    } catch {
-      return createFallbackPage({ id: docId, title });
-    }
+    if (!docId) throw new Error('docId is required');
+    const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`, { title });
+    return res.page;
   },
 
   create: async ({
@@ -560,48 +542,29 @@ const docs = {
     content?: string;
     status?: string;
   }): Promise<Page> => {
-    try {
-      const res = await apiPost<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs`, {
-        title,
-        content,
-        status,
-      });
-      return res.page;
-    } catch {
-      return createFallbackPage({
-        id: `page-${Date.now()}`,
-        projectId,
-        title,
-        content: content || '',
-        status: status as Page['status'],
-      });
-    }
+    const res = await apiPost<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs`, {
+      title,
+      content,
+      status,
+    });
+    return res.page;
   },
 
   delete: async (docId: string): Promise<void> => {
-    try {
-      await apiDelete(`${MANUSCRIPTS_API_BASE}/docs/${docId}`);
-    } catch {
-      // safe fallback
-    }
+    if (!docId) return;
+    await apiDelete(`${MANUSCRIPTS_API_BASE}/docs/${docId}`);
   },
 
   restore: async (docId: string): Promise<Page> => {
-    try {
-      const res = await apiPost<{ page: Page }>(`/api/pages/${docId}/restore`, {});
-      return res.page;
-    } catch {
-      return createFallbackPage({ id: docId, title: 'Restored File' });
-    }
+    if (!docId) throw new Error('docId is required');
+    const res = await apiPost<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}/restore`, {});
+    return res.page;
   },
 
   duplicate: async (docId: string): Promise<Page> => {
-    try {
-      const res = await apiPost<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}/duplicate`, {});
-      return res.page;
-    } catch {
-      return createFallbackPage({ id: `copy-${docId}`, title: 'Copied Document' });
-    }
+    if (!docId) throw new Error('docId is required');
+    const res = await apiPost<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}/duplicate`, {});
+    return res.page;
   },
 
   getFiles: async (docId: string): Promise<PageFile[]> => {
@@ -725,6 +688,13 @@ const compiler = {
     const effectiveSignal = signal || payload.signal;
     const { signal: _unused, ...body } = payload;
     try {
+      if (body.project_id) {
+        try {
+          await updater.flushProject(body.project_id);
+        } catch {
+          // Non-fatal if offline/syncing
+        }
+      }
       return await apiPost<CompileLatexResponse>(`${MANUSCRIPTS_API_BASE}/compile`, body, { signal: effectiveSignal });
     } catch (err: any) {
       return {
@@ -888,7 +858,7 @@ const synctex = {
 
 const comments = {
   getComments: async (docId: string, status?: string): Promise<PageComment[]> => {
-    if (isMockOrDemoManuscript(docId)) return [];
+    if (!docId) return [];
     try {
       const query = status ? `?status=${encodeURIComponent(status)}` : '';
       const data = await apiGet<{ comments: PageComment[] }>(
@@ -976,7 +946,7 @@ const suggestions = {
     docId: string,
     status?: SuggestionStatus,
   ): Promise<PageSuggestion[]> => {
-    if (isMockOrDemoManuscript(docId)) return [];
+    if (!docId) return [];
     try {
       const queryStr = status ? `?status=${status}` : '';
       const data = await api.apiGet<{ suggestions: PageSuggestion[] }>(
@@ -1041,7 +1011,7 @@ const suggestions = {
 
 const review = {
   getDocReviews: async (projectId: string, docId: string): Promise<DocReviewsResponseDto> => {
-    if (isMockOrDemoManuscript(projectId) || isMockOrDemoManuscript(docId)) {
+    if (!projectId || !docId) {
       return { changes: [], threads: [] };
     }
     try {
@@ -1128,18 +1098,9 @@ const review = {
 
 // ─── 6. HISTORY & SNAPSHOTS CLIENT ──────────────────────────────────────────
 
-const createFallbackVersion = (props: Partial<PageVersion> & { id: string }): PageVersion => ({
-  title: 'Snapshot',
-  label: 'Manual Snapshot',
-  fileName: 'main.tex',
-  savedBy: { id: 'fallback', name: 'User' },
-  createdAt: new Date().toISOString(),
-  ...props,
-});
-
 const history = {
   getByDocId: async (docId: string): Promise<PageVersion[]> => {
-    if (isMockOrDemoManuscript(docId)) return [];
+    if (!docId) return [];
     try {
       const res = await apiGet<{ versions: PageVersion[] }>(
         `${MANUSCRIPTS_API_BASE}/docs/${docId}/versions`,
@@ -1168,28 +1129,15 @@ const history = {
     fileName?: string;
     rootPageId?: string;
   }): Promise<PageVersion> => {
-    try {
-      const res = await apiPost<{ version: PageVersion }>(
-        `${MANUSCRIPTS_API_BASE}/docs/${payload.pageId}/versions`,
-        payload,
-      );
-      return res.version;
-    } catch {
-      return createFallbackVersion({
-        id: `v-${Date.now()}`,
-        label: payload.label || 'Manual Snapshot',
-        fileName: payload.fileName || 'main.tex',
-        content: payload.content || '',
-      });
-    }
+    const res = await apiPost<{ version: PageVersion }>(
+      `${MANUSCRIPTS_API_BASE}/docs/${payload.pageId}/versions`,
+      payload,
+    );
+    return res.version;
   },
 
   restore: async (payload: { pageId: string; versionId: string }): Promise<void> => {
-    try {
-      await apiPost(`${MANUSCRIPTS_API_BASE}/docs/${payload.pageId}/versions/${payload.versionId}/restore`, {});
-    } catch {
-      // safe fallback
-    }
+    await apiPost(`${MANUSCRIPTS_API_BASE}/docs/${payload.pageId}/versions/${payload.versionId}/restore`, {});
   },
 
   updateLabel: async (
@@ -1198,19 +1146,11 @@ const history = {
     label: string,
     title?: string,
   ): Promise<PageVersion> => {
-    try {
-      const res = await apiPost<{ version: PageVersion }>(
-        `${MANUSCRIPTS_API_BASE}/docs/${docId}/versions/${versionId}/label`,
-        { label, title },
-      );
-      return res.version;
-    } catch {
-      return createFallbackVersion({
-        id: versionId,
-        label,
-        title: title || 'Snapshot',
-      });
-    }
+    const res = await apiPost<{ version: PageVersion }>(
+      `${MANUSCRIPTS_API_BASE}/docs/${docId}/versions/${versionId}/label`,
+      { label, title },
+    );
+    return res.version;
   },
 
   getDiff: async (
@@ -1267,9 +1207,9 @@ const history = {
     }
   },
 
-  getProjectVersions: async (projectId: string): Promise<any[]> => {
+  getProjectVersions: async (projectId: string): Promise<ProjectVersionListItem[]> => {
     try {
-      const res = await apiGet<any[]>(
+      const res = await apiGet<ProjectVersionListItem[]>(
         `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/versions`,
       );
       return Array.isArray(res) ? res : [];
@@ -1278,9 +1218,12 @@ const history = {
     }
   },
 
-  getProjectSnapshot: async (projectId: string, version: number): Promise<any | null> => {
+  getProjectSnapshot: async (
+    projectId: string,
+    version: number,
+  ): Promise<ProjectSnapshotDetail | null> => {
     try {
-      return await apiGet<any>(
+      return await apiGet<ProjectSnapshotDetail>(
         `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/versions/${version}`,
       );
     } catch {
@@ -1292,9 +1235,9 @@ const history = {
     projectId: string,
     baseVersion: number,
     targetVersion: number,
-  ): Promise<any | null> => {
+  ): Promise<ProjectDiffResponse | null> => {
     try {
-      return await apiGet<any>(
+      return await apiGet<ProjectDiffResponse>(
         `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/diff?baseVersion=${baseVersion}&targetVersion=${targetVersion}`,
       );
     } catch {
@@ -1322,7 +1265,11 @@ const history = {
   restoreProjectVersion: async (
     projectId: string,
     targetVersion: number,
-  ): Promise<any> => {
+  ): Promise<{
+    restoredSnapshot: ProjectSnapshotDetail;
+    newSnapshot: ProjectSnapshotDetail;
+    restoreResult: { restoredFilesCount: number; restoredDocIds: string[] };
+  }> => {
     return apiPost(
       `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/restore`,
       { targetVersion },
@@ -1417,10 +1364,18 @@ const exportDocs = {
     return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/export/zip${tokenQuery}`;
   },
 
-  exportProjectZip: async (projectId: string, options: { includeAux?: boolean } = {}): Promise<Blob> => {
+  exportProjectZip: async (
+    projectId: string,
+    options: { includeAux?: boolean; includePdf?: boolean; cleanArxiv?: boolean; projectName?: string } = {},
+  ): Promise<Blob> => {
     const token = getAuthToken();
-    const query = options.includeAux ? '?includeAux=true' : '';
-    const res = await fetch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/export/zip${query}`, {
+    const params = new URLSearchParams();
+    if (options.includeAux) params.append('includeAux', 'true');
+    if (options.includePdf) params.append('includePdf', 'true');
+    if (options.cleanArxiv) params.append('cleanArxiv', 'true');
+    if (options.projectName) params.append('projectName', options.projectName);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/export/zip${queryString}`, {
       headers: {
         Authorization: token ? `Bearer ${token}` : '',
       },
@@ -1454,7 +1409,7 @@ const exportDocs = {
 
 const collaboration = {
   getPresence: async (docId: string): Promise<CollaborationPresence[]> => {
-    if (isMockOrDemoManuscript(docId)) return [];
+    if (!docId) return [];
     try {
       const res = await apiGet<{ activeUsers?: CollaborationPresence[]; presence?: CollaborationPresence[] }>(
         `${MANUSCRIPTS_API_BASE}/docs/${docId}/collaboration/presence`,
@@ -1479,7 +1434,7 @@ const collaboration = {
       };
     },
   ): Promise<void> => {
-    if (isMockOrDemoManuscript(docId)) return;
+    if (!docId) return;
     try {
       await apiPost(`${MANUSCRIPTS_API_BASE}/docs/${docId}/collaboration/heartbeat`, { cursor }, { silent: true });
     } catch {
@@ -1488,7 +1443,7 @@ const collaboration = {
   },
 
   leaveRoom: async (docId: string): Promise<void> => {
-    if (isMockOrDemoManuscript(docId)) return;
+    if (!docId) return;
     try {
       await apiPost(`${MANUSCRIPTS_API_BASE}/docs/${docId}/collaboration/leave`, {}, { silent: true });
     } catch {
@@ -1540,7 +1495,7 @@ const structure = {
   },
 
   getAllNodes: async (projectId: string): Promise<StructureNodeDto[]> => {
-    if (isMockOrDemoManuscript(projectId)) return [];
+    if (!projectId) return [];
     try {
       return await apiGet<StructureNodeDto[]>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, { silent: true });
     } catch {
@@ -1549,7 +1504,7 @@ const structure = {
   },
 
   getNodeById: async (projectId: string, nodeId: string): Promise<StructureNodeDto | null> => {
-    if (isMockOrDemoManuscript(projectId)) return null;
+    if (!projectId || !nodeId) return null;
     try {
       return await apiGet<StructureNodeDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}`, { silent: true });
     } catch {
@@ -1577,7 +1532,7 @@ const structure = {
   },
 
   getRootDoc: async (projectId: string): Promise<StructureNodeDto | null> => {
-    if (isMockOrDemoManuscript(projectId)) return null;
+    if (!projectId) return null;
     try {
       return await apiGet<StructureNodeDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc`, { silent: true });
     } catch {
@@ -1731,8 +1686,15 @@ const templates = {
     return await apiPost<any>(`${MANUSCRIPTS_API_BASE}/templates/custom`, dto);
   },
 
-  scaffold: async (projectId: string, templateId: string): Promise<{ success: boolean }> => {
-    return await apiPost<{ success: boolean }>(`${MANUSCRIPTS_API_BASE}/templates/scaffold`, { projectId, templateId });
+  scaffold: async (projectId: string, templateId: string): Promise<any> => {
+    try {
+      return await apiPost<any>(
+        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/templates/${templateId}/scaffold`,
+        { templateId },
+      );
+    } catch {
+      return await apiPost<any>(`${MANUSCRIPTS_API_BASE}/templates/scaffold`, { projectId, templateId });
+    }
   },
 };
 
@@ -1840,6 +1802,7 @@ export const manuscriptService = {
   history,
   search,
   export: exportDocs,
+  exportImport: exportDocs,
   collaboration,
   structure,
   diagnostics,

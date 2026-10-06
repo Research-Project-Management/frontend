@@ -16,7 +16,7 @@ export function extractFilterBadges(filters?: Record<string, any>): FilterBadgeI
     badges.push({
       label: 'Priority',
       value: filters.priority.map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(', '),
-      color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+      color: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
     });
   }
 
@@ -25,7 +25,7 @@ export function extractFilterBadges(filters?: Record<string, any>): FilterBadgeI
     badges.push({
       label: 'State',
       value: filters.state_group.map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(', '),
-      color: 'bg-primary/10 text-primary border-primary/20',
+      color: 'bg-primary-subtle text-primary border-primary/30',
     });
   }
 
@@ -34,7 +34,7 @@ export function extractFilterBadges(filters?: Record<string, any>): FilterBadgeI
     badges.push({
       label: 'Status',
       value: `${filters.state.length} selected`,
-      color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
+      color: 'bg-muted text-foreground border-border',
     });
   }
 
@@ -43,18 +43,16 @@ export function extractFilterBadges(filters?: Record<string, any>): FilterBadgeI
     badges.push({
       label: 'Assignees',
       value: `${filters.assignees.length} members`,
-      color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+      color: 'bg-muted text-foreground border-border',
     });
   }
-
-
 
   // Labels
   if (Array.isArray(filters.labels) && filters.labels.length > 0) {
     badges.push({
       label: 'Labels',
       value: `${filters.labels.length} tags`,
-      color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+      color: 'bg-muted text-foreground border-border',
     });
   }
 

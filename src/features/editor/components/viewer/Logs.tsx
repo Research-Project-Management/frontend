@@ -20,12 +20,17 @@ import {
   Info,
   ChevronRight,
   ChevronUp,
+  ChevronLeft,
+  ArrowLeft,
   Trash2,
   Download,
   Check,
   Sparkles,
   Loader2,
   FileText,
+  BookOpen,
+  ExternalLink,
+  Copy,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
@@ -34,7 +39,9 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from '@/shared/components/ui/popover';
-import { usePageStore } from '@/features/editor/store';
+import { Button } from '@/shared/components/ui/button';
+import { PlaneErrorState, PlaneEmptyState } from '@/shared/components/ui';
+import { usePageStore, useCompileStore } from '@/features/editor/store';
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
 import {
@@ -47,14 +54,27 @@ import {
   downloadAllArtifactsZipUrl,
   type AuxFileItem,
 } from '@/features/editor/services/compiler.service';
+import {
+  manuscriptService,
+  type ErrorExplanationDto,
+  type DiagnosticItemDto,
+  type DiagnosticReportDto,
+} from '@/features/editor/services/manuscript.service';
 import { CompileButton } from '../../sub-features/compiler/components/CompileButton';
-import { EditorEmptyState } from '../shared';
+
 
 export interface LogEntry {
   message: string;
   file?: string;
   line?: number;
   detail?: string;
+  code?: string;
+  rawExcerpt?: string;
+  explanation?: ErrorExplanationDto;
+  quickFix?: {
+    description: string;
+    replacementText: string;
+  };
 }
 
 export interface ParsedLog {
@@ -87,24 +107,44 @@ export function parseLatexLog(raw: string): ParsedLog {
       const message = line.slice(1).trim();
       let lineNum: number | undefined;
       let detail: string | undefined;
+      const excerptLines: string[] = [];
       for (let j = i + 1; j < Math.min(i + 15, lines.length); j++) {
-        const m = lines[j].match(/^l\.(\d+)\s*(.*)/);
+        const cur = lines[j];
+        if (cur.startsWith('!')) break;
+        excerptLines.push(cur);
+        const m = cur.match(/^l\.(\d+)\s*(.*)/);
         if (m) {
           lineNum = parseInt(m[1], 10);
-          detail = m[2].trim() || undefined;
+          const rawDetail = m[2].trim();
+          detail = rawDetail && !/^[@^~.?!\s]+$/.test(rawDetail) && rawDetail.length > 1 ? rawDetail : undefined;
+          for (let k = j + 1; k < Math.min(j + 3, lines.length); k++) {
+            if (lines[k] && !lines[k].startsWith('!')) {
+              excerptLines.push(lines[k]);
+            }
+          }
           break;
         }
       }
-      tryAdd(errors, { message, line: lineNum, detail });
+      const rawExcerpt = excerptLines.filter((l) => l.trim().length > 0).join('\n');
+      tryAdd(errors, { message, line: lineNum, detail, rawExcerpt: rawExcerpt || undefined });
     }
 
     // File:line: format errors (e.g. ./main.tex:10: Undefined control sequence)
     const fle = line.match(/^(\.{1,2}\/[^\s:!]*\.(?:tex|sty|cls|bib)):(\d+):\s*(.+)$/);
     if (fle) {
+      const excerptLines: string[] = [line];
+      for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+        if (lines[j] && !lines[j].startsWith('!') && !lines[j].includes('Warning:')) {
+          excerptLines.push(lines[j]);
+        } else {
+          break;
+        }
+      }
       tryAdd(errors, {
         message: fle[3].trim(),
         file: fle[1].replace(/^\.\//, ''),
         line: parseInt(fle[2], 10),
+        rawExcerpt: excerptLines.join('\n'),
       });
     }
 
@@ -156,6 +196,7 @@ function EntryRow({
   fixResult,
   isFixApplied,
   onApplyFix,
+  onApplyQuickFix,
 }: {
   type: 'error' | 'warning' | 'badbox';
   entry: LogEntry;
@@ -165,8 +206,51 @@ function EntryRow({
   fixResult?: AiErrorFixResult | null;
   isFixApplied?: boolean;
   onApplyFix?: (entry: LogEntry, fix: AiErrorFixResult) => void;
+  onApplyQuickFix?: (entry: LogEntry, fix: { description: string; replacementText: string }) => void;
 }) {
   const isClickable = Boolean(entry.line);
+  const [isExplainOpen, setIsExplainOpen] = useState(false);
+  const [fetchedExplanation, setFetchedExplanation] = useState<ErrorExplanationDto | null>(null);
+  const [isExplaining, setIsExplaining] = useState(false);
+
+  const activeExplanation = entry.explanation || fetchedExplanation;
+
+  const handleToggleExplain = async () => {
+    if (isExplainOpen) {
+      setIsExplainOpen(false);
+      return;
+    }
+    if (activeExplanation) {
+      setIsExplainOpen(true);
+      return;
+    }
+    setIsExplaining(true);
+    try {
+      if (entry.code) {
+        const exp = await manuscriptService.diagnostics.getExplanation(entry.code);
+        setFetchedExplanation(exp);
+        setIsExplainOpen(true);
+      } else {
+        const rules = await manuscriptService.diagnostics.getRules();
+        const found = rules.find((r) => {
+          if (r.title && entry.message.toLowerCase().includes(r.title.toLowerCase())) return true;
+          if (r.code && entry.message.toLowerCase().includes(r.code.toLowerCase().replace(/_/g, ' '))) return true;
+          return false;
+        });
+        if (found) {
+          setFetchedExplanation(found);
+          setIsExplainOpen(true);
+        } else {
+          toast.info('No specific Overleaf knowledge base guide matched for this entry.');
+        }
+      }
+    } catch {
+      toast.info('Unable to retrieve error explanation.');
+    } finally {
+      setIsExplaining(false);
+    }
+  };
+
   return (
     <div
       role={isClickable ? 'button' : undefined}
@@ -184,7 +268,7 @@ function EntryRow({
       }
       className={cn(
         'flex flex-col gap-1.5 px-3 py-2.5 border-b border-border last:border-b-0 transition-colors',
-        isClickable && 'cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/70 focus-visible:outline-none',
+        isClickable && 'cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/70 outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset',
       )}
     >
       <div className="flex items-start gap-2.5">
@@ -196,29 +280,68 @@ function EntryRow({
             <p className="text-foreground font-mono text-xs leading-snug break-words">
               {entry.message}
             </p>
-            {type === 'error' && onSuggestFix && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSuggestFix(entry);
-                }}
-                className={cn(
-                  'flex items-center gap-1 text-10 px-2 py-0.5 rounded-sm font-medium shrink-0 transition-colors border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                  fixResult || isFixLoading
-                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
-                    : 'bg-primary/10 text-primary border-primary/25 hover:bg-primary/20'
-                )}
-                title="Ask AI Error Assist to explain and fix this LaTeX error"
-              >
-                {isFixLoading ? (
-                  <Loader2 className="size-3 animate-spin text-amber-500" />
-                ) : (
-                  <Sparkles className="size-3 text-amber-500" />
-                )}
-                <span>Suggest fix</span>
-              </button>
-            )}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {entry.quickFix && onApplyQuickFix && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onApplyQuickFix(entry, entry.quickFix!);
+                  }}
+                  className="flex items-center gap-1 text-11 px-2 py-0.5 rounded-md font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 hover:bg-emerald-500/20 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-emerald-500 transition-colors"
+                  title={`Quick fix: ${entry.quickFix.description}`}
+                >
+                  <Sparkles className="size-3" />
+                  <span>Quick fix</span>
+                </button>
+              )}
+
+              {(entry.explanation || entry.code || type === 'error') && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleExplain();
+                  }}
+                  className={cn(
+                    'flex items-center gap-1 text-11 px-2 py-0.5 rounded-md font-medium shrink-0 transition-colors border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                    isExplainOpen
+                      ? 'bg-primary/15 text-primary border-primary/30 font-semibold'
+                      : 'bg-muted/60 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
+                  )}
+                  title="View Overleaf Knowledge Base explanation and remedies"
+                >
+                  {isExplaining ? (
+                    <Loader2 className="size-3 animate-spin text-primary" />
+                  ) : (
+                    <BookOpen className="size-3" />
+                  )}
+                  <span>{isExplainOpen ? 'Hide guide' : 'Explain'}</span>
+                </button>
+              )}
+
+              {type === 'error' && onSuggestFix && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSuggestFix(entry);
+                  }}
+                  className={cn(
+                    'flex items-center gap-1 text-11 px-2 py-0.5 rounded-md font-medium shrink-0 transition-colors border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai',
+                    fixResult || isFixLoading
+                      ? 'bg-ai/15 text-ai border-ai/30 font-semibold'
+                      : 'bg-ai/10 text-ai border-ai/25 hover:bg-ai/20'
+                  )}
+                  title="Ask AI Error Assist to explain and fix this LaTeX error"
+                >
+                  {isFixLoading && (
+                    <Loader2 className="size-3 animate-spin text-ai" />
+                  )}
+                  <span>{fixResult ? 'Hide fix' : 'Suggest fix'}</span>
+                </button>
+              )}
+            </div>
           </div>
           {(entry.file || entry.line !== undefined) && (
             <p className="text-xs mt-0.5 text-muted-foreground">
@@ -231,25 +354,109 @@ function EntryRow({
               )}
             </p>
           )}
-          {entry.detail && (
+          {entry.detail && !/^[@^~.?!\s]+$/.test(entry.detail) && entry.detail.length > 1 && (
             <p className="text-muted-foreground text-xs mt-0.5 truncate">{entry.detail}</p>
           )}
         </div>
       </div>
 
+      {/* Overleaf Knowledge Base Guide Expansion Card */}
+      {isExplainOpen && activeExplanation && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="ml-6 mt-2 p-3.5 rounded-md bg-muted/30 border border-border text-xs space-y-2.5 select-text shadow-2xs"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BookOpen className="size-3.5 text-primary shrink-0" />
+              <h4 className="font-semibold text-13 text-foreground tracking-tight">
+                {activeExplanation.title || 'LaTeX Error Guide'}
+              </h4>
+            </div>
+            {activeExplanation.documentationUrl && (
+              <a
+                href={activeExplanation.documentationUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-11 text-primary hover:underline flex items-center gap-1 shrink-0 font-medium"
+              >
+                <span>Overleaf Docs</span>
+                <ExternalLink className="size-3" />
+              </a>
+            )}
+          </div>
+
+          {activeExplanation.explanation && (
+            <p className="text-12 text-foreground/90 leading-relaxed font-normal">
+              {activeExplanation.explanation}
+            </p>
+          )}
+
+          {activeExplanation.commonCauses && activeExplanation.commonCauses.length > 0 && (
+            <div className="space-y-1 pt-0.5">
+              <span className="font-medium text-11 text-foreground/80">Common Causes:</span>
+              <ul className="list-disc pl-4 space-y-1 text-11 text-muted-foreground">
+                {activeExplanation.commonCauses.map((cause, cIdx) => (
+                  <li key={cIdx}>{cause}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {activeExplanation.suggestedFix && (
+            <div className="space-y-1 pt-0.5">
+              <span className="font-medium text-11 text-foreground/80">Suggested Fix:</span>
+              <p className="text-11 text-muted-foreground bg-background/60 p-2 rounded border border-border/60">
+                {activeExplanation.suggestedFix}
+              </p>
+            </div>
+          )}
+
+          {activeExplanation.exampleSnippet && (
+            <div className="space-y-1 pt-0.5">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-11 text-foreground/80">Example Snippet:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(activeExplanation.exampleSnippet || '');
+                    toast.success('Snippet copied to clipboard');
+                  }}
+                  className="text-10 text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
+                >
+                  <Copy className="size-3" />
+                  <span>Copy</span>
+                </button>
+              </div>
+              <pre className="font-mono text-11 bg-background p-2 rounded border border-border text-foreground overflow-x-auto">
+                {activeExplanation.exampleSnippet}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* AI Error Assist Expansion Card */}
       {(isFixLoading || fixResult) && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="ml-6 mt-1.5 p-3 rounded-md bg-muted/40 border border-border text-xs space-y-2 select-text"
+          className="ml-6 mt-2 p-3.5 rounded-md bg-card border border-border text-xs space-y-2.5 select-text shadow-2xs"
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 font-semibold text-foreground">
-              <Sparkles className="size-3.5 text-ai shrink-0" />
-              <span>AI Error Assist</span>
-            </div>
+            <h4 className="font-semibold text-13 text-foreground tracking-tight">
+              AI Error Assist
+            </h4>
             {fixResult && (
-              <span className="text-10 px-1.5 py-0.5 rounded-full bg-success/10 text-success font-medium capitalize">
+              <span
+                className={cn(
+                  'text-11 px-2 py-0.5 rounded-md font-medium capitalize border',
+                  fixResult.confidence === 'high'
+                    ? 'border-success/30 bg-success/10 text-success'
+                    : fixResult.confidence === 'medium'
+                    ? 'border-ai/30 bg-ai/10 text-ai'
+                    : 'border-border bg-muted/60 text-muted-foreground'
+                )}
+              >
                 {fixResult.confidence} confidence
               </span>
             )}
@@ -257,56 +464,64 @@ function EntryRow({
 
           {isFixLoading ? (
             <div className="flex items-center gap-2 py-2 text-muted-foreground">
-              <Loader2 className="size-3.5 animate-spin text-primary shrink-0" />
-              <span>Analyzing LaTeX error and generating fix...</span>
+              <Loader2 className="size-3.5 animate-spin text-ai shrink-0" />
+              <span className="text-12">Analyzing LaTeX error and generating fix...</span>
             </div>
           ) : fixResult ? (
             <>
-              <p className="text-foreground/90 leading-relaxed">
+              <p className="text-13 text-foreground/85 leading-normal font-normal">
                 {fixResult.explanation}
               </p>
 
               {/* Code Diff Preview */}
-              <div className="rounded-md border border-border bg-background overflow-hidden font-mono text-11 my-1.5">
-                {fixResult.originalSnippet && (
-                  <div className="bg-destructive/10 text-destructive px-2.5 py-1.5 border-b border-border/60 whitespace-pre-wrap">
-                    <span className="select-none font-semibold mr-2 text-destructive">-</span>
-                    {fixResult.originalSnippet}
-                  </div>
-                )}
-                {fixResult.fixedSnippet && (
-                  <div className="bg-success/10 text-success px-2.5 py-1.5 whitespace-pre-wrap">
-                    <span className="select-none font-semibold mr-2 text-success">+</span>
-                    {fixResult.fixedSnippet}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  disabled={isFixApplied}
-                  onClick={() => onApplyFix?.(entry, fixResult)}
-                  className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                    isFixApplied
-                      ? 'bg-muted text-muted-foreground border border-border cursor-not-allowed'
-                      : 'bg-primary hover:bg-primary-hover text-primary-foreground'
-                  )}
-                >
-                  {isFixApplied ? (
+              {fixResult.fixedSnippet && (
+                <div className="rounded-md border border-border bg-background overflow-hidden font-mono text-11 my-1.5">
+                  {fixResult.originalSnippet &&
+                  fixResult.originalSnippet !== fixResult.fixedSnippet &&
+                  !fixResult.originalSnippet.startsWith('%') ? (
                     <>
-                      <Check className="size-3.5" />
-                      <span>Applied & Recompiled</span>
+                      <div className="bg-destructive/10 text-destructive px-3 py-1.5 border-b border-border/60 whitespace-pre-wrap leading-relaxed">
+                        <span className="select-none font-semibold mr-2 text-destructive">-</span>
+                        {fixResult.originalSnippet}
+                      </div>
+                      <div className="bg-success/10 text-success px-3 py-1.5 whitespace-pre-wrap leading-relaxed">
+                        <span className="select-none font-semibold mr-2 text-success">+</span>
+                        {fixResult.fixedSnippet}
+                      </div>
                     </>
                   ) : (
-                    <>
-                      <Sparkles className="size-3.5" />
-                      <span>Apply suggestion</span>
-                    </>
+                    <div className="bg-success/10 text-success px-3 py-1.5 whitespace-pre-wrap leading-relaxed">
+                      <span className="select-none font-semibold mr-2 text-success">+</span>
+                      {fixResult.fixedSnippet}
+                    </div>
                   )}
-                </button>
-              </div>
+                </div>
+              )}
+
+              {fixResult.fixedSnippet && (
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={isFixApplied}
+                    onClick={() => onApplyFix?.(entry, fixResult)}
+                    className={cn(
+                      'h-8 px-3 rounded-md text-13 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shadow-xs',
+                      isFixApplied
+                        ? 'bg-muted text-muted-foreground border border-border cursor-not-allowed inline-flex items-center gap-1.5'
+                        : 'bg-primary hover:bg-primary-hover text-primary-foreground'
+                    )}
+                  >
+                    {isFixApplied ? (
+                      <>
+                        <Check className="size-3.5" />
+                        <span>Applied & Recompiled</span>
+                      </>
+                    ) : (
+                      <span>Apply suggestion</span>
+                    )}
+                  </button>
+                </div>
+              )}
             </>
           ) : null}
         </div>
@@ -331,12 +546,84 @@ export default function Logs({
   onCompile,
 }: LogsProps) {
   const { projectId } = usePageStore();
+  const compileStatus = useCompileStore((s) => s.compileStatus);
   const { engine } = useEditorInstance();
   const parsed = useMemo(() => parseLatexLog(log), [log]);
 
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [isRawLogsOpen, setIsRawLogsOpen] = useState(false);
   const [isOtherFilesOpen, setIsOtherFilesOpen] = useState(false);
+
+  // Enriched Backend Diagnostics Report
+  const [enrichedReport, setEnrichedReport] = useState<DiagnosticReportDto | null>(null);
+
+  useEffect(() => {
+    if (!log || !log.trim()) {
+      setEnrichedReport(null);
+      return;
+    }
+    let isSubscribed = true;
+    manuscriptService.diagnostics.parseLog(log)
+      .then((report) => {
+        if (isSubscribed && report) {
+          setEnrichedReport(report);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isSubscribed = false;
+    };
+  }, [log]);
+
+  const enrichEntry = useCallback(
+    (e: LogEntry): LogEntry => {
+      if (!enrichedReport?.items || enrichedReport.items.length === 0) return e;
+      const match = enrichedReport.items.find((item) => {
+        if (item.line && e.line && item.line === e.line) return true;
+        if (
+          e.message &&
+          item.message &&
+          (item.message.includes(e.message) || e.message.includes(item.message))
+        )
+          return true;
+        return false;
+      });
+      if (!match) return e;
+      return {
+        ...e,
+        file: match.file || e.file,
+        code: match.code || e.code,
+        explanation: match.explanation || e.explanation,
+        quickFix: match.quickFix || e.quickFix,
+      };
+    },
+    [enrichedReport],
+  );
+
+  const handleApplyQuickFix = (
+    entry: LogEntry,
+    quickFix: { description: string; replacementText: string },
+  ) => {
+    if (!engine) {
+      toast.error('Editor not ready to apply quick fix');
+      return;
+    }
+    const fullContent = engine.getContent();
+    const lines = fullContent.split('\n');
+    const targetLine = entry.line
+      ? Math.max(1, Math.min(entry.line, lines.length))
+      : 1;
+    if (quickFix.replacementText.startsWith('\\end{')) {
+      lines.splice(targetLine, 0, quickFix.replacementText);
+    } else {
+      lines[targetLine - 1] = quickFix.replacementText;
+    }
+    engine.setContent(lines.join('\n'));
+    engine.focus();
+    toast.success(`Quick fix applied: ${quickFix.description}`);
+    if (onClearCacheAndCompile) onClearCacheAndCompile();
+    else if (onCompile) onCompile();
+  };
 
   // Auxiliary files list
   const [auxFiles, setAuxFiles] = useState<AuxFileItem[]>([]);
@@ -495,8 +782,8 @@ export default function Logs({
 
   return (
     <div className="h-full w-full flex flex-col bg-background text-foreground select-none overflow-hidden">
-      {/* ── Top Header Toolbar (Overleaf 1:1 Parity) ── */}
-      <header className="h-9 px-3 bg-background border-b border-border flex items-center justify-between gap-2 shrink-0">
+      {/* ── Top Header Toolbar (Overleaf 1:1 Parity, Synchronized with Flux Design) ── */}
+      <header className="h-10 px-3 bg-background border-b border-border flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2">
           {onCompile && (
             <CompileButton
@@ -508,9 +795,10 @@ export default function Logs({
             type="button"
             onClick={onClose}
             aria-label="Back to PDF"
-            className="h-7 px-3 flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted text-foreground text-xs font-medium transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="h-7.5 px-2.5 flex items-center gap-1.5 rounded-md border border-border bg-background hover:bg-muted text-foreground text-xs font-medium transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
-            Back to PDF
+            <ChevronLeft className="size-3.5 shrink-0 text-muted-foreground" />
+            <span>Back to PDF</span>
           </button>
         </div>
       </header>
@@ -534,7 +822,7 @@ export default function Logs({
           )}
         >
           <span>All logs</span>
-          <span className="px-1.5 py-0.2 rounded-full text-10 font-mono font-medium bg-muted text-muted-foreground">
+          <span className="px-1.5 py-0.2 rounded-full text-11 font-mono font-medium bg-muted text-muted-foreground">
             {totalLogsCount}
           </span>
         </button>
@@ -554,7 +842,7 @@ export default function Logs({
           <span>Errors</span>
           <span
             className={cn(
-              'px-1.5 py-0.2 rounded-full text-10 font-mono font-semibold',
+              'px-1.5 py-0.2 rounded-full text-11 font-mono font-semibold',
               parsed.errors.length > 0 ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground font-medium'
             )}
           >
@@ -577,8 +865,8 @@ export default function Logs({
           <span>Warnings</span>
           <span
             className={cn(
-              'px-1.5 py-0.2 rounded-full text-10 font-mono font-semibold',
-              parsed.warnings.length > 0 ? 'bg-amber-400 dark:bg-amber-500 text-neutral-900' : 'bg-muted text-muted-foreground font-medium'
+              'px-1.5 py-0.2 rounded-full text-11 font-mono font-semibold',
+              parsed.warnings.length > 0 ? 'bg-amber-500/20 text-amber-700 dark:text-amber-400 font-semibold' : 'bg-muted text-muted-foreground font-medium'
             )}
           >
             {parsed.warnings.length}
@@ -598,117 +886,197 @@ export default function Logs({
           )}
         >
           <span>Info</span>
-          <span className="px-1.5 py-0.2 rounded-full text-10 font-mono font-medium bg-muted text-muted-foreground">
+          <span className="px-1.5 py-0.2 rounded-full text-11 font-mono font-medium bg-muted text-muted-foreground">
             {parsed.badBoxes.length}
           </span>
         </button>
       </nav>
 
       {/* ── Main Body ── */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-background">
-        {/* Collapsible: > Raw logs accordion (Overleaf 1:1 Match) */}
-        <div className="rounded-md border border-border bg-background overflow-hidden">
-          <button
-            type="button"
-            aria-expanded={isRawLogsOpen}
-            aria-controls="raw-latex-logs"
-            onClick={() => setIsRawLogsOpen((prev) => !prev)}
-            className="w-full flex items-center gap-2 px-3 py-2 text-left font-medium text-xs text-foreground hover:bg-muted/60 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
-          >
-            <ChevronRight
-              className={cn('size-3.5 text-muted-foreground transition-transform duration-150', isRawLogsOpen && 'rotate-90')}
-            />
-            <span>Raw logs</span>
-          </button>
-          {isRawLogsOpen && (
-            <div id="raw-latex-logs" className="p-3 border-t border-border bg-muted/30">
-              <pre className="font-mono text-11 text-foreground/90 whitespace-pre-wrap break-words leading-relaxed max-h-96 overflow-y-auto select-text">
+      {compileStatus === 'error' && parsed.errors.length === 0 ? (
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center bg-background">
+          <PlaneErrorState
+            title="Compilation failed"
+            description="The LaTeX compiler encountered an error or terminated prematurely. Check the raw logs below to diagnose the issue."
+            error={log ? new Error(log.slice(-1000)) : new Error('LaTeX engine failed to compile document.')}
+          />
+        </div>
+      ) : activeTab === 'all' && totalLogsCount === 0 && !log ? (
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center bg-background">
+          <PlaneEmptyState
+            variant="review"
+            title="No compilation issues"
+            description="Your document compiled cleanly with zero errors or warnings."
+            action={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onClose}
+                className="h-8 px-3 rounded-md text-xs font-medium gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <ChevronLeft className="size-3.5 shrink-0" />
+                <span>Back to PDF preview</span>
+              </Button>
+            }
+          />
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-background">
+          {/* Compilation Error Banner (when errors exist) */}
+          {parsed.errors.length > 0 && (activeTab === 'all' || activeTab === 'errors') && (
+            <div className="flex items-center justify-between p-3 rounded-md bg-destructive/5 border border-destructive/20 text-destructive text-xs animate-in fade-in-50 duration-150">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="size-4 shrink-0 text-destructive" />
+                <span className="font-medium text-foreground">
+                  <strong className="text-destructive font-semibold">
+                    {parsed.errors.length} compilation {parsed.errors.length === 1 ? 'error' : 'errors'}
+                  </strong>{' '}
+                  detected in this build
+                </span>
+              </div>
+              {parsed.errors.some((e) => e.line) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const first = parsed.errors.find((e) => e.line);
+                    if (first) handleEntryClick(first);
+                  }}
+                  className="px-2.5 py-1 rounded-md bg-destructive/10 hover:bg-destructive/20 text-destructive text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+                >
+                  Jump to first error
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Collapsible: > Raw logs accordion (Overleaf 1:1 Match) */}
+          <div id="raw-latex-logs" className="rounded-md border border-border bg-background overflow-hidden">
+            <button
+              type="button"
+              aria-expanded={isRawLogsOpen}
+              aria-controls="raw-latex-logs-content"
+              onClick={() => setIsRawLogsOpen((prev) => !prev)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-left font-medium text-xs text-foreground hover:bg-muted/60 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            >
+              <ChevronRight
+                className={cn('size-3.5 text-muted-foreground transition-transform duration-150', isRawLogsOpen && 'rotate-90')}
+              />
+              <span>Raw logs</span>
+            </button>
+            {isRawLogsOpen && (
+              <pre id="raw-latex-logs-content" className="p-3 border-t border-border/60 bg-muted/20 font-mono text-11 text-foreground/90 whitespace-pre-wrap break-words leading-relaxed max-h-96 overflow-y-auto select-text">
                 {log || 'No compilation logs recorded yet.'}
               </pre>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Diagnostic Entries List */}
-        <div className="rounded-md border border-border bg-background overflow-hidden">
-          {/* Errors */}
-          {(activeTab === 'all' || activeTab === 'errors') &&
-            parsed.errors.map((e, i) => {
-              const key = getEntryKey(e, i);
-              const state = fixState[key];
-              return (
-                <EntryRow
-                  key={`err-${i}`}
-                  type="error"
-                  entry={e}
-                  onClick={() => handleEntryClick(e)}
-                  onSuggestFix={() => handleSuggestFix(e, i)}
-                  isFixLoading={state?.loading}
-                  fixResult={state?.result}
-                  isFixApplied={state?.applied}
-                  onApplyFix={(_entry, fix) => handleApplyFix(e, fix, i)}
+          {/* Diagnostic Entries List */}
+          <div className="rounded-md border border-border bg-background overflow-hidden">
+            {/* Errors */}
+            {(activeTab === 'all' || activeTab === 'errors') &&
+              parsed.errors.map((e, i) => {
+                const enriched = enrichEntry(e);
+                const key = getEntryKey(enriched, i);
+                const state = fixState[key];
+                return (
+                  <EntryRow
+                    key={`err-${i}`}
+                    type="error"
+                    entry={enriched}
+                    onClick={() => handleEntryClick(enriched)}
+                    onSuggestFix={() => handleSuggestFix(enriched, i)}
+                    isFixLoading={state?.loading}
+                    fixResult={state?.result}
+                    isFixApplied={state?.applied}
+                    onApplyFix={(_entry, fix) => handleApplyFix(enriched, fix, i)}
+                    onApplyQuickFix={handleApplyQuickFix}
+                  />
+                );
+              })}
+
+            {/* Warnings */}
+            {(activeTab === 'all' || activeTab === 'warnings') &&
+              parsed.warnings.map((e, i) => {
+                const enriched = enrichEntry(e);
+                return (
+                  <EntryRow
+                    key={`warn-${i}`}
+                    type="warning"
+                    entry={enriched}
+                    onClick={() => handleEntryClick(enriched)}
+                    onApplyQuickFix={handleApplyQuickFix}
+                  />
+                );
+              })}
+
+            {/* Info / Bad boxes */}
+            {(activeTab === 'all' || activeTab === 'info') &&
+              parsed.badBoxes.map((e, i) => {
+                const enriched = enrichEntry(e);
+                return (
+                  <EntryRow
+                    key={`info-${i}`}
+                    type="badbox"
+                    entry={enriched}
+                    onClick={() => handleEntryClick(enriched)}
+                    onApplyQuickFix={handleApplyQuickFix}
+                  />
+                );
+              })}
+
+            {/* Empty States */}
+            {activeTab === 'errors' && parsed.errors.length === 0 && (
+              <div className="py-10">
+                <PlaneEmptyState
+                  variant="review"
+                  isCompact
+                  title="No compilation errors"
+                  description="Your document compiled without any LaTeX errors."
                 />
-              );
-            })}
-
-          {/* Warnings */}
-          {(activeTab === 'all' || activeTab === 'warnings') &&
-            parsed.warnings.map((e, i) => (
-              <EntryRow
-                key={`warn-${i}`}
-                type="warning"
-                entry={e}
-                onClick={() => handleEntryClick(e)}
-              />
-            ))}
-
-          {/* Info / Bad boxes */}
-          {(activeTab === 'all' || activeTab === 'info') &&
-            parsed.badBoxes.map((e, i) => (
-              <EntryRow
-                key={`info-${i}`}
-                type="badbox"
-                entry={e}
-                onClick={() => handleEntryClick(e)}
-              />
-            ))}
-
-          {/* Empty States */}
-          {activeTab === 'errors' && parsed.errors.length === 0 && (
-            <div className="py-8 text-center text-xs text-muted-foreground font-medium">
-              No errors found in this compilation.
-            </div>
-          )}
-          {activeTab === 'warnings' && parsed.warnings.length === 0 && (
-            <div className="py-8 text-center text-xs text-muted-foreground font-medium">
-              No warnings found in this compilation.
-            </div>
-          )}
-          {activeTab === 'info' && parsed.badBoxes.length === 0 && (
-            <div className="py-8 text-center text-xs text-muted-foreground font-medium">
-              No bad boxes or layout warnings.
-            </div>
-          )}
-          {activeTab === 'all' && totalLogsCount === 0 && (
-            <div className="py-8 px-4">
-              <EditorEmptyState
-                variant="review"
-                isCompact
-                title="No compilation issues"
-                description="Your document compiled cleanly with zero errors or warnings."
-              />
-            </div>
-          )}
+              </div>
+            )}
+            {activeTab === 'warnings' && parsed.warnings.length === 0 && (
+              <div className="py-10">
+                <PlaneEmptyState
+                  variant="review"
+                  isCompact
+                  title="No compilation warnings"
+                  description="No layout warnings or unresolved reference warnings found."
+                />
+              </div>
+            )}
+            {activeTab === 'info' && parsed.badBoxes.length === 0 && (
+              <div className="py-10">
+                <PlaneEmptyState
+                  variant="review"
+                  isCompact
+                  title="No layout notices"
+                  description="No bad boxes or formatting diagnostics reported."
+                />
+              </div>
+            )}
+            {activeTab === 'all' && totalLogsCount === 0 && (
+              <div className="py-10">
+                <PlaneEmptyState
+                  variant="review"
+                  isCompact
+                  title="No compilation issues"
+                  description="Your document compiled cleanly with zero errors or warnings."
+                />
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Bottom Action Bar (Clear cached files & Other logs and files) ── */}
-      <footer className="h-11 px-3 bg-background border-t border-border flex items-center justify-between shrink-0 select-none">
+      <footer className="h-10 px-3 bg-background border-t border-border flex items-center justify-between shrink-0 select-none">
         {/* Left: Clear cached files button */}
         <button
           type="button"
           onClick={onClearCacheAndCompile}
-          className="h-7.5 px-3 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+          className="h-7.5 px-2.5 rounded-md bg-muted/60 hover:bg-destructive/10 text-muted-foreground hover:text-destructive border border-border hover:border-destructive/30 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-destructive"
         >
           <Trash2 className="size-3.5 shrink-0" />
           <span>Clear cached files</span>
@@ -719,7 +1087,7 @@ export default function Logs({
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="h-7.5 px-3 rounded-md bg-background hover:bg-muted border border-border text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="h-7.5 px-2.5 rounded-md bg-background hover:bg-muted border border-border text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <span>Other logs and files</span>
               <ChevronUp className="size-3.5 shrink-0 text-muted-foreground" />

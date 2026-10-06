@@ -26,10 +26,12 @@ export interface MoveNodeInput {
   rank?: number;
 }
 
+import type { DocumentContent } from './core.types';
+
 export interface CreateChildNodeInput {
   title: string;
   parentPageId?: string;
-  content?: any;
+  content?: DocumentContent;
   rank?: number;
   icon?: string;
   isFolder?: boolean;

@@ -6,7 +6,6 @@ import {
   TrendingUp,
   Brain,
   MessageSquare,
-  Sparkles,
   FileCheck,
 } from 'lucide-react';
 import {

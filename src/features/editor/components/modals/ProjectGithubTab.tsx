@@ -133,7 +133,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                     className="text-xs font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1 truncate"
                   >
                     <span>{linkedRepo.repoFullName}</span>
-                    <ExternalLink className="size-3 text-muted-foreground" />
+                    <ExternalLink className="size-3 text-current shrink-0" />
                   </a>
                   <Badge
                     variant="outline"
@@ -259,7 +259,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                   <SelectTrigger className="w-full h-8 text-xs bg-background">
                     <SelectValue placeholder={isLoadingRepos ? 'Loading repositories...' : 'Choose a repository'} />
                   </SelectTrigger>
-                  <SelectContent className="z-[9999] max-h-56">
+                  <SelectContent className="max-h-56">
                     {userRepos.map((repo) => (
                       <SelectItem key={repo.id} value={repo.id} className="text-xs cursor-pointer">
                         {repo.name}

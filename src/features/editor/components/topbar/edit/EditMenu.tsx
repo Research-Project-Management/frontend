@@ -3,6 +3,8 @@
 import React from 'react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from "@/shared/components/ui";
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
+import { EditorEventBus } from '@/features/editor/utils/editor.util';
+import { Sparkles, ShieldCheck } from 'lucide-react';
 
 export default function EditMenu() {
   const { engine } = useEditorInstance();
@@ -11,13 +13,15 @@ export default function EditMenu() {
   const handleRedo = () => engine?.redo();
   const handleSelectAll = () => engine?.selectAll();
   const handleFind = () => engine?.openFind();
+  const handleAutoFix = () => EditorEventBus.emit('flux:autofix');
+  const handleLintPage = () => EditorEventBus.emit('flux:lint-page');
 
   return (
     <MenubarMenu>
       <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md">
         Edit
       </MenubarTrigger>
-      <MenubarContent className="min-w-44 text-xs z-[9999]">
+      <MenubarContent className="min-w-56 text-xs">
         <MenubarItem onClick={handleUndo}>
           Undo
           <MenubarShortcut>Ctrl Z</MenubarShortcut>
@@ -34,6 +38,16 @@ export default function EditMenu() {
         <MenubarItem onClick={handleSelectAll}>
           Select all
           <MenubarShortcut>Ctrl A</MenubarShortcut>
+        </MenubarItem>
+        <MenubarSeparator />
+        <MenubarItem onClick={handleAutoFix} className="cursor-pointer">
+          <Sparkles className="size-3.5 mr-2 text-foreground" />
+          <span>Auto-Fix Page Syntax</span>
+          <MenubarShortcut>Alt Shift F</MenubarShortcut>
+        </MenubarItem>
+        <MenubarItem onClick={handleLintPage} className="cursor-pointer">
+          <ShieldCheck className="size-3.5 mr-2 text-foreground" />
+          <span>Check Page Syntax</span>
         </MenubarItem>
       </MenubarContent>
     </MenubarMenu>

@@ -14,6 +14,7 @@ import {
   useCreateCollectionMutation,
   useDeleteLibraryItemsMutation,
   useBatchPurgeItemsMutation,
+  useSavedSearches,
   libraryServices,
   itemKeys,
   libraryKeys,
@@ -22,6 +23,7 @@ import {
 import type { CollectionFormValues, UnifiedIngestionPayload } from '../../types';
 
 const CreateCollectionModal = dynamic(() => import('./CreateCollectionModal'), { ssr: false });
+const CreateSavedSearchModal = dynamic(() => import('./CreateSavedSearchModal'), { ssr: false });
 const DeleteModal = dynamic(() => import('./DeleteModal'), { ssr: false });
 const AddLinkModal = dynamic(() => import('./AddLinkModal'), { ssr: false });
 const ImportFromPersonalModal = dynamic(() => import('./ImportFromPersonalModal'), { ssr: false });
@@ -56,6 +58,14 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
   const createCollectionMutation = useCreateCollectionMutation(effectiveScope);
   const deleteItemsMutation = useDeleteLibraryItemsMutation(effectiveScope);
   const purgeItemsMutation = useBatchPurgeItemsMutation(effectiveScope);
+  const {
+    createSavedSearch,
+    updateSavedSearch,
+    isCreating: isCreatingSS,
+    isUpdating: isUpdatingSS,
+  } = useSavedSearches(effectiveScope);
+  const isSavedSearchModalOpen =
+    activeModal === 'SAVED_SEARCH' || activeModal === 'CREATE_SAVED_SEARCH';
 
   // 1. Create Collection Modal
   const isCreateCollectionOpen = activeModal === 'CREATE_COLLECTION';
@@ -432,6 +442,33 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           title="Empty Trash"
           description="Are you sure you want to permanently empty the trash? All items will be permanently deleted and cannot be recovered."
           onConfirm={handleTrashConfirm}
+        />
+      )}
+
+      {isSavedSearchModalOpen && (
+        <CreateSavedSearchModal
+          open={isSavedSearchModalOpen}
+          onOpenChange={(open) => !open && closeModal()}
+          savedSearch={payload?.savedSearch || null}
+          scopeId={effectiveScope}
+          onSubmit={async (data: any) => {
+            if (payload?.savedSearch?.id) {
+              await updateSavedSearch({
+                id: payload.savedSearch.id,
+                data: {
+                  name: data.name,
+                  conjunction: data.conjunction,
+                  conditions: data.conditions,
+                  sortBy: data.sortBy,
+                  sortOrder: data.sortOrder,
+                },
+              });
+            } else {
+              await createSavedSearch(data);
+            }
+            closeModal();
+          }}
+          isPending={isCreatingSS || isUpdatingSS}
         />
       )}
 

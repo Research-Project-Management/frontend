@@ -113,15 +113,15 @@ export function ExpandColumnIcon({ className }: { className?: string }) {
 
 const PRIORITY_THEME_CLASSES: Record<string, string> = {
   urgent:
-    'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/30 hover:bg-red-500/20 shadow-none font-normal',
+    'text-destructive bg-destructive/10 border-destructive/30 hover:bg-destructive/20 shadow-none font-normal',
   high:
-    'text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20 shadow-none font-normal',
+    'text-amber-700 dark:text-amber-300 bg-amber-500/15 border-amber-500/30 hover:bg-amber-500/25 shadow-none font-normal',
   medium:
-    'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 shadow-none font-normal',
+    'text-foreground bg-muted border-border hover:bg-muted/80 shadow-none font-normal',
   low:
-    'text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20 shadow-none font-normal',
+    'text-muted-foreground bg-muted/40 border-border/70 hover:bg-muted shadow-none font-normal',
   none:
-    'text-muted-foreground bg-muted/20 hover:bg-muted border-border/70 shadow-none font-normal',
+    'text-muted-foreground/60 bg-transparent hover:bg-muted/50 border-border/40 shadow-none font-normal',
 };
 
 function formatDateDisplay(dateStr?: string | null): string {
@@ -410,7 +410,7 @@ export function CardUI({
       </p>
 
       {/* Row 3: Unified Footer (Priority, Dates, Labels, Modules, Indicators | Assignee) */}
-      <div className="mt-2.5 flex items-end justify-between gap-1.5 min-w-0">
+      <div className="mt-2.5 flex items-center justify-between gap-1.5 min-w-0">
         {/* Left: Metadata badges */}
         <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
           {/* 1. Priority */}
@@ -566,15 +566,15 @@ export function CardUI({
             </div>
           )}
 
-          {/* Quick Add Label - visible on hover */}
-          {displayOptions?.properties?.labels !== false && !isReadOnly && (
-            <div className="shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+          {/* Quick Add Label - only visible on hover if no labels exist yet */}
+          {displayOptions?.properties?.labels !== false && labels.length === 0 && !isReadOnly && (
+            <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
               <LabelPopover
                 open={labelOpen}
                 onOpenChange={setLabelOpen}
-                labels={card.labels || []}
+                labels={ItemHelpers.uniqueLabels(card.labels as any)}
                 setLabels={(updater) => {
-                  const current = card.labels || [];
+                  const current = ItemHelpers.uniqueLabels(card.labels as any);
                   const next = typeof updater === 'function' ? updater(current) : updater;
                   onUpdateItem?.(card.id, { labels: next });
                 }}
@@ -589,7 +589,7 @@ export function CardUI({
         {displayOptions?.properties?.assignee !== false && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="shrink-0 ml-auto flex items-center self-end"
+            className="shrink-0 ml-auto flex items-center self-center"
           >
             {resolvedAssignees.length > 1 ? (
               <button
@@ -1053,8 +1053,9 @@ export function BoardView({
       const allLabels = new Set<string>();
       items.forEach((t: Item) => {
         if (Array.isArray(t.labels)) {
-          t.labels.forEach((lbl) => {
-            if (lbl) allLabels.add(lbl);
+          t.labels.forEach((lbl: any) => {
+            const str = typeof lbl === 'string' ? lbl : lbl?.name || lbl?.id;
+            if (str) allLabels.add(str);
           });
         }
       });
@@ -1095,7 +1096,8 @@ export function BoardView({
         } else if (subGroupBy === 'assignee') {
           itemLaneId = ItemHelpers.resolveAssigneeId(t) || '__unassigned__';
         } else if (subGroupBy === 'labels') {
-          itemLaneId = (t.labels && t.labels.length > 0) ? t.labels[0] : '__no_label__';
+          const first = (t.labels && t.labels.length > 0) ? t.labels[0] : null;
+          itemLaneId = first ? (typeof first === 'string' ? first : (first as any).name || (first as any).id || '__no_label__') : '__no_label__';
         }
 
         if (itemLaneId === lane.id) {

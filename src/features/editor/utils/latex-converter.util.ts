@@ -69,36 +69,67 @@ export function extractLatexBodyAndPreamble(latex: string): {
   return { preamble, body: latex.trim() };
 }
 
+const MAX_MATH_CACHE_SIZE = 2000;
+const mathHtmlCache = new Map<string, string>();
+const chemHtmlCache = new Map<string, string>();
+
 /**
- * Safely renders LaTeX math using KaTeX into an HTML string with fallback.
+ * Safely renders LaTeX math using KaTeX into an HTML string with fallback and O(1) LRU memory cache.
  */
 export function renderMathHtml(mathCode: string, displayMode: boolean): string {
+  const cacheKey = `${displayMode ? 'D:' : 'I:'}${mathCode}`;
+  const cached = mathHtmlCache.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  let html: string;
   try {
-    return katex.renderToString(mathCode, {
+    html = katex.renderToString(mathCode, {
       displayMode,
       throwOnError: false,
     });
   } catch {
     const esc = escapeHtml(mathCode);
-    return displayMode
+    html = displayMode
       ? `<pre class="math-error">$$${esc}$$</pre>`
       : `<code class="math-error">$${esc}$</code>`;
   }
+
+  if (mathHtmlCache.size >= MAX_MATH_CACHE_SIZE) {
+    const firstKey = mathHtmlCache.keys().next().value;
+    if (firstKey) mathHtmlCache.delete(firstKey);
+  }
+  mathHtmlCache.set(cacheKey, html);
+  return html;
 }
 
 /**
- * Safely renders LaTeX chemical formula using KaTeX mhchem into an HTML string with fallback.
+ * Safely renders LaTeX chemical formula using KaTeX mhchem into an HTML string with fallback and cache.
  */
 export function renderChemHtml(chemCode: string): string {
+  const cached = chemHtmlCache.get(chemCode);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  let html: string;
   try {
-    return katex.renderToString(`\\ce{${chemCode}}`, {
+    html = katex.renderToString(`\\ce{${chemCode}}`, {
       displayMode: false,
       throwOnError: false,
     });
   } catch {
     const esc = escapeHtml(chemCode);
-    return `<code class="chem-error font-mono text-11 px-1 py-0.5 rounded bg-muted/60">\\ce{${esc}}</code>`;
+    html = `<code class="chem-error font-mono text-11 px-1 py-0.5 rounded bg-muted/60">\\ce{${esc}}</code>`;
   }
+
+  if (chemHtmlCache.size >= 1000) {
+    const firstKey = chemHtmlCache.keys().next().value;
+    if (firstKey) chemHtmlCache.delete(firstKey);
+  }
+  chemHtmlCache.set(chemCode, html);
+  return html;
 }
 
 /**

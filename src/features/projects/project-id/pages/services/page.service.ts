@@ -31,6 +31,7 @@ export const PageService = {
         status: input.status,
         labels: input.labels,
         labelIds: input.labels,
+        templateType: input.templateType,
       },
     );
     const mainFile = res.mainFile || null;

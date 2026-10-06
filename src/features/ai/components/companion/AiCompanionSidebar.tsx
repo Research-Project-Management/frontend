@@ -169,7 +169,7 @@ export function AiCompanionSidebar() {
       {/* Global drag overlay to prevent pointer capture or text selection during drag */}
       {isResizing && (
         <div
-          className="fixed inset-0 z-[9999] cursor-col-resize select-none pointer-events-auto"
+          className="fixed inset-0 z-50 cursor-col-resize select-none pointer-events-auto"
           style={{ userSelect: 'none', cursor: 'col-resize' }}
         />
       )}
@@ -180,7 +180,7 @@ export function AiCompanionSidebar() {
         className={cn(
           "flex flex-col bg-background relative pb-[env(safe-area-inset-bottom)]",
           // Mobile: slide-over sheet drawer
-          "fixed inset-y-0 right-0 z-50 w-full sm:max-w-md shadow-2xl border-l border-border animate-in slide-in-from-right duration-200 overflow-hidden",
+          "fixed inset-y-0 right-0 z-50 w-full sm:max-w-md shadow-lg border-l border-border animate-in slide-in-from-right duration-200 overflow-hidden",
           // Desktop: in-flow resizable column with visible overflow so edge resize and collapse controls aren't clipped
           "md:relative md:inset-auto md:z-auto md:order-3 md:h-full md:shrink-0 md:rounded-md md:border md:border-border md:shadow-none md:animate-none md:overflow-visible",
           isResizing && "transition-none select-none"

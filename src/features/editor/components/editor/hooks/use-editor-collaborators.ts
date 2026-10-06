@@ -46,16 +46,8 @@ export function useEditorCollaborators({
   providerRef.current = provider;
 
   useEffect(() => {
-    if (
-      !pageId ||
-      !projectId ||
-      pageId === 'demo' ||
-      projectId === 'adam-research' ||
-      projectId === 'demo' ||
-      projectId === 'default' ||
-      pageId.startsWith('mock-') ||
-      projectId.startsWith('mock-')
-    ) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!pageId || !projectId || !uuidRegex.test(pageId) || !uuidRegex.test(projectId)) {
       setProvider(null);
       setConnectionStatus('disconnected');
       return;

@@ -31,15 +31,16 @@ export interface LibraryDisplayPopoverProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   className?: string;
+  isTrash?: boolean;
 }
 
 export const COLUMN_ITEMS: Array<{ key: LibraryColumnKey; label: string }> = [
   { key: 'authors', label: 'Creator' },
   { key: 'year', label: 'Year' },
   { key: 'publication', label: 'Publication' },
-  { key: 'citationKey', label: 'Citation Key' },
   { key: 'itemType', label: 'Item Type' },
   { key: 'doi', label: 'DOI' },
+  { key: 'citationKey', label: 'Citation Key' },
   { key: 'citations', label: 'Citations' },
 ];
 
@@ -59,6 +60,7 @@ export function LibraryDisplayPopover({
   open: controlledOpen,
   onOpenChange: setControlledOpen,
   className,
+  isTrash,
 }: LibraryDisplayPopoverProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
@@ -70,6 +72,16 @@ export function LibraryDisplayPopover({
   const [densityOpen, setDensityOpen] = useState(true);
 
   const { columns, orderBy, orderDirection, density = 'comfortable' } = options;
+
+  const orderByOptions = React.useMemo(() => {
+    if (isTrash || orderBy === 'deletedAt') {
+      return [
+        ...ORDER_BY_OPTIONS,
+        { value: 'deletedAt' as LibraryOrderBy, label: 'Date Deleted' },
+      ];
+    }
+    return ORDER_BY_OPTIONS;
+  }, [isTrash, orderBy]);
 
   const handleColumnToggle = (key: LibraryColumnKey) => {
     onOptionsChange({
@@ -123,7 +135,7 @@ export function LibraryDisplayPopover({
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-68 sm:w-72 max-h-[85vh] overflow-y-auto p-2 rounded-md text-12 border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-1.5 select-none font-sans no-scrollbar"
+        className="w-74 sm:w-76 max-h-[85vh] overflow-y-auto p-2 rounded-md text-12 border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-1.5 select-none font-sans no-scrollbar"
       >
         {/* 1. Display Properties (Columns) */}
         <div>
@@ -142,7 +154,10 @@ export function LibraryDisplayPopover({
 
           {columnsOpen && (
             <div className="flex flex-wrap items-center gap-1 pt-1 px-0.5 select-none">
-              <span className="h-6 px-2 text-12 font-medium rounded-md bg-primary text-primary-foreground border border-primary select-none inline-flex items-center justify-center">
+              <span
+                className="h-6 px-2 text-11 font-medium rounded-md bg-primary text-primary-foreground border border-primary select-none inline-flex items-center justify-center cursor-default"
+                title="Primary column (always visible)"
+              >
                 Title
               </span>
               {COLUMN_ITEMS.map((item) => {
@@ -154,7 +169,7 @@ export function LibraryDisplayPopover({
                     aria-pressed={isSelected}
                     onClick={() => handleColumnToggle(item.key)}
                     className={cn(
-                      "h-6 px-2 text-12 font-medium rounded-md border transition-colors cursor-pointer select-none inline-flex items-center justify-center",
+                      "h-6 px-2 text-11 font-medium rounded-md border transition-colors cursor-pointer select-none inline-flex items-center justify-center",
                       isSelected
                         ? "border-primary bg-primary text-primary-foreground font-medium"
                         : "border-border bg-background text-foreground hover:bg-muted font-normal"
@@ -185,21 +200,21 @@ export function LibraryDisplayPopover({
               <button
                 type="button"
                 onClick={toggleOrderDirection}
-                className="size-6 flex items-center justify-center rounded-md border border-border hover:bg-muted text-foreground transition-colors cursor-pointer"
+                className="p-0.5 text-foreground hover:bg-muted rounded cursor-pointer transition-colors"
                 title={orderDirection === 'asc' ? 'Ascending (A to Z / Low to High)' : 'Descending (Z to A / High to Low)'}
                 aria-label="Toggle sort direction"
               >
                 {orderDirection === 'asc' ? (
-                  <ArrowUpNarrowWide className="size-3 text-foreground shrink-0" />
+                  <ArrowUpNarrowWide className="size-3.5 text-foreground shrink-0" />
                 ) : (
-                  <ArrowDownNarrowWide className="size-3 text-foreground shrink-0" />
+                  <ArrowDownNarrowWide className="size-3.5 text-foreground shrink-0" />
                 )}
               </button>
 
               <button
                 type="button"
                 onClick={() => setOrderByOpen(!orderByOpen)}
-                className="p-0.5 text-foreground cursor-pointer"
+                className="p-0.5 text-foreground hover:bg-muted rounded cursor-pointer transition-colors"
                 aria-label={orderByOpen ? "Collapse order by" : "Expand order by"}
               >
                 {orderByOpen ? (
@@ -213,7 +228,7 @@ export function LibraryDisplayPopover({
 
           {orderByOpen && (
             <div className="space-y-0.5 pt-0.5 select-none">
-              {ORDER_BY_OPTIONS.map((opt) => {
+              {orderByOptions.map((opt) => {
                 const isSelected = orderBy === opt.value;
                 return (
                   <label

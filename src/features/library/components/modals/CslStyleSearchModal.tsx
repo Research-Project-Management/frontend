@@ -83,20 +83,28 @@ export default function CslStyleSearchModal({
     }
   }, [open]);
 
-  const { data: searchData, isLoading } = useSearchCslStyles(debouncedQuery, 50);
+  const { data: searchData, isLoading, isError } = useSearchCslStyles(debouncedQuery, 50, {
+    enabled: open,
+  });
 
   const styles = useMemo(() => {
-    const remoteStyles = searchData?.styles;
-    if (remoteStyles && remoteStyles.length > 0) return remoteStyles;
-    if (!debouncedQuery) return POPULAR_STYLES_FALLBACK;
-    const q = debouncedQuery.toLowerCase();
-    return POPULAR_STYLES_FALLBACK.filter(
-      (s) =>
-        s.title.toLowerCase().includes(q) ||
-        s.id.toLowerCase().includes(q) ||
-        s.titleShort?.toLowerCase().includes(q),
-    );
-  }, [searchData?.styles, debouncedQuery]);
+    // 1. Authoritative: Use server results when available (handles empty array correctly)
+    if (searchData?.styles) {
+      return searchData.styles;
+    }
+    // 2. Offline / network error fallback only:
+    if (isError || !searchData) {
+      if (!debouncedQuery) return POPULAR_STYLES_FALLBACK;
+      const q = debouncedQuery.toLowerCase();
+      return POPULAR_STYLES_FALLBACK.filter(
+        (s) =>
+          s.title.toLowerCase().includes(q) ||
+          s.id.toLowerCase().includes(q) ||
+          s.titleShort?.toLowerCase().includes(q),
+      );
+    }
+    return [];
+  }, [searchData, isError, debouncedQuery]);
 
   const handleItemClick = (item: CslStyleMetadata) => {
     const rawLabel = item.titleShort || item.title;

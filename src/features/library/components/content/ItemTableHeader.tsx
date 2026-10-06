@@ -209,8 +209,23 @@ export function ItemTableHeader({
 
         {/* Trash deletedAt column */}
         {isTrash && (
-          <th scope="col" className="px-3 h-8 py-0 align-middle font-medium text-foreground text-left bg-background border-b border-border">
-            Date Deleted
+          <th
+            scope="col"
+            aria-sort={getAriaSort('deletedAt')}
+            onClick={() => onSort('deletedAt')}
+            onKeyDown={(e) => {
+              if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                onSort('deletedAt');
+              }
+            }}
+            tabIndex={0}
+            className="px-3 h-8 py-0 align-middle font-medium cursor-pointer text-foreground select-none text-left bg-background border-b border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
+          >
+            <div className="flex items-center gap-1.5">
+              <span>Date Deleted</span>
+              {renderSortIndicator('deletedAt')}
+            </div>
           </th>
         )}
       </tr>

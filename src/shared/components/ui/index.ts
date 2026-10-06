@@ -20,6 +20,8 @@ export * from "./dropdown-menu";
 export * from "./error-boundary";
 export * from "./feature-error-boundary";
 export * from "./PlaneErrorState";
+export * from "./PlaneEmptyState";
+export type { TIllustrationAssetProps } from "./PlaneEmptyState";
 export * from "./form";
 export * from "./hover-card";
 export * from "./input-otp";
@@ -47,6 +49,7 @@ export * from "./toast-icons";
 export * from "./toggle-group";
 export * from "./toggle";
 export * from "./tooltip";
+export * from "./archival-tag";
 
 // Utilities
 export { cn } from "@/shared/lib/utils";

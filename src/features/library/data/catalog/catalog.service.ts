@@ -229,9 +229,6 @@ export const ItemsService = {
   },
 
   getCounts: (scopeId?: string) => {
-    if (scopeId === 'adam-research' || scopeId === 'demo' || scopeId?.startsWith('mock-')) {
-      return Promise.resolve({ total: 0, unfiled: 0, starred: 0, trash: 0 });
-    }
     return apiGet<{ total: number; unfiled: number; starred: number; trash: number }>(
       getItemUrl(scopeId, 'counts'),
     );
@@ -239,32 +236,26 @@ export const ItemsService = {
 
   getAll: (
     scopeId?: string,
-    params?: (ItemQueryParams & { cursor?: string; fields?: string[] | string }) | {
+    params?: (ItemQueryParams & { cursor?: string; fields?: readonly string[] | string[] | string }) | {
       view?: 'all' | 'recent' | 'unfiled' | 'trash' | 'my-publications' | 'publications' | string;
       search?: string;
       collectionId?: string;
       tagId?: string;
       limit?: number;
       cursor?: string;
-      fields?: string[] | string;
+      fields?: readonly string[] | string[] | string;
       [key: string]: any;
     },
   ) => {
-    if (scopeId === 'adam-research' || scopeId === 'demo' || scopeId?.startsWith('mock-')) {
-      return Promise.resolve({
-        items: [],
-        papers: [],
-        total: 0,
-        meta: undefined,
-        pagination: undefined,
-      });
-    }
     const formattedParams = params
       ? {
           ...params,
           fields: Array.isArray(params.fields)
             ? params.fields.join(',')
             : params.fields,
+          tag: Array.isArray((params as any).tag)
+            ? (params as any).tag.join(',')
+            : (params as any).tag || (Array.isArray(params.tags) ? params.tags.join(',') : params.tags),
           tags: Array.isArray(params.tags)
             ? params.tags.join(',')
             : params.tags,

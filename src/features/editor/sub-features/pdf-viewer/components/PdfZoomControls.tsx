@@ -56,7 +56,7 @@ export const PdfZoomControls = React.memo(function PdfZoomControls({
               type="button"
               onClick={onZoomOut}
               aria-label="Zoom out"
-              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Minus className="size-3.5" />
             </button>
@@ -72,10 +72,10 @@ export const PdfZoomControls = React.memo(function PdfZoomControls({
           <button
             type="button"
             aria-label="Select zoom preset"
-            className="h-6 px-1.5 flex items-center gap-1 rounded-md text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="h-6 px-1.5 flex items-center gap-1 rounded-md text-xs font-mono text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <span>{autoFit ? 'Fit Width' : `${percentage}%`}</span>
-            <ChevronDown className="size-3 opacity-60" />
+            <ChevronDown className="size-3" />
           </button>
         </DropdownMenuTrigger>
 
@@ -113,7 +113,7 @@ export const PdfZoomControls = React.memo(function PdfZoomControls({
               type="button"
               onClick={onZoomIn}
               aria-label="Zoom in"
-              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <Plus className="size-3.5" />
             </button>

@@ -4,6 +4,8 @@ import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, X, MessageSquare, CornerDownRight, Loader2 } from 'lucide-react';
 import type { PageSuggestion } from '@/features/editor/types';
+import { Button } from '@/shared/components/ui/button';
+import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 
 export interface InlineSuggestionWidgetData {
@@ -80,11 +82,11 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
   const typeConfig = {
     insert: {
       label: 'Added',
-      badgeClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+      badgeClass: 'bg-success/15 text-success border-success/20',
     },
     delete: {
       label: 'Deleted',
-      badgeClass: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/20',
+      badgeClass: 'bg-destructive/15 text-destructive border-destructive/20',
     },
     replace: {
       label: 'Replaced',
@@ -102,7 +104,7 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
       ref={containerRef}
       role="dialog"
       aria-label="Track change proposal"
-      className="fixed z-[9998] w-84 rounded-lg border border-border bg-popover text-popover-foreground p-3.5 shadow-raised-300 animate-in fade-in-0 zoom-in-95 duration-150"
+      className="fixed z-50 w-84 rounded-lg border border-border bg-popover text-popover-foreground p-3.5 shadow-raised-300 animate-in fade-in-0 zoom-in-95 duration-150"
       style={{ left, top }}
     >
       {/* ── Header: Author & Action Type ── */}
@@ -122,22 +124,26 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          <span
+          <Badge
+            variant="outline"
             className={cn(
-              'px-1.5 py-0.5 rounded-sm text-10 font-medium border tracking-normal',
+              'px-1.5 py-0.5 rounded-sm text-10 font-medium tracking-normal border',
               typeConfig.badgeClass,
             )}
           >
             {typeConfig.label}
-          </span>
-          <button
+          </Badge>
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className="p-1 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+            aria-label="Dismiss widget"
+            className="size-6 p-0 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
             title="Dismiss widget (Esc)"
           >
             <X className="size-3.5" />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -146,7 +152,7 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
         {suggestion.originalText && (
           <div className="space-y-0.5">
             <span className="text-10 font-medium text-muted-foreground">Original:</span>
-            <div className="max-h-16 overflow-y-auto px-2 py-1 rounded-md bg-rose-500/10 text-rose-700 dark:text-rose-400 font-mono text-xs line-through break-all">
+            <div className="max-h-16 overflow-y-auto px-2 py-1 rounded-md bg-destructive/10 text-destructive font-mono text-xs line-through break-all">
               {suggestion.originalText}
             </div>
           </div>
@@ -155,7 +161,7 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
         {suggestion.suggestedText && (
           <div className="space-y-0.5">
             <span className="text-10 font-medium text-muted-foreground">Proposed:</span>
-            <div className="max-h-16 overflow-y-auto px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-mono text-xs font-medium break-all">
+            <div className="max-h-16 overflow-y-auto px-2 py-1 rounded-md bg-success/10 text-success font-mono text-xs font-medium break-all">
               {suggestion.suggestedText}
             </div>
           </div>
@@ -172,25 +178,29 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
       {/* ── Footer: Action Buttons (1-Click Accept / Reject) ── */}
       <div className="flex items-center justify-between pt-2 border-t border-border">
         {onOpenReviewTab && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => {
               onOpenReviewTab(suggestion.id);
               onClose();
             }}
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+            className="h-6 px-1.5 gap-1 text-xs text-muted-foreground hover:text-primary cursor-pointer"
           >
             <MessageSquare className="size-3" />
             <span>View thread</span>
-          </button>
+          </Button>
         )}
 
         <div className="flex items-center gap-1.5 ml-auto">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             disabled={isPending}
             onClick={() => onReject(suggestion)}
-            className="inline-flex items-center gap-1 h-6 px-2 rounded-sm text-xs font-medium border border-border bg-background hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 text-muted-foreground transition-colors disabled:opacity-50 cursor-pointer"
+            className="h-6 px-2 text-xs font-medium gap-1 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 cursor-pointer"
           >
             {isRejecting ? (
               <Loader2 className="size-3 animate-spin" />
@@ -198,13 +208,14 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
               <X className="size-3" />
             )}
             Reject
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
+            size="sm"
             disabled={isPending}
             onClick={() => onAccept(suggestion)}
-            className="inline-flex items-center gap-1 h-6 px-2.5 rounded-sm text-xs font-medium bg-primary text-primary-foreground hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer"
+            className="h-6 px-2.5 text-xs font-medium gap-1 bg-primary text-primary-foreground hover:bg-primary-hover cursor-pointer"
           >
             {isAccepting ? (
               <Loader2 className="size-3 animate-spin" />
@@ -212,7 +223,7 @@ export const InlineSuggestionWidget = React.memo(function InlineSuggestionWidget
               <Check className="size-3" />
             )}
             Accept
-          </button>
+          </Button>
         </div>
       </div>
     </div>,

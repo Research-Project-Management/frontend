@@ -27,23 +27,23 @@ const STATE_CONFIG: Record<
   ProjectState,
   { label: string; color: string }
 > = {
-  draft: { label: 'Draft', color: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
-  planning: { label: 'Planning', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
-  execution: { label: 'In Execution', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' },
-  monitoring: { label: 'Monitoring', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
-  completed: { label: 'Completed', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' },
-  cancelled: { label: 'Cancelled', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300' },
+  draft: { label: 'Draft', color: 'bg-muted text-muted-foreground' },
+  planning: { label: 'Planning', color: 'bg-muted text-foreground' },
+  execution: { label: 'In Execution', color: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30' },
+  monitoring: { label: 'Monitoring', color: 'bg-muted text-foreground' },
+  completed: { label: 'Completed', color: 'bg-success/10 text-success border border-success/30' },
+  cancelled: { label: 'Cancelled', color: 'bg-muted text-muted-foreground line-through' },
 };
 
 const PRIORITY_CONFIG: Record<
   ProjectPriority,
   { label: string; color: string }
 > = {
-  urgent: { label: 'Urgent', color: 'text-rose-600 dark:text-rose-400 font-semibold' },
+  urgent: { label: 'Urgent', color: 'text-destructive font-semibold' },
   high: { label: 'High', color: 'text-amber-600 dark:text-amber-400 font-medium' },
-  medium: { label: 'Medium', color: 'text-blue-600 dark:text-blue-400 font-medium' },
-  low: { label: 'Low', color: 'text-slate-500 font-normal' },
-  none: { label: 'None', color: 'text-muted-foreground' },
+  medium: { label: 'Medium', color: 'text-foreground font-medium' },
+  low: { label: 'Low', color: 'text-muted-foreground font-normal' },
+  none: { label: 'None', color: 'text-muted-foreground/60' },
 };
 
 function formatDate(dateStr: string | null): string {

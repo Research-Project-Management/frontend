@@ -2,9 +2,21 @@
 
 import React, { useState, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { PenLine, Search, X, Columns3, AlignJustify, ListFilter, Check } from 'lucide-react';
+import { PenLine, Search, X, Columns3, AlignJustify, ListFilter, Check, ChevronDown } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
 import {
   Tooltip,
   TooltipContent,
@@ -27,17 +39,39 @@ export interface TopbarProps {
   };
   viewMode: 'grid' | 'list';
   setViewMode: (mode: 'grid' | 'list') => void;
-  onCreateClick: () => void;
+  /** Open the create dialog preselected with the chosen starter template. */
+  onCreateClick: (template?: 'blank' | 'example') => void;
+  /** Import an existing LaTeX project (.zip) into the current project. */
+  onImportZip?: (file: File) => void;
+  /** Open the template gallery modal, optionally pre-filtered by category. */
+  onOpenTemplates?: (category: string) => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
   projectLabels?: Array<{ id: string; name: string; color?: string }>;
   selectedLabelId?: string | null;
   onSelectLabelId?: (labelId: string | null) => void;
+  selectedLabelIds?: string[];
+  onSelectLabelIds?: (labelIds: string[]) => void;
 }
 
 const VIEW_OPTIONS = [
-  { id: 'grid' as const, label: 'Grid view', icon: Columns3 },
+  { id: 'grid' as const, label: 'Board view', icon: Columns3 },
   { id: 'list' as const, label: 'List view', icon: AlignJustify },
+] as const;
+
+// Entries mirror Overleaf's "New project" menu. Disabled until their backend exists.
+const SOON_IMPORTS = ['Word document', 'Markdown document', 'GitHub repo'] as const;
+const OVERLEAF_TEMPLATE_CATEGORIES = [
+  { label: 'Journal articles', category: 'journal' },
+  { label: 'Books', category: 'book' },
+  { label: 'Formal letters', category: 'letter' },
+  { label: 'Assignments', category: 'assignment' },
+  { label: 'Posters', category: 'poster' },
+  { label: 'Presentations', category: 'presentation' },
+  { label: 'Reports', category: 'report' },
+  { label: 'CVs and résumés', category: 'cv' },
+  { label: 'Theses', category: 'thesis' },
+  { label: 'View all', category: 'all' },
 ] as const;
 
 export function Topbar({
@@ -45,22 +79,43 @@ export function Topbar({
   viewMode,
   setViewMode,
   onCreateClick,
+  onImportZip,
+  onOpenTemplates,
   searchQuery = '',
   onSearchChange,
   projectLabels = [],
   selectedLabelId = null,
   onSelectLabelId,
+  selectedLabelIds,
+  onSelectLabelIds,
 }: TopbarProps) {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filterSearch, setFilterSearch] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
 
   const isSearching = isSearchExpanded || Boolean(searchQuery);
 
+  const activeLabelIds = useMemo(() => {
+    if (selectedLabelIds !== undefined) return selectedLabelIds;
+    return selectedLabelId ? [selectedLabelId] : [];
+  }, [selectedLabelIds, selectedLabelId]);
+
+  const handleToggleLabel = (labelId: string) => {
+    const next = activeLabelIds.includes(labelId)
+      ? activeLabelIds.filter((id) => id !== labelId)
+      : [...activeLabelIds, labelId];
+    if (onSelectLabelIds) {
+      onSelectLabelIds(next);
+    } else if (onSelectLabelId) {
+      onSelectLabelId(next.length === 1 ? next[0] : (next.length === 0 ? null : next[next.length - 1]));
+    }
+  };
+
   const selectedLabel = useMemo(
-    () => projectLabels.find((l) => l.id === selectedLabelId),
-    [projectLabels, selectedLabelId]
+    () => (activeLabelIds.length === 1 ? projectLabels.find((l) => l.id === activeLabelIds[0]) : null),
+    [projectLabels, activeLabelIds]
   );
 
   const filteredLabels = useMemo(() => {
@@ -110,8 +165,8 @@ export function Topbar({
         >
           <Search
             className={cn(
-              'absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 text-foreground shrink-0',
-              isSearching ? 'left-2.5 translate-x-0' : 'left-1/2 -translate-x-1/2'
+              'absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 text-muted-foreground shrink-0',
+              isSearching ? 'left-2.5 translate-x-0' : 'left-1/2 -translate-x-1/2 group-hover:text-foreground'
             )}
           />
           <Input
@@ -127,7 +182,7 @@ export function Topbar({
               }
             }}
             className={cn(
-              'h-full text-xs py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/60 transition-opacity duration-200 pl-8 pr-8 text-foreground',
+              'h-full text-xs py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground transition-opacity duration-200 pl-8 pr-8 text-foreground',
               isSearching ? 'opacity-100' : 'opacity-0 pointer-events-none'
             )}
             autoFocus={isSearchExpanded}
@@ -142,9 +197,9 @@ export function Topbar({
                 onSearchChange?.('');
                 setIsSearchExpanded(false);
               }}
-              className="absolute right-2 text-foreground/70 hover:text-foreground transition-colors cursor-pointer p-0.5 rounded-md"
+              className="absolute right-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer p-0.5 rounded-md"
             >
-              <X className="size-3.5 text-foreground shrink-0" />
+              <X className="size-3.5 shrink-0" />
             </button>
           )}
         </div>
@@ -159,23 +214,35 @@ export function Topbar({
                     variant="outline"
                     size="icon"
                     className={cn(
-                      'relative size-8 rounded-md bg-transparent border-border/60 hover:bg-muted text-foreground cursor-pointer transition-colors shadow-none shrink-0',
-                      selectedLabelId && 'bg-muted border-border font-medium'
+                      'relative size-8 rounded-md bg-transparent border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors shadow-none shrink-0',
+                      activeLabelIds.length > 0 && 'bg-muted border-border font-medium text-foreground'
                     )}
-                    aria-label={selectedLabel ? `Filtered: ${selectedLabel.name}` : 'Filter by label'}
+                    aria-label={
+                      activeLabelIds.length > 0
+                        ? `Filtered: ${activeLabelIds.length} label${activeLabelIds.length > 1 ? 's' : ''}`
+                        : 'Filter by label'
+                    }
                   >
-                    <ListFilter className="size-4 text-foreground shrink-0" strokeWidth={1.75} />
-                    {selectedLabel && (
+                    <ListFilter className="size-4 shrink-0" strokeWidth={1.75} />
+                    {activeLabelIds.length === 1 && selectedLabel ? (
                       <span
                         className="absolute bottom-1 right-1 size-1.5 rounded-full ring-1 ring-background shrink-0"
                         style={{ backgroundColor: selectedLabel.color || '#3b82f6' }}
                       />
-                    )}
+                    ) : activeLabelIds.length > 1 ? (
+                      <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-11 font-mono font-medium text-background">
+                        {activeLabelIds.length}
+                      </span>
+                    ) : null}
                   </Button>
                 </PopoverTrigger>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={6} className="text-11 px-2 py-0.5 rounded-md font-medium">
-                {selectedLabel ? `Filter: ${selectedLabel.name}` : 'Filter by label'}
+                {activeLabelIds.length === 1 && selectedLabel
+                  ? `Filter: ${selectedLabel.name}`
+                  : activeLabelIds.length > 1
+                    ? `Filter: ${activeLabelIds.length} labels`
+                    : 'Filter by label'}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -183,100 +250,82 @@ export function Topbar({
           <PopoverContent
             align="end"
             sideOffset={6}
-            className="w-64 p-2 bg-popover border border-border rounded-md shadow-md z-50 text-foreground"
+            className="w-60 p-0 py-1.5 bg-popover border border-border rounded-md shadow-md z-50 text-foreground overflow-hidden"
           >
-            <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-border/50">
-              <span className="text-xs font-semibold text-foreground">Filter by label</span>
-              {selectedLabelId && (
-                <button
-                  type="button"
-                  onClick={() => onSelectLabelId?.(null)}
-                  className="text-11 text-muted-foreground hover:text-foreground underline cursor-pointer"
-                >
-                  Clear filter
-                </button>
-              )}
-            </div>
-
-            {projectLabels.length > 5 && (
-              <div className="relative flex items-center mb-1.5">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3 text-muted-foreground shrink-0 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search labels..."
-                  value={filterSearch}
-                  onChange={(e) => setFilterSearch(e.target.value)}
-                  className="h-7 w-full pl-7 pr-6 text-xs bg-muted/40 border border-border/60 rounded-md outline-none focus:border-border text-foreground placeholder:text-muted-foreground/60"
-                />
-                {filterSearch && (
-                  <button
-                    type="button"
-                    onClick={() => setFilterSearch('')}
-                    className="absolute right-2 text-muted-foreground hover:text-foreground cursor-pointer"
-                  >
-                    <X className="size-3" />
-                  </button>
-                )}
+            {/* Search Input: Clean background, proper border and active styling */}
+            {projectLabels.length > 0 && (
+              <div className="px-2 pb-1.5">
+                <div className="relative flex items-center">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search labels..."
+                    value={filterSearch}
+                    onChange={(e) => setFilterSearch(e.target.value)}
+                    className="h-8 w-full pl-8 pr-7 text-xs bg-background border border-border rounded-md outline-none focus:ring-1 focus:ring-ring focus:border-border text-foreground placeholder:text-muted-foreground transition-colors"
+                    autoFocus
+                  />
+                  {filterSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setFilterSearch('')}
+                      className="absolute right-2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded-sm"
+                      aria-label="Clear search"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
-            <div className="space-y-0.5 max-h-56 overflow-y-auto">
-              {/* Option: All documents / Clear filter */}
-              <button
-                type="button"
-                onClick={() => {
-                  onSelectLabelId?.(null);
-                  setIsFilterOpen(false);
-                }}
-                className={cn(
-                  'w-full flex items-center justify-between px-2 py-1.5 text-xs rounded-md cursor-pointer transition-colors text-left',
-                  !selectedLabelId
-                    ? 'bg-muted text-foreground font-medium'
-                    : 'text-foreground/80 hover:bg-muted/70 hover:text-foreground'
-                )}
-              >
-                <span>All documents</span>
-                {!selectedLabelId && <Check className="size-3.5 text-primary shrink-0" />}
-              </button>
-
+            <div
+              className="space-y-0.5 max-h-56 overflow-y-auto pl-1.5 pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40 [&::-webkit-scrollbar-button]:hidden"
+              style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--border) transparent' }}
+            >
               {filteredLabels.map((label) => {
-                const isSelected = selectedLabelId === label.id;
+                const isSelected = activeLabelIds.includes(label.id);
                 const color = label.color || '#3b82f6';
                 return (
-                  <button
+                  <div
                     key={label.id}
-                    type="button"
-                    onClick={() => {
-                      onSelectLabelId?.(isSelected ? null : label.id);
-                      setIsFilterOpen(false);
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleToggleLabel(label.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleToggleLabel(label.id);
+                      }
                     }}
                     className={cn(
-                      'w-full flex items-center justify-between px-2 py-1.5 text-xs rounded-md cursor-pointer transition-colors text-left group',
+                      'w-full flex items-center gap-2.5 px-2 py-1.5 text-xs rounded-md cursor-pointer transition-colors text-left select-none group',
                       isSelected
-                        ? 'bg-muted text-foreground font-medium'
-                        : 'text-foreground/80 hover:bg-muted/70 hover:text-foreground'
+                        ? 'bg-muted/70 text-foreground font-medium'
+                        : 'text-foreground/80 hover:bg-muted/50 hover:text-foreground'
                     )}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span
-                        className="size-2 rounded-full shrink-0"
-                        style={{ backgroundColor: color }}
-                      />
-                      <span className="truncate">{label.name}</span>
-                    </div>
-                    {isSelected && <Check className="size-3.5 text-primary shrink-0 ml-2" />}
-                  </button>
+                    <Checkbox
+                      checked={isSelected}
+                      className="pointer-events-none shrink-0"
+                    />
+                    <span
+                      className="size-2 rounded-full shrink-0"
+                      style={{ backgroundColor: color }}
+                    />
+                    <span className="truncate flex-1">{label.name}</span>
+                  </div>
                 );
               })}
 
               {projectLabels.length > 0 && filteredLabels.length === 0 && (
-                <p className="text-11 text-muted-foreground py-2 text-center">
+                <p className="text-12 text-muted-foreground py-2 text-center">
                   No labels found
                 </p>
               )}
 
               {projectLabels.length === 0 && (
-                <p className="text-11 text-muted-foreground py-2 text-center">
+                <p className="text-12 text-muted-foreground py-2 text-center">
                   No labels in this project
                 </p>
               )}
@@ -314,7 +363,7 @@ export function Topbar({
                         <motion.div
                           layoutId="pages-view-toggle"
                           className="absolute inset-0 bg-background rounded-md border border-border/50"
-                          transition={{ type: 'spring', bounce: 0.15, duration: 0.4 }}
+                          transition={{ duration: 0.15, ease: 'easeOut' }}
                         />
                       )}
                       <span className="relative z-10 flex items-center justify-center">
@@ -335,14 +384,66 @@ export function Topbar({
           </div>
         </TooltipProvider>
 
-        {/* Primary Action CTA */}
-        <Button
-          size="sm"
-          onClick={onCreateClick}
-          className="h-8 rounded-md px-3 text-xs font-medium cursor-pointer shadow-none"
-        >
-          Add Document
-        </Button>
+        {/* Primary Action CTA: "New" menu mirroring Overleaf's New project menu */}
+        <input
+          ref={zipInputRef}
+          type="file"
+          accept=".zip,application/zip"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (file) onImportZip?.(file);
+          }}
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              className="h-8 rounded-md px-3 text-xs font-medium cursor-pointer shadow-none gap-1"
+            >
+              New
+              <ChevronDown className="size-3.5 shrink-0" strokeWidth={1.75} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" sideOffset={6} className="w-56 text-xs">
+            <DropdownMenuItem className="text-xs cursor-pointer" onSelect={() => onCreateClick('blank')}>
+              Blank page
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-11 font-normal text-muted-foreground">Import</DropdownMenuLabel>
+            <DropdownMenuItem className="text-xs cursor-pointer" onSelect={() => zipInputRef.current?.click()}>
+              Existing project (.zip)
+            </DropdownMenuItem>
+            {SOON_IMPORTS.map((label) => (
+              <DropdownMenuItem key={label} disabled className="text-xs justify-between">
+                {label}
+                <span className="text-11 text-muted-foreground">Soon</span>
+              </DropdownMenuItem>
+            ))}
+
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-11 font-normal text-muted-foreground">Templates</DropdownMenuLabel>
+            <DropdownMenuItem className="text-xs cursor-pointer" onSelect={() => onCreateClick('example')}>
+              Example project
+            </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="text-xs cursor-pointer">More templates</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-52">
+                {OVERLEAF_TEMPLATE_CATEGORIES.map((item) => (
+                  <DropdownMenuItem
+                    key={item.category}
+                    className="text-xs cursor-pointer"
+                    onSelect={() => onOpenTemplates?.(item.category)}
+                  >
+                    {item.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

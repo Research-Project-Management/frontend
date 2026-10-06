@@ -7,8 +7,11 @@ import { cn } from "@/shared/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import type { TreeNode, CollectionActionHandlers } from './sidebar.types';
 import type { Collection, LibraryScope } from '../../types';
+import type { SavedSearch } from '../../types/saved-searches.types';
 import { CollectionTree } from './CollectionTree';
 import { SidebarNavItem } from './SidebarNavItem';
+import { SavedSearchContextMenu } from './SavedSearchContextMenu';
+import { parseEmojiPrefix } from '../../utils';
 
 interface ProjectLibrariesSectionProps extends CollectionActionHandlers {
   projects: any[];
@@ -18,7 +21,7 @@ interface ProjectLibrariesSectionProps extends CollectionActionHandlers {
   navId: string;
   projectTree: TreeNode[];
   projectCollections: Collection[];
-  savedSearches?: Array<{ id: string; name: string }>;
+  savedSearches?: SavedSearch[] | Array<{ id: string; name: string }>;
   currentSavedSearchId?: string | null;
   currentFilter?: string | null;
   activeId: string | string[] | null;
@@ -28,6 +31,14 @@ interface ProjectLibrariesSectionProps extends CollectionActionHandlers {
   renameValue: string;
   canManageCollections?: boolean;
   onSelectProject: (scope: LibraryScope) => void;
+  onEditSavedSearch?: (savedSearch: SavedSearch) => void;
+  onStartRenameSavedSearch?: (id: string, name: string) => void;
+  onSubmitRenameSavedSearch?: (id: string) => void;
+  onRenameSavedSearchValueChange?: (value: string) => void;
+  onDuplicateSavedSearch?: (savedSearch: SavedSearch) => void;
+  onDeleteSavedSearch?: (id: string) => void;
+  renamingSavedSearchId?: string | null;
+  renameSavedSearchValue?: string;
 }
 
 /**
@@ -116,6 +127,14 @@ export function ProjectLibrariesSection({
   onExportBundle,
   onLinkClick,
   onDropItems,
+  onEditSavedSearch,
+  onStartRenameSavedSearch,
+  onSubmitRenameSavedSearch,
+  onRenameSavedSearchValueChange,
+  onDuplicateSavedSearch,
+  onDeleteSavedSearch,
+  renamingSavedSearchId,
+  renameSavedSearchValue = '',
 }: ProjectLibrariesSectionProps) {
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
 
@@ -147,7 +166,7 @@ export function ProjectLibrariesSection({
                 setIsProjectsExpanded((v) => !v);
               }}
               aria-label={isProjectsExpanded ? 'Collapse Project Libraries' : 'Expand Project Libraries'}
-              className="absolute right-2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="absolute right-2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-foreground/10 active:bg-foreground/20 transition-colors duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <ChevronRight
                 className={cn(
@@ -173,7 +192,7 @@ export function ProjectLibrariesSection({
       {isProjectsExpanded && (
         <div className="flex flex-col gap-1 w-full">
           {projects.length === 0 ? (
-            <div className="pl-6 pr-2.5 py-1.5 text-11 text-foreground/75 dark:text-muted-foreground italic select-none">
+            <div className="pl-6 pr-2.5 py-1.5 text-11 text-foreground/75 italic select-none">
               No project libraries
             </div>
           ) : (
@@ -203,7 +222,7 @@ export function ProjectLibrariesSection({
                       "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md pr-2.5 pl-6 text-13 leading-5 transition-colors outline-none select-none text-left cursor-pointer",
                       isProjectActive
                         ? "bg-muted text-foreground font-medium"
-                        : "text-foreground hover:bg-muted font-normal",
+                        : "text-foreground hover:bg-muted group-hover/root:bg-muted has-[[data-state=open]]:bg-muted font-normal",
                     )}
                   >
                     {isProjectActive && (
@@ -251,22 +270,59 @@ export function ProjectLibrariesSection({
 
                         {savedSearches && savedSearches.length > 0 && (
                           <div className="my-1 flex flex-col gap-0.5 border-t border-border pt-1">
-                            <div className="px-6 py-1 text-11 font-medium text-muted-foreground flex items-center justify-between">
+                            <div className="px-6 py-1 text-11 font-medium text-foreground flex items-center justify-between">
                               <span>Saved Searches</span>
                             </div>
                             {savedSearches.map((ss) => {
                               const isSSActive =
                                 currentFilter === 'saved-search' && currentSavedSearchId === ss.id;
+                              const isRenaming = renamingSavedSearchId === ss.id;
+                              const { label: cleanName } = parseEmojiPrefix(ss.name);
+
+                              if (isRenaming) {
+                                return (
+                                  <div
+                                    key={ss.id}
+                                    className="relative z-10 flex h-8 w-full items-center pr-2 min-w-0 gap-2.5 pl-6"
+                                  >
+                                    <Search className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                                    <input
+                                      autoFocus
+                                      value={renameSavedSearchValue}
+                                      onChange={(e) => onRenameSavedSearchValueChange?.(e.target.value)}
+                                      onBlur={() => onSubmitRenameSavedSearch?.(ss.id)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') onSubmitRenameSavedSearch?.(ss.id);
+                                        if (e.key === 'Escape') onSubmitRenameSavedSearch?.('__cancel__');
+                                      }}
+                                      className="h-7 w-full min-w-0 rounded-md border border-border bg-background px-2 text-13 font-normal focus:outline-none focus:ring-1 focus:ring-ring shadow-none text-foreground"
+                                    />
+                                  </div>
+                                );
+                              }
+
                               return (
-                                <SidebarNavItem
-                                  key={ss.id}
-                                  href={`${basePath}?filter=saved-search&savedSearchId=${ss.id}`}
-                                  icon={Search}
-                                  label={ss.name}
-                                  isActive={isSSActive}
-                                  navId={navId}
-                                  onClick={onLinkClick}
-                                />
+                                <div key={ss.id} className="group/item relative flex items-center w-full has-[[data-state=open]]:bg-muted rounded-md">
+                                  <div className="flex-1 min-w-0">
+                                    <SidebarNavItem
+                                      href={`${basePath}?filter=saved-search&savedSearchId=${ss.id}`}
+                                      icon={Search}
+                                      label={cleanName}
+                                      isActive={isSSActive}
+                                      navId={navId}
+                                      onClick={onLinkClick}
+                                    />
+                                  </div>
+                                  <div className="absolute right-1.5 z-20">
+                                    <SavedSearchContextMenu
+                                      savedSearch={ss as SavedSearch}
+                                      onEdit={onEditSavedSearch || (() => {})}
+                                      onRename={(id, name) => onStartRenameSavedSearch?.(id, name)}
+                                      onDuplicate={onDuplicateSavedSearch || (() => {})}
+                                      onDelete={onDeleteSavedSearch || (() => {})}
+                                    />
+                                  </div>
+                                </div>
                               );
                             })}
                           </div>

@@ -101,19 +101,19 @@ export default function HistoryCodeMirrorViewer({
           fontFamily: 'var(--font-mono, Menlo, Monaco, "Courier New", monospace)',
         },
         '&.cm-focused': {
-          outline: 'none !important',
+          outline: 'none',
         },
         '.cm-scroller': {
           overflow: 'auto',
           fontFamily: 'inherit',
           lineHeight: '1.6',
-          outline: 'none !important',
+          outline: 'none',
         },
         '.cm-content': {
-          outline: 'none !important',
+          outline: 'none',
         },
         '.cm-mergeViewEditor': {
-          overflow: 'visible !important',
+          overflow: 'visible',
         },
       }),
     ];

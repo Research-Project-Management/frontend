@@ -5,6 +5,8 @@ import {
   BookMarked,
   Settings,
   Loader2,
+  MessageSquare,
+  Sparkles,
 } from "lucide-react";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
@@ -32,6 +34,10 @@ const ReviewTab = dynamic(() => import("./review/ReviewTab"), {
   ssr: false,
   loading: PanelLoadingFallback,
 });
+const ChatTab = dynamic(() => import("./chat/ChatTab"), {
+  ssr: false,
+  loading: PanelLoadingFallback,
+});
 const AiTab = dynamic(() => import("./ai/AiTab"), {
   ssr: false,
   loading: PanelLoadingFallback,
@@ -40,6 +46,7 @@ const AiTab = dynamic(() => import("./ai/AiTab"), {
 import StickyDock from "@/features/shell/components/StickyDock";
 import { EditorEventBus } from "@/features/editor/utils/editor.util";
 import { useSettingsStore, usePageStore } from "@/features/editor/store";
+import { useDocumentCollaborationStore } from "@/features/editor/store/collaboration.store";
 import { usePageComments } from "@/features/editor/hooks/use-comment";
 import { usePageSuggestions } from "@/features/editor/hooks/use-suggestion";
 import { OverleafReviewIcon } from "./review/subcomponents/OverleafReviewIcon";
@@ -51,7 +58,8 @@ const sideBarItems = [
   { name: "Search", icon: Search },
   { name: "Citations", icon: BookMarked },
   { name: "Review", icon: OverleafReviewIcon },
-  { name: "AI", imageSrc: "/Chat.svg" },
+  { name: "Chat", icon: MessageSquare },
+  { name: "AI", icon: Sparkles },
 ] as const;
 
 export type SidebarTab = (typeof sideBarItems)[number]["name"];
@@ -61,6 +69,7 @@ function PanelContent({ tab, onClose }: { tab: SidebarTab; onClose: () => void }
   if (tab === "Search") return <SearchTab onClose={onClose} />;
   if (tab === "Citations") return <CitationTab onClose={onClose} />;
   if (tab === "Review") return <ReviewTab onClose={onClose} />;
+  if (tab === "Chat") return <ChatTab onClose={onClose} />;
   if (tab === "AI") return <AiTab onClose={onClose} />;
   return null;
 }
@@ -115,6 +124,7 @@ const SideBar = React.memo(function SideBar({
 
   const { data: comments = [] } = usePageComments(pageId ?? null);
   const { data: suggestions = [] } = usePageSuggestions(pageId ?? null, 'pending');
+  const unreadChatCount = useDocumentCollaborationStore((s) => s.unreadChatCount);
 
   const openCommentsCount = comments.filter((c) => c.status === 'open').length;
   const pendingSuggestionsCount = suggestions.filter((s) => s.status === 'pending').length;
@@ -168,6 +178,14 @@ const SideBar = React.memo(function SideBar({
       togglePanel("AI");
     });
 
+    const unsubOpenChat = EditorEventBus.on("flux:open-chat-panel", () => {
+      setActivePanel("AI");
+    });
+
+    const unsubToggleChat = EditorEventBus.on("flux:toggle-chat-panel", () => {
+      togglePanel("AI");
+    });
+
     const unsubCmdToggle = editorCommandBus.subscribe("sidebar:toggle-panel", (cmd) => {
       if (cmd.panel === "Explorer" || cmd.panel === "Outline") {
         togglePanel("Files");
@@ -188,6 +206,8 @@ const SideBar = React.memo(function SideBar({
       unsubPanel();
       unsubOpenAi();
       unsubToggleAi();
+      unsubOpenChat();
+      unsubToggleChat();
       unsubCmdToggle();
       unsubCmdOpen();
     };
@@ -196,17 +216,20 @@ const SideBar = React.memo(function SideBar({
   const currentTabId = (activePanel || "Files").toLowerCase();
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-muted">
+    <div className="flex h-full w-full overflow-hidden bg-sidebar">
       <TooltipProvider delayDuration={150}>
         {/* Icon strip */}
         <ul
           role="tablist"
           aria-label="Sidebar navigation"
-          className="flex h-full w-11 shrink-0 flex-col items-center gap-1.5 border-r border-border bg-sidebar py-2 select-none"
+          className="flex h-full w-11 shrink-0 flex-col items-center gap-1.5 border-r border-border bg-sidebar py-2.5 pb-3 select-none"
         >
           {sideBarItems.map((item) => {
             const isOpen = activePanel === item.name;
-            const showBadge = item.name === 'Review' && totalReviewItems > 0;
+            const isReview = item.name === 'Review';
+            const isChat = item.name === 'Chat';
+            const showBadge = (isReview && totalReviewItems > 0) || (isChat && unreadChatCount > 0);
+            const badgeCount = isReview ? totalReviewItems : unreadChatCount;
             const tabId = `sidebar-tab-${item.name.toLowerCase()}`;
             const panelId = `sidebar-panel-${item.name.toLowerCase()}`;
 
@@ -229,28 +252,22 @@ const SideBar = React.memo(function SideBar({
                           : "text-foreground/75 hover:text-foreground hover:bg-sidebar-hover",
                       )}
                     >
-                      {"imageSrc" in item ? (
-                        <img
-                          src={(item as any).imageSrc}
-                          alt={item.name}
-                          className={cn(
-                            "size-4.5 shrink-0 rounded-full transition-opacity duration-150",
-                            isOpen ? "opacity-100" : "opacity-85 group-hover:opacity-100",
-                          )}
-                        />
-                      ) : (
-                        <item.icon className="size-4 shrink-0" strokeWidth={1.75} />
-                      )}
+                      <item.icon className="size-4 shrink-0 text-foreground" strokeWidth={1.75} />
                       {showBadge && (
-                        <span className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full bg-warning text-11 font-mono font-semibold text-white leading-tight">
-                          {totalReviewItems > 99 ? '99+' : totalReviewItems}
+                        <span
+                          className={cn(
+                            "absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full text-11 font-mono font-semibold text-white leading-tight",
+                            isChat ? "bg-primary" : "bg-warning"
+                          )}
+                        >
+                          {badgeCount > 99 ? '99+' : badgeCount}
                         </span>
                       )}
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right">
                     {item.name}
-                    {showBadge ? ` (${totalReviewItems})` : ''}
+                    {showBadge ? ` (${badgeCount})` : ''}
                   </TooltipContent>
                 </Tooltip>
               </li>
@@ -294,14 +311,14 @@ const SideBar = React.memo(function SideBar({
         className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background"
       >
         {!mounted ? (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col">
             <PanelContent
               tab={"Files"}
               onClose={handleClosePanel}
             />
           </div>
         ) : activePanel === null ? null : (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col">
             <PanelContent
               tab={activePanel}
               onClose={handleClosePanel}

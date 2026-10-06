@@ -1,26 +1,37 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { logger } from '@/shared/lib/utils';
 import { parseBibContent, type BibEntry } from '@/features/editor/utils/bib-parser.util';
+import { extractCitationKeys, formatBibEntryToBibtex } from '@/features/editor/utils/citation.util';
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
+import { filesQuery } from '@/features/editor/hooks/use-core';
+import { manuscriptService } from '@/features/editor/services/manuscript.service';
+import { fileService } from '@/features/editor/services/core.service';
+import { toast } from 'sonner';
 
 export interface UseEditorCitationOptions {
   /** All page files in the project (from useQuery filesQuery) */
-  pageFiles?: Array<{ name?: string; title?: string; filename?: string; content?: string; url?: string }>;
+  pageFiles?: Array<{ id?: string; _id?: string; name?: string; title?: string; filename?: string; content?: string; url?: string }>;
   /** Optional library items from the project / personal scope */
   libraryItems?: any[];
   projectId?: string;
+  rootPageId?: string | null;
 }
 
 export function useEditorCitation({
   pageFiles = [],
   libraryItems = [],
   projectId,
+  rootPageId,
 }: UseEditorCitationOptions) {
-  const { engine } = useEditorInstance();
+  const queryClient = useQueryClient();
+  const { engine, getContent } = useEditorInstance();
   const [citationModalOpen, setCitationModalOpen] = useState(false);
+  const [initialCitationQuery, setInitialCitationQuery] = useState('');
+  const [initialCitationKey, setInitialCitationKey] = useState('');
 
   // Parse BibTeX entries from all .bib files in the project + enrich with Library items
   const bibEntries = useMemo<BibEntry[]>(() => {
@@ -65,6 +76,13 @@ export function useEditorCitation({
             journal: item.publicationTitle || item.journal,
             doi: item.doi,
             abstract: item.abstract,
+            volume: item.volume,
+            pages: item.pages,
+            publisher: item.publisher,
+            url: item.url,
+            source: 'library',
+            collectionId: item.collectionId,
+            collectionIds: item.collectionIds,
           });
         }
       }
@@ -76,31 +94,166 @@ export function useEditorCitation({
   const bibEntriesRef = useRef<BibEntry[]>(bibEntries);
   bibEntriesRef.current = bibEntries;
 
-  // Listen to external citation events (from Citation sidebar panel)
-  useEffect(() => {
-    const unsubOpen = EditorEventBus.on('flux:open-citation-picker', () => {
-      setCitationModalOpen(true);
-    });
+  // Extract cited keys from current document content
+  const citedKeys = useMemo(() => {
+    try {
+      const text = getContent ? getContent() : '';
+      return extractCitationKeys(text);
+    } catch {
+      return [];
+    }
+  }, [getContent, citationModalOpen]);
 
-    const unsubInsert = EditorEventBus.on('flux:insert-citation', (detail) => {
-      const bibKey = detail?.bibKey;
-      if (!bibKey) return;
-      if (engine) {
-        engine.insertText(`\\cite{${bibKey}}`);
+  // Keep track of keys currently being appended to avoid duplicate writes
+  const appendingKeysRef = useRef(new Set<string>());
+
+  const ensureEntryInBibFile = useCallback(
+    async (citeKey: string, providedEntry?: BibEntry) => {
+      if (!citeKey) return;
+      const cleanKey = citeKey.trim();
+      if (!cleanKey) return;
+      const lowerKey = cleanKey.toLowerCase();
+
+      if (appendingKeysRef.current.has(lowerKey)) {
+        return;
+      }
+
+      // Check if citeKey is already present in any project .bib file
+      const bibFiles = (pageFiles || []).filter((f: any) => {
+        const fileName = (f?.name || f?.title || f?.filename || '').toLowerCase();
+        return fileName.endsWith('.bib');
+      });
+
+      const isAlreadyPresent = bibFiles.some((f: any) => {
+        if (!f?.content) return false;
+        const escaped = cleanKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`@[a-zA-Z]+\\s*\\{\\s*${escaped}\\s*,`, 'i');
+        return regex.test(f.content);
+      });
+
+      if (isAlreadyPresent) {
+        return;
+      }
+
+      appendingKeysRef.current.add(lowerKey);
+
+      // Locate entry metadata to generate clean BibTeX
+      const entry =
+        providedEntry ||
+        bibEntriesRef.current.find((e) => e.key?.toLowerCase() === lowerKey);
+
+      // Only proceed if entry exists from Library or resolved sources (don't create fake @misc on typos)
+      if (!entry) {
+        return;
+      }
+
+      let bibtexSnippet = entry.raw?.trim();
+      if (!bibtexSnippet) {
+        bibtexSnippet = formatBibEntryToBibtex(entry).trim();
+      }
+      if (!bibtexSnippet) {
+        return;
+      }
+
+      try {
+        if (bibFiles.length > 0) {
+          // Find primary bib file (references.bib, refs.bib or first available)
+          const targetFile =
+            bibFiles.find((f: any) => {
+              const name = (f?.name || f?.title || f?.filename || '').toLowerCase();
+              return name === 'references.bib' || name === 'refs.bib' || name === 'ref.bib';
+            }) || bibFiles[0];
+
+          const targetId = (targetFile as any).id || (targetFile as any)._id;
+          if (targetId) {
+            const currentContent = targetFile.content || '';
+            const separator = currentContent.endsWith('\n\n')
+              ? ''
+              : currentContent.endsWith('\n')
+              ? '\n'
+              : '\n\n';
+            const updatedContent = currentContent + separator + bibtexSnippet + '\n';
+
+            // Optimistic in-memory update
+            (targetFile as any).content = updatedContent;
+
+            await manuscriptService.docs.updateContent(targetId, updatedContent);
+            if (rootPageId) {
+              queryClient.invalidateQueries({ queryKey: filesQuery(rootPageId).queryKey });
+            }
+            const fileName = (targetFile as any).title || (targetFile as any).name || 'references.bib';
+            toast.info(`Added "${cleanKey}" to ${fileName}`);
+          }
+        } else if (rootPageId) {
+          // Overleaf parity: auto-create references.bib if project does not have one
+          await fileService.create({
+            parentPageId: rootPageId,
+            title: 'references.bib',
+            content: bibtexSnippet + '\n',
+          });
+          queryClient.invalidateQueries({ queryKey: filesQuery(rootPageId).queryKey });
+          toast.success(`Created references.bib and added "${cleanKey}"`);
+        }
+      } catch (err) {
+        logger.error(`[BibAutoAppend] Failed to persist citation ${cleanKey}`, { error: err });
+      } finally {
+        setTimeout(() => {
+          appendingKeysRef.current.delete(lowerKey);
+        }, 2000);
+      }
+    },
+    [pageFiles, rootPageId, queryClient],
+  );
+
+  // Listen to external citation events (from Citation sidebar panel & CodeMirror completion)
+  useEffect(() => {
+    const unsubOpen = EditorEventBus.on('flux:open-citation-picker', (detail) => {
+      setCitationModalOpen(true);
+      if (detail && typeof detail === 'object') {
+        if (detail.initialQuery) setInitialCitationQuery(detail.initialQuery);
+        if (detail.initialKey) setInitialCitationKey(detail.initialKey);
+      } else {
+        setInitialCitationQuery('');
+        setInitialCitationKey('');
       }
     });
 
+    const unsubInsert = (detail: any) => {
+      const bibKey = detail?.bibKey;
+      if (!bibKey) return;
+      if (!detail?.textInserted && engine) {
+        engine.insertText(`\\cite{${bibKey}}`);
+      }
+      ensureEntryInBibFile(bibKey, detail?.entry);
+    };
+
+    const unsubInsertHandler = EditorEventBus.on('flux:insert-citation', unsubInsert);
+
     return () => {
       unsubOpen();
-      unsubInsert();
+      unsubInsertHandler();
     };
-  }, [engine]);
+  }, [engine, ensureEntryInBibFile]);
 
-  const handleInsertCitationSnippet = (snippet: string, _citeKey?: string) => {
-    if (engine) {
-      engine.insertText(snippet);
-    }
-  };
+  const handleInsertCitationSnippet = useCallback(
+    (snippet: string, citeKey?: string, entry?: BibEntry) => {
+      if (engine) {
+        engine.insertText(snippet);
+      }
+      if (citeKey) {
+        ensureEntryInBibFile(citeKey, entry);
+      } else {
+        const match = snippet.match(/\\(?:auto|paren|text|foot|no)?cite[a-z*]*\{([^}]+)\}/i);
+        if (match && match[1]) {
+          const keys = match[1].split(',').map((k) => k.trim());
+          for (const k of keys) {
+            if (k) ensureEntryInBibFile(k, entry);
+          }
+        }
+      }
+    },
+    [engine, ensureEntryInBibFile],
+  );
 
   const registerCitationProvider = (_monaco?: any): { dispose: () => void } => {
     return {
@@ -115,5 +268,8 @@ export function useEditorCitation({
     setCitationModalOpen,
     handleInsertCitationSnippet,
     registerCitationProvider,
+    initialCitationQuery,
+    initialCitationKey,
+    citedKeys,
   };
 }

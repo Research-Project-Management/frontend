@@ -2,16 +2,8 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { EditorEmptyState, type EditorEmptyVariant } from '@/features/editor/components/shared/EditorEmptyState';
-import {
-  EditorEmptyDocumentIllustration,
-  ViewerEmptyPdfIllustration,
-  ViewerDetachedIllustration,
-  EditorReviewIllustration,
-  EditorHistoryIllustration,
-  EditorSearchIllustration,
-} from '@/features/editor/components/shared/EditorIllustrations';
 
-describe('EditorEmptyState & EditorIllustrations Component Suite', () => {
+describe('EditorEmptyState Component Suite', () => {
   const variants: EditorEmptyVariant[] = [
     'document',
     'preview',
@@ -23,10 +15,10 @@ describe('EditorEmptyState & EditorIllustrations Component Suite', () => {
     'citations',
   ];
 
-  it('renders all empty state variants with correct titles and illustrations', () => {
+  it('renders all empty state variants with correct titles', () => {
     for (const variant of variants) {
       const { unmount } = render(<EditorEmptyState variant={variant} />);
-      const heading = screen.getByRole('heading', { level: 2 });
+      const heading = screen.getByRole('heading');
       expect(heading).toBeInTheDocument();
       unmount();
     }
@@ -43,8 +35,7 @@ describe('EditorEmptyState & EditorIllustrations Component Suite', () => {
     );
     expect(screen.getByText('No revisions')).toBeInTheDocument();
     expect(screen.getByText('No changes recorded yet.')).toBeInTheDocument();
-    expect(container.querySelector('.min-h-\\[260px\\]')).toBeInTheDocument();
-    expect(container.querySelector('.scale-75')).toBeInTheDocument();
+    expect(container.querySelector('.min-h-\\[160px\\]')).toBeInTheDocument();
   });
 
   it('renders action button and triggers onClick callback when clicked', () => {
@@ -76,24 +67,5 @@ describe('EditorEmptyState & EditorIllustrations Component Suite', () => {
       />
     );
     expect(screen.getByRole('button', { name: 'Custom Button' })).toBeInTheDocument();
-  });
-
-  it('renders all 3D isometric SVG illustrations with standard viewBox', () => {
-    const illustrations = [
-      EditorEmptyDocumentIllustration,
-      ViewerEmptyPdfIllustration,
-      ViewerDetachedIllustration,
-      EditorReviewIllustration,
-      EditorHistoryIllustration,
-      EditorSearchIllustration,
-    ];
-
-    for (const Illustration of illustrations) {
-      const { container, unmount } = render(<Illustration />);
-      const svg = container.querySelector('svg');
-      expect(svg).toBeInTheDocument();
-      expect(svg?.getAttribute('viewBox')).toBe('0 0 162 180');
-      unmount();
-    }
   });
 });

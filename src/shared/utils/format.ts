@@ -1,6 +1,6 @@
 /**
  * shared/utils/format.ts
- * Pure formatting utilities — no side effects, fully tree-shakeable.
+ * Pure formatting utilities - no side effects, fully tree-shakeable.
  */
 
 // ─── Date ─────────────────────────────────────────────────────────────────────
@@ -19,7 +19,7 @@ export const formatDate = (
   locale = 'en-US',
 ): string => {
   const d = typeof date === 'string' ? new Date(date) : date;
-  if (isNaN(d.getTime())) return '—';
+  if (isNaN(d.getTime())) return '-';
   return new Intl.DateTimeFormat(locale, options).format(d);
 };
 
@@ -29,7 +29,7 @@ export const formatDate = (
  */
 export const formatRelativeTime = (date: string | Date, locale = 'en-US'): string => {
   const d = typeof date === 'string' ? new Date(date) : date;
-  if (isNaN(d.getTime())) return '—';
+  if (isNaN(d.getTime())) return '-';
 
   const diffMs = Date.now() - d.getTime();
   const diffSec = Math.floor(diffMs / 1000);

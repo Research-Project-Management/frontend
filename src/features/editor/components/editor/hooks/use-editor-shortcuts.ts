@@ -24,10 +24,14 @@ import {
   Underline,
   Zap,
   FileCheck,
+  Sparkles,
 } from 'lucide-react';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useActionsStore } from '@/features/editor/store';
 import { editorCommandBus } from '@/features/editor/core/command-bus/editor-command-bus';
+import { spellingService } from '@/features/editor/services/spelling.service';
+import { addSessionLearnedWord } from '@/features/editor/sub-features/code-editor/codemirror/latex-spellcheck';
+import { toast } from 'sonner';
 
 export interface MenuAction {
   icon?: React.ElementType;
@@ -52,6 +56,7 @@ export interface UseEditorShortcutsOptions {
   ctxStartLine: number | null;
   ctxEndLine: number | null;
   ctxSelText: string;
+  projectId?: string;
 }
 
 export function useEditorShortcuts({
@@ -62,6 +67,7 @@ export function useEditorShortcuts({
   ctxStartLine,
   ctxEndLine,
   ctxSelText,
+  projectId,
 }: UseEditorShortcutsOptions) {
   const { engine } = useEditorInstance();
   const setPendingComment = useActionsStore((s) => s.setPendingComment);
@@ -99,7 +105,9 @@ export function useEditorShortcuts({
     engine.setContent(content.replace(regex, trimmed));
   };
 
-  const menuGroups: MenuAction[][] = useMemo(() => [
+  const menuGroups: MenuAction[][] = useMemo(() => {
+    const singleWord = ctxSelText?.trim().match(/^[A-Za-z0-9_-]{2,}$/)?.[0];
+    return [
     [
       {
         icon: Scissors,
@@ -185,6 +193,7 @@ export function useEditorShortcuts({
       {
         icon: BookOpen,
         label: 'Insert Citation...',
+        kbd: 'Ctrl+Shift+K',
         action: () => {
           closeMenu();
           openCitationModal();
@@ -212,6 +221,15 @@ export function useEditorShortcuts({
         label: 'Rename Occurrences',
         kbd: 'F2',
         action: openRenameDialog,
+      },
+      {
+        icon: Sparkles,
+        label: 'Auto-Fix Page Syntax',
+        kbd: 'Alt+Shift+F',
+        action: () => {
+          EditorEventBus.emit('flux:autofix');
+          closeMenu();
+        },
       },
       {
         icon: Zap,
@@ -253,10 +271,44 @@ export function useEditorShortcuts({
         },
       },
     ],
-  ], [
+    ...(singleWord
+      ? [
+          [
+            ...(projectId
+              ? [
+                  {
+                    icon: BookOpen,
+                    label: `Add "${singleWord}" to Project Dictionary`,
+                    action: () => {
+                      addSessionLearnedWord(singleWord);
+                      spellingService.learnProjectWord(projectId, singleWord).then(() => {
+                        toast.success(`Added "${singleWord}" to project dictionary`);
+                      });
+                      closeMenu();
+                    },
+                  },
+                ]
+              : []),
+            {
+              icon: BookOpen,
+              label: `Add "${singleWord}" to Personal Dictionary`,
+              action: () => {
+                addSessionLearnedWord(singleWord);
+                spellingService.learnUserWord(singleWord).then(() => {
+                  toast.success(`Added "${singleWord}" to personal dictionary`);
+                });
+                closeMenu();
+              },
+            },
+          ],
+        ]
+      : []),
+    ];
+  }, [
     ctxStartLine,
     ctxEndLine,
     ctxSelText,
+    projectId,
   ]);  
 
   return {

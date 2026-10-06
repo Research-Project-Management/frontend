@@ -20,6 +20,7 @@ import {
   ExternalLink,
   Minus,
   Plus,
+  Search,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -36,6 +37,9 @@ import { CompileButton } from '../../compiler/components/CompileButton';
 import { PdfPaginationControls } from './PdfPaginationControls';
 import { PdfZoomControls } from './PdfZoomControls';
 import type { CompileStatus } from '../../../store';
+import type { CompileMode } from '../../../types/compiler.types';
+import type { IEditorEngine } from '../../../ports/editor-engine.port';
+import type { PdfOutlineItem } from '../../../utils/pdf-outline.util';
 
 function InvertColorsIcon({ className }: { className?: string }) {
   return (
@@ -60,8 +64,8 @@ export interface PdfToolbarProps {
   compileStatus: CompileStatus;
   engine?: any;
   setEngine?: (e: any) => void;
-  compileMode?: any;
-  setCompileMode?: (m: any) => void;
+  compileMode?: CompileMode;
+  setCompileMode?: (m: CompileMode) => void;
   autoCompile?: boolean;
   onToggleAutoCompile?: () => void;
   onCompile: () => void;
@@ -79,7 +83,7 @@ export interface PdfToolbarProps {
   onSetScale?: (scale: number) => void;
   showZoomGroup?: boolean;
   showUtilityGroup?: boolean;
-  outline?: any;
+  outline?: PdfOutlineItem[];
 
   // Pages
   pageNumber: number;
@@ -93,6 +97,8 @@ export interface PdfToolbarProps {
   onToggleInvertColors?: () => void;
   isSpreadView?: boolean;
   onToggleSpreadView?: () => void;
+  isSearchOpen?: boolean;
+  onToggleSearch?: () => void;
 
   // Actions
   pdfUrl: string | null;
@@ -127,6 +133,8 @@ export const PdfToolbar = React.memo(function PdfToolbar({
   onToggleInvertColors,
   isSpreadView,
   onToggleSpreadView,
+  isSearchOpen,
+  onToggleSearch,
   onOpenPresentationMode,
   onPopout,
   isPoppedOut,
@@ -182,34 +190,17 @@ export const PdfToolbar = React.memo(function PdfToolbar({
               onClick={onToggleLog}
               aria-label="Logs and output files"
               className={cn(
-                'size-7 relative flex items-center justify-center rounded-md text-xs font-semibold transition-colors cursor-pointer border select-none outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
+                'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
                 showLog
-                  ? 'bg-primary/10 border-primary/40 text-primary'
-                  : errorCount > 0
-                    ? 'border-destructive/40 text-destructive bg-destructive/10 hover:bg-destructive/20'
-                    : warningCount > 0
-                      ? 'border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
-                      : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted',
+                  ? 'bg-primary/10 text-primary font-medium'
+                  : 'text-foreground hover:bg-muted',
               )}
             >
               <FileText className="size-3.5 shrink-0" />
-              {errorCount > 0 ? (
-                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-10 font-semibold text-destructive-foreground">
-                  {errorCount}
-                </span>
-              ) : warningCount > 0 ? (
-                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 dark:bg-amber-500 px-1 text-10 font-mono font-semibold text-neutral-900">
-                  {warningCount}
-                </span>
-              ) : null}
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">
-            {errorCount > 0
-              ? `${errorCount} compilation error${errorCount > 1 ? 's' : ''}. Logs and output files`
-              : warningCount > 0
-                ? `${warningCount} warning${warningCount > 1 ? 's' : ''}. Logs and output files`
-                : 'Logs and output files'}
+            Logs and output files
           </TooltipContent>
         </Tooltip>
 
@@ -221,7 +212,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
               onClick={onDownload}
               disabled={!pdfUrl}
               aria-label="Download PDF"
-              className="size-7 relative flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
+              className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:cursor-not-allowed transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
             >
               <Download className="size-3.5 shrink-0" />
             </button>
@@ -243,7 +234,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                   type="button"
                   onClick={onPopout}
                   aria-label="Reattach viewer"
-                  className="size-7 relative flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
+                  className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
                 >
                   <Minimize2 className="size-4" />
                 </button>
@@ -258,6 +249,31 @@ export const PdfToolbar = React.memo(function PdfToolbar({
             {/* View utility buttons: only shown on toolbar when not ultra-compact */}
             {!isUltraCompact && (
               <>
+                {/* Find in document (Ctrl+F) */}
+                {onToggleSearch && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={onToggleSearch}
+                        disabled={!pdfUrl}
+                        aria-label="Find in document (Ctrl+F)"
+                        className={cn(
+                          'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed after:absolute after:-inset-1.5 after:content-[\'\']',
+                          isSearchOpen
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'text-foreground hover:bg-muted',
+                        )}
+                      >
+                        <Search className="size-3.5 shrink-0" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">
+                      Find in document (Ctrl+F)
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
                 {/* Invert colors (Dark mode PDF) */}
                 {onToggleInvertColors && (
                   <Tooltip>
@@ -270,7 +286,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                           'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
                           invertColors
                             ? 'bg-primary/10 text-primary font-medium'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+                            : 'text-foreground hover:bg-muted',
                         )}
                       >
                         <InvertColorsIcon className="size-4" />
@@ -294,7 +310,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                           'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
                           isSpreadView
                             ? 'bg-primary/10 text-primary font-medium'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+                            : 'text-foreground hover:bg-muted',
                         )}
                       >
                         <BookOpen className="size-4" />
@@ -315,7 +331,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                         onClick={onOpenPresentationMode}
                         disabled={!pdfUrl}
                         aria-label="Presentation mode (F5)"
-                        className="size-7 relative flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
+                        className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
                       >
                         <Presentation className="size-4" />
                       </button>
@@ -334,7 +350,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                         type="button"
                         onClick={onPopout}
                         aria-label={isPoppedOut ? 'Reattach viewer' : 'Detach viewer to new window'}
-                        className="size-7 relative flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
+                        className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
                       >
                         {isPoppedOut ? (
                           <Minimize2 className="size-4" />
@@ -389,7 +405,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                           'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
                           isMenuOpen
                             ? 'bg-muted text-foreground'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+                            : 'text-foreground hover:bg-muted',
                         )}
                       >
                         <MoreHorizontal className="size-4" />
@@ -410,7 +426,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                   {/* Scale Header */}
                   <div className="flex items-center justify-between px-1 pb-1.5 border-b border-border/60">
                     <span className="font-semibold text-foreground text-xs">Scale</span>
-                    <span className="text-11 font-mono text-muted-foreground tabular-nums">
+                    <span className="text-11 font-mono text-foreground tabular-nums">
                       {autoFit ? 'Fit Width' : `${Math.round(scale * 100)}%`}
                     </span>
                   </div>
@@ -421,7 +437,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                       type="button"
                       onClick={onZoomOut}
                       aria-label="Zoom out"
-                      className="size-7 flex-1 flex items-center justify-center rounded-md border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                      className="size-7 flex-1 flex items-center justify-center rounded-md border border-border/70 hover:bg-muted text-foreground transition-colors cursor-pointer"
                       title="Zoom out"
                     >
                       <Minus className="size-3.5" />
@@ -444,7 +460,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                       type="button"
                       onClick={onZoomIn}
                       aria-label="Zoom in"
-                      className="size-7 flex-1 flex items-center justify-center rounded-md border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                      className="size-7 flex-1 flex items-center justify-center rounded-md border border-border/70 hover:bg-muted text-foreground transition-colors cursor-pointer"
                       title="Zoom in"
                     >
                       <Plus className="size-3.5" />
@@ -467,7 +483,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                             'h-6 px-1 rounded text-11 font-mono flex items-center justify-center transition-colors cursor-pointer',
                             isSelected
                               ? 'bg-primary/10 text-primary font-semibold border border-primary/30'
-                              : 'hover:bg-muted text-muted-foreground hover:text-foreground',
+                              : 'hover:bg-muted text-foreground',
                           )}
                         >
                           {Math.round(preset * 100)}%

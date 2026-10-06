@@ -7,25 +7,27 @@
 
 import { create } from 'zustand';
 import type { AssetInfo } from '../types/asset.types';
+import type { Page, PageFile } from '../types/core.types';
+import type { NodeTreeItem } from '../types/node.types';
 
 export interface DocumentEditorState {
   // ── Document & Project State ─────────────────────────────────────────────
-  currentPage: any | null;
+  currentPage: Page | PageFile | null;
   projectId: string;
   parentPageId: string | null;
   activePageId: string | null;
-  fileHierarchy: any | null;
-  activeFilePage: any | null;
+  fileHierarchy: NodeTreeItem[] | null;
+  activeFilePage: Page | PageFile | null;
   selectedAsset: AssetInfo | null;
   texFiles: string[];
 
   // ── Setters & Actions ───────────────────────────────────────────────────
-  setCurrentPage: (page: any) => void;
+  setCurrentPage: (page: Page | PageFile | null | ((prev: any) => any)) => void;
   setProjectId: (id: string) => void;
   setParentPageId: (id: string | null) => void;
   setActivePageId: (id: string | null) => void;
   setFileHierarchy: (hierarchy: any) => void;
-  setActiveFilePage: (page: any) => void;
+  setActiveFilePage: (page: Page | PageFile | null) => void;
   setSelectedAsset: (asset: AssetInfo | null) => void;
   setTexFiles: (files: string[]) => void;
   resetPageState: () => void;
@@ -41,7 +43,13 @@ export const useDocumentEditorStore = create<DocumentEditorState>((set) => ({
   selectedAsset: null,
   texFiles: [],
 
-  setCurrentPage: (page) => set({ currentPage: page }),
+  setCurrentPage: (pageOrUpdater) =>
+    set((state) => ({
+      currentPage:
+        typeof pageOrUpdater === 'function'
+          ? (pageOrUpdater as any)(state.currentPage)
+          : pageOrUpdater,
+    })),
   setProjectId: (projectId) => set({ projectId }),
   setParentPageId: (parentPageId) => set({ parentPageId }),
   setActivePageId: (activePageId) => set({ activePageId }),

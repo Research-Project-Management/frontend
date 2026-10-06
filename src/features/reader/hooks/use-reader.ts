@@ -238,7 +238,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     let citationLink = '';
     if (pageNumber) {
       const cit = formatAnnotationCitation(paper, effectiveAttachmentId, pageNumber, annotationId);
-      citationLink = `\n> — ${cit.markdown}`;
+      citationLink = `\n> - ${cit.markdown}`;
     }
 
     const formatted = `> "${trimmed}"${citationLink}`;
@@ -415,7 +415,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
         const pageNum = a.pageIndex !== undefined ? a.pageIndex + 1 : undefined;
         const cit = formatAnnotationCitation(paper, effectiveAttachmentId, pageNum, a.id);
         const quotePart = a.quoteText ? `> "${a.quoteText.trim().replace(/\n+/g, '\n> ')}"` : '';
-        const citPart = pageNum ? `\n> — ${cit.markdown}` : '';
+        const citPart = pageNum ? `\n> - ${cit.markdown}` : '';
         const commentPart = a.comment ? `\n\n**Note:** ${a.comment.trim()}` : '';
         return `${quotePart}${citPart}${commentPart}`;
       })

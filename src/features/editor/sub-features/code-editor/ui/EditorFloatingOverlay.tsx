@@ -13,18 +13,38 @@
 
 import React from 'react';
 import { GlyphTooltip, type GlyphTooltipData } from '../../../components/editor/subcomponents/GlyphTooltip';
-import { InlineSuggestionWidget } from '../../../components/editor/subcomponents/InlineSuggestionWidget';
+import {
+  InlineSuggestionWidget,
+  type InlineSuggestionWidgetData,
+} from '../../../components/editor/subcomponents/InlineSuggestionWidget';
 import {
   EditorFloatingBar,
   type SelFloating,
 } from '../../../components/editor/subcomponents/EditorFloatingBar';
 import { FloatingAiAssistant } from '../../../components/editor/subcomponents/FloatingAiAssistant';
 import { EditorContextMenu } from '../../../components/editor/subcomponents/EditorContextMenu';
+import type { MenuAction } from '../../../components/editor/hooks/use-editor-shortcuts';
 import type { PageSuggestion } from '../../../types';
+import type { SuggestModalState } from '../../../components/editor/subcomponents/SuggestEditModal';
+
+export interface AiAssistState {
+  isOpen: boolean;
+  selectedText: string;
+  startLine: number;
+  endLine: number;
+  position: { x: number; y: number };
+}
+
+export interface AiAssistOpenOptions {
+  selectedText: string;
+  startLine: number;
+  endLine: number;
+  position: { x: number; y: number };
+}
 
 export interface EditorFloatingOverlayProps {
   glyphTooltip: GlyphTooltipData | null;
-  activeSuggestionWidgetData: any;
+  activeSuggestionWidgetData: InlineSuggestionWidgetData | null;
   isAcceptingSuggestion: boolean;
   isRejectingSuggestion: boolean;
   onAcceptSuggestion: (s: PageSuggestion) => void;
@@ -36,23 +56,17 @@ export interface EditorFloatingOverlayProps {
   selFloatingRef: React.RefObject<HTMLDivElement | null>;
   reviewMode: boolean;
   onCloseFloating: () => void;
-  onOpenSuggestModal: (state: any) => void;
+  onOpenSuggestModal: (state: SuggestModalState) => void;
 
-  aiAssistState: {
-    isOpen: boolean;
-    selectedText: string;
-    startLine: number;
-    endLine: number;
-    position: { x: number; y: number };
-  } | null;
+  aiAssistState: AiAssistState | null;
   onCloseAiAssist: () => void;
   onApplyAiEdit: (newText: string, mode: 'replace' | 'insert-below') => void;
-  onOpenAiAssist: (opts: any) => void;
+  onOpenAiAssist: (opts: AiAssistOpenOptions) => void;
 
-  ctxMenu: any;
+  ctxMenu: { x: number; y: number } | null;
   ctxPos: { x: number; y: number } | null;
   ctxMenuRef: React.RefObject<HTMLDivElement | null>;
-  menuGroups: any[];
+  menuGroups: MenuAction[][];
 }
 
 export function EditorFloatingOverlay({

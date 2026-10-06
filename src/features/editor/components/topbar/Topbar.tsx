@@ -37,20 +37,35 @@ const QuickOpenModal = dynamic(
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useSettingsStore, useCompileStore, usePageStore } from '@/features/editor/store';
 import { usePageActions } from '@/features/editor/hooks/use-core';
+import { useShallow } from 'zustand/react/shallow';
 import { cn } from '@/shared/lib/utils';
 
 export default function Topbar() {
-  const params = useParams<{ projectId?: string }>();
-  const homeHref = params?.projectId ? `/projects/${params.projectId}` : '/projects';
+  const params = useParams<{ projectId?: string; pageId?: string }>();
+  const currentPage = usePageStore((s) => s.currentPage);
+  const effectiveProjectId =
+    params?.projectId ||
+    (typeof (currentPage as any)?.projectId === 'string'
+      ? (currentPage as any).projectId
+      : (currentPage as any)?.projectId?.id);
+  const homeHref = effectiveProjectId
+    ? `/projects/${effectiveProjectId}/pages`
+    : '/projects';
   const {
     toggleHistory,
     isHistoryOpen,
     isTemplateModalOpen,
-  } = useSettingsStore();
-  const { dirtyContentMap } = useCompileStore();
+  } = useSettingsStore(
+    useShallow((s) => ({
+      toggleHistory: s.toggleHistory,
+      isHistoryOpen: s.isHistoryOpen,
+      isTemplateModalOpen: s.isTemplateModalOpen,
+    }))
+  );
+  const hasDirtyFiles = useCompileStore((s) => s.dirtyContentMap.size > 0);
   const { updateTitle: updateTitleMutation } = usePageActions();
 
-  const isSaving = dirtyContentMap.size > 0 || updateTitleMutation.isPending;
+  const isSaving = hasDirtyFiles || updateTitleMutation.isPending;
 
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isQuickOpenOpen, setIsQuickOpenOpen] = useState(false);
@@ -73,6 +88,13 @@ export default function Topbar() {
         setIsShortcutsOpen((prev) => !prev);
         return;
       }
+
+      // Ctrl+Shift+K or Cmd+Shift+K -> Open Citation Picker
+      if (modKey && e.shiftKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        EditorEventBus.emit('flux:open-citation-picker');
+        return;
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -83,7 +105,7 @@ export default function Topbar() {
     <TooltipProvider delayDuration={150}>
       <nav
         aria-label="Editor toolbar"
-        className="flex h-11 items-center justify-between gap-2 px-3 py-1 bg-background shrink-0 z-10 select-none border-b border-border"
+        className="flex h-11 items-center justify-between gap-2 px-3 py-1 bg-sidebar shrink-0 z-10 select-none"
       >
         {/* ── Left: Logo (Back to project / Home), Main Menubar ── */}
         <div className="flex items-center min-w-0 shrink-0 gap-1">
@@ -103,7 +125,7 @@ export default function Topbar() {
             <TooltipTrigger asChild>
               <Link
                 href={homeHref}
-                aria-label="Back to your project"
+                aria-label="Back to Pages"
                 className="group relative flex size-8 items-center justify-center rounded-md hover:bg-sidebar-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 cursor-pointer"
               >
                 <img
@@ -118,7 +140,7 @@ export default function Topbar() {
               </Link>
             </TooltipTrigger>
             <TooltipContent side="bottom" sideOffset={6}>
-              Back to your project
+              Back to Pages
             </TooltipContent>
           </Tooltip>
 
@@ -160,7 +182,7 @@ export default function Topbar() {
                 )}
               >
                 <History className="size-3.5 shrink-0" />
-                <span className="hidden sm:inline">History</span>
+                <span>History</span>
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" sideOffset={6}>

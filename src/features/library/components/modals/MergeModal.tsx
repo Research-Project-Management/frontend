@@ -23,7 +23,6 @@ import {
   Tag,
   Folder,
   Split,
-  Sparkles,
   Info,
   SlidersHorizontal,
 } from 'lucide-react';
@@ -267,7 +266,7 @@ export function MergeModal({
                   className="h-7 px-2 text-11 gap-1 font-medium rounded-md border-border text-foreground hover:bg-muted"
                   title="Auto-select the most complete values (longest abstract, full author names, canonical DOI)"
                 >
-                  <Sparkles className="size-3 text-primary shrink-0" />
+                  <Check className="size-3 text-primary shrink-0" />
                   <span>Recommend Best</span>
                 </Button>
               )}
@@ -347,7 +346,7 @@ export function MergeModal({
 
                     <div className="pt-2 border-t border-border/60 flex items-center justify-between text-10 font-mono text-muted-foreground">
                       <span>{item.itemType || 'article'}</span>
-                      <span>{item.year ? `Year: ${item.year}` : 'Year: —'}</span>
+                      <span>{item.year ? `Year: ${item.year}` : 'Year: -'}</span>
                     </div>
                   </div>
                 );
@@ -505,7 +504,7 @@ export function MergeModal({
 
                                 {isRecommended && (
                                   <div className="flex items-center gap-1 text-10 text-primary font-medium">
-                                    <Sparkles className="size-2.5" />
+                                    <Check className="size-2.5" />
                                     <span>Recommended value</span>
                                   </div>
                                 )}

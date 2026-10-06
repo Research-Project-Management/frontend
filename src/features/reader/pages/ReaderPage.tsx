@@ -402,7 +402,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 : 'Retracted Publication'}
             </span>
             <span className="text-rose-100 truncate max-w-xl">
-              — {(((paper as any).retractionDetails as any)?.reason) || 'This publication has been flagged as retracted or unreliable.'}
+              - {(((paper as any).retractionDetails as any)?.reason) || 'This publication has been flagged as retracted or unreliable.'}
             </span>
           </div>
           {(((paper as any).retractionDetails as any)?.noticeUrl) && (

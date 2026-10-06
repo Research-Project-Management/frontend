@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { FolderOpen, Folder, ChevronRight } from 'lucide-react';
+import { Folder, ChevronRight } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import type { TreeNode, CollectionActionHandlers } from './sidebar.types';
@@ -97,8 +97,8 @@ export function CollectionNode({
   );
   const effectiveIsOpen = isSearching ? true : isOpen;
 
-  // SaaS indentation: 24px for root collection, +14px per subcollection depth level
-  const paddingLeft = depth * 14 + 24;
+  // Hierarchy indentation: 24px (align with SidebarNavItem pl-6) + depth * 16px
+  const paddingLeft = 24 + depth * 16;
 
   return (
     <div className="flex flex-col gap-1 w-full">
@@ -114,9 +114,10 @@ export function CollectionNode({
 
         {renamingId === node.id && canManageCollections ? (
           <div
-            className="relative z-10 flex h-8 w-full items-center pr-2 min-w-0"
+            className="relative z-10 flex h-8 w-full items-center pr-2 min-w-0 gap-2.5"
             style={{ paddingLeft: `${paddingLeft}px` }}
           >
+            <Folder className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
             <input
               autoFocus
               value={renameValue}
@@ -126,7 +127,7 @@ export function CollectionNode({
                 if (e.key === 'Enter') onSubmitRename(node.id);
                 if (e.key === 'Escape') onSubmitRename('__cancel__');
               }}
-              className="h-7 w-full min-w-0 rounded-md border border-border bg-background px-2 text-13 font-normal focus:outline-none focus:ring-1 focus:ring-ring shadow-none"
+              className="h-7 w-full min-w-0 rounded-md border border-border bg-background px-2 text-13 font-normal focus:outline-none focus:ring-1 focus:ring-ring shadow-none text-foreground"
             />
           </div>
         ) : (
@@ -135,73 +136,79 @@ export function CollectionNode({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             className={cn(
-              "group/node relative z-10 flex h-8 w-full items-center gap-2 rounded-md pr-2 transition-colors cursor-pointer select-none text-13 leading-5 tracking-tight",
+              "group/node relative z-10 flex h-8 w-full items-center gap-2 rounded-md pr-1.5 transition-colors cursor-pointer select-none text-13 leading-5 tracking-tight",
               isActive
                 ? "bg-muted text-foreground font-medium"
-                : "text-foreground hover:bg-muted font-normal",
+                : "text-foreground hover:bg-muted group-hover/node:bg-muted has-[[data-state=open]]:bg-muted font-normal",
               isDragOverTarget && "bg-primary/15 text-primary font-medium ring-1 ring-primary/40 ring-inset"
             )}
             style={{ paddingLeft: `${paddingLeft}px` }}
           >
-            {hasChildren ? (
-              <Tooltip delayDuration={700}>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsOpen((v) => !v);
-                    }}
-                    aria-label={effectiveIsOpen ? `Collapse ${node.name}` : `Expand ${node.name}`}
-                    className="flex size-5 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
-                  >
-                    <ChevronRight
-                      className={cn('size-3.5 transition-transform duration-150 shrink-0', effectiveIsOpen && 'rotate-90')}
-                    />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  align="start"
-                  sideOffset={6}
-                  alignOffset={2}
-                  className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
-                >
-                  {effectiveIsOpen ? 'Collapse' : 'Expand'}
-                </TooltipContent>
-              </Tooltip>
-            ) : depth > 0 ? (
-              <span className="size-5 shrink-0" />
-            ) : null}
-
             <Link
               href={to}
               onClick={onLinkClick}
-              className="flex flex-1 min-w-0 items-center gap-2 py-1 outline-none shrink-0"
+              className="flex flex-1 min-w-0 items-center gap-2.5 py-1 outline-none shrink-0"
             >
-              {hasChildren && effectiveIsOpen ? (
-                <FolderOpen className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-              ) : (
-                <Folder className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-              )}
-
-              <span className="flex-1 min-w-0 truncate tracking-tight text-foreground">
+              <Folder className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+              <span
+                className={cn(
+                  "flex-1 min-w-0 truncate tracking-tight text-foreground",
+                  isActive ? "font-medium" : "font-normal"
+                )}
+              >
                 {node.name}
               </span>
             </Link>
 
-            <CollectionContextMenu
-              node={node}
-              validMoveTargets={validMoveTargets}
-              canManageCollections={canManageCollections}
-              onCreateSub={onCreateSub}
-              onStartRename={onStartRename}
-              onMove={onMove}
-              onCopy={onCopy}
-              onExportBibtex={onExportBibtex}
-              onExportBundle={onExportBundle}
-              onDelete={onDelete}
-              onDeleteWithItems={onDeleteWithItems}
-            />
+            <div className="flex items-center gap-0.5 shrink-0 ml-auto">
+              <CollectionContextMenu
+                node={node}
+                validMoveTargets={validMoveTargets}
+                canManageCollections={canManageCollections}
+                onCreateSub={onCreateSub}
+                onStartRename={onStartRename}
+                onMove={onMove}
+                onCopy={onCopy}
+                onExportBibtex={onExportBibtex}
+                onExportBundle={onExportBundle}
+                onDelete={onDelete}
+                onDeleteWithItems={onDeleteWithItems}
+              />
+
+              {hasChildren && (
+                <Tooltip delayDuration={700}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setIsOpen((v) => !v);
+                      }}
+                      aria-label={effectiveIsOpen ? `Collapse ${node.name}` : `Expand ${node.name}`}
+                      className="flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-foreground/10 active:bg-foreground/20 cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    >
+                      <ChevronRight
+                        className={cn(
+                          'size-3.5 text-foreground transition-transform duration-150 shrink-0',
+                          effectiveIsOpen && 'rotate-90'
+                        )}
+                        strokeWidth={1.5}
+                      />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    align="start"
+                    sideOffset={6}
+                    alignOffset={2}
+                    className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground shadow-md"
+                  >
+                    {effectiveIsOpen ? 'Collapse' : 'Expand'}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </div>
         )}
       </div>

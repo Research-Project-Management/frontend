@@ -5,7 +5,6 @@ import {
   Brain,
   ChevronDown,
   FileText,
-  Sparkles,
   ExternalLink,
   Loader2,
   Search,
@@ -266,7 +265,7 @@ export function CompanionMessages({
               <div className='relative max-w-[92%] rounded-md px-3 py-2 leading-relaxed bg-muted/50 border border-border/80 text-foreground'>
                 {activeAgent && (
                   <div className='text-10 font-medium text-ai mb-1 flex items-center gap-1'>
-                    <Sparkles className='size-2.5 animate-spin motion-reduce:animate-none' />
+                    <Loader2 className='size-2.5 animate-spin motion-reduce:animate-none' />
                     <span>{activeAgent.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())} Agent</span>
                   </div>
                 )}

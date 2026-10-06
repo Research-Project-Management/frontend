@@ -6,7 +6,6 @@ import {
   Zap,
   TrendingUp,
   Clock,
-  Sparkles,
   BarChart,
   HardDrive,
 } from 'lucide-react';

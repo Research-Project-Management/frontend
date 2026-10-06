@@ -413,6 +413,20 @@ export const invalidateRetraction = (qc: QueryClient, scopeId?: string) => {
   qc.invalidateQueries({ queryKey: libraryKeys.all });
 };
 
+/**
+ * Lean read-only hook for consumers that only need the retracted item list
+ * (e.g. the editor linter and citation picker), without stats or mutations.
+ */
+export function useRetractedItems(scopeId?: string, enabled = true) {
+  const effectiveScope = scopeId || 'user';
+  return useQuery({
+    queryKey: retractionKeys.items(effectiveScope),
+    queryFn: () => RetractionService.getRetractedItems(effectiveScope),
+    enabled,
+    staleTime: 1000 * 60 * 60,
+  });
+}
+
 export function useRetraction(scopeId?: string) {
   const queryClient = useQueryClient();
   const effectiveScope = scopeId || 'user';
@@ -424,18 +438,19 @@ export function useRetraction(scopeId?: string) {
     staleTime: 1000 * 60 * 60,
   });
 
-  const itemsQuery = useQuery({
-    queryKey: retractionKeys.items(effectiveScope),
-    queryFn: () => RetractionService.getRetractedItems(effectiveScope),
-    enabled: true,
-    staleTime: 1000 * 60 * 60,
-  });
+  const itemsQuery = useRetractedItems(effectiveScope);
 
   const checkItemMutation = useMutation({
     mutationFn: (itemId: string) => RetractionService.checkItem(effectiveScope, itemId),
     onSuccess: (data) => {
       invalidateRetraction(queryClient, scopeId);
-      if (data.isRetracted) {
+      if (data.status === 'unknown') {
+        toast.info('Could not verify this item', {
+          description:
+            'Retraction status needs a DOI or PMID, or the lookup was unavailable. The stored status was not changed.',
+          id: 'retraction-check',
+        });
+      } else if (data.isRetracted) {
         toast.error('Retraction detected!', {
           description: `This publication was flagged as ${data.nature || 'retracted'}.`,
           id: 'retraction-check',

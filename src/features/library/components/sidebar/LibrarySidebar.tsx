@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { motion, LayoutGroup } from 'framer-motion';
 import { Library, ChevronRight } from 'lucide-react';
@@ -20,7 +21,8 @@ import { useLibrarySidebarStore } from '../../store';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 
-import { CreateCollectionModal, CreateSavedSearchModal, TrashModal } from '../modals';
+import { CreateCollectionModal, TrashModal } from '../modals';
+import type { SavedSearch } from '../../types/saved-searches.types';
 
 import { buildTree, filterCollections } from './tree-helpers';
 import { useSidebarResize } from './useSidebarResize';
@@ -51,6 +53,7 @@ export function LibrarySidebar() {
   const width = useLibrarySidebarStore((s) => s.width);
   const setWidth = useLibrarySidebarStore((s) => s.setWidth);
   const toggle = useLibrarySidebarStore((s) => s.toggle);
+  const openModal = useLibrarySidebarStore((s) => s.openModal);
   const effectiveScopeId = activeScope.type === 'project' ? activeScope.id : 'user';
 
   const personalCollectionService = useCollections('user');
@@ -68,7 +71,8 @@ export function LibrarySidebar() {
 
   const [isLibraryExpanded, setIsLibraryExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isCreateSavedSearchOpen, setIsCreateSavedSearchOpen] = useState(false);
+  const [renamingSavedSearchId, setRenamingSavedSearchId] = useState<string | null>(null);
+  const [renameSavedSearchValue, setRenameSavedSearchValue] = useState('');
 
   const { isDragging, handleMouseDown } = useSidebarResize(width, setWidth);
 
@@ -109,9 +113,40 @@ export function LibrarySidebar() {
   const {
     savedSearches,
     createSavedSearch,
+    updateSavedSearch,
     deleteSavedSearch,
-    isCreating: isCreatingSavedSearch,
   } = useSavedSearches(effectiveScopeId);
+
+  const handleEditSavedSearch = (ss: SavedSearch) => {
+    openModal('CREATE_SAVED_SEARCH', { savedSearch: ss });
+  };
+
+  const handleDuplicateSavedSearch = async (ss: SavedSearch) => {
+    await createSavedSearch({
+      name: `${ss.name} (Copy)`,
+      conjunction: ss.conjunction || 'AND',
+      conditions: ss.conditions,
+    });
+  };
+
+  const handleStartRenameSavedSearch = (id: string, name: string) => {
+    setRenamingSavedSearchId(id);
+    setRenameSavedSearchValue(name);
+  };
+
+  const handleSubmitRenameSavedSearch = async (id: string) => {
+    if (id !== '__cancel__') {
+      const trimmed = renameSavedSearchValue.trim();
+      if (trimmed) {
+        await updateSavedSearch({
+          id,
+          data: { name: trimmed },
+        });
+      }
+    }
+    setRenamingSavedSearchId(null);
+    setRenameSavedSearchValue('');
+  };
   const { actions: itemActions } = useItems({ scopeId: effectiveScopeId, enabled: false });
   const { data: countsData } = useLibraryCountsQuery(effectiveScopeId);
   const { data: duplicateData } = useDuplicateGroups(effectiveScopeId);
@@ -170,6 +205,20 @@ export function LibrarySidebar() {
     collections,
   });
 
+  const [isMounted, setIsMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    if (typeof window !== 'undefined') {
+      const mql = window.matchMedia('(max-width: 767px)');
+      setIsMobile(mql.matches);
+      const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+      mql.addEventListener('change', handler);
+      return () => mql.removeEventListener('change', handler);
+    }
+  }, []);
+
   const handleMobileLinkClick = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setIsOpen(false);
@@ -180,33 +229,17 @@ export function LibrarySidebar() {
     return null;
   }
 
-  return (
+  const sidebarBody = (
     <>
-      {/* Mobile Backdrop Overlay */}
-      <div
-        className="fixed inset-0 z-40 bg-black/30 md:hidden"
-        onClick={() => setIsOpen(false)}
-        aria-hidden="true"
-      />
-
-      <aside
-        aria-label="Library navigation and collections"
-        style={{
-          width: `${width}px`,
-          minWidth: '200px',
-          maxWidth: '400px',
-        }}
-        className="fixed inset-y-0 left-0 z-50 md:relative md:z-20 h-full border-r border-border bg-background md:bg-transparent flex flex-col select-none shrink-0 shadow-raised-200 md:shadow-none"
-      >
-        {/* Upper Area: Header, Collections Tree, Views */}
-        <div className="flex-1 min-h-0 flex flex-col p-2.5 pt-4 pb-1 overflow-hidden">
+      {/* Upper Area: Header, Collections Tree, Views */}
+      <div className="flex-1 min-h-0 flex flex-col p-2.5 pt-4 pb-1">
           {/* Header with expandable search & controls */}
           <SidebarHeader
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             canManageCollections={canManageCollections}
             onOpenCreateRoot={handlers.openCreateRoot}
-            onOpenCreateSavedSearch={() => setIsCreateSavedSearchOpen(true)}
+            onOpenCreateSavedSearch={() => openModal('CREATE_SAVED_SEARCH')}
             onToggleCollapse={toggle}
           />
 
@@ -214,7 +247,7 @@ export function LibrarySidebar() {
           <LayoutGroup id={`library-nav-${id}`}>
             <nav
               aria-label="Library Navigation"
-              className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col gap-1 pr-1"
+              className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col gap-1 sidebar-scrollbar scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             >
               {/* 1. My Library */}
               <div className="relative group/root flex items-center w-full">
@@ -224,7 +257,7 @@ export function LibrarySidebar() {
                     setActiveScope({
                       type: 'personal',
                       id: 'user',
-                      name: 'My Library',
+                      name: 'Library',
                       role: 'owner',
                     });
                     handleMobileLinkClick();
@@ -244,8 +277,14 @@ export function LibrarySidebar() {
                       transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                     />
                   )}
-                  <Library className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-                  <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
+                  <Library
+                    className="relative z-10 size-4 shrink-0 text-foreground"
+                    strokeWidth={1.5}
+                  />
+                  <span className={cn(
+                    "relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground",
+                    isLibraryActive ? "font-medium" : "font-normal"
+                  )}>
                     My Library
                   </span>
                 </Link>
@@ -259,7 +298,7 @@ export function LibrarySidebar() {
                         setIsLibraryExpanded((v) => !v);
                       }}
                       aria-label={isLibraryExpanded ? 'Collapse My Library' : 'Expand My Library'}
-                      className="absolute right-2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
+                      className="absolute right-2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-foreground/10 active:bg-foreground/20 cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     >
                       <ChevronRight
                         className={cn(
@@ -306,6 +345,13 @@ export function LibrarySidebar() {
                       handleMobileLinkClick();
                     }}
                     onDeleteSavedSearch={(id) => deleteSavedSearch(id)}
+                    onEditSavedSearch={handleEditSavedSearch}
+                    onStartRenameSavedSearch={handleStartRenameSavedSearch}
+                    onSubmitRenameSavedSearch={handleSubmitRenameSavedSearch}
+                    onRenameSavedSearchValueChange={setRenameSavedSearchValue}
+                    onDuplicateSavedSearch={handleDuplicateSavedSearch}
+                    renamingSavedSearchId={renamingSavedSearchId}
+                    renameSavedSearchValue={renameSavedSearchValue}
                   >
                     {/* User Collections Tree */}
                     <CollectionTree
@@ -371,6 +417,14 @@ export function LibrarySidebar() {
                 onExportBundle={handlers.handleExportBundle}
                 onLinkClick={handleMobileLinkClick}
                 onDropItems={(ids, targetColId) => itemActions.batchMoveItems(ids, targetColId)}
+                onEditSavedSearch={handleEditSavedSearch}
+                onStartRenameSavedSearch={handleStartRenameSavedSearch}
+                onSubmitRenameSavedSearch={handleSubmitRenameSavedSearch}
+                onRenameSavedSearchValueChange={setRenameSavedSearchValue}
+                onDuplicateSavedSearch={handleDuplicateSavedSearch}
+                onDeleteSavedSearch={(id) => deleteSavedSearch(id)}
+                renamingSavedSearchId={renamingSavedSearchId}
+                renameSavedSearchValue={renameSavedSearchValue}
               />
             </nav>
           </LayoutGroup>
@@ -406,19 +460,54 @@ export function LibrarySidebar() {
           onConfirm={handlers.handleConfirmTrash}
           isPending={collectionService.state.isDeleting}
         />
+      </>
+    );
 
-        <CreateSavedSearchModal
-          open={isCreateSavedSearchOpen}
-          onOpenChange={setIsCreateSavedSearchOpen}
-          onSubmit={async (data: any) => {
-            await createSavedSearch(data);
-          }}
-          isPending={isCreatingSavedSearch}
-        />
-      </aside>
-    </>
-  );
-}
+    const mobileDrawer =
+      isMobile && isMounted && typeof document !== 'undefined'
+        ? createPortal(
+            <div className="md:hidden">
+              {/* Mobile Backdrop Overlay */}
+              <div
+                className="fixed inset-0 z-40 bg-black/30"
+                onClick={() => setIsOpen(false)}
+                aria-hidden="true"
+              />
+              <aside
+                aria-label="Library navigation and collections"
+                style={{
+                  width: `${width}px`,
+                  minWidth: '200px',
+                  maxWidth: '400px',
+                }}
+                className="fixed inset-y-0 left-0 z-50 h-full border-r border-border bg-background flex flex-col select-none shrink-0 shadow-raised-200"
+              >
+                {sidebarBody}
+              </aside>
+            </div>,
+            document.body,
+          )
+        : null;
+
+    return (
+      <>
+        {mobileDrawer}
+        {!isMobile && (
+          <aside
+            aria-label="Library navigation and collections"
+            style={{
+              width: `${width}px`,
+              minWidth: '200px',
+              maxWidth: '400px',
+            }}
+            className="relative z-20 h-full border-r border-border bg-transparent flex flex-col select-none shrink-0"
+          >
+            {sidebarBody}
+          </aside>
+        )}
+      </>
+    );
+  }
 
 export { LibrarySidebar as Sidebar };
 export default LibrarySidebar;

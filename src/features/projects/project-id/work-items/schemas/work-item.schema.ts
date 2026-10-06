@@ -153,7 +153,18 @@ export const itemSchema = z.object({
   relations: z.array(relationSchema).default([]),
   startDate: z.string().nullable().optional(),
   dueDate: z.string().nullable().optional(),
-  labels: z.array(z.string()).default([]),
+  labels: z
+    .array(
+      z.union([
+        z.string(),
+        z.object({
+          id: z.string(),
+          name: z.string().optional(),
+          color: z.string().optional(),
+        }).passthrough(),
+      ]),
+    )
+    .default([]),
   attachments: attachmentsSchema.default({
     pages: [],
     papers: [],

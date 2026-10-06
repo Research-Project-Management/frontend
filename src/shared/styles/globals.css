@@ -349,6 +349,15 @@
   --radius: 0.5rem;
   --brand-hue: 265;
 
+  /* ── Standard Semantic Z-Index Scale ── */
+  --z-sticky: 20;
+  --z-drawer: 40;
+  --z-dropdown: 50;
+  --z-modal: 70;
+  --z-tooltip: 80;
+  --z-toast: 100;
+  --z-fullscreen: 110;
+
   /* ── FLUX DESIGN SYSTEM TOKENS (Light Mode) ── */
   --canvas: #FCFCFB;
   --surface: #FAFAF9;
@@ -799,18 +808,12 @@
     scroll-behavior: auto !important;
   }
 
-  /* Explicitly allow gentle ambient AI 3D orbital animations requested by user */
-  .animate-orb-aura {
-    animation: orb-aura-pulse 4.8s ease-in-out infinite !important;
-  }
-  .animate-orbit-1 {
-    animation: orbit-ring-1 18s linear infinite !important;
-  }
-  .animate-orbit-2 {
-    animation: orbit-ring-2 14s linear infinite !important;
-  }
+  /* Disable continuous ambient AI 3D orbital animations in reduced-motion mode */
+  .animate-orb-aura,
+  .animate-orbit-1,
+  .animate-orbit-2,
   .animate-orbit-3 {
-    animation: orbit-ring-3 26s linear infinite !important;
+    animation: none !important;
   }
 }
 
@@ -1003,60 +1006,8 @@
   border-radius: 4px;
 }
 
-/* ── Track Changes (Review Mode) Overleaf-grade Inline Injected Diffs ── */
-.flux-track-insert-inline {
-  background-color: rgba(16, 185, 129, 0.18) !important;
-  color: #059669 !important;
-  text-decoration: underline !important;
-  text-decoration-color: #10b981 !important;
-  font-weight: 500 !important;
-  padding: 1px 3px !important;
-  border-radius: 3px !important;
-  border: 1px solid rgba(16, 185, 129, 0.35) !important;
-  cursor: pointer !important;
-}
 
-.dark .flux-track-insert-inline {
-  background-color: rgba(16, 185, 129, 0.22) !important;
-  color: #34d399 !important;
-  border-color: rgba(16, 185, 129, 0.45) !important;
-}
 
-.flux-track-replace-inline {
-  background-color: rgba(16, 185, 129, 0.18) !important;
-  color: #059669 !important;
-  text-decoration: underline !important;
-  text-decoration-color: #10b981 !important;
-  font-weight: 500 !important;
-  padding: 1px 3px !important;
-  border-radius: 3px !important;
-  border: 1px solid rgba(16, 185, 129, 0.35) !important;
-  margin-left: 3px !important;
-  cursor: pointer !important;
-}
-
-.dark .flux-track-replace-inline {
-  background-color: rgba(16, 185, 129, 0.22) !important;
-  color: #34d399 !important;
-  border-color: rgba(16, 185, 129, 0.45) !important;
-}
-
-.flux-track-clean-insert {
-  color: inherit !important;
-  font-weight: inherit !important;
-  background: transparent !important;
-  border: none !important;
-  text-decoration: none !important;
-}
-
-.flux-track-hidden {
-  opacity: 0 !important;
-  font-size: 0 !important;
-  line-height: 0 !important;
-  letter-spacing: -9999px !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-}
 
 
 @keyframes flux-flash-active-line {
@@ -1132,7 +1083,7 @@
   width: 350px !important;
   max-width: calc(100vw - 32px) !important;
   box-sizing: border-box !important;
-  z-index: 999999999 !important;
+  z-index: var(--z-toast, 100) !important;
   --normal-bg: var(--background);
   --normal-border: var(--border);
   --normal-text: var(--foreground);
@@ -1349,47 +1300,34 @@
   color: var(--foreground) !important;
 }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+.no-scrollbar,
+.scrollbar-none {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 
-/* Sidebar interactive scrollbar: hidden by default, visible on interaction/hover */
+/* Sidebar interactive scrollbar: overlay without layout-shifting gutter or OS arrow buttons */
 .sidebar-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-  transition: scrollbar-color 0.25s ease;
-}
-
-.sidebar-scrollbar:hover,
-.sidebar-scrollbar:focus-within {
-  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .sidebar-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  display: none;
+  width: 0;
+  height: 0;
 }
 
-.sidebar-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sidebar-scrollbar::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 9999px;
-  transition: background-color 0.25s ease;
-}
-
-.sidebar-scrollbar:hover::-webkit-scrollbar-thumb,
-.sidebar-scrollbar:focus-within::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
-}
-
-.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+.sidebar-scrollbar::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* Inspector interactive scrollbar: overlay without layout-shifting gutter */
@@ -1472,6 +1410,30 @@
   outline: none !important;
   box-shadow: none !important;
 }
+
+/* --------------------------------------------------------------------------
+   CODEMIRROR 6 ACCESSIBILITY ANNOUNCER OVERFLOW CLIPPING FIX
+   CodeMirror 6 renders .cm-announced with `position: fixed; top: -10000px;`.
+   This places the DOM node far outside the window bounds, causing every
+   ancestor container with `overflow: hidden` to register a positioned child
+   clipping defect during DOM audits.
+   Standard sr-only positioning preserves 100% screen reader accessibility
+   while keeping the element within normal layout coordinates (0, 0).
+   -------------------------------------------------------------------------- */
+.cm-announced {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border-width: 0 !important;
+}
+
 
 
 

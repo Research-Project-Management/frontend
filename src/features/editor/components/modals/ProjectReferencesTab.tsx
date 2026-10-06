@@ -94,7 +94,7 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
           <SelectTrigger className="w-48 h-8 text-xs font-medium cursor-pointer border-border bg-background">
             <SelectValue placeholder="Select .bib file" />
           </SelectTrigger>
-          <SelectContent className="z-[9999]">
+          <SelectContent>
             {bibFiles.map((file) => (
               <SelectItem key={file} value={file} className="cursor-pointer text-xs">
                 {file}
@@ -151,7 +151,7 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
                     }
                   />
                 </SelectTrigger>
-                <SelectContent className="z-[9999]">
+                <SelectContent>
                   {zoteroCollections.map((col) => (
                     <SelectItem key={col.id} value={col.id} className="cursor-pointer text-xs">
                       {col.name} ({col.itemCount} items)
@@ -236,7 +236,7 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
                     }
                   />
                 </SelectTrigger>
-                <SelectContent className="z-[9999]">
+                <SelectContent>
                   {mendeleyCollections.map((col) => (
                     <SelectItem key={col.id} value={col.id} className="cursor-pointer text-xs">
                       {col.name} ({col.itemCount} items)

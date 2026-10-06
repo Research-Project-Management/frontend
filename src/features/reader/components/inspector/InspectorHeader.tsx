@@ -5,6 +5,7 @@ import { ShieldAlert, ExternalLink, RotateCw, X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useUpdateLibraryItemMutation, useRetraction } from '../../data';
 import type { Item } from '../../types/reader.types';
+import { isItemRetracted, getRetractionInfo } from '@/features/library/utils/retraction';
 
 interface InspectorHeaderProps {
   item: Item;
@@ -24,23 +25,12 @@ export function InspectorHeader({
   const updateMutation = useUpdateLibraryItemMutation(scopeId);
   const { unflagItem, checkItem, isCheckingItem, isUnflagging } = useRetraction(scopeId);
 
-  const isRetracted = Boolean(
-    item.isRetracted ||
-    (item as any).retractionStatus === 'retracted' ||
-    (item as any).is_retracted
-  );
-  const retractionDetails = item.retractionDetails as Record<string, any> | undefined;
-  const noticeUrl =
-    retractionDetails?.noticeUrl ||
-    (item as any).noticeUrl ||
-    (item.doi ? `https://doi.org/${item.doi}` : undefined);
-  const retractionReason =
-    retractionDetails?.reason ||
-    (item as any).retractionReason ||
-    (item as any).reason;
-  const retractionDate =
-    retractionDetails?.date ||
-    (item as any).retractionDate;
+  const isRetracted = isItemRetracted(item);
+  const {
+    noticeUrl,
+    reason: retractionReason,
+    date: retractionDate,
+  } = getRetractionInfo(item);
 
   useEffect(() => {
     setTitleDraft(item.title || '');

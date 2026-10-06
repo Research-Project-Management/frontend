@@ -18,11 +18,10 @@ export const commentKeys = {
 };
 
 export const usePageComments = (pageId: string | null, status?: CommentStatus) => {
-  const isDemo = !pageId || pageId === 'demo' || pageId.startsWith('demo-') || pageId.startsWith('mock-');
   return useQuery({
     queryKey: commentKeys.byPage(pageId, status),
     queryFn: async (): Promise<PageComment[]> => {
-      if (isDemo) return [];
+      if (!pageId) return [];
       try {
         const comments = await commentService.getComments(pageId, status);
         return comments || [];
@@ -30,7 +29,7 @@ export const usePageComments = (pageId: string | null, status?: CommentStatus) =
         return [];
       }
     },
-    enabled: Boolean(pageId && !isDemo),
+    enabled: Boolean(pageId),
   });
 };
 

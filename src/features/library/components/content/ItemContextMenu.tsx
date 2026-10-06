@@ -160,7 +160,7 @@ export function ItemContextMenu({
               }}
               className="gap-2 text-12 py-1.5 px-2 cursor-pointer"
             >
-              <Copy className="size-3.5 text-muted-foreground" />
+              <Copy className="size-3.5 text-foreground" />
               Copy Citation Key
             </ContextMenuItem>
 

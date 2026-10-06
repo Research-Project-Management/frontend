@@ -9,10 +9,12 @@ import {
   Check,
   Plus,
   AlertCircle,
+  AlertTriangle,
   X,
   FileText,
   Library,
   BookMarked,
+  Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/shared/components/ui/input';
@@ -22,11 +24,12 @@ import { usePageStore } from '@/features/editor/store';
 import { useEditorInstance } from '@/features/editor/core/context/editor-instance.context';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useEditorCitations } from '@/features/editor/hooks/use-citation';
+import { manuscriptService } from '@/features/editor/services/manuscript.service';
 import { generateCitationKey } from '@/features/library';
 import { filesQuery } from '@/features/editor/hooks/use-core';
 import { parseBibContent, type BibEntry } from '@/features/editor/utils/bib-parser.util';
 import { extractCitationKeys } from '@/features/editor/utils/citation.util';
-import { EditorEmptyState } from '../../shared';
+import { PlaneEmptyState, PlaneErrorState } from '@/shared/components/ui';
 
 interface CitationTabProps {
   onClose?: () => void;
@@ -80,6 +83,20 @@ export default function CitationTab({ onClose }: CitationTabProps) {
     enabled: !!rootPageId,
   });
 
+  // Fetch authoritative bibliography validation (duplicate keys, missing required fields)
+  const { data: citationValidation } = useQuery({
+    queryKey: ['project-citation-validation', projectId],
+    queryFn: async () => {
+      if (!projectId) return null;
+      try {
+        return await manuscriptService.citations.validate(projectId);
+      } catch {
+        return null;
+      }
+    },
+    enabled: Boolean(projectId),
+  });
+
   // Parse BibTeX entries from all .bib files in the project
   const bibEntries = useMemo<BibEntry[]>(() => {
     const bibFiles = (projectFiles || []).filter((f: any) => {
@@ -112,6 +129,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
   const {
     libraryItems,
     isLoading: isLibraryLoading,
+    isError: isLibraryError,
     getAuthorSummary,
   } = useEditorCitations({
     projectId,
@@ -227,20 +245,49 @@ export default function CitationTab({ onClose }: CitationTabProps) {
   };
 
   const handleInsertKey = (key: string) => {
+    const matchedEntry = allAvailableEntries.find(
+      (e) => e.key.toLowerCase() === key.toLowerCase(),
+    );
     if (engine) {
       engine.insertText(`\\cite{${key}}`);
       engine.focus();
       toast.success(`Inserted \\cite{${key}}`);
       refreshContent();
+      EditorEventBus.emit('flux:insert-citation', {
+        bibKey: key,
+        textInserted: true,
+        entry: matchedEntry ? {
+          key: matchedEntry.key,
+          title: matchedEntry.title,
+          year: matchedEntry.year,
+          journal: matchedEntry.journal,
+          source: matchedEntry.source,
+        } : undefined,
+      });
       return;
     }
-    EditorEventBus.emit('flux:insert-citation', { bibKey: key });
+    EditorEventBus.emit('flux:insert-citation', {
+      bibKey: key,
+      textInserted: false,
+      entry: matchedEntry ? {
+        key: matchedEntry.key,
+        title: matchedEntry.title,
+        year: matchedEntry.year,
+        journal: matchedEntry.journal,
+        source: matchedEntry.source,
+      } : undefined,
+    });
     toast.success(`Inserted \\cite{${key}}`);
   };
 
-  const openPickerModal = () => {
-    EditorEventBus.emit('flux:open-citation-picker');
-  };
+  const openPickerModal = useCallback((initialQuery?: unknown, initialKey?: unknown) => {
+    const query = typeof initialQuery === 'string' ? initialQuery : undefined;
+    const key = typeof initialKey === 'string' ? initialKey : query;
+    EditorEventBus.emit(
+      'flux:open-citation-picker',
+      query ? { initialQuery: query, initialKey: key } : undefined,
+    );
+  }, []);
 
   return (
     <div className="h-full flex flex-col bg-background text-foreground select-none">
@@ -252,7 +299,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={openPickerModal}
+                onClick={() => openPickerModal()}
                 className="size-7 flex items-center justify-center rounded-sm text-foreground/80 hover:text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer"
                 aria-label="Insert citation"
               >
@@ -305,9 +352,45 @@ export default function CitationTab({ onClose }: CitationTabProps) {
       </div>
 
       {/* ── Content List ── */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1 bg-background">
+      <div className="flex-1 min-h-0 overflow-y-auto p-2 pb-4 space-y-1 bg-background">
         {filterTab === 'document' ? (
           <>
+            {/* Bibliography Validation Warnings (Backend Citations Service Parity) */}
+            {citationValidation && citationValidation.duplicateKeys && citationValidation.duplicateKeys.length > 0 && (
+              <div className="mb-2 p-2 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-medium">
+                  <AlertTriangle className="size-3.5 shrink-0" />
+                  <span>Duplicate Citation Keys ({citationValidation.duplicateKeys.length})</span>
+                </div>
+                <p className="text-12 leading-normal text-destructive/90">
+                  Duplicate keys in your .bib files cause broken citations and compilation errors.
+                </p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {citationValidation.duplicateKeys.map((k) => (
+                    <span key={k} className="px-1.5 py-0.5 font-mono text-11 font-medium rounded bg-destructive/20 text-destructive">
+                      {k}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {citationValidation && citationValidation.missingFieldWarnings && citationValidation.missingFieldWarnings.length > 0 && (
+              <div className="mb-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-foreground text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-medium text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="size-3.5 shrink-0" />
+                  <span>Missing Required Metadata ({citationValidation.missingFieldWarnings.length})</span>
+                </div>
+                <div className="space-y-0.5 text-12 text-muted-foreground max-h-20 overflow-y-auto">
+                  {citationValidation.missingFieldWarnings.map((w) => (
+                    <div key={w.key} className="truncate">
+                      <span className="font-mono text-foreground font-medium">{w.key}</span>: missing {w.missingFields.join(', ')}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Missing/Unresolved Keys */}
             {missingKeys.length > 0 && (
               <div className="mb-2 space-y-1">
@@ -318,23 +401,41 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                 {missingKeys.map((key) => (
                   <div
                     key={key}
-                    className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-foreground"
+                    onClick={() => openPickerModal(key)}
+                    className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-foreground cursor-pointer hover:bg-amber-500/15 transition-colors group"
                   >
                     <span className="font-mono text-11 font-medium text-amber-700 dark:text-amber-300 truncate">
                       {key}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyKey(key)}
-                      className="h-6 px-1.5 rounded-xs text-11 text-muted-foreground hover:text-foreground hover:bg-amber-500/20 transition-colors cursor-pointer shrink-0"
-                      title="Copy \cite command"
-                    >
-                      {copiedKey === key ? (
-                        <Check className="size-3 text-emerald-500" />
-                      ) : (
-                        <Copy className="size-3" />
-                      )}
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openPickerModal(key);
+                        }}
+                        className="h-6 px-1.5 rounded-xs text-10 font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition-colors cursor-pointer flex items-center gap-1"
+                        title="Search reference in inspector"
+                      >
+                        <SearchIcon className="size-2.5" />
+                        <span>Find</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyKey(key);
+                        }}
+                        className="h-6 px-1.5 rounded-xs text-11 text-muted-foreground hover:text-foreground hover:bg-amber-500/20 transition-colors cursor-pointer"
+                        title="Copy \cite command"
+                      >
+                        {copiedKey === key ? (
+                          <Check className="size-3 text-emerald-500" />
+                        ) : (
+                          <Copy className="size-3" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -344,7 +445,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
             {filteredCitedEntries.length === 0 && missingKeys.length === 0 ? (
               searchQuery ? (
                 <div className="py-6 px-2">
-                  <EditorEmptyState
+                  <PlaneEmptyState
                     variant="search"
                     isCompact
                     title="No citations found"
@@ -353,7 +454,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                 </div>
               ) : (
                 <div className="py-6 px-2">
-                  <EditorEmptyState
+                  <PlaneEmptyState
                     variant="citations"
                     isCompact
                     title="No citations in document"
@@ -361,7 +462,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                     action={
                       <button
                         type="button"
-                        onClick={openPickerModal}
+                        onClick={() => openPickerModal()}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-12 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                       >
                         <Plus className="size-3.5" />
@@ -385,7 +486,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                           {item.key}
                         </span>
                         {item.source === 'bib' && (
-                          <span className="text-10 font-mono px-1 py-0.2 rounded-xs bg-muted text-muted-foreground shrink-0">
+                          <span className="text-11 font-mono px-1.5 py-0.5 rounded-xs bg-muted text-muted-foreground shrink-0">
                             .bib
                           </span>
                         )}
@@ -397,11 +498,11 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                       )}
                     </div>
 
-                    <p className="text-12 font-medium text-foreground line-clamp-2 leading-snug">
+                    <p className="text-13 font-serif font-normal text-foreground line-clamp-2 leading-snug tracking-normal">
                       {item.title}
                     </p>
 
-                    <p className="text-11 text-muted-foreground truncate">
+                    <p className="text-12 text-muted-foreground truncate font-sans">
                       {item.authorsSummary}
                       {item.journal ? ` · ${item.journal}` : ''}
                     </p>
@@ -412,16 +513,28 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
+                          openPickerModal(item.key, item.key);
+                        }}
+                        className="size-7 flex items-center justify-center rounded-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
+                        title="Inspect paper details"
+                        aria-label="Inspect paper details"
+                      >
+                        <Info className="size-3.5 shrink-0 text-foreground" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           handleCopyKey(item.key);
                         }}
-                        className="relative size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
+                        className="size-7 flex items-center justify-center rounded-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
                         title="Copy \cite command"
                         aria-label="Copy citation command"
                       >
                         {copiedKey === item.key ? (
-                          <Check className="size-3 text-emerald-500 shrink-0" />
+                          <Check className="size-3.5 text-emerald-500 shrink-0" />
                         ) : (
-                          <Copy className="size-3 shrink-0" />
+                          <Copy className="size-3.5 shrink-0 text-foreground" />
                         )}
                       </button>
                       <button
@@ -430,11 +543,11 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                           e.stopPropagation();
                           handleInsertKey(item.key);
                         }}
-                        className="relative size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
+                        className="size-7 flex items-center justify-center rounded-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
                         title="Insert \cite at cursor"
                         aria-label="Insert citation at cursor"
                       >
-                        <Plus className="size-3.5 shrink-0" />
+                        <Plus className="size-3.5 shrink-0 text-foreground" />
                       </button>
                     </div>
                   </div>
@@ -446,13 +559,21 @@ export default function CitationTab({ onClose }: CitationTabProps) {
           /* Library Tab */
           <>
             {isLibraryLoading ? (
-              <div className="py-10 text-center text-11 text-muted-foreground">
+              <div className="py-10 text-center text-12 text-muted-foreground">
                 Loading workspace references...
+              </div>
+            ) : isLibraryError ? (
+              <div className="py-6 px-2">
+                <PlaneErrorState
+                  title="Unable to load citations"
+                  description="An issue occurred while loading references from your library."
+                  error={new Error('Failed to load workspace references')}
+                />
               </div>
             ) : filteredAvailableEntries.length === 0 ? (
               searchQuery ? (
                 <div className="py-6 px-2">
-                  <EditorEmptyState
+                  <PlaneEmptyState
                     variant="search"
                     isCompact
                     title="No citations found"
@@ -461,7 +582,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                 </div>
               ) : (
                 <div className="py-6 px-2">
-                  <EditorEmptyState
+                  <PlaneEmptyState
                     variant="citations"
                     isCompact
                     title="Workspace library is empty"
@@ -469,7 +590,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                     action={
                       <button
                         type="button"
-                        onClick={openPickerModal}
+                        onClick={() => openPickerModal()}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-12 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                       >
                         <Plus className="size-3.5" />
@@ -493,7 +614,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                           {item.key}
                         </span>
                         {item.source === 'bib' && (
-                          <span className="text-10 font-mono px-1 py-0.2 rounded-xs bg-muted text-muted-foreground shrink-0">
+                          <span className="text-11 font-mono px-1.5 py-0.5 rounded-xs bg-muted text-muted-foreground shrink-0">
                             .bib
                           </span>
                         )}
@@ -505,11 +626,11 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                       )}
                     </div>
 
-                    <p className="text-12 font-medium text-foreground line-clamp-2 leading-snug">
+                    <p className="text-13 font-serif font-normal text-foreground line-clamp-2 leading-snug tracking-normal">
                       {item.title}
                     </p>
 
-                    <p className="text-11 text-muted-foreground truncate">
+                    <p className="text-12 text-muted-foreground truncate font-sans">
                       {item.authorsSummary}
                       {item.journal ? ` · ${item.journal}` : ''}
                     </p>
@@ -520,16 +641,28 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
+                          openPickerModal(item.key, item.key);
+                        }}
+                        className="size-7 flex items-center justify-center rounded-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
+                        title="Inspect paper details"
+                        aria-label="Inspect paper details"
+                      >
+                        <Info className="size-3.5 shrink-0 text-foreground" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           handleCopyKey(item.key);
                         }}
-                        className="relative size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
+                        className="size-7 flex items-center justify-center rounded-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
                         title="Copy \cite command"
                         aria-label="Copy citation command"
                       >
                         {copiedKey === item.key ? (
-                          <Check className="size-3 text-emerald-500 shrink-0" />
+                          <Check className="size-3.5 text-emerald-500 shrink-0" />
                         ) : (
-                          <Copy className="size-3 shrink-0" />
+                          <Copy className="size-3.5 shrink-0 text-foreground" />
                         )}
                       </button>
                       <button
@@ -538,11 +671,11 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                           e.stopPropagation();
                           handleInsertKey(item.key);
                         }}
-                        className="relative size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
+                        className="size-7 flex items-center justify-center rounded-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
                         title="Insert \cite at cursor"
                         aria-label="Insert citation at cursor"
                       >
-                        <Plus className="size-3.5 shrink-0" />
+                        <Plus className="size-3.5 shrink-0 text-foreground" />
                       </button>
                     </div>
                   </div>
@@ -554,22 +687,22 @@ export default function CitationTab({ onClose }: CitationTabProps) {
       </div>
 
       {/* ── Bottom Navigation Tabs: In Document vs Library (Unified with Review Tab) ── */}
-      <nav aria-label="Citations filter" className="flex h-11 shrink-0 border-t border-border bg-background select-none">
+      <nav aria-label="Citations filter" className="flex h-12 shrink-0 items-center border-t border-border bg-background px-2 pb-2 pt-1 select-none">
         {/* Tab 1: In Document */}
         <button
           type="button"
           onClick={() => setFilterTab('document')}
           className={cn(
-            'relative flex flex-1 flex-col items-center justify-center gap-1 py-1.5 transition-colors cursor-pointer font-medium',
+            'relative flex flex-1 flex-col items-center justify-center gap-1 py-1 px-2 rounded-md transition-colors cursor-pointer font-medium',
             filterTab === 'document'
               ? 'text-foreground font-semibold'
               : 'text-muted-foreground hover:text-foreground',
           )}
         >
           {filterTab === 'document' && (
-            <div className="absolute top-0 inset-x-0 h-[2px] bg-primary" />
+            <div className="absolute top-0 inset-x-2 h-[2px] bg-primary rounded-full" />
           )}
-          <FileText className="size-3.5 shrink-0" />
+          <FileText className="size-3.5 shrink-0 text-foreground" />
           <span className="text-12 leading-normal">In Document</span>
         </button>
 
@@ -578,16 +711,16 @@ export default function CitationTab({ onClose }: CitationTabProps) {
           type="button"
           onClick={() => setFilterTab('library')}
           className={cn(
-            'relative flex flex-1 flex-col items-center justify-center gap-1 py-1.5 transition-colors cursor-pointer font-medium',
+            'relative flex flex-1 flex-col items-center justify-center gap-1 py-1 px-2 rounded-md transition-colors cursor-pointer font-medium',
             filterTab === 'library'
               ? 'text-foreground font-semibold'
               : 'text-muted-foreground hover:text-foreground',
           )}
         >
           {filterTab === 'library' && (
-            <div className="absolute top-0 inset-x-0 h-[2px] bg-primary" />
+            <div className="absolute top-0 inset-x-2 h-[2px] bg-primary rounded-full" />
           )}
-          <Library className="size-3.5 shrink-0" />
+          <Library className="size-3.5 shrink-0 text-foreground" />
           <span className="text-12 leading-normal">Library</span>
         </button>
       </nav>

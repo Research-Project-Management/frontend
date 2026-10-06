@@ -250,7 +250,7 @@ export function PresentationModeModal({
         if (isWhiteout) setIsWhiteout(false);
       }}
       className={cn(
-        'fixed inset-0 z-[100000] bg-black flex flex-col items-center justify-center select-none overflow-hidden',
+        'fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center select-none overflow-hidden',
         isLaserPointer ? 'cursor-none' : showControls ? 'cursor-default' : 'cursor-none',
       )}
     >
@@ -293,7 +293,7 @@ export function PresentationModeModal({
 
       {/* ── Blackout Screen Overlay (B) ─────────────────────────── */}
       {isBlackout && (
-        <div className="fixed inset-0 z-[100001] bg-black flex flex-col items-center justify-center text-white/40 cursor-pointer animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[101] bg-black flex flex-col items-center justify-center text-white/40 cursor-pointer animate-in fade-in duration-200">
           <Moon className="size-8 mb-2 opacity-50" />
           <p className="text-xs font-mono">Screen Blacked Out (Press B or Click to resume)</p>
         </div>
@@ -301,7 +301,7 @@ export function PresentationModeModal({
 
       {/* ── Whiteout Screen Overlay (W) ─────────────────────────── */}
       {isWhiteout && (
-        <div className="fixed inset-0 z-[100001] bg-white flex flex-col items-center justify-center text-black/40 cursor-pointer animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[101] bg-white flex flex-col items-center justify-center text-black/40 cursor-pointer animate-in fade-in duration-200">
           <Sun className="size-8 mb-2 opacity-50" />
           <p className="text-xs font-mono">Screen Whited Out (Press W or Click to resume)</p>
         </div>
@@ -310,7 +310,7 @@ export function PresentationModeModal({
       {/* ── Laser Pointer Dot (L) ───────────────────────────────── */}
       {isLaserPointer && laserPos && (
         <div
-          className="pointer-events-none fixed z-[100002] transition-transform duration-75 ease-out"
+          className="pointer-events-none fixed z-[102] transition-transform duration-75 ease-out"
           style={{
             left: laserPos.x - 7,
             top: laserPos.y - 7,
@@ -324,7 +324,7 @@ export function PresentationModeModal({
       {/* ── Floating Presenter Control HUD ──────────────────────── */}
       <div
         className={cn(
-          'fixed bottom-6 z-[100003] transition-all duration-300 ease-in-out',
+          'fixed bottom-6 z-[103] transition-all duration-300 ease-in-out',
           showControls && !isBlackout && !isWhiteout
             ? 'opacity-100 translate-y-0'
             : 'opacity-0 translate-y-4 pointer-events-none',

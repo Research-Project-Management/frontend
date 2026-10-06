@@ -4,7 +4,6 @@ import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   GitMerge,
-  Sparkles,
   Layers,
   FileText,
   Calendar,
@@ -376,7 +375,7 @@ export function DuplicatesPage() {
                               ? item.authors
                               : item.creators,
                           );
-                          const authorStr = authorFormatted !== '—' ? authorFormatted : '';
+                          const authorStr = authorFormatted !== '-' ? authorFormatted : '';
 
                           return (
                             <div
